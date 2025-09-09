@@ -1,0 +1,253 @@
+version: '3.8'
+
+services:
+  # 🚀 Application principale avec auto-scaling
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.cloud
+    environment:
+      - RUST_LOG=info
+      - DATABASE_URL=postgresql://app_user:secure_password@primary-db:5432/yukpomnang
+      - REDIS_URL=redis://redis-cluster:6379
+      - GPU_ENABLED=true
+      - MAX_CONCURRENT_REQUESTS=10000
+      - CACHE_TTL=300
+    deploy:
+      replicas: 3
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 4G
+        reservations:
+          cpus: '0.5'
+          memory: 1G
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+    networks:
+      - cloud-network
+    depends_on:
+      - primary-db
+      - redis-cluster
+      - load-balancer
+
+  # ⚖️ Load Balancer Nginx
+  load-balancer:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    deploy:
+      replicas: 2
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+    networks:
+      - cloud-network
+
+  # 🗄️ Base de données principale
+  primary-db:
+    image: postgres:15
+    environment:
+      - POSTGRES_DB=yukpomnang
+      - POSTGRES_USER=app_user
+      - POSTGRES_PASSWORD=secure_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./pgvector_pg16_files:/docker-entrypoint-initdb.d
+    deploy:
+      resources:
+        limits:
+          cpus: '4.0'
+          memory: 8G
+    networks:
+      - cloud-network
+
+  # 📖 Réplicas de lecture
+  read-replica-1:
+    image: postgres:15
+    environment:
+      - POSTGRES_DB=yukpomnang
+      - POSTGRES_USER=read_user
+      - POSTGRES_PASSWORD=read_password
+    volumes:
+      - postgres_replica_1:/var/lib/postgresql/data
+    deploy:
+      replicas: 2
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 4G
+    networks:
+      - cloud-network
+
+  # 🔴 Cluster Redis
+  redis-cluster:
+    image: redis:7-alpine
+    command: redis-server --cluster-enabled yes --cluster-config-file nodes.conf --cluster-node-timeout 5000
+    deploy:
+      replicas: 6
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 1G
+    networks:
+      - cloud-network
+
+  # 📊 Monitoring Prometheus
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 2G
+    networks:
+      - cloud-network
+
+  # 📈 Grafana pour les dashboards
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 1G
+    networks:
+      - cloud-network
+    depends_on:
+      - prometheus
+
+  # 🚨 Alert Manager
+  alertmanager:
+    image: prom/alertmanager:latest
+    ports:
+      - "9093:9093"
+    volumes:
+      - ./monitoring/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - alertmanager_data:/alertmanager
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+    networks:
+      - cloud-network
+
+  # 🔍 Service Discovery Consul
+  consul:
+    image: consul:latest
+    ports:
+      - "8500:8500"
+    command: agent -server -bootstrap-expect=1 -ui -client=0.0.0.0
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+    networks:
+      - cloud-network
+
+  # 📊 Jaeger pour le tracing distribué
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    ports:
+      - "16686:16686"
+      - "14268:14268"
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 1G
+    networks:
+      - cloud-network
+
+  # 🔄 Auto-scaling manager
+  autoscaler:
+    build:
+      context: .
+      dockerfile: Dockerfile.autoscaler
+    environment:
+      - PROMETHEUS_URL=http://prometheus:9090
+      - MIN_REPLICAS=3
+      - MAX_REPLICAS=100
+      - CPU_THRESHOLD_UP=70
+      - CPU_THRESHOLD_DOWN=30
+      - MEMORY_THRESHOLD_UP=80
+      - MEMORY_THRESHOLD_DOWN=40
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+    networks:
+      - cloud-network
+    depends_on:
+      - prometheus
+
+  # 🗄️ Microservice d'embedding
+  embedding-service:
+    build:
+      context: ../microservice_embedding
+      dockerfile: Dockerfile
+    ports:
+      - "8001:8000"
+    environment:
+      - PINECONE_API_KEY=${PINECONE_API_KEY}
+      - PINECONE_ENVIRONMENT=${PINECONE_ENVIRONMENT}
+    deploy:
+      replicas: 3
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 2G
+    networks:
+      - cloud-network
+
+volumes:
+  postgres_data:
+    driver: local
+  postgres_replica_1:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+  alertmanager_data:
+    driver: local
+
+networks:
+  cloud-network:
+    driver: overlay
+    attachable: true 

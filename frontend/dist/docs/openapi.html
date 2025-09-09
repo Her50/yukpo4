@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Documentation API Yukpomnang</title>
+  <style>
+    body { font-family: sans-serif; margin: 2rem; background: #f9f9f9; color: #333; }
+    h1 { font-size: 2rem; color: #c8102e; }
+    pre { background: #fff; padding: 1rem; border-left: 4px solid #c8102e; overflow-x: auto; }
+    .container { max-width: 960px; margin: auto; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>📘 Documentation API Yukpomnang</h1>
+    <p>Version exportée de la documentation publique générée par l'API.</p>
+    <pre>{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Yukpomnang Public API",
+    "version": "1.0"
+  },
+  "paths": {
+    "/api/public/status": {
+      "get": {
+        "summary": "Vérifie que l’API fonctionne",
+        "responses": {
+          "200": { "description": "Succès" },
+          "401": { "description": "Clé API manquante/invalide" }
+        }
+      }
+    }
+  }
+}</pre>
+  </div>
+</body>
+</html>

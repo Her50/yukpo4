@@ -1,0 +1,250 @@
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\.storybook\preview.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\node_modules\@storybook\react\template\cli\ts-3-8\Button.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\node_modules\@storybook\react\template\cli\ts-3-8\Header.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\node_modules\@storybook\react\template\cli\ts-3-8\Page.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\node_modules\@storybook\react\template\cli\ts-4-9\Button.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\node_modules\@storybook\react\template\cli\ts-4-9\Header.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\node_modules\@storybook\react\template\cli\ts-4-9\Page.tsx
+⚠️ Aucun composant principal dans C:\Users\23767\yukpomnang\frontend\src\index.tsx
+⚠️ Aucun composant principal dans C:\Users\23767\yukpomnang\frontend\src\main.tsx
+⚠️ Aucun composant principal dans C:\Users\23767\yukpomnang\frontend\src\components\BehaviorScoreCard.tsx
+🔁 Renommé : submit → CaptchaChallenge dans C:\Users\23767\yukpomnang\frontend\src\components\CaptchaChallenge.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\components\CaptchaChallenge.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\components\CardService.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\components\ContentGenerator.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\components\CreationSection.tsx
+🔁 Renommé : grouped → DynamicMenu dans C:\Users\23767\yukpomnang\frontend\src\components\DynamicMenu.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\components\DynamicMenu.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\components\ExportShareCard.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\components\Footer.tsx
+🔁 Renommé : grouped → InfractionChart dans C:\Users\23767\yukpomnang\frontend\src\components\InfractionChart.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\components\LanguageSwitcher.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\components\Loader.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\components\MatchSection.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\components\MobileMenu.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\components\Navbar.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\components\OutilsSection.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\components\QuotaDashboard.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\components\ReportStats.tsx
+⚠️ Aucun composant principal dans C:\Users\23767\yukpomnang\frontend\src\components\RolePlanNotice.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\components\SchedulerStatusCard.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\components\SidebarMenu.tsx
+⚠️ Aucun composant principal dans C:\Users\23767\yukpomnang\frontend\src\components\UpgradeBanner.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\components\VoiceButton.tsx
+🔁 Renommé : handleClick → FixFrontendButton dans C:\Users\23767\yukpomnang\frontend\src\components\admin\FixFrontendButton.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\components\ai\AIHelper.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\components\cards\CrossRecoCard.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\components\cards\ServiceCard.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\components\catalogue\CatalogueCard.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\components\compare\VoteForm.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\components\dashboard\CatalogueGrid.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\components\dashboard\MessageInbox.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\components\dashboard\MesServicesList.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\components\dashboard\UserFavoris.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\components\dev\AnimationDebugger.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\components\filters\FilterBar.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\components\history\RecentViewed.tsx
+⚠️ Aucun composant principal dans C:\Users\23767\yukpomnang\frontend\src\components\homepage\AskAI.tsx
+⚠️ Aucun composant principal dans C:\Users\23767\yukpomnang\frontend\src\components\homepage\FeatureGrid.tsx
+⚠️ Aucun composant principal dans C:\Users\23767\yukpomnang\frontend\src\components\homepage\HeroSection.tsx
+⚠️ Aucun composant principal dans C:\Users\23767\yukpomnang\frontend\src\components\homepage\NewsletterSignup.tsx
+⚠️ Aucun composant principal dans C:\Users\23767\yukpomnang\frontend\src\components\homepage\PopularServices.tsx
+⚠️ Aucun composant principal dans C:\Users\23767\yukpomnang\frontend\src\components\homepage\Testimonials.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\components\notation\AddRatingForm.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\components\notation\StarRating.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\components\public\ServiceCard.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\components\search\AdvancedSearch.tsx
+⚠️ Aucun composant principal dans C:\Users\23767\yukpomnang\frontend\src\components\security\RequireRoleAndPlan.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\components\security\SmartNotifier.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\components\services\CreationCard.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\components\services\CreationSection.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\components\services\MatchCard.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\components\services\MatchSection.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\components\services\OutilsCard.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\components\services\OutilsSection.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\components\services\ProductGrid.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\components\services\ServiceCard.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\components\shared\ServiceTemplateCard.tsx
+⚠️ Aucun composant principal dans C:\Users\23767\yukpomnang\frontend\src\components\ui\BrandingSplash.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\components\ui\button.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\components\ui\card.tsx
+🔁 Renommé : lang → LocalizedText dans C:\Users\23767\yukpomnang\frontend\src\components\ui\LocalizedText.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\components\variation\VariationAlert.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\layouts\DashboardLayout.tsx
+⚠️ Aucun composant principal dans C:\Users\23767\yukpomnang\frontend\src\layouts\MainLayout.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\pages\AboutPage.tsx
+🔁 Renommé : source → AcquisitionTracker dans C:\Users\23767\yukpomnang\frontend\src\pages\AcquisitionTracker.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\pages\ActivityLogViewer.tsx
+🔁 Renommé : ws → AdminAccessAudit dans C:\Users\23767\yukpomnang\frontend\src\pages\AdminAccessAudit.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\pages\AdminAccessAudit.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\pages\AdminAnalyticsPanel.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\pages\AdminPanel.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\pages\AdminQuotaPage.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\pages\AdminReportsPage.tsx
+🔁 Renommé : handleGenerate → AmbassadorPanel dans C:\Users\23767\yukpomnang\frontend\src\pages\AmbassadorPanel.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\pages\AmbassadorPanel.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\pages\ApiDashboardPage.tsx
+🔁 Renommé : fetchKeys → ApiKeyManager dans C:\Users\23767\yukpomnang\frontend\src\pages\ApiKeyManager.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\pages\ApiKeyManager.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\pages\AuthLogViewer.tsx
+🔁 Renommé : generate → AutoMarketingPanel dans C:\Users\23767\yukpomnang\frontend\src\pages\AutoMarketingPanel.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\pages\AutoMarketingPanel.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\pages\BienPage.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\pages\BourseLivrePage.tsx
+⚠️ Aucun composant principal dans C:\Users\23767\yukpomnang\frontend\src\pages\CaptchaPage.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\pages\CataloguePage.tsx
+🔁 Renommé : handleCertify → CertificationPanel dans C:\Users\23767\yukpomnang\frontend\src\pages\CertificationPanel.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\pages\CertificationPanel.tsx
+🔁 Renommé : askBot → ChatbotAI dans C:\Users\23767\yukpomnang\frontend\src\pages\ChatbotAI.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\pages\ChatbotAI.tsx
+🔁 Renommé : sendMessage → ChatPanel dans C:\Users\23767\yukpomnang\frontend\src\pages\ChatPanel.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\pages\ChatPanel.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\pages\CommunicationPanel.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\pages\ComparePage.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\pages\ContactEnterprisePage.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\pages\ContactPage.tsx
+🔁 Renommé : sendMessage → ConversationPanel dans C:\Users\23767\yukpomnang\frontend\src\pages\ConversationPanel.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\pages\ConversationPanel.tsx
+🔁 Renommé : handleChange → CreateService dans C:\Users\23767\yukpomnang\frontend\src\pages\CreateService.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\pages\CreateService.tsx
+🔁 Renommé : Vide → CreationPage.stories dans C:\Users\23767\yukpomnang\frontend\src\pages\CreationPage.stories.tsx
+✅ Corrigé export default dans C:\Users\23767\yukpomnang\frontend\src\pages\CreationPage.stories.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\pages\CreationPage.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\pages\Dashboard.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\pages\DashboardPage.tsx
+⚠️ Aucun composant principal dans C:\Users\23767\yukpomnang\frontend\src\pages\DashboardSelector.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\pages\DebugRolesPage.tsx
+🔁 Renommé : handleGenerate → DevisPanel dans C:\Users\23767\yukpomnang\frontend\src\pages\DevisPanel.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\pages\DevisPanel.tsx
+⚠️ Aucun composant principal dans C:\Users\23767\yukpomnang\frontend\src\pages\ForecastPanel.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\pages\GeoSyncPanel.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\pages\HomePage.tsx
+🔁 Renommé : testScore → IAInsights dans C:\Users\23767\yukpomnang\frontend\src\pages\IAInsights.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\pages\IAInsights.tsx
+⚠️ Aucun composant principal dans C:\Users\23767\yukpomnang\frontend\src\pages\index.tsx
+⚠️ Aucun composant principal dans C:\Users\23767\yukpomnang\frontend\src\pages\InfractionsPage.tsx
+🔁 Renommé : country → LandingPage dans C:\Users\23767\yukpomnang\frontend\src\pages\LandingPage.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\pages\LandingPage.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\pages\LoginPage.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\pages\MatchingPage.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\pages\MatchPage.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\pages\NotFound.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\pages\NotificationLog.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\pages\OutilsPage.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\pages\PaiementProPage.tsx
+🔁 Renommé : handleAdd → PartnerReviewPanel dans C:\Users\23767\yukpomnang\frontend\src\pages\PartnerReviewPanel.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\pages\PartnerReviewPanel.tsx
+🔁 Renommé : handleImageUpload → PhotoMatching dans C:\Users\23767\yukpomnang\frontend\src\pages\PhotoMatching.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\pages\PhotoMatching.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\pages\PredictionDashboard.tsx
+🔁 Renommé : handleAdd → ProductCatalogue dans C:\Users\23767\yukpomnang\frontend\src\pages\ProductCatalogue.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\pages\ProductCatalogue.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\pages\PurgeLogViewer.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\pages\ReactionManager.tsx
+🔁 Renommé : fetchReco → RecoPanel dans C:\Users\23767\yukpomnang\frontend\src\pages\RecoPanel.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\pages\RecoPanel.tsx
+🔁 Renommé : handleReserve → ReservationPanel dans C:\Users\23767\yukpomnang\frontend\src\pages\ReservationPanel.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\pages\ReservationPanel.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\pages\ScheduleManager.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\pages\ScoringDashboard.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\pages\SearchPage.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\pages\SecurityDashboard.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\pages\SecurityOverview.tsx
+🔁 Renommé : handleLocate → ServiceLocator dans C:\Users\23767\yukpomnang\frontend\src\pages\ServiceLocator.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\pages\ServiceLocator.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\pages\ServicePage.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\pages\ServicesPage.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\pages\SmartBlocksStatus.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\pages\StrategicRecoPanel.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\pages\SummaryDashboard.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\pages\ThreatDashboard.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\pages\TicketPage.tsx
+⚠️ Aucun composant principal dans C:\Users\23767\yukpomnang\frontend\src\pages\TranslationTestPage.tsx
+🔁 Renommé : fetchTrends → TrendExplorer dans C:\Users\23767\yukpomnang\frontend\src\pages\TrendExplorer.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\pages\TrendExplorer.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\pages\UpgradePage.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\pages\UserInteractionIACenter.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\pages\UserStatsIADashboard.tsx
+🔁 Renommé : handleGenerate → VitrineGenerator dans C:\Users\23767\yukpomnang\frontend\src\pages\VitrineGenerator.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\pages\VitrineGenerator.tsx
+🔁 Renommé : sendCommand → VoicePanel dans C:\Users\23767\yukpomnang\frontend\src\pages\VoicePanel.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\pages\VoicePanel.tsx
+🔁 Renommé : sendToAI → YukAIGateway dans C:\Users\23767\yukpomnang\frontend\src\pages\YukAIGateway.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\pages\YukAIGateway.tsx
+⚠️ Aucun composant principal dans C:\Users\23767\yukpomnang\frontend\src\pages\admin\ApiDashboard.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\pages\admin\AuditAccessPage.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\pages\admin\AuditDashboard.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\pages\admin\AvisModeration.tsx
+🔁 Renommé : handleCertify → CertificationPanel dans C:\Users\23767\yukpomnang\frontend\src\pages\admin\CertificationPanel.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\pages\admin\CertificationPanel.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\pages\admin\IADashboard.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\pages\admin\InfractionArchivePage.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\pages\admin\InfractionDashboard.tsx
+⚠️ Aucun composant principal dans C:\Users\23767\yukpomnang\frontend\src\pages\admin\MonitoringDashboard.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\pages\admin\PlanSelector.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\pages\admin\ReportModeration.tsx
+🔁 Renommé : launchScraper → ScraperDashboard dans C:\Users\23767\yukpomnang\frontend\src\pages\admin\ScraperDashboard.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\pages\admin\ScraperDashboard.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\pages\admin\SignalementAlerte.tsx
+🔁 Renommé : handleGenerate → SocialContentGenerator dans C:\Users\23767\yukpomnang\frontend\src\pages\admin\SocialContentGenerator.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\pages\admin\SocialContentGenerator.tsx
+🔁 Renommé : handleGenerate → SocialContentPanel dans C:\Users\23767\yukpomnang\frontend\src\pages\admin\SocialContentPanel.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\pages\admin\SocialContentPanel.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\pages\dashboard\AccountPage.tsx
+⚠️ Aucun composant principal dans C:\Users\23767\yukpomnang\frontend\src\pages\dashboard\Alerts.tsx
+⚠️ Aucun composant principal dans C:\Users\23767\yukpomnang\frontend\src\pages\dashboard\History.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\pages\dashboard\IAPremium.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\pages\dashboard\MesServicesPage.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\pages\dashboard\MonProfil.tsx
+⚠️ Aucun composant principal dans C:\Users\23767\yukpomnang\frontend\src\pages\dashboard\Overview.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\pages\dashboard\Services.tsx
+⚠️ Aucun composant principal dans C:\Users\23767\yukpomnang\frontend\src\pages\dev\ApiPortal.tsx
+⚠️ Aucun composant principal dans C:\Users\23767\yukpomnang\frontend\src\pages\docs\ApiDocs.tsx
+⚠️ Aucun composant principal dans C:\Users\23767\yukpomnang\frontend\src\pages\landing\LandingPage_en.tsx
+⚠️ Aucun composant principal dans C:\Users\23767\yukpomnang\frontend\src\pages\landing\LandingPage_ff.tsx
+⚠️ Aucun composant principal dans C:\Users\23767\yukpomnang\frontend\src\pages\landing\LandingPage_fr.tsx
+⚠️ Aucun composant principal dans C:\Users\23767\yukpomnang\frontend\src\pages\legal\CookiePage.tsx
+⚠️ Aucun composant principal dans C:\Users\23767\yukpomnang\frontend\src\pages\legal\LegalNotice.tsx
+⚠️ Aucun composant principal dans C:\Users\23767\yukpomnang\frontend\src\pages\legal\PrivacyPage.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\pages\public\ExplorePage.tsx
+⚠️ Aucun composant principal dans C:\Users\23767\yukpomnang\frontend\src\src\pages\admin\AvisModeration.tsx
+⚠️ Aucun composant principal dans C:\Users\23767\yukpomnang\frontend\src\stories\AboutPage.stories.tsx
+⚠️ Aucun composant principal dans C:\Users\23767\yukpomnang\frontend\src\stories\AdminAnalyticsPanel.stories.tsx
+⚠️ Aucun composant principal dans C:\Users\23767\yukpomnang\frontend\src\stories\AdminPanel.stories.tsx
+⚠️ Aucun composant principal dans C:\Users\23767\yukpomnang\frontend\src\stories\BienPage.stories.tsx
+⚠️ Aucun composant principal dans C:\Users\23767\yukpomnang\frontend\src\stories\BourseLivrePage.stories.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\stories\Button.tsx
+⚠️ Aucun composant principal dans C:\Users\23767\yukpomnang\frontend\src\stories\CommunicationPanel.stories.tsx
+⚠️ Aucun composant principal dans C:\Users\23767\yukpomnang\frontend\src\stories\ContactEnterprisePage.stories.tsx
+⚠️ Aucun composant principal dans C:\Users\23767\yukpomnang\frontend\src\stories\ContactPage.stories.tsx
+⚠️ Aucun composant principal dans C:\Users\23767\yukpomnang\frontend\src\stories\CreationPage.stories.stories.tsx
+⚠️ Aucun composant principal dans C:\Users\23767\yukpomnang\frontend\src\stories\CreationPage.stories.tsx
+⚠️ Aucun composant principal dans C:\Users\23767\yukpomnang\frontend\src\stories\Dashboard.stories.tsx
+⚠️ Aucun composant principal dans C:\Users\23767\yukpomnang\frontend\src\stories\DashboardPage.stories.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\stories\Header.tsx
+⚠️ Aucun composant principal dans C:\Users\23767\yukpomnang\frontend\src\stories\HomePage.stories.tsx
+⚠️ Aucun composant principal dans C:\Users\23767\yukpomnang\frontend\src\stories\index.stories.tsx
+⚠️ Aucun composant principal dans C:\Users\23767\yukpomnang\frontend\src\stories\LoginPage.stories.tsx
+⚠️ Aucun composant principal dans C:\Users\23767\yukpomnang\frontend\src\stories\MatchingPage.stories.tsx
+⚠️ Aucun composant principal dans C:\Users\23767\yukpomnang\frontend\src\stories\MatchingResultsIA.stories.tsx
+⚠️ Aucun composant principal dans C:\Users\23767\yukpomnang\frontend\src\stories\MatchPage.stories.tsx
+⚠️ Aucun composant principal dans C:\Users\23767\yukpomnang\frontend\src\stories\MonComposant.stories.tsx
+⚠️ Aucun composant principal dans C:\Users\23767\yukpomnang\frontend\src\stories\NotFound.stories.tsx
+⚠️ Aucun composant principal dans C:\Users\23767\yukpomnang\frontend\src\stories\OutilsPage.stories.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\stories\Page.tsx
+⚠️ Aucun composant principal dans C:\Users\23767\yukpomnang\frontend\src\stories\PaiementProPage.stories.tsx
+⚠️ Aucun composant principal dans C:\Users\23767\yukpomnang\frontend\src\stories\PredictionDashboard.stories.tsx
+🔁 Renommé : DummyComponent → RoleRestrictionDemo.stories dans C:\Users\23767\yukpomnang\frontend\src\stories\RoleRestrictionDemo.stories.tsx
+✅ Corrigé export default dans C:\Users\23767\yukpomnang\frontend\src\stories\RoleRestrictionDemo.stories.tsx
+🛠️ Balises JSX auto-fermées dans C:\Users\23767\yukpomnang\frontend\src\stories\RoleRestrictionDemo.stories.tsx
+⚠️ Aucun composant principal dans C:\Users\23767\yukpomnang\frontend\src\stories\services.module.stories.tsx
+⚠️ Aucun composant principal dans C:\Users\23767\yukpomnang\frontend\src\stories\ServicesPage.stories.tsx
+⚠️ Aucun composant principal dans C:\Users\23767\yukpomnang\frontend\src\stories\StrategicRecoPanel.stories.tsx
+⚠️ Aucun composant principal dans C:\Users\23767\yukpomnang\frontend\src\stories\TicketPage.stories.tsx
+⚠️ Aucun composant principal dans C:\Users\23767\yukpomnang\frontend\src\stories\UpgradePage.stories.tsx
+⚠️ Aucun composant principal dans C:\Users\23767\yukpomnang\frontend\src\stories\UserInteractionIACenter.stories.tsx
+⚠️ Aucun composant principal dans C:\Users\23767\yukpomnang\frontend\src\stories\UserStatsIADashboard.stories.tsx
+⚠️ Aucun composant principal dans C:\Users\23767\yukpomnang\frontend\src\tests\AccessControl.test.tsx
+⚠️ Aucun composant principal dans C:\Users\23767\yukpomnang\frontend\src\__tests__\CreationPage.test.tsx
+⚠️ Aucun composant principal dans C:\Users\23767\yukpomnang\frontend\src\__tests__\MatchingPage.test.tsx
+⚠️ Aucun composant principal dans C:\Users\23767\yukpomnang\frontend\src\__tests__\MatchingResultsIA.test.tsx

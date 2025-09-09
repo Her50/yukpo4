@@ -1,0 +1,36 @@
+[
+    {
+      "id": 1,
+      "name": "Yukpomnang Immobilier",
+      "description": "Publication de biens professionnels avec IA et vérification vocale",
+      "category": "immobilier",
+      "price": 15000,
+      "features": ["IA vocale", "Multicanal", "Tableau de bord"],
+      "badge": "NOUVEAU",
+      "plan_required": "pro",
+      "rating": 4.7
+    },
+    {
+      "id": 2,
+      "name": "Yukpomnang Transport",
+      "description": "Réservation billets + hôtels partenaires automatisée",
+      "category": "assistance",
+      "price": 20000,
+      "features": ["Paiement mobile", "Comparateur IA"],
+      "badge": "TOP",
+      "plan_required": "enterprise",
+      "rating": 4.5
+    },
+    {
+      "id": 3,
+      "name": "Yukpomnang Écoute Sociale",
+      "description": "Analyse de tendances et influenceurs sur réseaux sociaux",
+      "category": "communication",
+      "price": 12000,
+      "features": ["Scraping", "GPT-4 intégré"],
+      "badge": "IA",
+      "plan_required": "pro",
+      "rating": 4.8
+    }
+  ]
+  

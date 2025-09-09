@@ -1,0 +1,1 @@
+-- ARCHIVE: Doublon de creation de service_reviews. Voir 20250601_create_service_reviews.sql pour la version à garder.

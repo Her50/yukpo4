@@ -1,0 +1,28 @@
+# Configuration du backend Rust Yukpo
+
+# Configuration de la base de données PostgreSQL
+DATABASE_URL=postgresql://username:password@localhost:5432/yukpo_db
+
+# Configuration du serveur
+HOST=127.0.0.1
+PORT=8001
+
+# Configuration de l'environnement
+ENVIRONMENT=development
+RUST_LOG=info
+
+# Configuration des clés API
+YUKPO_API_KEY=yukpo_backend_key_2024
+EMBEDDING_API_KEY=yukpo_embedding_key_2024
+
+# Configuration des services externes
+EMBEDDING_SERVICE_URL=http://localhost:8000
+AI_SERVICE_URL=https://api.openai.com/v1
+
+# Configuration de sécurité
+JWT_SECRET=your_jwt_secret_here
+ENCRYPTION_KEY=your_encryption_key_here
+
+# Configuration des timeouts
+REQUEST_TIMEOUT=30
+DATABASE_TIMEOUT=10 

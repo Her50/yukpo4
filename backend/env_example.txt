@@ -1,0 +1,16 @@
+# Configuration pour la transcription audio en production
+# Copiez ce fichier vers .env et remplissez vos clés API
+
+# OpenAI Whisper API (recommandé pour la transcription)
+OPENAI_API_KEY=sk-your-openai-api-key-here
+
+# Hugging Face Inference API (fallback)
+HUGGINGFACE_API_KEY=hf-your-huggingface-api-key-here
+
+# Configuration existante
+DATABASE_URL=postgresql://username:password@localhost:5432/yukpomnang
+JWT_SECRET=your-jwt-secret-here
+PINECONE_API_KEY=your-pinecone-api-key-here
+PINECONE_INDEX=service-embeddings
+PINECONE_ENV=us-east-1-aws
+YUKPO_API_KEY=yukpo_embedding_key_2024 

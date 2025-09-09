@@ -1,0 +1,507 @@
+   Compiling yukpomnang_backend v0.1.0 (C:\Users\23767\yukpomnang\backend)
+error[E0277]: the trait bound `Router<Arc<AppState>>: Service<IncomingStream<'a, TcpListener>>` is not satisfied
+   --> tests\auth_integration.rs:59:31
+    |
+59  |         axum::serve(listener, app).await.expect("Erreur lors de l'exécution du serveur Axum");
+    |         -----------           ^^^ the trait `for<'a> tower_service::Service<IncomingStream<'a, tokio::net::TcpListener>>` is not implemented for `Router<Arc<AppState>>`
+    |         |
+    |         required by a bound introduced by this call
+    |
+    = help: the following other types implement trait `tower_service::Service<Request>`:
+              `Router` implements `tower_service::Service<IncomingStream<'_, L>>`
+              `Router` implements `tower_service::Service<axum::http::Request<B>>`
+note: required by a bound in `serve`
+   --> C:\Users\23767\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\axum-0.8.4\src\serve\mod.rs:100:8
+    |
+97  | pub fn serve<L, M, S>(listener: L, make_service: M) -> Serve<L, M, S>
+    |        ----- required by a bound in this function
+...
+100 |     M: for<'a> Service<IncomingStream<'a, L>, Error = Infallible, Response = S>,
+    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `serve`
+    = note: the full name for the type has been written to 'C:\Users\23767\yukpomnang\backend\target\debug\deps\auth_integration-4c3172f443661666.long-type-13727057215565351646.txt'
+    = note: consider using `--verbose` to print the full type name to the console
+
+error[E0277]: `Serve<tokio::net::TcpListener, Router<Arc<AppState>>, _>` is not a future
+  --> tests\auth_integration.rs:59:36
+   |
+59 |         axum::serve(listener, app).await.expect("Erreur lors de l'exécution du serveur Axum");
+   |         ---------------------------^^^^^
+   |         |                         ||
+   |         |                         |`Serve<tokio::net::TcpListener, Router<Arc<AppState>>, _>` is not a future
+   |         |                         help: remove the `.await`
+   |         this call returns `Serve<tokio::net::TcpListener, Router<Arc<AppState>>, _>`
+   |
+   = help: the trait `IntoFuture` is not implemented for `Serve<tokio::net::TcpListener, Router<Arc<AppState>>, _>`
+   = note: Serve<tokio::net::TcpListener, Router<Arc<AppState>>, _> must be a future or must implement `IntoFuture` to be awaited
+   = help: the trait `IntoFuture` is implemented for `Serve<L, M, S>`
+
+For more information about this error, try `rustc --explain E0277`.
+error: could not compile `yukpomnang_backend` (test "auth_integration") due to 2 previous errors
+warning: build failed, waiting for other jobs to finish...
+error[E0271]: type mismatch resolving `<Router<B> as Service<IncomingStream<'a, TcpListener>>>::Error == Infallible`
+   --> tests\service_integration.rs:30:31
+    |
+30  |         axum::serve(listener, app).await.unwrap();
+    |         -----------           ^^^ expected `Infallible`, found associated type
+    |         |
+    |         required by a bound introduced by this call
+    |
+    = note:         expected enum `Infallible`
+            found associated type `<Router<B> as tower::Service<IncomingStream<'_, tokio::net::TcpListener>>>::Error`
+    = help: consider constraining the associated type `<Router<B> as tower::Service<IncomingStream<'_, tokio::net::TcpListener>>>::Error` to `Infallible`
+    = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
+note: required by a bound in `serve`
+   --> C:\Users\23767\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\axum-0.8.4\src\serve\mod.rs:100:47
+    |
+97  | pub fn serve<L, M, S>(listener: L, make_service: M) -> Serve<L, M, S>
+    |        ----- required by a bound in this function
+...
+100 |     M: for<'a> Service<IncomingStream<'a, L>, Error = Infallible, Response = S>,
+    |                                               ^^^^^^^^^^^^^^^^^^ required by this bound in `serve`
+
+error[E0277]: the trait bound `<Router<B> as Service<...>>::Response: Service<...>` is not satisfied
+   --> tests\service_integration.rs:30:9
+    |
+30  |         axum::serve(listener, app).await.unwrap();
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^ unsatisfied trait bound
+    |
+    = help: the trait `tower::Service<axum::http::Request<axum::body::Body>>` is not implemented for `<Router<B> as tower::Service<IncomingStream<'_, tokio::net::TcpListener>>>::Response`
+    = help: the following other types implement trait `tower::Service<Request>`:
+              `&'a mut S` implements `tower::Service<Request>`
+              `&hyper::client::client::Client<C, B>` implements `tower::Service<http::request::Request<B>>`
+              `&reqwest::Client` implements `tower::Service<reqwest::Request>`
+              `AddExtension<S, T>` implements `tower::Service<axum::http::Request<ResBody>>`
+              `AsService<'_, M, Request>` implements `tower::Service<Target>`
+              `AsyncFilter<T, U>` implements `tower::Service<Request>`
+              `Balance<D, Req>` implements `tower::Service<Req>`
+              `Box<S>` implements `tower::Service<Request>`
+            and 144 others
+note: required by a bound in `serve`
+   --> C:\Users\23767\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\axum-0.8.4\src\serve\mod.rs:101:8
+    |
+97  | pub fn serve<L, M, S>(listener: L, make_service: M) -> Serve<L, M, S>
+    |        ----- required by a bound in this function
+...
+101 |     S: Service<Request, Response = Response, Error = Infallible> + Clone + Send + 'static,
+    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `serve`
+    = note: the full name for the type has been written to 'C:\Users\23767\yukpomnang\backend\target\debug\deps\service_integration-10972b5bd6506aa4.long-type-10715552798655762656.txt'
+    = note: consider using `--verbose` to print the full type name to the console
+
+error[E0277]: the trait bound `<Router<B> as tower::Service<IncomingStream<'_, tokio::net::TcpListener>>>::Response: Clone` is not satisfied
+   --> tests\service_integration.rs:30:9
+    |
+30  |         axum::serve(listener, app).await.unwrap();
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Clone` is not implemented for `<Router<B> as tower::Service<IncomingStream<'_, tokio::net::TcpListener>>>::Response`
+    |
+note: required by a bound in `serve`
+   --> C:\Users\23767\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\axum-0.8.4\src\serve\mod.rs:101:68
+    |
+97  | pub fn serve<L, M, S>(listener: L, make_service: M) -> Serve<L, M, S>
+    |        ----- required by a bound in this function
+...
+101 |     S: Service<Request, Response = Response, Error = Infallible> + Clone + Send + 'static,
+    |                                                                    ^^^^^ required by this bound in `serve`
+
+error[E0277]: `<Router<B> as tower::Service<IncomingStream<'_, tokio::net::TcpListener>>>::Response` cannot be sent between threads safely
+   --> tests\service_integration.rs:30:9
+    |
+30  |         axum::serve(listener, app).await.unwrap();
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^ `<Router<B> as tower::Service<IncomingStream<'_, tokio::net::TcpListener>>>::Response` cannot be sent between threads safely
+    |
+    = help: the trait `std::marker::Send` is not implemented for `<Router<B> as tower::Service<IncomingStream<'_, tokio::net::TcpListener>>>::Response`
+note: required by a bound in `serve`
+   --> C:\Users\23767\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\axum-0.8.4\src\serve\mod.rs:101:76
+    |
+97  | pub fn serve<L, M, S>(listener: L, make_service: M) -> Serve<L, M, S>
+    |        ----- required by a bound in this function
+...
+101 |     S: Service<Request, Response = Response, Error = Infallible> + Clone + Send + 'static,
+    |                                                                            ^^^^ required by this bound in `serve`
+
+error[E0277]: `Serve<TcpListener, Router<B>, <Router<B> as Service<...>>::Response>` is not a future
+  --> tests\service_integration.rs:30:36
+   |
+30 |         axum::serve(listener, app).await.unwrap();
+   |         ---------------------------^^^^^
+   |         |                         ||
+   |         |                         |`Serve<TcpListener, Router<B>, <Router<B> as Service<...>>::Response>` is not a future
+   |         |                         help: remove the `.await`
+   |         this call returns `Serve<tokio::net::TcpListener, Router<B>, <Router<B> as tower::Service<IncomingStream<'_, tokio::net::TcpListener>>>::Response>`
+   |
+   = help: the trait `std::future::IntoFuture` is not implemented for `Serve<TcpListener, Router<B>, <Router<B> as Service<...>>::Response>`
+   = note: Serve<TcpListener, Router<B>, <Router<B> as Service<...>>::Response> must be a future or must implement `IntoFuture` to be awaited
+   = help: the trait `std::future::IntoFuture` is implemented for `Serve<L, M, S>`
+   = note: the full name for the type has been written to 'C:\Users\23767\yukpomnang\backend\target\debug\deps\service_integration-10972b5bd6506aa4.long-type-8741220555312491415.txt'
+   = note: consider using `--verbose` to print the full type name to the console
+
+error[E0308]: mismatched types
+  --> tests\service_integration.rs:39:45
+   |
+39 |     let (_server, addr) = spawn_test_server(app);
+   |                           ----------------- ^^^ expected `Router`, found `Router<Arc<AppState>>`
+   |                           |
+   |                           arguments to this function are incorrect
+   |
+   = note: expected struct `Router<()>`
+              found struct `Router<Arc<AppState>>`
+note: function defined here
+  --> tests\service_integration.rs:10:4
+   |
+10 | fn spawn_test_server<B>(app: axum::Router<B>) -> (tokio::task::JoinHandle<()>, std::net::SocketAddr)
+   |    ^^^^^^^^^^^^^^^^^    --------------------
+
+error[E0308]: mismatched types
+  --> tests\service_integration.rs:54:45
+   |
+54 |     let (_server, addr) = spawn_test_server(app);
+   |                           ----------------- ^^^ expected `Router`, found `Router<Arc<AppState>>`
+   |                           |
+   |                           arguments to this function are incorrect
+   |
+   = note: expected struct `Router<()>`
+              found struct `Router<Arc<AppState>>`
+note: function defined here
+  --> tests\service_integration.rs:10:4
+   |
+10 | fn spawn_test_server<B>(app: axum::Router<B>) -> (tokio::task::JoinHandle<()>, std::net::SocketAddr)
+   |    ^^^^^^^^^^^^^^^^^    --------------------
+
+error[E0308]: mismatched types
+  --> tests\service_integration.rs:71:45
+   |
+71 |     let (_server, addr) = spawn_test_server(app);
+   |                           ----------------- ^^^ expected `Router`, found `Router<Arc<AppState>>`
+   |                           |
+   |                           arguments to this function are incorrect
+   |
+   = note: expected struct `Router<()>`
+              found struct `Router<Arc<AppState>>`
+note: function defined here
+  --> tests\service_integration.rs:10:4
+   |
+10 | fn spawn_test_server<B>(app: axum::Router<B>) -> (tokio::task::JoinHandle<()>, std::net::SocketAddr)
+   |    ^^^^^^^^^^^^^^^^^    --------------------
+
+error[E0308]: mismatched types
+  --> tests\service_integration.rs:88:45
+   |
+88 |     let (_server, addr) = spawn_test_server(app);
+   |                           ----------------- ^^^ expected `Router`, found `Router<Arc<AppState>>`
+   |                           |
+   |                           arguments to this function are incorrect
+   |
+   = note: expected struct `Router<()>`
+              found struct `Router<Arc<AppState>>`
+note: function defined here
+  --> tests\service_integration.rs:10:4
+   |
+10 | fn spawn_test_server<B>(app: axum::Router<B>) -> (tokio::task::JoinHandle<()>, std::net::SocketAddr)
+   |    ^^^^^^^^^^^^^^^^^    --------------------
+
+error[E0308]: mismatched types
+   --> tests\service_integration.rs:105:45
+    |
+105 |     let (_server, addr) = spawn_test_server(app);
+    |                           ----------------- ^^^ expected `Router`, found `Router<Arc<AppState>>`
+    |                           |
+    |                           arguments to this function are incorrect
+    |
+    = note: expected struct `Router<()>`
+               found struct `Router<Arc<AppState>>`
+note: function defined here
+   --> tests\service_integration.rs:10:4
+    |
+10  | fn spawn_test_server<B>(app: axum::Router<B>) -> (tokio::task::JoinHandle<()>, std::net::SocketAddr)
+    |    ^^^^^^^^^^^^^^^^^    --------------------
+
+error[E0308]: mismatched types
+   --> tests\service_integration.rs:122:45
+    |
+122 |     let (_server, addr) = spawn_test_server(app);
+    |                           ----------------- ^^^ expected `Router`, found `Router<Arc<AppState>>`
+    |                           |
+    |                           arguments to this function are incorrect
+    |
+    = note: expected struct `Router<()>`
+               found struct `Router<Arc<AppState>>`
+note: function defined here
+   --> tests\service_integration.rs:10:4
+    |
+10  | fn spawn_test_server<B>(app: axum::Router<B>) -> (tokio::task::JoinHandle<()>, std::net::SocketAddr)
+    |    ^^^^^^^^^^^^^^^^^    --------------------
+
+error[E0308]: mismatched types
+   --> tests\service_integration.rs:139:45
+    |
+139 |     let (_server, addr) = spawn_test_server(app);
+    |                           ----------------- ^^^ expected `Router`, found `Router<Arc<AppState>>`
+    |                           |
+    |                           arguments to this function are incorrect
+    |
+    = note: expected struct `Router<()>`
+               found struct `Router<Arc<AppState>>`
+note: function defined here
+   --> tests\service_integration.rs:10:4
+    |
+10  | fn spawn_test_server<B>(app: axum::Router<B>) -> (tokio::task::JoinHandle<()>, std::net::SocketAddr)
+    |    ^^^^^^^^^^^^^^^^^    --------------------
+
+error[E0308]: mismatched types
+   --> tests\service_integration.rs:155:45
+    |
+155 |     let (_server, addr) = spawn_test_server(app);
+    |                           ----------------- ^^^ expected `Router`, found `Router<Arc<AppState>>`
+    |                           |
+    |                           arguments to this function are incorrect
+    |
+    = note: expected struct `Router<()>`
+               found struct `Router<Arc<AppState>>`
+note: function defined here
+   --> tests\service_integration.rs:10:4
+    |
+10  | fn spawn_test_server<B>(app: axum::Router<B>) -> (tokio::task::JoinHandle<()>, std::net::SocketAddr)
+    |    ^^^^^^^^^^^^^^^^^    --------------------
+
+error[E0308]: mismatched types
+   --> tests\service_integration.rs:171:45
+    |
+171 |     let (_server, addr) = spawn_test_server(app);
+    |                           ----------------- ^^^ expected `Router`, found `Router<Arc<AppState>>`
+    |                           |
+    |                           arguments to this function are incorrect
+    |
+    = note: expected struct `Router<()>`
+               found struct `Router<Arc<AppState>>`
+note: function defined here
+   --> tests\service_integration.rs:10:4
+    |
+10  | fn spawn_test_server<B>(app: axum::Router<B>) -> (tokio::task::JoinHandle<()>, std::net::SocketAddr)
+    |    ^^^^^^^^^^^^^^^^^    --------------------
+
+error[E0308]: mismatched types
+   --> tests\service_integration.rs:187:45
+    |
+187 |     let (_server, addr) = spawn_test_server(app);
+    |                           ----------------- ^^^ expected `Router`, found `Router<Arc<AppState>>`
+    |                           |
+    |                           arguments to this function are incorrect
+    |
+    = note: expected struct `Router<()>`
+               found struct `Router<Arc<AppState>>`
+note: function defined here
+   --> tests\service_integration.rs:10:4
+    |
+10  | fn spawn_test_server<B>(app: axum::Router<B>) -> (tokio::task::JoinHandle<()>, std::net::SocketAddr)
+    |    ^^^^^^^^^^^^^^^^^    --------------------
+
+error[E0308]: mismatched types
+   --> tests\service_integration.rs:217:45
+    |
+217 |     let (_server, addr) = spawn_test_server(app);
+    |                           ----------------- ^^^ expected `Router`, found `Router<Arc<AppState>>`
+    |                           |
+    |                           arguments to this function are incorrect
+    |
+    = note: expected struct `Router<()>`
+               found struct `Router<Arc<AppState>>`
+note: function defined here
+   --> tests\service_integration.rs:10:4
+    |
+10  | fn spawn_test_server<B>(app: axum::Router<B>) -> (tokio::task::JoinHandle<()>, std::net::SocketAddr)
+    |    ^^^^^^^^^^^^^^^^^    --------------------
+
+error[E0308]: mismatched types
+   --> tests\service_integration.rs:236:45
+    |
+236 |     let (_server, addr) = spawn_test_server(app);
+    |                           ----------------- ^^^ expected `Router`, found `Router<Arc<AppState>>`
+    |                           |
+    |                           arguments to this function are incorrect
+    |
+    = note: expected struct `Router<()>`
+               found struct `Router<Arc<AppState>>`
+note: function defined here
+   --> tests\service_integration.rs:10:4
+    |
+10  | fn spawn_test_server<B>(app: axum::Router<B>) -> (tokio::task::JoinHandle<()>, std::net::SocketAddr)
+    |    ^^^^^^^^^^^^^^^^^    --------------------
+
+error[E0308]: mismatched types
+   --> tests\service_integration.rs:252:45
+    |
+252 |     let (_server, addr) = spawn_test_server(app);
+    |                           ----------------- ^^^ expected `Router`, found `Router<Arc<AppState>>`
+    |                           |
+    |                           arguments to this function are incorrect
+    |
+    = note: expected struct `Router<()>`
+               found struct `Router<Arc<AppState>>`
+note: function defined here
+   --> tests\service_integration.rs:10:4
+    |
+10  | fn spawn_test_server<B>(app: axum::Router<B>) -> (tokio::task::JoinHandle<()>, std::net::SocketAddr)
+    |    ^^^^^^^^^^^^^^^^^    --------------------
+
+error[E0308]: mismatched types
+   --> tests\service_integration.rs:268:45
+    |
+268 |     let (_server, addr) = spawn_test_server(app);
+    |                           ----------------- ^^^ expected `Router`, found `Router<Arc<AppState>>`
+    |                           |
+    |                           arguments to this function are incorrect
+    |
+    = note: expected struct `Router<()>`
+               found struct `Router<Arc<AppState>>`
+note: function defined here
+   --> tests\service_integration.rs:10:4
+    |
+10  | fn spawn_test_server<B>(app: axum::Router<B>) -> (tokio::task::JoinHandle<()>, std::net::SocketAddr)
+    |    ^^^^^^^^^^^^^^^^^    --------------------
+
+error[E0308]: mismatched types
+   --> tests\service_integration.rs:288:45
+    |
+288 |     let (_server, addr) = spawn_test_server(app);
+    |                           ----------------- ^^^ expected `Router`, found `Router<Arc<AppState>>`
+    |                           |
+    |                           arguments to this function are incorrect
+    |
+    = note: expected struct `Router<()>`
+               found struct `Router<Arc<AppState>>`
+note: function defined here
+   --> tests\service_integration.rs:10:4
+    |
+10  | fn spawn_test_server<B>(app: axum::Router<B>) -> (tokio::task::JoinHandle<()>, std::net::SocketAddr)
+    |    ^^^^^^^^^^^^^^^^^    --------------------
+
+error[E0308]: mismatched types
+   --> tests\service_integration.rs:335:45
+    |
+335 |     let (_server, addr) = spawn_test_server(app);
+    |                           ----------------- ^^^ expected `Router`, found `Router<Arc<AppState>>`
+    |                           |
+    |                           arguments to this function are incorrect
+    |
+    = note: expected struct `Router<()>`
+               found struct `Router<Arc<AppState>>`
+note: function defined here
+   --> tests\service_integration.rs:10:4
+    |
+10  | fn spawn_test_server<B>(app: axum::Router<B>) -> (tokio::task::JoinHandle<()>, std::net::SocketAddr)
+    |    ^^^^^^^^^^^^^^^^^    --------------------
+
+error[E0308]: mismatched types
+   --> tests\service_integration.rs:360:45
+    |
+360 |     let (_server, addr) = spawn_test_server(app);
+    |                           ----------------- ^^^ expected `Router`, found `Router<Arc<AppState>>`
+    |                           |
+    |                           arguments to this function are incorrect
+    |
+    = note: expected struct `Router<()>`
+               found struct `Router<Arc<AppState>>`
+note: function defined here
+   --> tests\service_integration.rs:10:4
+    |
+10  | fn spawn_test_server<B>(app: axum::Router<B>) -> (tokio::task::JoinHandle<()>, std::net::SocketAddr)
+    |    ^^^^^^^^^^^^^^^^^    --------------------
+
+error[E0308]: mismatched types
+   --> tests\service_integration.rs:386:45
+    |
+386 |     let (_server, addr) = spawn_test_server(app);
+    |                           ----------------- ^^^ expected `Router`, found `Router<Arc<AppState>>`
+    |                           |
+    |                           arguments to this function are incorrect
+    |
+    = note: expected struct `Router<()>`
+               found struct `Router<Arc<AppState>>`
+note: function defined here
+   --> tests\service_integration.rs:10:4
+    |
+10  | fn spawn_test_server<B>(app: axum::Router<B>) -> (tokio::task::JoinHandle<()>, std::net::SocketAddr)
+    |    ^^^^^^^^^^^^^^^^^    --------------------
+
+error[E0308]: mismatched types
+   --> tests\service_integration.rs:414:45
+    |
+414 |     let (_server, addr) = spawn_test_server(app);
+    |                           ----------------- ^^^ expected `Router`, found `Router<Arc<AppState>>`
+    |                           |
+    |                           arguments to this function are incorrect
+    |
+    = note: expected struct `Router<()>`
+               found struct `Router<Arc<AppState>>`
+note: function defined here
+   --> tests\service_integration.rs:10:4
+    |
+10  | fn spawn_test_server<B>(app: axum::Router<B>) -> (tokio::task::JoinHandle<()>, std::net::SocketAddr)
+    |    ^^^^^^^^^^^^^^^^^    --------------------
+
+error[E0308]: mismatched types
+   --> tests\service_integration.rs:445:45
+    |
+445 |     let (_server, addr) = spawn_test_server(app);
+    |                           ----------------- ^^^ expected `Router`, found `Router<Arc<AppState>>`
+    |                           |
+    |                           arguments to this function are incorrect
+    |
+    = note: expected struct `Router<()>`
+               found struct `Router<Arc<AppState>>`
+note: function defined here
+   --> tests\service_integration.rs:10:4
+    |
+10  | fn spawn_test_server<B>(app: axum::Router<B>) -> (tokio::task::JoinHandle<()>, std::net::SocketAddr)
+    |    ^^^^^^^^^^^^^^^^^    --------------------
+
+error[E0308]: mismatched types
+   --> tests\service_integration.rs:471:45
+    |
+471 |     let (_server, addr) = spawn_test_server(app);
+    |                           ----------------- ^^^ expected `Router`, found `Router<Arc<AppState>>`
+    |                           |
+    |                           arguments to this function are incorrect
+    |
+    = note: expected struct `Router<()>`
+               found struct `Router<Arc<AppState>>`
+note: function defined here
+   --> tests\service_integration.rs:10:4
+    |
+10  | fn spawn_test_server<B>(app: axum::Router<B>) -> (tokio::task::JoinHandle<()>, std::net::SocketAddr)
+    |    ^^^^^^^^^^^^^^^^^    --------------------
+
+error[E0308]: mismatched types
+   --> tests\service_integration.rs:494:45
+    |
+494 |     let (_server, addr) = spawn_test_server(app);
+    |                           ----------------- ^^^ expected `Router`, found `Router<Arc<AppState>>`
+    |                           |
+    |                           arguments to this function are incorrect
+    |
+    = note: expected struct `Router<()>`
+               found struct `Router<Arc<AppState>>`
+note: function defined here
+   --> tests\service_integration.rs:10:4
+    |
+10  | fn spawn_test_server<B>(app: axum::Router<B>) -> (tokio::task::JoinHandle<()>, std::net::SocketAddr)
+    |    ^^^^^^^^^^^^^^^^^    --------------------
+
+error[E0308]: mismatched types
+   --> tests\service_integration.rs:519:45
+    |
+519 |     let (_server, addr) = spawn_test_server(app);
+    |                           ----------------- ^^^ expected `Router`, found `Router<Arc<AppState>>`
+    |                           |
+    |                           arguments to this function are incorrect
+    |
+    = note: expected struct `Router<()>`
+               found struct `Router<Arc<AppState>>`
+note: function defined here
+   --> tests\service_integration.rs:10:4
+    |
+10  | fn spawn_test_server<B>(app: axum::Router<B>) -> (tokio::task::JoinHandle<()>, std::net::SocketAddr)
+    |    ^^^^^^^^^^^^^^^^^    --------------------
+
+Some errors have detailed explanations: E0271, E0277, E0308.
+For more information about an error, try `rustc --explain E0271`.
+error: could not compile `yukpomnang_backend` (test "service_integration") due to 28 previous errors

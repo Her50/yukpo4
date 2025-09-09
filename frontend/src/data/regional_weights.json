@@ -1,0 +1,17 @@
+{
+  "Douala": {
+    "Wifi": 1.5,
+    "Climatisation": 1.2,
+    "S\u00e9curit\u00e9": 2.0
+  },
+  "Yaound\u00e9": {
+    "Wifi": 1.2,
+    "Climatisation": 1.3,
+    "S\u00e9curit\u00e9": 1.8
+  },
+  "Libreville": {
+    "Wifi": 1.0,
+    "Climatisation": 1.1,
+    "S\u00e9curit\u00e9": 1.6
+  }
+}

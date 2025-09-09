@@ -1,0 +1,17 @@
+-- Désactivée : migration non utilisée (pgvector/vector)
+-- Le backend utilise Pinecone, pas pgvector ni le type vector
+-- (Ancien contenu commenté ci-dessous)
+--
+-- CREATE TABLE service_embeddings (
+--     id SERIAL PRIMARY KEY,
+--     service_id INT NOT NULL,
+--     champ TEXT NOT NULL,
+--     type_donnee TEXT NOT NULL,
+--     embedding_nom vector(384) NOT NULL,
+--     embedding_contenu vector(384) NOT NULL,
+--     gps_prestataire geometry(Point,4326),
+--     gps_fixe geometry(Point,4326)
+-- );
+--
+-- CREATE INDEX IF NOT EXISTS idx_service_embeddings_gps_prestataire ON service_embeddings USING GIST (gps_prestataire);
+-- CREATE INDEX IF NOT EXISTS idx_service_embeddings_gps_fixe ON service_embeddings USING GIST (gps_fixe);

@@ -1,0 +1,77 @@
+/* src/index.css */
+
+/* Importation police Rajdhani pour Yukpomnang */
+@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;600;700&display=swap');
+
+/* Réinitialisation standard */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* Application de la police sur tout le site */
+body {
+  font-family: 'Rajdhani', sans-serif;
+  background-color: #f9fafb; /* Gris clair */
+  color: #1f2937; /* Gris foncé pour textes */
+}
+
+/* Standardisation titres */
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 700;
+}
+
+/* Boutons généraux */
+button {
+  transition: background-color 0.3s ease, color 0.3s ease;
+  cursor: pointer;
+}
+
+/* Liens */
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* Ombres légères */
+.shadow-lg {
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+}
+
+/* Hover animation */
+button:hover, a:hover {
+  opacity: 0.9;
+}
+
+/* Images */
+img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* ----------------------------------- */
+/* ✅ Responsive Navbar et logo mobile */
+/* ----------------------------------- */
+@media (max-width: 768px) {
+  nav {
+    height: 70px !important;
+    padding: 0 12px !important;
+  }
+
+  nav img {
+    height: 48px !important;
+  }
+
+  nav span {
+    font-size: 18px !important;
+  }
+
+  nav div:last-child {
+    gap: 12px !important;
+    font-size: 14px !important;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+}

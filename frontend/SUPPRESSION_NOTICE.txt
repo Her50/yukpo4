@@ -1,0 +1,12 @@
+Les fichiers suivants sont devenus inutiles (plans d'abonnement, routes, composants, hooks) et peuvent être supprimés :
+- src/pages/PlansPage.tsx
+- src/pages/PlanProPage.tsx
+- src/pages/PlanEnterprisePage.tsx
+- src/pages/admin/AdminUserPlans.tsx
+- src/hooks/useUserPlan.ts
+- src/components/ProOnlyBanner.tsx
+- src/components/__tests__/ProOnlyBanner.test.tsx
+- src/components/security/RequireEnterprisePage.tsx
+- src/routes/ProtectedRouteByPlanAndRole.tsx
+
+Supprimez-les du projet pour un nettoyage complet.

@@ -1,0 +1,78 @@
+# 🚀 Dockerfile optimisé pour l'architecture cloud massive
+FROM rust:1.75-slim as builder
+
+# Installer les dépendances système
+RUN apt-get update && apt-get install -y \
+    pkg-config \
+    libssl-dev \
+    libpq-dev \
+    libmariadb-dev \
+    libsqlite3-dev \
+    libclang-dev \
+    clang \
+    make \
+    cmake \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copier les fichiers de configuration
+COPY Cargo.toml Cargo.lock ./
+COPY src ./src
+COPY config ./config
+COPY migrations ./migrations
+
+# Construire avec optimisations pour la production
+RUN cargo build --release --features gpu
+
+# 🐳 Image finale optimisée
+FROM debian:bookworm-slim
+
+# Installer les dépendances runtime
+RUN apt-get update && apt-get install -y \
+    ca-certificates \
+    libpq5 \
+    libssl3 \
+    libmariadb3 \
+    libsqlite3-0 \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Créer l'utilisateur non-root
+RUN groupadd -r appuser && useradd -r -g appuser appuser
+
+# Créer les répertoires nécessaires
+RUN mkdir -p /app/config /app/logs /app/data
+
+# Copier l'exécutable
+COPY --from=builder /target/release/yukpomnang_backend /app/
+
+# Copier les fichiers de configuration
+COPY --from=builder /app/config /app/config
+COPY --from=builder /app/migrations /app/migrations
+
+# Copier les scripts de démarrage
+COPY scripts/start-cloud.sh /app/
+RUN chmod +x /app/start-cloud.sh
+
+# Définir les permissions
+RUN chown -R appuser:appuser /app
+
+# Variables d'environnement
+ENV RUST_LOG=info
+ENV RUST_BACKTRACE=1
+ENV APP_ENV=production
+
+# Ports exposés
+EXPOSE 8080 9090
+
+# Répertoire de travail
+WORKDIR /app
+
+# Utilisateur non-root
+USER appuser
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8080/health || exit 1
+
+# Point d'entrée
+ENTRYPOINT ["/app/start-cloud.sh"] 

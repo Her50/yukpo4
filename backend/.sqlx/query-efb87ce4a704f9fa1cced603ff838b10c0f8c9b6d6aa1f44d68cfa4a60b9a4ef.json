@@ -1,0 +1,24 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO services (user_id, data, is_active, auto_deactivate_at)\n        VALUES ($1, $2, TRUE, NOW() + $3 * INTERVAL '1 hour')\n        RETURNING id\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Jsonb",
+        "Float8"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "efb87ce4a704f9fa1cced603ff838b10c0f8c9b6d6aa1f44d68cfa4a60b9a4ef"
+}

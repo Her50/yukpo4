@@ -1,0 +1,472 @@
+🛠️ Balise <label> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\.storybook\preview.tsx
+🛠️ Balise <select> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\.storybook\preview.tsx
+🛠️ Balise <option> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\.storybook\preview.tsx
+🛠️ Balise <UserContext> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\.storybook\preview.tsx
+🛠️ Balise <header> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\node_modules\@storybook\react\template\cli\ts-3-8\Header.tsx
+🛠️ Balise <User> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\node_modules\@storybook\react\template\cli\ts-3-8\Page.tsx
+🛠️ Balise <Header> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\node_modules\@storybook\react\template\cli\ts-3-8\Page.tsx
+🛠️ Balise <strong> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\node_modules\@storybook\react\template\cli\ts-3-8\Page.tsx
+🛠️ Balise <ul> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\node_modules\@storybook\react\template\cli\ts-3-8\Page.tsx
+🛠️ Balise <li> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\node_modules\@storybook\react\template\cli\ts-3-8\Page.tsx
+🛠️ Balise <header> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\node_modules\@storybook\react\template\cli\ts-4-9\Header.tsx
+🛠️ Balise <User> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\node_modules\@storybook\react\template\cli\ts-4-9\Page.tsx
+🛠️ Balise <Header> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\node_modules\@storybook\react\template\cli\ts-4-9\Page.tsx
+🛠️ Balise <strong> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\node_modules\@storybook\react\template\cli\ts-4-9\Page.tsx
+🛠️ Balise <ul> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\node_modules\@storybook\react\template\cli\ts-4-9\Page.tsx
+🛠️ Balise <li> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\node_modules\@storybook\react\template\cli\ts-4-9\Page.tsx
+🛠️ Balise <TScrollElement> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\node_modules\@tanstack\react-virtual\src\index.tsx
+🛠️ Balise <TItemElement> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\node_modules\@tanstack\react-virtual\src\index.tsx
+🛠️ Balise <Window> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\node_modules\@tanstack\react-virtual\src\index.tsx
+🧠 Typé index avec React.FC dans C:\Users\23767\yukpomnang\frontend\src\index.tsx
+🧠 Typé LayoutRoutes avec React.FC dans C:\Users\23767\yukpomnang\frontend\src\LayoutRoutes.tsx
+🛠️ Balise <AnimationName> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\LayoutRoutes.tsx
+🛠️ Balise <AnimatePresence> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\LayoutRoutes.tsx
+🛠️ Balise <motion> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\LayoutRoutes.tsx
+🛠️ Balise <Routes> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\LayoutRoutes.tsx
+🛠️ Balise <RequirePlan> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\LayoutRoutes.tsx
+🧠 Typé main avec React.FC dans C:\Users\23767\yukpomnang\frontend\src\main.tsx
+🧠 Typé BehaviorScoreCard avec React.FC dans C:\Users\23767\yukpomnang\frontend\src\components\BehaviorScoreCard.tsx
+🧠 Typé CaptchaChallenge avec React.FC dans C:\Users\23767\yukpomnang\frontend\src\components\CaptchaChallenge.tsx
+🛠️ Balise <CardServiceProps> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\components\CardService.tsx
+🧠 Typé ContentGenerator avec React.FC dans C:\Users\23767\yukpomnang\frontend\src\components\ContentGenerator.tsx
+🛠️ Balise <textarea> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\components\ContentGenerator.tsx
+🛠️ Balise <strong> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\components\ContentGenerator.tsx
+🛠️ Balise <select> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\components\ExportShareCard.tsx
+🛠️ Balise <option> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\components\ExportShareCard.tsx
+🛠️ Balise <BarChart> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\components\InfractionChart.tsx
+🧠 Typé LangSelector avec React.FC dans C:\Users\23767\yukpomnang\frontend\src\components\LangSelector.tsx
+🛠️ Balise <select> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\components\LangSelector.tsx
+🛠️ Balise <option> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\components\LangSelector.tsx
+🛠️ Balise <nav> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\components\MainMenu.tsx
+🛠️ Balise <Link> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\components\MainMenu.tsx
+🛠️ Balise <nav> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\components\MenuAuto.tsx
+🧠 Typé MobileMenu avec React.FC dans C:\Users\23767\yukpomnang\frontend\src\components\MobileMenu.tsx
+🛠️ Balise <HTMLDivElement> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\components\MobileMenu.tsx
+🛠️ Balise <AnimatePresence> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\components\MobileMenu.tsx
+🛠️ Balise <motion> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\components\MobileMenu.tsx
+🛠️ Balise <nav> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\components\MobileMenu.tsx
+🛠️ Balise <RequirePlan> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\components\MobileMenu.tsx
+🛠️ Balise <nav> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\components\Navbar.tsx
+🛠️ Balise <select> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\components\Navbar.tsx
+🛠️ Balise <option> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\components\Navbar.tsx
+🛠️ Balise <RequirePlan> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\components\Navbar.tsx
+🧠 Typé QuotaDashboard avec React.FC dans C:\Users\23767\yukpomnang\frontend\src\components\QuotaDashboard.tsx
+🛠️ Balise <ul> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\components\QuotaDashboard.tsx
+🛠️ Balise <li> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\components\QuotaDashboard.tsx
+🛠️ Balise <ResponsiveContainer> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\components\QuotaDashboard.tsx
+🛠️ Balise <LineChart> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\components\QuotaDashboard.tsx
+🧠 Typé ReportStats avec React.FC dans C:\Users\23767\yukpomnang\frontend\src\components\ReportStats.tsx
+🛠️ Balise <Notification> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\components\ReportStats.tsx
+🛠️ Balise <any> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\components\ReportStats.tsx
+🛠️ Balise <HTMLDivElement> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\components\ReportStats.tsx
+🛠️ Balise <ResponsiveContainer> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\components\ReportStats.tsx
+🛠️ Balise <BarChart> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\components\ReportStats.tsx
+🛠️ Balise <PieChart> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\components\ReportStats.tsx
+🛠️ Balise <Pie> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\components\ReportStats.tsx
+🧠 Typé RolePlanNotice avec React.FC dans C:\Users\23767\yukpomnang\frontend\src\components\RolePlanNotice.tsx
+🧠 Typé SchedulerStatusCard avec React.FC dans C:\Users\23767\yukpomnang\frontend\src\components\SchedulerStatusCard.tsx
+🛠️ Balise <StatusData> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\components\SchedulerStatusCard.tsx
+🧠 Typé Sidebar avec React.FC dans C:\Users\23767\yukpomnang\frontend\src\components\Sidebar.tsx
+🛠️ Balise <RequirePlan> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\components\Sidebar.tsx
+🛠️ Balise <SidebarMenuProps> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\components\SidebarMenu.tsx
+🛠️ Balise <Role> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\components\SidebarMenu.tsx
+🛠️ Balise <nav> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\components\SidebarMenu.tsx
+🛠️ Balise <ul> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\components\SidebarMenu.tsx
+🛠️ Balise <li> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\components\SidebarMenu.tsx
+🛠️ Balise <Link> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\components\SidebarMenu.tsx
+🧠 Typé UpgradeBanner avec React.FC dans C:\Users\23767\yukpomnang\frontend\src\components\UpgradeBanner.tsx
+🛠️ Balise <any> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\components\cards\ServiceCard.tsx
+🛠️ Balise <ul> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\components\cards\ServiceCard.tsx
+🛠️ Balise <li> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\components\cards\ServiceCard.tsx
+🛠️ Balise <Props> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\components\catalogue\CatalogueCard.tsx
+🛠️ Balise <Props> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\components\compare\CompareTable.tsx
+🛠️ Balise <table> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\components\compare\CompareTable.tsx
+🛠️ Balise <thead> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\components\compare\CompareTable.tsx
+🛠️ Balise <tr> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\components\compare\CompareTable.tsx
+🛠️ Balise <th> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\components\compare\CompareTable.tsx
+🛠️ Balise <tbody> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\components\compare\CompareTable.tsx
+🛠️ Balise <td> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\components\compare\CompareTable.tsx
+🛠️ Balise <Props> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\components\compare\VoteForm.tsx
+🛠️ Balise <label> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\components\compare\VoteForm.tsx
+🛠️ Balise <select> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\components\compare\VoteForm.tsx
+🛠️ Balise <option> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\components\compare\VoteForm.tsx
+🛠️ Balise <textarea> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\components\compare\VoteForm.tsx
+🛠️ Balise <Props> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\components\dashboard\CatalogueGrid.tsx
+🛠️ Balise <ul> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\components\dashboard\CatalogueGrid.tsx
+🛠️ Balise <li> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\components\dashboard\CatalogueGrid.tsx
+🛠️ Balise <Message> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\components\dashboard\MessageInbox.tsx
+🛠️ Balise <ul> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\components\dashboard\MessageInbox.tsx
+🛠️ Balise <li> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\components\dashboard\MessageInbox.tsx
+🛠️ Balise <Favori> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\components\dashboard\UserFavoris.tsx
+🛠️ Balise <ul> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\components\dashboard\UserFavoris.tsx
+🛠️ Balise <li> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\components\dashboard\UserFavoris.tsx
+🛠️ Balise <Props> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\components\dev\AnimationDebugger.tsx
+🛠️ Balise <string> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\components\filters\FilterBar.tsx
+🛠️ Balise <Props> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\components\filters\FilterBar.tsx
+🛠️ Balise <label> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\components\filters\FilterBar.tsx
+🛠️ Balise <Item> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\components\history\RecentViewed.tsx
+🛠️ Balise <ul> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\components\history\RecentViewed.tsx
+🛠️ Balise <li> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\components\history\RecentViewed.tsx
+🧠 Typé AskAI avec React.FC dans C:\Users\23767\yukpomnang\frontend\src\components\homepage\AskAI.tsx
+🧠 Typé FeatureGrid avec React.FC dans C:\Users\23767\yukpomnang\frontend\src\components\homepage\FeatureGrid.tsx
+🧠 Typé HeroSection avec React.FC dans C:\Users\23767\yukpomnang\frontend\src\components\homepage\HeroSection.tsx
+🧠 Typé NewsletterSignup avec React.FC dans C:\Users\23767\yukpomnang\frontend\src\components\homepage\NewsletterSignup.tsx
+🧠 Typé PopularServices avec React.FC dans C:\Users\23767\yukpomnang\frontend\src\components\homepage\PopularServices.tsx
+🧠 Typé Testimonials avec React.FC dans C:\Users\23767\yukpomnang\frontend\src\components\homepage\Testimonials.tsx
+🛠️ Balise <form> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\components\notation\AddRatingForm.tsx
+🛠️ Balise <label> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\components\notation\AddRatingForm.tsx
+🛠️ Balise <Props> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\components\search\AdvancedSearch.tsx
+🛠️ Balise <ul> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\components\search\AdvancedSearch.tsx
+🛠️ Balise <li> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\components\search\AdvancedSearch.tsx
+🛠️ Balise <RequirePlan> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\components\security\RequireProPage.tsx
+🧠 Typé RequireRoleAndPlan avec React.FC dans C:\Users\23767\yukpomnang\frontend\src\components\security\RequireRoleAndPlan.tsx
+🛠️ Balise <Props> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\components\services\ServiceCard.tsx
+🛠️ Balise <Props> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\components\shared\ServiceTemplateCard.tsx
+🛠️ Balise <ul> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\components\shared\ServiceTemplateCard.tsx
+🛠️ Balise <li> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\components\shared\ServiceTemplateCard.tsx
+🧠 Typé BrandingSplash avec React.FC dans C:\Users\23767\yukpomnang\frontend\src\components\ui\BrandingSplash.tsx
+🛠️ Balise <HTMLButtonElement> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\components\ui\button.tsx
+🛠️ Balise <HTMLDivElement> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\components\ui\card.tsx
+🛠️ Balise <HTMLInputElement> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\components\ui\input.tsx
+🛠️ Balise <HTMLTextAreaElement> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\components\ui\textarea.tsx
+🛠️ Balise <UserContextType> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\context\UserContext.tsx
+🛠️ Balise <User> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\context\UserContext.tsx
+🛠️ Balise <UserContext> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\context\UserContext.tsx
+🧠 Typé MainLayout avec React.FC dans C:\Users\23767\yukpomnang\frontend\src\layouts\MainLayout.tsx
+🛠️ Balise <RequirePlan> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\AboutPage.tsx
+🛠️ Balise <RequireRole> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\AboutPage.tsx
+🧠 Typé ActivityLogViewer avec React.FC dans C:\Users\23767\yukpomnang\frontend\src\pages\ActivityLogViewer.tsx
+🛠️ Balise <table> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\ActivityLogViewer.tsx
+🛠️ Balise <thead> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\ActivityLogViewer.tsx
+🛠️ Balise <tr> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\ActivityLogViewer.tsx
+🛠️ Balise <th> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\ActivityLogViewer.tsx
+🛠️ Balise <tbody> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\ActivityLogViewer.tsx
+🛠️ Balise <td> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\ActivityLogViewer.tsx
+🛠️ Balise <RequirePlan> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\AdminAccessAudit.tsx
+🛠️ Balise <RequireRole> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\AdminAccessAudit.tsx
+🛠️ Balise <AccessRule> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\AdminAccessAudit.tsx
+🛠️ Balise <label> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\AdminAccessAudit.tsx
+🛠️ Balise <form> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\AdminAnalyticsPanel.tsx
+🛠️ Balise <label> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\AdminAnalyticsPanel.tsx
+🛠️ Balise <textarea> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\AdminAnalyticsPanel.tsx
+🛠️ Balise <RequirePlan> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\AdminAnalyticsPanel.tsx
+🛠️ Balise <RequirePlan> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\AdminPanel.tsx
+🛠️ Balise <RequireRole> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\AdminPanel.tsx
+🧠 Typé AdminQuotaPage avec React.FC dans C:\Users\23767\yukpomnang\frontend\src\pages\AdminQuotaPage.tsx
+🛠️ Balise <string> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\AdminReportsPage.tsx
+🛠️ Balise <Button> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\AdminReportsPage.tsx
+🛠️ Balise <Card> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\AdminReportsPage.tsx
+🛠️ Balise <CardContent> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\AdminReportsPage.tsx
+🛠️ Balise <ApiRoute> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\ApiDashboardPage.tsx
+🛠️ Balise <table> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\ApiDashboardPage.tsx
+🛠️ Balise <thead> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\ApiDashboardPage.tsx
+🛠️ Balise <tr> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\ApiDashboardPage.tsx
+🛠️ Balise <th> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\ApiDashboardPage.tsx
+🛠️ Balise <tbody> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\ApiDashboardPage.tsx
+🛠️ Balise <td> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\ApiDashboardPage.tsx
+🛠️ Balise <label> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\ApiKeyManager.tsx
+🧠 Typé AuthLogViewer avec React.FC dans C:\Users\23767\yukpomnang\frontend\src\pages\AuthLogViewer.tsx
+🛠️ Balise <Button> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\AuthLogViewer.tsx
+🛠️ Balise <table> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\AuthLogViewer.tsx
+🛠️ Balise <thead> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\AuthLogViewer.tsx
+🛠️ Balise <tr> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\AuthLogViewer.tsx
+🛠️ Balise <th> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\AuthLogViewer.tsx
+🛠️ Balise <tbody> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\AuthLogViewer.tsx
+🛠️ Balise <td> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\AuthLogViewer.tsx
+🛠️ Balise <select> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\AutoMarketingPanel.tsx
+🛠️ Balise <option> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\AutoMarketingPanel.tsx
+🛠️ Balise <strong> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\AutoMarketingPanel.tsx
+🧠 Typé BienPage avec React.FC dans C:\Users\23767\yukpomnang\frontend\src\pages\BienPage.tsx
+🛠️ Balise <File> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\BienPage.tsx
+🛠️ Balise <form> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\BienPage.tsx
+🛠️ Balise <label> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\BienPage.tsx
+🛠️ Balise <select> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\BienPage.tsx
+🛠️ Balise <option> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\BienPage.tsx
+🛠️ Balise <PulseBox> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\BienPage.tsx
+🛠️ Balise <RequirePlan> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\BienPage.tsx
+🧠 Typé BourseLivrePage avec React.FC dans C:\Users\23767\yukpomnang\frontend\src\pages\BourseLivrePage.tsx
+🛠️ Balise <File> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\BourseLivrePage.tsx
+🛠️ Balise <string> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\BourseLivrePage.tsx
+🛠️ Balise <any> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\BourseLivrePage.tsx
+🛠️ Balise <HTMLInputElement> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\BourseLivrePage.tsx
+🛠️ Balise <form> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\BourseLivrePage.tsx
+🛠️ Balise <label> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\BourseLivrePage.tsx
+🛠️ Balise <textarea> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\BourseLivrePage.tsx
+🛠️ Balise <select> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\BourseLivrePage.tsx
+🛠️ Balise <option> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\BourseLivrePage.tsx
+🛠️ Balise <strong> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\BourseLivrePage.tsx
+🛠️ Balise <PulseBox> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\BourseLivrePage.tsx
+🛠️ Balise <RequirePlan> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\BourseLivrePage.tsx
+🧠 Typé CaptchaPage avec React.FC dans C:\Users\23767\yukpomnang\frontend\src\pages\CaptchaPage.tsx
+🛠️ Balise <select> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\CataloguePage.tsx
+🛠️ Balise <option> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\CataloguePage.tsx
+🛠️ Balise <strong> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\ChatPanel.tsx
+🛠️ Balise <RequirePlan> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\CommunicationPanel.tsx
+🛠️ Balise <RequireRole> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\CommunicationPanel.tsx
+🛠️ Balise <number> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\ComparePage.tsx
+🛠️ Balise <string> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\ComparePage.tsx
+🛠️ Balise <any> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\ComparePage.tsx
+🛠️ Balise <label> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\ComparePage.tsx
+🛠️ Balise <select> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\ComparePage.tsx
+🛠️ Balise <option> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\ComparePage.tsx
+🛠️ Balise <form> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\ContactEnterprisePage.tsx
+🛠️ Balise <label> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\ContactEnterprisePage.tsx
+🛠️ Balise <RequirePlan> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\ContactEnterprisePage.tsx
+🛠️ Balise <form> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\ContactPage.tsx
+🛠️ Balise <RequirePlan> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\ContactPage.tsx
+🛠️ Balise <RequireRole> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\ContactPage.tsx
+🛠️ Balise <strong> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\ConversationPanel.tsx
+🛠️ Balise <HTMLInputElement> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\CreateService.tsx
+🔁 Composant renommé : Transport → CreationPage.stories dans C:\Users\23767\yukpomnang\frontend\src\pages\CreationPage.stories.tsx
+🛠️ Balise <typeof> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\CreationPage.stories.tsx
+🛠️ Balise <RequirePlan> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\CreationPage.stories.tsx
+🛠️ Balise <RequireRole> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\CreationPage.stories.tsx
+🛠️ Balise <File> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\CreationPage.tsx
+🛠️ Balise <Record> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\CreationPage.tsx
+🛠️ Balise <form> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\CreationPage.tsx
+🛠️ Balise <label> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\CreationPage.tsx
+🛠️ Balise <Input> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\CreationPage.tsx
+🛠️ Balise <Textarea> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\CreationPage.tsx
+🛠️ Balise <select> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\CreationPage.tsx
+🛠️ Balise <option> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\CreationPage.tsx
+🛠️ Balise <Button> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\CreationPage.tsx
+🛠️ Balise <Card> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\CreationPage.tsx
+🛠️ Balise <CardContent> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\CreationPage.tsx
+🛠️ Balise <RequirePlan> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\CreationPage.tsx
+🧠 Typé Dashboard avec React.FC dans C:\Users\23767\yukpomnang\frontend\src\pages\Dashboard.tsx
+🛠️ Balise <ul> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\Dashboard.tsx
+🛠️ Balise <RequirePlan> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\Dashboard.tsx
+🛠️ Balise <li> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\Dashboard.tsx
+🛠️ Balise <RequirePlan> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\DashboardIA.tsx
+🧠 Typé DashboardPage avec React.FC dans C:\Users\23767\yukpomnang\frontend\src\pages\DashboardPage.tsx
+🛠️ Balise <RequirePlan> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\DashboardPage.tsx
+🛠️ Balise <RequireRole> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\DashboardPage.tsx
+🧠 Typé DashboardSelector avec React.FC dans C:\Users\23767\yukpomnang\frontend\src\pages\DashboardSelector.tsx
+🛠️ Balise <strong> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\DebugRolesPage.tsx
+🛠️ Balise <RequireRole> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\DebugRolesPage.tsx
+🛠️ Balise <RequireAnyRole> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\DebugRolesPage.tsx
+🛠️ Balise <RequireNotRole> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\DebugRolesPage.tsx
+🧠 Typé ForecastPanel avec React.FC dans C:\Users\23767\yukpomnang\frontend\src\pages\ForecastPanel.tsx
+🧠 Typé GeoSyncPanel avec React.FC dans C:\Users\23767\yukpomnang\frontend\src\pages\GeoSyncPanel.tsx
+🛠️ Balise <Button> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\GeoSyncPanel.tsx
+🛠️ Balise <table> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\GeoSyncPanel.tsx
+🛠️ Balise <thead> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\GeoSyncPanel.tsx
+🛠️ Balise <tr> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\GeoSyncPanel.tsx
+🛠️ Balise <th> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\GeoSyncPanel.tsx
+🛠️ Balise <tbody> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\GeoSyncPanel.tsx
+🛠️ Balise <td> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\GeoSyncPanel.tsx
+🧠 Typé HomePage avec React.FC dans C:\Users\23767\yukpomnang\frontend\src\pages\HomePage.tsx
+🧠 Typé index avec React.FC dans C:\Users\23767\yukpomnang\frontend\src\pages\index.tsx
+🧠 Typé InfractionsPage avec React.FC dans C:\Users\23767\yukpomnang\frontend\src\pages\InfractionsPage.tsx
+🛠️ Balise <form> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\LoginPage.tsx
+🛠️ Balise <RequirePlan> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\LoginPage.tsx
+🛠️ Balise <RequireRole> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\LoginPage.tsx
+🧠 Typé MatchingPage avec React.FC dans C:\Users\23767\yukpomnang\frontend\src\pages\MatchingPage.tsx
+🛠️ Balise <RequirePlan> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\MatchingPage.tsx
+🛠️ Balise <RequirePlan> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\MatchingResultsIA.tsx
+🧠 Typé MatchPage avec React.FC dans C:\Users\23767\yukpomnang\frontend\src\pages\MatchPage.tsx
+🛠️ Balise <RequirePlan> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\MatchPage.tsx
+🛠️ Balise <RequirePlan> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\NotFound.tsx
+🛠️ Balise <RequireRole> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\NotFound.tsx
+🛠️ Balise <Notification> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\NotificationLog.tsx
+🛠️ Balise <ul> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\NotificationLog.tsx
+🛠️ Balise <li> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\NotificationLog.tsx
+🛠️ Balise <PulseBox> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\OutilsPage.tsx
+🛠️ Balise <RequirePlan> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\OutilsPage.tsx
+🛠️ Balise <RequireRole> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\OutilsPage.tsx
+🛠️ Balise <RequirePlan> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\PaiementProPage.tsx
+🛠️ Balise <string> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\PhotoMatching.tsx
+🛠️ Balise <any> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\PhotoMatching.tsx
+🛠️ Balise <strong> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\PhotoMatching.tsx
+🛠️ Balise <RequirePlan> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\PredictionDashboard.tsx
+🛠️ Balise <ResponsiveContainer> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\PredictionDashboard.tsx
+🛠️ Balise <LineChart> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\PredictionDashboard.tsx
+🧠 Typé PublicFicheView avec React.FC dans C:\Users\23767\yukpomnang\frontend\src\pages\PublicFicheView.tsx
+🧠 Typé PurgeLogViewer avec React.FC dans C:\Users\23767\yukpomnang\frontend\src\pages\PurgeLogViewer.tsx
+🛠️ Balise <label> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\PurgeLogViewer.tsx
+🛠️ Balise <table> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\PurgeLogViewer.tsx
+🛠️ Balise <thead> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\PurgeLogViewer.tsx
+🛠️ Balise <tr> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\PurgeLogViewer.tsx
+🛠️ Balise <th> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\PurgeLogViewer.tsx
+🛠️ Balise <tbody> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\PurgeLogViewer.tsx
+🛠️ Balise <td> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\PurgeLogViewer.tsx
+🧠 Typé ReactionManager avec React.FC dans C:\Users\23767\yukpomnang\frontend\src\pages\ReactionManager.tsx
+🛠️ Balise <table> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\ReactionManager.tsx
+🛠️ Balise <thead> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\ReactionManager.tsx
+🛠️ Balise <tr> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\ReactionManager.tsx
+🛠️ Balise <th> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\ReactionManager.tsx
+🛠️ Balise <tbody> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\ReactionManager.tsx
+🛠️ Balise <td> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\ReactionManager.tsx
+🛠️ Balise <Button> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\ReactionManager.tsx
+🛠️ Balise <string> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\RecoPanel.tsx
+🛠️ Balise <ul> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\RecoPanel.tsx
+🛠️ Balise <li> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\RecoPanel.tsx
+🧠 Typé ScheduleManager avec React.FC dans C:\Users\23767\yukpomnang\frontend\src\pages\ScheduleManager.tsx
+🛠️ Balise <strong> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\ScheduleManager.tsx
+🧠 Typé ScoringDashboard avec React.FC dans C:\Users\23767\yukpomnang\frontend\src\pages\ScoringDashboard.tsx
+🛠️ Balise <any> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\SearchPage.tsx
+🧠 Typé SecurityDashboard avec React.FC dans C:\Users\23767\yukpomnang\frontend\src\pages\SecurityDashboard.tsx
+🛠️ Balise <Button> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\SecurityDashboard.tsx
+🧠 Typé SecurityOverview avec React.FC dans C:\Users\23767\yukpomnang\frontend\src\pages\SecurityOverview.tsx
+🛠️ Balise <table> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\SecurityOverview.tsx
+🛠️ Balise <thead> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\SecurityOverview.tsx
+🛠️ Balise <tr> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\SecurityOverview.tsx
+🛠️ Balise <th> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\SecurityOverview.tsx
+🛠️ Balise <tbody> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\SecurityOverview.tsx
+🛠️ Balise <td> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\SecurityOverview.tsx
+🛠️ Balise <any> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\ServiceLocator.tsx
+🛠️ Balise <RequirePlan> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\ServicesPage.tsx
+🛠️ Balise <RequireRole> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\ServicesPage.tsx
+🧠 Typé SmartBlocksStatus avec React.FC dans C:\Users\23767\yukpomnang\frontend\src\pages\SmartBlocksStatus.tsx
+🛠️ Balise <Card> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\SmartBlocksStatus.tsx
+🛠️ Balise <CardContent> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\SmartBlocksStatus.tsx
+🛠️ Balise <string> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\StrategicRecoPanel.tsx
+🛠️ Balise <RequirePlan> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\StrategicRecoPanel.tsx
+🧠 Typé SummaryDashboard avec React.FC dans C:\Users\23767\yukpomnang\frontend\src\pages\SummaryDashboard.tsx
+🛠️ Balise <string> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\SummaryDashboard.tsx
+🧠 Typé ThreatDashboard avec React.FC dans C:\Users\23767\yukpomnang\frontend\src\pages\ThreatDashboard.tsx
+🛠️ Balise <ResponsiveContainer> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\ThreatDashboard.tsx
+🛠️ Balise <LineChart> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\ThreatDashboard.tsx
+🛠️ Balise <table> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\ThreatDashboard.tsx
+🛠️ Balise <thead> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\ThreatDashboard.tsx
+🛠️ Balise <tr> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\ThreatDashboard.tsx
+🛠️ Balise <th> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\ThreatDashboard.tsx
+🛠️ Balise <tbody> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\ThreatDashboard.tsx
+🛠️ Balise <td> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\ThreatDashboard.tsx
+🧠 Typé TicketPage avec React.FC dans C:\Users\23767\yukpomnang\frontend\src\pages\TicketPage.tsx
+🛠️ Balise <form> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\TicketPage.tsx
+🛠️ Balise <label> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\TicketPage.tsx
+🛠️ Balise <select> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\TicketPage.tsx
+🛠️ Balise <option> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\TicketPage.tsx
+🛠️ Balise <PulseBox> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\TicketPage.tsx
+🛠️ Balise <RequirePlan> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\TicketPage.tsx
+🧠 Typé TranslationTestPage avec React.FC dans C:\Users\23767\yukpomnang\frontend\src\pages\TranslationTestPage.tsx
+🛠️ Balise <string> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\TrendExplorer.tsx
+🛠️ Balise <ul> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\TrendExplorer.tsx
+🛠️ Balise <li> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\TrendExplorer.tsx
+🛠️ Balise <ul> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\UpgradePage.tsx
+🛠️ Balise <li> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\UpgradePage.tsx
+🛠️ Balise <RequirePlan> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\UpgradePage.tsx
+🛠️ Balise <ul> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\UserInteractionIACenter.tsx
+🛠️ Balise <li> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\UserInteractionIACenter.tsx
+🛠️ Balise <RequirePlan> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\UserInteractionIACenter.tsx
+🛠️ Balise <RequirePlan> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\UserStatsIADashboard.tsx
+🛠️ Balise <RequireRole> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\UserStatsIADashboard.tsx
+🛠️ Balise <select> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\YukAIGateway.tsx
+🛠️ Balise <option> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\YukAIGateway.tsx
+🛠️ Balise <textarea> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\YukAIGateway.tsx
+🛠️ Balise <pre> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\YukAIGateway.tsx
+🧠 Typé ApiDashboard avec React.FC dans C:\Users\23767\yukpomnang\frontend\src\pages\admin\ApiDashboard.tsx
+🛠️ Balise <AccessItem> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\admin\AuditAccessPage.tsx
+🛠️ Balise <string> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\admin\AuditAccessPage.tsx
+🛠️ Balise <table> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\admin\AuditAccessPage.tsx
+🛠️ Balise <thead> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\admin\AuditAccessPage.tsx
+🛠️ Balise <tr> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\admin\AuditAccessPage.tsx
+🛠️ Balise <th> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\admin\AuditAccessPage.tsx
+🛠️ Balise <tbody> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\admin\AuditAccessPage.tsx
+🛠️ Balise <td> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\admin\AuditAccessPage.tsx
+🛠️ Balise <select> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\admin\AuditAccessPage.tsx
+🛠️ Balise <option> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\admin\AuditAccessPage.tsx
+🛠️ Balise <RequirePlan> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\admin\AuditAccessPage.tsx
+🛠️ Balise <RequireRole> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\admin\AuditAccessPage.tsx
+🧠 Typé AuditDashboard avec React.FC dans C:\Users\23767\yukpomnang\frontend\src\pages\admin\AuditDashboard.tsx
+🛠️ Balise <any> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\admin\AuditDashboard.tsx
+🛠️ Balise <Button> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\admin\AuditDashboard.tsx
+🛠️ Balise <Card> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\admin\AuditDashboard.tsx
+🛠️ Balise <CardContent> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\admin\AuditDashboard.tsx
+🛠️ Balise <Avis> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\admin\AvisModeration.tsx
+🛠️ Balise <strong> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\admin\AvisModeration.tsx
+🛠️ Balise <select> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\admin\CertificationPanel.tsx
+🛠️ Balise <option> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\admin\CertificationPanel.tsx
+🧠 Typé InfractionArchivePage avec React.FC dans C:\Users\23767\yukpomnang\frontend\src\pages\admin\InfractionArchivePage.tsx
+🛠️ Balise <any> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\admin\InfractionArchivePage.tsx
+🛠️ Balise <Button> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\admin\InfractionArchivePage.tsx
+🛠️ Balise <Card> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\admin\InfractionArchivePage.tsx
+🛠️ Balise <CardContent> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\admin\InfractionArchivePage.tsx
+🧠 Typé InfractionDashboard avec React.FC dans C:\Users\23767\yukpomnang\frontend\src\pages\admin\InfractionDashboard.tsx
+🛠️ Balise <any> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\admin\InfractionDashboard.tsx
+🛠️ Balise <Button> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\admin\InfractionDashboard.tsx
+🛠️ Balise <Card> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\admin\InfractionDashboard.tsx
+🛠️ Balise <CardContent> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\admin\InfractionDashboard.tsx
+🛠️ Balise <ul> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\admin\InfractionDashboard.tsx
+🛠️ Balise <li> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\admin\InfractionDashboard.tsx
+🧠 Typé MonitoringDashboard avec React.FC dans C:\Users\23767\yukpomnang\frontend\src\pages\admin\MonitoringDashboard.tsx
+🧠 Typé PlanSelector avec React.FC dans C:\Users\23767\yukpomnang\frontend\src\pages\admin\PlanSelector.tsx
+🛠️ Balise <AccessRegistry> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\admin\PlanSelector.tsx
+🛠️ Balise <table> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\admin\PlanSelector.tsx
+🛠️ Balise <thead> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\admin\PlanSelector.tsx
+🛠️ Balise <tr> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\admin\PlanSelector.tsx
+🛠️ Balise <th> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\admin\PlanSelector.tsx
+🛠️ Balise <tbody> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\admin\PlanSelector.tsx
+🛠️ Balise <td> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\admin\PlanSelector.tsx
+🛠️ Balise <ul> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\admin\ReportModeration.tsx
+🛠️ Balise <li> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\admin\ReportModeration.tsx
+🛠️ Balise <string> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\admin\ScraperDashboard.tsx
+🛠️ Balise <any> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\admin\ScraperDashboard.tsx
+🛠️ Balise <textarea> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\admin\ScraperDashboard.tsx
+🛠️ Balise <ul> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\admin\ScraperDashboard.tsx
+🛠️ Balise <li> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\admin\ScraperDashboard.tsx
+🛠️ Balise <select> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\admin\SocialContentGenerator.tsx
+🛠️ Balise <option> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\admin\SocialContentGenerator.tsx
+🛠️ Balise <select> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\admin\SocialContentPanel.tsx
+🛠️ Balise <option> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\admin\SocialContentPanel.tsx
+🧠 Typé Alerts avec React.FC dans C:\Users\23767\yukpomnang\frontend\src\pages\dashboard\Alerts.tsx
+🧠 Typé History avec React.FC dans C:\Users\23767\yukpomnang\frontend\src\pages\dashboard\History.tsx
+🧠 Typé IAPremium avec React.FC dans C:\Users\23767\yukpomnang\frontend\src\pages\dashboard\IAPremium.tsx
+🛠️ Balise <RequirePlan> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\dashboard\IAPremium.tsx
+🛠️ Balise <HTMLInputElement> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\dashboard\MonProfil.tsx
+🛠️ Balise <form> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\dashboard\MonProfil.tsx
+🛠️ Balise <label> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\dashboard\MonProfil.tsx
+🛠️ Balise <RequirePlan> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\dashboard\MonProfil.tsx
+🛠️ Balise <RequireRole> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\pages\dashboard\MonProfil.tsx
+🧠 Typé Overview avec React.FC dans C:\Users\23767\yukpomnang\frontend\src\pages\dashboard\Overview.tsx
+🧠 Typé ApiPortal avec React.FC dans C:\Users\23767\yukpomnang\frontend\src\pages\dev\ApiPortal.tsx
+🧠 Typé ApiDocs avec React.FC dans C:\Users\23767\yukpomnang\frontend\src\pages\docs\ApiDocs.tsx
+🧠 Typé LandingPage_en avec React.FC dans C:\Users\23767\yukpomnang\frontend\src\pages\landing\LandingPage_en.tsx
+🧠 Typé LandingPage_ff avec React.FC dans C:\Users\23767\yukpomnang\frontend\src\pages\landing\LandingPage_ff.tsx
+🧠 Typé LandingPage_fr avec React.FC dans C:\Users\23767\yukpomnang\frontend\src\pages\landing\LandingPage_fr.tsx
+🧠 Typé CookiePage avec React.FC dans C:\Users\23767\yukpomnang\frontend\src\pages\legal\CookiePage.tsx
+🧠 Typé LegalNotice avec React.FC dans C:\Users\23767\yukpomnang\frontend\src\pages\legal\LegalNotice.tsx
+🧠 Typé PrivacyPage avec React.FC dans C:\Users\23767\yukpomnang\frontend\src\pages\legal\PrivacyPage.tsx
+🧠 Typé AvisModeration avec React.FC dans C:\Users\23767\yukpomnang\frontend\src\src\pages\admin\AvisModeration.tsx
+⚠️ Aucun composant trouvé dans C:\Users\23767\yukpomnang\frontend\src\stories\AboutPage.stories.tsx, fichier ignoré.
+⚠️ Aucun composant trouvé dans C:\Users\23767\yukpomnang\frontend\src\stories\AdminAnalyticsPanel.stories.tsx, fichier ignoré.
+⚠️ Aucun composant trouvé dans C:\Users\23767\yukpomnang\frontend\src\stories\AdminPanel.stories.tsx, fichier ignoré.
+⚠️ Aucun composant trouvé dans C:\Users\23767\yukpomnang\frontend\src\stories\BienPage.stories.tsx, fichier ignoré.
+⚠️ Aucun composant trouvé dans C:\Users\23767\yukpomnang\frontend\src\stories\BourseLivrePage.stories.tsx, fichier ignoré.
+⚠️ Aucun composant trouvé dans C:\Users\23767\yukpomnang\frontend\src\stories\CommunicationPanel.stories.tsx, fichier ignoré.
+⚠️ Aucun composant trouvé dans C:\Users\23767\yukpomnang\frontend\src\stories\ContactEnterprisePage.stories.tsx, fichier ignoré.
+⚠️ Aucun composant trouvé dans C:\Users\23767\yukpomnang\frontend\src\stories\ContactPage.stories.tsx, fichier ignoré.
+⚠️ Aucun composant trouvé dans C:\Users\23767\yukpomnang\frontend\src\stories\CreationPage.stories.stories.tsx, fichier ignoré.
+⚠️ Aucun composant trouvé dans C:\Users\23767\yukpomnang\frontend\src\stories\CreationPage.stories.tsx, fichier ignoré.
+⚠️ Aucun composant trouvé dans C:\Users\23767\yukpomnang\frontend\src\stories\Dashboard.stories.tsx, fichier ignoré.
+⚠️ Aucun composant trouvé dans C:\Users\23767\yukpomnang\frontend\src\stories\DashboardPage.stories.tsx, fichier ignoré.
+🛠️ Balise <header> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\stories\Header.tsx
+⚠️ Aucun composant trouvé dans C:\Users\23767\yukpomnang\frontend\src\stories\HomePage.stories.tsx, fichier ignoré.
+⚠️ Aucun composant trouvé dans C:\Users\23767\yukpomnang\frontend\src\stories\index.stories.tsx, fichier ignoré.
+⚠️ Aucun composant trouvé dans C:\Users\23767\yukpomnang\frontend\src\stories\LoginPage.stories.tsx, fichier ignoré.
+⚠️ Aucun composant trouvé dans C:\Users\23767\yukpomnang\frontend\src\stories\MatchingPage.stories.tsx, fichier ignoré.
+⚠️ Aucun composant trouvé dans C:\Users\23767\yukpomnang\frontend\src\stories\MatchingResultsIA.stories.tsx, fichier ignoré.
+⚠️ Aucun composant trouvé dans C:\Users\23767\yukpomnang\frontend\src\stories\MatchPage.stories.tsx, fichier ignoré.
+⚠️ Aucun composant trouvé dans C:\Users\23767\yukpomnang\frontend\src\stories\MonComposant.stories.tsx, fichier ignoré.
+⚠️ Aucun composant trouvé dans C:\Users\23767\yukpomnang\frontend\src\stories\NotFound.stories.tsx, fichier ignoré.
+⚠️ Aucun composant trouvé dans C:\Users\23767\yukpomnang\frontend\src\stories\OutilsPage.stories.tsx, fichier ignoré.
+🛠️ Balise <User> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\stories\Page.tsx
+🛠️ Balise <Header> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\stories\Page.tsx
+🛠️ Balise <strong> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\stories\Page.tsx
+🛠️ Balise <ul> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\stories\Page.tsx
+🛠️ Balise <li> fermée automatiquement dans C:\Users\23767\yukpomnang\frontend\src\stories\Page.tsx
+⚠️ Aucun composant trouvé dans C:\Users\23767\yukpomnang\frontend\src\stories\PaiementProPage.stories.tsx, fichier ignoré.
+⚠️ Aucun composant trouvé dans C:\Users\23767\yukpomnang\frontend\src\stories\PredictionDashboard.stories.tsx, fichier ignoré.
+⚠️ Aucun composant trouvé dans C:\Users\23767\yukpomnang\frontend\src\stories\RoleRestrictionDemo.stories.tsx, fichier ignoré.
+⚠️ Aucun composant trouvé dans C:\Users\23767\yukpomnang\frontend\src\stories\services.module.stories.tsx, fichier ignoré.
+⚠️ Aucun composant trouvé dans C:\Users\23767\yukpomnang\frontend\src\stories\ServicesPage.stories.tsx, fichier ignoré.
+⚠️ Aucun composant trouvé dans C:\Users\23767\yukpomnang\frontend\src\stories\StrategicRecoPanel.stories.tsx, fichier ignoré.
+⚠️ Aucun composant trouvé dans C:\Users\23767\yukpomnang\frontend\src\stories\TicketPage.stories.tsx, fichier ignoré.
+⚠️ Aucun composant trouvé dans C:\Users\23767\yukpomnang\frontend\src\stories\UpgradePage.stories.tsx, fichier ignoré.
+⚠️ Aucun composant trouvé dans C:\Users\23767\yukpomnang\frontend\src\stories\UserInteractionIACenter.stories.tsx, fichier ignoré.
+⚠️ Aucun composant trouvé dans C:\Users\23767\yukpomnang\frontend\src\stories\UserStatsIADashboard.stories.tsx, fichier ignoré.
+⚠️ Aucun composant trouvé dans C:\Users\23767\yukpomnang\frontend\src\tests\AccessControl.test.tsx, fichier ignoré.
+⚠️ Aucun composant trouvé dans C:\Users\23767\yukpomnang\frontend\src\__tests__\CreationPage.test.tsx, fichier ignoré.
+⚠️ Aucun composant trouvé dans C:\Users\23767\yukpomnang\frontend\src\__tests__\MatchingPage.test.tsx, fichier ignoré.
+⚠️ Aucun composant trouvé dans C:\Users\23767\yukpomnang\frontend\src\__tests__\MatchingResultsIA.test.tsx, fichier ignoré.

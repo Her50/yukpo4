@@ -1,0 +1,1 @@
+-- TO DELETE: Doublon de création de la table service_scores

@@ -1,0 +1,1 @@
+-- ARCHIVE: Doublon de creation de interaction_history. Voir 20250601_create_interaction_history.sql pour la version à garder.

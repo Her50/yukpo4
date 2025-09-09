@@ -1,0 +1,4 @@
+[
+  { "user_id": 1, "service_id": 1, "rating": 5, "comment": "Super service !" },
+  { "user_id": 1, "service_id": 2, "rating": 3, "comment": "Moins de fonctionnalités." }
+]

@@ -1,0 +1,1 @@
+-- Doublon supprimé automatiquement par l'agent. Voir 20250601_create_interaction_history.sql pour la version principale.

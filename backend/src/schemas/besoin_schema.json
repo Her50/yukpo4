@@ -1,0 +1,127 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "BesoinYukpo",
+  "type": "object",
+  "required": ["titre", "description", "category", "reponse_intelligente", "intention"],
+  "properties": {
+    "titre": {
+      "type": ["string", "object"],
+      "properties": {
+        "type_donnee": { "type": "string", "enum": ["string", "number", "boolean", "array", "int", "float", "bool"] },
+        "valeur": {},
+        "origine_champs": { "type": ["string", "array"], "items": { "type": "string" } }
+      },
+      "required": ["type_donnee", "valeur", "origine_champs"],
+      "additionalProperties": true
+    },
+    "description": {
+      "type": ["string", "object"],
+      "properties": {
+        "type_donnee": { "type": "string", "enum": ["string", "number", "boolean", "array", "int", "float", "bool"] },
+        "valeur": {},
+        "origine_champs": { "type": ["string", "array"], "items": { "type": "string" } }
+      },
+      "required": ["type_donnee", "valeur", "origine_champs"],
+      "additionalProperties": true
+    },
+    "category": {
+      "type": ["string", "object"],
+      "properties": {
+        "type_donnee": { "type": "string", "enum": ["string", "number", "boolean", "array", "int", "float", "bool"] },
+        "valeur": {},
+        "origine_champs": { "type": ["string", "array"], "items": { "type": "string" } }
+      },
+      "required": ["type_donnee", "valeur", "origine_champs"],
+      "additionalProperties": true
+    },
+    "reponse_intelligente": {
+      "type": ["string", "object"],
+      "properties": {
+        "type_donnee": { "type": "string", "enum": ["string", "number", "boolean", "array", "int", "float", "bool"] },
+        "valeur": {},
+        "origine_champs": { "type": ["string", "array"], "items": { "type": "string" } }
+      },
+      "required": ["type_donnee", "valeur", "origine_champs"],
+      "additionalProperties": true
+    },
+    "intention": {
+      "oneOf": [
+        { "type": "string", "minLength": 1 },
+        {
+          "type": "object",
+          "required": ["valeur", "type_donnee"],
+          "properties": {
+            "valeur": { "type": "string", "minLength": 1 },
+            "type_donnee": { "type": "string", "const": "string" }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "zone_gps": {
+      "type": ["object", "null"],
+      "properties": {
+        "centre": { "type": "array", "items": { "type": "number" }, "minItems": 2, "maxItems": 2 },
+        "rayon": { "type": "number", "minimum": 0 }
+      },
+      "required": ["centre", "rayon"]
+    },
+    "gps": {
+      "type": ["array", "null"],
+      "items": { "type": "number" },
+      "minItems": 2,
+      "maxItems": 2
+    },
+    "suggestions_complementaires": {
+      "type": "object",
+      "required": ["type_donnee", "valeur", "origine_champs"],
+      "properties": {
+        "type_donnee": { "type": "string", "enum": ["array"] },
+        "valeur": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["type_donnee", "service", "description"],
+            "properties": {
+              "type_donnee": { "type": "string", "enum": ["objet"] },
+              "service": {
+                "type": "object",
+                "required": ["type_donnee", "valeur", "origine_champs"],
+                "properties": {
+                  "type_donnee": { "type": "string", "enum": ["string"] },
+                  "valeur": { "type": "string" },
+                  "origine_champs": { "type": ["string", "array"], "items": { "type": "string" } }
+                },
+                "additionalProperties": true
+              },
+              "description": {
+                "type": "object",
+                "required": ["type_donnee", "valeur", "origine_champs"],
+                "properties": {
+                  "type_donnee": { "type": "string", "enum": ["string"] },
+                  "valeur": { "type": "string" },
+                  "origine_champs": { "type": ["string", "array"], "items": { "type": "string" } }
+                },
+                "additionalProperties": true
+              }
+            },
+            "additionalProperties": true
+          }
+        },
+        "origine_champs": { "type": ["string", "array"], "items": { "type": "string" } }
+      },
+      "additionalProperties": true
+    },
+    "tokens_consumed": {
+      "type": "object",
+      "required": ["type_donnee", "valeur", "origine_champs"],
+      "properties": {
+        "type_donnee": { "type": "string", "enum": ["number", "int"] },
+        "valeur": { "type": "number", "minimum": 0 },
+        "origine_champs": { "type": ["string", "array"], "items": { "type": "string" } }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

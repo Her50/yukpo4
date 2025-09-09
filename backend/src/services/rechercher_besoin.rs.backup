@@ -1,0 +1,745 @@
+﻿use crate::core::types::{AppError, AppResult};
+use serde_json::{json, Value};
+use log::info;
+use sqlx::{PgPool, Row};
+
+/// Extrait l'ID numÃ©rique d'un ID Pinecone au format "126_texte"
+fn extract_service_id_from_pinecone_id(pinecone_id: &str) -> Option<i32> {
+    let numeric_part = if pinecone_id.contains('_') {
+        pinecone_id.split('_').next().unwrap_or("0")
+    } else {
+        pinecone_id
+    };
+    
+    numeric_part.parse::<i32>().ok()
+}
+
+/// Structure pour tracker les tokens consommÃ©s durant la recherche
+#[derive(Debug, Clone)]
+pub struct TokenConsumption {
+    pub embedding_calls: i64,
+    pub translation_calls: i64,
+    pub ocr_calls: i64,
+    pub matching_complexity: i64,
+    pub total_tokens: i64,
+}
+
+impl TokenConsumption {
+    pub fn new() -> Self {
+        Self {
+            embedding_calls: 0,
+            translation_calls: 0,
+            ocr_calls: 0,
+            matching_complexity: 0,
+            total_tokens: 0,
+        }
+    }
+    
+    pub fn add_embedding_call(&mut self, complexity: i64) {
+        self.embedding_calls += complexity;
+        self.total_tokens += complexity;
+    }
+    
+    pub fn add_translation_call(&mut self, text_length: usize) {
+        let tokens = (text_length / 100).max(1) as i64;
+        self.translation_calls += tokens;
+        self.total_tokens += tokens;
+    }
+    
+    pub fn add_ocr_call(&mut self, image_size_estimate: usize) {
+        let tokens = (image_size_estimate / 1000).max(2) as i64;
+        self.ocr_calls += tokens;
+        self.total_tokens += tokens;
+    }
+    
+    pub fn add_matching_complexity(&mut self, num_results: usize, num_fields: usize) {
+        let tokens = ((num_results * num_fields) / 10).max(1) as i64;
+        self.matching_complexity += tokens;
+        self.total_tokens += tokens;
+    }
+}
+
+/// Validation du schÃ©ma JSON pour la recherche de besoins
+pub fn valider_besoin_json(data: &Value) -> AppResult<()> {
+    if !data.is_object() {
+        return Err(AppError::BadRequest("Le besoin doit Ãªtre un objet JSON".to_string()));
+    }
+    
+    let obj = data.as_object().unwrap();
+    
+    // Validation des champs obligatoires
+    let required_fields = ["titre", "description", "category", "reponse_intelligente", "intention"];
+    for &field in &required_fields {
+        match obj.get(field) {
+            Some(Value::Object(o)) => {
+                let type_donnee = o.get("type_donnee").and_then(|v| v.as_str());
+                let valeur = o.get("valeur");
+                let origine = o.get("origine_champs");
+                if field == "intention" {
+                    if type_donnee.is_none() || valeur.is_none() {
+                        return Err(AppError::BadRequest("Le champ 'intention' doit Ãªtre un objet structurÃ© avec au moins type_donnee et valeur".to_string()));
+                    }
+                } else {
+                    if type_donnee.is_none() || valeur.is_none() || origine.is_none() {
+                        return Err(AppError::BadRequest(format!("Le champ '{field}' doit Ãªtre un objet structurÃ© avec type_donnee, valeur, origine_champs")));
+                    }
+                }
+                let is_empty = match valeur {
+                    Some(Value::String(s)) => s.trim().is_empty(),
+                    Some(Value::Array(arr)) => arr.is_empty(),
+                    Some(Value::Null) => true,
+                    None => true,
+                    _ => false,
+                };
+                if is_empty {
+                    return Err(AppError::BadRequest(format!("Le champ '{field}.valeur' ne doit pas Ãªtre vide")));
+                }
+            },
+            Some(Value::String(s)) if field == "intention" && !s.trim().is_empty() => {},
+            _ => {
+                if field == "intention" {
+                    return Err(AppError::BadRequest("Le champ 'intention' est obligatoire et doit Ãªtre une chaÃ®ne non vide ou un objet structurÃ© dans le besoin IA".to_string()));
+                } else {
+                    return Err(AppError::BadRequest(format!("Le champ '{field}' est obligatoire et doit Ãªtre un objet structurÃ© dans le besoin IA")));
+                }
+            }
+        }
+    }
+    
+    Ok(())
+}
+
+/// Recherche de besoins utilisateur avec input original
+pub async fn rechercher_besoin(
+    user_id: Option<i32>,
+    data: &Value,
+    pool: &PgPool,
+    original_input: Option<&str>, // â† NOUVEAU : Input utilisateur original
+) -> AppResult<(Value, u32)> {
+    // Initialiser le tracking des tokens
+    let token_consumption = TokenConsumption::new();
+    
+    // Validation schÃ©ma besoin
+    valider_besoin_json(data)?;
+    
+    // Extraction robuste du JSON IA
+    let mut data_obj = data.clone();
+    if !data_obj.is_object() {
+        if let Some(s) = data.as_str() {
+            if let Some(start) = s.find('{') {
+                if let Some(end) = s.rfind('}') {
+                    let json_str = &s[start..=end];
+                    if let Ok(val) = serde_json::from_str::<Value>(json_str) {
+                        data_obj = val;
+                    } else {
+                        return Err(AppError::BadRequest("Sortie IA non exploitable : JSON introuvable".to_string()));
+                    }
+                } else {
+                    return Err(AppError::BadRequest("Sortie IA non exploitable : accolade fermante manquante".to_string()));
+                }
+            } else {
+                return Err(AppError::BadRequest("Sortie IA non exploitable : accolade ouvrante manquante".to_string()));
+            }
+        } else {
+            return Err(AppError::BadRequest("Sortie IA non exploitable : pas d'objet JSON ou de texte exploitable".to_string()));
+        }
+    }
+    
+    let obj = data_obj.as_object().ok_or_else(|| {
+        AppError::BadRequest("Le besoin doit Ãªtre un objet JSON".to_string())
+    })?;
+
+    // Extraction des donnÃ©es pour la recherche
+    let _titre = obj.get("titre")
+        .and_then(|v| v.get("valeur"))
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_string();
+    
+    let _description = obj.get("description")
+        .and_then(|v| v.get("valeur"))
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_string();
+    
+    let _category = obj.get("category")
+        .and_then(|v| v.get("valeur"))
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_string();
+
+    // Recherche dynamique avec input original
+    let resultats = if let Some(original_text) = original_input {
+        // âœ… VOTRE APPROCHE : Utiliser l'input utilisateur original
+        info!("[RECHERCHE_BESOIN] Utilisation de l'input original: '{}'", original_text);
+        
+        // âœ… NOUVEAU : VÃ©rifier si l'input contient de l'audio
+        if original_text.contains("audio_base64") || original_text.contains("data:audio") {
+            info!("[RECHERCHE_BESOIN] Audio dÃ©tectÃ© dans l'input - Transcription avant vectorisation");
+            rechercher_services_avec_input_original(&pool, original_text).await?
+        } else {
+            info!("[RECHERCHE_BESOIN] Input texte standard - Vectorisation directe");
+            rechercher_services_avec_input_original(&pool, original_text).await?
+        }
+    } else {
+        // Fallback vers l'ancienne mÃ©thode
+        info!("[RECHERCHE_BESOIN] Utilisation de la mÃ©thode classique");
+        rechercher_services_dynamique(&pool, &_titre, &_description, &_category).await?
+    };
+
+    let reponse_intelligente = obj.get("reponse_intelligente")
+        .and_then(|v| v.get("valeur"))
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string());
+
+    let intention = match obj.get("intention") {
+        Some(Value::String(s)) => Some(s.clone()),
+        Some(Value::Object(o)) => o.get("valeur").and_then(|v| v.as_str()).map(|s| s.to_string()),
+        _ => None,
+    };
+
+    info!("[RECHERCHE_BESOIN] Tokens consommÃ©s pour utilisateur {:?}: {:?}", user_id, token_consumption);
+
+    let response = json!({
+        "message": if resultats.is_empty() {
+            "âŒ Aucun besoin correspondant trouvÃ©"
+        } else {
+            "âœ… Besoins correspondants trouvÃ©s"
+        },
+        "user_id": user_id,
+        "donnees_validees": data_obj,
+        "reponse_intelligente": reponse_intelligente,
+        "intention": intention,
+        "resultats": resultats,
+        "nombre_matchings": resultats.len(),
+        "tokens_consumed": token_consumption.total_tokens as u64,
+        "token_breakdown": {
+            "embedding_calls": token_consumption.embedding_calls,
+            "translation_calls": token_consumption.translation_calls,
+            "ocr_calls": token_consumption.ocr_calls,
+            "matching_complexity": token_consumption.matching_complexity
+        }
+    });
+
+    Ok((response, token_consumption.total_tokens as u32))
+}
+
+/// Recherche vectorielle avec input utilisateur original
+async fn rechercher_services_avec_input_original(
+    pool: &PgPool,
+    original_input: &str,
+) -> AppResult<Vec<Value>> {
+    info!("[RECHERCHE_VECTORIELLE] Recherche avec input original: '{}'", original_input);
+    
+    // âœ… NOUVEAU : Transcription audio si nÃ©cessaire
+    let processed_input = if original_input.contains("audio_base64") || original_input.contains("data:audio") {
+        info!("[RECHERCHE_VECTORIELLE] DÃ©tection d'audio - Transcription en cours...");
+        match transcribe_audio_input(original_input).await {
+            Ok(transcribed_text) => {
+                info!("[RECHERCHE_VECTORIELLE] Audio transcrit: '{}'", transcribed_text);
+                transcribed_text
+            },
+            Err(e) => {
+                log::warn!("[RECHERCHE_VECTORIELLE] Ã‰chec transcription audio: {}, utilisation input original", e);
+                original_input.to_string()
+            }
+        }
+    } else {
+        original_input.to_string()
+    };
+    
+    // 1. Vectorisation de l'input traitÃ© (texte transcrit si audio)
+    let embedding_client = crate::utils::embedding_client::EmbeddingClient::new("", "");
+    let search_request = crate::utils::embedding_client::SearchEmbeddingPineconeRequest {
+        query: processed_input, // â† Input traitÃ© (transcrit si audio) !
+        type_donnee: "texte".to_string(),
+        top_k: Some(10),
+        gps_lat: None,
+        gps_lon: None,
+        gps_radius_km: None,
+        active: Some(true),
+    };
+    
+    // 2. Recherche Pinecone
+    let pinecone_response = match embedding_client.search_embedding_pinecone(&search_request).await {
+        Ok(response) => response,
+        Err(e) => {
+            log::error!("[RECHERCHE_VECTORIELLE] Erreur recherche Pinecone: {}", e);
+            return Ok(Vec::new()); // Retourner vide en cas d'erreur
+        }
+    };
+    
+    info!("[RECHERCHE_VECTORIELLE] RÃ©ponse Pinecone reÃ§ue");
+    
+    // Debug: Afficher la rÃ©ponse complÃ¨te de Pinecone
+    info!("[RECHERCHE_VECTORIELLE] RÃ©ponse Pinecone complÃ¨te: {:?}", pinecone_response);
+    
+    // 3. Traitement des rÃ©sultats (mÃªme logique qu'avant)
+    let empty_vec = Vec::new();
+    let matches = pinecone_response.get("results")
+        .and_then(|v| v.as_array())
+        .unwrap_or(&empty_vec);
+    
+    info!("[RECHERCHE_VECTORIELLE] {} rÃ©sultats trouvÃ©s dans Pinecone", matches.len());
+    
+    // 4. RÃ©cupÃ©ration des donnÃ©es complÃ¨tes depuis PostgreSQL
+    let mut resultats = Vec::new();
+    info!("[RECHERCHE_VECTORIELLE] DÃ©but du traitement de {} rÃ©sultats Pinecone", matches.len());
+    
+    for (index, match_result) in matches.iter().enumerate() {
+        let id = match_result.get("id").and_then(|v| v.as_str());
+        let score = match_result.get("score").and_then(|v| v.as_f64()).unwrap_or(0.0);
+        
+        info!("[RECHERCHE_VECTORIELLE] Traitement rÃ©sultat {}: ID='{}', Score={}", index + 1, id.unwrap_or("N/A"), score);
+        
+        if let Some(service_id_str) = id {
+            if let Some(service_id) = extract_service_id_from_pinecone_id(service_id_str) {
+                info!("[RECHERCHE_VECTORIELLE] Tentative rÃ©cupÃ©ration service ID: {} (Pinecone ID: {})", service_id, service_id_str);
+                
+                info!("[RECHERCHE_VECTORIELLE] ðŸ” ExÃ©cution requÃªte SQL pour service_id: {}", service_id);
+                
+                let service_data = sqlx::query!(
+                    r#"
+                    SELECT s.id, s.user_id, s.data, s.category, s.created_at, s.gps, s.is_active,
+                           u.email as user_email
+                    FROM services s
+                    JOIN users u ON s.user_id = u.id
+                    WHERE s.id = $1
+                    "#,
+                    service_id
+                )
+                .fetch_optional(pool)
+                .await
+                .map_err(|e| {
+                    log::error!("[RECHERCHE_VECTORIELLE] Erreur rÃ©cupÃ©ration service {}: {:?}", service_id, e);
+                    AppError::internal_server_error("Erreur lors de la rÃ©cupÃ©ration des donnÃ©es de service".to_string())
+                })?;
+                
+                if let Some(service) = service_data {
+                    info!("[RECHERCHE_VECTORIELLE] ðŸ“Š DonnÃ©es service {}: is_active={}, category={:?}, gps={:?}", 
+                          service_id, service.is_active, service.category, service.gps);
+                    
+                    if service.is_active {
+                        info!("[RECHERCHE_VECTORIELLE] âœ… Service {} trouvÃ© dans PostgreSQL et ACTIF", service_id);
+                        // Extraire les donnÃ©es du JSONB
+                        let empty_map = serde_json::Map::new();
+                        let data_obj = service.data.as_object().unwrap_or(&empty_map);
+                        
+                        info!("[RECHERCHE_VECTORIELLE] ðŸ“‹ DonnÃ©es JSONB service {}: {:?}", service_id, data_obj);
+                        
+                        let service_result = json!({
+                            "id": service.id,
+                            "titre": { let titre_service = data_obj.get("titre_service").and_then(|v| v.get("valeur")).and_then(|v| v.as_str()); let titre = data_obj.get("titre").and_then(|v| v.get("valeur")).and_then(|v| v.as_str()); titre_service.or(titre).unwrap_or("Service sans titre") },
+                            "description": data_obj.get("description").and_then(|v| v.get("valeur")).and_then(|v| v.as_str()).unwrap_or(""),
+                            "category": service.category.unwrap_or_else(|| "Non spÃ©cifiÃ©e".to_string()),
+                            "prix": data_obj.get("prix").and_then(|v| v.get("valeur")).and_then(|v| v.as_str()).unwrap_or("Non spÃ©cifiÃ©"),
+                            "localisation": service.gps.unwrap_or_else(|| "Non spÃ©cifiÃ©e".to_string()),
+                            "note": data_obj.get("note").and_then(|v| v.as_f64()).unwrap_or(0.0),
+                            "user_id": service.user_id,
+                            "user_email": service.user_email,
+                            "created_at": service.created_at.to_rfc3339(),
+                            "similarity_score": score
+                        });
+                        
+                        resultats.push(service_result);
+                        info!("[RECHERCHE_VECTORIELLE] âœ… Service {} ajoutÃ© aux rÃ©sultats", service_id);
+                    } else {
+                        info!("[RECHERCHE_VECTORIELLE] âš ï¸ Service {} trouvÃ© dans PostgreSQL mais INACTIF (is_active = false)", service_id);
+                    }
+                } else {
+                    info!("[RECHERCHE_VECTORIELLE] âŒ Service {} NON trouvÃ© dans PostgreSQL (requÃªte SQL rÃ©ussie mais aucun rÃ©sultat)", service_id);
+                }
+            } else {
+                info!("[RECHERCHE_VECTORIELLE] âŒ Impossible d'extraire l'ID numÃ©rique de '{}'", service_id_str);
+            }
+        } else {
+            info!("[RECHERCHE_VECTORIELLE] âŒ ID manquant dans le rÃ©sultat Pinecone");
+        }
+    }
+    
+    // Tri par score de similaritÃ© dÃ©croissant
+    resultats.sort_by(|a, b| {
+        let score_a = a.get("similarity_score").and_then(|v| v.as_f64()).unwrap_or(0.0);
+        let score_b = b.get("similarity_score").and_then(|v| v.as_f64()).unwrap_or(0.0);
+        score_b.partial_cmp(&score_a).unwrap_or(std::cmp::Ordering::Equal)
+    });
+    
+    info!("[RECHERCHE_VECTORIELLE] {} services retournÃ©s aprÃ¨s tri", resultats.len());
+    Ok(resultats)
+}
+
+/// Recherche dynamique de services avec vectorisation Pinecone + PostgreSQL
+async fn rechercher_services_dynamique(
+    pool: &PgPool,
+    titre: &str,
+    description: &str,
+    category: &str,
+) -> AppResult<Vec<Value>> {
+    info!("[RECHERCHE_VECTORIELLE] Recherche pour: titre='{}', description='{}', category='{}'", titre, description, category);
+    
+    // 1. Vectorisation de la requÃªte utilisateur
+    let query_text = format!("{} {} {}", titre, description, category);
+    info!("[RECHERCHE_VECTORIELLE] Texte Ã  vectoriser: '{}'", query_text);
+    
+    // 2. Recherche vectorielle directe dans Pinecone
+    let embedding_client = crate::utils::embedding_client::EmbeddingClient::new("", "");
+    let search_request = crate::utils::embedding_client::SearchEmbeddingPineconeRequest {
+        query: query_text,
+        type_donnee: "texte".to_string(),
+        top_k: Some(10),
+        gps_lat: None,
+        gps_lon: None,
+        gps_radius_km: None,
+        active: Some(true),
+    };
+    
+    let pinecone_response = match embedding_client.search_embedding_pinecone(&search_request).await {
+        Ok(response) => response,
+        Err(e) => {
+            log::error!("[RECHERCHE_VECTORIELLE] Erreur recherche Pinecone: {}", e);
+            // Fallback vers recherche SQL si Pinecone Ã©choue
+            info!("[RECHERCHE_VECTORIELLE] Fallback vers recherche SQL");
+            return rechercher_services_sql_fallback(pool, titre, description, category).await;
+        }
+    };
+    
+    info!("[RECHERCHE_VECTORIELLE] RÃ©ponse Pinecone reÃ§ue");
+    
+    // Debug: Afficher la rÃ©ponse complÃ¨te de Pinecone
+    info!("[RECHERCHE_VECTORIELLE] RÃ©ponse Pinecone complÃ¨te: {:?}", pinecone_response);
+    
+    // 3. Extraction des rÃ©sultats depuis la rÃ©ponse JSON
+    let empty_vec = Vec::new();
+    let matches = pinecone_response.get("results")
+        .and_then(|v| v.as_array())
+        .unwrap_or(&empty_vec);
+    
+    info!("[RECHERCHE_VECTORIELLE] {} rÃ©sultats trouvÃ©s dans Pinecone", matches.len());
+    
+    // 4. RÃ©cupÃ©ration des donnÃ©es complÃ¨tes depuis PostgreSQL
+    let mut resultats = Vec::new();
+    info!("[RECHERCHE_VECTORIELLE] DÃ©but du traitement de {} rÃ©sultats Pinecone (dynamique)", matches.len());
+    
+    for (index, match_result) in matches.iter().enumerate() {
+        let id = match_result.get("id").and_then(|v| v.as_str());
+        let score = match_result.get("score").and_then(|v| v.as_f64()).unwrap_or(0.0);
+        
+        info!("[RECHERCHE_VECTORIELLE] Traitement rÃ©sultat {}: ID='{}', Score={}", index + 1, id.unwrap_or("N/A"), score);
+        
+        if let Some(service_id_str) = id {
+            if let Some(service_id) = extract_service_id_from_pinecone_id(service_id_str) {
+                info!("[RECHERCHE_VECTORIELLE] Tentative rÃ©cupÃ©ration service ID: {} (Pinecone ID: {})", service_id, service_id_str);
+                
+                // RÃ©cupÃ©rer les donnÃ©es complÃ¨tes du service depuis PostgreSQL
+                let service_data = sqlx::query!(
+                    r#"
+                    SELECT s.id, s.user_id, s.data, s.category, s.created_at, s.gps, s.is_active,
+                           u.email as user_email
+                    FROM services s
+                    JOIN users u ON s.user_id = u.id
+                    WHERE s.id = $1
+                    "#,
+                    service_id
+                )
+                .fetch_optional(pool)
+                .await
+                .map_err(|e| {
+                    log::error!("[RECHERCHE_VECTORIELLE] Erreur rÃ©cupÃ©ration service {}: {:?}", service_id, e);
+                    AppError::internal_server_error("Erreur lors de la rÃ©cupÃ©ration des donnÃ©es de service".to_string())
+                })?;
+                
+                if let Some(service) = service_data {
+                    info!("[RECHERCHE_VECTORIELLE] ðŸ“Š DonnÃ©es service {}: is_active={}, category={:?}, gps={:?} (dynamique)", 
+                          service_id, service.is_active, service.category, service.gps);
+                    
+                    if service.is_active {
+                        info!("[RECHERCHE_VECTORIELLE] âœ… Service {} trouvÃ© dans PostgreSQL et ACTIF (dynamique)", service_id);
+                        // Extraire les donnÃ©es du JSONB
+                        let empty_map = serde_json::Map::new();
+                        let data_obj = service.data.as_object().unwrap_or(&empty_map);
+                        
+                        info!("[RECHERCHE_VECTORIELLE] ðŸ“‹ DonnÃ©es JSONB service {}: {:?} (dynamique)", service_id, data_obj);
+                        
+                        let service_result = json!({
+                            "id": service.id,
+                            "titre": { let titre_service = data_obj.get("titre_service").and_then(|v| v.get("valeur")).and_then(|v| v.as_str()); let titre = data_obj.get("titre").and_then(|v| v.get("valeur")).and_then(|v| v.as_str()); titre_service.or(titre).unwrap_or("Service sans titre") },
+                            "description": data_obj.get("description").and_then(|v| v.get("valeur")).and_then(|v| v.as_str()).unwrap_or(""),
+                            "category": service.category.unwrap_or_else(|| "Non spÃ©cifiÃ©e".to_string()),
+                            "prix": data_obj.get("prix").and_then(|v| v.get("valeur")).and_then(|v| v.as_str()).unwrap_or("Non spÃ©cifiÃ©"),
+                            "localisation": service.gps.unwrap_or_else(|| "Non spÃ©cifiÃ©e".to_string()),
+                            "note": data_obj.get("note").and_then(|v| v.as_f64()).unwrap_or(0.0),
+                            "user_id": service.user_id,
+                            "user_email": service.user_email,
+                            "created_at": service.created_at.to_rfc3339(),
+                            "similarity_score": score
+                        });
+                        
+                        resultats.push(service_result);
+                        info!("[RECHERCHE_VECTORIELLE] âœ… Service {} ajoutÃ© aux rÃ©sultats (dynamique)", service_id);
+                    } else {
+                        info!("[RECHERCHE_VECTORIELLE] âš ï¸ Service {} trouvÃ© dans PostgreSQL mais INACTIF (is_active = false) (dynamique)", service_id);
+                    }
+                } else {
+                    info!("[RECHERCHE_VECTORIELLE] âŒ Service {} NON trouvÃ© dans PostgreSQL (requÃªte SQL rÃ©ussie mais aucun rÃ©sultat) (dynamique)", service_id);
+                }
+            } else {
+                info!("[RECHERCHE_VECTORIELLE] âŒ Impossible d'extraire l'ID numÃ©rique de '{}'", service_id_str);
+            }
+        } else {
+            info!("[RECHERCHE_VECTORIELLE] âŒ ID manquant dans le rÃ©sultat Pinecone");
+        }
+    }
+    
+    // Tri par score de similaritÃ© dÃ©croissant
+    resultats.sort_by(|a, b| {
+        let score_a = a.get("similarity_score").and_then(|v| v.as_f64()).unwrap_or(0.0);
+        let score_b = b.get("similarity_score").and_then(|v| v.as_f64()).unwrap_or(0.0);
+        score_b.partial_cmp(&score_a).unwrap_or(std::cmp::Ordering::Equal)
+    });
+    
+    info!("[RECHERCHE_VECTORIELLE] {} services retournÃ©s aprÃ¨s tri", resultats.len());
+    Ok(resultats)
+}
+
+/// Recherche SQL de fallback si Pinecone Ã©choue
+async fn rechercher_services_sql_fallback(
+    pool: &PgPool,
+    titre: &str,
+    _description: &str,
+    category: &str,
+) -> AppResult<Vec<Value>> {
+    info!("[RECHERCHE_SQL_FALLBACK] Recherche SQL de fallback");
+    
+    let query = r#"
+        SELECT s.id, s.user_id, s.data, s.category, s.created_at, s.gps,
+               u.email as user_email
+        FROM services s
+        JOIN users u ON s.user_id = u.id
+        WHERE s.is_active = true
+        AND (
+            s.data::text ILIKE $1 
+            OR s.data::text ILIKE $2 
+            OR s.category ILIKE $3
+        )
+        ORDER BY s.created_at DESC
+        LIMIT 10
+    "#;
+    
+    let search_term = format!("%{}%", titre);
+    let search_term_lower = format!("%{}%", titre.to_lowercase());
+    let category_search = format!("%{}%", category);
+    
+    let rows = sqlx::query(query)
+        .bind(&search_term)
+        .bind(&search_term_lower)
+        .bind(&category_search)
+        .fetch_all(pool)
+        .await
+        .map_err(|e| {
+            log::error!("[RECHERCHE_SQL_FALLBACK] Erreur requÃªte SQL: {}", e);
+            AppError::internal_server_error("Erreur lors de la recherche en base de donnÃ©es".to_string())
+        })?;
+    
+    info!("[RECHERCHE_SQL_FALLBACK] {} services trouvÃ©s", rows.len());
+    
+    let mut resultats = Vec::new();
+    for row in rows {
+        let service_id: i32 = row.get("id");
+        let user_id: i32 = row.get("user_id");
+        let data: serde_json::Value = row.get("data");
+        let category: Option<String> = row.get("category");
+        let created_at = row.get::<chrono::DateTime<chrono::Utc>, _>("created_at");
+        let gps: Option<String> = row.get("gps");
+        let user_email: String = row.get("user_email");
+        
+        // Extraire les donnÃ©es du JSONB
+        let empty_map = serde_json::Map::new();
+        let data_obj = data.as_object().unwrap_or(&empty_map);
+        
+        let service_result = json!({
+            "id": service_id,
+            "titre": { let titre_service = data_obj.get("titre_service").and_then(|v| v.get("valeur")).and_then(|v| v.as_str()); let titre = data_obj.get("titre").and_then(|v| v.get("valeur")).and_then(|v| v.as_str()); titre_service.or(titre).unwrap_or("Service sans titre") },
+            "description": data_obj.get("description").and_then(|v| v.get("valeur")).and_then(|v| v.as_str()).unwrap_or(""),
+            "category": category.unwrap_or_else(|| "Non spÃ©cifiÃ©e".to_string()),
+            "prix": data_obj.get("prix").and_then(|v| v.get("valeur")).and_then(|v| v.as_str()).unwrap_or("Non spÃ©cifiÃ©"),
+            "localisation": gps.unwrap_or_else(|| "Non spÃ©cifiÃ©e".to_string()),
+            "note": data_obj.get("note").and_then(|v| v.as_f64()).unwrap_or(0.0),
+            "user_id": user_id,
+            "user_email": user_email,
+            "created_at": created_at.to_rfc3339(),
+            "similarity_score": 0.8 // Score par dÃ©faut pour la recherche SQL
+        });
+        
+        resultats.push(service_result);
+    }
+    
+    info!("[RECHERCHE_SQL_FALLBACK] {} services retournÃ©s", resultats.len());
+    Ok(resultats)
+}
+
+/// âœ… Transcription audio en texte pour la recherche vectorielle
+async fn transcribe_audio_input(input: &str) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
+    use base64::{engine::general_purpose, Engine as _};
+    
+    info!("[TRANSCRIPTION_AUDIO] DÃ©but transcription audio");
+    
+    // 1. DÃ©tection du format audio
+    let audio_data = if input.contains("data:audio") {
+        // Format data URL
+        if let Some(base64_start) = input.find("base64,") {
+            let base64_data = &input[base64_start + 7..];
+            general_purpose::STANDARD.decode(base64_data)?
+        } else {
+            return Err("Format data URL audio invalide".into());
+        }
+    } else if input.contains("audio_base64") {
+        // Format JSON avec audio_base64
+        if let Ok(json_value) = serde_json::from_str::<serde_json::Value>(input) {
+            if let Some(audio_base64) = json_value.get("audio_base64").and_then(|v| v.as_str()) {
+                general_purpose::STANDARD.decode(audio_base64)?
+            } else {
+                return Err("Champ audio_base64 non trouvÃ© dans le JSON".into());
+            }
+        } else {
+            return Err("JSON invalide pour audio_base64".into());
+        }
+    } else {
+        // Tentative de dÃ©codage direct base64
+        general_purpose::STANDARD.decode(input)?
+    };
+    
+    info!("[TRANSCRIPTION_AUDIO] DonnÃ©es audio dÃ©codÃ©es: {} bytes", audio_data.len());
+    
+    // 2. Appel Ã  l'API de transcription (OpenAI Whisper en premier, puis Hugging Face en fallback)
+    let transcription = match transcribe_audio_with_openai(&audio_data).await {
+        Ok(text) => text,
+        Err(e) => {
+            log::warn!("[TRANSCRIPTION_AUDIO] Ã‰chec OpenAI Whisper: {}, tentative Hugging Face", e);
+            transcribe_audio_with_huggingface(&audio_data).await?
+        }
+    };
+    
+    info!("[TRANSCRIPTION_AUDIO] Transcription rÃ©ussie: '{}'", transcription);
+    Ok(transcription)
+}
+
+/// âœ… Transcription audio avec OpenAI Whisper API (PRODUCTION READY)
+async fn transcribe_audio_with_openai(audio_data: &[u8]) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
+    use reqwest::Client;
+    use std::time::Duration;
+    
+    info!("[TRANSCRIPTION_AUDIO] DÃ©but transcription OpenAI Whisper ({} bytes)", audio_data.len());
+    
+    // Configuration
+    let api_key = std::env::var("OPENAI_API_KEY")
+        .map_err(|_| "OPENAI_API_KEY non configurÃ©e")?;
+    
+    let client = Client::builder()
+        .timeout(Duration::from_secs(30))
+        .build()?;
+    
+    // PrÃ©parer la requÃªte multipart manuellement (car reqwest multipart feature non activÃ©e)
+    let boundary = format!("boundary_{}", uuid::Uuid::new_v4());
+    let mut body = Vec::new();
+    
+    // Partie model
+    body.extend_from_slice(format!("--{}\r\n", boundary).as_bytes());
+    body.extend_from_slice(b"Content-Disposition: form-data; name=\"model\"\r\n\r\n");
+    body.extend_from_slice(b"whisper-1\r\n");
+    
+    // Partie language
+    body.extend_from_slice(format!("--{}\r\n", boundary).as_bytes());
+    body.extend_from_slice(b"Content-Disposition: form-data; name=\"language\"\r\n\r\n");
+    body.extend_from_slice(b"fr\r\n");
+    
+    // Partie file
+    body.extend_from_slice(format!("--{}\r\n", boundary).as_bytes());
+    body.extend_from_slice(b"Content-Disposition: form-data; name=\"file\"; filename=\"audio.wav\"\r\n");
+    body.extend_from_slice(b"Content-Type: audio/wav\r\n\r\n");
+    body.extend_from_slice(audio_data);
+    body.extend_from_slice(b"\r\n");
+    
+    // Fin du multipart
+    body.extend_from_slice(format!("--{}--\r\n", boundary).as_bytes());
+    
+    // Envoi de la requÃªte
+    let response = client
+        .post("https://api.openai.com/v1/audio/transcriptions")
+        .header("Authorization", format!("Bearer {}", api_key))
+        .header("Content-Type", format!("multipart/form-data; boundary={}", boundary))
+        .body(body)
+        .send()
+        .await?;
+    
+    let status = response.status();
+    info!("[TRANSCRIPTION_AUDIO] RÃ©ponse OpenAI: status {}", status);
+    
+    if status.is_success() {
+        let result: serde_json::Value = response.json().await?;
+        if let Some(text) = result.get("text").and_then(|v| v.as_str()) {
+            info!("[TRANSCRIPTION_AUDIO] Transcription rÃ©ussie: '{}'", text);
+            Ok(text.to_string())
+        } else {
+            Err("RÃ©ponse OpenAI invalide - champ 'text' manquant".into())
+        }
+    } else {
+        let error_text = response.text().await?;
+        log::error!("[TRANSCRIPTION_AUDIO] Erreur OpenAI: {}", error_text);
+        Err(format!("Erreur OpenAI ({}): {}", status, error_text).into())
+    }
+}
+
+/// âœ… Transcription audio avec Hugging Face Inference API (FALLBACK)
+async fn transcribe_audio_with_huggingface(audio_data: &[u8]) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
+    use reqwest::Client;
+    use std::time::Duration;
+    
+    info!("[TRANSCRIPTION_AUDIO] DÃ©but transcription Hugging Face ({} bytes)", audio_data.len());
+    
+    // Configuration
+    let api_key = std::env::var("HUGGINGFACE_API_KEY")
+        .unwrap_or_else(|_| "hf_".to_string()); // ClÃ© publique par dÃ©faut
+    
+    let client = Client::builder()
+        .timeout(Duration::from_secs(30))
+        .build()?;
+    
+    // ModÃ¨le Whisper franÃ§ais
+    let model = "openai/whisper-base";
+    
+    // PrÃ©parer la requÃªte
+    let mut body = Vec::new();
+    body.extend_from_slice(audio_data);
+    
+    // Envoi de la requÃªte
+    let response = client
+        .post(format!("https://api-inference.huggingface.co/models/{}", model))
+        .header("Authorization", format!("Bearer {}", api_key))
+        .header("Content-Type", "audio/wav")
+        .body(body)
+        .send()
+        .await?;
+    
+    let status = response.status();
+    info!("[TRANSCRIPTION_AUDIO] RÃ©ponse Hugging Face: status {}", status);
+    
+    if status.is_success() {
+        let result: serde_json::Value = response.json().await?;
+        
+        // Hugging Face retourne soit un objet avec "text", soit directement le texte
+        let text = if let Some(text) = result.get("text").and_then(|v| v.as_str()) {
+            text
+        } else if let Some(text) = result.as_str() {
+            text
+        } else {
+            return Err("RÃ©ponse Hugging Face invalide - texte non trouvÃ©".into());
+        };
+        
+        info!("[TRANSCRIPTION_AUDIO] Transcription Hugging Face rÃ©ussie: '{}'", text);
+        Ok(text.to_string())
+    } else {
+        let error_text = response.text().await?;
+        log::error!("[TRANSCRIPTION_AUDIO] Erreur Hugging Face: {}", error_text);
+        Err(format!("Erreur Hugging Face ({}): {}", status, error_text).into())
+    }
+}

@@ -1,0 +1,99 @@
+# Configuration UNIVERSELLE pour application multi-culturelle et multi-géographique
+# AUCUNE catégorie, localisation ou métier prédéfini
+# L'application s'adapte automatiquement à chaque déploiement
+
+[general]
+# Nombre maximum de résultats par défaut
+max_results = 25
+# Nombre de résultats pour le tri initial
+initial_results = 50
+# Seuil de score minimum pour inclure un résultat
+min_score_threshold = 0.05
+# Activer la recherche hybride (full-text + trigram)
+enable_hybrid_search = true
+# Activer la recherche géospatiale
+enable_geospatial = true
+# Langue par défaut (configurable selon la région)
+default_language = "auto"
+
+[scoring]
+# Boosts pour différents champs (neutres par défaut)
+title_boost = 1.0
+description_boost = 1.0
+category_boost = 1.0
+location_boost = 1.0
+recency_boost = 0.2
+# Nombre de jours pour le bonus de récence
+recency_days = 14
+# Boost pour les services populaires
+popularity_boost = 0.3
+# Boost pour les services vérifiés
+verified_boost = 0.5
+# Scores minimums
+min_fulltext_score = 0.08
+min_trigram_similarity = 0.25
+
+[filters]
+# Activation des filtres
+enable_category_filter = true
+enable_location_filter = true
+enable_price_filter = true
+enable_availability_filter = true
+enable_rating_filter = true
+
+# IMPORTANT: Aucune catégorie ou localisation prédéfinie
+# L'application découvre automatiquement les catégories et localisations
+# selon les services créés par les utilisateurs
+priority_categories = []
+priority_locations = []
+
+[geospatial]
+# Configuration géospatiale universelle
+default_search_radius_km = 25.0
+max_search_radius_km = 100.0
+use_postgis = true
+proximity_boost = 0.4
+distance_decay_factor = 0.1
+
+# AUCUNE coordonnée par défaut - l'application s'adapte à chaque région
+default_coordinates = []
+
+[performance]
+# Configuration des performances
+query_cache_size = 1000
+cache_ttl_seconds = 300
+enable_redis_cache = false
+query_timeout_ms = 5000
+max_retries = 2
+enable_compression = true
+
+# Profils de configuration
+[profiles]
+[profiles.production]
+max_results = 20
+enable_redis_cache = true
+query_cache_size = 5000
+cache_ttl_seconds = 600
+min_fulltext_score = 0.1
+
+[profiles.development]
+max_results = 50
+enable_redis_cache = false
+query_cache_size = 100
+min_fulltext_score = 0.05
+
+[profiles.testing]
+max_results = 10
+query_timeout_ms = 1000
+max_retries = 1
+
+# Configuration d'adaptation automatique
+[auto_adaptation]
+# Découvrir automatiquement les catégories de services
+auto_discover_categories = true
+# Découvrir automatiquement les localisations
+auto_discover_locations = true
+# Adapter la langue selon la région
+auto_adapt_language = true
+# Adapter les paramètres selon l'usage
+auto_adapt_parameters = true 

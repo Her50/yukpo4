@@ -1,0 +1,51 @@
+# Configuration des traductions pour Yukpo
+[translation]
+# Activer/désactiver la traduction automatique
+enable_auto_translation = true
+
+# Langue cible pour les embeddings (doit correspondre à la création)
+target_language = "en"
+
+# Langues source à traduire automatiquement
+auto_translate_languages = ["fr", "es", "de", "it", "pt", "ar", "zh", "ja", "ko"]
+
+# Langues à ne pas traduire (garder l'original)
+skip_translation_languages = ["en", "und"]
+
+# Configuration Google Translate
+[google_translate]
+# Clé API requise pour la traduction
+api_key_required = true
+# URL de l'API
+api_url = "https://translation.googleapis.com/language/translate/v2"
+# Timeout en secondes
+timeout_seconds = 30
+# Nombre de tentatives
+max_retries = 3
+
+# Configuration du cache de traduction
+[cache]
+# Activer le cache des traductions
+enable_cache = true
+# TTL du cache en secondes
+ttl_seconds = 86400  # 24 heures
+# Taille maximale du cache
+max_size = 10000
+
+# Configuration des performances
+[performance]
+# Traductions en parallèle
+parallel_translations = true
+# Taille du batch pour les traductions
+batch_size = 10
+# Timeout du batch en secondes
+batch_timeout_seconds = 60
+
+# Logs et monitoring
+[logging]
+# Niveau de log pour les traductions
+log_level = "info"
+# Tracer les performances des traductions
+log_performance = true
+# Tracer les tokens consommés
+log_token_consumption = true 

@@ -1,0 +1,3 @@
+-- Test de la fonction extract_gps_from_json corrigée
+SELECT 'Test extract_gps_from_json avec coordonnées complexes' as test_type;
+SELECT * FROM extract_gps_from_json('4.318447380764929,9.39421383924782|3.900671496020994,9.513690157607195|3.7663901342151913,9.78972165174782|4.029451836036109,10.17424313612282|4.317077987367724,9.88585202284157'); 

@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO consultation_historique (user_id, service_id, timestamp)\n        VALUES ($1, $2, NOW())\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "ffed0f72aa209297690ff32f12fdad42ec6494c2adb774876d20e09e1999415c"
+}

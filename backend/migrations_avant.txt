@@ -1,0 +1,152 @@
+--- AVANT --- 
+30/05/2025 13:36:37,29 
+0000_create_all_tables.sql
+20250529_add_gps_and_timestamp.sql
+20250601_create_alerts.sql
+20250603_create_interaction_history.sql
+20250604_create_service_reviews.sql
+20250605_create_service_scores.sql
+TO_DELETE_DUPE_CONTENT.txt
+--- CONTENU: migrations\0000_create_all_tables.sql --- 
+-- Migration unifiée : création de toutes les tables et colonnes importantes pour Yukpo
+
+-- Table users
+CREATE TABLE IF NOT EXISTS users (
+    id SERIAL PRIMARY KEY,
+    email TEXT UNIQUE NOT NULL,
+    password_hash TEXT NOT NULL,
+    role TEXT NOT NULL,
+    is_provider BOOLEAN NOT NULL DEFAULT FALSE,
+    tokens_balance BIGINT NOT NULL DEFAULT 0,
+    token_price_user DOUBLE PRECISION NOT NULL,
+    token_price_provider DOUBLE PRECISION NOT NULL,
+    commission_pct REAL NOT NULL,
+    preferred_lang TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    gps VARCHAR(255),
+    gps_consent BOOLEAN DEFAULT TRUE
+);
+ALTER TABLE users ALTER COLUMN gps_consent SET DEFAULT TRUE;
+
+-- Table services
+CREATE TABLE IF NOT EXISTS services (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    data JSONB NOT NULL,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    auto_deactivate_at TIMESTAMPTZ,
+    last_reactivated_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    is_tarissable BOOLEAN,
+    vitesse_tarissement VARCHAR(255),
+    active_days INTEGER,
+    category VARCHAR(255),
+    last_alert_sent_at TIMESTAMP
+);
+
+-- Table media
+CREATE TABLE IF NOT EXISTS media (
+    id SERIAL PRIMARY KEY,
+    service_id INTEGER NOT NULL REFERENCES services(id) ON DELETE CASCADE,
+    type TEXT NOT NULL,
+    path TEXT NOT NULL,
+    uploaded_at TIMESTAMP DEFAULT NOW(),
+    media_type TEXT,
+    file_size BIGINT,
+    file_format TEXT
+);
+-- Contrainte sur media_type
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints
+        WHERE constraint_name = 'media_type_check' AND table_name = 'media'
+    ) THEN
+        ALTER TABLE media ADD CONSTRAINT media_type_check CHECK (media_type IN ('image', 'video', 'audio'));
+    END IF;
+END $$;
+-- Index sur service_id
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE c.relname = 'idx_media_service_id' AND n.nspname = 'public'
+    ) THEN
+        CREATE INDEX idx_media_service_id ON media (service_id);
+    END IF;
+END $$;
+
+-- Table consultation_historique
+CREATE TABLE IF NOT EXISTS consultation_historique (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    service_id INTEGER NOT NULL REFERENCES services(id) ON DELETE CASCADE,
+    timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Table token_packs
+CREATE TABLE IF NOT EXISTS token_packs (
+    id SERIAL PRIMARY KEY,
+    name TEXT NOT NULL,
+    description TEXT,
+    price BIGINT NOT NULL,
+    tokens BIGINT NOT NULL
+);
+
+-- Table service_logs
+CREATE TABLE IF NOT EXISTS service_logs (
+    id SERIAL PRIMARY KEY,
+    service_id INTEGER NOT NULL REFERENCES services(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    action TEXT,
+    reason TEXT,
+    modification TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+--- CONTENU: migrations\20250529_add_gps_and_timestamp.sql --- 
+-- Ajout de la colonne gps à la table services
+ALTER TABLE services ADD COLUMN IF NOT EXISTS gps TEXT;
+
+-- Ajout de la colonne timestamp à la table service_logs
+ALTER TABLE service_logs ADD COLUMN IF NOT EXISTS timestamp TIMESTAMP DEFAULT NOW();
+--- CONTENU: migrations\20250601_create_alerts.sql --- 
+-- Table pour les alertes persistantes
+CREATE TABLE IF NOT EXISTS alerts (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id),
+    service_id INTEGER NOT NULL REFERENCES services(id),
+    client_id INTEGER NOT NULL REFERENCES users(id),
+    alert_type VARCHAR(32) NOT NULL,
+    is_read BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+--- CONTENU: migrations\20250603_create_interaction_history.sql --- 
+-- Table pour l'historique des interactions (message, audio, appel, avis, note, etc.)
+CREATE TABLE IF NOT EXISTS interaction_history (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id),
+    service_id INTEGER NOT NULL REFERENCES services(id),
+    interaction_type VARCHAR(32) NOT NULL,
+    content TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+--- CONTENU: migrations\20250604_create_service_reviews.sql --- 
+-- Table pour les avis et notations de service
+CREATE TABLE IF NOT EXISTS service_reviews (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id),
+    service_id INTEGER NOT NULL REFERENCES services(id),
+    rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
+    comment TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+--- CONTENU: migrations\20250605_create_service_scores.sql --- 
+-- Table pour le scoring intelligent des services
+CREATE TABLE IF NOT EXISTS service_scores (
+    service_id INTEGER PRIMARY KEY REFERENCES services(id),
+    score DOUBLE PRECISION NOT NULL,
+    last_computed_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);

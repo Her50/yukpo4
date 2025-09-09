@@ -1,0 +1,89 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE users\n        SET preferred_lang = COALESCE($1, preferred_lang),\n            updated_at = NOW()\n        WHERE id = $2\n        RETURNING id, email, password_hash, role, is_provider, tokens_balance,\n                  token_price_user, token_price_provider, commission_pct,\n                  preferred_lang, created_at, updated_at\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "email",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "password_hash",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "role",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "is_provider",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 5,
+        "name": "tokens_balance",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 6,
+        "name": "token_price_user",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 7,
+        "name": "token_price_provider",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 8,
+        "name": "commission_pct",
+        "type_info": "Float4"
+      },
+      {
+        "ordinal": 9,
+        "name": "preferred_lang",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 10,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 11,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Int4"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "18ed1096dde72be9080e0289174485d8da8f898c39023bbd71e2e86ee4e98bab"
+}

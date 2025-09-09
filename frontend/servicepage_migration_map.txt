@@ -1,0 +1,9 @@
+src\pages\dashboard\MesServicesPage.tsx (ligne 4) - type: ServicesPage\s*[{(]
+  > function MesServicesPage() {
+
+src\pages\dashboard\Services.tsx (ligne 9) - type: ServicesPage\s*[{(]
+  > function ServicesPage() {
+
+src\routes\routes.ts (ligne 4) - type: import\s+.*ServicePage
+  > import SingleServicePage from "@/pages/SingleServicePage"; // ✅ Nouveau composant
+

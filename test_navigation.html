@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Navigation</title>
+</head>
+<body>
+    <h1>Test de Navigation</h1>
+    <p>Ouvrez la console du navigateur et cliquez sur le lien ci-dessous pour tester la navigation vers la page de résultats :</p>
+    
+    <a href="http://localhost:5173/resultat-besoin" target="_blank">
+        Tester la page de résultats
+    </a>
+    
+    <script>
+        // Test de navigation programmatique
+        function testNavigation() {
+            const testData = {
+                results: [
+                    {
+                        id: "test_1",
+                        score: 0.95,
+                        metadata: {
+                            ia_response: JSON.stringify({
+                                intention: "recherche_besoin",
+                                titre: { valeur: "Test Service" },
+                                description: { valeur: "Service de test" },
+                                category: { valeur: "Test" }
+                            }),
+                            service_id: 123
+                        }
+                    }
+                ]
+            };
+            
+            // Simuler la navigation avec des données
+            const url = new URL('http://localhost:5173/resultat-besoin');
+            url.searchParams.set('test', 'true');
+            
+            // Ouvrir dans un nouvel onglet avec les données
+            const newWindow = window.open(url.toString(), '_blank');
+            
+            // Stocker les données de test
+            localStorage.setItem('test_navigation_data', JSON.stringify(testData));
+        }
+        
+        // Ajouter un bouton de test
+        const button = document.createElement('button');
+        button.textContent = 'Test Navigation avec Données';
+        button.onclick = testNavigation;
+        document.body.appendChild(button);
+    </script>
+</body>
+</html> 

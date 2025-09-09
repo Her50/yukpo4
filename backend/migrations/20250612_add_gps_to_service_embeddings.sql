@@ -1,0 +1,10 @@
+-- Désactivée : migration non utilisée (pgvector/vector)
+-- Le backend utilise Pinecone, pas pgvector ni le type vector
+-- (Ancien contenu commenté ci-dessous)
+--
+-- ALTER TABLE service_embeddings
+--   ADD COLUMN gps_prestataire geometry(Point,4326),
+--   ADD COLUMN gps_fixe geometry(Point,4326);
+--
+-- CREATE INDEX IF NOT EXISTS idx_service_embeddings_gps_prestataire ON service_embeddings USING GIST (gps_prestataire);
+-- CREATE INDEX IF NOT EXISTS idx_service_embeddings_gps_fixe ON service_embeddings USING GIST (gps_fixe);

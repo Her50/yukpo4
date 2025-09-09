@@ -1,0 +1,19 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+name: YukpomnangAIContext
+description: Contextualise les prompts et instructions pour Yukpomnang
+promptContext:
+  include:
+    - backend/src/**
+    - frontend/src/**
+    - orchestration_ia.rs
+    - app_ia.rs
+  tags:
+    - rust
+    - react
+    - IA
+    - orchestration
+

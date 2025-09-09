@@ -1,0 +1,7 @@
+{
+  "text": "Je vends une voiture en bon état",
+  "context": "ultra_advanced_input_analysis",
+  "includeSecurity": true,
+  "includeOptimization": true,
+  "includeModelRecommendation": true
+} 

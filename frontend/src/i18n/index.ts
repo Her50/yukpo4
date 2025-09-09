@@ -1,0 +1,28 @@
+import i18n from "i18next";
+import { initReactI18next } from "react-i18next";
+import LanguageDetector from "i18next-browser-languagedetector";
+
+// ⛔ Ne pas utiliser "@/"
+// ✅ Utiliser chemins relatifs
+import fr from "../locales/fr.json";
+import en from "../locales/en.json";
+import pt from "../locales/pt.json";
+import ar from "../locales/ar.json";
+import ff from "../locales/ff.json";
+
+i18n
+  .use(LanguageDetector)
+  .use(initReactI18next)
+  .init({
+    fallbackLng: "fr",
+    resources: {
+      fr: { translation: fr },
+      en: { translation: en },
+      pt: { translation: pt },
+      ar: { translation: ar },
+      ff: { translation: ff }
+    },
+    interpolation: { escapeValue: false }
+  });
+
+export default i18n;

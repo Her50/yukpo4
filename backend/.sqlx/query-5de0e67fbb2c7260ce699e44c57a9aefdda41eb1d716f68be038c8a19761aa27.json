@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE users SET is_provider = TRUE\n        WHERE id = $1 AND is_provider = FALSE\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "5de0e67fbb2c7260ce699e44c57a9aefdda41eb1d716f68be038c8a19761aa27"
+}

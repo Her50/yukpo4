@@ -1,0 +1,35 @@
+=== CORRECTION DE LA RECHERCHE D'IMAGES ===
+Base de données: yukpo_db
+
+PROBLÈME IDENTIFIÉ:
+La table media n'a pas les colonnes nécessaires pour la recherche d'images :
+- image_signature (JSONB)
+- image_hash (VARCHAR)
+- image_metadata (JSONB)
+
+SOLUTION:
+Exécuter le script SQL simple_fix.sql dans votre base de données
+
+COMMANDE PSQL:
+psql -h localhost -U postgres -d yukpo_db -f simple_fix.sql
+
+ÉTAPES:
+1. Exécuter simple_fix.sql dans yukpo_db
+2. Vérifier avec test_simple.sql
+3. Redémarrer le serveur: cargo run --features image_search
+
+Fichiers créés:
+✓ simple_fix.sql - Script de correction
+✓ test_simple.sql - Script de test
+✓ README_IMAGE_SEARCH_FIX.md - Documentation complète
+
+VÉRIFICATION:
+Après les corrections, vérifiez que les colonnes existent avec:
+SELECT column_name FROM information_schema.columns 
+WHERE table_name = 'media' AND column_name LIKE 'image_%';
+
+Testez la fonction avec:
+SELECT * FROM search_images_by_metadata(
+    '{"format": "jpeg", "width": 800, "height": 600, "file_size": 102400}',
+    5
+); 

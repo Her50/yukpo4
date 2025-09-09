@@ -1,0 +1,46 @@
+
+{
+  "app": {
+    "title": "Yukpo - Your intelligent assistant",
+    "slogan": "Describe your need. Yukpo does the rest."
+  },
+  "nav": {
+    "home": "Home",
+    "services": "Services",
+    "dashboard": "Dashboard",
+    "create_service": "Create a service",
+    "intelligent_services": "Intelligent services",
+    "login": "Login",
+    "logout": "Logout",
+    "register": "Register",
+    "my_profile": "My profile"
+  },
+  "form": {
+    "submit": "Submit",
+    "send": "Send to Yukpo",
+    "describe_need": "Describe your need",
+    "transcribe_audio": "🎤 Transcribe audio",
+    "upload_image": "📸 Upload image or video",
+    "upload_audio": "🎧 Upload audio file",
+    "upgrade_plan": "Upgrade your plan"
+  },
+  "matching": {
+    "detected_object": "Detected object",
+    "similar_results": "Matching results",
+    "no_results": "No matching results found",
+    "restricted_feature": "This feature is available for higher plans only."
+  },
+  "user": {
+    "plan_free": "Free Plan",
+    "plan_pro": "Pro Plan",
+    "plan_enterprise": "Enterprise Plan"
+  },
+  "status": {
+    "loading": "Analysis in progress...",
+    "error": "An error occurred",
+    "success": "Action successful"
+  },
+  "language": {
+    "switch": "Change language"
+  }
+}

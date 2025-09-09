@@ -1,0 +1,114 @@
+{
+  "client": "Thunder Client",
+  "collections": [
+    {
+      "name": "Auth",
+      "requests": [
+        {
+          "name": "Register",
+          "method": "POST",
+          "url": "http://localhost:3001/auth/register",
+          "body": {
+            "type": "json",
+            "raw": "{\n  \"email\": \"test@example.com\",\n  \"password\": \"password123\"\n}"
+          },
+          "tests": []
+        },
+        {
+          "name": "Login",
+          "method": "POST",
+          "url": "http://localhost:3001/auth/login",
+          "body": {
+            "type": "json",
+            "raw": "{\n  \"email\": \"test@example.com\",\n  \"password\": \"password123\"\n}"
+          },
+          "tests": []
+        }
+      ]
+    },
+    {
+      "name": "User",
+      "requests": [
+        {
+          "name": "Get Profile",
+          "method": "GET",
+          "url": "http://localhost:3001/user/me",
+          "tests": []
+        },
+        {
+          "name": "Update Profile",
+          "method": "PUT",
+          "url": "http://localhost:3001/user/me",
+          "body": {
+            "type": "json",
+            "raw": "{\n  \"name\": \"Nouveau Nom\"\n}"
+          },
+          "tests": []
+        },
+        {
+          "name": "Get Balance",
+          "method": "GET",
+          "url": "http://localhost:3001/users/balance",
+          "tests": []
+        }
+      ]
+    },
+    {
+      "name": "Services",
+      "requests": [
+        {
+          "name": "Create Service",
+          "method": "POST",
+          "url": "http://localhost:3001/services/create",
+          "body": {
+            "type": "json",
+            "raw": "{\n  \"user_id\": 1,\n  \"data\": {}\n}"
+          },
+          "tests": []
+        },
+        {
+          "name": "Filter Services",
+          "method": "GET",
+          "url": "http://localhost:3001/services/filter",
+          "tests": []
+        }
+      ]
+    },
+    {
+      "name": "IA",
+      "requests": [
+        {
+          "name": "Score Analyse",
+          "method": "POST",
+          "url": "http://localhost:3001/ia/score",
+          "body": {
+            "type": "json",
+            "raw": "{\n  \"texte\": \"Test IA\"\n}"
+          },
+          "tests": []
+        },
+        {
+          "name": "Predict IA",
+          "method": "POST",
+          "url": "http://localhost:3001/ia/predict",
+          "body": {
+            "type": "json",
+            "raw": "{\n  \"texte\": \"Bonjour\"\n}"
+          },
+          "tests": []
+        }
+      ]
+    },
+    {
+      "name": "Health",
+      "requests": [
+        {
+          "name": "Health Check",
+          "method": "GET",
+          "url": "http://localhost:3001/healthz",
+          "tests": []
+        }
+      ]
+    }
+  ]
+}

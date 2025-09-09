@@ -1,0 +1,15 @@
+[
+    {
+      "component": "DashboardPage",
+      "path": "/dashboard",
+      "role": "user",
+      "plan": "pro"
+    },
+    {
+      "component": "AdminPanel",
+      "path": "/admin",
+      "role": "admin",
+      "plan": "enterprise"
+    }
+  ]
+  

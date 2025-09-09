@@ -1,0 +1,1 @@
+Ce fichier est créé pour marquer les suppressions automatiques de doublons de migrations.

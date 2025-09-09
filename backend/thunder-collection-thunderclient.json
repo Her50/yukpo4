@@ -1,0 +1,93 @@
+{
+  "_type": "collection",
+  "__export_format": 2,
+  "__export_date": "2025-05-28T15:00:00.000Z",
+  "__export_source": "thunder-client",
+  "name": "Yukpomnang API",
+  "folders": [],
+  "requests": [
+    {
+      "_id": "auth-register",
+      "name": "Register",
+      "method": "POST",
+      "url": "http://localhost:3001/auth/register",
+      "body": {
+        "type": "json",
+        "raw": "{\n  \"email\": \"test@example.com\",\n  \"password\": \"password123\"\n}"
+      },
+      "tests": []
+    },
+    {
+      "_id": "auth-login",
+      "name": "Login",
+      "method": "POST",
+      "url": "http://localhost:3001/auth/login",
+      "body": {
+        "type": "json",
+        "raw": "{\n  \"email\": \"test@example.com\",\n  \"password\": \"password123\"\n}"
+      },
+      "tests": []
+    },
+    {
+      "_id": "user-profile",
+      "name": "Get Profile",
+      "method": "GET",
+      "url": "http://localhost:3001/user/me",
+      "tests": []
+    },
+    {
+      "_id": "user-balance",
+      "name": "Get Balance",
+      "method": "GET",
+      "url": "http://localhost:3001/users/balance",
+      "tests": []
+    },
+    {
+      "_id": "service-create",
+      "name": "Create Service",
+      "method": "POST",
+      "url": "http://localhost:3001/services/create",
+      "body": {
+        "type": "json",
+        "raw": "{\n  \"user_id\": 1,\n  \"data\": {}\n}"
+      },
+      "tests": []
+    },
+    {
+      "_id": "service-filter",
+      "name": "Filter Services",
+      "method": "GET",
+      "url": "http://localhost:3001/services/filter",
+      "tests": []
+    },
+    {
+      "_id": "ia-score",
+      "name": "Score Analyse",
+      "method": "POST",
+      "url": "http://localhost:3001/ia/score",
+      "body": {
+        "type": "json",
+        "raw": "{\n  \"texte\": \"Test IA\"\n}"
+      },
+      "tests": []
+    },
+    {
+      "_id": "ia-predict",
+      "name": "Predict IA",
+      "method": "POST",
+      "url": "http://localhost:3001/ia/predict",
+      "body": {
+        "type": "json",
+        "raw": "{\n  \"texte\": \"Bonjour\"\n}"
+      },
+      "tests": []
+    },
+    {
+      "_id": "healthz",
+      "name": "Health Check",
+      "method": "GET",
+      "url": "http://localhost:3001/healthz",
+      "tests": []
+    }
+  ]
+}

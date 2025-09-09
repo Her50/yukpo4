@@ -1,0 +1,11 @@
+{
+  "home": {
+    "title": "L’assistant intelligent qui transforme vos besoins en solutions.",
+    "cta": "Explorer les services"
+  },
+  "menu": {
+    "home": "Accueil",
+    "services": "Services",
+    "plans": "Abonnement"
+  }
+}

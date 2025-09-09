@@ -1,0 +1,48 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Echange",
+  "type": "object",
+  "required": ["intention", "mode", "mode_troc", "gps", "offre", "besoin"],
+  "properties": {
+    "intention": {
+      "type": "string",
+      "enum": ["echange"]
+    },
+    "mode": {
+      "type": "string",
+      "enum": ["echange"]
+    },
+    "mode_troc": {
+      "type": "string",
+      "enum": ["don", "echange", "vente"]
+    },
+    "gps": {
+      "type": "object",
+      "required": ["lat", "lon"],
+      "properties": {
+        "lat": { "type": "number", "minimum": -90, "maximum": 90 },
+        "lon": { "type": "number", "minimum": -180, "maximum": 180 }
+      },
+      "additionalProperties": false
+    },
+    "offre": {
+      "type": "object",
+      "required": ["nom"],
+      "properties": {
+        "nom": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "besoin": {
+      "type": "object",
+      "required": ["nom"],
+      "properties": {
+        "nom": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "user_id": { "type": ["integer", "null"] },
+    "timestamp": { "type": "string", "format": "date-time" }
+  },
+  "additionalProperties": false
+}

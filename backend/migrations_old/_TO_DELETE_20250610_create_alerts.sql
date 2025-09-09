@@ -1,0 +1,1 @@
+-- ARCHIVE: Doublon de creation de alerts. Voir 20250601_create_alerts.sql pour la version à garder.

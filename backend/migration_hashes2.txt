@@ -1,0 +1,7 @@
+0000_create_all_tables.sql !hash!  
+20250529_add_gps_and_timestamp.sql !hash!  
+20250601_add_economic_category_to_services.sql !hash!  
+20250601_create_alerts.sql !hash!  
+20250601_create_interaction_history.sql !hash!  
+20250601_create_service_scores.sql !hash!  
+20250601_remove_economic_category_from_services.sql !hash!

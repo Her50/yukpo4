@@ -1,0 +1,12 @@
+Comparaison des fichiers migrations_avant.txt et MIGRATIONS_APRES.TXT
+***** migrations_avant.txt
+--- AVANT --- 
+30/05/2025 13:36:37,29 
+0000_create_all_tables.sql
+***** MIGRATIONS_APRES.TXT
+--- APRES --- 
+30/05/2025 13:36:37,56 
+0000_create_all_tables.sql
+*****
+
+Des fichiers ont été ajoutes ou modifies dans migrations.

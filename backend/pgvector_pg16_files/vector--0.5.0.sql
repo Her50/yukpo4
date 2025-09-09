@@ -1,0 +1,1 @@
+-- SQL install script for pgvector extension version 0.5.0

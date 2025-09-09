@@ -1,0 +1,11 @@
+{
+    "/": "fade",
+    "/about": "fade",
+    "/login": "slide",
+    "/contact": "slide",
+    "/dashboard": "slide",
+    "/dashboard/ia-premium": "zoom",
+    "/dashboard/profile": "flip",
+    "/dashboard/services": "slide"
+  }
+  

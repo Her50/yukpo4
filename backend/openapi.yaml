@@ -1,0 +1,159 @@
+openapi: 3.0.0
+info:
+  title: Yukpomnang API
+  version: 1.0.0
+servers:
+  - url: http://localhost:3001
+paths:
+  /auth/register:
+    post:
+      summary: Register a new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                password:
+                  type: string
+      responses:
+        '200':
+          description: User registered
+  /auth/login:
+    post:
+      summary: Login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                password:
+                  type: string
+      responses:
+        '200':
+          description: Login success
+  /user/me:
+    get:
+      summary: Get user profile
+      responses:
+        '200':
+          description: User profile
+  /users/balance:
+    get:
+      summary: Get user balance
+      responses:
+        '200':
+          description: User balance
+  /services/create:
+    post:
+      summary: Create a service
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                user_id:
+                  type: integer
+                data:
+                  type: object
+      responses:
+        '200':
+          description: Service created
+  /services/filter:
+    get:
+      summary: Filter services
+      responses:
+        '200':
+          description: List of services
+  /ia/score:
+    post:
+      summary: Analyse IA score
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                texte:
+                  type: string
+      responses:
+        '200':
+          description: Score result
+  /ia/predict:
+    post:
+      summary: Predict IA
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                texte:
+                  type: string
+      responses:
+        '200':
+          description: Prediction result
+  /healthz:
+    get:
+      summary: Health check
+      responses:
+        '200':
+          description: OK
+  /echanges:
+    post:
+      summary: Créer un échange
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                user_id:
+                  type: integer
+                destinataire_id:
+                  type: integer
+                service_id:
+                  type: integer
+                message:
+                  type: string
+      responses:
+        '200':
+          description: Échange créé
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  payload:
+                    type: object
+  /echanges/{id}/status:
+    get:
+      summary: Statut d'un échange
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: integer
+          required: true
+          description: ID de l'échange
+      responses:
+        '200':
+          description: Statut de l'échange ou erreur
+          content:
+            application/json:
+              schema:
+                type: object

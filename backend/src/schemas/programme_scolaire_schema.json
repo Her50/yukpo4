@@ -1,0 +1,34 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ProgrammeScolaire",
+  "type": "object",
+  "required": ["intention", "classe", "annee", "etablissement", "listeproduit"],
+  "properties": {
+    "intention": {
+      "type": "string",
+      "enum": ["programme_scolaire"]
+    },
+    "classe": { "type": "string", "minLength": 1 },
+    "annee": { "type": "integer", "minimum": 2000, "maximum": 2100 },
+    "etablissement": { "type": "string", "minLength": 1 },
+    "listeproduit": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["isbn", "titre", "matiere"],
+        "properties": {
+          "isbn": { "type": "string", "pattern": "^\\d{10,13}$" },
+          "titre": { "type": "string", "minLength": 1 },
+          "matiere": { "type": "string", "minLength": 1 },
+          "obligatoire": { "type": "boolean" },
+          "commentaire": { "type": "string" }
+        },
+        "additionalProperties": false
+      },
+      "minItems": 1
+    },
+    "user_id": { "type": ["integer", "null"] },
+    "timestamp": { "type": "string", "format": "date-time" }
+  },
+  "additionalProperties": false
+}

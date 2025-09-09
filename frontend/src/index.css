@@ -1,0 +1,58 @@
+/* Fixes pour Mapbox GL JS - Élimine les warnings de dépréciation */
+@import './mapbox-fixes.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Style global complémentaire */
+body {
+  margin: 0;
+  font-family: 'Inter', sans-serif;
+  background-color: #f9f9f9;
+}
+
+/* Responsive table auto-break on small screen */
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  padding: 0.5rem;
+  border: 1px solid #ddd;
+  text-align: left;
+  word-break: break-word;
+}
+
+/* ✅ Impression PDF uniquement de contenu ciblé */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+
+  .printable,
+  .printable * {
+    visibility: visible;
+  }
+
+  .printable {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+  }
+
+  .no-print,
+  button,
+  nav,
+  footer {
+    display: none !important;
+  }
+}
+
+/* Bouton principal pour action IA */
+.btn-primary {
+  @apply bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition;
+}

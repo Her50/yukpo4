@@ -1,0 +1,73 @@
+/* Styles personnalisés pour MapboxWrapper */
+
+.mapbox-wrapper {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+/* Variables CSS pour les couleurs de contraste élevé */
+.mapbox-wrapper {
+  --mapbox-control-bg: #ffffff;
+  --mapbox-control-color: #404040;
+  --mapbox-control-border: #e0e0e0;
+  --mapbox-control-hover-bg: #f0f0f0;
+}
+
+/* Mode contraste élevé */
+@media (forced-colors: active) {
+  .mapbox-wrapper {
+    --mapbox-control-bg: Canvas;
+    --mapbox-control-color: CanvasText;
+    --mapbox-control-border: CanvasText;
+    --mapbox-control-hover-bg: Highlight;
+  }
+}
+
+/* Mode sombre */
+@media (prefers-color-scheme: dark) {
+  .mapbox-wrapper {
+    --mapbox-control-bg: #2d3748;
+    --mapbox-control-color: #e2e8f0;
+    --mapbox-control-border: #4a5568;
+    --mapbox-control-hover-bg: #4a5568;
+  }
+}
+
+/* Styles pour les contrôles Mapbox */
+.mapbox-wrapper .mapboxgl-ctrl {
+  background-color: var(--mapbox-control-bg);
+  color: var(--mapbox-control-color);
+  border: 1px solid var(--mapbox-control-border);
+}
+
+.mapbox-wrapper .mapboxgl-ctrl button {
+  background-color: var(--mapbox-control-bg);
+  color: var(--mapbox-control-color);
+  border: 1px solid var(--mapbox-control-border);
+}
+
+.mapbox-wrapper .mapboxgl-ctrl button:hover {
+  background-color: var(--mapbox-control-hover-bg);
+}
+
+.mapbox-wrapper .mapboxgl-ctrl button:active {
+  background-color: var(--mapbox-control-hover-bg);
+}
+
+/* Accessibilité - Focus visible */
+.mapbox-wrapper .mapboxgl-ctrl button:focus {
+  outline: 2px solid var(--mapbox-control-color);
+  outline-offset: 2px;
+}
+
+/* Réduction du mouvement */
+@media (prefers-reduced-motion: reduce) {
+  .mapbox-wrapper .mapboxgl-ctrl button {
+    transition: none;
+  }
+  
+  .mapbox-wrapper .mapboxgl-ctrl-icon {
+    animation: none;
+  }
+} 

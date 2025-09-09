@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE users SET tokens_balance = tokens_balance + $1 WHERE id = $2 RETURNING tokens_balance",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "tokens_balance",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int4"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "c34ac018dbabb3266f8790d9c0a03588a2bbcf883acf38bef7454ec2df1d428b"
+}

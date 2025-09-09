@@ -1,0 +1,1 @@
+-- ARCHIVE: Doublon de creation de service_scores. Voir 20250601_create_service_scores.sql pour la version à garder.

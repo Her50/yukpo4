@@ -1,0 +1,34 @@
+# Script pour corriger le fichier .env
+$envContent = @"
+# Configuration du frontend Yukpo
+
+# Configuration de l'API backend
+# IMPORTANT : Cette URL doit correspondre au port du backend Rust (3001)
+VITE_APP_API_URL=http://127.0.0.1:3001
+VITE_APP_EMBEDDING_URL=http://localhost:8000
+
+# Configuration Google Maps API
+# IMPORTANT : Cette variable doit etre renseignee pour que la carte fonctionne dans l'application.
+# Elle est utilisee dans le code via import.meta.env.VITE_APP_GOOGLE_MAPS_API_KEY
+# Obtenez votre cle sur : https://console.cloud.google.com/apis/credentials
+VITE_APP_GOOGLE_MAPS_API_KEY=AIzaSyDFfWEq1Umm06SNTbR-cRhRQ5Sq_taEAWQ
+
+# Configuration de l'environnement
+VITE_APP_ENV=development
+VITE_APP_DEBUG=true
+
+# Configuration des cles API
+VITE_APP_YUKPO_API_KEY=yukpo_frontend_key_2024
+
+# Configuration des services
+VITE_APP_AI_SERVICE_URL=https://api.openai.com/v1
+VITE_APP_PINECONE_API_KEY=pcsk_6aD9si_CSCQPpYjfbVR5VKmqaZQYDu2P49KsvSBvbgUftR24tRMYp7YesZfNWDrALRhdmu
+
+# Configuration de l'interface
+VITE_APP_TITLE=Yukpo - Services Intelligents
+VITE_APP_DESCRIPTION=Plateforme de services intelligents avec IA
+"@
+
+$envContent | Out-File -FilePath ".env" -Encoding UTF8
+Write-Host "Fichier .env corrige avec succes !" -ForegroundColor Green
+Write-Host "Redemarre le serveur frontend avec : npm run dev" -ForegroundColor Yellow 

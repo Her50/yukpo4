@@ -1,0 +1,310 @@
+/* Styles pour la page ResultatBesoin - Responsive et moderne */
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+/* Responsive pour smartphones */
+@media (max-width: 768px) {
+  .container {
+    padding: 0 0.5rem;
+  }
+  
+  .header {
+    margin-bottom: 1.5rem;
+  }
+  
+  .header h1 {
+    font-size: 1.5rem;
+    line-height: 2rem;
+  }
+  
+  .stats {
+    flex-direction: column;
+    gap: 1rem;
+  }
+  
+  .grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  
+  .card {
+    margin: 0;
+  }
+  
+  .cardHeader {
+    padding: 1rem;
+  }
+  
+  .cardTitle {
+    font-size: 1.125rem;
+    line-height: 1.75rem;
+  }
+  
+  .badges {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  
+  .metadata {
+    flex-direction: column;
+    gap: 0.5rem;
+    align-items: flex-start;
+  }
+  
+  .prestataireSection {
+    padding: 0.75rem;
+  }
+  
+  .actions {
+    gap: 0.75rem;
+  }
+  
+  .mainActions {
+    grid-template-columns: 1fr;
+  }
+  
+  .secondaryActions {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.5rem;
+  }
+  
+  .whatsappButton {
+    font-size: 0.875rem;
+  }
+  
+  .footer {
+    margin-top: 2rem;
+    padding: 1rem;
+  }
+  
+  .footerGrid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+}
+
+/* Responsive pour tablettes */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+  }
+  
+  .mainActions {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Animations et transitions */
+.card {
+  transition: all 0.3s ease;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+.button {
+  transition: all 0.2s ease;
+}
+
+.button:hover {
+  transform: translateY(-1px);
+}
+
+/* Modal responsive */
+.modal {
+  padding: 1rem;
+}
+
+.modalContent {
+  max-width: 90vw;
+  width: 100%;
+  max-height: 90vh;
+}
+
+@media (max-width: 640px) {
+  .modalContent {
+    max-width: 95vw;
+    margin: 0.5rem;
+  }
+  
+  .chatModal {
+    height: 80vh;
+  }
+}
+
+/* Améliorations pour l'accessibilité */
+.button:focus {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+.input:focus {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+/* Styles pour les statuts en ligne */
+.online {
+  color: #10b981;
+}
+
+.offline {
+  color: #6b7280;
+}
+
+/* Améliorations pour les cartes */
+.cardHeader {
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.cardContent {
+  padding-top: 0;
+}
+
+/* Styles pour les badges */
+.badge {
+  font-size: 0.75rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.375rem;
+}
+
+/* Styles pour les avatars */
+.avatar {
+  border: 2px solid #e5e7eb;
+}
+
+.avatarFallback {
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+/* Styles pour les boutons d'action */
+.actionButton {
+  min-height: 2.5rem;
+  font-weight: 500;
+}
+
+.actionButtonSmall {
+  min-height: 2rem;
+  font-size: 0.875rem;
+}
+
+/* Styles pour le bouton retour */
+.backButton {
+  color: #6b7280;
+  transition: color 0.2s ease;
+}
+
+.backButton:hover {
+  color: #374151;
+}
+
+/* Styles pour le footer informatif */
+.footer {
+  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+  border: 1px solid #bfdbfe;
+  border-radius: 0.5rem;
+}
+
+.footerTitle {
+  color: #1e40af;
+  font-weight: 600;
+}
+
+.footerStep {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.stepNumber {
+  width: 1.5rem;
+  height: 1.5rem;
+  background-color: #bfdbfe;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #1e40af;
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+/* Styles pour les modals */
+.modalOverlay {
+  background-color: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+}
+
+.modalContent {
+  background-color: white;
+  border-radius: 0.5rem;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+}
+
+/* Styles pour le chat */
+.chatHeader {
+  border-bottom: 1px solid #e5e7eb;
+  background-color: #f9fafb;
+}
+
+.chatBody {
+  background-color: #f9fafb;
+  overflow-y: auto;
+}
+
+.chatInput {
+  border-top: 1px solid #e5e7eb;
+  background-color: white;
+}
+
+.chatInput input {
+  border: 1px solid #d1d5db;
+  border-radius: 0.375rem;
+  transition: border-color 0.2s ease;
+}
+
+.chatInput input:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* Responsive pour très petits écrans */
+@media (max-width: 480px) {
+  .container {
+    padding: 0 0.25rem;
+  }
+  
+  .header h1 {
+    font-size: 1.25rem;
+    line-height: 1.75rem;
+  }
+  
+  .cardHeader {
+    padding: 0.75rem;
+  }
+  
+  .cardContent {
+    padding: 0.75rem;
+  }
+  
+  .mainActions {
+    gap: 0.5rem;
+  }
+  
+  .secondaryActions {
+    gap: 0.25rem;
+  }
+  
+  .button {
+    font-size: 0.75rem;
+    padding: 0.5rem 0.75rem;
+  }
+} 

@@ -1,0 +1,49 @@
+# Configuration du matching pour Yukpo
+[matching]
+# Seuil de score minimum pour un match (0.0 à 1.0)
+# Remis à 0.7 avec le nouveau modèle supérieur
+min_score_threshold = 0.7
+
+# Seuil de score pour arrêt anticipé (0.0 à 1.0)
+early_stop_threshold = 0.9
+
+# Taille du batch pour le traitement
+batch_size = 50
+
+# Limite maximale de candidats à traiter
+max_candidates = 1000
+
+# Délai de protection contre les doublons en secondes
+duplicate_protection_delay = 600
+
+# Activer le cache de réputation
+enable_reputation_cache = true
+
+# TTL du cache de réputation en secondes
+reputation_cache_ttl = 3600
+
+# Pondération des scores
+[scoring]
+# Poids du score sémantique (Pinecone)
+semantic_weight = 0.9
+
+# Poids du score d'interaction
+interaction_weight = 0.1
+
+# Poids de la distance géographique
+geo_weight = 0.3
+
+# Poids de la similarité offre/besoin
+offre_weight = 0.2
+
+# Poids de la quantité
+quantite_weight = 0.1
+
+# Poids de la réputation utilisateur
+reputation_weight = 0.1
+
+# Poids de la disponibilité
+disponibilite_weight = 0.05
+
+# Poids des contraintes métier
+contraintes_weight = 0.05 

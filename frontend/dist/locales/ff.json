@@ -1,0 +1,46 @@
+
+{
+  "app": {
+    "title": "Yukpo - Jeyngol moƴƴo",
+    "slogan": "Naɗ konngol maa. Yukpo ina waawi waɗugo ɗum."
+  },
+  "nav": {
+    "home": "Ndeer",
+    "services": "Jeygol",
+    "dashboard": "Kaɓirgal",
+    "create_service": "Sos jeyngol",
+    "intelligent_services": "Jeygol moƴƴi",
+    "login": "Janngu",
+    "logout": "Yaltu",
+    "register": "Janngu",
+    "my_profile": "Alkibaaru am"
+  },
+  "form": {
+    "submit": "Nasta",
+    "send": "Nasta no Yukpo",
+    "describe_need": "Naɗ konngol maa",
+    "transcribe_audio": "🎤 Ɓeydude hoore",
+    "upload_image": "📸 Suɓo nanndu walla vidiyo",
+    "upload_audio": "🎧 Suɓo fayil hoore",
+    "upgrade_plan": "Waylo plan maa"
+  },
+  "matching": {
+    "detected_object": "Ko fayii",
+    "similar_results": "Njiɗɗiɗi mbiydi",
+    "no_results": "Ala mbiydi fayii",
+    "restricted_feature": "Kono jeygol ɗi anndaa plan ɓen"
+  },
+  "user": {
+    "plan_free": "Plan daɗi",
+    "plan_pro": "Plan Pro",
+    "plan_enterprise": "Plan Enterprise"
+  },
+  "status": {
+    "loading": "Nastaade...",
+    "error": "Feewi moƴƴi",
+    "success": "Ɓeydii e jam"
+  },
+  "language": {
+    "switch": "Waylo ɗemngal"
+  }
+}

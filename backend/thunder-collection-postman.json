@@ -1,0 +1,161 @@
+{
+  "info": {
+    "_postman_id": "b1e1e1e1-1111-2222-3333-444455556666",
+    "name": "Yukpomnang API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Register",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"test@example.com\",\n  \"password\": \"password123\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3001/auth/register",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3001",
+          "path": ["auth", "register"]
+        }
+      }
+    },
+    {
+      "name": "Login",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"test@example.com\",\n  \"password\": \"password123\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3001/auth/login",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3001",
+          "path": ["auth", "login"]
+        }
+      }
+    },
+    {
+      "name": "Get Profile",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "http://localhost:3001/user/me",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3001",
+          "path": ["user", "me"]
+        }
+      }
+    },
+    {
+      "name": "Get Balance",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "http://localhost:3001/users/balance",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3001",
+          "path": ["users", "balance"]
+        }
+      }
+    },
+    {
+      "name": "Create Service",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"user_id\": 1,\n  \"data\": {}\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3001/services/create",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3001",
+          "path": ["services", "create"]
+        }
+      }
+    },
+    {
+      "name": "Filter Services",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "http://localhost:3001/services/filter",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3001",
+          "path": ["services", "filter"]
+        }
+      }
+    },
+    {
+      "name": "Score Analyse",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"texte\": \"Test IA\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3001/ia/score",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3001",
+          "path": ["ia", "score"]
+        }
+      }
+    },
+    {
+      "name": "Predict IA",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"texte\": \"Bonjour\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:3001/ia/predict",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3001",
+          "path": ["ia", "predict"]
+        }
+      }
+    },
+    {
+      "name": "Health Check",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "http://localhost:3001/healthz",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "3001",
+          "path": ["healthz"]
+        }
+      }
+    }
+  ]
+}

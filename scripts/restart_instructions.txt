@@ -1,0 +1,31 @@
+INSTRUCTIONS DE REDEMARRAGE DU SERVEUR BACKEND
+=============================================
+
+PROBLEME IDENTIFIE ET CORRIGE:
+L'erreur 500 sur /api/user/me etait due a une incompatibilite de types chrono:
+- Base de donnees: TIMESTAMPTZ (timestamp with timezone)
+- Code Rust: NaiveDateTime (timestamp sans timezone)
+- SOLUTION: Changement vers DateTime<Utc> dans user_model.rs
+
+CORRECTION APPLIQUEE:
+- Fichier backend/src/models/user_model.rs modifie
+- NaiveDateTime -> DateTime<Utc> pour created_at et updated_at
+- Compilation reussie avec cargo check
+
+REDEMARRAGE OBLIGATOIRE:
+Le serveur backend doit etre redemarre pour appliquer les changements!
+
+ETAPES DE REDEMARRAGE:
+1. Ouvrez un NOUVEAU terminal
+2. Naviguez vers le backend: cd backend
+3. Arretez le serveur actuel (Ctrl+C)
+4. Relancez le serveur: cargo run
+5. Testez l'API: GET /api/user/me
+
+VERIFICATION:
+Apres redemarrage, l'API /api/user/me devrait retourner:
+- Status 200 au lieu de 500
+- Les donnees utilisateur au lieu d'une erreur
+
+=== INSTRUCTIONS TERMINEES ===
+Redemarrez le serveur backend et testez l'API! 

@@ -1,0 +1,22 @@
+/* 🎨 Styles propres à la page /services */
+
+.sectionContainer {
+  padding: 60px 20px;
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.sectionTitle {
+  font-size: 28px;
+  font-weight: bold;
+  margin-bottom: 20px;
+  color: #1e293b;
+  text-align: center;
+}
+
+.sectionText {
+  font-size: 16px;
+  color: #444;
+  line-height: 1.7;
+  text-align: justify;
+}

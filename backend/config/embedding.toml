@@ -1,0 +1,23 @@
+# Configuration du microservice d'embedding pour Yukpo
+[embedding]
+# URL du microservice d'embedding
+api_url = "http://localhost:8000"
+
+# Clé API pour l'authentification
+api_key = "yukpo_embedding_key_2024"
+
+# Configuration des timeouts
+timeout_seconds = 60
+
+# Configuration des retries
+max_retries = 3
+retry_delay_ms = 1000
+
+# Configuration du batch processing
+batch_size = 10
+batch_timeout_seconds = 60
+
+# Configuration des logs
+log_level = "info"
+log_embedding_calls = true
+log_performance_metrics = true 

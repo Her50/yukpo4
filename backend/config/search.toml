@@ -1,0 +1,86 @@
+# Configuration de recherche native PostgreSQL pour production
+# Toutes les valeurs sont configurables via variables d'environnement
+
+[general]
+# Nombre maximum de résultats par défaut
+max_results = 25
+# Nombre de résultats pour le tri initial
+initial_results = 50
+# Seuil de score minimum pour inclure un résultat
+min_score_threshold = 0.05
+# Activer la recherche hybride (full-text + trigram)
+enable_hybrid_search = true
+# Activer la recherche géospatiale
+enable_geospatial = true
+# Langue par défaut pour la recherche full-text
+default_language = "french"
+
+[scoring]
+# Boosts pour différents champs
+title_boost = 2.0
+description_boost = 1.0
+category_boost = 1.5
+location_boost = 1.3
+recency_boost = 0.2
+# Nombre de jours pour le bonus de récence
+recency_days = 14
+# Boost pour les services populaires
+popularity_boost = 0.3
+# Boost pour les services vérifiés
+verified_boost = 0.5
+# Scores minimums
+min_fulltext_score = 0.08
+min_trigram_similarity = 0.25
+
+[filters]
+# Activation des filtres
+enable_category_filter = true
+enable_location_filter = true
+enable_price_filter = true
+enable_availability_filter = true
+enable_rating_filter = true
+
+# Catégories et localisations prioritaires (configurables via variables d'environnement)
+# Ces listes sont vides par défaut et doivent être configurées selon le déploiement
+priority_categories = []
+priority_locations = []
+
+[geospatial]
+# Configuration géospatiale
+default_search_radius_km = 25.0
+max_search_radius_km = 100.0
+use_postgis = true
+proximity_boost = 0.4
+distance_decay_factor = 0.1
+
+# Coordonnées par défaut (configurables via variables d'environnement)
+# default_coordinates = []  # À configurer selon le déploiement
+
+[performance]
+# Configuration des performances
+query_cache_size = 1000
+cache_ttl_seconds = 300
+enable_redis_cache = false
+query_timeout_ms = 5000
+max_retries = 2
+enable_compression = true
+
+# Profils de configuration
+[profiles]
+[profiles.production]
+max_results = 20
+enable_redis_cache = true
+query_cache_size = 5000
+cache_ttl_seconds = 600
+min_fulltext_score = 0.1
+
+[profiles.development]
+max_results = 50
+enable_redis_cache = false
+query_cache_size = 100
+min_fulltext_score = 0.05
+
+[profiles.testing]
+max_results = 10
+query_timeout_ms = 1000
+max_retries = 1 

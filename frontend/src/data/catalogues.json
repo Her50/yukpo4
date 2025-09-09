@@ -1,0 +1,16 @@
+[
+  {
+    "id": 1,
+    "name": "Service Alpha",
+    "category": "Logement",
+    "price": 250,
+    "features": ["Wifi", "Climatisation", "Sécurité"]
+  },
+  {
+    "id": 2,
+    "name": "Service Bêta",
+    "category": "Logement",
+    "price": 300,
+    "features": ["Wifi", "Sécurité"]
+  }
+]

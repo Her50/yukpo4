@@ -1,0 +1,824 @@
+use std::sync::Arc;
+
+use axum::{
+    extract::{Path, Query, State, Extension},
+    response::IntoResponse,
+    http::StatusCode,
+    Json,
+};
+use serde_json::{json, Value};
+use sqlx::Row;
+use log::{info, error, warn};
+use serde::Deserialize;
+use crate::middlewares::jwt::AuthenticatedUser;
+use crate::state::AppState;
+// use crate::services::mongo_history_service::MongoHistoryService;
+// use crate::services::scoring_service::compute_score;
+
+#[derive(Debug, Deserialize)]
+pub struct NewServiceRequest {
+    pub user_id: i32,
+    pub data: Value,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct NewUserRequest {
+    pub email: String,
+    pub password_hash: String,
+    pub lang: Option<String>,
+}
+
+/// ? Création d'un service
+pub async fn creer_service(
+    State(state): State<Arc<AppState>>,
+    Json(payload): Json<NewServiceRequest>,
+) -> axum::response::Response {
+    info!("[creer_service] Called for user_id={}", payload.user_id);
+    
+    // ?? NOUVEAU : Détection automatique du type de données reçues
+    let data_to_process = if payload.data.is_string() {
+        // Cas 1: Texte brut reçu - Appeler l'IA pour le traiter
+        let user_text = payload.data.as_str().unwrap_or("");
+        info!("[creer_service] Texte brut détecté: {}", user_text);
+        
+        // Appeler l'IA pour traiter le texte et générer le JSON structuré
+        match crate::services::ia::process_text_to_service_json(&state.ia, user_text).await {
+            Ok(ia_response) => {
+                info!("[creer_service] IA a généré le JSON structuré avec succès");
+                ia_response
+            },
+            Err(e) => {
+                error!("[creer_service] Erreur lors du traitement IA: {:?}", e);
+                return (StatusCode::BAD_REQUEST, Json(json!({
+                    "error": "Impossible de traiter le texte avec l'IA",
+                    "details": e.to_string()
+                }))).into_response();
+            }
+        }
+    } else if payload.data.is_object() {
+        // Cas 2: JSON structuré déjà reçu - Utiliser directement
+        info!("[creer_service] JSON structuré déjà reçu, validation directe");
+        payload.data
+    } else {
+        // Cas 3: Format invalide
+        error!("[creer_service] Format de données invalide: {:?}", payload.data);
+        return (StatusCode::BAD_REQUEST, Json(json!({
+            "error": "Format de données invalide. Envoyez du texte ou un JSON structuré."
+        }))).into_response();
+    };
+    
+    // Créer une nouvelle requête avec les données traitées par l'IA
+    let processed_payload = NewServiceRequest {
+        user_id: payload.user_id,
+        data: data_to_process,
+    };
+    
+    // Utiliser le service creer_service qui retourne les tokens consommés
+    match crate::services::creer_service::creer_service(
+        &state.pg,
+        processed_payload.user_id,
+        &processed_payload.data,
+        &state.redis_client,
+    ).await {
+        Ok((service_creation_result, tokens_consumed)) => {
+            info!("[creer_service] ? Service créé avec succès - Tokens consommés: {}", tokens_consumed);
+            info!("[creer_service] Type des tokens: {:?}", std::any::type_name_of_val(&tokens_consumed));
+            
+            // Construire la réponse avec les headers de tokens
+            let mut response = (StatusCode::CREATED, Json(service_creation_result.clone())).into_response();
+            
+            // Le coût a déjà été calculé et déduit par le middleware check_tokens
+            // On ajoute juste les headers informatifs sans recalculer
+            response.headers_mut().insert(
+                "x-tokens-consumed",
+                axum::http::HeaderValue::from_str(&tokens_consumed.to_string()).unwrap_or_else(|_| axum::http::HeaderValue::from_static("0"))
+            );
+            
+            // Le coût en XAF est déjà calculé par le middleware check_tokens
+            // On récupère la valeur depuis le contexte ou on laisse vide
+            info!("[creer_service] Headers ajoutés: x-tokens-consumed={}", tokens_consumed);
+            
+            response
+        },
+        Err(e) => {
+            error!("[creer_service] Erreur création service: {:?}", e);
+            match e {
+                crate::core::types::AppError::BadRequest(msg) => {
+                    (StatusCode::BAD_REQUEST, Json(json!({"error": msg}))).into_response()
+                },
+                crate::core::types::AppError::Internal(msg) => {
+                    (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": msg}))).into_response()
+                },
+                _ => {
+                    (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": "Erreur création service"}))).into_response()
+                }
+            }
+        }
+    }
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ActivateParams {
+    pub extend_hours: f64,
+}
+
+pub async fn reactivate_service(
+    State(state): State<Arc<AppState>>,
+    Path((service_id, user_id)): Path<(i32, i32)>,
+    Query(params): Query<ActivateParams>,
+) -> axum::response::Response {
+    info!("[reactivate_service] Called for service_id={}, user_id={}, extend_hours={}", service_id, user_id, params.extend_hours);
+    let pg_pool = &state.pg;
+    let mut conn = match pg_pool.acquire().await {
+        Ok(c) => c,
+        Err(e) => {
+            return (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": format!("DB acquire error: {}", e)}))).into_response();
+        }
+    };
+    if let Err(e) = sqlx::query!(
+        r#"
+        UPDATE services
+        SET is_active = TRUE,
+            last_reactivated_at = NOW()
+        WHERE id = $1 AND user_id = $2
+        "#,
+        service_id,
+        user_id
+    )
+    .execute(&mut *conn)
+    .await {
+        return (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": format!("Update error: {}", e)}))).into_response();
+    }
+    (StatusCode::OK, Json(json!({"message": "Service réactivé"}))).into_response()
+}
+
+pub async fn insert_user(
+    State(state): State<Arc<AppState>>,
+    Json(payload): Json<NewUserRequest>,
+) -> axum::response::Response {
+    info!("[insert_user] Called for email={}", payload.email);
+    let pg_pool = &state.pg;
+    let mut conn = match pg_pool.acquire().await {
+        Ok(c) => c,
+        Err(e) => {
+            return (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": format!("DB acquire error: {}", e)}))).into_response();
+        }
+    };
+    if let Err(e) = sqlx::query!(
+        r#"
+        INSERT INTO users (email, password_hash, preferred_lang)
+        VALUES ($1, $2, $3)
+        "#,
+        payload.email,
+        payload.password_hash,
+        payload.lang.clone().unwrap_or_else(|| "fr".to_string()),
+    )
+    .execute(&mut *conn)
+    .await {
+        return (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": format!("Insert error: {}", e)}))).into_response();
+    }
+    (StatusCode::CREATED, Json(json!({"message": "Utilisateur enregistré avec succès"}))).into_response()
+}
+
+#[derive(Debug, Deserialize)]
+pub struct FilterQuery {
+    pub actif: Option<bool>,
+    pub category: Option<String>,
+    pub min_price: Option<f64>,
+    pub max_price: Option<f64>,
+}
+
+pub async fn filter_services(
+    State(state): State<Arc<AppState>>,
+    Query(query): Query<FilterQuery>,
+) -> axum::response::Response {
+    info!("[filter_services] Called with params: actif={:?}, category={:?}, min_price={:?}, max_price={:?}", query.actif, query.category, query.min_price, query.max_price);
+    let pg_pool = &state.pg;
+    let mut sql = "SELECT id, data, is_active FROM services WHERE 1=1".to_string();
+    let mut args: Vec<Value> = Vec::new();
+
+    if let Some(a) = query.actif {
+        sql += &format!(" AND is_active = ${}", args.len() + 1);
+        args.push(json!(a));
+    }
+    if let Some(cat) = &query.category {
+        sql += &format!(" AND data->>'category' = ${}", args.len() + 1);
+        args.push(json!(cat));
+    }
+    if let Some(min) = query.min_price {
+        sql += &format!(" AND (data->>'price')::FLOAT >= ${}", args.len() + 1);
+        args.push(json!(min));
+    }
+    if let Some(max) = query.max_price {
+        sql += &format!(" AND (data->>'price')::FLOAT <= ${}", args.len() + 1);
+        args.push(json!(max));
+    }
+
+    sql += " ORDER BY created_at DESC";
+
+    let mut q = sqlx::query(&sql);
+    for val in &args {
+        q = q.bind(val);
+    }
+    let rows = match q.fetch_all(pg_pool).await {
+        Ok(r) => r,
+        Err(e) => {
+            return (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": format!("Query error: {}", e)}))).into_response();
+        }
+    };
+
+    let result: Vec<_> = rows
+        .into_iter()
+        .map(|r| json!({
+            "id": r.try_get::<i32, _>("id").unwrap_or_default(),
+            "data": r.try_get::<Value, _>("data").unwrap_or(Value::Null),
+            "is_active": r.try_get::<bool, _>("is_active").unwrap_or(false)
+        }))
+        .collect();
+
+    (StatusCode::OK, Json(serde_json::Value::Array(result))).into_response()
+}
+
+pub async fn get_related_services(
+    State(state): State<Arc<AppState>>,
+    Path(id): Path<i32>,
+) -> axum::response::Response {
+    info!("[get_related_services] Called for id={}", id);
+    let pg_pool = &state.pg;
+    let rows = match sqlx::query!(
+        r#"
+        SELECT id, data
+        FROM services
+        WHERE id != $1
+        ORDER BY created_at DESC
+        LIMIT 5
+        "#,
+        id
+    )
+    .fetch_all(pg_pool)
+    .await {
+        Ok(r) => r,
+        Err(e) => {
+            return (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": format!("Query error: {}", e)}))).into_response();
+        }
+    };
+
+    let result: Vec<_> = rows
+        .into_iter()
+        .map(|r| json!({
+            "id": r.id,
+            "data": serde_json::from_value(r.data).unwrap_or(Value::Null)
+        }))
+        .collect();
+
+    (StatusCode::OK, Json(serde_json::Value::Array(result))).into_response()
+}
+
+#[allow(dead_code)]
+// Helper ? ajouter en bas du fichier (ou dans un module utils)
+fn is_valid_gps(gps: &str) -> bool {
+    let re = regex::Regex::new(r"^-?\d{1,3}\.\d+,-?\d{1,3}\.\d+$").unwrap();
+    re.is_match(gps)
+}
+
+// use crate::services::service_history_service::TOKEN_DEBIT_PER_CLICK;
+
+#[derive(Deserialize)]
+pub struct UpdateTokenDebitRequest {
+    pub new_value: i64,
+}
+
+/// ? PATCH /admin/token_debit ? modifie dynamiquement le montant de prélèvement de tokens (admin uniquement)
+pub async fn update_token_debit(
+    State(_state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+    Json(req): Json<UpdateTokenDebitRequest>,
+) -> axum::response::Response {
+    if user.role != "admin" {
+        return axum::response::IntoResponse::into_response((axum::http::StatusCode::FORBIDDEN, Json(serde_json::json!({"error": "Accès réservé ? l'admin"}))));
+    }
+    if req.new_value < 1 || req.new_value > 10000 {
+        return axum::response::IntoResponse::into_response((axum::http::StatusCode::BAD_REQUEST, Json(serde_json::json!({"error": "Valeur hors limites autorisées (1-10000)"}))));
+    }
+    // TOKEN_DEBIT_PER_CLICK.store(req.new_value, std::sync::atomic::Ordering::Relaxed);
+    axum::response::IntoResponse::into_response((axum::http::StatusCode::OK, Json(serde_json::json!({"message": "Montant modifié", "nouvelle_valeur": req.new_value}))))
+}
+
+#[derive(Debug, Deserialize)]
+pub struct UpdateServiceRequest {
+    pub data: Value,
+}
+
+/// ? Modification d'un service existant
+pub async fn modifier_service(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+    Path(service_id): Path<i32>,
+    Json(payload): Json<UpdateServiceRequest>,
+) -> axum::response::Response {
+    let user_id = user.id;
+    info!("[modifier_service] Called for service_id={}, user_id={}", service_id, user_id);
+    
+    let pg_pool = &state.pg;
+    
+    // Vérifier que le service appartient ? l'utilisateur
+    let service_exists = sqlx::query!(
+        "SELECT id FROM services WHERE id = $1 AND user_id = $2",
+        service_id,
+        user_id
+    )
+    .fetch_optional(pg_pool)
+    .await;
+    
+    match service_exists {
+        Ok(None) => {
+            return (StatusCode::NOT_FOUND, Json(json!({"error": "Service non trouvé ou non autorisé"}))).into_response();
+        },
+        Ok(Some(_)) => {
+            // Service trouvé, on peut le modifier
+        },
+        Err(e) => {
+            error!("[modifier_service] Erreur vérification service: {}", e);
+            return (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": "Erreur base de données"}))).into_response();
+        }
+    }
+    
+    // Mettre ? jour le service
+    let result = sqlx::query!(
+        r#"
+        UPDATE services 
+        SET data = $1, updated_at = NOW()
+        WHERE id = $2 AND user_id = $3
+        RETURNING id
+        "#,
+        payload.data,
+        service_id,
+        user_id
+    )
+    .fetch_optional(pg_pool)
+    .await;
+    
+    match result {
+        Ok(Some(_)) => {
+            info!("[modifier_service] ? Service {} modifié avec succès par utilisateur {}", service_id, user_id);
+            (StatusCode::OK, Json(json!({
+                "message": "Service modifié avec succès",
+                "service_id": service_id
+            }))).into_response()
+        },
+        Ok(None) => {
+            warn!("[modifier_service] Service non trouvé après mise ? jour");
+            (StatusCode::NOT_FOUND, Json(json!({"error": "Service non trouvé"}))).into_response()
+        },
+        Err(e) => {
+            error!("[modifier_service] Erreur mise ? jour service: {}", e);
+            (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": "Erreur lors de la modification"}))).into_response()
+        }
+    }
+}
+
+/// ? Suppression d'un service
+pub async fn supprimer_service(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+    Path(service_id): Path<i32>,
+) -> axum::response::Response {
+    let user_id = user.id;
+    info!("[supprimer_service] Called for service_id={}, user_id={}", service_id, user_id);
+    
+    let pg_pool = &state.pg;
+    
+    // Vérifier que le service appartient ? l'utilisateur
+    let service_exists = sqlx::query!(
+        "SELECT id FROM services WHERE id = $1 AND user_id = $2",
+        service_id,
+        user_id
+    )
+    .fetch_optional(pg_pool)
+    .await;
+    
+    match service_exists {
+        Ok(None) => {
+            return (StatusCode::NOT_FOUND, Json(json!({"error": "Service non trouvé ou non autorisé"}))).into_response();
+        },
+        Ok(Some(_)) => {
+            // Service trouvé, on peut le supprimer
+        },
+        Err(e) => {
+            error!("[supprimer_service] Erreur vérification service: {}", e);
+            return (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": "Erreur base de données"}))).into_response();
+        }
+    }
+    
+    // Supprimer le service
+    let result = sqlx::query!(
+        "DELETE FROM services WHERE id = $1 AND user_id = $2 RETURNING id",
+        service_id,
+        user_id
+    )
+    .fetch_optional(pg_pool)
+    .await;
+    
+    match result {
+        Ok(Some(_)) => {
+            info!("[supprimer_service] ? Service {} supprimé avec succès par utilisateur {}", service_id, user_id);
+            (StatusCode::OK, Json(json!({
+                "message": "Service supprimé avec succès",
+                "service_id": service_id
+            }))).into_response()
+        },
+        Ok(None) => {
+            warn!("[supprimer_service] Service non trouvé après suppression");
+            (StatusCode::NOT_FOUND, Json(json!({"error": "Service non trouvé"}))).into_response()
+        },
+        Err(e) => {
+            error!("[supprimer_service] Erreur suppression service: {}", e);
+            (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": "Erreur lors de la suppression"}))).into_response()
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use serde_json::json;
+
+    #[test]
+    fn test_valider_service_json_strict_ok() {
+        let payload = json!({
+            "titre": { "type_donnee": "string", "valeur": "Service test", "origine_champs": "test" },
+            "description": { "type_donnee": "string", "valeur": "Description test", "origine_champs": "test" },
+            "category": { "type_donnee": "string", "valeur": "test", "origine_champs": "test" },
+            "intention": "proposer",
+            "is_tarissable": false,
+            "gps": false
+        });
+        let res = crate::services::creer_service::valider_service_json(&payload);
+        assert!(res.is_ok(), "La validation stricte doit passer pour un payload conforme: {res:?}");
+    }
+
+    #[test]
+    fn test_valider_service_json_strict_erreur_string_brute() {
+        let payload = json!({
+            "titre": "Titre brut",
+            "description": { "type_donnee": "string", "valeur": "Desc", "origine_champs": "test" },
+            "category": { "type_donnee": "string", "valeur": "cat", "origine_champs": "test" },
+            "intention": "proposer",
+            "is_tarissable": false,
+            "gps": false
+        });
+        let res = crate::services::creer_service::valider_service_json(&payload);
+        assert!(res.is_err(), "La validation doit échouer si 'titre' est une string brute");
+    }
+
+    #[test]
+    fn test_valider_service_json_strict_erreur_objet_incomplet() {
+        let payload = json!({
+            "titre": { "type_donnee": "string", "valeur": "", "origine_champs": "test" },
+            "description": { "type_donnee": "string", "valeur": "Desc", "origine_champs": "test" },
+            "category": { "type_donnee": "string", "valeur": "cat", "origine_champs": "test" },
+            "intention": "proposer",
+            "is_tarissable": false,
+            "gps": false
+        });
+        let res = crate::services::creer_service::valider_service_json(&payload);
+        assert!(res.is_err(), "La validation doit échouer si 'titre.valeur' est vide");
+    }
+}
+
+// Fonctions utilisant mongo_history_service ou scoring_service désactivées temporairement
+// /// Calcule le score médian d'une catégorie depuis MongoDB
+// async fn compute_score_category_median(
+//     mongo_history: &Arc<crate::services::mongo_history_service::MongoHistoryService>,
+//     category: &str,
+// ) -> Result<f64, String> {
+//     let collection = mongo_history.get_collection("history").await;
+    
+//     let pipeline = vec![
+//         mongodb::bson::doc! {
+//             "$match": {
+//                 "event_type": "UserAction",
+//                 "data.interaction_type": "score_computation",
+//                 "data.category": category
+//             }
+//         },
+//         mongodb::bson::doc! {
+//             "$group": {
+//                 "_id": null,
+//                 "median_score": { "$avg": "$data.score" }
+//             }
+//         }
+//     ];
+
+//     let mut cursor = collection
+//         .aggregate(pipeline, None)
+//         .await
+//         .map_err(|e| format!("Erreur agrégation médiane: {}", e))?;
+
+//     let mut median_score = 0.0;
+//     if let Some(doc) = cursor.try_next().await
+//         .map_err(|e| format!("Erreur itération médiane: {}", e))? {
+//         if let Ok(bson) = mongodb::bson::to_bson(&doc) {
+//             if let Ok(json) = serde_json::to_value(bson) {
+//                 median_score = json.get("median_score").and_then(|v| v.as_f64()).unwrap_or(0.0);
+//             }
+//         }
+//     }
+
+//     Ok(median_score)
+// }
+
+// /// Calcule le score d'un service depuis MongoDB
+// async fn compute_service_score(
+//     mongo_history: &Arc<crate::services::mongo_history_service::MongoHistoryService>,
+//     service_id: i32,
+// ) -> Result<f64, String> {
+//     let score = crate::services::scoring_service::compute_score(mongo_history.clone(), service_id).await?;
+//     Ok(score.score)
+// }
+
+/// Récupère le dernier service créé par le prestataire connecté (pour préremplissage contact)
+pub async fn get_last_service_for_user(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+) -> axum::response::Response {
+    let user_id = user.id;
+    let pg_pool = &state.pg;
+    // On récupère le dernier service créé par l'utilisateur
+    let row = match sqlx::query!(
+        r#"SELECT data FROM services WHERE user_id = $1 ORDER BY created_at DESC LIMIT 1"#,
+        user_id
+    )
+    .fetch_optional(pg_pool)
+    .await {
+        Ok(r) => r,
+        Err(e) => {
+            return (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": format!("Query error: {}", e)}))).into_response();
+        }
+    };
+    if let Some(r) = row {
+        // On extrait les champs contact (téléphone, whatsapp, email, site web, etc.)
+        let data = r.data; // r.data est déjà un Value, pas besoin de from_value
+        let phone = data.get("telephone").cloned().unwrap_or(Value::Null);
+        let whatsapp = data.get("whatsapp").cloned().unwrap_or(Value::Null);
+        let email = data.get("email").cloned().unwrap_or(Value::Null);
+        // Recherche site web (siteweb, site, url, website...)
+        let siteweb = data.get("siteweb")
+            .or_else(|| data.get("site"))
+            .or_else(|| data.get("url"))
+            .or_else(|| data.get("website"))
+            .cloned()
+            .unwrap_or(Value::Null);
+        return (StatusCode::OK, Json(json!({
+            "telephone": phone,
+            "whatsapp": whatsapp,
+            "email": email,
+            "siteweb": siteweb
+        }))).into_response();
+    }
+    (StatusCode::OK, Json(json!({}))).into_response()
+}
+
+/// Active ou désactive un service
+pub async fn toggle_service_status(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+    Path(service_id): Path<i32>,
+    Json(payload): Json<serde_json::Value>,
+) -> axum::response::Response {
+    let user_id = user.id;
+    let pg_pool = &state.pg;
+    
+    info!("[toggle_service_status] Changement de statut pour service {} par utilisateur {}", service_id, user_id);
+    
+    let is_active = payload.get("actif")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
+    
+    let result = sqlx::query!(
+        r#"UPDATE services SET is_active = $1 WHERE id = $2 AND user_id = $3 RETURNING id"#,
+        is_active,
+        service_id,
+        user_id
+    )
+    .fetch_optional(pg_pool)
+    .await;
+    
+    match result {
+        Ok(Some(_)) => {
+            info!("[toggle_service_status] Statut mis à jour avec succès");
+            (StatusCode::OK, Json(json!({
+                "success": true,
+                "message": if is_active { "Service activé" } else { "Service désactivé" }
+            }))).into_response()
+        },
+        Ok(None) => {
+            warn!("[toggle_service_status] Service non trouvé ou non autorisé?");
+            (StatusCode::NOT_FOUND, Json(json!({
+                "error": "Service non trouvé ou non autorisé?"
+            }))).into_response()
+        },
+        Err(e) => {
+            error!("[toggle_service_status] Erreur SQL: {}", e);
+            (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({
+                "error": format!("Erreur lors de la mise à jour: {}", e)
+            }))).into_response()
+        }
+    }
+}
+
+/// Récupère un service par ID pour affichage public
+pub async fn get_service_by_id(
+    State(state): State<Arc<AppState>>,
+    Path(service_id): Path<i32>,
+) -> axum::response::Response {
+    let pg_pool = &state.pg;
+    
+    info!("[get_service_by_id] Récupération du service {}", service_id);
+    
+    let row = sqlx::query!(
+        r#"SELECT id, data, is_active, created_at, user_id FROM services WHERE id = $1 AND is_active = true"#,
+        service_id
+    )
+    .fetch_optional(pg_pool)
+    .await;
+    
+    match row {
+        Ok(Some(service)) => {
+            info!("[get_service_by_id] Service trouvé?");
+            
+                           // Extraire les contacts depuis service.data
+               let phone = service.data.get("telephone")
+                   .and_then(|v| v.get("valeur"))
+                   .and_then(|v| v.as_str())
+                   .map(|s| Value::String(s.to_string()))
+                   .unwrap_or(Value::Null);
+               
+               let whatsapp = service.data.get("whatsapp")
+                   .and_then(|v| v.get("valeur"))
+                   .and_then(|v| v.as_str())
+                   .map(|s| Value::String(s.to_string()))
+                   .unwrap_or(Value::Null);
+               
+               let email = service.data.get("email")
+                   .and_then(|v| v.get("valeur"))
+                   .and_then(|v| v.as_str())
+                   .map(|s| Value::String(s.to_string()))
+                   .unwrap_or(Value::Null);
+               
+               let siteweb = service.data.get("website")
+                   .and_then(|v| v.get("valeur"))
+                   .and_then(|v| v.as_str())
+                   .map(|s| Value::String(s.to_string()))
+                   .unwrap_or(Value::Null);
+            
+            (StatusCode::OK, Json(json!({
+                "id": service.id,
+                "data": service.data,
+                "is_active": service.is_active,
+                "created_at": service.created_at,
+                "user_id": service.user_id,
+                "telephone": phone,
+                "whatsapp": whatsapp,
+                "email": email,
+                "siteweb": siteweb
+            }))).into_response()
+        },
+        Ok(None) => {
+            warn!("[get_service_by_id] Service non trouvé ou inactif");
+            (StatusCode::NOT_FOUND, Json(json!({
+                "error": "Service non trouvé ou inactif"
+            }))).into_response()
+        },
+        Err(e) => {
+            error!("[get_service_by_id] Erreur SQL: {}", e);
+            (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({
+                "error": format!("Erreur lors de la récupération: {}", e)
+            }))).into_response()
+        }
+    }
+}
+
+/// Récupère tous les services du prestataire connecté
+pub async fn get_services_for_prestataire(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+) -> axum::response::Response {
+    let user_id = user.id;
+    let pg_pool = &state.pg;
+    
+    info!("[get_services_for_prestataire] Récupération des services pour utilisateur {}", user_id);
+    
+    // Log des 5 derniers services créés pour debug
+    let _debug_rows = match sqlx::query!(
+        r#"SELECT id, created_at FROM services WHERE user_id = $1 ORDER BY created_at DESC LIMIT 5"#,
+        user_id
+    )
+    .fetch_all(pg_pool)
+    .await {
+        Ok(r) => r,
+        Err(e) => {
+            error!("[get_services_for_prestataire] Erreur requête debug SQL: {}", e);
+            Vec::new()
+        }
+    };
+    
+    // Debug lines removed for compilation
+
+    
+
+    
+    let rows = match sqlx::query!(
+        r#"SELECT id, data, is_active, created_at FROM services WHERE user_id = $1 ORDER BY created_at DESC"#,
+        user_id
+    )
+    .fetch_all(pg_pool)
+    .await {
+        Ok(r) => r,
+        Err(e) => {
+            error!("[get_services_for_prestataire] Erreur requête SQL: {}", e);
+            return (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": format!("Query error: {}", e)}))).into_response();
+        }
+    };
+    
+    info!("[get_services_for_prestataire] {} services trouvés pour utilisateur {}", rows.len(), user_id);
+    
+    // Log des IDs des services retournés pour debug
+    let service_ids: Vec<i32> = rows.iter().map(|r| r.id).collect();
+    info!("[get_services_for_prestataire] DEBUG - IDs des services retournés: {:?}", service_ids);
+    
+    let result: Vec<_> = rows
+        .into_iter()
+        .map(|r| json!({
+            "id": r.id,
+            "data": serde_json::from_value(r.data).unwrap_or(Value::Null),
+            "actif": r.is_active,
+            "created_at": r.created_at
+        }))
+        .collect();
+    
+    info!("[get_services_for_prestataire] Réponse envoyée avec {} services", result.len());
+    (StatusCode::OK, Json(serde_json::Value::Array(result))).into_response()
+}
+
+#[derive(Deserialize)]
+pub struct BatchServicesRequest {
+    pub service_ids: Vec<i32>,
+}
+
+/// POST /services/batch - Récupère plusieurs services en une seule requête
+pub async fn get_services_batch(
+    State(state): State<Arc<AppState>>,
+    Json(payload): Json<BatchServicesRequest>,
+) -> axum::response::Response {
+    let pg_pool = &state.pg;
+    
+    info!("[get_services_batch] Récupération de {} services en batch", payload.service_ids.len());
+    
+    if payload.service_ids.is_empty() {
+        return (StatusCode::OK, Json(json!({
+            "services": [],
+            "count": 0
+        }))).into_response();
+    }
+    
+    // Construire la requête SQL avec des paramètres dynamiques
+    let placeholders: Vec<String> = (1..=payload.service_ids.len()).map(|i| format!("${}", i)).collect();
+    let sql = format!(
+        "SELECT id, data, is_active, created_at, user_id FROM services WHERE id IN ({}) ORDER BY created_at DESC",
+        placeholders.join(",")
+    );
+    
+    let mut query = sqlx::query(&sql);
+    for service_id in &payload.service_ids {
+        query = query.bind(service_id);
+    }
+    
+    let rows = match query.fetch_all(pg_pool).await {
+        Ok(r) => r,
+        Err(e) => {
+            error!("[get_services_batch] Erreur requête SQL: {}", e);
+            return (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({
+                "error": format!("Erreur base de données: {}", e)
+            }))).into_response();
+        }
+    };
+    
+    info!("[get_services_batch] {} services trouvés sur {} demandés", rows.len(), payload.service_ids.len());
+    
+    let result: Vec<_> = rows
+        .into_iter()
+        .map(|r| json!({
+            "id": r.try_get::<i32, _>("id").unwrap_or_default(),
+            "data": r.try_get::<Value, _>("data").unwrap_or(Value::Null),
+            "is_active": r.try_get::<bool, _>("is_active").unwrap_or(false),
+            "created_at": r.try_get::<chrono::DateTime<chrono::Utc>, _>("created_at").unwrap_or_default(),
+            "user_id": r.try_get::<i32, _>("user_id").unwrap_or_default()
+        }))
+        .collect();
+    
+    (StatusCode::OK, Json(json!({
+        "services": result,
+        "count": result.len(),
+        "requested": payload.service_ids.len()
+    }))).into_response()
+}
