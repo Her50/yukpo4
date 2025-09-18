@@ -76,7 +76,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         //.merge(yukpomnang_backend::openapi::swagger_router()) // Swagger d?sactiv? temporairement
         .with_state(app_state.clone());
 
-    let addr = SocketAddr::from(([127, 0, 0, 1], 3001));
+    let addr = SocketAddr::from(([0, 0, 0, 0], 3001));
     println!("?? Serveur lanc? sur http://{}", addr);
 
     let listener = tokio::net::TcpListener::bind(addr).await?;

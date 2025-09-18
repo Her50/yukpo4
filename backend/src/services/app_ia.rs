@@ -135,10 +135,10 @@ impl AppIA {
         // OpenAI GPT-4 Turbo (fallback)
         if let Ok(api_key) = std::env::var("OPENAI_API_KEY") {
             models.push(ModelConfig {
-                name: "openai-gpt4-turbo".to_string(),
+                name: "openai-gpt4o-mini".to_string(),
                 api_key,
                 base_url: "https://api.openai.com/v1".to_string(),
-                model: "gpt-4-turbo-preview".to_string(),
+                model: "gpt-4o-mini".to_string(),
                 temperature: 0.3,  // R?duit pour plus de rapidit?
                 max_tokens: 2000,  // R?duit pour acc?l?rer
                 top_p: 0.8,        // R?duit pour plus de pr?cision
@@ -147,7 +147,7 @@ impl AppIA {
                 timeout: 20,       // R?duit de 30s ? 20s
                 retry_count: 2,    // R?duit ? 2 tentatives
                 priority: 9,
-                cost_per_token: 0.00003,
+                cost_per_token: 0.00000015,
                 enabled: true,
             });
         }
@@ -342,7 +342,7 @@ impl AppIA {
             log::warn!("[AppIA] Aucun mod?le activ?, utilisation du fallback");
             let (model_name, response) = self.generate_fallback_response(prompt)?;
             let response_string = response.to_string();
-            return Ok((model_name, response_string, 5));
+            return Ok((response_string, model_name, 5));
         }
 
         // 3. ? OPTIMISATION : Timeout optimis? pour performance
@@ -377,7 +377,7 @@ impl AppIA {
         // Mise ? jour des m?triques pour le fallback
         self.update_metrics_with_tokens(&model_name, true, start_time, 5).await;
         self.record_interaction(&interaction_id, prompt, &response_string, &model_name).await;
-        return Ok((model_name, response_string, 5));
+        return Ok((response_string, model_name, 5));
     }
 
     /// ??? Pr?diction multimodale avec support des images
@@ -450,7 +450,7 @@ impl AppIA {
     /// ?? V?rifie si un mod?le supporte le multimodal
     fn supports_multimodal(&self, model: &ModelConfig) -> bool {
         match model.name.as_str() {
-            "openai-gpt4o" | "openai-gpt4-turbo" => true,
+            "openai-gpt4o" | "openai-gpt4o-mini" => true,
             "gemini-pro" => true,
             "claude-3-5-sonnet" | "claude-3-sonnet" => true,
             _ => false,
@@ -527,7 +527,7 @@ impl AppIA {
     #[allow(dead_code)]
     async fn call_model_implementation(&self, model: &ModelConfig, prompt: &str) -> AppResult<(String, u32)> {
         match model.name.as_str() {
-            "openai-gpt4o" | "openai-gpt4-turbo" | "openai-gpt35" => self.call_openai(model, prompt).await,
+            "openai-gpt4o" | "openai-gpt4o-mini" | "openai-gpt35" => self.call_openai(model, prompt).await,
             "gemini-pro" => self.call_gemini(model, prompt).await,
             "claude-3-5-sonnet" | "claude-3-sonnet" => self.call_anthropic(model, prompt).await,
             "mistral-large" => self.call_mistral(model, prompt).await,
@@ -540,7 +540,7 @@ impl AppIA {
     /// ?? Impl?mentation multimodale sp?cifique par fournisseur
     async fn call_model_multimodal_implementation(&self, model: &ModelConfig, prompt: &str, images: Option<&Vec<String>>) -> AppResult<(String, u32)> {
         match model.name.as_str() {
-            "openai-gpt4o" | "openai-gpt4-turbo" => self.call_openai_multimodal(model, prompt, images).await,
+            "openai-gpt4o" | "openai-gpt4o-mini" => self.call_openai_multimodal(model, prompt, images).await,
             "gemini-pro" => self.call_gemini_multimodal(model, prompt, images).await,
             "claude-3-5-sonnet" | "claude-3-sonnet" => self.call_anthropic_multimodal(model, prompt, images).await,
             _ => Err("Mod?le multimodal non support?".into()),
