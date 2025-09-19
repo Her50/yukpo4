@@ -51,7 +51,7 @@ const LoginPage: React.FC = () => {
       console.log('[LoginPage] Donnes de connexion:', { email, password: '***' });
       
       // CORRECTION: Utiliser l'API_BASE_URL au lieu d'une URL relative
-      const res = await fetch(${API_BASE_URL}/auth/login, {
+      const res = await fetch(`${API_BASE_URL}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(loginData)
