@@ -579,9 +579,14 @@ impl CloudArchitecture {
                     refresh_expiration: Duration::from_secs(86400),
                 },
                 cors: CORSConfig {
-                    allowed_origins: vec!["https://yukpomnang.com".to_string()],
-                    allowed_methods: vec!["GET".to_string(), "POST".to_string(), "PUT".to_string(), "DELETE".to_string()],
-                    allowed_headers: vec!["Content-Type".to_string(), "Authorization".to_string()],
+                    allowed_origins: vec![
+                        "https://yukpomnang.com".to_string(),
+                        "https://yukpomnang.vercel.app".to_string(),
+                        "http://localhost:3000".to_string(),
+                        "http://localhost:5173".to_string(),
+                    ],
+                    allowed_methods: vec!["GET".to_string(), "POST".to_string(), "PUT".to_string(), "DELETE".to_string(), "OPTIONS".to_string()],
+                    allowed_headers: vec!["Content-Type".to_string(), "Authorization".to_string(), "X-Requested-With".to_string()],
                     allow_credentials: true,
                     max_age: Duration::from_secs(86400),
                 },

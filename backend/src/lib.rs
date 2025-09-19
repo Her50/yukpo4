@@ -1,4 +1,4 @@
-pub mod controllers;
+﻿pub mod controllers;
 pub mod models;
 pub mod state;
 pub mod core;
@@ -13,7 +13,7 @@ pub mod tasks;
 pub mod openapi;
 pub mod test_utils;
 pub mod websocket;
-// Modules d'optimisation (temporairement commentés pour compilation)
+// Modules d'optimisation (temporairement comment?s pour compilation)
 // pub mod semantic_cache_pro;
 // pub mod prompt_optimizer_pro; 
 // pub mod orchestration_ia_optimized;
@@ -26,6 +26,8 @@ use axum::{
 };
 use tracing_subscriber::{EnvFilter, fmt, layer::SubscriberExt, util::SubscriberInitExt};
 use crate::state::AppState;
+
+
 use crate::routes::{
     auth_routes::auth_routes,
     user_routes::user_routes,
@@ -82,6 +84,10 @@ async fn fournitures_axum_handler(
     Ok(Json(serde_json::json!({"message": "Service temporairement d?sactiv?"})))
 }
 pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
+    // Configuration CORS
+
+
+    
     // Auth routes (public, pas de JWT)
     let auth = auth_routes(state.clone());
     // User routes (prot?g?es par JWT dans le module)
@@ -96,19 +102,20 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
     let echanges = echange_routes::echange_routes(state.clone());
     // History routes (prot?g?es par JWT dans le module history_routes.rs)
     let history = history_routes();
-    // Payment routes (protégées par JWT dans le module payment_routes.rs)
+    // Payment routes (prot?g?es par JWT dans le module payment_routes.rs)
     let payments = payment_routes(state.clone());
-    // Prestataire routes (protégées par JWT)
+    // Prestataire routes (prot?g?es par JWT)
     let prestataires = prestataire_routes(state.clone());
     // Routes de recherche d'images
     #[cfg(feature = "image_search")]
     let image_search = image_search_routes(state.clone());
     #[cfg(not(feature = "image_search"))]
     let image_search = axum::Router::new();
-    // Routes Yukpo (séparées pour éviter les conflits de middleware)
+    // Routes Yukpo (s?par?es pour ?viter les conflits de middleware)
     let yukpo = router_yukpo(state.clone());
     // Routes WebSocket pour le statut en ligne et les notifications
     let websocket = create_websocket_router();
+    
     let app = Router::new()
         .route("/healthz", get(healthz))
         .merge(auth)
@@ -125,9 +132,10 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .merge(websocket)
         .route("/fournitures/gestion", axum::routing::post(fournitures_axum_handler))
         .with_state(state);
-    // Ajouter les routes WebSocket séparément
+    // Ajouter les routes WebSocket s?par?ment
     // let app = app.merge(websocket);
     app
 }
 // In main.rs, call init_logging() before anything else.
 // For anti-bruteforce, apply axum::middleware::from_fn(anti_bruteforce) only to /auth/login route in auth_routes.rs.
+
