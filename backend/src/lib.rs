@@ -19,6 +19,9 @@ pub mod websocket;
 // pub mod orchestration_ia_optimized;
 use std::sync::Arc;
 use axum::{
+    http::Method,
+    http::HeaderValue,
+    
     Router,
     routing::get,
     Json,
@@ -124,6 +127,13 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .merge(image_search)
         .merge(websocket)
         .route("/fournitures/gestion", axum::routing::post(fournitures_axum_handler))
+        .layer(
+            CorsLayer::new()
+                .allow_origin(tower_http::cors::Any)
+                .allow_methods(tower_http::cors::Any)
+                .allow_headers(tower_http::cors::Any)
+                .allow_credentials(true)
+        )
         .with_state(state);
     // Ajouter les routes WebSocket séparément
     // let app = app.merge(websocket);
