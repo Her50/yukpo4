@@ -48,7 +48,7 @@ const LoginPage: React.FC = () => {
     
     try {
       const loginData = { email, password };
-      console.log('[LoginPage] Données de connexion:', { email, password: '***' });
+      console.log('[LoginPage] Donnes de connexion:', { email, password: '***' });
       
       // CORRECTION: Utiliser l'API_BASE_URL au lieu d'une URL relative
       const res = await fetch(${API_BASE_URL}/auth/login, {
@@ -57,27 +57,27 @@ const LoginPage: React.FC = () => {
         body: JSON.stringify(loginData)
       });
       
-      console.log('[LoginPage] Réponse du serveur:', res.status, res.statusText);
+      console.log('[LoginPage] Rponse du serveur:', res.status, res.statusText);
       
       if (res.ok) {
         const data = await res.json();
-        console.log('[LoginPage] Données reçues:', { token: !!data.token, tokens_balance: data.tokens_balance });
+        console.log('[LoginPage] Donnes reues:', { token: !!data.token, tokens_balance: data.tokens_balance });
         
         if (data.token) {
-          console.log('[LoginPage] Token reçu, connexion...');
+          console.log('[LoginPage] Token reu, connexion...');
           
           if (data.tokens_balance !== undefined) {
             localStorage.setItem('tokens_balance', data.tokens_balance.toString());
             window.dispatchEvent(new CustomEvent('tokens_updated'));
-            console.log('[LoginPage] Solde initial sauvegardé:', data.tokens_balance);
+            console.log('[LoginPage] Solde initial sauvegard:', data.tokens_balance);
           }
           
           login(data.token);
           navigate(ROUTES.HOME);
           window.location.reload();
         } else {
-          console.error('[LoginPage] Pas de token dans la réponse');
-          setError('Réponse inattendue du serveur: pas de token.');
+          console.error('[LoginPage] Pas de token dans la rponse');
+          setError('Rponse inattendue du serveur: pas de token.');
         }
       } else {
         const errorText = await res.text();
@@ -94,8 +94,8 @@ const LoginPage: React.FC = () => {
         setError(errorMessage);
       }
     } catch (err) {
-      console.error('[LoginPage] Erreur réseau:', err);
-      setError('Erreur réseau ou serveur inaccessible.');
+      console.error('[LoginPage] Erreur rseau:', err);
+      setError('Erreur rseau ou serveur inaccessible.');
     } finally {
       setLoading(false);
     }
@@ -106,7 +106,7 @@ const LoginPage: React.FC = () => {
       <div className="max-w-md mx-auto bg-white dark:bg-gray-900 shadow-xl rounded-xl p-8">
         {showLogoutMessage && (
           <div className="mb-4 bg-green-100 text-green-800 px-4 py-2 rounded shadow text-center">
-            ? Vous êtes bien déconnecté.
+            ? Vous tes bien dconnect.
           </div>
         )}
         {error && (
@@ -115,7 +115,7 @@ const LoginPage: React.FC = () => {
           </div>
         )}
         <h1 className="text-3xl font-bold text-center mb-4">
-          Connexion à{" "}
+          Connexion {" "}
           <span className="bg-gradient-to-r from-yellow-500 via-orange-500 to-red-500 bg-clip-text text-transparent">
             Yukpo
           </span>
@@ -164,7 +164,7 @@ const LoginPage: React.FC = () => {
         <p className="text-center text-sm mt-6 text-gray-700 dark:text-gray-300">
           Pas encore inscrit ?{" "}
           <Link to={ROUTES.REGISTER} className="text-primary underline font-medium">
-            Créer un compte
+            Crer un compte
           </Link>
         </p>
       </div>
