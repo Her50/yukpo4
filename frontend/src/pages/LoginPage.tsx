@@ -88,7 +88,7 @@ const LoginPage: React.FC = () => {
           const errorData = JSON.parse(errorText);
           errorMessage = errorData.message || errorData.error || errorMessage;
         } catch {
-          errorMessage = Erreur : ;
+          errorMessage = `${errorMessage}: ${errorText}`;
         }
         
         setError(errorMessage);
