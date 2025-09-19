@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { useLocation, Link, useNavigate } from 'react-router-dom';
-import { ROUTES } from '@/routes/AppRoutesRegistry';
-import OAuthButton from '@/components/auth/OAuthButton';
-import { useUser } from '@/hooks/useUser';
-import { toast } from 'react-hot-toast';
+import React, { useState, useEffect, useRef } from "react";
+import { useLocation, Link, useNavigate } from "react-router-dom";
+import { ROUTES } from "@/routes/AppRoutesRegistry";
+import OAuthButton from "@/components/auth/OAuthButton";
+import { useUser } from "@/hooks/useUser";
+import { toast } from "react-hot-toast";
+import { API_BASE_URL } from "@/config/api";
 
 const LoginPage: React.FC = () => {
   const location = useLocation();
@@ -23,27 +24,21 @@ const LoginPage: React.FC = () => {
     }
   }, [location.state]);
 
-  // Vérifier si on vient de la page d'inscription
   useEffect(() => {
     if (location.state?.fromRegistration) {
-      // Pré-remplir l'email si disponible
       if (location.state.email) {
         setEmail(location.state.email);
-        // Mettre le focus sur le champ mot de passe
         setTimeout(() => {
           passwordInputRef.current?.focus();
         }, 100);
       }
-      // Afficher le message de succès
       if (location.state.message) {
         toast.success(location.state.message);
       }
-      // Nettoyer l'état pour éviter de réafficher le message
       window.history.replaceState({}, document.title);
     }
   }, [location]);
 
-  // Appel API login, stockage du token, rechargement
   const handleLogin = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     setError(null);
@@ -52,39 +47,37 @@ const LoginPage: React.FC = () => {
     console.log('[LoginPage] Tentative de connexion pour:', email);
     
     try {
-      // Utiliser le proxy Vite avec une URL relative
       const loginData = { email, password };
-      console.log('[LoginPage] Données de connexion:', { email, password: '***' });
+      console.log('[LoginPage] Donn�es de connexion:', { email, password: '***' });
       
-      const res = await fetch('/auth/login', {
+      // CORRECTION: Utiliser l'API_BASE_URL au lieu d'une URL relative
+      const res = await fetch(${API_BASE_URL}/auth/login, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(loginData)
       });
       
-      console.log('[LoginPage] Réponse du serveur:', res.status, res.statusText);
+      console.log('[LoginPage] R�ponse du serveur:', res.status, res.statusText);
       
       if (res.ok) {
         const data = await res.json();
-        console.log('[LoginPage] Données reçues:', { token: !!data.token, tokens_balance: data.tokens_balance });
+        console.log('[LoginPage] Donn�es re�ues:', { token: !!data.token, tokens_balance: data.tokens_balance });
         
         if (data.token) {
-          console.log('[LoginPage] Token reçu, connexion...');
+          console.log('[LoginPage] Token re�u, connexion...');
           
-          // Sauvegarder le solde si présent
           if (data.tokens_balance !== undefined) {
             localStorage.setItem('tokens_balance', data.tokens_balance.toString());
-        // Déclencher un CustomEvent pour notifier useUser
-        window.dispatchEvent(new CustomEvent('tokens_updated'));
-            console.log('[LoginPage] Solde initial sauvegardé:', data.tokens_balance);
+            window.dispatchEvent(new CustomEvent('tokens_updated'));
+            console.log('[LoginPage] Solde initial sauvegard�:', data.tokens_balance);
           }
           
           login(data.token);
-          navigate(ROUTES.HOME); // Redirige vers l'accueil après connexion
-          window.location.reload(); // Recharge pour mettre à jour l'état utilisateur
+          navigate(ROUTES.HOME);
+          window.location.reload();
         } else {
-          console.error('[LoginPage] Pas de token dans la réponse');
-          setError('Réponse inattendue du serveur: pas de token.');
+          console.error('[LoginPage] Pas de token dans la r�ponse');
+          setError('R�ponse inattendue du serveur: pas de token.');
         }
       } else {
         const errorText = await res.text();
@@ -95,14 +88,14 @@ const LoginPage: React.FC = () => {
           const errorData = JSON.parse(errorText);
           errorMessage = errorData.message || errorData.error || errorMessage;
         } catch {
-          errorMessage = `Erreur ${res.status}: ${errorText}`;
+          errorMessage = Erreur : ;
         }
         
         setError(errorMessage);
       }
     } catch (err) {
-      console.error('[LoginPage] Erreur réseau:', err);
-      setError('Erreur réseau ou serveur inaccessible.');
+      console.error('[LoginPage] Erreur r�seau:', err);
+      setError('Erreur r�seau ou serveur inaccessible.');
     } finally {
       setLoading(false);
     }
@@ -113,16 +106,16 @@ const LoginPage: React.FC = () => {
       <div className="max-w-md mx-auto bg-white dark:bg-gray-900 shadow-xl rounded-xl p-8">
         {showLogoutMessage && (
           <div className="mb-4 bg-green-100 text-green-800 px-4 py-2 rounded shadow text-center">
-            ✅ Vous êtes bien déconnecté.
+            ? Vous �tes bien d�connect�.
           </div>
         )}
         {error && (
           <div className="mb-4 bg-red-100 text-red-800 px-4 py-2 rounded shadow text-center">
-            ❌ {error}
+            ? {error}
           </div>
         )}
         <h1 className="text-3xl font-bold text-center mb-4">
-          Connexion à{" "}
+          Connexion �{" "}
           <span className="bg-gradient-to-r from-yellow-500 via-orange-500 to-red-500 bg-clip-text text-transparent">
             Yukpo
           </span>
@@ -168,25 +161,10 @@ const LoginPage: React.FC = () => {
           </button>
         </form>
         
-        {/* Informations de test en mode développement */}
-        {/*
-        {import.meta.env.DEV && (
-          <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded border border-blue-200 dark:border-blue-800">
-            <p className="text-sm text-blue-800 dark:text-blue-200 font-medium mb-2">
-              🧪 Mode développement - Identifiants de test :
-            </p>
-            <p className="text-xs text-blue-700 dark:text-blue-300">
-              Email: <code>test@yukpo.dev</code><br/>
-              Mot de passe: <code>test123</code>
-            </p>
-          </div>
-        )}
-        */}
-        
         <p className="text-center text-sm mt-6 text-gray-700 dark:text-gray-300">
           Pas encore inscrit ?{" "}
           <Link to={ROUTES.REGISTER} className="text-primary underline font-medium">
-            Créer un compte
+            Cr�er un compte
           </Link>
         </p>
       </div>
