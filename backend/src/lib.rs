@@ -22,12 +22,14 @@ pub mod websocket;
 use std::sync::Arc;
 
 use axum::{
+    middleware::from_fn,
     Router,
     routing::get,
     Json,
     extract::State,
 };
 use tracing_subscriber::{EnvFilter, fmt, layer::SubscriberExt, util::SubscriberInitExt};
+use tower_http::cors::{CorsLayer, Any};
 
 use crate::state::AppState;
 use crate::routes::{
@@ -122,7 +124,7 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
     // Routes WebSocket pour le statut en ligne et les notifications
     let websocket = create_websocket_router();
 
-    let app = Router::new()
+    let app = Router::new()()
         .route("/healthz", get(healthz))
         .merge(auth)
         .merge(users)
@@ -137,6 +139,13 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .merge(image_search)
         .merge(websocket)
         .route("/fournitures/gestion", axum::routing::post(fournitures_axum_handler))
+        .layer(
+            CorsLayer::new()
+                .allow_origin(Any)
+                .allow_methods([axum::http::Method::GET, axum::http::Method::POST, axum::http::Method::PUT, axum::http::Method::DELETE, axum::http::Method::OPTIONS])
+                .allow_headers([axum::http::HeaderName::from_static("content-type"), axum::http::HeaderName::from_static("authorization")])
+                .allow_credentials(true)
+        )
         .with_state(state);
     
     // Ajouter les routes WebSocket séparément
