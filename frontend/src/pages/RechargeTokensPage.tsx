@@ -17,7 +17,7 @@ import {
   confirmPayment, 
   simulatePaymentConfirmation, 
   InitiatePaymentRequest 
-} from '@/lib/paymentClient';
+} from '@/lib/paymentService';
 import { 
   CreditCard, 
   Smartphone, 
