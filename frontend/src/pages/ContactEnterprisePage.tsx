@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import ResponsiveContainer from '@/components/layout/ResponsiveContainer';
 import RequireAccess from '@/components/auth/RequireAccess';
+import { API_BASE_URL } from '@/config/api';
 
 const ContactEnterprisePage: React.FC = () => {
   const [form, setForm] = useState({ nom: '', email: '', message: '' });
@@ -16,7 +17,7 @@ const ContactEnterprisePage: React.FC = () => {
     setLoading(true);
 
     try {
-      const res = await fetch('/api/contact/entreprise', {
+      const res = await fetch(${API_BASE_URL}/api/contact/entreprise', {
         method: 'POST',
         body: JSON.stringify(form),
         headers: { 'Content-Type': 'application/json' },
@@ -35,7 +36,7 @@ const ContactEnterprisePage: React.FC = () => {
   return (
     <ResponsiveContainer>
       <div className="font-inter">
-        <h1 className="text-3xl font-bold text-center mb-10">📧 Contactez l'entreprise</h1>
+        <h1 className="text-3xl font-bold text-center mb-10">ðŸ“§ Contactez l'entreprise</h1>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
@@ -84,7 +85,7 @@ const ContactEnterprisePage: React.FC = () => {
 
           {success && (
             <div className="mt-4 text-green-600 text-center">
-              ✅ Votre message a été envoyé avec succès !
+              âœ… Votre message a Ã©tÃ© envoyÃ© avec succÃ¨s !
             </div>
           )}
         </form>
@@ -92,7 +93,7 @@ const ContactEnterprisePage: React.FC = () => {
         <RequireAccess plan="enterprise">
           <div className="mt-10 text-center">
             <p className="text-lg font-semibold">
-              🔐 Accédez à des fonctionnalités Premium
+              ðŸ” AccÃ©dez Ã  des fonctionnalitÃ©s Premium
             </p>
           </div>
         </RequireAccess>

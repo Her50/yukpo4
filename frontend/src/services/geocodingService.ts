@@ -1,4 +1,4 @@
-import { API_KEYS } from '@/config/api-keys';
+﻿import { API_KEYS } from '@/config/api-keys';
 
 interface GeocodingResult {
   display_name: string;
@@ -33,19 +33,19 @@ interface CachedLocation {
 class GeocodingService {
   private cache = new Map<string, CachedLocation>();
   
-  // ?? CORRECTION : Cache préchargé supprimé pour éviter la confusion avec les coordonnées par défaut
-  // Le cache préchargé causait l'affichage de coordonnées du Nigeria au lieu des vraies coordonnées sélectionnées
+  // ?? CORRECTION : Cache prÃ©chargÃ© supprimÃ© pour Ã©viter la confusion avec les coordonnÃ©es par dÃ©faut
+  // Le cache prÃ©chargÃ© causait l'affichage de coordonnÃ©es du Nigeria au lieu des vraies coordonnÃ©es sÃ©lectionnÃ©es
   private readonly PRECACHED_LOCATIONS = new Map<string, string>();
   
   // Configuration
   private readonly CACHE_DURATION = 7 * 24 * 60 * 60 * 1000; // 7 jours pour un cache ultra-long
-  private readonly RATE_LIMIT_DELAY = 0; // ZÉRO délai pour une recherche INSTANTANÉE
-  private readonly MAX_RETRIES = 1; // Réduire les retries pour plus de vitesse
-  private readonly BATCH_SIZE = 50; // Traiter 50 coordonnées en parallèle
+  private readonly RATE_LIMIT_DELAY = 0; // ZÃ‰RO dÃ©lai pour une recherche INSTANTANÃ‰E
+  private readonly MAX_RETRIES = 1; // RÃ©duire les retries pour plus de vitesse
+  private readonly BATCH_SIZE = 50; // Traiter 50 coordonnÃ©es en parallÃ¨le
   private lastCallTime = 0;
   
   constructor() {
-    // ?? CORRECTION : Supprimé le préchargement qui causait la confusion avec les coordonnées par défaut
+    // ?? CORRECTION : SupprimÃ© le prÃ©chargement qui causait la confusion avec les coordonnÃ©es par dÃ©faut
     // this.preloadCommonLocations();
   }
   
@@ -54,33 +54,33 @@ class GeocodingService {
   private readonly GOOGLE_API_KEY = API_KEYS.GOOGLE_MAPS_API_KEY;
 
   /**
-   * Convertit des coordonnées GPS en nom de lieu lisible
+   * Convertit des coordonnÃ©es GPS en nom de lieu lisible
    */
   async getLocationFromCoordinates(lat: number, lng: number): Promise<string> {
     const cacheKey = `${lat.toFixed(6)},${lng.toFixed(6)}`;
     
-    // Vérifier le cache préchargé INSTANTANÉ d'abord
+    // VÃ©rifier le cache prÃ©chargÃ© INSTANTANÃ‰ d'abord
     const precached = this.PRECACHED_LOCATIONS.get(cacheKey);
     if (precached) {
-      console.log(`⚡ [Geocoding] Cache préchargé INSTANTANÉ pour ${cacheKey}: ${precached}`);
+      console.log(`âš¡ [Geocoding] Cache prÃ©chargÃ© INSTANTANÃ‰ pour ${cacheKey}: ${precached}`);
       return precached;
     }
     
-    // Vérifier le cache dynamique ensuite
+    // VÃ©rifier le cache dynamique ensuite
     const cached = this.cache.get(cacheKey);
     if (cached && Date.now() < cached.expiresAt) {
-      console.log(`🗺️ [Geocoding] Utilisation du cache pour ${cacheKey}: ${cached.name}`);
+      console.log(`ðŸ—ºï¸ [Geocoding] Utilisation du cache pour ${cacheKey}: ${cached.name}`);
       return cached.name;
     }
 
-    // Respecter la limite de taux (réduite drastiquement)
+    // Respecter la limite de taux (rÃ©duite drastiquement)
     await this.respectRateLimit();
 
     try {
-      console.log(`🗺️ [Geocoding] Appel backend pour ${lat}, ${lng}`);
+      console.log(`ðŸ—ºï¸ [Geocoding] Appel backend pour ${lat}, ${lng}`);
       
       // Utiliser l'endpoint backend au lieu d'appeler directement Google Maps
-      const response = await fetch('/api/geocoding/reverse', {
+      const response = await fetch(${API_BASE_URL}/api/geocoding/reverse', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -98,7 +98,7 @@ class GeocodingService {
       const data = await response.json();
       
       if (!data.formatted_address) {
-        throw new Error('Aucun nom de lieu trouvé');
+        throw new Error('Aucun nom de lieu trouvÃ©');
       }
       
       // Mettre en cache
@@ -108,19 +108,19 @@ class GeocodingService {
         expiresAt: Date.now() + this.CACHE_DURATION
       });
 
-      console.log(`🗺️ [Geocoding] Lieu trouvé: ${data.formatted_address}`);
-      return data.formatted_address; // Retourner le résultat de l'API
+      console.log(`ðŸ—ºï¸ [Geocoding] Lieu trouvÃ©: ${data.formatted_address}`);
+      return data.formatted_address; // Retourner le rÃ©sultat de l'API
 
     } catch (error) {
-      console.error(`❌ [Geocoding] Erreur pour ${lat}, ${lng}:`, error);
+      console.error(`âŒ [Geocoding] Erreur pour ${lat}, ${lng}:`, error);
       
-      // Fallback: coordonnées formatées
+      // Fallback: coordonnÃ©es formatÃ©es
       return this.formatCoordinatesAsFallback(lat, lng);
     }
   }
 
   /**
-   * Formate le nom de lieu de Google Maps de manière intelligente
+   * Formate le nom de lieu de Google Maps de maniÃ¨re intelligente
    */
   private formatGoogleLocationName(result: GoogleGeocodingResult['results'][0]): string {
     const { formatted_address, address_components } = result;
@@ -134,7 +134,7 @@ class GeocodingService {
       country: address_components.find(c => c.types.includes('country'))?.long_name,
     };
     
-    // Priorité 1: Quartier/Neighbourhood
+    // PrioritÃ© 1: Quartier/Neighbourhood
     if (components.neighbourhood) {
       if (components.locality) {
         return `${components.neighbourhood}, ${components.locality}`;
@@ -142,7 +142,7 @@ class GeocodingService {
       return components.neighbourhood;
     }
     
-    // Priorité 2: Sublocalité
+    // PrioritÃ© 2: SublocalitÃ©
     if (components.sublocality) {
       if (components.locality) {
         return `${components.sublocality}, ${components.locality}`;
@@ -150,7 +150,7 @@ class GeocodingService {
       return components.sublocality;
     }
     
-    // Priorité 3: Localité/Ville
+    // PrioritÃ© 3: LocalitÃ©/Ville
     if (components.locality) {
       if (components.administrative_area_level_1) {
         return `${components.locality}, ${components.administrative_area_level_1}`;
@@ -158,22 +158,22 @@ class GeocodingService {
       return components.locality;
     }
     
-    // Priorité 4: Région/État
+    // PrioritÃ© 4: RÃ©gion/Ã‰tat
     if (components.administrative_area_level_1) {
       return components.administrative_area_level_1;
     }
     
-    // Fallback: adresse formatée (première partie)
+    // Fallback: adresse formatÃ©e (premiÃ¨re partie)
     return formatted_address.split(',')[0];
   }
 
   /**
-   * Formate le nom de lieu de manière intelligente (style Facebook) - pour Nominatim
+   * Formate le nom de lieu de maniÃ¨re intelligente (style Facebook) - pour Nominatim
    */
   private formatLocationName(data: GeocodingResult): string {
     const { address, display_name } = data;
     
-    // Priorité 1: Quartier/Suburb
+    // PrioritÃ© 1: Quartier/Suburb
     if (address.neighbourhood) {
       if (address.city || address.town) {
         return `${address.neighbourhood}, ${address.city || address.town}`;
@@ -181,7 +181,7 @@ class GeocodingService {
       return address.neighbourhood;
     }
     
-    // Priorité 2: Suburb
+    // PrioritÃ© 2: Suburb
     if (address.suburb) {
       if (address.city || address.town) {
         return `${address.suburb}, ${address.city || address.town}`;
@@ -189,7 +189,7 @@ class GeocodingService {
       return address.suburb;
     }
     
-    // Priorité 3: Ville
+    // PrioritÃ© 3: Ville
     if (address.city || address.town) {
       if (address.state) {
         return `${address.city || address.town}, ${address.state}`;
@@ -197,17 +197,17 @@ class GeocodingService {
       return address.city || address.town || '';
     }
     
-    // Priorité 4: État/Région
+    // PrioritÃ© 4: Ã‰tat/RÃ©gion
     if (address.state) {
       return address.state;
     }
     
     // Fallback: nom complet
-    return display_name.split(',')[0]; // Premier élément
+    return display_name.split(',')[0]; // Premier Ã©lÃ©ment
   }
 
   /**
-   * Fallback: formater les coordonnées de manière lisible
+   * Fallback: formater les coordonnÃ©es de maniÃ¨re lisible
    */
   private formatCoordinatesAsFallback(lat: number, lng: number): string {
     const latFormatted = Math.abs(lat) < 10 ? lat.toFixed(3) : lat.toFixed(2);
@@ -216,29 +216,29 @@ class GeocodingService {
   }
 
   /**
-   * Pas de limite de taux - recherche INSTANTANÉE
+   * Pas de limite de taux - recherche INSTANTANÃ‰E
    */
   private async respectRateLimit(): Promise<void> {
-    // ZÉRO délai pour une performance maximale
+    // ZÃ‰RO dÃ©lai pour une performance maximale
     this.lastCallTime = Date.now();
   }
 
   /**
-   * Géocodage en lot ultra-optimisé pour des performances maximales
+   * GÃ©ocodage en lot ultra-optimisÃ© pour des performances maximales
    */
   async batchGeocode(coordinates: Array<{lat: number, lng: number}>): Promise<Map<string, string>> {
     const results = new Map<string, string>();
     const uncached = new Array<{lat: number, lng: number, key: string}>();
     
-    // Vérifier le cache préchargé et dynamique (ULTRA-RAPIDE)
+    // VÃ©rifier le cache prÃ©chargÃ© et dynamique (ULTRA-RAPIDE)
     for (const coord of coordinates) {
       const cacheKey = `${coord.lat.toFixed(6)},${coord.lng.toFixed(6)}`;
       
-      // Cache préchargé INSTANTANÉ
+      // Cache prÃ©chargÃ© INSTANTANÃ‰
       const precached = this.PRECACHED_LOCATIONS.get(cacheKey);
       if (precached) {
         results.set(cacheKey, precached);
-        console.log(`⚡ [Geocoding] Cache préchargé INSTANTANÉ pour ${cacheKey}: ${precached}`);
+        console.log(`âš¡ [Geocoding] Cache prÃ©chargÃ© INSTANTANÃ‰ pour ${cacheKey}: ${precached}`);
         continue;
       }
       
@@ -246,28 +246,28 @@ class GeocodingService {
       const cached = this.cache.get(cacheKey);
       if (cached && Date.now() < cached.expiresAt) {
         results.set(cacheKey, cached.name);
-        console.log(`🗺️ [Geocoding] Cache hit pour ${cacheKey}: ${cached.name}`);
+        console.log(`ðŸ—ºï¸ [Geocoding] Cache hit pour ${cacheKey}: ${cached.name}`);
       } else {
         uncached.push({...coord, key: cacheKey});
       }
     }
     
-    // Traiter les coordonnées non mises en cache par lots parallèles
+    // Traiter les coordonnÃ©es non mises en cache par lots parallÃ¨les
     if (uncached.length > 0) {
-      console.log(`🗺️ [Geocoding] Traitement ultra-rapide de ${uncached.length} coordonnées`);
+      console.log(`ðŸ—ºï¸ [Geocoding] Traitement ultra-rapide de ${uncached.length} coordonnÃ©es`);
       
-      // Traiter par lots de BATCH_SIZE pour éviter la surcharge
+      // Traiter par lots de BATCH_SIZE pour Ã©viter la surcharge
       for (let i = 0; i < uncached.length; i += this.BATCH_SIZE) {
         const batch = uncached.slice(i, i + this.BATCH_SIZE);
         
         const batchPromises = batch.map(async (coord) => {
           try {
-            // Pas de limite de taux entre les appels du même lot
+            // Pas de limite de taux entre les appels du mÃªme lot
             const location = await this.getLocationFromCoordinatesFast(coord.lat, coord.lng);
             results.set(coord.key, location);
             return { key: coord.key, location };
           } catch (error) {
-            console.error(`❌ [Geocoding] Erreur pour ${coord.key}:`, error);
+            console.error(`âŒ [Geocoding] Erreur pour ${coord.key}:`, error);
             const fallback = this.formatCoordinatesAsFallback(coord.lat, coord.lng);
             results.set(coord.key, fallback);
             return { key: coord.key, location: fallback };
@@ -276,7 +276,7 @@ class GeocodingService {
         
         await Promise.all(batchPromises);
         
-        // Pas de pause - traitement INSTANTANÉ
+        // Pas de pause - traitement INSTANTANÃ‰
       }
     }
     
@@ -284,12 +284,12 @@ class GeocodingService {
   }
 
   /**
-   * Précharger intelligemment les coordonnées communes
+   * PrÃ©charger intelligemment les coordonnÃ©es communes
    */
   preloadCommonLocations(): void {
-    console.log('🚀 [Geocoding] Préchargement des localisations communes...');
+    console.log('ðŸš€ [Geocoding] PrÃ©chargement des localisations communes...');
     
-    // Précharger dans le cache dynamique pour une accessibilité maximale
+    // PrÃ©charger dans le cache dynamique pour une accessibilitÃ© maximale
     this.PRECACHED_LOCATIONS.forEach((location, coords) => {
       this.cache.set(coords, {
         name: location,
@@ -298,7 +298,7 @@ class GeocodingService {
       });
     });
     
-    console.log(`⚡ [Geocoding] ${this.PRECACHED_LOCATIONS.size} localisations préchargées !`);
+    console.log(`âš¡ [Geocoding] ${this.PRECACHED_LOCATIONS.size} localisations prÃ©chargÃ©es !`);
   }
 
   /**
@@ -307,7 +307,7 @@ class GeocodingService {
   private async getLocationFromCoordinatesFast(lat: number, lng: number): Promise<string> {
     const cacheKey = `${lat.toFixed(6)},${lng.toFixed(6)}`;
     
-    // Cache préchargé INSTANTANÉ
+    // Cache prÃ©chargÃ© INSTANTANÃ‰
     const precached = this.PRECACHED_LOCATIONS.get(cacheKey);
     if (precached) {
       return precached;
@@ -320,9 +320,9 @@ class GeocodingService {
     }
 
     try {
-      console.log(`🗺️ [Geocoding] Appel backend rapide pour ${lat}, ${lng}`);
+      console.log(`ðŸ—ºï¸ [Geocoding] Appel backend rapide pour ${lat}, ${lng}`);
       
-      const response = await fetch('/api/geocoding/reverse', {
+      const response = await fetch(${API_BASE_URL}/api/geocoding/reverse', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -340,10 +340,10 @@ class GeocodingService {
       const data = await response.json();
       
       if (!data.formatted_address) {
-        throw new Error('Aucun nom de lieu trouvé');
+        throw new Error('Aucun nom de lieu trouvÃ©');
       }
       
-      // Mettre en cache immédiatement
+      // Mettre en cache immÃ©diatement
       this.cache.set(cacheKey, {
         name: data.formatted_address,
         timestamp: Date.now(),
@@ -353,7 +353,7 @@ class GeocodingService {
       return data.formatted_address;
 
     } catch (error) {
-      console.error(`❌ [Geocoding] Erreur pour ${lat}, ${lng}:`, error);
+      console.error(`âŒ [Geocoding] Erreur pour ${lat}, ${lng}:`, error);
       return this.formatCoordinatesAsFallback(lat, lng);
     }
   }
@@ -363,7 +363,7 @@ class GeocodingService {
    */
   clearCache(): void {
     this.cache.clear();
-    console.log('🗺️ [Geocoding] Cache vidé');
+    console.log('ðŸ—ºï¸ [Geocoding] Cache vidÃ©');
   }
 
   /**

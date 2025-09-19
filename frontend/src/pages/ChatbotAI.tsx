@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
+import { API_BASE_URL } from '@/config/api';
 import ResponsiveContainer from '@/components/layout/ResponsiveContainer';
 
 
@@ -8,21 +9,21 @@ export default function ChatbotAI() {
 
   const handleAsk = async () => {
     try {
-      const res = await fetch("/api/ask", {
+      const res = await fetch(`${API_BASE_URL}/api/ask", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt }),
       });
       const data = await res.json();
-      setReply(data.reply || "Aucune réponse.");
+      setReply(data.reply || "Aucune rÃ©ponse.");
     } catch (error) {
-      setReply("❌ Une erreur est survenue.");
+      setReply("âŒ Une erreur est survenue.");
     }
   };
 
   return (
     <div className="p-4">
-      <h2 className="text-xl font-bold mb-4">🤖 Chatbot Yukpomnang</h2>
+      <h2 className="text-xl font-bold mb-4">ðŸ¤– Chatbot Yukpomnang</h2>
       <input
         className="border p-2 w-full mb-2"
         placeholder="Posez votre question"

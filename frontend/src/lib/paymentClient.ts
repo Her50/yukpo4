@@ -1,5 +1,7 @@
-// API client pour les paiements et recharge de tokens
+﻿// API client pour les paiements et recharge de tokens
 import axios from 'axios';
+import { API_BASE_URL } from '@/config/api';
+import { API_BASE_URL } from '@/config/api';
 
 export interface InitiatePaymentRequest {
   amount_xaf: number;
@@ -38,9 +40,9 @@ export async function initiatePayment(request: InitiatePaymentRequest): Promise<
     throw new Error('Token d\'authentification manquant');
   }
 
-  const response = await axios.post('/api/payments/initiate', request, {
+  const response = await axios.post(${API_BASE_URL}/api/payments/initiate, request, {
     headers: {
-      'Authorization': `Bearer ${token}`,
+      'Authorization': Bearer ,
       'Content-Type': 'application/json'
     }
   });
@@ -49,15 +51,15 @@ export async function initiatePayment(request: InitiatePaymentRequest): Promise<
 }
 
 // Confirmer un paiement
-export async function confirmPayment(request: ConfirmPaymentRequest): Promise<any> {
+export async function confirmPayment(request: ConfirmPaymentRequest): Promise<InitiatePaymentResponse> {
   const token = localStorage.getItem('token');
   if (!token) {
     throw new Error('Token d\'authentification manquant');
   }
 
-  const response = await axios.post('/api/payments/confirm', request, {
+  const response = await axios.post(${API_BASE_URL}/api/payments/confirm, request, {
     headers: {
-      'Authorization': `Bearer ${token}`,
+      'Authorization': Bearer ,
       'Content-Type': 'application/json'
     }
   });
@@ -66,26 +68,52 @@ export async function confirmPayment(request: ConfirmPaymentRequest): Promise<an
 }
 
 // Récupérer l'historique des paiements
-export async function getPaymentHistory(limit = 20, offset = 0): Promise<PaymentHistoryItem[]> {
+export async function getPaymentHistory(limit: number = 10, offset: number = 0): Promise<PaymentHistoryItem[]> {
   const token = localStorage.getItem('token');
   if (!token) {
     throw new Error('Token d\'authentification manquant');
   }
 
-  const response = await axios.get(`/api/payments/history?limit=${limit}&offset=${offset}`, {
+  const response = await axios.get(${API_BASE_URL}/api/payments/history?limit=&offset=, {
     headers: {
-      'Authorization': `Bearer ${token}`
+      'Authorization': Bearer ,
+      'Content-Type': 'application/json'
     }
   });
 
   return response.data;
 }
 
-// Simuler la confirmation d'un paiement Mobile Money (pour développement)
-export async function simulatePaymentConfirmation(paymentId: string, success = true): Promise<any> {
-  return confirmPayment({
-    payment_id: paymentId,
-    transaction_id: `sim_${Date.now()}`,
-    status: success ? 'success' : 'failed'
+// Vérifier le statut d'un paiement
+export async function checkPaymentStatus(paymentId: string): Promise<InitiatePaymentResponse> {
+  const token = localStorage.getItem('token');
+  if (!token) {
+    throw new Error('Token d\'authentification manquant');
+  }
+
+  const response = await axios.get(${API_BASE_URL}/api/payments/status/, {
+    headers: {
+      'Authorization': Bearer ,
+      'Content-Type': 'application/json'
+    }
   });
+
+  return response.data;
+}
+
+// Annuler un paiement
+export async function cancelPayment(paymentId: string): Promise<InitiatePaymentResponse> {
+  const token = localStorage.getItem('token');
+  if (!token) {
+    throw new Error('Token d\'authentification manquant');
+  }
+
+  const response = await axios.post(${API_BASE_URL}/api/payments/cancel, { payment_id: paymentId }, {
+    headers: {
+      'Authorization': Bearer ,
+      'Content-Type': 'application/json'
+    }
+  });
+
+  return response.data;
 }
