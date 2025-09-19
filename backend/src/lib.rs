@@ -1,4 +1,4 @@
-﻿pub mod controllers;
+pub mod controllers;
 pub mod models;
 pub mod state;
 pub mod core;
@@ -26,6 +26,8 @@ use axum::{
 };
 use tracing_subscriber::{EnvFilter, fmt, layer::SubscriberExt, util::SubscriberInitExt};
 use crate::state::AppState;
+use crate::middlewares::cors_middleware;
+
 
 
 use crate::routes::{
@@ -131,8 +133,8 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .merge(image_search)
         .merge(websocket)
         .route("/fournitures/gestion", axum::routing::post(fournitures_axum_handler))
-        .with_state(state);
-    // Ajouter les routes WebSocket s?par?ment
+        .layer(axum::middleware::from_fn(cors_middleware))  // ← AJOUTER CETTE LIGNE
+        .with_state(state);    // Ajouter les routes WebSocket s?par?ment
     // let app = app.merge(websocket);
     app
 }

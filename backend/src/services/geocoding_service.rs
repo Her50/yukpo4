@@ -42,6 +42,7 @@ struct GoogleGeocodingResult {
 #[derive(Debug, Deserialize)]
 struct AddressComponent {
     long_name: String,
+    #[allow(dead_code)]
     short_name: String,
     types: Vec<String>,
 }
