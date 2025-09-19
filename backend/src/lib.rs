@@ -124,7 +124,7 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
     // Routes WebSocket pour le statut en ligne et les notifications
     let websocket = create_websocket_router();
 
-    let app = Router::new()()
+    let app = Router::new()
         .route("/healthz", get(healthz))
         .merge(auth)
         .merge(users)
