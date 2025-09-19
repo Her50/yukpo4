@@ -142,8 +142,8 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .layer(
             CorsLayer::new()
                 .allow_origin(Any)
-                .allow_methods([reqwest::Method::GET, reqwest::Method::POST, reqwest::Method::PUT, reqwest::Method::DELETE, reqwest::Method::OPTIONS])
-                .allow_headers([reqwest::header::HeaderName::from_static("content-type"), reqwest::header::HeaderName::from_static("authorization")])
+                .allow_methods(Any)
+                .allow_headers(Any)
                 .allow_credentials(true)
         )
         .with_state(state);
