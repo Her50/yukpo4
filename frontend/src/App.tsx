@@ -1,13 +1,13 @@
 // @ts-check
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { ROUTES } from '@/routes/AppRoutesRegistry';
-import RequireAuth from '@/components/auth/RequireAuth';
-import { GlobalIAStatsProvider } from '@/components/intelligence/GlobalIAStats';
-import { ToasterProvider } from '@/components/ui/toaster';
+import { ROUTES } from './routes/AppRoutesRegistry';
+import RequireAuth from './components/auth/RequireAuth';
+import { GlobalIAStatsProvider } from './components/intelligence/GlobalIAStats';
+import { ToasterProvider } from './components/ui/toaster';
 import { Toaster } from 'react-hot-toast';
 import GPSManager from './components/GPSManager';
-import WebSocketStatusRealTime from '@/components/websocket/WebSocketStatusRealTime';
+import WebSocketStatusRealTime from './components/websocket/WebSocketStatusRealTime';
 
 
 // Pages essentielles
