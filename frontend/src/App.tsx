@@ -24,7 +24,7 @@ import ServiceFormDynamic from "@/components/forms/ServiceFormDynamic";
 import SoldeDetailPage from '@/pages/SoldeDetailPage';
 import FormulaireYukpoIntelligent from '@/pages/FormulaireYukpoIntelligent';
 import FormulaireServiceModerne from '@/pages/FormulaireServiceModerne';
-import RechargeTokensPage from '@/pages/RechargeTokensPage';
+
 // Dashboard pages
 import MesServices from '@/pages/dashboard/MesServices';
 import ResultatBesoin from '@/pages/ResultatBesoin';
@@ -70,7 +70,7 @@ function App() {
                  />
                 {/* Ô£à Ajout de la page solde/historique IA */}
                 <Route path={ROUTES.MON_SOLDE} element={<SoldeDetailPage />} />
-                <Route path={ROUTES.RECHARGE_TOKENS} element={<RechargeTokensPage />} />
+                // // RechargeTokensPage temporarily disabled temporarily disabled
                 {/* ­ƒÄ» Dashboard routes */}
                 <Route path={ROUTES.DASHBOARD} element={
                   <RequireAuth>
