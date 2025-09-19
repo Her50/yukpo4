@@ -19,15 +19,13 @@ pub mod websocket;
 // pub mod orchestration_ia_optimized;
 use std::sync::Arc;
 use axum::{
-    http::Method,
-    http::HeaderValue,
-    
     Router,
     routing::get,
     Json,
     extract::State,
 };
 use tracing_subscriber::{EnvFilter, fmt, layer::SubscriberExt, util::SubscriberInitExt};
+use tower_http::cors::{CorsLayer, Any};
 use crate::state::AppState;
 use crate::routes::{
     auth_routes::auth_routes,
