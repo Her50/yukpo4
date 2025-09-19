@@ -25,7 +25,6 @@ use axum::{
     extract::State,
 };
 use tracing_subscriber::{EnvFilter, fmt, layer::SubscriberExt, util::SubscriberInitExt};
-use tower_http::cors::{CorsLayer, Any};
 use crate::state::AppState;
 use crate::routes::{
     auth_routes::auth_routes,
@@ -125,13 +124,6 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .merge(image_search)
         .merge(websocket)
         .route("/fournitures/gestion", axum::routing::post(fournitures_axum_handler))
-        .layer(
-            CorsLayer::new()
-                .allow_origin(tower_http::cors::Any)
-                .allow_methods(tower_http::cors::Any)
-                .allow_headers(tower_http::cors::Any)
-                .allow_credentials(true)
-        )
         .with_state(state);
     // Ajouter les routes WebSocket séparément
     // let app = app.merge(websocket);
