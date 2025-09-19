@@ -151,7 +151,7 @@ class GPSTrackingService {
    */
   private async sendLocationToBackend(location: GPSLocation): Promise<void> {
     try {
-      const response = await fetch(${API_BASE_URL}/api/user/me/gps_location', {
+      const response = await fetch(${API_BASE_URL}/api/user/me/gps_location, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
