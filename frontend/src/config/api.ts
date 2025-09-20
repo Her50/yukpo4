@@ -1,13 +1,13 @@
-ï»¿// Configuration API pour Vite avec gestion d'erreur
+// Configuration API pour Vite avec gestion d'erreur
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://yukpomnang.onrender.com';
 
-// Configuration de fallback pour le dÃ©veloppement
+// Configuration de fallback pour le développement
 const FALLBACK_API_URL = 'https://jsonplaceholder.typicode.com';
 
-// Fonction pour vÃ©rifier si le backend est accessible
+// Fonction pour vérifier si le backend est accessible
 export const checkBackendHealth = async () => {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/health`, {
+    const response = await fetch(`${API_BASE_URL}/healthz`, {
       method: 'GET',
       timeout: 5000
     });
