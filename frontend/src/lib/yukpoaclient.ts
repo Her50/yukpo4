@@ -15,7 +15,7 @@ function generateDevToken(): string {
 // ✅ Fonction pour se connecter avec email/mot de passe
 export async function login(email: string, password: string): Promise<{ token: string; tokens_balance: number }> {
   try {
-    const response = await axios.post('${API_BASE_URL}/api/auth/login', {
+    const response = await axios.post(`${API_BASE_URL}/api/auth/login`, {
       email,
       password
     });
@@ -167,7 +167,7 @@ export async function genererSuggestionsService(input: any): Promise<IAResponseW
 
   try {
     // ?? UNIQUEMENT ÉTAPE 1 : Appeler l'IA pour structurer les données
-    const iaResponse = await fetch('${API_BASE_URL}/api/ia/creation-service', {
+    const iaResponse = await fetch(`${API_BASE_URL}/api/ia/creation-service`, {
       method: 'POST',
       headers,
       body: JSON.stringify(serviceRequest),
@@ -229,7 +229,7 @@ export async function creerService(donneesStructurees: any, tokensIAExterne?: nu
 
   try {
     // ?? UNIQUEMENT ÉTAPE 2 : Créer le service avec les données déjà structurées
-    const response = await fetch('${API_BASE_URL}/api/services/create', {
+    const response = await fetch(`${API_BASE_URL}/api/services/create`, {
       method: 'POST',
       headers: { 
         'Content-Type': 'application/json',
@@ -269,7 +269,7 @@ export async function validerBrouillonService(donnees: any): Promise<any> {
     throw new Error('Token d\'authentification manquant');
   }
 
-  const response = await fetch('${API_BASE_URL}/api/services/draft', {
+  const response = await fetch(`${API_BASE_URL}/api/services/draft`, {
     method: 'POST',
     headers: { 
       'Content-Type': 'application/json',
@@ -290,7 +290,7 @@ export async function validerBrouillonService(donnees: any): Promise<any> {
 export async function vectoriserService(servicePayload: any): Promise<any> {
   const token = localStorage.getItem('token');
   if (!token) throw new Error('Token manquant');
-  const response = await axios.post('${API_BASE_URL}/api/services/vectorize', servicePayload, {
+  const response = await axios.post(`${API_BASE_URL}/api/services/vectorize`, servicePayload, {
     headers: { 'Authorization': `Bearer ${token}` }
   });
   return response.data;

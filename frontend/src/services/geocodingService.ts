@@ -80,7 +80,7 @@ class GeocodingService {
       console.log(`ðŸ—ºï¸ [Geocoding] Appel backend pour ${lat}, ${lng}`);
       
       // Utiliser l'endpoint backend au lieu d'appeler directement Google Maps
-      const response = await fetch(`${API_BASE_URL}/api/geocoding/reverse`, {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/geocoding/reverse`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -320,9 +320,9 @@ class GeocodingService {
     }
 
     try {
-      console.log(`ðŸ—ºï¸ [Geocoding] Appel backend rapide pour ${lat}, ${lng}`);
+      console.log(`🛰️ [Geocoding] Appel backend rapide pour ${lat}, ${lng}`);
       
-      const response = await fetch(`${API_BASE_URL}/api/geocoding/reverse`, {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/geocoding/reverse`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
