@@ -13,10 +13,11 @@ export default defineConfig({
     outDir: "dist",
     assetsDir: "assets",
     sourcemap: false,
-    chunkSizeWarningLimit: 1000,
+    chunkSizeWarningLimit: 2000,
     rollupOptions: {
       output: {
         manualChunks: (id) => {
+          // Vendor chunks - séparation optimisée
           if (id.includes("node_modules")) {
             if (id.includes("react") || id.includes("react-dom")) {
               return "react-vendor";
@@ -27,24 +28,68 @@ export default defineConfig({
             if (id.includes("@headlessui") || id.includes("@heroicons")) {
               return "ui-vendor";
             }
-            if (id.includes("@mantine") || id.includes("@radix-ui")) {
-              return "ui-components";
+            if (id.includes("@mantine")) {
+              return "mantine-vendor";
             }
-            if (id.includes("axios") || id.includes("i18next")) {
+            if (id.includes("@radix-ui")) {
+              return "radix-vendor";
+            }
+            if (id.includes("axios")) {
+              return "axios-vendor";
+            }
+            if (id.includes("i18next") || id.includes("react-i18next")) {
+              return "i18n-vendor";
+            }
+            if (id.includes("@react-google-maps")) {
+              return "google-maps-vendor";
+            }
+            if (id.includes("mapbox")) {
+              return "mapbox-vendor";
+            }
+            if (id.includes("@react-oauth")) {
+              return "oauth-vendor";
+            }
+            if (id.includes("classnames")) {
               return "utils-vendor";
-            }
-            if (id.includes("@react-google-maps") || id.includes("mapbox")) {
-              return "maps-vendor";
             }
             return "vendor";
           }
+          
+          // Page-based chunks pour le code-splitting
           if (id.includes("/pages/")) {
             const pageName = id.split("/pages/")[1].split("/")[0];
+            if (pageName === "dashboard") {
+              return "dashboard-pages";
+            }
+            if (pageName === "admin") {
+              return "admin-pages";
+            }
             return `page-${pageName}`;
           }
+          
+          // Component chunks
           if (id.includes("/components/")) {
             const componentName = id.split("/components/")[1].split("/")[0];
+            if (componentName === "forms") {
+              return "forms-components";
+            }
+            if (componentName === "ui") {
+              return "ui-components";
+            }
+            if (componentName === "auth") {
+              return "auth-components";
+            }
             return `component-${componentName}`;
+          }
+          
+          // Services et hooks
+          if (id.includes("/services/") || id.includes("/hooks/")) {
+            return "services-hooks";
+          }
+          
+          // Utils et contextes
+          if (id.includes("/utils/") || id.includes("/context/")) {
+            return "utils-context";
           }
         }
       }
