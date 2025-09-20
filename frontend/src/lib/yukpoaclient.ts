@@ -96,7 +96,7 @@ export async function appelerMoteurIA(input: any, onAfterCall?: () => void): Pro
 
   try {
     // Utiliser fetch au lieu d'axios pour éviter les limites de taille
-    const response = await fetch('${API_BASE_URL}/api/ia/creation-service', {
+    const response = await fetch(`${API_BASE_URL}/api/ia/creation-service`, {
       method: 'POST',
       headers,
       body: JSON.stringify(input),

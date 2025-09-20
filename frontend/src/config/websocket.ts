@@ -5,10 +5,26 @@ export const WEBSOCKET_CONFIG = {
   
   // URLs des WebSockets
   urls: {
-    status: (userId: number) => `ws://${window.location.hostname}:3001/ws/status/${userId}`,
-    notifications: (userId: number) => `ws://${window.location.hostname}:3001/ws/notifications/${userId}`,
-    chat: (clientId: string) => `ws://${window.location.hostname}:3001/ws/chat/${clientId}`,
-    access: `ws://${window.location.hostname}:3001/ws/access`
+    status: (userId: number) => {
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const host = window.location.hostname === 'localhost' ? 'localhost:3001' : 'yukpomnang.onrender.com';
+      return `${protocol}//${host}/ws/status/${userId}`;
+    },
+    notifications: (userId: number) => {
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const host = window.location.hostname === 'localhost' ? 'localhost:3001' : 'yukpomnang.onrender.com';
+      return `${protocol}//${host}/ws/notifications/${userId}`;
+    },
+    chat: (clientId: string) => {
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const host = window.location.hostname === 'localhost' ? 'localhost:3001' : 'yukpomnang.onrender.com';
+      return `${protocol}//${host}/ws/chat/${clientId}`;
+    },
+    access: () => {
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const host = window.location.hostname === 'localhost' ? 'localhost:3001' : 'yukpomnang.onrender.com';
+      return `${protocol}//${host}/ws/access`;
+    }
   },
   
   // Configuration de reconnexion optimisée
