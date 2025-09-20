@@ -17,7 +17,7 @@ const ContactEnterprisePage: React.FC = () => {
     setLoading(true);
 
     try {
-      const res = await fetch(${API_BASE_URL}/api/contact/entreprise', {
+      const res = await fetch(`${API_BASE_URL}/api/contact/entreprise`, {
         method: 'POST',
         body: JSON.stringify(form),
         headers: { 'Content-Type': 'application/json' },
