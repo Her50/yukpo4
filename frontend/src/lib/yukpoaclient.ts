@@ -15,7 +15,7 @@ function generateDevToken(): string {
 // ✅ Fonction pour se connecter avec email/mot de passe
 export async function login(email: string, password: string): Promise<{ token: string; tokens_balance: number }> {
   try {
-    const response = await axios.post(`${API_BASE_URL}/api/auth/login`, {
+    const response = await axios.post(`${API_BASE_URL}/auth/login`, {
       email,
       password
     });
