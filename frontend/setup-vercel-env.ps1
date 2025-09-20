@@ -1,0 +1,40 @@
+﻿# Script pour configurer automatiquement les variables d'environnement Vercel
+$envVars = @{
+    "VITE_API_BASE_URL" = "https://yukpomnang.onrender.com"
+    "VITE_APP_GOOGLE_MAPS_API_KEY" = "AIzaSyDFfWEq1Umm06SNTbR-cRhRQ5Sq_taEAWQ"
+    "VITE_APP_ENV" = "production"
+    "VITE_APP_DEBUG" = "false"
+    "VITE_APP_YUKPO_API_KEY" = "yukpo_frontend_key_2024"
+    "VITE_APP_AI_SERVICE_URL" = "https://api.openai.com/v1"
+    "VITE_APP_PINECONE_API_KEY" = "pcsk_6aD9si_CSCQPpYjfbVR5VKmqaZQYDu2P49KsvSBvbgUftR24tRMYp7YesZfNWDrALRhdmu"
+    "VITE_APP_TITLE" = "Yukpo - Services Intelligents"
+    "VITE_APP_DESCRIPTION" = "Plateforme de services intelligents avec IA"
+    "VITE_APP_MAX_RETRIES" = "3"
+    "VITE_APP_TIMEOUT" = "10000"
+    "VITE_APP_CACHE_ENABLED" = "true"
+    "VITE_APP_LAZY_LOADING" = "true"
+    "VITE_APP_COMPRESSION" = "true"
+    "VITE_APP_HOT_RELOAD" = "false"
+    "VITE_APP_SOURCE_MAPS" = "false"
+    "VITE_APP_DEVTOOLS" = "false"
+    "VITE_APP_CSP_ENABLED" = "true"
+    "VITE_APP_HTTPS_ONLY" = "true"
+    "NODE_ENV" = "production"
+}
+
+Write-Host "Configuration des variables d'environnement Vercel..." -ForegroundColor Green
+
+foreach ($key in $envVars.Keys) {
+    $value = $envVars[$key]
+    Write-Host "Configuration de $key = $value" -ForegroundColor Yellow
+    
+    try {
+        # Utiliser echo pour passer la valeur à vercel env add
+        echo $value | npx vercel env add $key production
+        Write-Host "✅ $key configuré avec succès" -ForegroundColor Green
+    } catch {
+        Write-Host "❌ Erreur pour $key : $($_.Exception.Message)" -ForegroundColor Red
+    }
+}
+
+Write-Host "Configuration terminée !" -ForegroundColor Green
