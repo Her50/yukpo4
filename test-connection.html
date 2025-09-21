@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test de connexion Yukpomnang</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-item {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .success {
+            background: #d4edda;
+            border-color: #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background: #f8d7da;
+            border-color: #f5c6cb;
+            color: #721c24;
+        }
+        .pending {
+            background: #fff3cd;
+            border-color: #ffeeba;
+            color: #856404;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .log {
+            background: #f8f9fa;
+            padding: 10px;
+            margin-top: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>Test de connexion Yukpomnang</h1>
+        
+        <div class="test-item pending" id="backend-status">
+            <h3>Backend Status</h3>
+            <p>URL: <span id="backend-url">-</span></p>
+            <button onclick="testBackend()">Tester Backend</button>
+            <div class="log" id="backend-log"></div>
+        </div>
+
+        <div class="test-item pending" id="api-health">
+            <h3>API Health Check</h3>
+            <button onclick="testHealth()">Tester /healthz</button>
+            <div class="log" id="health-log"></div>
+        </div>
+
+        <div class="test-item pending" id="api-services">
+            <h3>API Services</h3>
+            <button onclick="testServices()">Tester /api/services</button>
+            <div class="log" id="services-log"></div>
+        </div>
+
+        <div class="test-item pending" id="cors-test">
+            <h3>Test CORS</h3>
+            <button onclick="testCORS()">Tester CORS</button>
+            <div class="log" id="cors-log"></div>
+        </div>
+
+        <div class="test-item">
+            <h3>Configuration</h3>
+            <label>Backend URL: </label>
+            <input type="text" id="backend-input" value="https://yukpomnang.onrender.com" style="width: 300px; padding: 5px;">
+            <button onclick="updateBackendUrl()">Mettre à jour</button>
+        </div>
+
+        <button onclick="runAllTests()">Lancer tous les tests</button>
+        <button onclick="clearLogs()">Effacer les logs</button>
+    </div>
+
+    <script>
+        let BACKEND_URL = 'https://yukpomnang.onrender.com';
+
+        function updateBackendUrl() {
+            BACKEND_URL = document.getElementById('backend-input').value;
+            document.getElementById('backend-url').textContent = BACKEND_URL;
+            addLog('backend-log', `URL mise à jour: ${BACKEND_URL}`);
+        }
+
+        function addLog(logId, message) {
+            const logDiv = document.getElementById(logId);
+            const timestamp = new Date().toLocaleTimeString();
+            logDiv.innerHTML += `[${timestamp}] ${message}<br>`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        function setStatus(elementId, status) {
+            const element = document.getElementById(elementId);
+            element.classList.remove('pending', 'success', 'error');
+            element.classList.add(status);
+        }
+
+        async function testBackend() {
+            const logId = 'backend-log';
+            setStatus('backend-status', 'pending');
+            addLog(logId, `Test de connexion à ${BACKEND_URL}...`);
+            
+            try {
+                const response = await fetch(BACKEND_URL, {
+                    method: 'GET',
+                    mode: 'cors',
+                    headers: {
+                        'Accept': 'application/json'
+                    }
+                });
+                
+                addLog(logId, `Status: ${response.status} ${response.statusText}`);
+                addLog(logId, `Headers: ${JSON.stringify([...response.headers])}`);
+                
+                if (response.ok || response.status === 404) {
+                    setStatus('backend-status', 'success');
+                    addLog(logId, '✓ Backend accessible');
+                } else {
+                    setStatus('backend-status', 'error');
+                    addLog(logId, `✗ Erreur: ${response.status}`);
+                }
+            } catch (error) {
+                setStatus('backend-status', 'error');
+                addLog(logId, `✗ Erreur: ${error.message}`);
+            }
+        }
+
+        async function testHealth() {
+            const logId = 'health-log';
+            setStatus('api-health', 'pending');
+            addLog(logId, `Test de ${BACKEND_URL}/healthz...`);
+            
+            try {
+                const response = await fetch(`${BACKEND_URL}/healthz`, {
+                    method: 'GET',
+                    mode: 'cors',
+                    headers: {
+                        'Accept': 'application/json'
+                    }
+                });
+                
+                addLog(logId, `Status: ${response.status}`);
+                
+                if (response.ok) {
+                    const data = await response.text();
+                    setStatus('api-health', 'success');
+                    addLog(logId, `✓ Health check OK: ${data}`);
+                } else {
+                    setStatus('api-health', 'error');
+                    addLog(logId, `✗ Erreur: ${response.status}`);
+                }
+            } catch (error) {
+                setStatus('api-health', 'error');
+                addLog(logId, `✗ Erreur: ${error.message}`);
+            }
+        }
+
+        async function testServices() {
+            const logId = 'services-log';
+            setStatus('api-services', 'pending');
+            addLog(logId, `Test de ${BACKEND_URL}/api/services...`);
+            
+            try {
+                const response = await fetch(`${BACKEND_URL}/api/services`, {
+                    method: 'GET',
+                    mode: 'cors',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                addLog(logId, `Status: ${response.status}`);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    setStatus('api-services', 'success');
+                    addLog(logId, `✓ Services récupérés: ${data.length || 0} services`);
+                    if (data.length > 0) {
+                        addLog(logId, `Premier service: ${JSON.stringify(data[0])?.substring(0, 100)}...`);
+                    }
+                } else {
+                    setStatus('api-services', 'error');
+                    const text = await response.text();
+                    addLog(logId, `✗ Erreur ${response.status}: ${text}`);
+                }
+            } catch (error) {
+                setStatus('api-services', 'error');
+                addLog(logId, `✗ Erreur: ${error.message}`);
+            }
+        }
+
+        async function testCORS() {
+            const logId = 'cors-log';
+            setStatus('cors-test', 'pending');
+            addLog(logId, 'Test des headers CORS...');
+            
+            try {
+                const response = await fetch(`${BACKEND_URL}/api/services`, {
+                    method: 'OPTIONS',
+                    mode: 'cors',
+                    headers: {
+                        'Origin': window.location.origin,
+                        'Access-Control-Request-Method': 'GET',
+                        'Access-Control-Request-Headers': 'Content-Type'
+                    }
+                });
+                
+                addLog(logId, `Status: ${response.status}`);
+                
+                const corsHeaders = {
+                    'Access-Control-Allow-Origin': response.headers.get('Access-Control-Allow-Origin'),
+                    'Access-Control-Allow-Methods': response.headers.get('Access-Control-Allow-Methods'),
+                    'Access-Control-Allow-Headers': response.headers.get('Access-Control-Allow-Headers'),
+                    'Access-Control-Allow-Credentials': response.headers.get('Access-Control-Allow-Credentials')
+                };
+                
+                addLog(logId, `Headers CORS: ${JSON.stringify(corsHeaders, null, 2)}`);
+                
+                if (corsHeaders['Access-Control-Allow-Origin']) {
+                    setStatus('cors-test', 'success');
+                    addLog(logId, '✓ CORS configuré correctement');
+                } else {
+                    setStatus('cors-test', 'error');
+                    addLog(logId, '✗ Headers CORS manquants');
+                }
+            } catch (error) {
+                setStatus('cors-test', 'error');
+                addLog(logId, `✗ Erreur: ${error.message}`);
+            }
+        }
+
+        async function runAllTests() {
+            await testBackend();
+            await new Promise(r => setTimeout(r, 500));
+            await testHealth();
+            await new Promise(r => setTimeout(r, 500));
+            await testServices();
+            await new Promise(r => setTimeout(r, 500));
+            await testCORS();
+        }
+
+        function clearLogs() {
+            ['backend-log', 'health-log', 'services-log', 'cors-log'].forEach(id => {
+                document.getElementById(id).innerHTML = '';
+            });
+        }
+
+        // Initialisation
+        document.getElementById('backend-url').textContent = BACKEND_URL;
+    </script>
+</body>
+</html> 
