@@ -15,7 +15,7 @@ use tokio::io::AsyncReadExt;
 use crate::{
     controllers::{
         // interaction_controller::{post_message, post_review, get_service_interactions, get_service_reviews, get_service_score, post_audio, post_call, post_share},
-        service_controller::{get_services_for_prestataire, toggle_service_status, modifier_service, supprimer_service, get_service_by_id},
+        service_controller::{get_services_for_prestataire, toggle_service_status, modifier_service, supprimer_service, get_service_by_id, get_last_service_for_user},
     },
     core::types::{AppResult, AppError},
     services::creer_service,
@@ -112,6 +112,8 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route("/api/services/{service_id}/media", get(crate::controllers::media_controller::get_service_media))
         // Route pour récupérer les informations d'un utilisateur par ID
         .route("/api/users/{user_id}", get(crate::controllers::user_controller::get_user_by_id))
+        // Route pour récupérer le dernier service (pour préremplissage contact)
+        .route("/api/services/last", get(crate::controllers::service_controller::get_last_service_for_user))
         .layer(axum::middleware::from_fn(jwt_auth))
         .layer(axum::middleware::from_fn(monitoring::monitoring))
         .layer(axum::middleware::from_fn(audit_log::audit_log))
