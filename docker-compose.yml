@@ -1,0 +1,82 @@
+version: '3.8'
+
+services:
+  # 🗄️ Base de données PostgreSQL avec pgvector
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: yukpomnang
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./pgvector_pg16_files:/docker-entrypoint-initdb.d
+    networks:
+      - yukpo-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # 🚀 Backend Rust
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      - RUST_LOG=info
+      - DATABASE_URL=postgresql://postgres:password@postgres:5432/yukpomnang
+      - JWT_SECRET=your-secret-key
+      - CORS_ORIGIN=*
+    ports:
+      - "3001:3001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - yukpo-network
+    volumes:
+      - ./backend/uploads:/app/uploads
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3001/healthz || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # 🌐 Frontend React
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - VITE_API_BASE_URL=http://localhost:3001
+      - VITE_APP_ENV=development
+    depends_on:
+      - backend
+    networks:
+      - yukpo-network
+
+  # ⚖️ Nginx Reverse Proxy
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - frontend
+      - backend
+    networks:
+      - yukpo-network
+
+volumes:
+  postgres_data:
+
+networks:
+  yukpo-network:
+    driver: bridge 
