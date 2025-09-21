@@ -1,10 +1,15 @@
 // Configuration API pour Vite avec gestion d'erreur
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://yukpomnang.onrender.com';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || (
+  // En production sur Vercel, utiliser des URLs relatives pour profiter des rewrites
+  typeof window !== 'undefined' && window.location.hostname.includes('vercel.app') 
+    ? '' 
+    : 'https://yukpomnang.onrender.com'
+);
 
-// Configuration de fallback pour le développement
+// Configuration de fallback pour le dï¿½veloppement
 const FALLBACK_API_URL = 'https://jsonplaceholder.typicode.com';
 
-// Fonction pour vérifier si le backend est accessible
+// Fonction pour vï¿½rifier si le backend est accessible
 export const checkBackendHealth = async () => {
   try {
     const response = await fetch(`${API_BASE_URL}/healthz`, {

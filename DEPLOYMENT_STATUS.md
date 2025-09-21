@@ -19,7 +19,7 @@
 
 ## ✅ Frontend (Vercel) - DÉPLOYÉ
 
-- **URL**: https://frontend-hv14y0pgp-lele-s-projects.vercel.app
+- **URL**: https://yukpo.vercel.app
 - **Status**: ✅ Déployé avec succès
 - **Build**: ✅ Compilation réussie (3m 7s)
 - **Proxy API**: ✅ Configuré pour rediriger vers Render
@@ -85,7 +85,7 @@ Votre application est configurée pour être déployée sur:
 ## 🚀 URLs de Production
 
 ### Application Live:
-- **Frontend**: https://frontend-hv14y0pgp-lele-s-projects.vercel.app
+- **Frontend**: https://yukpo.vercel.app
 - **Backend API**: https://yukpomnang.onrender.com
 
 ### Endpoints API Testés:
