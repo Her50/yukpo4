@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Network Calls - Yukpomnang</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .debug-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .success { background: #d4edda; border-color: #c3e6cb; color: #155724; }
+        .error { background: #f8d7da; border-color: #f5c6cb; color: #721c24; }
+        .info { background: #d1ecf1; border-color: #bee5eb; color: #0c5460; }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background: #0056b3; }
+        .log {
+            background: #f8f9fa;
+            padding: 10px;
+            margin-top: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+        .url-display {
+            background: #e9ecef;
+            padding: 8px;
+            border-radius: 4px;
+            font-family: monospace;
+            word-break: break-all;
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="debug-container">
+        <h1>🔍 Debug Network Calls - Yukpomnang</h1>
+        
+        <div class="test-section info">
+            <h3>📍 Configuration Détectée</h3>
+            <p><strong>Current URL:</strong></p>
+            <div class="url-display" id="current-url"></div>
+            <p><strong>API Base URL:</strong></p>
+            <div class="url-display" id="api-base-url"></div>
+            <p><strong>Environment:</strong></p>
+            <div class="url-display" id="environment"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>🧪 Test 1: Configuration API</h3>
+            <button onclick="testAPIConfig()">Tester Configuration API</button>
+            <div class="log" id="config-log"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>🌐 Test 2: Endpoints Directs</h3>
+            <button onclick="testDirectEndpoints()">Tester Endpoints Directs</button>
+            <div class="log" id="direct-log"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>🔄 Test 3: Proxy Netlify</h3>
+            <button onclick="testNetlifyProxy()">Tester Proxy Netlify</button>
+            <div class="log" id="proxy-log"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>🔐 Test 4: Flux Authentification Complet</h3>
+            <button onclick="testAuthFlow()">Tester Auth Complète</button>
+            <div class="log" id="auth-log"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>📡 Test 5: Simulation Frontend Real</h3>
+            <button onclick="simulateFrontendCalls()">Simuler Appels Frontend</button>
+            <div class="log" id="frontend-log"></div>
+        </div>
+
+        <button onclick="runAllTests()">🚀 Lancer Tous les Tests</button>
+        <button onclick="clearAllLogs()">🧹 Effacer Logs</button>
+    </div>
+
+    <script>
+        // Configuration
+        const CURRENT_URL = window.location.origin;
+        const API_BASE_URL = ''; // Vide pour utiliser les redirects
+        const BACKEND_DIRECT = 'https://yukpomnang.onrender.com';
+
+        // Initialisation
+        document.getElementById('current-url').textContent = CURRENT_URL;
+        document.getElementById('api-base-url').textContent = API_BASE_URL || '(URLs relatives - redirects)';
+        document.getElementById('environment').textContent = `${window.location.hostname} - ${navigator.userAgent.substring(0, 100)}...`;
+
+        function addLog(logId, message) {
+            const logDiv = document.getElementById(logId);
+            const timestamp = new Date().toLocaleTimeString();
+            logDiv.textContent += `[${timestamp}] ${message}\n`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        function clearLog(logId) {
+            document.getElementById(logId).textContent = '';
+        }
+
+        async function testAPIConfig() {
+            const logId = 'config-log';
+            clearLog(logId);
+            
+            addLog(logId, '=== TEST CONFIGURATION API ===');
+            addLog(logId, `Current URL: ${CURRENT_URL}`);
+            addLog(logId, `API Base URL: ${API_BASE_URL || '(relative URLs)'}`);
+            addLog(logId, `Backend Direct: ${BACKEND_DIRECT}`);
+            
+            // Test si les variables d'environnement sont correctes
+            addLog(logId, '\n--- Variables d\'environnement simulées ---');
+            addLog(logId, `VITE_API_BASE_URL: "${API_BASE_URL}"`);
+            addLog(logId, `Hostname: ${window.location.hostname}`);
+            addLog(logId, `Protocol: ${window.location.protocol}`);
+        }
+
+        async function testDirectEndpoints() {
+            const logId = 'direct-log';
+            clearLog(logId);
+            
+            addLog(logId, '=== TEST ENDPOINTS DIRECTS ===');
+            
+            const endpoints = [
+                { url: `${BACKEND_DIRECT}/healthz`, name: 'Backend Direct Health' },
+                { url: `${CURRENT_URL}/healthz`, name: 'Proxy Health' },
+                { url: `${BACKEND_DIRECT}/auth/login`, name: 'Backend Direct Auth', method: 'POST' },
+                { url: `${CURRENT_URL}/auth/login`, name: 'Proxy Auth', method: 'POST' }
+            ];
+
+            for (const endpoint of endpoints) {
+                try {
+                    addLog(logId, `\nTest: ${endpoint.name}`);
+                    addLog(logId, `URL: ${endpoint.url}`);
+                    
+                    const options = {
+                        method: endpoint.method || 'GET',
+                        headers: { 'Accept': 'application/json' }
+                    };
+
+                    if (endpoint.method === 'POST') {
+                        options.headers['Content-Type'] = 'application/json';
+                        options.body = JSON.stringify({
+                            email: 'test@example.com',
+                            password: 'test123'
+                        });
+                    }
+
+                    const response = await fetch(endpoint.url, options);
+                    addLog(logId, `✅ Status: ${response.status} ${response.statusText}`);
+                    
+                    if (response.ok) {
+                        const data = await response.text();
+                        addLog(logId, `Response: ${data.substring(0, 100)}...`);
+                    }
+                } catch (error) {
+                    addLog(logId, `❌ Erreur: ${error.message}`);
+                }
+            }
+        }
+
+        async function testNetlifyProxy() {
+            const logId = 'proxy-log';
+            clearLog(logId);
+            
+            addLog(logId, '=== TEST PROXY NETLIFY ===');
+            
+            const proxyEndpoints = [
+                '/healthz',
+                '/auth/login',
+                '/api/user/me',
+                '/services/filter',
+                '/api/prestataire/services'
+            ];
+
+            for (const endpoint of proxyEndpoints) {
+                try {
+                    const fullUrl = `${CURRENT_URL}${endpoint}`;
+                    addLog(logId, `\nTest: ${endpoint}`);
+                    addLog(logId, `URL: ${fullUrl}`);
+                    
+                    const response = await fetch(fullUrl, {
+                        method: 'GET',
+                        headers: { 'Accept': 'application/json' }
+                    });
+                    
+                    addLog(logId, `Status: ${response.status} ${response.statusText}`);
+                    
+                    if (response.status === 401) {
+                        addLog(logId, '✅ 401 = Proxy fonctionne (auth requise)');
+                    } else if (response.ok) {
+                        addLog(logId, '✅ Succès');
+                    } else {
+                        addLog(logId, `⚠️ Status inattendu: ${response.status}`);
+                    }
+                } catch (error) {
+                    addLog(logId, `❌ Erreur: ${error.message}`);
+                }
+            }
+        }
+
+        async function testAuthFlow() {
+            const logId = 'auth-log';
+            clearLog(logId);
+            
+            addLog(logId, '=== TEST FLUX AUTHENTIFICATION ===');
+            
+            try {
+                // 1. Test d'inscription
+                addLog(logId, '\n1. Test inscription...');
+                const registerData = {
+                    email: `test_${Date.now()}@yukpo.com`,
+                    password: 'TestPassword123!',
+                    name: 'Test User'
+                };
+                
+                const registerResponse = await fetch(`${CURRENT_URL}/auth/register`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(registerData)
+                });
+                
+                addLog(logId, `Inscription: ${registerResponse.status} ${registerResponse.statusText}`);
+                
+                if (registerResponse.ok) {
+                    const registerResult = await registerResponse.json();
+                    addLog(logId, `✅ Inscription réussie - ID: ${registerResult.id}`);
+                    
+                    // 2. Test de connexion
+                    addLog(logId, '\n2. Test connexion...');
+                    const loginResponse = await fetch(`${CURRENT_URL}/auth/login`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            email: registerData.email,
+                            password: registerData.password
+                        })
+                    });
+                    
+                    addLog(logId, `Connexion: ${loginResponse.status} ${loginResponse.statusText}`);
+                    
+                    if (loginResponse.ok) {
+                        const loginResult = await loginResponse.json();
+                        addLog(logId, `✅ Connexion réussie - Token: ${loginResult.token.substring(0, 30)}...`);
+                        
+                        // 3. Test endpoint protégé
+                        addLog(logId, '\n3. Test endpoint protégé...');
+                        const profileResponse = await fetch(`${CURRENT_URL}/api/user/me`, {
+                            headers: {
+                                'Authorization': `Bearer ${loginResult.token}`,
+                                'Accept': 'application/json'
+                            }
+                        });
+                        
+                        addLog(logId, `Profil: ${profileResponse.status} ${profileResponse.statusText}`);
+                        
+                        if (profileResponse.ok) {
+                            const profile = await profileResponse.json();
+                            addLog(logId, `✅ Profil récupéré - Email: ${profile.email}`);
+                        }
+                    }
+                }
+            } catch (error) {
+                addLog(logId, `❌ Erreur flux auth: ${error.message}`);
+            }
+        }
+
+        async function simulateFrontendCalls() {
+            const logId = 'frontend-log';
+            clearLog(logId);
+            
+            addLog(logId, '=== SIMULATION APPELS FRONTEND RÉELS ===');
+            
+            // Simuler exactement ce que fait le frontend
+            addLog(logId, '\n1. Simulation useUser hook...');
+            
+            try {
+                // Test comme dans useUserServices.ts ligne 24
+                addLog(logId, 'Appel: /api/prestataire/services (comme useUserServices)');
+                const response1 = await fetch('/api/prestataire/services', {
+                    headers: {
+                        'Authorization': 'Bearer fake-token-for-test',
+                        'Accept': 'application/json'
+                    }
+                });
+                addLog(logId, `Status: ${response1.status} (401 = normal sans token valide)`);
+                
+                // Test comme dans LoginPage.tsx ligne 54
+                addLog(logId, '\n2. Simulation LoginPage...');
+                addLog(logId, 'Appel: /auth/login (comme LoginPage)');
+                const response2 = await fetch('/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: 'test@example.com',
+                        password: 'test123'
+                    })
+                });
+                addLog(logId, `Status: ${response2.status} ${response2.statusText}`);
+                
+                if (response2.ok) {
+                    const loginData = await response2.json();
+                    addLog(logId, `✅ Token reçu: ${loginData.token?.substring(0, 30)}...`);
+                    
+                    // Test avec le vrai token
+                    addLog(logId, '\n3. Test avec token réel...');
+                    const response3 = await fetch('/api/user/me', {
+                        headers: {
+                            'Authorization': `Bearer ${loginData.token}`,
+                            'Accept': 'application/json'
+                        }
+                    });
+                    addLog(logId, `Profil user: ${response3.status} ${response3.statusText}`);
+                    
+                    if (response3.ok) {
+                        const profile = await response3.json();
+                        addLog(logId, `✅ Profil: ${profile.email} (${profile.role})`);
+                    }
+                }
+                
+            } catch (error) {
+                addLog(logId, `❌ Erreur simulation: ${error.message}`);
+                addLog(logId, `Type d'erreur: ${error.constructor.name}`);
+                addLog(logId, `Stack: ${error.stack}`);
+            }
+        }
+
+        async function runAllTests() {
+            await testAPIConfig();
+            await new Promise(r => setTimeout(r, 1000));
+            await testDirectEndpoints();
+            await new Promise(r => setTimeout(r, 1000));
+            await testNetlifyProxy();
+            await new Promise(r => setTimeout(r, 1000));
+            await testAuthFlow();
+            await new Promise(r => setTimeout(r, 1000));
+            await simulateFrontendCalls();
+        }
+
+        function clearAllLogs() {
+            ['config-log', 'direct-log', 'proxy-log', 'auth-log', 'frontend-log'].forEach(id => {
+                clearLog(id);
+            });
+        }
+
+        // Intercepter les erreurs réseau
+        window.addEventListener('unhandledrejection', function(event) {
+            console.error('Unhandled promise rejection:', event.reason);
+            addLog('frontend-log', `❌ Erreur non gérée: ${event.reason}`);
+        });
+
+        // Auto-démarrage
+        setTimeout(() => {
+            addLog('config-log', 'Page de debug chargée');
+            testAPIConfig();
+        }, 500);
+    </script>
+</body>
+</html> 

@@ -5,6 +5,9 @@ import { API_BASE_URL } from "../config/api";
 axios.defaults.maxContentLength = 200 * 1024 * 1024; // 200MB
 axios.defaults.maxBodyLength = 200 * 1024 * 1024; // 200MB
 
+// CORRECTION CRITIQUE: Configurer axios pour utiliser l'API_BASE_URL
+axios.defaults.baseURL = API_BASE_URL;
+
 // Fonction pour générer un token JWT de développement
 function generateDevToken(): string {
   // En mode développement, utiliser un token simple qui contourne l'auth

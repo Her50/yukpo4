@@ -1,6 +1,8 @@
 // @ts-check
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+// CORRECTION CRITIQUE: Importer la configuration axios
+import './config/axios';
 import { ROUTES } from './routes/AppRoutesRegistry';
 import RequireAuth from './components/auth/RequireAuth';
 import { GlobalIAStatsProvider } from './components/intelligence/GlobalIAStats';
@@ -14,7 +16,7 @@ import RegisterPage from '@/pages/RegisterPage';
 import LoginPage from '@/pages/LoginPage';
 import ConfirmationPage from '@/pages/ConfirmationPage';
 import PageNotFound from '@/pages/PageNotFound';
-// Recherche & Cr+®ation service
+// Recherche & Cr+ï¿½ation service
 import CreationService from "@/pages/CreationService";
 import CreationSmartService from '@/pages/CreationSmartService';
 import RechercheBesoin from '@/pages/RechercheBesoin';
@@ -44,7 +46,7 @@ function App() {
         <GlobalIAStatsProvider>
           <Router>
               <Routes>
-                {/* ­ƒîÉ Pages publiques */}
+                {/* ï¿½ï¿½ï¿½ï¿½ Pages publiques */}
                 <Route path={ROUTES.HOME} element={<HomePage />} />
                 <Route path={ROUTES.REGISTER} element={<RegisterPage />} />
                 <Route path={ROUTES.LOGIN} element={<LoginPage />} />
@@ -52,7 +54,7 @@ function App() {
                 <Route path={ROUTES.ABOUT} element={<AboutPage />} />
                 <Route path={ROUTES.CONTACT} element={<ContactPage />} />
                 <Route path={ROUTES.SERVICES} element={<ServicesPage />} />
-                {/* ­ƒÜÇ Cr+®ation & recherche service */}
+                {/* ï¿½ï¿½ï¿½ï¿½ Cr+ï¿½ation & recherche service */}
                 <Route path={ROUTES.SERVICE_CREATE} element={<CreationService />} />
                 <Route path={ROUTES.CREATION_SMART_SERVICE} element={<CreationSmartService />} />
                 <Route path={ROUTES.RECHERCHE_BESOIN} element={<RechercheBesoin />} />
@@ -68,10 +70,10 @@ function App() {
                        </RequireAuth>
                       }
                  />
-                {/* Ô£à Ajout de la page solde/historique IA */}
+                {/* Ô£ï¿½ Ajout de la page solde/historique IA */}
                 <Route path={ROUTES.MON_SOLDE} element={<SoldeDetailPage />} />
                 // // RechargeTokensPage temporarily disabled temporarily disabled
-                {/* ­ƒÄ» Dashboard routes */}
+                {/* ï¿½ï¿½Ä» Dashboard routes */}
                 <Route path={ROUTES.DASHBOARD} element={
                   <RequireAuth>
                     <Dashboard />
@@ -87,24 +89,24 @@ function App() {
                     <MonProfil />
                   </RequireAuth>
                 } />
-                {/* ­ƒôè R+®sultats de recherche */}
+                {/* ï¿½ï¿½ï¿½ï¿½ R+ï¿½sultats de recherche */}
                 <Route path="/resultat-besoin" element={<ResultatBesoin />} />
                 <Route path="/test-resultat-besoin" element={<TestResultatBesoin />} />
                 <Route path="/test-location-display" element={<LocationDisplayDemo />} />
-                {/* ­ƒÄ» Page de visualisation de service public */}
+                {/* ï¿½ï¿½Ä» Page de visualisation de service public */}
                 <Route path="/service/:serviceId" element={<ServiceView />} />
-                {/* ­ƒÆ¼ Chat entre utilisateurs */}
+                {/* ï¿½ï¿½Æ¼ Chat entre utilisateurs */}
                 <Route path="/chat/:prestataireId" element={
                   <RequireAuth>
                     <ChatDialog />
                   </RequireAuth>
                 } />
-                {/* ­ƒô¦ Appels vid+®o */}
+                {/* ï¿½ï¿½ï¿½ï¿½ Appels vid+ï¿½o */}
                 <Route path="/video-call" element={<VideoCall />} />
                 {/* Fallback */}
                 <Route path="*" element={<PageNotFound />} />
               </Routes>
-              {/* ­ƒöî Statut WebSocket en temps r+®el - SUPPRIM+ë */}
+              {/* ï¿½ï¿½ï¿½ï¿½ Statut WebSocket en temps r+ï¿½el - SUPPRIM+ï¿½ */}
               {/* <WebSocketStatusRealTime /> */}
             </Router>
             <Toaster 

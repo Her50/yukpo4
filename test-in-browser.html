@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Live - Yukpomnang</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 50px auto; padding: 20px; }
+        .test-box { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin: 20px 0; }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .info { background: #d1ecf1; color: #0c5460; }
+        button { background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; margin: 5px; }
+        .log { background: #f8f9fa; padding: 10px; margin-top: 10px; border-radius: 4px; font-family: monospace; font-size: 12px; max-height: 300px; overflow-y: auto; }
+    </style>
+</head>
+<body>
+    <div class="test-box info">
+        <h1>🧪 Test Live Yukpomnang</h1>
+        <p><strong>URL actuelle:</strong> <span id="current-url"></span></p>
+        <p><strong>Test depuis:</strong> Application déployée sur Netlify</p>
+    </div>
+
+    <div class="test-box">
+        <h3>🔐 Test Authentification Réelle</h3>
+        <button onclick="testRealAuth()">Tester Inscription + Connexion</button>
+        <div class="log" id="auth-log"></div>
+    </div>
+
+    <div class="test-box">
+        <h3>📡 Test Appels API</h3>
+        <button onclick="testAPIEndpoints()">Tester Tous les Endpoints</button>
+        <div class="log" id="api-log"></div>
+    </div>
+
+    <div class="test-box">
+        <h3>🌐 Test Navigation</h3>
+        <button onclick="testNavigation()">Tester Navigation App</button>
+        <div class="log" id="nav-log"></div>
+    </div>
+
+    <script>
+        document.getElementById('current-url').textContent = window.location.href;
+
+        function addLog(logId, message) {
+            const logDiv = document.getElementById(logId);
+            const timestamp = new Date().toLocaleTimeString();
+            logDiv.innerHTML += `[${timestamp}] ${message}<br>`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        async function testRealAuth() {
+            const logId = 'auth-log';
+            document.getElementById(logId).innerHTML = '';
+            
+            addLog(logId, '🔍 Test authentification réelle...');
+            
+            try {
+                // 1. Inscription
+                const email = `test_${Date.now()}@yukpo.com`;
+                const password = 'TestSecure123!';
+                
+                addLog(logId, `📝 Inscription avec: ${email}`);
+                
+                const registerResponse = await fetch('/auth/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: email,
+                        password: password,
+                        name: 'Test User Live'
+                    })
+                });
+                
+                addLog(logId, `Inscription: ${registerResponse.status} ${registerResponse.statusText}`);
+                
+                if (registerResponse.ok) {
+                    const registerData = await registerResponse.json();
+                    addLog(logId, `✅ Inscription réussie - ID: ${registerData.id}, Solde: ${registerData.tokens_balance}`);
+                    
+                    // 2. Connexion immédiate
+                    addLog(logId, `🔐 Connexion avec le compte créé...`);
+                    
+                    const loginResponse = await fetch('/auth/login', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            email: email,
+                            password: password
+                        })
+                    });
+                    
+                    addLog(logId, `Connexion: ${loginResponse.status} ${loginResponse.statusText}`);
+                    
+                    if (loginResponse.ok) {
+                        const loginData = await loginResponse.json();
+                        addLog(logId, `✅ Connexion réussie - Token: ${loginData.token.substring(0,40)}...`);
+                        
+                        // Sauvegarder dans localStorage comme le fait l'app
+                        localStorage.setItem('token', loginData.token);
+                        localStorage.setItem('tokens_balance', loginData.tokens_balance.toString());
+                        
+                        addLog(logId, `💾 Token sauvegardé dans localStorage`);
+                        
+                        // 3. Test du profil
+                        const profileResponse = await fetch('/api/user/me', {
+                            headers: {
+                                'Authorization': `Bearer ${loginData.token}`,
+                                'Accept': 'application/json'
+                            }
+                        });
+                        
+                        addLog(logId, `Profil: ${profileResponse.status} ${profileResponse.statusText}`);
+                        
+                        if (profileResponse.ok) {
+                            const profile = await profileResponse.json();
+                            addLog(logId, `✅ Profil récupéré: ${profile.email} (${profile.role})`);
+                        }
+                        
+                        addLog(logId, `🎉 FLUX COMPLET RÉUSSI !`);
+                    } else {
+                        const errorText = await loginResponse.text();
+                        addLog(logId, `❌ Erreur connexion: ${errorText}`);
+                    }
+                } else {
+                    const errorText = await registerResponse.text();
+                    addLog(logId, `❌ Erreur inscription: ${errorText}`);
+                }
+                
+            } catch (error) {
+                addLog(logId, `❌ Erreur générale: ${error.message}`);
+                addLog(logId, `Stack: ${error.stack}`);
+            }
+        }
+
+        async function testAPIEndpoints() {
+            const logId = 'api-log';
+            document.getElementById(logId).innerHTML = '';
+            
+            addLog(logId, '📡 Test de tous les endpoints API...');
+            
+            const endpoints = [
+                { url: '/healthz', method: 'GET', name: 'Health Check' },
+                { url: '/api/user/me', method: 'GET', name: 'User Profile', needAuth: true },
+                { url: '/services/filter', method: 'GET', name: 'Services Filter', needAuth: true },
+                { url: '/api/prestataire/services', method: 'GET', name: 'User Services', needAuth: true }
+            ];
+
+            const token = localStorage.getItem('token');
+            addLog(logId, `Token dans localStorage: ${token ? 'Présent' : 'Absent'}`);
+
+            for (const endpoint of endpoints) {
+                try {
+                    addLog(logId, `\n🔍 Test: ${endpoint.name} (${endpoint.method} ${endpoint.url})`);
+                    
+                    const headers = { 'Accept': 'application/json' };
+                    if (endpoint.needAuth && token) {
+                        headers['Authorization'] = `Bearer ${token}`;
+                    }
+                    
+                    const response = await fetch(endpoint.url, {
+                        method: endpoint.method,
+                        headers: headers
+                    });
+                    
+                    addLog(logId, `Status: ${response.status} ${response.statusText}`);
+                    
+                    if (response.ok) {
+                        const data = await response.text();
+                        addLog(logId, `✅ Succès - Taille réponse: ${data.length} caractères`);
+                    } else if (response.status === 401 && endpoint.needAuth) {
+                        addLog(logId, `✅ 401 - Authentification requise (normal)`);
+                    } else {
+                        addLog(logId, `⚠️ Status inattendu: ${response.status}`);
+                    }
+                    
+                } catch (error) {
+                    addLog(logId, `❌ Erreur ${endpoint.name}: ${error.message}`);
+                }
+            }
+        }
+
+        async function testNavigation() {
+            const logId = 'nav-log';
+            document.getElementById(logId).innerHTML = '';
+            
+            addLog(logId, '🌐 Test de navigation...');
+            addLog(logId, `URL actuelle: ${window.location.href}`);
+            addLog(logId, `Hostname: ${window.location.hostname}`);
+            addLog(logId, `Protocol: ${window.location.protocol}`);
+            
+            // Test des pages principales
+            const pages = ['/register', '/login', '/services'];
+            
+            for (const page of pages) {
+                try {
+                    const response = await fetch(page);
+                    addLog(logId, `✅ Page ${page}: ${response.status}`);
+                } catch (error) {
+                    addLog(logId, `❌ Page ${page}: ${error.message}`);
+                }
+            }
+        }
+
+        // Auto-test au chargement
+        setTimeout(() => {
+            addLog('auth-log', 'Page de test chargée depuis Netlify');
+            addLog('api-log', 'Prêt à tester les APIs');
+            addLog('nav-log', 'Prêt à tester la navigation');
+        }, 1000);
+    </script>
+</body>
+</html> 
