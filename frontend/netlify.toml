@@ -36,6 +36,34 @@
   headers = {Access-Control-Allow-Origin = "*"}
 
 [[redirects]]
+  from = "/prestataire/*"
+  to = "https://yukpomnang.onrender.com/prestataire/:splat"
+  status = 200
+  force = true
+  headers = {Access-Control-Allow-Origin = "*"}
+
+[[redirects]]
+  from = "/user/*"
+  to = "https://yukpomnang.onrender.com/user/:splat"
+  status = 200
+  force = true
+  headers = {Access-Control-Allow-Origin = "*"}
+
+[[redirects]]
+  from = "/users/*"
+  to = "https://yukpomnang.onrender.com/users/:splat"
+  status = 200
+  force = true
+  headers = {Access-Control-Allow-Origin = "*"}
+
+[[redirects]]
+  from = "/ia/*"
+  to = "https://yukpomnang.onrender.com/ia/:splat"
+  status = 200
+  force = true
+  headers = {Access-Control-Allow-Origin = "*"}
+
+[[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
@@ -56,6 +84,34 @@
 
 [[headers]]
   for = "/services/*"
+  [headers.values]
+    Access-Control-Allow-Origin = "*"
+    Access-Control-Allow-Methods = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+    Access-Control-Allow-Headers = "Content-Type, Authorization, X-Requested-With, Accept, Origin"
+
+[[headers]]
+  for = "/prestataire/*"
+  [headers.values]
+    Access-Control-Allow-Origin = "*"
+    Access-Control-Allow-Methods = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+    Access-Control-Allow-Headers = "Content-Type, Authorization, X-Requested-With, Accept, Origin"
+
+[[headers]]
+  for = "/user/*"
+  [headers.values]
+    Access-Control-Allow-Origin = "*"
+    Access-Control-Allow-Methods = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+    Access-Control-Allow-Headers = "Content-Type, Authorization, X-Requested-With, Accept, Origin"
+
+[[headers]]
+  for = "/users/*"
+  [headers.values]
+    Access-Control-Allow-Origin = "*"
+    Access-Control-Allow-Methods = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+    Access-Control-Allow-Headers = "Content-Type, Authorization, X-Requested-With, Accept, Origin"
+
+[[headers]]
+  for = "/ia/*"
   [headers.values]
     Access-Control-Allow-Origin = "*"
     Access-Control-Allow-Methods = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
