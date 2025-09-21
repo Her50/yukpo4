@@ -1,12 +1,23 @@
 {
   "version": 2,
+  "name": "yukpo-public",
   "buildCommand": "npm install && npm run build",
-  "outputDirectory": "dist",
+  "outputDirectory": "./dist",
   "framework": null,
+  "public": true,
+  "functions": {},
   "rewrites": [
     {
       "source": "/api/(.*)",
       "destination": "https://yukpomnang.onrender.com/api/$1"
+    },
+    {
+      "source": "/auth/(.*)",
+      "destination": "https://yukpomnang.onrender.com/auth/$1"
+    },
+    {
+      "source": "/services/(.*)",
+      "destination": "https://yukpomnang.onrender.com/services/$1"
     },
     {
       "source": "/ws/(.*)",
@@ -23,7 +34,7 @@
   ],
   "headers": [
     {
-      "source": "/api/(.*)",
+      "source": "/(api|auth|services|healthz)/(.*)",
       "headers": [
         {
           "key": "Access-Control-Allow-Origin",
@@ -40,6 +51,23 @@
         {
           "key": "Access-Control-Allow-Credentials",
           "value": "true"
+        }
+      ]
+    },
+    {
+      "source": "/healthz",
+      "headers": [
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "*"
+        },
+        {
+          "key": "Access-Control-Allow-Methods",
+          "value": "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+        },
+        {
+          "key": "Access-Control-Allow-Headers",
+          "value": "Content-Type, Authorization, X-Requested-With, Accept, Origin"
         }
       ]
     }
