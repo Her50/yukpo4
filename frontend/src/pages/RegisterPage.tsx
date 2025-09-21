@@ -4,7 +4,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { ROUTES } from "@/routes/AppRoutesRegistry";
 import OAuthButton from "@/components/auth/OAuthButton";
 import { useUser } from '@/hooks/useUser';
-import { toast } from 'react-hot-toast';
+import toast from 'react-hot-toast';
 
 const RegisterPage: React.FC = () => {
   const navigate = useNavigate();
@@ -40,12 +40,13 @@ const RegisterPage: React.FC = () => {
       return;
     }
     try {
-      const res = await fetch(`${API_BASE_URL}/auth/register`, {
+      const res = await fetch(`/auth/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           nom: form.nom,
           prenom: form.prenom,
+          name: form.nom || form.prenom || `${form.nom} ${form.prenom}`.trim(),
           email: form.email,
           password: form.password,
           lang: 'fr',
@@ -53,11 +54,20 @@ const RegisterPage: React.FC = () => {
       });
       
       if (res.ok) {
+        const data = await res.json();
         // Inscription réussie
         setRegistrationSuccess(true);
         toast.success('Compte créé avec succès ! 🎉');
         
-        // PAS DE REDIRECTION AUTOMATIQUE - l'utilisateur reste sur la page de succès
+        // Si un token est retourné, connecter automatiquement l'utilisateur
+        if (data.token) {
+          localStorage.setItem('token', data.token);
+          localStorage.setItem('tokens_balance', data.tokens_balance.toString());
+          window.dispatchEvent(new CustomEvent('tokens_updated'));
+          login(data.token);
+          navigate(ROUTES.HOME);
+          window.location.reload();
+        }
         
       } else {
         const err = await res.json();

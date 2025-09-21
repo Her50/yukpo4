@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Bell, MessageCircle, X } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { Button } from '@/components/ui/buttons';
+import { getWebSocketUrl } from '../../config/websocket';
 
 interface ChatNotification {
   id: string;
@@ -59,7 +60,9 @@ const ChatNotifications: React.FC<ChatNotificationsProps> = ({ userId }) => {
 
   // WebSocket pour les notifications en temps réel
   useEffect(() => {
-    const ws = new WebSocket(`ws://${window.location.host}/ws/notifications/${userId}`);
+    const wsUrl = getWebSocketUrl('notifications', userId);
+    if (!wsUrl) return;
+    const ws = new WebSocket(wsUrl);
     wsRef.current = ws;
 
     ws.onopen = () => {

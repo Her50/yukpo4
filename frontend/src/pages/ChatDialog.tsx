@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/buttons';
 import { toast } from 'react-hot-toast';
 import { useUser } from '@/hooks/useUser';
+import { getWebSocketUrl } from '../config/websocket';
 import { 
   Send, 
   Paperclip, 
@@ -103,7 +104,9 @@ const ChatDialog: React.FC = () => {
 
   // WebSocket connection
   useEffect(() => {
-    const ws = new WebSocket(`wss://localhost:3000/ws/chat/${client_id}`);
+    const wsUrl = getWebSocketUrl('chat', client_id);
+    if (!wsUrl) return;
+    const ws = new WebSocket(wsUrl);
     wsRef.current = ws;
 
     ws.onopen = () => {

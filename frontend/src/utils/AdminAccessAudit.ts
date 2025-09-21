@@ -3,7 +3,10 @@ export class WebSocketProvider {
     private socket: WebSocket;
   
     constructor(url: string) {
-      this.socket = new WebSocket(url.replace('AdminAccessAudit://', 'ws://'));
+      // Détecter le bon protocole selon l'environnement
+      const isSecure = window.location.protocol === 'https:';
+      const wsProtocol = isSecure ? 'wss://' : 'ws://';
+      this.socket = new WebSocket(url.replace('AdminAccessAudit://', wsProtocol));
     }
   
     on(event: string, callback: (data: any) => void) {

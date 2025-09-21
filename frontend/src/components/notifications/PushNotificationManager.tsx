@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import { Bell, X, Settings, Volume2, VolumeX } from 'lucide-react';
+import { getWebSocketUrl } from '../../config/websocket';
 
 interface PushNotification {
   id: string;
@@ -50,7 +51,9 @@ export const PushNotificationManager: React.FC<PushNotificationManagerProps> = (
   // WebSocket pour les notifications push en temps réel
   useEffect(() => {
     if (wsConnected && isEnabled) {
-      const ws = new WebSocket(`ws://${window.location.host}/ws/notifications/${userId}`);
+      const wsUrl = getWebSocketUrl('notifications', userId);
+      if (!wsUrl) return;
+      const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
 
       ws.onopen = () => {

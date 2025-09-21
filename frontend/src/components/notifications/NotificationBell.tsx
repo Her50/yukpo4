@@ -3,6 +3,7 @@ import { Bell, MessageCircle, Phone, Video, X, Check } from 'lucide-react';
 import { Button } from '@/components/ui/buttons/Button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { getWebSocketUrl } from '../../config/websocket';
 
 interface Notification {
   id: string;
@@ -68,7 +69,9 @@ const NotificationBell: React.FC<NotificationBellProps> = ({ userId }) => {
 
   // WebSocket pour les notifications en temps réel
   useEffect(() => {
-    const ws = new WebSocket(`ws://${window.location.host}/ws/notifications/${userId}`);
+    const wsUrl = getWebSocketUrl('notifications', userId);
+    if (!wsUrl) return;
+    const ws = new WebSocket(wsUrl);
     wsRef.current = ws;
 
     ws.onopen = () => {

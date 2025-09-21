@@ -1,28 +1,36 @@
 // Configuration WebSocket - ACTIVÉE ET OPTIMISÉE
 export const WEBSOCKET_CONFIG = {
-  // WebSockets maintenant activés
+  // WebSockets activés avec correction HTTPS
   enabled: true,
   
   // URLs des WebSockets
   urls: {
     status: (userId: number) => {
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const host = window.location.hostname === 'localhost' ? 'localhost:3001' : window.location.host;
+      // Forcer wss:// pour HTTPS et tous les domaines externes
+      const isSecure = window.location.protocol === 'https:' || window.location.hostname !== 'localhost';
+      const protocol = isSecure ? 'wss:' : 'ws:';
+      const host = window.location.hostname === 'localhost' ? 'localhost:3001' : 'yukpomnang.onrender.com';
       return `${protocol}//${host}/ws/status/${userId}`;
     },
     notifications: (userId: number) => {
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const host = window.location.hostname === 'localhost' ? 'localhost:3001' : window.location.host;
+      // Forcer wss:// pour HTTPS et tous les domaines externes
+      const isSecure = window.location.protocol === 'https:' || window.location.hostname !== 'localhost';
+      const protocol = isSecure ? 'wss:' : 'ws:';
+      const host = window.location.hostname === 'localhost' ? 'localhost:3001' : 'yukpomnang.onrender.com';
       return `${protocol}//${host}/ws/notifications/${userId}`;
     },
     chat: (clientId: string) => {
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const host = window.location.hostname === 'localhost' ? 'localhost:3001' : window.location.host;
+      // Forcer wss:// pour HTTPS et tous les domaines externes
+      const isSecure = window.location.protocol === 'https:' || window.location.hostname !== 'localhost';
+      const protocol = isSecure ? 'wss:' : 'ws:';
+      const host = window.location.hostname === 'localhost' ? 'localhost:3001' : 'yukpomnang.onrender.com';
       return `${protocol}//${host}/ws/chat/${clientId}`;
     },
     access: () => {
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const host = window.location.hostname === 'localhost' ? 'localhost:3001' : window.location.host;
+      // Forcer wss:// pour HTTPS et tous les domaines externes
+      const isSecure = window.location.protocol === 'https:' || window.location.hostname !== 'localhost';
+      const protocol = isSecure ? 'wss:' : 'ws:';
+      const host = window.location.hostname === 'localhost' ? 'localhost:3001' : 'yukpomnang.onrender.com';
       return `${protocol}//${host}/ws/access`;
     }
   },
