@@ -1,7 +1,10 @@
 // Configuration API pour Vite avec gestion d'erreur
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || (
-  // En production sur Vercel, utiliser des URLs relatives pour profiter des rewrites
-  typeof window !== 'undefined' && window.location.hostname.includes('vercel.app') 
+  // En production (Vercel ou Netlify), utiliser des URLs relatives pour profiter des rewrites
+  typeof window !== 'undefined' && (
+    window.location.hostname.includes('vercel.app') || 
+    window.location.hostname.includes('netlify.app')
+  ) 
     ? '' 
     : 'https://yukpomnang.onrender.com'
 );
@@ -12,10 +15,15 @@ const FALLBACK_API_URL = 'https://jsonplaceholder.typicode.com';
 // Fonction pour v�rifier si le backend est accessible
 export const checkBackendHealth = async () => {
   try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    
     const response = await fetch(`${API_BASE_URL}/healthz`, {
       method: 'GET',
-      timeout: 5000
+      signal: controller.signal
     });
+    
+    clearTimeout(timeoutId);
     return response.ok;
   } catch (error) {
     console.warn('Backend non accessible:', error);

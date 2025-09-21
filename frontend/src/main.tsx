@@ -8,6 +8,13 @@ import "./i18n/i18nAutoDetector";
 import { MantineProvider } from '@mantine/core';
 import { UserProvider } from './context/UserContext';
 
+// CORRECTION CRITIQUE: Importer la configuration axios avant tout
+import './config/axios'
+
+// Log pour confirmer que la nouvelle version se charge
+console.log('[main] 🚀 Yukpomnang v1.0.1 - Configuration axios chargée');
+console.log('[main] 🔧 API Base URL configuré:', import.meta.env.VITE_API_BASE_URL || '(URLs relatives)');
+
 
 const root = document.getElementById('root');
 

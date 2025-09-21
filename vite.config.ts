@@ -9,6 +9,9 @@ export default defineConfig({
       "@": path.resolve(__dirname, "src"),
     },
   },
+  define: {
+    global: 'globalThis',
+  },
   build: {
     outDir: "dist",
     assetsDir: "assets",
@@ -16,88 +19,38 @@ export default defineConfig({
     chunkSizeWarningLimit: 2000,
     rollupOptions: {
       output: {
-        manualChunks: (id) => {
-          // Vendor chunks - séparation optimisée
-          if (id.includes("node_modules")) {
-            if (id.includes("react") || id.includes("react-dom")) {
-              return "react-vendor";
-            }
-            if (id.includes("react-router")) {
-              return "router-vendor";
-            }
-            if (id.includes("@headlessui") || id.includes("@heroicons")) {
-              return "ui-vendor";
-            }
-            if (id.includes("@mantine")) {
-              return "mantine-vendor";
-            }
-            if (id.includes("@radix-ui")) {
-              return "radix-vendor";
-            }
-            if (id.includes("axios")) {
-              return "axios-vendor";
-            }
-            if (id.includes("i18next") || id.includes("react-i18next")) {
-              return "i18n-vendor";
-            }
-            if (id.includes("@react-google-maps")) {
-              return "google-maps-vendor";
-            }
-            if (id.includes("mapbox")) {
-              return "mapbox-vendor";
-            }
-            if (id.includes("@react-oauth")) {
-              return "oauth-vendor";
-            }
-            if (id.includes("classnames")) {
-              return "utils-vendor";
-            }
-            return "vendor";
-          }
-          
-          // Page-based chunks pour le code-splitting
-          if (id.includes("/pages/")) {
-            const pageName = id.split("/pages/")[1].split("/")[0];
-            if (pageName === "dashboard") {
-              return "dashboard-pages";
-            }
-            if (pageName === "admin") {
-              return "admin-pages";
-            }
-            return `page-${pageName}`;
-          }
-          
-          // Component chunks
-          if (id.includes("/components/")) {
-            const componentName = id.split("/components/")[1].split("/")[0];
-            if (componentName === "forms") {
-              return "forms-components";
-            }
-            if (componentName === "ui") {
-              return "ui-components";
-            }
-            if (componentName === "auth") {
-              return "auth-components";
-            }
-            return `component-${componentName}`;
-          }
-          
-          // Services et hooks
-          if (id.includes("/services/") || id.includes("/hooks/")) {
-            return "services-hooks";
-          }
-          
-          // Utils et contextes
-          if (id.includes("/utils/") || id.includes("/context/")) {
-            return "utils-context";
-          }
-        }
+        // Ajouter un timestamp pour forcer l'invalidation du cache
+        entryFileNames: `assets/[name]-${Date.now()}.[hash].js`,
+        chunkFileNames: `assets/[name]-${Date.now()}.[hash].js`,
+        assetFileNames: `assets/[name]-${Date.now()}.[hash].[ext]`
       }
     }
   },
   base: "/",
   server: {
     port: 3000,
-    host: true
+    host: true,
+    proxy: {
+      '/api': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+        secure: false,
+      },
+      '/auth': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+        secure: false,
+      },
+      '/services': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+        secure: false,
+      },
+      '/healthz': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+        secure: false,
+      },
+    },
   }
 });

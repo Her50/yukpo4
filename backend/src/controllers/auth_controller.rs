@@ -71,6 +71,7 @@ pub async fn login_handler(
 pub struct RegisterInput {
     pub nom: Option<String>,
     pub prenom: Option<String>,
+    pub name: Option<String>,  // Support pour le champ 'name' du frontend
     pub email: String,
     pub password: String,
     pub lang: Option<String>,
@@ -106,12 +107,13 @@ pub async fn register_user(
     let default_token_price_provider = 1.0_f64;
     let default_commission_pct = 0.0_f32;
     
-    // Calculer le nom_complet à partir de nom et prenom
-    let nom_complet = match (&payload.nom, &payload.prenom) {
-        (Some(n), Some(p)) if !n.trim().is_empty() && !p.trim().is_empty() => 
+    // Calculer le nom_complet à partir de nom, prenom ou name
+    let nom_complet = match (&payload.nom, &payload.prenom, &payload.name) {
+        (Some(n), Some(p), _) if !n.trim().is_empty() && !p.trim().is_empty() => 
             Some(format!("{} {}", n.trim(), p.trim())),
-        (Some(n), _) if !n.trim().is_empty() => Some(n.trim().to_string()),
-        (_, Some(p)) if !p.trim().is_empty() => Some(p.trim().to_string()),
+        (Some(n), _, _) if !n.trim().is_empty() => Some(n.trim().to_string()),
+        (_, Some(p), _) if !p.trim().is_empty() => Some(p.trim().to_string()),
+        (_, _, Some(name)) if !name.trim().is_empty() => Some(name.trim().to_string()),
         _ => None,
     };
     
@@ -156,10 +158,22 @@ pub async fn register_user(
     if let Err(e) = send_verification_email(&payload.email).await {
         error!("[register_user] Erreur envoi email: {e:?}");
     }
-    // Retourne explicitement 201 Created
+    // Générer un JWT pour l'utilisateur nouvellement inscrit
+    let secret = std::env::var("JWT_SECRET")
+        .map_err(|_| AppError::Internal("JWT_SECRET manquant".into()))?;
+    let jwt = generate_jwt(
+        new.id,
+        "user",
+        &payload.email,
+        new.tokens_balance,
+        &secret,
+    )?;
+    
+    // Retourne explicitement 201 Created avec le token
     return Ok((axum::http::StatusCode::CREATED, Json(serde_json::json!({
         "id": new.id,
         "tokens_balance": new.tokens_balance,
+        "token": jwt,
         "message": "Utilisateur inscrit avec succès"
     }))).into_response());
 }
