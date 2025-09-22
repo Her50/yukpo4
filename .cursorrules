@@ -1,0 +1,75 @@
+﻿# RÃ¨gles Cursor pour Yukpomnang
+
+## Contexte du projet
+- **Backend**: Rust avec Axum, SQLx, PostgreSQL, pgvector
+- **Frontend**: React avec TypeScript, TailwindCSS
+- **Base de donnÃ©es**: PostgreSQL avec extensions pgvector et imgsmlr
+- **FonctionnalitÃ©s**: GÃ©olocalisation, gÃ©ocodage, IA, WebSocket
+
+## RÃ¨gles de dÃ©veloppement
+
+### Backend Rust
+1. Utiliser Result<T, E> pour la gestion d'erreurs
+2. ImplÃ©menter des traits pour la rÃ©utilisabilitÃ©
+3. Utiliser sync/await pour les opÃ©rations asynchrones
+4. Valider toutes les entrÃ©es utilisateur
+5. Utiliser des enums pour les Ã©tats
+6. Optimiser les requÃªtes SQL avec des index appropriÃ©s
+
+### Frontend React
+1. Utiliser des hooks personnalisÃ©s pour la logique mÃ©tier
+2. SÃ©parer la logique mÃ©tier des composants UI
+3. Utiliser des contextes React pour l'Ã©tat global
+4. ImplÃ©menter la gestion d'erreur robuste
+5. Utiliser TypeScript strictement
+6. Optimiser les re-renders avec useMemo/useCallback
+
+### Base de donnÃ©es
+1. Utiliser des migrations pour les changements de schÃ©ma
+2. CrÃ©er des index pour les requÃªtes frÃ©quentes
+3. Utiliser des contraintes de clÃ© Ã©trangÃ¨re
+4. Optimiser les requÃªtes avec EXPLAIN
+5. Utiliser des transactions pour les opÃ©rations complexes
+
+### GÃ©olocalisation
+1. Valider les coordonnÃ©es GPS
+2. Utiliser des services de gÃ©ocodage fiables
+3. ImplÃ©menter la mise en cache des rÃ©sultats
+4. GÃ©rer les erreurs de gÃ©ocodage gracieusement
+
+### IA et WebSocket
+1. ImplÃ©menter la gestion d'erreur pour les connexions WebSocket
+2. Utiliser des timeouts pour les requÃªtes IA
+3. ImplÃ©menter la reconnexion automatique
+4. Valider les rÃ©ponses IA avant traitement
+
+## Commandes utiles
+- Backend: cargo run, cargo build, cargo test, cargo clippy
+- Frontend: 
+pm run dev, 
+pm run build, 
+pm run test
+- Base de donnÃ©es: sqlx migrate run, psql -h localhost -U postgres -d yukpomnang
+- Tests: cargo test, 
+pm test
+
+## Structure des fichiers
+- Backend: src/controllers/, src/services/, src/models/, src/routes/
+- Frontend: src/components/, src/pages/, src/hooks/, src/services/
+- Migrations: ackend/migrations/
+- Scripts: scripts/
+- Configuration: ackend/config/
+
+## SÃ©curitÃ©
+- Valider toutes les entrÃ©es utilisateur
+- Utiliser des tokens JWT sÃ©curisÃ©s
+- ImplÃ©menter une authentification robuste
+- ProtÃ©ger les routes sensibles
+- Chiffrer les donnÃ©es sensibles
+
+## Performance
+- Utiliser des index de base de donnÃ©es appropriÃ©s
+- ImplÃ©menter la pagination
+- Optimiser les requÃªtes SQL
+- Utiliser la mise en cache quand appropriÃ©
+- Minimiser les re-renders React

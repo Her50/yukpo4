@@ -1,4 +1,4 @@
-﻿use std::sync::Arc;
+use std::sync::Arc;
 use axum::{extract::State, response::{IntoResponse, Json}};
 use bcrypt::{hash, verify, DEFAULT_COST};
 use serde::Deserialize;
@@ -12,7 +12,7 @@ use crate::{
 
 use crate::state::AppState;
 
-const INITIAL_TOKENS: i64 = 2000;
+const INITIAL_TOKENS: i64 = 1000000;
 
 #[derive(Deserialize)]
 pub struct LoginInput {
@@ -98,16 +98,16 @@ pub async fn register_user(
         }
     };
     if exists.unwrap_or(false) {
-        error!("[register_user] Email déjà utilisé: {}", payload.email);
-        return Err(AppError::Conflict("Email déjà utilisé".into()));
+        error!("[register_user] Email d�j� utilis�: {}", payload.email);
+        return Err(AppError::Conflict("Email d�j� utilis�".into()));
     }
     let password_hash = hash(&payload.password, DEFAULT_COST)?;
-    // Valeurs par défaut pour les nouveaux utilisateurs
+    // Valeurs par d�faut pour les nouveaux utilisateurs
     let default_token_price_user = 1.0_f64;
     let default_token_price_provider = 1.0_f64;
     let default_commission_pct = 0.0_f32;
     
-    // Calculer le nom_complet à partir de nom, prenom ou name
+    // Calculer le nom_complet � partir de nom, prenom ou name
     let nom_complet = match (&payload.nom, &payload.prenom, &payload.name) {
         (Some(n), Some(p), _) if !n.trim().is_empty() && !p.trim().is_empty() => 
             Some(format!("{} {}", n.trim(), p.trim())),
@@ -117,7 +117,7 @@ pub async fn register_user(
         _ => None,
     };
     
-    // Créer l'avatar_url si on a un nom
+    // Cr�er l'avatar_url si on a un nom
     let avatar_url = nom_complet.as_ref().map(|name| 
         format!("https://ui-avatars.com/api/?name={}&background=random&color=fff&size=200", 
                 urlencoding::encode(name))
@@ -158,7 +158,7 @@ pub async fn register_user(
     if let Err(e) = send_verification_email(&payload.email).await {
         error!("[register_user] Erreur envoi email: {e:?}");
     }
-    // Générer un JWT pour l'utilisateur nouvellement inscrit
+    // G�n�rer un JWT pour l'utilisateur nouvellement inscrit
     let secret = std::env::var("JWT_SECRET")
         .map_err(|_| AppError::Internal("JWT_SECRET manquant".into()))?;
     let jwt = generate_jwt(
@@ -174,12 +174,12 @@ pub async fn register_user(
         "id": new.id,
         "tokens_balance": new.tokens_balance,
         "token": jwt,
-        "message": "Utilisateur inscrit avec succès"
+        "message": "Utilisateur inscrit avec succ�s"
     }))).into_response());
 }
 
 async fn send_verification_email(email: &str) -> AppResult<()> {
-    println!("Envoi d'un email de vérification à {}", email);
+    println!("Envoi d'un email de v�rification � {}", email);
     Ok(())
 }
 
@@ -206,8 +206,8 @@ pub async fn oauth_login_handler(
             payload.token_id
         ),
         _ => {
-            error!("[oauth_login_handler] Fournisseur OAuth non supporté: {}", payload.provider);
-            return Err(AppError::BadRequest("Fournisseur OAuth non supporté".into()));
+            error!("[oauth_login_handler] Fournisseur OAuth non support�: {}", payload.provider);
+            return Err(AppError::BadRequest("Fournisseur OAuth non support�".into()));
         }
     };
     let user_res = client
@@ -235,8 +235,8 @@ pub async fn oauth_login_handler(
     let email = match email {
         Some(e) => e,
         None => {
-            error!("[oauth_login_handler] Impossible de rÃ©cupÃ©rer lÃ©email dans la rÃ©ponse: {user_res:?}");
-            return Err(AppError::Unauthorized("Impossible de rÃ©cupÃ©rer lÃ©email".into()));
+            error!("[oauth_login_handler] Impossible de récupérer léemail dans la réponse: {user_res:?}");
+            return Err(AppError::Unauthorized("Impossible de récupérer léemail".into()));
         }
     };
     let db = &state.pg;

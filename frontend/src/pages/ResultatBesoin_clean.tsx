@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/buttons/Button';
@@ -59,8 +59,28 @@ const getServiceFieldValue = (field: any): string => {
   if (typeof field === 'string') return field;
   
   // Cas 2: Objet complexe (nouveaux services)
-  if (field && typeof field === 'object' && field.valeur !== undefined) {
-    return String(field.valeur);
+  if (field && typeof field === 'object') {
+    if (field.valeur !== undefined) {
+      const value = field.valeur;
+      if (typeof value === 'string') return value;
+      if (typeof value === 'boolean') return value ? 'Oui' : 'Non';
+      if (typeof value === 'number') return value.toString();
+      if (Array.isArray(value)) return value.join(', ');
+      return String(value);
+    }
+    
+    // Essayer d'autres propriétés communes
+    const possibleKeys = ['value', 'content', 'text', 'data', 'info', 'val'];
+    for (const key of possibleKeys) {
+      if (field[key] !== undefined) {
+        const value = field[key];
+        if (typeof value === 'string') return value;
+        if (typeof value === 'boolean') return value ? 'Oui' : 'Non';
+        if (typeof value === 'number') return value.toString();
+        if (Array.isArray(value)) return value.join(', ');
+        return String(value);
+      }
+    }
   }
   
   // Cas 3: Autres types
@@ -70,7 +90,7 @@ const getServiceFieldValue = (field: any): string => {
   return 'Non spécifié';
 };
 
-// Fonction utilitaire pour vérifier si un champ média existe réellement
+// Fonction utilitaire pour vÃ©rifier si un champ mÃ©dia existe rÃ©ellement
 const hasValidMediaField = (field: any): boolean => {
   if (!field) return false;
   if (typeof field === 'string') return field.trim() !== '' && field !== 'Non spécifié';
@@ -82,7 +102,7 @@ const hasValidMediaField = (field: any): boolean => {
   return false;
 };
 
-// Fonction utilitaire pour extraire les valeurs des champs média
+// Fonction utilitaire pour extraire les valeurs des champs mÃ©dia
 const getServiceMediaValue = (field: any): string[] => {
   if (!field) return [];
   if (Array.isArray(field)) return field;
@@ -93,7 +113,7 @@ const getServiceMediaValue = (field: any): string[] => {
   return [];
 };
 
-// Fonction pour convertir les coordonnées GPS en lieu lisible (100% automatique)
+// Fonction pour convertir les coordonnÃ©es GPS en lieu lisible (100% automatique)
 const convertGpsToLocation = async (gpsString: string): Promise<string> => {
   if (!gpsString || !gpsString.includes(',')) return gpsString;
   
@@ -101,14 +121,14 @@ const convertGpsToLocation = async (gpsString: string): Promise<string> => {
     const coords = gpsString.split(',').map(coord => parseFloat(coord.trim()));
     if (coords.length !== 2 || coords.some(isNaN)) return gpsString;
     
-    // Détecter automatiquement le format: longitude,latitude ou latitude,longitude
+    // DÃ©tecter automatiquement le format: longitude,latitude ou latitude,longitude
     let lat, lng;
     if (coords[0] >= -90 && coords[0] <= 90) {
       // Premier nombre est latitude (valide)
       lat = coords[0];
       lng = coords[1];
     } else if (coords[1] >= -90 && coords[1] <= 90) {
-      // Deuxième nombre est latitude (valide)
+      // DeuxiÃ¨me nombre est latitude (valide)
       lat = coords[1];
       lng = coords[0];
     } else {
@@ -117,7 +137,7 @@ const convertGpsToLocation = async (gpsString: string): Promise<string> => {
       lng = coords[1];
     }
     
-    // Utiliser le service de géocodage automatique
+    // Utiliser le service de gÃ©ocodage automatique
     const locationName = await geocodingService.getLocationFromCoordinates(lat, lng);
     
     // Optimiser le nom du lieu pour l'affichage
@@ -126,8 +146,8 @@ const convertGpsToLocation = async (gpsString: string): Promise<string> => {
     return optimizedName;
     
   } catch (error) {
-    console.error('❌ [convertGpsToLocation] Erreur:', error);
-    // Fallback: coordonnées formatées
+    console.error('âŒ [convertGpsToLocation] Erreur:', error);
+    // Fallback: coordonnÃ©es formatÃ©es
     const coords = gpsString.split(',').map(coord => parseFloat(coord.trim()));
     if (coords.length === 2) {
       const lat = coords[0];
@@ -140,7 +160,7 @@ const convertGpsToLocation = async (gpsString: string): Promise<string> => {
   }
 };
 
-// Fonction pour optimiser le nom du lieu pour l'affichage (MONDIALE) - VERSION AMÉLIORÉE
+// Fonction pour optimiser le nom du lieu pour l'affichage (MONDIALE) - VERSION AMÃ‰LIORÃ‰E
 const optimizeLocationName = (locationName: string): string => {
   if (!locationName) return locationName;
   
@@ -152,10 +172,10 @@ const optimizeLocationName = (locationName: string): string => {
     /, Cameroon$/i,
     /, Cameroun$/i,
     /, Nigeria$/i,
-    /, Bénin$/i,
+    /, BÃ©nin$/i,
     /, Togo$/i,
     /, Ghana$/i,
-    /, République du Cameroun$/i,
+    /, RÃ©publique du Cameroun$/i,
     /, Federal Republic of Nigeria$/i,
     /, United States$/i,
     /, USA$/i,
@@ -187,7 +207,7 @@ const optimizeLocationName = (locationName: string): string => {
     /, Republic of the Congo$/i,
     /, Gabon$/i,
     /, Equatorial Guinea$/i,
-    /, São Tomé and Príncipe$/i,
+    /, SÃ£o TomÃ© and PrÃ­ncipe$/i,
     /, Angola$/i,
     /, Zambia$/i,
     /, Zimbabwe$/i,
@@ -217,7 +237,7 @@ const optimizeLocationName = (locationName: string): string => {
     /, Gambia$/i,
     /, Guinea$/i,
     /, Equatorial Guinea$/i,
-    /, São Tomé and Príncipe$/i,
+    /, SÃ£o TomÃ© and PrÃ­ncipe$/i,
     /, Gabon$/i,
     /, Republic of the Congo$/i,
     /, Democratic Republic of the Congo$/i,
@@ -257,20 +277,20 @@ const optimizeLocationName = (locationName: string): string => {
   // Nettoyer les virgules multiples et espaces
   optimized = optimized.replace(/,\s*,/g, ',').replace(/^\s*,\s*/, '').replace(/\s*,\s*$/, '').trim();
   
-  // Assurer une cohérence : ville + quartier/région
+  // Assurer une cohÃ©rence : ville + quartier/rÃ©gion
   const parts = optimized.split(',').map(part => part.trim()).filter(part => part.length > 0);
   
   if (parts.length >= 2) {
-    // Prendre les 2 premières parties (ville + quartier/région)
+    // Prendre les 2 premiÃ¨res parties (ville + quartier/rÃ©gion)
     optimized = parts.slice(0, 2).join(', ');
   } else if (parts.length === 1) {
     // Si une seule partie, la garder
     optimized = parts[0];
   }
   
-  // Limiter la longueur totale - AUGMENTÉE pour plus de lisibilité
+  // Limiter la longueur totale - AUGMENTÃ‰E pour plus de lisibilitÃ©
   if (optimized.length > 40) {
-    // Essayer de garder ville + quartier même si tronqué
+    // Essayer de garder ville + quartier mÃªme si tronquÃ©
     const truncated = optimized.substring(0, 37) + '...';
     return truncated;
   }
@@ -278,25 +298,25 @@ const optimizeLocationName = (locationName: string): string => {
   return optimized;
 };
 
-        // Fonction pour formater la localisation avec hiérarchie intelligente
+        // Fonction pour formater la localisation avec hiÃ©rarchie intelligente
         const formatLocation = async (service: any, prestatairesMap: Map<number, any>, currentUser: any): Promise<string> => {
           
-          // 1. Priorité: gps_fixe (lieu fixe du service)
+          // 1. PrioritÃ©: gps_fixe (lieu fixe du service)
           if (service?.data?.gps_fixe) {
             const gpsFixe = getServiceFieldValue(service.data.gps_fixe);
             if (gpsFixe && gpsFixe !== 'Non spécifié') {
-              // Vérifier si gps_fixe contient des coordonnées GPS
+              // VÃ©rifier si gps_fixe contient des coordonnÃ©es GPS
               if (typeof gpsFixe === 'string' && gpsFixe.includes(',')) {
-                // Géocoder les coordonnées GPS
+                // GÃ©ocoder les coordonnÃ©es GPS
                 const location = await convertGpsToLocation(gpsFixe);
                 return location;
               }
-              // Si ce n'est pas des coordonnées, retourner directement
+              // Si ce n'est pas des coordonnÃ©es, retourner directement
               return gpsFixe;
             }
           }
           
-          // 2. Priorité: adresse textuelle
+          // 2. PrioritÃ©: adresse textuelle
           if (service?.data?.adresse) {
             const adresse = getServiceFieldValue(service.data.adresse);
             if (adresse && adresse !== 'Non spécifié') {
@@ -304,25 +324,25 @@ const optimizeLocationName = (locationName: string): string => {
             }
           }
           
-          // 3. Priorité: extraire la localisation du titre du service
+          // 3. PrioritÃ©: extraire la localisation du titre du service
           if (service?.data?.titre) {
             const titre = getServiceFieldValue(service.data.titre);
             if (titre && titre !== 'Non spécifié') {
               // Chercher des patterns de localisation dans le titre
               const localisationPatterns = [
-                /à\s+([A-Za-zÀ-ÿ\s]+)/,           // "Restaurant à Edea"
-                /dans\s+([A-Za-zÀ-ÿ\s]+)/,        // "Restaurant dans Douala"
-                /sur\s+([A-Za-zÀ-ÿ\s]+)/,         // "Restaurant sur la route"
-                /près\s+de\s+([A-Za-zÀ-ÿ\s]+)/,   // "Restaurant près de Yaoundé"
-                /zone\s+([A-Za-zÀ-ÿ\s]+)/,        // "Restaurant zone Akwa"
-                /quartier\s+([A-Za-zÀ-ÿ\s]+)/     // "Restaurant quartier Bali"
+                /Ã \s+([A-Za-zÃ€-Ã¿\s]+)/,           // "Restaurant Ã  Edea"
+                /dans\s+([A-Za-zÃ€-Ã¿\s]+)/,        // "Restaurant dans Douala"
+                /sur\s+([A-Za-zÃ€-Ã¿\s]+)/,         // "Restaurant sur la route"
+                /prÃ¨s\s+de\s+([A-Za-zÃ€-Ã¿\s]+)/,   // "Restaurant prÃ¨s de YaoundÃ©"
+                /zone\s+([A-Za-zÃ€-Ã¿\s]+)/,        // "Restaurant zone Akwa"
+                /quartier\s+([A-Za-zÃ€-Ã¿\s]+)/     // "Restaurant quartier Bali"
               ];
               
               for (const pattern of localisationPatterns) {
                 const match = titre.match(pattern);
                 if (match && match[1]) {
                   const location = match[1].trim();
-                  if (location.length > 2) { // Éviter les mots trop courts
+                  if (location.length > 2) { // Ã‰viter les mots trop courts
                     return location;
                   }
                 }
@@ -330,7 +350,7 @@ const optimizeLocationName = (locationName: string): string => {
             }
           }
           
-          // 4. Priorité: chercher dans tous les champs du service.data
+          // 4. PrioritÃ©: chercher dans tous les champs du service.data
           if (service?.data) {
             // Afficher tous les champs disponibles pour debug
             const allFields = Object.keys(service.data);
@@ -338,12 +358,12 @@ const optimizeLocationName = (locationName: string): string => {
             for (const [fieldName, fieldValue] of Object.entries(service.data)) {
               if (typeof fieldValue === 'string' && fieldValue.length > 5) {
                 const localisationPatterns = [
-                  /à\s+([A-Za-zÀ-ÿ\s]+)/,           // "Restaurant à Edea"
-                  /dans\s+([A-Za-zÀ-ÿ\s]+)/,        // "Restaurant dans Douala"
-                  /sur\s+([A-Za-zÀ-ÿ\s]+)/,         // "Restaurant sur la route"
-                  /près\s+de\s+([A-Za-zÀ-ÿ\s]+)/,   // "Restaurant près de Yaoundé"
-                  /zone\s+([A-Za-zÀ-ÿ\s]+)/,        // "Restaurant zone Akwa"
-                  /quartier\s+([A-Za-zÀ-ÿ\s]+)/     // "Restaurant quartier Bali"
+                  /Ã \s+([A-Za-zÃ€-Ã¿\s]+)/,           // "Restaurant Ã  Edea"
+                  /dans\s+([A-Za-zÃ€-Ã¿\s]+)/,        // "Restaurant dans Douala"
+                  /sur\s+([A-Za-zÃ€-Ã¿\s]+)/,         // "Restaurant sur la route"
+                  /prÃ¨s\s+de\s+([A-Za-zÃ€-Ã¿\s]+)/,   // "Restaurant prÃ¨s de YaoundÃ©"
+                  /zone\s+([A-Za-zÃ€-Ã¿\s]+)/,        // "Restaurant zone Akwa"
+                  /quartier\s+([A-Za-zÃ€-Ã¿\s]+)/     // "Restaurant quartier Bali"
                 ];
                 
                 for (const pattern of localisationPatterns) {
@@ -359,12 +379,12 @@ const optimizeLocationName = (locationName: string): string => {
             }
           }
           
-          // 5. Priorité: gps du prestataire (coordonnées)
+          // 5. PrioritÃ©: gps du prestataire (coordonnÃ©es)
           if (service?.gps) {
             const gps = service.gps;
             if (gps && gps !== 'Non spécifié') {
               if (typeof gps === 'string' && gps.includes(',')) {
-                // Convertir les coordonnées GPS en lieu lisible
+                // Convertir les coordonnÃ©es GPS en lieu lisible
                 const location = await convertGpsToLocation(gps);
                 return location;
               }
@@ -372,12 +392,12 @@ const optimizeLocationName = (locationName: string): string => {
             }
           }
           
-          // 6. Priorité: gps du prestataire depuis la map
+          // 6. PrioritÃ©: gps du prestataire depuis la map
           if (service?.user_id && prestatairesMap.has(service.user_id)) {
             const prestataire = prestatairesMap.get(service.user_id);
             if (prestataire?.gps && prestataire.gps !== 'Non spécifié') {
               if (typeof prestataire.gps === 'string' && prestataire.gps.includes(',')) {
-                // Convertir les coordonnées GPS en lieu lisible
+                // Convertir les coordonnÃ©es GPS en lieu lisible
                 const location = await convertGpsToLocation(prestataire.gps);
                 return location;
               }
@@ -385,32 +405,32 @@ const optimizeLocationName = (locationName: string): string => {
             }
           }
           
-          // 7. Fallback: localisation par défaut
+          // 7. Fallback: localisation par dÃ©faut
           return 'Localisation non disponible';
         };
 
   // Fonction pour calculer le padding top optimal du CardHeader
   const calculateHeaderPadding = (hasLogo: boolean, wsConnected: boolean): string => {
-    if (hasLogo) return 'pt-16'; // Logo présent = grand padding
-    if (wsConnected) return 'pt-8'; // WebSocket connecté = padding moyen pour créer un espace avec le Live centré
-    return 'pt-2'; // Aucun élément = petit padding
+    if (hasLogo) return 'pt-16'; // Logo prÃ©sent = grand padding
+    if (wsConnected) return 'pt-8'; // WebSocket connectÃ© = padding moyen pour crÃ©er un espace avec le Live centrÃ©
+    return 'pt-2'; // Aucun Ã©lÃ©ment = petit padding
   };
 
-  // Fonction pour formater la date de manière complète
+  // Fonction pour formater la date de maniÃ¨re complÃ¨te
   const formatDate = (dateString: string): string => {
     if (!dateString) return 'Date non disponible';
     try {
       const date = new Date(dateString);
       
-      // Version complète avec mois en français
+      // Version complÃ¨te avec mois en franÃ§ais
       const day = date.getDate();
       const month = date.getMonth();
       const year = date.getFullYear();
       
-      // Mois complets en français
+      // Mois complets en franÃ§ais
       const monthNames = [
-        'janvier', 'février', 'mars', 'avril', 'mai', 'juin',
-        'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'
+        'janvier', 'fÃ©vrier', 'mars', 'avril', 'mai', 'juin',
+        'juillet', 'aoÃ»t', 'septembre', 'octobre', 'novembre', 'dÃ©cembre'
       ];
       
       return `${day} ${monthNames[month]} ${year}`;
@@ -431,7 +451,7 @@ const optimizeLocationName = (locationName: string): string => {
     return R * c;
   };
 
-        // Fonction pour obtenir les informations du pays à partir des coordonnées GPS - VERSION MONDIALE
+        // Fonction pour obtenir les informations du pays Ã  partir des coordonnÃ©es GPS - VERSION MONDIALE
         const getCountryInfo = async (lat: number, lng: number): Promise<{ flag: string; code: string }> => {
           try {
             // Utiliser l'endpoint backend au lieu d'appeler directement Google Maps
@@ -458,54 +478,54 @@ const optimizeLocationName = (locationName: string): string => {
               }
             }
           } catch (error) {
-            console.error('❌ [getCountryInfo] Erreur backend:', error);
+            console.error('âŒ [getCountryInfo] Erreur backend:', error);
           }
           
-          // Fallback : essayer de déterminer le pays par les coordonnées
+          // Fallback : essayer de dÃ©terminer le pays par les coordonnÃ©es
           try {
             const countryCode = getCountryFromCoordinates(lat, lng);
-            console.log('🗺️ [getCountryInfo] Code pays fallback:', countryCode);
+            console.log('ðŸ—ºï¸ [getCountryInfo] Code pays fallback:', countryCode);
             const flag = getFlagEmoji(countryCode);
             return { flag, code: countryCode };
           } catch (error) {
-            console.error('❌ [getCountryInfo] Erreur fallback:', error);
+            console.error('âŒ [getCountryInfo] Erreur fallback:', error);
           }
           
-          return { flag: '🌍', code: 'XX' }; // Valeurs par défaut
+          return { flag: 'ðŸŒ', code: 'XX' }; // Valeurs par dÃ©faut
         };
 
-        // Fonction de fallback pour déterminer le pays par coordonnées
+        // Fonction de fallback pour dÃ©terminer le pays par coordonnÃ©es
         const getCountryFromCoordinates = (lat: number, lng: number): string => {
-          // Zones géographiques approximatives pour les pays principaux
+          // Zones gÃ©ographiques approximatives pour les pays principaux
           const countryZones = [
             // Afrique
-            { code: 'DZ', bounds: [19, 36, -9, 12] }, // Algérie
+            { code: 'DZ', bounds: [19, 36, -9, 12] }, // AlgÃ©rie
             { code: 'AO', bounds: [-18, -5, 11, 24] }, // Angola
-            { code: 'BJ', bounds: [6, 12, 1, 4] }, // Bénin
+            { code: 'BJ', bounds: [6, 12, 1, 4] }, // BÃ©nin
             { code: 'BW', bounds: [-27, -18, 19, 29] }, // Botswana
             { code: 'BF', bounds: [9, 15, -6, 2] }, // Burkina Faso
             { code: 'BI', bounds: [-4, -2, 29, 31] }, // Burundi
             { code: 'CM', bounds: [2, 13, 8, 16] }, // Cameroun
             { code: 'CV', bounds: [14, 17, -25, -22] }, // Cap-Vert
-            { code: 'CF', bounds: [2, 11, 14, 27] }, // République centrafricaine
+            { code: 'CF', bounds: [2, 11, 14, 27] }, // RÃ©publique centrafricaine
             { code: 'TD', bounds: [8, 24, 14, 24] }, // Tchad
             { code: 'KM', bounds: [-13, -11, 43, 45] }, // Comores
             { code: 'CG', bounds: [-5, 4, 11, 19] }, // Congo
             { code: 'CD', bounds: [-14, 6, 12, 32] }, // RDC
             { code: 'DJ', bounds: [10, 13, 41, 44] }, // Djibouti
-            { code: 'EG', bounds: [22, 32, 25, 37] }, // Égypte
-            { code: 'GQ', bounds: [1, 2, 5, 12] }, // Guinée équatoriale
-            { code: 'ER', bounds: [12, 18, 36, 43] }, // Érythrée
-            { code: 'ET', bounds: [3, 15, 33, 48] }, // Éthiopie
+            { code: 'EG', bounds: [22, 32, 25, 37] }, // Ã‰gypte
+            { code: 'GQ', bounds: [1, 2, 5, 12] }, // GuinÃ©e Ã©quatoriale
+            { code: 'ER', bounds: [12, 18, 36, 43] }, // Ã‰rythrÃ©e
+            { code: 'ET', bounds: [3, 15, 33, 48] }, // Ã‰thiopie
             { code: 'GA', bounds: [-4, 2, 8, 15] }, // Gabon
             { code: 'GM', bounds: [13, 14, -17, -13] }, // Gambie
             { code: 'GH', bounds: [5, 11, -4, 2] }, // Ghana
-            { code: 'GN', bounds: [7, 13, -15, -7] }, // Guinée
-            { code: 'GW', bounds: [11, 12, -17, -13] }, // Guinée-Bissau
-            { code: 'CI', bounds: [4, 11, -8, -2] }, // Côte d'Ivoire
+            { code: 'GN', bounds: [7, 13, -15, -7] }, // GuinÃ©e
+            { code: 'GW', bounds: [11, 12, -17, -13] }, // GuinÃ©e-Bissau
+            { code: 'CI', bounds: [4, 11, -8, -2] }, // CÃ´te d'Ivoire
             { code: 'KE', bounds: [-5, 5, 34, 42] }, // Kenya
             { code: 'LS', bounds: [-31, -28, 27, 30] }, // Lesotho
-            { code: 'LR', bounds: [4, 8, -12, -7] }, // Libéria
+            { code: 'LR', bounds: [4, 8, -12, -7] }, // LibÃ©ria
             { code: 'LY', bounds: [20, 33, 9, 26] }, // Libye
             { code: 'MG', bounds: [-26, -11, 43, 51] }, // Madagascar
             { code: 'MW', bounds: [-17, -9, 32, 36] }, // Malawi
@@ -519,8 +539,8 @@ const optimizeLocationName = (locationName: string): string => {
             { code: 'NE', bounds: [12, 24, 0, 16] }, // Niger
             { code: 'NG', bounds: [4, 14, 3, 15] }, // Nigeria
             { code: 'RW', bounds: [-3, -1, 29, 31] }, // Rwanda
-            { code: 'ST', bounds: [0, 2, 6, 8] }, // Sao Tomé-et-Principe
-            { code: 'SN', bounds: [12, 17, -18, -11] }, // Sénégal
+            { code: 'ST', bounds: [0, 2, 6, 8] }, // Sao TomÃ©-et-Principe
+            { code: 'SN', bounds: [12, 17, -18, -11] }, // SÃ©nÃ©gal
             { code: 'SC', bounds: [-10, -4, 46, 56] }, // Seychelles
             { code: 'SL', bounds: [7, 10, -14, -10] }, // Sierra Leone
             { code: 'SO', bounds: [-2, 12, 41, 52] }, // Somalie
@@ -536,33 +556,33 @@ const optimizeLocationName = (locationName: string): string => {
             { code: 'ZM', bounds: [-18, -8, 22, 34] }, // Zambie
             { code: 'ZW', bounds: [-23, -15, 25, 33] }, // Zimbabwe
             
-            // Amérique
+            // AmÃ©rique
             { code: 'AR', bounds: [-56, -21, -74, -53] }, // Argentine
             { code: 'BO', bounds: [-23, -9, -70, -57] }, // Bolivie
-            { code: 'BR', bounds: [-34, 6, -74, -34] }, // Brésil
+            { code: 'BR', bounds: [-34, 6, -74, -34] }, // BrÃ©sil
             { code: 'CL', bounds: [-56, -17, -76, -66] }, // Chili
             { code: 'CO', bounds: [-5, 13, -82, -66] }, // Colombie
-            { code: 'EC', bounds: [-5, 2, -82, -75] }, // Équateur
+            { code: 'EC', bounds: [-5, 2, -82, -75] }, // Ã‰quateur
             { code: 'GY', bounds: [1, 9, -62, -56] }, // Guyana
             { code: 'PY', bounds: [-28, -19, -63, -54] }, // Paraguay
-            { code: 'PE', bounds: [-20, -1, -84, -68] }, // Pérou
+            { code: 'PE', bounds: [-20, -1, -84, -68] }, // PÃ©rou
             { code: 'SR', bounds: [2, 6, -58, -54] }, // Suriname
             { code: 'UY', bounds: [-35, -30, -58, -53] }, // Uruguay
             { code: 'VE', bounds: [1, 13, -74, -59] }, // Venezuela
             { code: 'CA', bounds: [41, 84, -141, -52] }, // Canada
-            { code: 'US', bounds: [18, 72, -180, -66] }, // États-Unis
+            { code: 'US', bounds: [18, 72, -180, -66] }, // Ã‰tats-Unis
             { code: 'MX', bounds: [14, 33, -118, -86] }, // Mexique
             
             // Asie
             { code: 'CN', bounds: [18, 54, 73, 135] }, // Chine
             { code: 'IN', bounds: [6, 37, 68, 97] }, // Inde
             { code: 'JP', bounds: [24, 46, 129, 146] }, // Japon
-            { code: 'KR', bounds: [33, 39, 124, 132] }, // Corée du Sud
-            { code: 'KP', bounds: [37, 43, 124, 131] }, // Corée du Nord
-            { code: 'TH', bounds: [6, 21, 97, 106] }, // Thaïlande
+            { code: 'KR', bounds: [33, 39, 124, 132] }, // CorÃ©e du Sud
+            { code: 'KP', bounds: [37, 43, 124, 131] }, // CorÃ©e du Nord
+            { code: 'TH', bounds: [6, 21, 97, 106] }, // ThaÃ¯lande
             { code: 'VN', bounds: [8, 23, 102, 110] }, // Vietnam
             { code: 'MY', bounds: [1, 7, 100, 119] }, // Malaisie
-            { code: 'ID', bounds: [-11, 6, 95, 141] }, // Indonésie
+            { code: 'ID', bounds: [-11, 6, 95, 141] }, // IndonÃ©sie
             { code: 'PH', bounds: [5, 21, 116, 127] }, // Philippines
             { code: 'SG', bounds: [1, 2, 103, 105] }, // Singapour
             { code: 'BD', bounds: [21, 27, 88, 93] }, // Bangladesh
@@ -574,33 +594,33 @@ const optimizeLocationName = (locationName: string): string => {
             { code: 'TR', bounds: [36, 42, 26, 45] }, // Turquie
             { code: 'RU', bounds: [41, 82, 26, 191] }, // Russie
             { code: 'KZ', bounds: [41, 56, 46, 87] }, // Kazakhstan
-            { code: 'UZ', bounds: [37, 46, 56, 75] }, // Ouzbékistan
+            { code: 'UZ', bounds: [37, 46, 56, 75] }, // OuzbÃ©kistan
             { code: 'KG', bounds: [39, 43, 69, 80] }, // Kirghizistan
             { code: 'TJ', bounds: [36, 41, 67, 75] }, // Tadjikistan
-            { code: 'TM', bounds: [35, 43, 52, 67] }, // Turkménistan
-            { code: 'AZ', bounds: [39, 42, 44, 51] }, // Azerbaïdjan
-            { code: 'GE', bounds: [41, 44, 40, 47] }, // Géorgie
-            { code: 'AM', bounds: [39, 41, 43, 47] }, // Arménie
-            { code: 'IL', bounds: [29, 34, 34, 36] }, // Israël
+            { code: 'TM', bounds: [35, 43, 52, 67] }, // TurkmÃ©nistan
+            { code: 'AZ', bounds: [39, 42, 44, 51] }, // AzerbaÃ¯djan
+            { code: 'GE', bounds: [41, 44, 40, 47] }, // GÃ©orgie
+            { code: 'AM', bounds: [39, 41, 43, 47] }, // ArmÃ©nie
+            { code: 'IL', bounds: [29, 34, 34, 36] }, // IsraÃ«l
             { code: 'JO', bounds: [29, 33, 35, 39] }, // Jordanie
             { code: 'LB', bounds: [33, 35, 35, 37] }, // Liban
             { code: 'SY', bounds: [32, 37, 35, 42] }, // Syrie
             { code: 'CY', bounds: [34, 36, 32, 35] }, // Chypre
-            { code: 'KW', bounds: [28, 31, 46, 49] }, // Koweït
+            { code: 'KW', bounds: [28, 31, 46, 49] }, // KoweÃ¯t
             { code: 'QA', bounds: [24, 27, 50, 52] }, // Qatar
-            { code: 'AE', bounds: [22, 26, 51, 57] }, // Émirats arabes unis
+            { code: 'AE', bounds: [22, 26, 51, 57] }, // Ã‰mirats arabes unis
             { code: 'OM', bounds: [16, 27, 52, 60] }, // Oman
-            { code: 'YE', bounds: [12, 19, 42, 55] }, // Yémen
-            { code: 'BH', bounds: [26, 27, 50, 51] }, // Bahreïn
+            { code: 'YE', bounds: [12, 19, 42, 55] }, // YÃ©men
+            { code: 'BH', bounds: [26, 27, 50, 51] }, // BahreÃ¯n
             { code: 'MV', bounds: [-1, 7, 72, 74] }, // Maldives
             { code: 'LK', bounds: [6, 10, 79, 82] }, // Sri Lanka
-            { code: 'NP', bounds: [26, 31, 80, 88] }, // Népal
+            { code: 'NP', bounds: [26, 31, 80, 88] }, // NÃ©pal
             { code: 'BT', bounds: [27, 29, 88, 92] }, // Bhoutan
             { code: 'MM', bounds: [10, 28, 92, 101] }, // Myanmar
             { code: 'LA', bounds: [14, 23, 100, 108] }, // Laos
             { code: 'KH', bounds: [10, 15, 102, 108] }, // Cambodge
             { code: 'BN', bounds: [4, 5, 114, 116] }, // Brunei
-            { code: 'TW', bounds: [21, 26, 119, 122] }, // Taïwan
+            { code: 'TW', bounds: [21, 26, 119, 122] }, // TaÃ¯wan
             { code: 'HK', bounds: [22, 23, 113, 115] }, // Hong Kong
             { code: 'MO', bounds: [22, 23, 113, 114] }, // Macao
             { code: 'MN', bounds: [42, 52, 87, 120] }, // Mongolie
@@ -617,27 +637,27 @@ const optimizeLocationName = (locationName: string): string => {
             { code: 'CH', bounds: [45, 48, 6, 11] }, // Suisse
             { code: 'AT', bounds: [46, 49, 9, 18] }, // Autriche
             { code: 'PL', bounds: [49, 55, 14, 24] }, // Pologne
-            { code: 'CZ', bounds: [48, 51, 12, 19] }, // République tchèque
+            { code: 'CZ', bounds: [48, 51, 12, 19] }, // RÃ©publique tchÃ¨que
             { code: 'SK', bounds: [47, 50, 16, 23] }, // Slovaquie
             { code: 'HU', bounds: [45, 49, 16, 23] }, // Hongrie
             { code: 'RO', bounds: [43, 48, 20, 30] }, // Roumanie
             { code: 'BG', bounds: [41, 44, 22, 29] }, // Bulgarie
-            { code: 'GR', bounds: [35, 42, 20, 28] }, // Grèce
+            { code: 'GR', bounds: [35, 42, 20, 28] }, // GrÃ¨ce
             { code: 'HR', bounds: [42, 47, 13, 20] }, // Croatie
-            { code: 'SI', bounds: [45, 47, 13, 17] }, // Slovénie
-            { code: 'BA', bounds: [42, 45, 15, 20] }, // Bosnie-Herzégovine
+            { code: 'SI', bounds: [45, 47, 13, 17] }, // SlovÃ©nie
+            { code: 'BA', bounds: [42, 45, 15, 20] }, // Bosnie-HerzÃ©govine
             { code: 'RS', bounds: [42, 46, 18, 23] }, // Serbie
-            { code: 'ME', bounds: [41, 43, 18, 20] }, // Monténégro
-            { code: 'MK', bounds: [40, 43, 20, 23] }, // Macédoine du Nord
+            { code: 'ME', bounds: [41, 43, 18, 20] }, // MontÃ©nÃ©gro
+            { code: 'MK', bounds: [40, 43, 20, 23] }, // MacÃ©doine du Nord
             { code: 'AL', bounds: [39, 43, 19, 21] }, // Albanie
             { code: 'UA', bounds: [44, 53, 22, 41] }, // Ukraine
-            { code: 'BY', bounds: [51, 56, 23, 33] }, // Biélorussie
+            { code: 'BY', bounds: [51, 56, 23, 33] }, // BiÃ©lorussie
             { code: 'LT', bounds: [53, 56, 21, 27] }, // Lituanie
             { code: 'LV', bounds: [55, 58, 21, 28] }, // Lettonie
             { code: 'EE', bounds: [57, 60, 22, 28] }, // Estonie
             { code: 'FI', bounds: [60, 71, 20, 32] }, // Finlande
-            { code: 'SE', bounds: [55, 69, 11, 24] }, // Suède
-            { code: 'NO', bounds: [58, 71, 4, 31] }, // Norvège
+            { code: 'SE', bounds: [55, 69, 11, 24] }, // SuÃ¨de
+            { code: 'NO', bounds: [58, 71, 4, 31] }, // NorvÃ¨ge
             { code: 'DK', bounds: [54, 58, 8, 16] }, // Danemark
             { code: 'IS', bounds: [63, 67, -25, -13] }, // Islande
             { code: 'IE', bounds: [51, 55, -11, -5] }, // Irlande
@@ -650,29 +670,29 @@ const optimizeLocationName = (locationName: string): string => {
             { code: 'MT', bounds: [35, 36, 14, 15] }, // Malte
             { code: 'CY', bounds: [34, 36, 32, 35] }, // Chypre
             
-            // Océanie
+            // OcÃ©anie
             { code: 'AU', bounds: [-44, -10, 113, 154] }, // Australie
-            { code: 'NZ', bounds: [-48, -34, 166, 179] }, // Nouvelle-Zélande
+            { code: 'NZ', bounds: [-48, -34, 166, 179] }, // Nouvelle-ZÃ©lande
             { code: 'FJ', bounds: [-21, -15, 177, -178] }, // Fidji
-            { code: 'PG', bounds: [-12, -1, 141, 156] }, // Papouasie-Nouvelle-Guinée
-            { code: 'SB', bounds: [-12, -5, 155, 170] }, // Îles Salomon
+            { code: 'PG', bounds: [-12, -1, 141, 156] }, // Papouasie-Nouvelle-GuinÃ©e
+            { code: 'SB', bounds: [-12, -5, 155, 170] }, // ÃŽles Salomon
             { code: 'VU', bounds: [-21, -13, 166, 170] }, // Vanuatu
-            { code: 'NC', bounds: [-23, -19, 163, 168] }, // Nouvelle-Calédonie
-            { code: 'PF', bounds: [-28, -7, -155, -134] }, // Polynésie française
+            { code: 'NC', bounds: [-23, -19, 163, 168] }, // Nouvelle-CalÃ©donie
+            { code: 'PF', bounds: [-28, -7, -155, -134] }, // PolynÃ©sie franÃ§aise
             { code: 'WS', bounds: [-14, -13, -173, -171] }, // Samoa
             { code: 'TO', bounds: [-24, -15, -176, -173] }, // Tonga
             { code: 'KI', bounds: [-5, 3, -175, -169] }, // Kiribati
-            { code: 'MH', bounds: [4, 11, 160, 172] }, // Îles Marshall
-            { code: 'FM', bounds: [1, 10, 137, 164] }, // Micronésie
+            { code: 'MH', bounds: [4, 11, 160, 172] }, // ÃŽles Marshall
+            { code: 'FM', bounds: [1, 10, 137, 164] }, // MicronÃ©sie
             { code: 'PW', bounds: [2, 8, 131, 135] }, // Palaos
             { code: 'NR', bounds: [-1, -0, 166, 167] }, // Nauru
             { code: 'TV', bounds: [-10, -5, 176, 180] }, // Tuvalu
             { code: 'GU', bounds: [13, 14, 144, 145] }, // Guam
-            { code: 'MP', bounds: [14, 20, 144, 146] }, // Îles Mariannes du Nord
-            { code: 'AS', bounds: [-15, -13, -171, -168] }, // Samoa américaines
+            { code: 'MP', bounds: [14, 20, 144, 146] }, // ÃŽles Mariannes du Nord
+            { code: 'AS', bounds: [-15, -13, -171, -168] }, // Samoa amÃ©ricaines
           ];
           
-          // Chercher le pays correspondant aux coordonnées
+          // Chercher le pays correspondant aux coordonnÃ©es
           for (const zone of countryZones) {
             const [minLat, maxLat, minLng, maxLng] = zone.bounds;
             if (lat >= minLat && lat <= maxLat && lng >= minLng && lng <= maxLng) {
@@ -680,7 +700,7 @@ const optimizeLocationName = (locationName: string): string => {
             }
           }
           
-          return 'XX'; // Code par défaut si aucun pays trouvé
+          return 'XX'; // Code par dÃ©faut si aucun pays trouvÃ©
         };
 
         // Fonction pour obtenir l'URL de l'image du drapeau
@@ -693,16 +713,16 @@ const optimizeLocationName = (locationName: string): string => {
             `https://raw.githubusercontent.com/lipis/flag-icons/main/flags/4x3/${countryCode.toLowerCase()}.svg`
           ];
           
-          return sources[0]; // Retourner la première source par défaut
+          return sources[0]; // Retourner la premiÃ¨re source par dÃ©faut
         };
 
         // Fonction pour convertir le code pays en emoji drapeau - VERSION MONDIALE
         const getFlagEmoji = (countryCode: string): string => {
           if (!countryCode || countryCode.length !== 2) {
-            return '🌍';
+            return 'ðŸŒ';
           }
           
-          // Méthode principale : utiliser les caractères régionaux Unicode
+          // MÃ©thode principale : utiliser les caractÃ¨res rÃ©gionaux Unicode
           try {
             const codePoints = countryCode
               .toUpperCase()
@@ -713,54 +733,54 @@ const optimizeLocationName = (locationName: string): string => {
               return String.fromCodePoint(...codePoints);
             }
           } catch (error) {
-            console.error('❌ [getFlagEmoji] Erreur génération drapeau:', error);
+            console.error('âŒ [getFlagEmoji] Erreur gÃ©nÃ©ration drapeau:', error);
           }
           
-          // Fallback : drapeaux connus pour les cas problématiques
+          // Fallback : drapeaux connus pour les cas problÃ©matiques
           const knownFlags: { [key: string]: string } = {
             // Afrique
-            'DZ': '🇩🇿', 'AO': '🇦🇴', 'BJ': '🇧🇯', 'BW': '🇧🇼', 'BF': '🇧🇫', 'BI': '🇧🇮', 'CM': '🇨🇲', 'CV': '🇨🇻', 'CF': '🇨🇫', 'TD': '🇹🇩',
-            'KM': '🇰🇲', 'CG': '🇨🇬', 'CD': '🇨🇩', 'DJ': '🇩🇯', 'EG': '🇪🇬', 'GQ': '🇬🇶', 'ER': '🇪🇷', 'ET': '🇪🇹', 'GA': '🇬🇦', 'GM': '🇬🇲',
-            'GH': '🇬🇭', 'GN': '🇬🇳', 'GW': '🇬🇼', 'CI': '🇨🇮', 'KE': '🇰🇪', 'LS': '🇱🇸', 'LR': '🇱🇷', 'LY': '🇱🇾', 'MG': '🇲🇬', 'MW': '🇲🇼',
-            'ML': '🇲🇱', 'MR': '🇲🇷', 'MU': '🇲🇺', 'YT': '🇾🇹', 'MA': '🇲🇦', 'MZ': '🇲🇿', 'NA': '🇳🇦', 'NE': '🇳🇪', 'NG': '🇳🇬', 'RW': '🇷🇼',
-            'ST': '🇸🇹', 'SN': '🇸🇳', 'SC': '🇸🇨', 'SL': '🇸🇱', 'SO': '🇸🇴', 'ZA': '🇿🇦', 'SS': '🇸🇸', 'SD': '🇸🇩', 'SZ': '🇸🇿', 'TZ': '🇹🇿',
-            'TG': '🇹🇬', 'TN': '🇹🇳', 'UG': '🇺🇬', 'EH': '🇪🇭', 'ZM': '🇿🇲', 'ZW': '🇿🇼',
+            'DZ': 'ðŸ‡©ðŸ‡¿', 'AO': 'ðŸ‡¦ðŸ‡´', 'BJ': 'ðŸ‡§ðŸ‡¯', 'BW': 'ðŸ‡§ðŸ‡¼', 'BF': 'ðŸ‡§ðŸ‡«', 'BI': 'ðŸ‡§ðŸ‡®', 'CM': 'ðŸ‡¨ðŸ‡²', 'CV': 'ðŸ‡¨ðŸ‡»', 'CF': 'ðŸ‡¨ðŸ‡«', 'TD': 'ðŸ‡¹ðŸ‡©',
+            'KM': 'ðŸ‡°ðŸ‡²', 'CG': 'ðŸ‡¨ðŸ‡¬', 'CD': 'ðŸ‡¨ðŸ‡©', 'DJ': 'ðŸ‡©ðŸ‡¯', 'EG': 'ðŸ‡ªðŸ‡¬', 'GQ': 'ðŸ‡¬ðŸ‡¶', 'ER': 'ðŸ‡ªðŸ‡·', 'ET': 'ðŸ‡ªðŸ‡¹', 'GA': 'ðŸ‡¬ðŸ‡¦', 'GM': 'ðŸ‡¬ðŸ‡²',
+            'GH': 'ðŸ‡¬ðŸ‡­', 'GN': 'ðŸ‡¬ðŸ‡³', 'GW': 'ðŸ‡¬ðŸ‡¼', 'CI': 'ðŸ‡¨ðŸ‡®', 'KE': 'ðŸ‡°ðŸ‡ª', 'LS': 'ðŸ‡±ðŸ‡¸', 'LR': 'ðŸ‡±ðŸ‡·', 'LY': 'ðŸ‡±ðŸ‡¾', 'MG': 'ðŸ‡²ðŸ‡¬', 'MW': 'ðŸ‡²ðŸ‡¼',
+            'ML': 'ðŸ‡²ðŸ‡±', 'MR': 'ðŸ‡²ðŸ‡·', 'MU': 'ðŸ‡²ðŸ‡º', 'YT': 'ðŸ‡¾ðŸ‡¹', 'MA': 'ðŸ‡²ðŸ‡¦', 'MZ': 'ðŸ‡²ðŸ‡¿', 'NA': 'ðŸ‡³ðŸ‡¦', 'NE': 'ðŸ‡³ðŸ‡ª', 'NG': 'ðŸ‡³ðŸ‡¬', 'RW': 'ðŸ‡·ðŸ‡¼',
+            'ST': 'ðŸ‡¸ðŸ‡¹', 'SN': 'ðŸ‡¸ðŸ‡³', 'SC': 'ðŸ‡¸ðŸ‡¨', 'SL': 'ðŸ‡¸ðŸ‡±', 'SO': 'ðŸ‡¸ðŸ‡´', 'ZA': 'ðŸ‡¿ðŸ‡¦', 'SS': 'ðŸ‡¸ðŸ‡¸', 'SD': 'ðŸ‡¸ðŸ‡©', 'SZ': 'ðŸ‡¸ðŸ‡¿', 'TZ': 'ðŸ‡¹ðŸ‡¿',
+            'TG': 'ðŸ‡¹ðŸ‡¬', 'TN': 'ðŸ‡¹ðŸ‡³', 'UG': 'ðŸ‡ºðŸ‡¬', 'EH': 'ðŸ‡ªðŸ‡­', 'ZM': 'ðŸ‡¿ðŸ‡²', 'ZW': 'ðŸ‡¿ðŸ‡¼',
             
-            // Amérique
-            'AR': '🇦🇷', 'BO': '🇧🇴', 'BR': '🇧🇷', 'CL': '🇨🇱', 'CO': '🇨🇴', 'EC': '🇪🇨', 'GY': '🇬🇾', 'PY': '🇵🇾', 'PE': '🇵🇪', 'SR': '🇸🇷',
-            'UY': '🇺🇾', 'VE': '🇻🇪', 'CA': '🇨🇦', 'US': '🇺🇸', 'MX': '🇲🇽', 'GT': '🇬🇹', 'BZ': '🇧🇿', 'SV': '🇸🇻', 'HN': '🇭🇳', 'NI': '🇳🇮',
-            'CR': '🇨🇷', 'PA': '🇵🇦', 'CU': '🇨🇺', 'JM': '🇯🇲', 'HT': '🇭🇹', 'DO': '🇩🇴', 'PR': '🇵🇷', 'TT': '🇹🇹', 'BB': '🇧🇧', 'GD': '🇬🇩',
-            'LC': '🇱🇨', 'VC': '🇻🇨', 'AG': '🇦🇬', 'KN': '🇰🇳', 'DM': '🇩🇲', 'BS': '🇧🇸', 'AI': '🇦🇮', 'TC': '🇹🇨', 'VG': '🇻🇬', 'VI': '🇻🇮',
-            'AW': '🇦🇼', 'CW': '🇨🇼', 'SX': '🇸🇽', 'BQ': '🇧🇶', 'FK': '🇫🇰', 'GF': '🇬🇫', 'PF': '🇵🇫', 'NC': '🇳🇨', 'GP': '🇬🇵', 'MQ': '🇲🇶',
-            'RE': '🇷🇪', 'YT': '🇾🇹', 'BL': '🇧🇱', 'MF': '🇲🇫', 'PM': '🇵🇲', 'WF': '🇼🇫',
+            // AmÃ©rique
+            'AR': 'ðŸ‡¦ðŸ‡·', 'BO': 'ðŸ‡§ðŸ‡´', 'BR': 'ðŸ‡§ðŸ‡·', 'CL': 'ðŸ‡¨ðŸ‡±', 'CO': 'ðŸ‡¨ðŸ‡´', 'EC': 'ðŸ‡ªðŸ‡¨', 'GY': 'ðŸ‡¬ðŸ‡¾', 'PY': 'ðŸ‡µðŸ‡¾', 'PE': 'ðŸ‡µðŸ‡ª', 'SR': 'ðŸ‡¸ðŸ‡·',
+            'UY': 'ðŸ‡ºðŸ‡¾', 'VE': 'ðŸ‡»ðŸ‡ª', 'CA': 'ðŸ‡¨ðŸ‡¦', 'US': 'ðŸ‡ºðŸ‡¸', 'MX': 'ðŸ‡²ðŸ‡½', 'GT': 'ðŸ‡¬ðŸ‡¹', 'BZ': 'ðŸ‡§ðŸ‡¿', 'SV': 'ðŸ‡¸ðŸ‡»', 'HN': 'ðŸ‡­ðŸ‡³', 'NI': 'ðŸ‡³ðŸ‡®',
+            'CR': 'ðŸ‡¨ðŸ‡·', 'PA': 'ðŸ‡µðŸ‡¦', 'CU': 'ðŸ‡¨ðŸ‡º', 'JM': 'ðŸ‡¯ðŸ‡²', 'HT': 'ðŸ‡­ðŸ‡¹', 'DO': 'ðŸ‡©ðŸ‡´', 'PR': 'ðŸ‡µðŸ‡·', 'TT': 'ðŸ‡¹ðŸ‡¹', 'BB': 'ðŸ‡§ðŸ‡§', 'GD': 'ðŸ‡¬ðŸ‡©',
+            'LC': 'ðŸ‡±ðŸ‡¨', 'VC': 'ðŸ‡»ðŸ‡¨', 'AG': 'ðŸ‡¦ðŸ‡¬', 'KN': 'ðŸ‡°ðŸ‡³', 'DM': 'ðŸ‡©ðŸ‡²', 'BS': 'ðŸ‡§ðŸ‡¸', 'AI': 'ðŸ‡¦ðŸ‡®', 'TC': 'ðŸ‡¹ðŸ‡¨', 'VG': 'ðŸ‡»ðŸ‡¬', 'VI': 'ðŸ‡»ðŸ‡®',
+            'AW': 'ðŸ‡¦ðŸ‡¼', 'CW': 'ðŸ‡¨ðŸ‡¼', 'SX': 'ðŸ‡¸ðŸ‡½', 'BQ': 'ðŸ‡§ðŸ‡¶', 'FK': 'ðŸ‡«ðŸ‡°', 'GF': 'ðŸ‡¬ðŸ‡«', 'PF': 'ðŸ‡µðŸ‡«', 'NC': 'ðŸ‡³ðŸ‡¨', 'GP': 'ðŸ‡¬ðŸ‡µ', 'MQ': 'ðŸ‡²ðŸ‡¶',
+            'RE': 'ðŸ‡·ðŸ‡ª', 'YT': 'ðŸ‡¾ðŸ‡¹', 'BL': 'ðŸ‡§ðŸ‡±', 'MF': 'ðŸ‡²ðŸ‡«', 'PM': 'ðŸ‡µðŸ‡²', 'WF': 'ðŸ‡¼ðŸ‡«',
             
             // Asie
-            'AF': '🇦🇫', 'AM': '🇦🇲', 'AZ': '🇦🇿', 'BH': '🇧🇭', 'BD': '🇧🇩', 'BT': '🇧🇹', 'BN': '🇧🇳', 'KH': '🇰🇭', 'CN': '🇨🇳', 'CY': '🇨🇾',
-            'GE': '🇬🇪', 'HK': '🇭🇰', 'IN': '🇮🇳', 'ID': '🇮🇩', 'IR': '🇮🇷', 'IQ': '🇮🇶', 'IL': '🇮🇱', 'JP': '🇯🇵', 'JO': '🇯🇴', 'KZ': '🇰🇿',
-            'KW': '🇰🇼', 'KG': '🇰🇬', 'LA': '🇱🇦', 'LB': '🇱🇧', 'MO': '🇲🇴', 'MY': '🇲🇾', 'MV': '🇲🇻', 'MN': '🇲🇳', 'MM': '🇲🇲', 'NP': '🇳🇵',
-            'OM': '🇴🇲', 'PK': '🇵🇰', 'PS': '🇵🇸', 'PH': '🇵🇭', 'QA': '🇶🇦', 'SA': '🇸🇦', 'SG': '🇸🇬', 'LK': '🇱🇰', 'SY': '🇸🇾', 'TW': '🇹🇼',
-            'TJ': '🇹🇯', 'TH': '🇹🇭', 'TL': '🇹🇱', 'TR': '🇹🇷', 'TM': '🇹🇲', 'AE': '🇦🇪', 'UZ': '🇺🇿', 'VN': '🇻🇳', 'YE': '🇾🇪', 'KR': '🇰🇷',
-            'KP': '🇰🇵', 'MN': '🇲🇳', 'KG': '🇰🇬', 'TJ': '🇹🇯', 'TM': '🇹🇲', 'UZ': '🇺🇿',
+            'AF': 'ðŸ‡¦ðŸ‡«', 'AM': 'ðŸ‡¦ðŸ‡²', 'AZ': 'ðŸ‡¦ðŸ‡¿', 'BH': 'ðŸ‡§ðŸ‡­', 'BD': 'ðŸ‡§ðŸ‡©', 'BT': 'ðŸ‡§ðŸ‡¹', 'BN': 'ðŸ‡§ðŸ‡³', 'KH': 'ðŸ‡°ðŸ‡­', 'CN': 'ðŸ‡¨ðŸ‡³', 'CY': 'ðŸ‡¨ðŸ‡¾',
+            'GE': 'ðŸ‡¬ðŸ‡ª', 'HK': 'ðŸ‡­ðŸ‡°', 'IN': 'ðŸ‡®ðŸ‡³', 'ID': 'ðŸ‡®ðŸ‡©', 'IR': 'ðŸ‡®ðŸ‡·', 'IQ': 'ðŸ‡®ðŸ‡¶', 'IL': 'ðŸ‡®ðŸ‡±', 'JP': 'ðŸ‡¯ðŸ‡µ', 'JO': 'ðŸ‡¯ðŸ‡´', 'KZ': 'ðŸ‡°ðŸ‡¿',
+            'KW': 'ðŸ‡°ðŸ‡¼', 'KG': 'ðŸ‡°ðŸ‡¬', 'LA': 'ðŸ‡±ðŸ‡¦', 'LB': 'ðŸ‡±ðŸ‡§', 'MO': 'ðŸ‡²ðŸ‡´', 'MY': 'ðŸ‡²ðŸ‡¾', 'MV': 'ðŸ‡²ðŸ‡»', 'MN': 'ðŸ‡²ðŸ‡³', 'MM': 'ðŸ‡²ðŸ‡²', 'NP': 'ðŸ‡³ðŸ‡µ',
+            'OM': 'ðŸ‡´ðŸ‡²', 'PK': 'ðŸ‡µðŸ‡°', 'PS': 'ðŸ‡µðŸ‡¸', 'PH': 'ðŸ‡µðŸ‡­', 'QA': 'ðŸ‡¶ðŸ‡¦', 'SA': 'ðŸ‡¸ðŸ‡¦', 'SG': 'ðŸ‡¸ðŸ‡¬', 'LK': 'ðŸ‡±ðŸ‡°', 'SY': 'ðŸ‡¸ðŸ‡¾', 'TW': 'ðŸ‡¹ðŸ‡¼',
+            'TJ': 'ðŸ‡¹ðŸ‡¯', 'TH': 'ðŸ‡¹ðŸ‡­', 'TL': 'ðŸ‡¹ðŸ‡±', 'TR': 'ðŸ‡¹ðŸ‡·', 'TM': 'ðŸ‡¹ðŸ‡²', 'AE': 'ðŸ‡¦ðŸ‡ª', 'UZ': 'ðŸ‡ºðŸ‡¿', 'VN': 'ðŸ‡»ðŸ‡³', 'YE': 'ðŸ‡¾ðŸ‡ª', 'KR': 'ðŸ‡°ðŸ‡·',
+            'KP': 'ðŸ‡°ðŸ‡µ', 'MN': 'ðŸ‡²ðŸ‡³', 'KG': 'ðŸ‡°ðŸ‡¬', 'TJ': 'ðŸ‡¹ðŸ‡¯', 'TM': 'ðŸ‡¹ðŸ‡²', 'UZ': 'ðŸ‡ºðŸ‡¿',
             
             // Europe
-            'AL': '🇦🇱', 'AD': '🇦🇩', 'AT': '🇦🇹', 'BY': '🇧🇾', 'BE': '🇧🇪', 'BA': '🇧🇦', 'BG': '🇧🇬', 'HR': '🇭🇷', 'CZ': '🇨🇿', 'DK': '🇩🇰',
-            'EE': '🇪🇪', 'FI': '🇫🇮', 'FR': '🇫🇷', 'DE': '🇩🇪', 'GR': '🇬🇷', 'HU': '🇭🇺', 'IS': '🇮🇸', 'IE': '🇮🇪', 'IT': '🇮🇹', 'LV': '🇱🇻',
-            'LI': '🇱🇮', 'LT': '🇱🇹', 'LU': '🇱🇺', 'MT': '🇲🇹', 'MD': '🇲🇩', 'MC': '🇲🇨', 'ME': '🇲🇪', 'NL': '🇳🇱', 'MK': '🇲🇰', 'NO': '🇳🇴',
-            'PL': '🇵🇱', 'PT': '🇵🇹', 'RO': '🇷🇴', 'RU': '🇷🇺', 'SM': '🇸🇲', 'RS': '🇷🇸', 'SK': '🇸🇰', 'SI': '🇸🇮', 'ES': '🇪🇸', 'SE': '🇸🇪',
-            'CH': '🇨🇭', 'UA': '🇺🇦', 'GB': '🇬🇧', 'VA': '🇻🇦', 'XK': '🇽🇰',
+            'AL': 'ðŸ‡¦ðŸ‡±', 'AD': 'ðŸ‡¦ðŸ‡©', 'AT': 'ðŸ‡¦ðŸ‡¹', 'BY': 'ðŸ‡§ðŸ‡¾', 'BE': 'ðŸ‡§ðŸ‡ª', 'BA': 'ðŸ‡§ðŸ‡¦', 'BG': 'ðŸ‡§ðŸ‡¬', 'HR': 'ðŸ‡­ðŸ‡·', 'CZ': 'ðŸ‡¨ðŸ‡¿', 'DK': 'ðŸ‡©ðŸ‡°',
+            'EE': 'ðŸ‡ªðŸ‡ª', 'FI': 'ðŸ‡«ðŸ‡®', 'FR': 'ðŸ‡«ðŸ‡·', 'DE': 'ðŸ‡©ðŸ‡ª', 'GR': 'ðŸ‡¬ðŸ‡·', 'HU': 'ðŸ‡­ðŸ‡º', 'IS': 'ðŸ‡®ðŸ‡¸', 'IE': 'ðŸ‡®ðŸ‡ª', 'IT': 'ðŸ‡®ðŸ‡¹', 'LV': 'ðŸ‡±ðŸ‡»',
+            'LI': 'ðŸ‡±ðŸ‡®', 'LT': 'ðŸ‡±ðŸ‡¹', 'LU': 'ðŸ‡±ðŸ‡º', 'MT': 'ðŸ‡²ðŸ‡¹', 'MD': 'ðŸ‡²ðŸ‡©', 'MC': 'ðŸ‡²ðŸ‡¨', 'ME': 'ðŸ‡²ðŸ‡ª', 'NL': 'ðŸ‡³ðŸ‡±', 'MK': 'ðŸ‡²ðŸ‡°', 'NO': 'ðŸ‡³ðŸ‡´',
+            'PL': 'ðŸ‡µðŸ‡±', 'PT': 'ðŸ‡µðŸ‡¹', 'RO': 'ðŸ‡·ðŸ‡´', 'RU': 'ðŸ‡·ðŸ‡º', 'SM': 'ðŸ‡¸ðŸ‡²', 'RS': 'ðŸ‡·ðŸ‡¸', 'SK': 'ðŸ‡¸ðŸ‡°', 'SI': 'ðŸ‡¸ðŸ‡®', 'ES': 'ðŸ‡ªðŸ‡¸', 'SE': 'ðŸ‡¸ðŸ‡ª',
+            'CH': 'ðŸ‡¨ðŸ‡­', 'UA': 'ðŸ‡ºðŸ‡¦', 'GB': 'ðŸ‡¬ðŸ‡§', 'VA': 'ðŸ‡»ðŸ‡¦', 'XK': 'ðŸ‡½ðŸ‡°',
             
-            // Océanie
-            'AU': '🇦🇺', 'FJ': '🇫🇯', 'KI': '🇰🇮', 'MH': '🇲🇭', 'FM': '🇫🇲', 'NR': '🇳🇷', 'NZ': '🇳🇿', 'PW': '🇵🇼', 'PG': '🇵🇬', 'WS': '🇼🇸',
-            'SB': '🇸🇧', 'TO': '🇹🇴', 'TV': '🇹🇻', 'VU': '🇻🇺', 'GU': '🇬🇺', 'MP': '🇲🇵', 'AS': '🇦🇸', 'CK': '🇨🇰', 'NU': '🇳🇺', 'TK': '🇹🇰',
-            'NC': '🇳🇨', 'PF': '🇵🇫', 'WF': '🇼🇫', 'PN': '🇵🇳', 'NF': '🇳🇫',
+            // OcÃ©anie
+            'AU': 'ðŸ‡¦ðŸ‡º', 'FJ': 'ðŸ‡«ðŸ‡¯', 'KI': 'ðŸ‡°ðŸ‡®', 'MH': 'ðŸ‡²ðŸ‡­', 'FM': 'ðŸ‡«ðŸ‡²', 'NR': 'ðŸ‡³ðŸ‡·', 'NZ': 'ðŸ‡³ðŸ‡¿', 'PW': 'ðŸ‡µðŸ‡¼', 'PG': 'ðŸ‡µðŸ‡¬', 'WS': 'ðŸ‡¼ðŸ‡¸',
+            'SB': 'ðŸ‡¸ðŸ‡§', 'TO': 'ðŸ‡¹ðŸ‡´', 'TV': 'ðŸ‡¹ðŸ‡»', 'VU': 'ðŸ‡»ðŸ‡º', 'GU': 'ðŸ‡¬ðŸ‡º', 'MP': 'ðŸ‡²ðŸ‡µ', 'AS': 'ðŸ‡¦ðŸ‡¸', 'CK': 'ðŸ‡¨ðŸ‡°', 'NU': 'ðŸ‡³ðŸ‡º', 'TK': 'ðŸ‡¹ðŸ‡°',
+            'NC': 'ðŸ‡³ðŸ‡¨', 'PF': 'ðŸ‡µðŸ‡«', 'WF': 'ðŸ‡¼ðŸ‡«', 'PN': 'ðŸ‡µðŸ‡³', 'NF': 'ðŸ‡³ðŸ‡«',
             
-            // Territoires et dépendances
-            'AQ': '🇦🇶', 'BV': '🇧🇻', 'IO': '🇮🇴', 'CX': '🇨🇽', 'CC': '🇨🇨', 'HM': '🇭🇲', 'GS': '🇬🇸', 'TF': '🇹🇫', 'SH': '🇸🇭', 'SJ': '🇸🇯',
-            'UM': '🇺🇲', 'AX': '🇦🇽', 'FO': '🇫🇴', 'GL': '🇬🇱', 'GI': '🇬🇮', 'JE': '🇯🇪', 'IM': '🇮🇲', 'GG': '🇬🇬', 'AD': '🇦🇩', 'MC': '🇲🇨',
-            'SM': '🇸🇲', 'VA': '🇻🇦', 'LI': '🇱🇮', 'MT': '🇲🇹', 'CY': '🇨🇾'
+            // Territoires et dÃ©pendances
+            'AQ': 'ðŸ‡¦ðŸ‡¶', 'BV': 'ðŸ‡§ðŸ‡»', 'IO': 'ðŸ‡®ðŸ‡´', 'CX': 'ðŸ‡¨ðŸ‡½', 'CC': 'ðŸ‡¨ðŸ‡¨', 'HM': 'ðŸ‡­ðŸ‡²', 'GS': 'ðŸ‡¬ðŸ‡¸', 'TF': 'ðŸ‡¹ðŸ‡«', 'SH': 'ðŸ‡¸ðŸ‡­', 'SJ': 'ðŸ‡¸ðŸ‡¯',
+            'UM': 'ðŸ‡ºðŸ‡²', 'AX': 'ðŸ‡¦ðŸ‡½', 'FO': 'ðŸ‡«ðŸ‡´', 'GL': 'ðŸ‡¬ðŸ‡±', 'GI': 'ðŸ‡¬ðŸ‡®', 'JE': 'ðŸ‡¯ðŸ‡ª', 'IM': 'ðŸ‡®ðŸ‡²', 'GG': 'ðŸ‡¬ðŸ‡¬', 'AD': 'ðŸ‡¦ðŸ‡©', 'MC': 'ðŸ‡²ðŸ‡¨',
+            'SM': 'ðŸ‡¸ðŸ‡²', 'VA': 'ðŸ‡»ðŸ‡¦', 'LI': 'ðŸ‡±ðŸ‡®', 'MT': 'ðŸ‡²ðŸ‡¹', 'CY': 'ðŸ‡¨ðŸ‡¾'
           };
           
-          return knownFlags[countryCode] || '🌍';
+          return knownFlags[countryCode] || 'ðŸŒ';
         };
 
 export const ResultatBesoin: React.FC = () => {
@@ -782,12 +802,12 @@ export const ResultatBesoin: React.FC = () => {
   const [contactMenuOpen, setContactMenuOpen] = useState<number | null>(null);
   const [showPrestataireGallery, setShowPrestataireGallery] = useState(false);
 
-  // États pour la gestion des fichiers
+  // Ã‰tats pour la gestion des fichiers
   const [uploadingFiles, setUploadingFiles] = useState(false);
   const [prestataireGallery, setPrestataireGallery] = useState<any[]>([]);
   const [loadingGallery, setLoadingGallery] = useState(false);
 
-  // États pour l'enregistrement audio
+  // Ã‰tats pour l'enregistrement audio
   const [isRecording, setIsRecording] = useState(false);
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
   const [audioChunks, setAudioChunks] = useState<Blob[]>([]);
@@ -801,15 +821,15 @@ export const ResultatBesoin: React.FC = () => {
     isNaN(userId) ? 0 : userId
   );
 
-  // WebSocket pour les notifications en temps réel
+  // WebSocket pour les notifications en temps rÃ©el
   const { isConnected: notificationsConnected, notifications } = useNotificationsWebSocket(
     isNaN(userId) ? 0 : userId
   );
 
-  // Hook pour récupérer les informations des prestataires
+  // Hook pour rÃ©cupÃ©rer les informations des prestataires
   const { prestataires, fetchPrestatairesBatch } = usePrestataireInfo();
 
-  // État pour les indicateurs de frappe et métriques WebSocket
+  // Ã‰tat pour les indicateurs de frappe et mÃ©triques WebSocket
   const [typingUsers, setTypingUsers] = useState<Set<number>>(new Set());
   const [wsMetrics, setWsMetrics] = useState({
     connectionTime: 0,
@@ -822,10 +842,10 @@ export const ResultatBesoin: React.FC = () => {
   // Initialiser le suivi GPS automatique
   useEffect(() => {
     if (user?.id) {
-      console.log('🚀 Initialisation du suivi GPS pour l\'utilisateur:', user.id);
+      console.log('ðŸš€ Initialisation du suivi GPS pour l\'utilisateur:', user.id);
       gpsTrackingService.startTracking();
       
-      // Nettoyer à la fermeture
+      // Nettoyer Ã  la fermeture
       return () => {
         gpsTrackingService.stopTracking();
       };
@@ -833,11 +853,11 @@ export const ResultatBesoin: React.FC = () => {
   }, [user?.id]);
   const [wsTypingStatus, setWsTypingStatus] = useState(false);
 
-  // Fonction pour gérer les indicateurs de frappe WebSocket
+  // Fonction pour gÃ©rer les indicateurs de frappe WebSocket
   const handleTypingIndicator = (serviceId: number, isTyping: boolean) => {
     if (isTyping) {
       setTypingUsers(prev => new Set([...prev, serviceId]));
-      // Auto-arrêt après 3 secondes
+      // Auto-arrÃªt aprÃ¨s 3 secondes
       setTimeout(() => {
         setTypingUsers(prev => {
           const newSet = new Set(prev);
@@ -854,7 +874,7 @@ export const ResultatBesoin: React.FC = () => {
     }
   };
 
-  // Fonction pour mettre à jour les métriques WebSocket
+  // Fonction pour mettre Ã  jour les mÃ©triques WebSocket
   const updateWsMetrics = (type: 'sent' | 'received' | 'ping', value?: number) => {
     setWsMetrics(prev => {
       switch (type) {
@@ -874,7 +894,7 @@ export const ResultatBesoin: React.FC = () => {
     });
   };
 
-  // État pour le mode hors ligne
+  // Ã‰tat pour le mode hors ligne
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const [offlineMessages, setOfflineMessages] = useState<Array<{
     id: string;
@@ -885,14 +905,14 @@ export const ResultatBesoin: React.FC = () => {
     audioBlob?: Blob;
   }>>([]);
 
-  // État pour l'édition des messages
+  // Ã‰tat pour l'Ã©dition des messages
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
 
 
 
   
 
-  // Récupérer les informations des prestataires quand les services sont chargés
+  // RÃ©cupÃ©rer les informations des prestataires quand les services sont chargÃ©s
   useEffect(() => {
     if (services.length > 0) {
       const userIds = services.map(service => service.user_id).filter(id => id !== undefined);
@@ -912,7 +932,7 @@ export const ResultatBesoin: React.FC = () => {
           return;
         }
         
-        // Trier les résultats par score de pertinence et proximité
+        // Trier les rÃ©sultats par score de pertinence et proximitÃ©
         const sortedResults = await sortResultsByRelevanceAndProximity(results);
         
         const serviceIds = sortedResults
@@ -950,7 +970,7 @@ export const ResultatBesoin: React.FC = () => {
           if (response.ok) {
             const service = await response.json();
             
-            // Enrichir le service avec les données de recherche (score, etc.)
+            // Enrichir le service avec les donnÃ©es de recherche (score, etc.)
             const enrichedService = {
               ...service,
               score: originalResults[index]?.score || 0,
@@ -961,14 +981,14 @@ export const ResultatBesoin: React.FC = () => {
             
             return enrichedService;
           } else if (response.status === 404) {
-            console.warn(`⚠️ Service ${serviceId} non trouvé (404)`);
+            console.warn(`âš ï¸ Service ${serviceId} non trouvÃ© (404)`);
             return null;
           } else {
-            console.error(`❌ Erreur ${response.status} pour le service ${serviceId}`);
+            console.error(`âŒ Erreur ${response.status} pour le service ${serviceId}`);
             return null;
           }
         } catch (error) {
-          console.error(`❌ Erreur réseau pour le service ${serviceId}:`, error);
+          console.error(`âŒ Erreur rÃ©seau pour le service ${serviceId}:`, error);
           return null;
         }
       });
@@ -977,16 +997,16 @@ export const ResultatBesoin: React.FC = () => {
       const validServices = results.filter(service => service !== null);
 
       if (validServices.length === 0) {
-        setError("Aucun service trouvé. Les services recherchés ne sont plus disponibles.");
+        setError("Aucun service trouvÃ©. Les services recherchÃ©s ne sont plus disponibles.");
         setServices([]);
       } else if (validServices.length < serviceIds.length) {
         const missingCount = serviceIds.length - validServices.length;
-        console.warn(`⚠️ ${missingCount} services manquants sur ${serviceIds.length} demandés`);
+        console.warn(`âš ï¸ ${missingCount} services manquants sur ${serviceIds.length} demandÃ©s`);
         
         // Afficher un toast d'information
         toast({
-          title: "Services partiellement trouvés",
-          description: `${validServices.length} sur ${serviceIds.length} services trouvés`,
+          title: "Services partiellement trouvÃ©s",
+          description: `${validServices.length} sur ${serviceIds.length} services trouvÃ©s`,
           type: "default"
         });
         
@@ -995,8 +1015,8 @@ export const ResultatBesoin: React.FC = () => {
         setServices(validServices);
       }
     } catch (error) {
-      console.error('❌ Erreur lors de la récupération des services:', error);
-      setError('Erreur lors de la récupération des services');
+      console.error('âŒ Erreur lors de la rÃ©cupÃ©ration des services:', error);
+      setError('Erreur lors de la rÃ©cupÃ©ration des services');
       setServices([]);
     } finally {
       setLoading(false);
@@ -1039,10 +1059,10 @@ export const ResultatBesoin: React.FC = () => {
       });
 
       if (response.ok) {
-        console.log(`✅ Interaction ${action} enregistrée pour le service ${service.id}`);
+        console.log(`âœ… Interaction ${action} enregistrÃ©e pour le service ${service.id}`);
       }
     } catch (error) {
-      console.error('❌ Erreur lors de l\'enregistrement de l\'interaction:', error);
+      console.error('âŒ Erreur lors de l\'enregistrement de l\'interaction:', error);
     }
   };
 
@@ -1066,7 +1086,7 @@ export const ResultatBesoin: React.FC = () => {
     // Envoyer notification au prestataire via l'API existante
     sendNotificationToPrestataire(service, 'chat_request');
     
-    // Initialiser le chat avec un message de bienvenue personnalisé
+    // Initialiser le chat avec un message de bienvenue personnalisÃ©
     const prestataireInfo = prestataires.get(service.user_id);
     const nomPrestataire = prestataireInfo?.nom_complet || `Prestataire #${service.user_id}`;
     const titreService = getServiceFieldValue(service.data?.titre_service);
@@ -1075,14 +1095,14 @@ export const ResultatBesoin: React.FC = () => {
     const welcomeMessage = {
       id: Date.now().toString(),
       from: 'prestataire',
-      content: `Bonjour 👋, je suis ${nomPrestataire} pour le service "${titreService || 'Service'}"${categorieService ? ` (${categorieService})` : ''}. Que puis-je faire pour vous ?`,
+      content: `Bonjour ðŸ‘‹, je suis ${nomPrestataire} pour le service "${titreService || 'Service'}"${categorieService ? ` (${categorieService})` : ''}. Que puis-je faire pour vous ?`,
       timestamp: new Date(),
       status: 'read',
       type: 'text'
     };
     setChatMessages([welcomeMessage]);
     
-    // Activer les WebSockets pour le chat en temps réel
+    // Activer les WebSockets pour le chat en temps rÃ©el
     if (wsConnected) {
       // Envoyer un message de statut pour indiquer que l'utilisateur est en train de chatter
       checkUserStatus(service.user_id);
@@ -1090,24 +1110,24 @@ export const ResultatBesoin: React.FC = () => {
       // Simuler l'indicateur de frappe pour ce service
       handleTypingIndicator(service.id, true);
       
-      // Mettre à jour les métriques WebSocket
+      // Mettre Ã  jour les mÃ©triques WebSocket
       updateWsMetrics('sent');
       
-      // Notification WebSocket en temps réel
+      // Notification WebSocket en temps rÃ©el
       toast({
-        title: "Chat activé",
-        description: `Connexion WebSocket établie avec ${getServiceFieldValue(service.data?.titre_service)}`,
+        title: "Chat activÃ©",
+        description: `Connexion WebSocket Ã©tablie avec ${getServiceFieldValue(service.data?.titre_service)}`,
         type: "success"
       });
     }
 
   };
 
-  // Fonction pour récupérer la position de l'utilisateur
+  // Fonction pour rÃ©cupÃ©rer la position de l'utilisateur
   const getUserLocation = (): Promise<{lat: number, lon: number} | null> => {
     return new Promise((resolve) => {
       if (!navigator.geolocation) {
-        console.warn('Géolocalisation non supportée');
+        console.warn('GÃ©olocalisation non supportÃ©e');
         resolve(null);
         return;
       }
@@ -1115,11 +1135,11 @@ export const ResultatBesoin: React.FC = () => {
       navigator.geolocation.getCurrentPosition(
         (position) => {
           const { latitude: lat, longitude: lon } = position.coords;
-          console.log(`📍 Position utilisateur: ${lat}, ${lon}`);
+          console.log(`ðŸ“ Position utilisateur: ${lat}, ${lon}`);
           resolve({ lat, lon });
         },
         (error) => {
-          console.warn('Erreur géolocalisation:', error.message);
+          console.warn('Erreur gÃ©olocalisation:', error.message);
           resolve(null);
         },
         {
@@ -1131,19 +1151,19 @@ export const ResultatBesoin: React.FC = () => {
     });
   };
 
-  // Fonction pour trier les résultats par pertinence et proximité
+  // Fonction pour trier les rÃ©sultats par pertinence et proximitÃ©
   const sortResultsByRelevanceAndProximity = async (results: any[]): Promise<any[]> => {
     try {
-      // Récupérer la position de l'utilisateur
+      // RÃ©cupÃ©rer la position de l'utilisateur
       const userLocation = await getUserLocation();
       
       if (!userLocation) {
-        // Si pas de géolocalisation, trier seulement par score
-        console.log('📍 Géolocalisation non disponible, tri par score uniquement');
+        // Si pas de gÃ©olocalisation, trier seulement par score
+        console.log('ðŸ“ GÃ©olocalisation non disponible, tri par score uniquement');
         return results.sort((a: any, b: any) => (b.score || 0) - (a.score || 0));
       }
 
-      // Enrichir les résultats avec la distance calculée
+      // Enrichir les rÃ©sultats avec la distance calculÃ©e
       const enrichedResults = results.map((result: any) => {
         let distance = Infinity;
         
@@ -1169,14 +1189,14 @@ export const ResultatBesoin: React.FC = () => {
         };
       });
 
-      // Trier par score combiné (pertinence + proximité)
+      // Trier par score combinÃ© (pertinence + proximitÃ©)
       return enrichedResults.sort((a: any, b: any) => {
         const scoreA = (a.score || 0) * 0.7 + (a.proximityScore || 0) * 0.3;
         const scoreB = (b.score || 0) * 0.7 + (b.proximityScore || 0) * 0.3;
         return scoreB - scoreA;
       });
     } catch (error) {
-      console.error('❌ Erreur lors du tri des résultats:', error);
+      console.error('âŒ Erreur lors du tri des rÃ©sultats:', error);
       // Fallback: tri par score uniquement
       return results.sort((a: any, b: any) => (b.score || 0) - (a.score || 0));
     }
@@ -1185,7 +1205,7 @@ export const ResultatBesoin: React.FC = () => {
   const handleWhatsApp = (service: Service) => {
     const phone = getServiceFieldValue(service.data?.telephone);
     if (phone && phone !== 'Non spécifié') {
-      const message = `Bonjour ! Je suis intéressé par votre service : ${getServiceFieldValue(service.data?.titre_service)}`;
+      const message = `Bonjour ! Je suis intÃ©ressÃ© par votre service : ${getServiceFieldValue(service.data?.titre_service)}`;
       const whatsappUrl = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
       
       window.open(whatsappUrl, '_blank');
@@ -1194,8 +1214,8 @@ export const ResultatBesoin: React.FC = () => {
       sendNotificationToPrestataire(service, 'whatsapp_contact');
     } else {
       toast({
-        title: "Téléphone non disponible",
-        description: "Ce prestataire n'a pas encore renseigné son numéro de téléphone pour WhatsApp",
+        title: "TÃ©lÃ©phone non disponible",
+        description: "Ce prestataire n'a pas encore renseignÃ© son numÃ©ro de tÃ©lÃ©phone pour WhatsApp",
         type: "default"
       });
     }
@@ -1218,16 +1238,16 @@ export const ResultatBesoin: React.FC = () => {
 
       if (response.ok) {
         toast({
-          title: "Notification envoyée",
-          description: "Le prestataire a été notifié de votre intérêt",
+          title: "Notification envoyÃ©e",
+          description: "Le prestataire a Ã©tÃ© notifiÃ© de votre intÃ©rÃªt",
           type: "default"
         });
         
-        // Notification WebSocket en temps réel si connecté
+        // Notification WebSocket en temps rÃ©el si connectÃ©
         if (notificationsConnected) {
           toast({
-            title: "🔴 Notification temps réel",
-            description: "Le prestataire a été notifié via WebSocket en temps réel",
+            title: "ðŸ”´ Notification temps rÃ©el",
+            description: "Le prestataire a Ã©tÃ© notifiÃ© via WebSocket en temps rÃ©el",
             type: "success"
           });
         }
@@ -1273,7 +1293,7 @@ export const ResultatBesoin: React.FC = () => {
       });
 
       if (response.ok) {
-        // Marquer comme livré
+        // Marquer comme livrÃ©
         setChatMessages(prev => 
           prev.map(msg => 
             msg.id === message.id ? { ...msg, status: 'delivered' } : msg
@@ -1296,14 +1316,14 @@ export const ResultatBesoin: React.FC = () => {
       // Notifier le prestataire AVANT l'appel
       sendNotificationToPrestataire(service, 'appel_telephonique');
       
-      // Attendre un peu pour que la notification soit envoyée
+      // Attendre un peu pour que la notification soit envoyÃ©e
       setTimeout(() => {
         window.open(`tel:${phone}`, '_self');
       }, 500);
     } else {
       toast({
-        title: "Téléphone non disponible",
-        description: "Ce prestataire n'a pas encore renseigné son numéro de téléphone",
+        title: "TÃ©lÃ©phone non disponible",
+        description: "Ce prestataire n'a pas encore renseignÃ© son numÃ©ro de tÃ©lÃ©phone",
         type: "default"
       });
     }
@@ -1316,27 +1336,27 @@ export const ResultatBesoin: React.FC = () => {
     } else {
       toast({
         title: "Email non disponible",
-        description: "Ce prestataire n'a pas encore renseigné son email",
+        description: "Ce prestataire n'a pas encore renseignÃ© son email",
         type: "default"
       });
     }
   };
 
   const handleVideoCall = (service: Service) => {
-    // Vérifier si l'utilisateur a une caméra
+    // VÃ©rifier si l'utilisateur a une camÃ©ra
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       toast({
-        title: "Caméra non disponible",
-        description: "Votre navigateur ne supporte pas les appels vidéo",
+        title: "CamÃ©ra non disponible",
+        description: "Votre navigateur ne supporte pas les appels vidÃ©o",
         type: "error"
       });
       return;
     }
 
-    // Démarrer l'appel vidéo
+    // DÃ©marrer l'appel vidÃ©o
     navigator.mediaDevices.getUserMedia({ video: true, audio: true })
       .then((stream) => {
-        // Créer une nouvelle fenêtre pour l'appel vidéo
+        // CrÃ©er une nouvelle fenÃªtre pour l'appel vidÃ©o
         const videoWindow = window.open(
           `/video-call?service=${service.id}&user=${user?.id}`,
           'video-call',
@@ -1344,49 +1364,49 @@ export const ResultatBesoin: React.FC = () => {
         );
         
         if (videoWindow) {
-          // Notifier le prestataire AVANT d'ouvrir la fenêtre
+          // Notifier le prestataire AVANT d'ouvrir la fenÃªtre
           sendNotificationToPrestataire(service, 'appel_video');
           
           toast({
-            title: "Appel vidéo démarré",
-            description: "Fenêtre d'appel vidéo ouverte",
+            title: "Appel vidÃ©o dÃ©marrÃ©",
+            description: "FenÃªtre d'appel vidÃ©o ouverte",
             type: "success"
           });
         } else {
           toast({
             title: "Erreur",
-            description: "Impossible d'ouvrir la fenêtre d'appel vidéo",
+            description: "Impossible d'ouvrir la fenÃªtre d'appel vidÃ©o",
             type: "error"
           });
         }
       })
       .catch((error) => {
-        console.error('Erreur accès caméra:', error);
+        console.error('Erreur accÃ¨s camÃ©ra:', error);
         toast({
-          title: "Erreur caméra",
-          description: "Impossible d'accéder à votre caméra. Vérifiez les permissions.",
+          title: "Erreur camÃ©ra",
+          description: "Impossible d'accÃ©der Ã  votre camÃ©ra. VÃ©rifiez les permissions.",
           type: "error"
         });
       });
   };
 
-  // Fonction pour démarrer l'enregistrement audio avec délai
+  // Fonction pour dÃ©marrer l'enregistrement audio avec dÃ©lai
   const startAudioRecording = () => {
     if (isRecording) return;
     
-    // Enregistrer le moment où l'utilisateur commence à maintenir
+    // Enregistrer le moment oÃ¹ l'utilisateur commence Ã  maintenir
     setHoldStartTime(Date.now());
     
-    // Démarrer l'enregistrement après un délai de 300ms
+    // DÃ©marrer l'enregistrement aprÃ¨s un dÃ©lai de 300ms
     const timer = setTimeout(async () => {
       try {
-        // Réinitialiser le compteur
+        // RÃ©initialiser le compteur
         setRecordingSeconds(0);
         
         // Demander les permissions audio
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         
-        // Créer le MediaRecorder
+        // CrÃ©er le MediaRecorder
         const recorder = new MediaRecorder(stream);
         const chunks: Blob[] = [];
         
@@ -1400,11 +1420,11 @@ export const ResultatBesoin: React.FC = () => {
           const audioBlob = new Blob(chunks, { type: 'audio/wav' });
           const audioUrl = URL.createObjectURL(audioBlob);
           
-          // Créer et envoyer le message audio automatiquement
+          // CrÃ©er et envoyer le message audio automatiquement
           const audioMessage = {
             id: Date.now().toString(),
             type: 'audio',
-            content: '🎵 Message audio',
+            content: 'ðŸŽµ Message audio',
             timestamp: new Date().toISOString(),
             sender: 'client',
             from: 'client',
@@ -1419,27 +1439,27 @@ export const ResultatBesoin: React.FC = () => {
           // Nettoyer les chunks audio
           setAudioChunks([]);
           
-          // Arrêter tous les tracks audio
+          // ArrÃªter tous les tracks audio
           stream.getTracks().forEach(track => track.stop());
           
-          // Arrêter le compteur
+          // ArrÃªter le compteur
           setRecordingSeconds(0);
           
-          // Envoyer via l'API en arrière-plan
+          // Envoyer via l'API en arriÃ¨re-plan
           sendAudioMessageInBackground(audioBlob, audioMessage.id);
         };
         
-        // Démarrer l'enregistrement
+        // DÃ©marrer l'enregistrement
         recorder.start();
         setMediaRecorder(recorder);
         setIsRecording(true);
         
-        // Démarrer le compteur de secondes
+        // DÃ©marrer le compteur de secondes
         const interval = setInterval(() => {
           setRecordingSeconds(prev => prev + 1);
         }, 1000);
         
-        // Arrêter automatiquement après 60 secondes
+        // ArrÃªter automatiquement aprÃ¨s 60 secondes
         setTimeout(() => {
           if (recorder.state === 'recording') {
             clearInterval(interval);
@@ -1451,27 +1471,27 @@ export const ResultatBesoin: React.FC = () => {
         recorder.addEventListener('stop', () => clearInterval(interval));
         
       } catch (error) {
-        console.error('Erreur accès microphone:', error);
+        console.error('Erreur accÃ¨s microphone:', error);
         toast({
           title: "Erreur microphone",
-          description: "Impossible d'accéder au microphone. Vérifiez les permissions.",
+          description: "Impossible d'accÃ©der au microphone. VÃ©rifiez les permissions.",
           type: "error"
         });
       }
-    }, 300); // Délai de 300ms avant de démarrer l'enregistrement
+    }, 300); // DÃ©lai de 300ms avant de dÃ©marrer l'enregistrement
     
     setRecordingTimer(timer);
   };
 
-  // Fonction pour arrêter l'enregistrement audio
+  // Fonction pour arrÃªter l'enregistrement audio
   const stopAudioRecording = () => {
-    // Annuler le timer si l'enregistrement n'a pas encore commencé
+    // Annuler le timer si l'enregistrement n'a pas encore commencÃ©
     if (recordingTimer) {
       clearTimeout(recordingTimer);
       setRecordingTimer(null);
     }
     
-    // Réinitialiser le temps de maintien
+    // RÃ©initialiser le temps de maintien
     setHoldStartTime(null);
     
     if (!isRecording || !mediaRecorder) return;
@@ -1482,15 +1502,15 @@ export const ResultatBesoin: React.FC = () => {
       }
       setIsRecording(false);
       
-      // L'enregistrement sera automatiquement envoyé via l'événement onstop
+      // L'enregistrement sera automatiquement envoyÃ© via l'Ã©vÃ©nement onstop
       // Pas besoin d'appeler sendAudioMessage ici
       
     } catch (error) {
-      console.error('Erreur arrêt enregistrement:', error);
+      console.error('Erreur arrÃªt enregistrement:', error);
     }
   };
 
-  // Fonction pour annuler l'enregistrement si l'utilisateur relâche trop tôt
+  // Fonction pour annuler l'enregistrement si l'utilisateur relÃ¢che trop tÃ´t
   const cancelRecording = () => {
     if (recordingTimer) {
       clearTimeout(recordingTimer);
@@ -1515,20 +1535,20 @@ export const ResultatBesoin: React.FC = () => {
     if (!audioChunks.length || !selectedService) return;
     
     try {
-      // Créer un Blob à partir des chunks audio
+      // CrÃ©er un Blob Ã  partir des chunks audio
       const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
       
-      // Créer un message local immédiatement
+      // CrÃ©er un message local immÃ©diatement
       const audioMessage = {
         id: Date.now().toString(),
         type: 'audio',
-        content: '🎵 Message audio',
+        content: 'ðŸŽµ Message audio',
         timestamp: new Date().toISOString(),
         sender: 'client',
         from: 'client',
         isLocal: true,
         audioBlob: audioBlob,
-        audioUrl: URL.createObjectURL(audioBlob) // Créer l'URL pour l'affichage
+        audioUrl: URL.createObjectURL(audioBlob) // CrÃ©er l'URL pour l'affichage
       };
       
       // Ajouter le message au chat localement
@@ -1553,7 +1573,7 @@ export const ResultatBesoin: React.FC = () => {
       });
       
       if (response.ok) {
-        // Marquer le message comme envoyé
+        // Marquer le message comme envoyÃ©
         setChatMessages(prev => 
           prev.map(msg => 
             msg.id === audioMessage.id 
@@ -1562,12 +1582,12 @@ export const ResultatBesoin: React.FC = () => {
           )
         );
         
-        // Nettoyer les chunks audio après envoi réussi
+        // Nettoyer les chunks audio aprÃ¨s envoi rÃ©ussi
         setAudioChunks([]);
         
         toast({
-          title: "Message audio envoyé",
-          description: "Votre message audio a été envoyé avec succès",
+          title: "Message audio envoyÃ©",
+          description: "Votre message audio a Ã©tÃ© envoyÃ© avec succÃ¨s",
           type: "success"
         });
       } else {
@@ -1584,7 +1604,7 @@ export const ResultatBesoin: React.FC = () => {
     }
   };
 
-  // Fonction pour envoyer le message audio en arrière-plan
+  // Fonction pour envoyer le message audio en arriÃ¨re-plan
   const sendAudioMessageInBackground = async (audioBlob: Blob, messageId: string) => {
     try {
       // Envoyer via l'API
@@ -1603,7 +1623,7 @@ export const ResultatBesoin: React.FC = () => {
       });
       
       if (response.ok) {
-        // Marquer le message comme envoyé
+        // Marquer le message comme envoyÃ©
         setChatMessages(prev => 
           prev.map(msg => 
             msg.id === messageId 
@@ -1612,10 +1632,10 @@ export const ResultatBesoin: React.FC = () => {
           )
         );
         
-        // Notification discrète
+        // Notification discrÃ¨te
         toast({
-          title: "Audio envoyé",
-          description: "Message audio envoyé avec succès",
+          title: "Audio envoyÃ©",
+          description: "Message audio envoyÃ© avec succÃ¨s",
           type: "success"
         });
       } else {
@@ -1623,7 +1643,7 @@ export const ResultatBesoin: React.FC = () => {
       }
       
     } catch (error) {
-      console.error('Erreur envoi audio en arrière-plan:', error);
+      console.error('Erreur envoi audio en arriÃ¨re-plan:', error);
       
       // Marquer le message comme en erreur
       setChatMessages(prev => 
@@ -1634,7 +1654,7 @@ export const ResultatBesoin: React.FC = () => {
         )
       );
       
-      // Notification d'erreur discrète
+      // Notification d'erreur discrÃ¨te
       toast({
         title: "Erreur envoi",
         description: "Erreur lors de l'envoi du message audio",
@@ -1643,7 +1663,7 @@ export const ResultatBesoin: React.FC = () => {
     }
   };
 
-  // Fonction pour gérer l'upload d'images et vidéos
+  // Fonction pour gÃ©rer l'upload d'images et vidÃ©os
   const handleImageVideoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files || !selectedService) return;
@@ -1652,21 +1672,21 @@ export const ResultatBesoin: React.FC = () => {
     
     try {
       for (const file of Array.from(files)) {
-        // Vérifier la taille du fichier (max 10MB)
+        // VÃ©rifier la taille du fichier (max 10MB)
         if (file.size > 10 * 1024 * 1024) {
           toast({
             title: "Fichier trop volumineux",
-            description: `${file.name} dépasse la limite de 10MB`,
+            description: `${file.name} dÃ©passe la limite de 10MB`,
             type: "error"
           });
           continue;
         }
 
-        // Créer un message local
+        // CrÃ©er un message local
         const message = {
           id: Date.now().toString() + Math.random(),
           from: 'client',
-          content: file.type.startsWith('image/') ? '🖼️ Image' : '🎥 Vidéo',
+          content: file.type.startsWith('image/') ? 'ðŸ–¼ï¸ Image' : 'ðŸŽ¥ VidÃ©o',
           timestamp: new Date(),
           status: 'sent',
           type: file.type.startsWith('image/') ? 'image' : 'video',
@@ -1678,7 +1698,7 @@ export const ResultatBesoin: React.FC = () => {
         // Ajouter le message localement
         setChatMessages(prev => [...prev, message]);
 
-        // Créer un FormData pour envoyer le fichier
+        // CrÃ©er un FormData pour envoyer le fichier
         const formData = new FormData();
         formData.append('file', file);
         formData.append('service_id', selectedService.id.toString());
@@ -1695,7 +1715,7 @@ export const ResultatBesoin: React.FC = () => {
         });
 
         if (response.ok) {
-          // Marquer comme livré
+          // Marquer comme livrÃ©
           setChatMessages(prev => 
             prev.map(msg => 
               msg.id === message.id ? { ...msg, status: 'delivered' } : msg
@@ -1705,8 +1725,8 @@ export const ResultatBesoin: React.FC = () => {
       }
 
       toast({
-        title: "Fichiers envoyés",
-        description: "Vos fichiers ont été envoyés avec succès",
+        title: "Fichiers envoyÃ©s",
+        description: "Vos fichiers ont Ã©tÃ© envoyÃ©s avec succÃ¨s",
         type: "success"
       });
     } catch (error) {
@@ -1718,12 +1738,12 @@ export const ResultatBesoin: React.FC = () => {
       });
     } finally {
       setUploadingFiles(false);
-      // Réinitialiser l'input
+      // RÃ©initialiser l'input
       event.target.value = '';
     }
   };
 
-  // Fonction pour gérer l'upload de documents
+  // Fonction pour gÃ©rer l'upload de documents
   const handleDocumentUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files || !selectedService) return;
@@ -1732,21 +1752,21 @@ export const ResultatBesoin: React.FC = () => {
     
     try {
       for (const file of Array.from(files)) {
-        // Vérifier la taille du fichier (max 25MB)
+        // VÃ©rifier la taille du fichier (max 25MB)
         if (file.size > 25 * 1024 * 1024) {
           toast({
             title: "Document trop volumineux",
-            description: `${file.name} dépasse la limite de 25MB`,
+            description: `${file.name} dÃ©passe la limite de 25MB`,
             type: "error"
           });
           continue;
         }
 
-        // Créer un message local
+        // CrÃ©er un message local
         const message = {
           id: Date.now().toString() + Math.random(),
           from: 'client',
-          content: '📄 Document',
+          content: 'ðŸ“„ Document',
           timestamp: new Date(),
           status: 'sent',
           type: 'document',
@@ -1758,7 +1778,7 @@ export const ResultatBesoin: React.FC = () => {
         // Ajouter le message localement
         setChatMessages(prev => [...prev, message]);
 
-        // Créer un FormData pour envoyer le document
+        // CrÃ©er un FormData pour envoyer le document
         const formData = new FormData();
         formData.append('file', file);
         formData.append('service_id', selectedService.id.toString());
@@ -1775,7 +1795,7 @@ export const ResultatBesoin: React.FC = () => {
         });
 
         if (response.ok) {
-          // Marquer comme livré
+          // Marquer comme livrÃ©
           setChatMessages(prev => 
             prev.map(msg => 
               msg.id === message.id ? { ...msg, status: 'delivered' } : msg
@@ -1785,8 +1805,8 @@ export const ResultatBesoin: React.FC = () => {
       }
 
       toast({
-        title: "Documents envoyés",
-        description: "Vos documents ont été envoyés avec succès",
+        title: "Documents envoyÃ©s",
+        description: "Vos documents ont Ã©tÃ© envoyÃ©s avec succÃ¨s",
         type: "success"
       });
     } catch (error) {
@@ -1798,7 +1818,7 @@ export const ResultatBesoin: React.FC = () => {
       });
     } finally {
       setUploadingFiles(false);
-      // Réinitialiser l'input
+      // RÃ©initialiser l'input
       event.target.value = '';
     }
   };
@@ -1809,7 +1829,7 @@ export const ResultatBesoin: React.FC = () => {
 
     setLoadingGallery(true);
     try {
-      // Récupérer les médias du service depuis l'API
+      // RÃ©cupÃ©rer les mÃ©dias du service depuis l'API
       const response = await fetch(`/api/services/${selectedService.id}/media`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
@@ -1820,10 +1840,10 @@ export const ResultatBesoin: React.FC = () => {
         const media = await response.json();
         setPrestataireGallery(media);
       } else {
-        // Fallback: utiliser les données du service
+        // Fallback: utiliser les donnÃ©es du service
         const serviceMedia = [];
         
-        // Vérifier et traiter les réalisations
+        // VÃ©rifier et traiter les rÃ©alisations
         if (selectedService.data?.realisations && Array.isArray(selectedService.data.realisations)) {
           serviceMedia.push(...selectedService.data.realisations);
         } else if (selectedService.data?.realisations && typeof selectedService.data.realisations === 'object') {
@@ -1834,7 +1854,7 @@ export const ResultatBesoin: React.FC = () => {
           }
         }
         
-        // Vérifier et traiter les vidéos
+        // VÃ©rifier et traiter les vidÃ©os
         if (selectedService.data?.videos && Array.isArray(selectedService.data.videos)) {
           serviceMedia.push(...selectedService.data.videos);
         } else if (selectedService.data?.videos && typeof selectedService.data.videos === 'object') {
@@ -1849,10 +1869,10 @@ export const ResultatBesoin: React.FC = () => {
       }
     } catch (error) {
       console.error('Erreur chargement galerie:', error);
-      // Fallback: utiliser les données du service
+      // Fallback: utiliser les donnÃ©es du service
       const serviceMedia = [];
       
-      // Vérifier et traiter les réalisations
+      // VÃ©rifier et traiter les rÃ©alisations
       if (selectedService.data?.realisations && Array.isArray(selectedService.data.realisations)) {
         serviceMedia.push(...selectedService.data.realisations);
       } else if (selectedService.data?.realisations && typeof selectedService.data.realisations === 'object') {
@@ -1863,7 +1883,7 @@ export const ResultatBesoin: React.FC = () => {
         }
       }
       
-      // Vérifier et traiter les vidéos
+      // VÃ©rifier et traiter les vidÃ©os
       if (selectedService.data?.videos && Array.isArray(selectedService.data.videos)) {
         serviceMedia.push(...selectedService.data.videos);
       } else if (selectedService.data?.videos && typeof selectedService.data.videos === 'object') {
@@ -1880,21 +1900,21 @@ export const ResultatBesoin: React.FC = () => {
     }
   };
 
-  // Fonction pour envoyer un média de la galerie du prestataire
+  // Fonction pour envoyer un mÃ©dia de la galerie du prestataire
   const sendGalleryMedia = async (mediaItem: any) => {
     if (!selectedService) return;
 
     try {
-      // Créer un message local
+      // CrÃ©er un message local
       const message = {
         id: Date.now().toString() + Math.random(),
         from: 'prestataire',
-        content: mediaItem.type === 'image' ? '🖼️ Réalisation' : '🎥 Vidéo de présentation',
+        content: mediaItem.type === 'image' ? 'ðŸ–¼ï¸ RÃ©alisation' : 'ðŸŽ¥ VidÃ©o de prÃ©sentation',
         timestamp: new Date(),
         status: 'sent',
         type: mediaItem.type === 'image' ? 'image' : 'video',
         fileUrl: mediaItem.url || mediaItem.valeur,
-        fileName: mediaItem.label || mediaItem.nom || 'Média',
+        fileName: mediaItem.label || mediaItem.nom || 'MÃ©dia',
         fileSize: mediaItem.size || 0
       };
 
@@ -1905,18 +1925,18 @@ export const ResultatBesoin: React.FC = () => {
       await sendNotificationToPrestataire(selectedService, 'gallery_media_shared');
 
       toast({
-        title: "Média partagé",
-        description: "Le média a été partagé dans le chat",
+        title: "MÃ©dia partagÃ©",
+        description: "Le mÃ©dia a Ã©tÃ© partagÃ© dans le chat",
         type: "success"
       });
 
       // Fermer la galerie
       setShowPrestataireGallery(false);
     } catch (error) {
-      console.error('Erreur partage média:', error);
+      console.error('Erreur partage mÃ©dia:', error);
       toast({
         title: "Erreur",
-        description: "Erreur lors du partage du média",
+        description: "Erreur lors du partage du mÃ©dia",
         type: "error"
       });
     }
@@ -1927,13 +1947,13 @@ export const ResultatBesoin: React.FC = () => {
     if (!selectedService || !user?.id) return;
 
     try {
-      // Créer un avis local
+      // CrÃ©er un avis local
       const review: Review = {
         id: Date.now(),
         service_id: selectedService.id,
         user_id: Number(user.id),
         user_name: user.name || `Utilisateur #${user.id}`,
-        user_avatar: undefined, // Pas de propriété avatar_url dans User
+        user_avatar: undefined, // Pas de propriÃ©tÃ© avatar_url dans User
         rating,
         comment,
         created_at: new Date().toISOString(),
@@ -1970,8 +1990,8 @@ export const ResultatBesoin: React.FC = () => {
 
       if (response.ok) {
         toast({
-          title: "Avis envoyé",
-          description: "Votre avis a été enregistré avec succès",
+          title: "Avis envoyÃ©",
+          description: "Votre avis a Ã©tÃ© enregistrÃ© avec succÃ¨s",
           type: "success"
         });
 
@@ -1995,7 +2015,7 @@ export const ResultatBesoin: React.FC = () => {
     if (!selectedService) return;
 
     try {
-      // Mettre à jour localement
+      // Mettre Ã  jour localement
       setServices(prev => 
         prev.map(service => 
           service.id === selectedService.id 
@@ -2011,7 +2031,7 @@ export const ResultatBesoin: React.FC = () => {
         )
       );
 
-      // Envoyer la mise à jour via l'API
+      // Envoyer la mise Ã  jour via l'API
       const response = await fetch(`/api/reviews/${reviewId}/helpful`, {
         method: 'POST',
         headers: {
@@ -2020,7 +2040,7 @@ export const ResultatBesoin: React.FC = () => {
       });
 
       if (!response.ok) {
-        console.warn('Erreur mise à jour avis utile');
+        console.warn('Erreur mise Ã  jour avis utile');
       }
     } catch (error) {
       console.error('Erreur avis utile:', error);
@@ -2033,7 +2053,7 @@ export const ResultatBesoin: React.FC = () => {
       // Supprimer le message localement
       setChatMessages(prev => prev.filter(msg => msg.id !== messageId));
       
-      // Si le message a été envoyé au serveur, l'effacer aussi
+      // Si le message a Ã©tÃ© envoyÃ© au serveur, l'effacer aussi
       if (selectedService) {
         const response = await fetch(`/api/services/${selectedService.id}/messages/${messageId}`, {
           method: 'DELETE',
@@ -2044,8 +2064,8 @@ export const ResultatBesoin: React.FC = () => {
         
         if (response.ok) {
           toast({
-            title: "Message supprimé",
-            description: "Le message a été supprimé avec succès",
+            title: "Message supprimÃ©",
+            description: "Le message a Ã©tÃ© supprimÃ© avec succÃ¨s",
             type: "success"
           });
         }
@@ -2070,8 +2090,8 @@ export const ResultatBesoin: React.FC = () => {
     } else {
       navigator.clipboard.writeText(window.location.href);
       toast({
-        title: "Lien copié",
-        description: "Le lien du service a été copié dans le presse-papiers",
+        title: "Lien copiÃ©",
+        description: "Le lien du service a Ã©tÃ© copiÃ© dans le presse-papiers",
         type: "default"
       });
     }
@@ -2080,7 +2100,7 @@ export const ResultatBesoin: React.FC = () => {
   const handleFavorite = (service: Service) => {
     toast({
       title: "Favori",
-      description: "Fonctionnalité de favoris en cours de développement",
+      description: "FonctionnalitÃ© de favoris en cours de dÃ©veloppement",
       type: "default"
     });
   };
@@ -2126,7 +2146,7 @@ export const ResultatBesoin: React.FC = () => {
       setIsOffline(true);
       toast({
         title: "Mode hors ligne",
-        description: "Vous êtes hors ligne. Les messages seront synchronisés à la reconnexion.",
+        description: "Vous Ãªtes hors ligne. Les messages seront synchronisÃ©s Ã  la reconnexion.",
         type: "default"
       });
     };
@@ -2180,15 +2200,15 @@ export const ResultatBesoin: React.FC = () => {
       setOfflineMessages([]);
       
       toast({
-        title: "Synchronisation terminée",
-        description: `${offlineMessages.length} messages ont été synchronisés`,
+        title: "Synchronisation terminÃ©e",
+        description: `${offlineMessages.length} messages ont Ã©tÃ© synchronisÃ©s`,
         type: "success"
       });
     } catch (error) {
       console.error('Erreur synchronisation:', error);
       toast({
         title: "Erreur synchronisation",
-        description: "Certains messages n'ont pas pu être synchronisés",
+        description: "Certains messages n'ont pas pu Ãªtre synchronisÃ©s",
         type: "error"
       });
     }
@@ -2217,41 +2237,41 @@ export const ResultatBesoin: React.FC = () => {
               className="text-gray-600 hover:text-gray-800"
             >
               <ArrowLeft className="w-4 h-4 mr-2" />
-              Retour à l'accueil
+              Retour Ã  l'accueil
             </Button>
           </div>
         </div>
 
-      {/* Header avec statistiques et géolocalisation */}
+      {/* Header avec statistiques et gÃ©olocalisation */}
       <div className="mb-8 text-center">
         <h1 className="text-3xl font-bold text-gray-900 mb-4">
-          Services correspondants à votre besoin
+          Services correspondants Ã  votre besoin
         </h1>
         <div className="flex justify-center items-center gap-8 text-gray-600 mb-4">
           <div className="flex items-center gap-2">
             <CheckCircle className="w-5 h-5 text-green-500" />
-            <span>{services.length} service{services.length > 1 ? 's' : ''} trouvé{services.length > 1 ? 's' : ''}</span>
+            <span>{services.length} service{services.length > 1 ? 's' : ''} trouvÃ©{services.length > 1 ? 's' : ''}</span>
           </div>
           <div className="flex items-center gap-2">
             <Clock className="w-5 h-5 text-blue-500" />
-            <span>Résultats en temps réel</span>
+            <span>RÃ©sultats en temps rÃ©el</span>
           </div>
           
 
         </div>
         
-        {/* Bouton de géolocalisation */}
+        {/* Bouton de gÃ©olocalisation */}
         <div className="flex justify-center">
           <Button
             onClick={async () => {
               const userLocation = await getUserLocation();
               if (userLocation) {
                 toast({
-                  title: "Géolocalisation activée",
+                  title: "GÃ©olocalisation activÃ©e",
                   description: `Position: ${userLocation.lat.toFixed(4)}, ${userLocation.lon.toFixed(4)}`,
                   type: "default"
                 });
-                // Recharger les résultats avec le tri par proximité
+                // Recharger les rÃ©sultats avec le tri par proximitÃ©
                 if (location.state?.results) {
                   const sortedResults = await sortResultsByRelevanceAndProximity(location.state.results);
                   const serviceIds = sortedResults
@@ -2264,8 +2284,8 @@ export const ResultatBesoin: React.FC = () => {
                 }
               } else {
                 toast({
-                  title: "Géolocalisation échouée",
-                  description: "Impossible de récupérer votre position",
+                  title: "GÃ©olocalisation Ã©chouÃ©e",
+                  description: "Impossible de rÃ©cupÃ©rer votre position",
                   type: "error"
                 });
               }
@@ -2274,7 +2294,7 @@ export const ResultatBesoin: React.FC = () => {
             className="bg-gradient-to-r from-blue-500 to-purple-600 text-white border-0 hover:from-blue-600 hover:to-purple-700"
           >
             <MapPin className="w-4 h-4 mr-2" />
-            Activer la géolocalisation pour trier par proximité
+            Activer la gÃ©olocalisation pour trier par proximitÃ©
           </Button>
         </div>
       </div>
@@ -2298,9 +2318,9 @@ export const ResultatBesoin: React.FC = () => {
         <Card className="max-w-2xl mx-auto">
           <CardContent className="p-8 text-center">
             <AlertCircle className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold mb-2">Aucun service trouvé</h3>
+            <h3 className="text-xl font-semibold mb-2">Aucun service trouvÃ©</h3>
             <p className="text-gray-600 mb-6">
-              Aucun prestataire ne correspond à vos critères pour le moment.
+              Aucun prestataire ne correspond Ã  vos critÃ¨res pour le moment.
             </p>
             <Button onClick={() => navigate('/besoins')} className="px-6">
               Retour aux besoins
@@ -2321,7 +2341,7 @@ export const ResultatBesoin: React.FC = () => {
                   service.is_active ? 'bg-white' : 'bg-gray-50'
                 }`}
               >
-                {/* Bannière en arrière-plan */}
+                {/* BanniÃ¨re en arriÃ¨re-plan */}
                 {hasValidMediaField(service.data?.banniere) && (
                   <div 
                     className="absolute inset-0 bg-cover bg-center opacity-15 transition-opacity duration-300 group-hover:opacity-25"
@@ -2333,9 +2353,9 @@ export const ResultatBesoin: React.FC = () => {
                   />
                 )}
                 
-                {/* Overlay pour maintenir la lisibilité */}
+                {/* Overlay pour maintenir la lisibilitÃ© */}
                 <div className="relative bg-white/95 backdrop-blur-sm min-h-full">
-                  {/* Logo avatar en haut à droite - uniquement s'il existe */}
+                  {/* Logo avatar en haut Ã  droite - uniquement s'il existe */}
                   {hasValidMediaField(service.data?.logo) && (
                     <div className="absolute top-2 right-2 z-30">
                       <div className="w-14 h-14 rounded-full border-3 border-white shadow-lg overflow-hidden bg-white">
@@ -2351,37 +2371,37 @@ export const ResultatBesoin: React.FC = () => {
                     </div>
                   )}
                   
-                  {/* Indicateur de proximité - position dynamique selon la présence du logo et WebSocket */}
+                  {/* Indicateur de proximitÃ© - position dynamique selon la prÃ©sence du logo et WebSocket */}
                   {service.distance !== undefined && service.distance < Infinity && (
                     <div className={`absolute left-2 bg-gradient-to-r from-blue-400 to-purple-500 text-white px-2 py-0.5 rounded-full text-xs font-medium z-20 shadow-md ${
                       hasValidMediaField(service.data?.logo) ? 'top-20' : (wsConnected ? 'top-8' : 'top-2')
                     }`}>
-                      📍 {service.distance < 1 ? '< 1km' : `${Math.round(service.distance)}km`}
+                      ðŸ“ {service.distance < 1 ? '< 1km' : `${Math.round(service.distance)}km`}
                     </div>
                   )}
                   
-                  {/* Indicateur de promotion - position dynamique selon la présence du logo */}
+                  {/* Indicateur de promotion - position dynamique selon la prÃ©sence du logo */}
                   {service.promotion && service.promotion.active && (
                     <div className={`absolute right-3 bg-gradient-to-r from-orange-400 to-red-500 text-white px-3 py-1 rounded-full text-sm font-semibold z-20 shadow-lg ${
                       hasValidMediaField(service.data?.logo) ? 'top-20' : 'top-8'
                     }`}>
-                      🎉 {service.promotion.type === 'reduction' ? service.promotion.valeur : 'Promo'}
+                      ðŸŽ‰ {service.promotion.type === 'reduction' ? service.promotion.valeur : 'Promo'}
                     </div>
                   )}
                   
-                  {/* Indicateur de connectivité WebSocket - Centré horizontalement en haut avec ajustement automatique */}
+                  {/* Indicateur de connectivitÃ© WebSocket - CentrÃ© horizontalement en haut avec ajustement automatique */}
                   {wsConnected && (
                     <div className={`absolute left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-green-500 to-emerald-600 text-white px-2 py-0.5 rounded-full text-xs font-medium z-20 shadow-md ${
                       hasValidMediaField(service.data?.logo) ? 'top-1' : 'top-0.5'
                     }`}>
-                      🔴 Live
+                      ðŸ”´ Live
                     </div>
                   )}
                 
 
                 
                 <CardHeader className={`pb-4 ${calculateHeaderPadding(hasValidMediaField(service.data?.logo), wsConnected)}`}>
-                  {/* En-tête avec titre et actions */}
+                  {/* En-tÃªte avec titre et actions */}
                   <div className="flex justify-between items-start mb-3">
                     <div className="flex-1">
                       <CardTitle className="text-lg font-semibold text-gray-900 line-clamp-2">
@@ -2410,7 +2430,7 @@ export const ResultatBesoin: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Badges et métadonnées optimisés */}
+                  {/* Badges et mÃ©tadonnÃ©es optimisÃ©s */}
                   <div className="flex flex-wrap gap-2 mb-3 justify-between items-center">
                     <div className="flex flex-wrap gap-2">
                       <Badge variant="secondary" className="bg-blue-100 text-blue-800">
@@ -2419,25 +2439,25 @@ export const ResultatBesoin: React.FC = () => {
                       </Badge>
                       {getServiceFieldValue(service.data?.is_tarissable) === 'Oui' && (
                         <Badge variant="outline" className="text-green-600 border-green-300">
-                          💰 Tarissable
+                          ðŸ’° Tarissable
                         </Badge>
                       )}
                       {/* Badge de promotion */}
                       {service.promotion && service.promotion.active && (
                         <Badge variant="outline" className="text-orange-600 border-orange-300 bg-orange-50">
-                          🎉 {service.promotion.type === 'reduction' ? service.promotion.valeur : 'Promotion'}
+                          ðŸŽ‰ {service.promotion.type === 'reduction' ? service.promotion.valeur : 'Promotion'}
                         </Badge>
                       )}
                     </div>
                     
-                    {/* Date de création en haut à droite */}
+                    {/* Date de crÃ©ation en haut Ã  droite */}
                     <div className="flex items-center gap-1 text-xs text-gray-500 font-mono">
                       <Calendar className="w-3 h-3" />
                       {formatDate(service.created_at)}
                     </div>
                   </div>
 
-                  {/* Informations de localisation optimisées */}
+                  {/* Informations de localisation optimisÃ©es */}
                   <div className="flex items-center gap-1 text-sm text-gray-600 mb-3">
                     <MapPin className="w-4 h-4 text-blue-500 flex-shrink-0" />
                     <div className="font-medium text-gray-800 flex-1 min-w-0" title="Localisation du service">
@@ -2483,7 +2503,7 @@ export const ResultatBesoin: React.FC = () => {
                           ) : (
                             <>
                               <div className="w-3 h-3 bg-gray-300 rounded-full animate-pulse"></div>
-                              <span className="text-gray-400 text-sm">Vérification...</span>
+                              <span className="text-gray-400 text-sm">VÃ©rification...</span>
                             </>
                           )}
                         </div>
@@ -2498,7 +2518,7 @@ export const ResultatBesoin: React.FC = () => {
                     </p>
                   </div>
 
-                  {/* Galerie média du service */}
+                  {/* Galerie mÃ©dia du service */}
                   <div className="mb-4">
                     <ServiceMediaGallery
                       logo={undefined}
@@ -2530,9 +2550,9 @@ export const ResultatBesoin: React.FC = () => {
 
                   {/* Autres contacts utiles */}
                   <div className="border-t pt-4">
-                    <h4 className="text-sm font-medium text-gray-700 mb-3">📞 Autres contacts utiles</h4>
+                    <h4 className="text-sm font-medium text-gray-700 mb-3">ðŸ“ž Autres contacts utiles</h4>
                     <div className="grid grid-cols-2 gap-3">
-                      {/* WhatsApp - Seulement si le téléphone existe */}
+                      {/* WhatsApp - Seulement si le tÃ©lÃ©phone existe */}
                       {getServiceFieldValue(service.data?.telephone) && getServiceFieldValue(service.data?.telephone) !== 'Non spécifié' && (
                         <div className="flex items-center gap-3 p-3 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border border-green-200 hover:shadow-md transition-all duration-200">
                           <div className="w-10 h-10 bg-gradient-to-r from-green-500 to-emerald-600 rounded-full flex items-center justify-center shadow-lg">
@@ -2554,14 +2574,14 @@ export const ResultatBesoin: React.FC = () => {
                         </div>
                       )}
                       
-                      {/* Téléphone - Seulement si le téléphone existe */}
+                      {/* TÃ©lÃ©phone - Seulement si le tÃ©lÃ©phone existe */}
                       {getServiceFieldValue(service.data?.telephone) && getServiceFieldValue(service.data?.telephone) !== 'Non spécifié' && (
                         <div className="flex items-center gap-3 p-3 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200 hover:shadow-md transition-all duration-200">
                           <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full flex items-center justify-center shadow-lg">
                             <Phone className="w-5 h-5 text-white" />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-xs font-medium text-blue-700 uppercase tracking-wide">Téléphone</p>
+                            <p className="text-xs font-medium text-blue-700 uppercase tracking-wide">TÃ©lÃ©phone</p>
                             <p className="text-sm font-semibold text-gray-900 truncate">{getServiceFieldValue(service.data?.telephone)}</p>
                           </div>
                           <Button
@@ -2638,7 +2658,7 @@ export const ResultatBesoin: React.FC = () => {
         <div className="mt-12 text-center">
           <div className="max-w-2xl mx-auto p-6 bg-blue-50 rounded-lg border border-blue-200">
             <h3 className="text-lg font-semibold text-blue-800 mb-2">
-              Comment procéder ?
+              Comment procÃ©der ?
             </h3>
             <div className="grid md:grid-cols-3 gap-4 text-sm text-blue-700">
               <div className="flex items-center gap-2">
@@ -2651,7 +2671,7 @@ export const ResultatBesoin: React.FC = () => {
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-6 h-6 bg-blue-200 rounded-full flex items-center justify-center text-blue-800 font-semibold">3</div>
-                <span>Échangez et finalisez votre projet</span>
+                <span>Ã‰changez et finalisez votre projet</span>
               </div>
             </div>
           </div>
@@ -2670,7 +2690,7 @@ export const ResultatBesoin: React.FC = () => {
                 onClick={() => setShowContactModal(false)}
                 className="text-gray-500 hover:text-gray-700"
               >
-                ✕
+                âœ•
               </Button>
             </div>
             
@@ -2708,7 +2728,7 @@ export const ResultatBesoin: React.FC = () => {
                 className="w-full bg-purple-600 hover:bg-purple-700 text-white"
               >
                 <Video className="w-4 h-4 mr-2" />
-                Appel vidéo
+                Appel vidÃ©o
               </Button>
             </div>
 
@@ -2725,7 +2745,7 @@ export const ResultatBesoin: React.FC = () => {
         </div>
       )}
 
-      {/* Modal de chat intégré */}
+      {/* Modal de chat intÃ©grÃ© */}
       {selectedService && showChatModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg w-full max-w-2xl h-96 flex flex-col">
@@ -2753,11 +2773,11 @@ export const ResultatBesoin: React.FC = () => {
                         <span className="text-gray-500">Hors ligne</span>
                       </>
                     )}
-                    <span>•</span>
+                    <span>â€¢</span>
                     <span>{getServiceFieldValue(selectedService.data?.titre_service) || 'Service'}</span>
                     {getServiceFieldValue(selectedService.data?.category) && (
                       <>
-                        <span>•</span>
+                        <span>â€¢</span>
                         <span className="text-blue-600">{getServiceFieldValue(selectedService.data?.category)}</span>
                       </>
                     )}
@@ -2765,7 +2785,7 @@ export const ResultatBesoin: React.FC = () => {
                 </div>
               </div>
               
-              {/* Boutons d'action audio/vidéo */}
+              {/* Boutons d'action audio/vidÃ©o */}
               <div className="flex items-center gap-2">
                 {/* Appel audio */}
                 {getServiceFieldValue(selectedService.data?.telephone) && getServiceFieldValue(selectedService.data?.telephone) !== 'Non spécifié' && (
@@ -2780,13 +2800,13 @@ export const ResultatBesoin: React.FC = () => {
                   </Button>
                 )}
                 
-                {/* Appel vidéo */}
+                {/* Appel vidÃ©o */}
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => handleVideoCall(selectedService)}
                   className="text-purple-600 hover:text-purple-700 hover:bg-purple-50"
-                  title="Appel vidéo"
+                  title="Appel vidÃ©o"
                 >
                   <Video className="w-4 h-4" />
                 </Button>
@@ -2798,7 +2818,7 @@ export const ResultatBesoin: React.FC = () => {
                   onClick={() => setShowChatModal(false)}
                   className="text-gray-500 hover:text-gray-700"
                 >
-                  ✕
+                  âœ•
                 </Button>
               </div>
             </div>
@@ -2819,13 +2839,13 @@ export const ResultatBesoin: React.FC = () => {
                     {/* Affichage selon le type de message */}
                     {message.type === 'audio' ? (
                       <div className="flex items-center gap-2">
-                        <span className="text-sm">🎵</span>
+                        <span className="text-sm">ðŸŽµ</span>
                         <audio 
                           controls 
                           className="max-w-full"
                           src={message.audioUrl || (message.audioBlob ? URL.createObjectURL(message.audioBlob) : '')}
                         >
-                          Votre navigateur ne supporte pas l'élément audio.
+                          Votre navigateur ne supporte pas l'Ã©lÃ©ment audio.
                         </audio>
                       </div>
                     ) : message.type === 'image' ? (
@@ -2840,7 +2860,7 @@ export const ResultatBesoin: React.FC = () => {
                           }}
                         />
                         <div className="hidden text-xs opacity-70">
-                          🖼️ {message.fileName || 'Image'}
+                          ðŸ–¼ï¸ {message.fileName || 'Image'}
                         </div>
                       </div>
                     ) : message.type === 'video' ? (
@@ -2854,10 +2874,10 @@ export const ResultatBesoin: React.FC = () => {
                             e.currentTarget.nextElementSibling?.classList.remove('hidden');
                           }}
                         >
-                          Votre navigateur ne supporte pas l'élément vidéo.
+                          Votre navigateur ne supporte pas l'Ã©lÃ©ment vidÃ©o.
                         </video>
                         <div className="hidden text-xs opacity-70">
-                          🎥 {message.fileName || 'Vidéo'}
+                          ðŸŽ¥ {message.fileName || 'VidÃ©o'}
                         </div>
                       </div>
                     ) : message.type === 'document' ? (
@@ -2914,7 +2934,7 @@ export const ResultatBesoin: React.FC = () => {
 
             <div className="p-4 border-t bg-white">
               <div className="flex gap-2">
-                {/* Bouton audio intelligent unique - Gère tout automatiquement */}
+                {/* Bouton audio intelligent unique - GÃ¨re tout automatiquement */}
                 <Button
                   variant="ghost"
                   size="sm"
@@ -2933,10 +2953,10 @@ export const ResultatBesoin: React.FC = () => {
                   } transition-all duration-200 rounded-full w-12 h-12 p-0 flex items-center justify-center relative`}
                   title={
                     isRecording 
-                      ? "🎙️ Relâchez pour arrêter et envoyer" 
+                      ? "ðŸŽ™ï¸ RelÃ¢chez pour arrÃªter et envoyer" 
                       : holdStartTime && !isRecording
-                      ? "🎙️ Continuez à maintenir pour enregistrer..."
-                      : "🎙️ Maintenez enfoncé pour enregistrer, relâchez pour envoyer"
+                      ? "ðŸŽ™ï¸ Continuez Ã  maintenir pour enregistrer..."
+                      : "ðŸŽ™ï¸ Maintenez enfoncÃ© pour enregistrer, relÃ¢chez pour envoyer"
                   }
                 >
                   {isRecording ? (
@@ -2958,14 +2978,14 @@ export const ResultatBesoin: React.FC = () => {
                     </div>
                   )}
                   
-                  {/* Indicateur "Maintenez enfoncé" */}
+                  {/* Indicateur "Maintenez enfoncÃ©" */}
                   {!isRecording && !holdStartTime && (
                     <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-600 text-white text-xs px-2 py-1 rounded-full whitespace-nowrap opacity-80">
                       Maintenez
                     </div>
                   )}
                   
-                  {/* Indicateur "Continuez à maintenir" pendant le délai */}
+                  {/* Indicateur "Continuez Ã  maintenir" pendant le dÃ©lai */}
                   {holdStartTime && !isRecording && (
                     <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-yellow-500 text-white text-xs px-2 py-1 rounded-full whitespace-nowrap">
                       Continuez...
@@ -2973,13 +2993,13 @@ export const ResultatBesoin: React.FC = () => {
                   )}
                 </Button>
 
-                {/* Bouton d'envoi d'images et vidéos */}
+                {/* Bouton d'envoi d'images et vidÃ©os */}
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => document.getElementById('file-input-images')?.click()}
                   className="bg-gray-100 text-gray-700 hover:bg-gray-200 border-0 rounded-full w-12 h-12 p-0 flex items-center justify-center transition-all duration-200"
-                  title="Envoyer des images ou vidéos"
+                  title="Envoyer des images ou vidÃ©os"
                 >
                   <Image className="w-5 h-5" />
                 </Button>
@@ -2997,7 +3017,7 @@ export const ResultatBesoin: React.FC = () => {
                   </svg>
                 </Button>
 
-                {/* Bouton d'accès à la galerie du prestataire */}
+                {/* Bouton d'accÃ¨s Ã  la galerie du prestataire */}
                 <Button
                   variant="ghost"
                   size="sm"
@@ -3018,7 +3038,7 @@ export const ResultatBesoin: React.FC = () => {
                       <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" style={{animationDelay: '0.2s'}}></div>
                       <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" style={{animationDelay: '0.4s'}}></div>
                     </div>
-                    <span className="font-medium">🎙️ Enregistrement...</span>
+                    <span className="font-medium">ðŸŽ™ï¸ Enregistrement...</span>
                   </div>
                 )}
                 
@@ -3044,7 +3064,7 @@ export const ResultatBesoin: React.FC = () => {
                 </Button>
               </div>
 
-              {/* Inputs cachés pour la sélection de fichiers */}
+              {/* Inputs cachÃ©s pour la sÃ©lection de fichiers */}
               <input
                 id="file-input-images"
                 type="file"
@@ -3093,7 +3113,7 @@ export const ResultatBesoin: React.FC = () => {
                 <div>
                   <h3 className="text-lg font-semibold">Galerie du prestataire</h3>
                   <p className="text-sm text-gray-600">
-                    Réalisations et vidéos de {getServiceFieldValue(selectedService.data?.nom_prestataire) || `Prestataire #${selectedService.user_id}`}
+                    RÃ©alisations et vidÃ©os de {getServiceFieldValue(selectedService.data?.nom_prestataire) || `Prestataire #${selectedService.user_id}`}
                   </p>
                 </div>
               </div>
@@ -3125,7 +3145,7 @@ export const ResultatBesoin: React.FC = () => {
                   onClick={() => setShowPrestataireGallery(false)}
                   className="text-gray-500 hover:text-gray-700"
                 >
-                  ✕
+                  âœ•
                 </Button>
               </div>
             </div>
@@ -3144,15 +3164,15 @@ export const ResultatBesoin: React.FC = () => {
                     <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                     </svg>
-                    <h4 className="text-lg font-medium text-gray-600 mb-2">Aucun média disponible</h4>
+                    <h4 className="text-lg font-medium text-gray-600 mb-2">Aucun mÃ©dia disponible</h4>
                     <p className="text-gray-500 mb-4">
-                      Ce prestataire n'a pas encore ajouté de réalisations ou de vidéos à sa galerie.
+                      Ce prestataire n'a pas encore ajoutÃ© de rÃ©alisations ou de vidÃ©os Ã  sa galerie.
                     </p>
                     <Button
                       onClick={loadPrestataireGallery}
                       className="bg-blue-600 hover:bg-blue-700 text-white"
                     >
-                      🔄 Actualiser
+                      ðŸ”„ Actualiser
                     </Button>
                   </div>
                 </div>
@@ -3191,10 +3211,10 @@ export const ResultatBesoin: React.FC = () => {
                       
                       <div className="p-3">
                         <p className="text-sm font-medium text-gray-900 truncate">
-                          {mediaItem.label || mediaItem.nom || `Média ${index + 1}`}
+                          {mediaItem.label || mediaItem.nom || `MÃ©dia ${index + 1}`}
                         </p>
                         <p className="text-xs text-gray-500">
-                          {mediaItem.type === 'image' ? '🖼️ Image' : '🎥 Vidéo'}
+                          {mediaItem.type === 'image' ? 'ðŸ–¼ï¸ Image' : 'ðŸŽ¥ VidÃ©o'}
                         </p>
                         <div className="mt-2">
                           <Button
@@ -3205,7 +3225,7 @@ export const ResultatBesoin: React.FC = () => {
                               sendGalleryMedia(mediaItem);
                             }}
                           >
-                            📤 Partager dans le chat
+                            ðŸ“¤ Partager dans le chat
                           </Button>
                         </div>
                       </div>
@@ -3225,10 +3245,10 @@ export const ResultatBesoin: React.FC = () => {
   );
 };
 
-// Composant pour afficher la localisation de manière asynchrone avec drapeau
+// Composant pour afficher la localisation de maniÃ¨re asynchrone avec drapeau
         const AsyncLocationDisplay = ({ service, prestataires, user }: { service: any; prestataires: Map<number, any>; user: any }) => {
           const [location, setLocation] = useState<string>('Chargement...');
-          const [countryInfo, setCountryInfo] = useState<{ flag: string; code: string }>({ flag: '🌍', code: 'XX' });
+          const [countryInfo, setCountryInfo] = useState<{ flag: string; code: string }>({ flag: 'ðŸŒ', code: 'XX' });
           const [isLoading, setIsLoading] = useState(true);
         
           useEffect(() => {
@@ -3238,7 +3258,7 @@ export const ResultatBesoin: React.FC = () => {
                 const result = await formatLocation(service, prestataires, user);
                 setLocation(result);
                 
-                // Obtenir les informations du pays si on a des coordonnées GPS
+                // Obtenir les informations du pays si on a des coordonnÃ©es GPS
                 let coords = null;
                 if (service?.data?.gps_fixe) {
                   const gpsFixe = getServiceFieldValue(service.data.gps_fixe);
@@ -3260,7 +3280,7 @@ export const ResultatBesoin: React.FC = () => {
                 }
                 
               } catch (error) {
-                console.error('❌ [AsyncLocationDisplay] Erreur:', error);
+                console.error('âŒ [AsyncLocationDisplay] Erreur:', error);
                 setLocation('Erreur de chargement');
               } finally {
                 setIsLoading(false);
@@ -3270,12 +3290,12 @@ export const ResultatBesoin: React.FC = () => {
             loadLocation();
           }, [service, prestataires, user]);
         
-          // Fonction pour tronquer intelligemment le nom du lieu - VERSION AMÉLIORÉE
+          // Fonction pour tronquer intelligemment le nom du lieu - VERSION AMÃ‰LIORÃ‰E
           const truncateLocation = (locationText: string, maxLength: number = 35) => {
             if (locationText.length <= maxLength) return locationText;
             
-            // Essayer de tronquer à un endroit logique (virgule, tiret, etc.)
-            const truncatePoints = [',', ' - ', ' – ', ' | ', ' / ', ' • '];
+            // Essayer de tronquer Ã  un endroit logique (virgule, tiret, etc.)
+            const truncatePoints = [',', ' - ', ' â€“ ', ' | ', ' / ', ' â€¢ '];
             for (const point of truncatePoints) {
               const index = locationText.indexOf(point);
               if (index > 0 && index <= maxLength) {
@@ -3299,7 +3319,7 @@ export const ResultatBesoin: React.FC = () => {
           return (
             <span className="inline-flex items-center gap-1 w-full overflow-hidden" title={location}>
               <span className={`${isLoading ? 'text-yellow-600' : 'text-gray-800'} font-medium truncate`}>
-                {isLoading ? '⏳ ' : ''}{truncateLocation(location)}
+                {isLoading ? 'â³ ' : ''}{truncateLocation(location)}
               </span>
               <span className="inline-flex items-center gap-1 text-xs text-gray-600 flex-shrink-0">
                 {countryInfo.code !== 'XX' && (
@@ -3313,7 +3333,7 @@ export const ResultatBesoin: React.FC = () => {
                     className="w-4 h-3 object-cover rounded-sm border border-gray-200"
                     title={`Drapeau: ${countryInfo.flag} (Code: ${countryInfo.code})`}
                     onError={(e) => {
-                      console.log('❌ [Drapeau] Erreur chargement:', countryInfo.code, 'URL:', e.currentTarget.src);
+                      console.log('âŒ [Drapeau] Erreur chargement:', countryInfo.code, 'URL:', e.currentTarget.src);
                       // Fallback vers emoji si l'image ne charge pas
                       e.currentTarget.style.display = 'none';
                       const emojiSpan = document.createElement('span');
@@ -3322,7 +3342,7 @@ export const ResultatBesoin: React.FC = () => {
                       e.currentTarget.parentNode?.appendChild(emojiSpan);
                     }}
                     onLoad={() => {
-                      console.log('✅ [Drapeau] Chargé avec succès:', countryInfo.code);
+                      console.log('âœ… [Drapeau] ChargÃ© avec succÃ¨s:', countryInfo.code);
                     }}
                   />
                 )}
@@ -3392,8 +3412,28 @@ const getServiceFieldValue = (field: any): string => {
   if (typeof field === 'string') return field;
   
   // Cas 2: Objet complexe (nouveaux services)
-  if (field && typeof field === 'object' && field.valeur !== undefined) {
-    return String(field.valeur);
+  if (field && typeof field === 'object') {
+    if (field.valeur !== undefined) {
+      const value = field.valeur;
+      if (typeof value === 'string') return value;
+      if (typeof value === 'boolean') return value ? 'Oui' : 'Non';
+      if (typeof value === 'number') return value.toString();
+      if (Array.isArray(value)) return value.join(', ');
+      return String(value);
+    }
+    
+    // Essayer d'autres propriétés communes
+    const possibleKeys = ['value', 'content', 'text', 'data', 'info', 'val'];
+    for (const key of possibleKeys) {
+      if (field[key] !== undefined) {
+        const value = field[key];
+        if (typeof value === 'string') return value;
+        if (typeof value === 'boolean') return value ? 'Oui' : 'Non';
+        if (typeof value === 'number') return value.toString();
+        if (Array.isArray(value)) return value.join(', ');
+        return String(value);
+      }
+    }
   }
   
   // Cas 3: Autres types
@@ -3403,7 +3443,7 @@ const getServiceFieldValue = (field: any): string => {
   return 'Non spécifié';
 };
 
-// Fonction utilitaire pour vérifier si un champ média existe réellement
+// Fonction utilitaire pour vÃ©rifier si un champ mÃ©dia existe rÃ©ellement
 const hasValidMediaField = (field: any): boolean => {
   if (!field) return false;
   if (typeof field === 'string') return field.trim() !== '' && field !== 'Non spécifié';
@@ -3415,7 +3455,7 @@ const hasValidMediaField = (field: any): boolean => {
   return false;
 };
 
-// Fonction utilitaire pour extraire les valeurs des champs média
+// Fonction utilitaire pour extraire les valeurs des champs mÃ©dia
 const getServiceMediaValue = (field: any): string[] => {
   if (!field) return [];
   if (Array.isArray(field)) return field;
@@ -3426,7 +3466,7 @@ const getServiceMediaValue = (field: any): string[] => {
   return [];
 };
 
-// Fonction pour convertir les coordonnées GPS en lieu lisible (100% automatique)
+// Fonction pour convertir les coordonnÃ©es GPS en lieu lisible (100% automatique)
 const convertGpsToLocation = async (gpsString: string): Promise<string> => {
   if (!gpsString || !gpsString.includes(',')) return gpsString;
   
@@ -3434,14 +3474,14 @@ const convertGpsToLocation = async (gpsString: string): Promise<string> => {
     const coords = gpsString.split(',').map(coord => parseFloat(coord.trim()));
     if (coords.length !== 2 || coords.some(isNaN)) return gpsString;
     
-    // Détecter automatiquement le format: longitude,latitude ou latitude,longitude
+    // DÃ©tecter automatiquement le format: longitude,latitude ou latitude,longitude
     let lat, lng;
     if (coords[0] >= -90 && coords[0] <= 90) {
       // Premier nombre est latitude (valide)
       lat = coords[0];
       lng = coords[1];
     } else if (coords[1] >= -90 && coords[1] <= 90) {
-      // Deuxième nombre est latitude (valide)
+      // DeuxiÃ¨me nombre est latitude (valide)
       lat = coords[1];
       lng = coords[0];
     } else {
@@ -3450,7 +3490,7 @@ const convertGpsToLocation = async (gpsString: string): Promise<string> => {
       lng = coords[1];
     }
     
-    // Utiliser le service de géocodage automatique
+    // Utiliser le service de gÃ©ocodage automatique
     const locationName = await geocodingService.getLocationFromCoordinates(lat, lng);
     
     // Optimiser le nom du lieu pour l'affichage
@@ -3459,8 +3499,8 @@ const convertGpsToLocation = async (gpsString: string): Promise<string> => {
     return optimizedName;
     
   } catch (error) {
-    console.error('❌ [convertGpsToLocation] Erreur:', error);
-    // Fallback: coordonnées formatées
+    console.error('âŒ [convertGpsToLocation] Erreur:', error);
+    // Fallback: coordonnÃ©es formatÃ©es
     const coords = gpsString.split(',').map(coord => parseFloat(coord.trim()));
     if (coords.length === 2) {
       const lat = coords[0];
@@ -3473,7 +3513,7 @@ const convertGpsToLocation = async (gpsString: string): Promise<string> => {
   }
 };
 
-// Fonction pour optimiser le nom du lieu pour l'affichage (MONDIALE) - VERSION AMÉLIORÉE
+// Fonction pour optimiser le nom du lieu pour l'affichage (MONDIALE) - VERSION AMÃ‰LIORÃ‰E
 const optimizeLocationName = (locationName: string): string => {
   if (!locationName) return locationName;
   
@@ -3485,10 +3525,10 @@ const optimizeLocationName = (locationName: string): string => {
     /, Cameroon$/i,
     /, Cameroun$/i,
     /, Nigeria$/i,
-    /, Bénin$/i,
+    /, BÃ©nin$/i,
     /, Togo$/i,
     /, Ghana$/i,
-    /, République du Cameroun$/i,
+    /, RÃ©publique du Cameroun$/i,
     /, Federal Republic of Nigeria$/i,
     /, United States$/i,
     /, USA$/i,
@@ -3520,7 +3560,7 @@ const optimizeLocationName = (locationName: string): string => {
     /, Republic of the Congo$/i,
     /, Gabon$/i,
     /, Equatorial Guinea$/i,
-    /, São Tomé and Príncipe$/i,
+    /, SÃ£o TomÃ© and PrÃ­ncipe$/i,
     /, Angola$/i,
     /, Zambia$/i,
     /, Zimbabwe$/i,
@@ -3550,7 +3590,7 @@ const optimizeLocationName = (locationName: string): string => {
     /, Gambia$/i,
     /, Guinea$/i,
     /, Equatorial Guinea$/i,
-    /, São Tomé and Príncipe$/i,
+    /, SÃ£o TomÃ© and PrÃ­ncipe$/i,
     /, Gabon$/i,
     /, Republic of the Congo$/i,
     /, Democratic Republic of the Congo$/i,
@@ -3590,20 +3630,20 @@ const optimizeLocationName = (locationName: string): string => {
   // Nettoyer les virgules multiples et espaces
   optimized = optimized.replace(/,\s*,/g, ',').replace(/^\s*,\s*/, '').replace(/\s*,\s*$/, '').trim();
   
-  // Assurer une cohérence : ville + quartier/région
+  // Assurer une cohÃ©rence : ville + quartier/rÃ©gion
   const parts = optimized.split(',').map(part => part.trim()).filter(part => part.length > 0);
   
   if (parts.length >= 2) {
-    // Prendre les 2 premières parties (ville + quartier/région)
+    // Prendre les 2 premiÃ¨res parties (ville + quartier/rÃ©gion)
     optimized = parts.slice(0, 2).join(', ');
   } else if (parts.length === 1) {
     // Si une seule partie, la garder
     optimized = parts[0];
   }
   
-  // Limiter la longueur totale - AUGMENTÉE pour plus de lisibilité
+  // Limiter la longueur totale - AUGMENTÃ‰E pour plus de lisibilitÃ©
   if (optimized.length > 40) {
-    // Essayer de garder ville + quartier même si tronqué
+    // Essayer de garder ville + quartier mÃªme si tronquÃ©
     const truncated = optimized.substring(0, 37) + '...';
     return truncated;
   }
@@ -3611,25 +3651,25 @@ const optimizeLocationName = (locationName: string): string => {
   return optimized;
 };
 
-        // Fonction pour formater la localisation avec hiérarchie intelligente
+        // Fonction pour formater la localisation avec hiÃ©rarchie intelligente
         const formatLocation = async (service: any, prestatairesMap: Map<number, any>, currentUser: any): Promise<string> => {
           
-          // 1. Priorité: gps_fixe (lieu fixe du service)
+          // 1. PrioritÃ©: gps_fixe (lieu fixe du service)
           if (service?.data?.gps_fixe) {
             const gpsFixe = getServiceFieldValue(service.data.gps_fixe);
             if (gpsFixe && gpsFixe !== 'Non spécifié') {
-              // Vérifier si gps_fixe contient des coordonnées GPS
+              // VÃ©rifier si gps_fixe contient des coordonnÃ©es GPS
               if (typeof gpsFixe === 'string' && gpsFixe.includes(',')) {
-                // Géocoder les coordonnées GPS
+                // GÃ©ocoder les coordonnÃ©es GPS
                 const location = await convertGpsToLocation(gpsFixe);
                 return location;
               }
-              // Si ce n'est pas des coordonnées, retourner directement
+              // Si ce n'est pas des coordonnÃ©es, retourner directement
               return gpsFixe;
             }
           }
           
-          // 2. Priorité: adresse textuelle
+          // 2. PrioritÃ©: adresse textuelle
           if (service?.data?.adresse) {
             const adresse = getServiceFieldValue(service.data.adresse);
             if (adresse && adresse !== 'Non spécifié') {
@@ -3637,25 +3677,25 @@ const optimizeLocationName = (locationName: string): string => {
             }
           }
           
-          // 3. Priorité: extraire la localisation du titre du service
+          // 3. PrioritÃ©: extraire la localisation du titre du service
           if (service?.data?.titre) {
             const titre = getServiceFieldValue(service.data.titre);
             if (titre && titre !== 'Non spécifié') {
               // Chercher des patterns de localisation dans le titre
               const localisationPatterns = [
-                /à\s+([A-Za-zÀ-ÿ\s]+)/,           // "Restaurant à Edea"
-                /dans\s+([A-Za-zÀ-ÿ\s]+)/,        // "Restaurant dans Douala"
-                /sur\s+([A-Za-zÀ-ÿ\s]+)/,         // "Restaurant sur la route"
-                /près\s+de\s+([A-Za-zÀ-ÿ\s]+)/,   // "Restaurant près de Yaoundé"
-                /zone\s+([A-Za-zÀ-ÿ\s]+)/,        // "Restaurant zone Akwa"
-                /quartier\s+([A-Za-zÀ-ÿ\s]+)/     // "Restaurant quartier Bali"
+                /Ã \s+([A-Za-zÃ€-Ã¿\s]+)/,           // "Restaurant Ã  Edea"
+                /dans\s+([A-Za-zÃ€-Ã¿\s]+)/,        // "Restaurant dans Douala"
+                /sur\s+([A-Za-zÃ€-Ã¿\s]+)/,         // "Restaurant sur la route"
+                /prÃ¨s\s+de\s+([A-Za-zÃ€-Ã¿\s]+)/,   // "Restaurant prÃ¨s de YaoundÃ©"
+                /zone\s+([A-Za-zÃ€-Ã¿\s]+)/,        // "Restaurant zone Akwa"
+                /quartier\s+([A-Za-zÃ€-Ã¿\s]+)/     // "Restaurant quartier Bali"
               ];
               
               for (const pattern of localisationPatterns) {
                 const match = titre.match(pattern);
                 if (match && match[1]) {
                   const location = match[1].trim();
-                  if (location.length > 2) { // Éviter les mots trop courts
+                  if (location.length > 2) { // Ã‰viter les mots trop courts
                     return location;
                   }
                 }
@@ -3663,7 +3703,7 @@ const optimizeLocationName = (locationName: string): string => {
             }
           }
           
-          // 4. Priorité: chercher dans tous les champs du service.data
+          // 4. PrioritÃ©: chercher dans tous les champs du service.data
           if (service?.data) {
             // Afficher tous les champs disponibles pour debug
             const allFields = Object.keys(service.data);
@@ -3671,12 +3711,12 @@ const optimizeLocationName = (locationName: string): string => {
             for (const [fieldName, fieldValue] of Object.entries(service.data)) {
               if (typeof fieldValue === 'string' && fieldValue.length > 5) {
                 const localisationPatterns = [
-                  /à\s+([A-Za-zÀ-ÿ\s]+)/,           // "Restaurant à Edea"
-                  /dans\s+([A-Za-zÀ-ÿ\s]+)/,        // "Restaurant dans Douala"
-                  /sur\s+([A-Za-zÀ-ÿ\s]+)/,         // "Restaurant sur la route"
-                  /près\s+de\s+([A-Za-zÀ-ÿ\s]+)/,   // "Restaurant près de Yaoundé"
-                  /zone\s+([A-Za-zÀ-ÿ\s]+)/,        // "Restaurant zone Akwa"
-                  /quartier\s+([A-Za-zÀ-ÿ\s]+)/     // "Restaurant quartier Bali"
+                  /Ã \s+([A-Za-zÃ€-Ã¿\s]+)/,           // "Restaurant Ã  Edea"
+                  /dans\s+([A-Za-zÃ€-Ã¿\s]+)/,        // "Restaurant dans Douala"
+                  /sur\s+([A-Za-zÃ€-Ã¿\s]+)/,         // "Restaurant sur la route"
+                  /prÃ¨s\s+de\s+([A-Za-zÃ€-Ã¿\s]+)/,   // "Restaurant prÃ¨s de YaoundÃ©"
+                  /zone\s+([A-Za-zÃ€-Ã¿\s]+)/,        // "Restaurant zone Akwa"
+                  /quartier\s+([A-Za-zÃ€-Ã¿\s]+)/     // "Restaurant quartier Bali"
                 ];
                 
                 for (const pattern of localisationPatterns) {
@@ -3692,12 +3732,12 @@ const optimizeLocationName = (locationName: string): string => {
             }
           }
           
-          // 5. Priorité: gps du prestataire (coordonnées)
+          // 5. PrioritÃ©: gps du prestataire (coordonnÃ©es)
           if (service?.gps) {
             const gps = service.gps;
             if (gps && gps !== 'Non spécifié') {
               if (typeof gps === 'string' && gps.includes(',')) {
-                // Convertir les coordonnées GPS en lieu lisible
+                // Convertir les coordonnÃ©es GPS en lieu lisible
                 const location = await convertGpsToLocation(gps);
                 return location;
               }
@@ -3705,12 +3745,12 @@ const optimizeLocationName = (locationName: string): string => {
             }
           }
           
-          // 6. Priorité: gps du prestataire depuis la map
+          // 6. PrioritÃ©: gps du prestataire depuis la map
           if (service?.user_id && prestatairesMap.has(service.user_id)) {
             const prestataire = prestatairesMap.get(service.user_id);
             if (prestataire?.gps && prestataire.gps !== 'Non spécifié') {
               if (typeof prestataire.gps === 'string' && prestataire.gps.includes(',')) {
-                // Convertir les coordonnées GPS en lieu lisible
+                // Convertir les coordonnÃ©es GPS en lieu lisible
                 const location = await convertGpsToLocation(prestataire.gps);
                 return location;
               }
@@ -3718,32 +3758,32 @@ const optimizeLocationName = (locationName: string): string => {
             }
           }
           
-          // 7. Fallback: localisation par défaut
+          // 7. Fallback: localisation par dÃ©faut
           return 'Localisation non disponible';
         };
 
   // Fonction pour calculer le padding top optimal du CardHeader
   const calculateHeaderPadding = (hasLogo: boolean, wsConnected: boolean): string => {
-    if (hasLogo) return 'pt-16'; // Logo présent = grand padding
-    if (wsConnected) return 'pt-8'; // WebSocket connecté = padding moyen pour créer un espace avec le Live centré
-    return 'pt-2'; // Aucun élément = petit padding
+    if (hasLogo) return 'pt-16'; // Logo prÃ©sent = grand padding
+    if (wsConnected) return 'pt-8'; // WebSocket connectÃ© = padding moyen pour crÃ©er un espace avec le Live centrÃ©
+    return 'pt-2'; // Aucun Ã©lÃ©ment = petit padding
   };
 
-  // Fonction pour formater la date de manière complète
+  // Fonction pour formater la date de maniÃ¨re complÃ¨te
   const formatDate = (dateString: string): string => {
     if (!dateString) return 'Date non disponible';
     try {
       const date = new Date(dateString);
       
-      // Version complète avec mois en français
+      // Version complÃ¨te avec mois en franÃ§ais
       const day = date.getDate();
       const month = date.getMonth();
       const year = date.getFullYear();
       
-      // Mois complets en français
+      // Mois complets en franÃ§ais
       const monthNames = [
-        'janvier', 'février', 'mars', 'avril', 'mai', 'juin',
-        'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'
+        'janvier', 'fÃ©vrier', 'mars', 'avril', 'mai', 'juin',
+        'juillet', 'aoÃ»t', 'septembre', 'octobre', 'novembre', 'dÃ©cembre'
       ];
       
       return `${day} ${monthNames[month]} ${year}`;
@@ -3764,7 +3804,7 @@ const optimizeLocationName = (locationName: string): string => {
     return R * c;
   };
 
-        // Fonction pour obtenir les informations du pays à partir des coordonnées GPS - VERSION MONDIALE
+        // Fonction pour obtenir les informations du pays Ã  partir des coordonnÃ©es GPS - VERSION MONDIALE
         const getCountryInfo = async (lat: number, lng: number): Promise<{ flag: string; code: string }> => {
           try {
             const response = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${API_KEYS.GOOGLE_MAPS_API_KEY}&language=fr`);
@@ -3788,54 +3828,54 @@ const optimizeLocationName = (locationName: string): string => {
               }
             }
           } catch (error) {
-            console.error('❌ [getCountryInfo] Erreur Google Maps:', error);
+            console.error('âŒ [getCountryInfo] Erreur Google Maps:', error);
           }
           
-          // Fallback : essayer de déterminer le pays par les coordonnées
+          // Fallback : essayer de dÃ©terminer le pays par les coordonnÃ©es
           try {
             const countryCode = getCountryFromCoordinates(lat, lng);
-            console.log('🗺️ [getCountryInfo] Code pays fallback:', countryCode);
+            console.log('ðŸ—ºï¸ [getCountryInfo] Code pays fallback:', countryCode);
             const flag = getFlagEmoji(countryCode);
             return { flag, code: countryCode };
           } catch (error) {
-            console.error('❌ [getCountryInfo] Erreur fallback:', error);
+            console.error('âŒ [getCountryInfo] Erreur fallback:', error);
           }
           
-          return { flag: '🌍', code: 'XX' }; // Valeurs par défaut
+          return { flag: 'ðŸŒ', code: 'XX' }; // Valeurs par dÃ©faut
         };
 
-        // Fonction de fallback pour déterminer le pays par coordonnées
+        // Fonction de fallback pour dÃ©terminer le pays par coordonnÃ©es
         const getCountryFromCoordinates = (lat: number, lng: number): string => {
-          // Zones géographiques approximatives pour les pays principaux
+          // Zones gÃ©ographiques approximatives pour les pays principaux
           const countryZones = [
             // Afrique
-            { code: 'DZ', bounds: [19, 36, -9, 12] }, // Algérie
+            { code: 'DZ', bounds: [19, 36, -9, 12] }, // AlgÃ©rie
             { code: 'AO', bounds: [-18, -5, 11, 24] }, // Angola
-            { code: 'BJ', bounds: [6, 12, 1, 4] }, // Bénin
+            { code: 'BJ', bounds: [6, 12, 1, 4] }, // BÃ©nin
             { code: 'BW', bounds: [-27, -18, 19, 29] }, // Botswana
             { code: 'BF', bounds: [9, 15, -6, 2] }, // Burkina Faso
             { code: 'BI', bounds: [-4, -2, 29, 31] }, // Burundi
             { code: 'CM', bounds: [2, 13, 8, 16] }, // Cameroun
             { code: 'CV', bounds: [14, 17, -25, -22] }, // Cap-Vert
-            { code: 'CF', bounds: [2, 11, 14, 27] }, // République centrafricaine
+            { code: 'CF', bounds: [2, 11, 14, 27] }, // RÃ©publique centrafricaine
             { code: 'TD', bounds: [8, 24, 14, 24] }, // Tchad
             { code: 'KM', bounds: [-13, -11, 43, 45] }, // Comores
             { code: 'CG', bounds: [-5, 4, 11, 19] }, // Congo
             { code: 'CD', bounds: [-14, 6, 12, 32] }, // RDC
             { code: 'DJ', bounds: [10, 13, 41, 44] }, // Djibouti
-            { code: 'EG', bounds: [22, 32, 25, 37] }, // Égypte
-            { code: 'GQ', bounds: [1, 2, 5, 12] }, // Guinée équatoriale
-            { code: 'ER', bounds: [12, 18, 36, 43] }, // Érythrée
-            { code: 'ET', bounds: [3, 15, 33, 48] }, // Éthiopie
+            { code: 'EG', bounds: [22, 32, 25, 37] }, // Ã‰gypte
+            { code: 'GQ', bounds: [1, 2, 5, 12] }, // GuinÃ©e Ã©quatoriale
+            { code: 'ER', bounds: [12, 18, 36, 43] }, // Ã‰rythrÃ©e
+            { code: 'ET', bounds: [3, 15, 33, 48] }, // Ã‰thiopie
             { code: 'GA', bounds: [-4, 2, 8, 15] }, // Gabon
             { code: 'GM', bounds: [13, 14, -17, -13] }, // Gambie
             { code: 'GH', bounds: [5, 11, -4, 2] }, // Ghana
-            { code: 'GN', bounds: [7, 13, -15, -7] }, // Guinée
-            { code: 'GW', bounds: [11, 12, -17, -13] }, // Guinée-Bissau
-            { code: 'CI', bounds: [4, 11, -8, -2] }, // Côte d'Ivoire
+            { code: 'GN', bounds: [7, 13, -15, -7] }, // GuinÃ©e
+            { code: 'GW', bounds: [11, 12, -17, -13] }, // GuinÃ©e-Bissau
+            { code: 'CI', bounds: [4, 11, -8, -2] }, // CÃ´te d'Ivoire
             { code: 'KE', bounds: [-5, 5, 34, 42] }, // Kenya
             { code: 'LS', bounds: [-31, -28, 27, 30] }, // Lesotho
-            { code: 'LR', bounds: [4, 8, -12, -7] }, // Libéria
+            { code: 'LR', bounds: [4, 8, -12, -7] }, // LibÃ©ria
             { code: 'LY', bounds: [20, 33, 9, 26] }, // Libye
             { code: 'MG', bounds: [-26, -11, 43, 51] }, // Madagascar
             { code: 'MW', bounds: [-17, -9, 32, 36] }, // Malawi
@@ -3849,8 +3889,8 @@ const optimizeLocationName = (locationName: string): string => {
             { code: 'NE', bounds: [12, 24, 0, 16] }, // Niger
             { code: 'NG', bounds: [4, 14, 3, 15] }, // Nigeria
             { code: 'RW', bounds: [-3, -1, 29, 31] }, // Rwanda
-            { code: 'ST', bounds: [0, 2, 6, 8] }, // Sao Tomé-et-Principe
-            { code: 'SN', bounds: [12, 17, -18, -11] }, // Sénégal
+            { code: 'ST', bounds: [0, 2, 6, 8] }, // Sao TomÃ©-et-Principe
+            { code: 'SN', bounds: [12, 17, -18, -11] }, // SÃ©nÃ©gal
             { code: 'SC', bounds: [-10, -4, 46, 56] }, // Seychelles
             { code: 'SL', bounds: [7, 10, -14, -10] }, // Sierra Leone
             { code: 'SO', bounds: [-2, 12, 41, 52] }, // Somalie
@@ -3866,33 +3906,33 @@ const optimizeLocationName = (locationName: string): string => {
             { code: 'ZM', bounds: [-18, -8, 22, 34] }, // Zambie
             { code: 'ZW', bounds: [-23, -15, 25, 33] }, // Zimbabwe
             
-            // Amérique
+            // AmÃ©rique
             { code: 'AR', bounds: [-56, -21, -74, -53] }, // Argentine
             { code: 'BO', bounds: [-23, -9, -70, -57] }, // Bolivie
-            { code: 'BR', bounds: [-34, 6, -74, -34] }, // Brésil
+            { code: 'BR', bounds: [-34, 6, -74, -34] }, // BrÃ©sil
             { code: 'CL', bounds: [-56, -17, -76, -66] }, // Chili
             { code: 'CO', bounds: [-5, 13, -82, -66] }, // Colombie
-            { code: 'EC', bounds: [-5, 2, -82, -75] }, // Équateur
+            { code: 'EC', bounds: [-5, 2, -82, -75] }, // Ã‰quateur
             { code: 'GY', bounds: [1, 9, -62, -56] }, // Guyana
             { code: 'PY', bounds: [-28, -19, -63, -54] }, // Paraguay
-            { code: 'PE', bounds: [-20, -1, -84, -68] }, // Pérou
+            { code: 'PE', bounds: [-20, -1, -84, -68] }, // PÃ©rou
             { code: 'SR', bounds: [2, 6, -58, -54] }, // Suriname
             { code: 'UY', bounds: [-35, -30, -58, -53] }, // Uruguay
             { code: 'VE', bounds: [1, 13, -74, -59] }, // Venezuela
             { code: 'CA', bounds: [41, 84, -141, -52] }, // Canada
-            { code: 'US', bounds: [18, 72, -180, -66] }, // États-Unis
+            { code: 'US', bounds: [18, 72, -180, -66] }, // Ã‰tats-Unis
             { code: 'MX', bounds: [14, 33, -118, -86] }, // Mexique
             
             // Asie
             { code: 'CN', bounds: [18, 54, 73, 135] }, // Chine
             { code: 'IN', bounds: [6, 37, 68, 97] }, // Inde
             { code: 'JP', bounds: [24, 46, 129, 146] }, // Japon
-            { code: 'KR', bounds: [33, 39, 124, 132] }, // Corée du Sud
-            { code: 'KP', bounds: [37, 43, 124, 131] }, // Corée du Nord
-            { code: 'TH', bounds: [6, 21, 97, 106] }, // Thaïlande
+            { code: 'KR', bounds: [33, 39, 124, 132] }, // CorÃ©e du Sud
+            { code: 'KP', bounds: [37, 43, 124, 131] }, // CorÃ©e du Nord
+            { code: 'TH', bounds: [6, 21, 97, 106] }, // ThaÃ¯lande
             { code: 'VN', bounds: [8, 23, 102, 110] }, // Vietnam
             { code: 'MY', bounds: [1, 7, 100, 119] }, // Malaisie
-            { code: 'ID', bounds: [-11, 6, 95, 141] }, // Indonésie
+            { code: 'ID', bounds: [-11, 6, 95, 141] }, // IndonÃ©sie
             { code: 'PH', bounds: [5, 21, 116, 127] }, // Philippines
             { code: 'SG', bounds: [1, 2, 103, 105] }, // Singapour
             { code: 'BD', bounds: [21, 27, 88, 93] }, // Bangladesh
@@ -3904,33 +3944,33 @@ const optimizeLocationName = (locationName: string): string => {
             { code: 'TR', bounds: [36, 42, 26, 45] }, // Turquie
             { code: 'RU', bounds: [41, 82, 26, 191] }, // Russie
             { code: 'KZ', bounds: [41, 56, 46, 87] }, // Kazakhstan
-            { code: 'UZ', bounds: [37, 46, 56, 75] }, // Ouzbékistan
+            { code: 'UZ', bounds: [37, 46, 56, 75] }, // OuzbÃ©kistan
             { code: 'KG', bounds: [39, 43, 69, 80] }, // Kirghizistan
             { code: 'TJ', bounds: [36, 41, 67, 75] }, // Tadjikistan
-            { code: 'TM', bounds: [35, 43, 52, 67] }, // Turkménistan
-            { code: 'AZ', bounds: [39, 42, 44, 51] }, // Azerbaïdjan
-            { code: 'GE', bounds: [41, 44, 40, 47] }, // Géorgie
-            { code: 'AM', bounds: [39, 41, 43, 47] }, // Arménie
-            { code: 'IL', bounds: [29, 34, 34, 36] }, // Israël
+            { code: 'TM', bounds: [35, 43, 52, 67] }, // TurkmÃ©nistan
+            { code: 'AZ', bounds: [39, 42, 44, 51] }, // AzerbaÃ¯djan
+            { code: 'GE', bounds: [41, 44, 40, 47] }, // GÃ©orgie
+            { code: 'AM', bounds: [39, 41, 43, 47] }, // ArmÃ©nie
+            { code: 'IL', bounds: [29, 34, 34, 36] }, // IsraÃ«l
             { code: 'JO', bounds: [29, 33, 35, 39] }, // Jordanie
             { code: 'LB', bounds: [33, 35, 35, 37] }, // Liban
             { code: 'SY', bounds: [32, 37, 35, 42] }, // Syrie
             { code: 'CY', bounds: [34, 36, 32, 35] }, // Chypre
-            { code: 'KW', bounds: [28, 31, 46, 49] }, // Koweït
+            { code: 'KW', bounds: [28, 31, 46, 49] }, // KoweÃ¯t
             { code: 'QA', bounds: [24, 27, 50, 52] }, // Qatar
-            { code: 'AE', bounds: [22, 26, 51, 57] }, // Émirats arabes unis
+            { code: 'AE', bounds: [22, 26, 51, 57] }, // Ã‰mirats arabes unis
             { code: 'OM', bounds: [16, 27, 52, 60] }, // Oman
-            { code: 'YE', bounds: [12, 19, 42, 55] }, // Yémen
-            { code: 'BH', bounds: [26, 27, 50, 51] }, // Bahreïn
+            { code: 'YE', bounds: [12, 19, 42, 55] }, // YÃ©men
+            { code: 'BH', bounds: [26, 27, 50, 51] }, // BahreÃ¯n
             { code: 'MV', bounds: [-1, 7, 72, 74] }, // Maldives
             { code: 'LK', bounds: [6, 10, 79, 82] }, // Sri Lanka
-            { code: 'NP', bounds: [26, 31, 80, 88] }, // Népal
+            { code: 'NP', bounds: [26, 31, 80, 88] }, // NÃ©pal
             { code: 'BT', bounds: [27, 29, 88, 92] }, // Bhoutan
             { code: 'MM', bounds: [10, 28, 92, 101] }, // Myanmar
             { code: 'LA', bounds: [14, 23, 100, 108] }, // Laos
             { code: 'KH', bounds: [10, 15, 102, 108] }, // Cambodge
             { code: 'BN', bounds: [4, 5, 114, 116] }, // Brunei
-            { code: 'TW', bounds: [21, 26, 119, 122] }, // Taïwan
+            { code: 'TW', bounds: [21, 26, 119, 122] }, // TaÃ¯wan
             { code: 'HK', bounds: [22, 23, 113, 115] }, // Hong Kong
             { code: 'MO', bounds: [22, 23, 113, 114] }, // Macao
             { code: 'MN', bounds: [42, 52, 87, 120] }, // Mongolie
@@ -3947,27 +3987,27 @@ const optimizeLocationName = (locationName: string): string => {
             { code: 'CH', bounds: [45, 48, 6, 11] }, // Suisse
             { code: 'AT', bounds: [46, 49, 9, 18] }, // Autriche
             { code: 'PL', bounds: [49, 55, 14, 24] }, // Pologne
-            { code: 'CZ', bounds: [48, 51, 12, 19] }, // République tchèque
+            { code: 'CZ', bounds: [48, 51, 12, 19] }, // RÃ©publique tchÃ¨que
             { code: 'SK', bounds: [47, 50, 16, 23] }, // Slovaquie
             { code: 'HU', bounds: [45, 49, 16, 23] }, // Hongrie
             { code: 'RO', bounds: [43, 48, 20, 30] }, // Roumanie
             { code: 'BG', bounds: [41, 44, 22, 29] }, // Bulgarie
-            { code: 'GR', bounds: [35, 42, 20, 28] }, // Grèce
+            { code: 'GR', bounds: [35, 42, 20, 28] }, // GrÃ¨ce
             { code: 'HR', bounds: [42, 47, 13, 20] }, // Croatie
-            { code: 'SI', bounds: [45, 47, 13, 17] }, // Slovénie
-            { code: 'BA', bounds: [42, 45, 15, 20] }, // Bosnie-Herzégovine
+            { code: 'SI', bounds: [45, 47, 13, 17] }, // SlovÃ©nie
+            { code: 'BA', bounds: [42, 45, 15, 20] }, // Bosnie-HerzÃ©govine
             { code: 'RS', bounds: [42, 46, 18, 23] }, // Serbie
-            { code: 'ME', bounds: [41, 43, 18, 20] }, // Monténégro
-            { code: 'MK', bounds: [40, 43, 20, 23] }, // Macédoine du Nord
+            { code: 'ME', bounds: [41, 43, 18, 20] }, // MontÃ©nÃ©gro
+            { code: 'MK', bounds: [40, 43, 20, 23] }, // MacÃ©doine du Nord
             { code: 'AL', bounds: [39, 43, 19, 21] }, // Albanie
             { code: 'UA', bounds: [44, 53, 22, 41] }, // Ukraine
-            { code: 'BY', bounds: [51, 56, 23, 33] }, // Biélorussie
+            { code: 'BY', bounds: [51, 56, 23, 33] }, // BiÃ©lorussie
             { code: 'LT', bounds: [53, 56, 21, 27] }, // Lituanie
             { code: 'LV', bounds: [55, 58, 21, 28] }, // Lettonie
             { code: 'EE', bounds: [57, 60, 22, 28] }, // Estonie
             { code: 'FI', bounds: [60, 71, 20, 32] }, // Finlande
-            { code: 'SE', bounds: [55, 69, 11, 24] }, // Suède
-            { code: 'NO', bounds: [58, 71, 4, 31] }, // Norvège
+            { code: 'SE', bounds: [55, 69, 11, 24] }, // SuÃ¨de
+            { code: 'NO', bounds: [58, 71, 4, 31] }, // NorvÃ¨ge
             { code: 'DK', bounds: [54, 58, 8, 16] }, // Danemark
             { code: 'IS', bounds: [63, 67, -25, -13] }, // Islande
             { code: 'IE', bounds: [51, 55, -11, -5] }, // Irlande
@@ -3980,29 +4020,29 @@ const optimizeLocationName = (locationName: string): string => {
             { code: 'MT', bounds: [35, 36, 14, 15] }, // Malte
             { code: 'CY', bounds: [34, 36, 32, 35] }, // Chypre
             
-            // Océanie
+            // OcÃ©anie
             { code: 'AU', bounds: [-44, -10, 113, 154] }, // Australie
-            { code: 'NZ', bounds: [-48, -34, 166, 179] }, // Nouvelle-Zélande
+            { code: 'NZ', bounds: [-48, -34, 166, 179] }, // Nouvelle-ZÃ©lande
             { code: 'FJ', bounds: [-21, -15, 177, -178] }, // Fidji
-            { code: 'PG', bounds: [-12, -1, 141, 156] }, // Papouasie-Nouvelle-Guinée
-            { code: 'SB', bounds: [-12, -5, 155, 170] }, // Îles Salomon
+            { code: 'PG', bounds: [-12, -1, 141, 156] }, // Papouasie-Nouvelle-GuinÃ©e
+            { code: 'SB', bounds: [-12, -5, 155, 170] }, // ÃŽles Salomon
             { code: 'VU', bounds: [-21, -13, 166, 170] }, // Vanuatu
-            { code: 'NC', bounds: [-23, -19, 163, 168] }, // Nouvelle-Calédonie
-            { code: 'PF', bounds: [-28, -7, -155, -134] }, // Polynésie française
+            { code: 'NC', bounds: [-23, -19, 163, 168] }, // Nouvelle-CalÃ©donie
+            { code: 'PF', bounds: [-28, -7, -155, -134] }, // PolynÃ©sie franÃ§aise
             { code: 'WS', bounds: [-14, -13, -173, -171] }, // Samoa
             { code: 'TO', bounds: [-24, -15, -176, -173] }, // Tonga
             { code: 'KI', bounds: [-5, 3, -175, -169] }, // Kiribati
-            { code: 'MH', bounds: [4, 11, 160, 172] }, // Îles Marshall
-            { code: 'FM', bounds: [1, 10, 137, 164] }, // Micronésie
+            { code: 'MH', bounds: [4, 11, 160, 172] }, // ÃŽles Marshall
+            { code: 'FM', bounds: [1, 10, 137, 164] }, // MicronÃ©sie
             { code: 'PW', bounds: [2, 8, 131, 135] }, // Palaos
             { code: 'NR', bounds: [-1, -0, 166, 167] }, // Nauru
             { code: 'TV', bounds: [-10, -5, 176, 180] }, // Tuvalu
             { code: 'GU', bounds: [13, 14, 144, 145] }, // Guam
-            { code: 'MP', bounds: [14, 20, 144, 146] }, // Îles Mariannes du Nord
-            { code: 'AS', bounds: [-15, -13, -171, -168] }, // Samoa américaines
+            { code: 'MP', bounds: [14, 20, 144, 146] }, // ÃŽles Mariannes du Nord
+            { code: 'AS', bounds: [-15, -13, -171, -168] }, // Samoa amÃ©ricaines
           ];
           
-          // Chercher le pays correspondant aux coordonnées
+          // Chercher le pays correspondant aux coordonnÃ©es
           for (const zone of countryZones) {
             const [minLat, maxLat, minLng, maxLng] = zone.bounds;
             if (lat >= minLat && lat <= maxLat && lng >= minLng && lng <= maxLng) {
@@ -4010,7 +4050,7 @@ const optimizeLocationName = (locationName: string): string => {
             }
           }
           
-          return 'XX'; // Code par défaut si aucun pays trouvé
+          return 'XX'; // Code par dÃ©faut si aucun pays trouvÃ©
         };
 
         // Fonction pour obtenir l'URL de l'image du drapeau
@@ -4023,16 +4063,16 @@ const optimizeLocationName = (locationName: string): string => {
             `https://raw.githubusercontent.com/lipis/flag-icons/main/flags/4x3/${countryCode.toLowerCase()}.svg`
           ];
           
-          return sources[0]; // Retourner la première source par défaut
+          return sources[0]; // Retourner la premiÃ¨re source par dÃ©faut
         };
 
         // Fonction pour convertir le code pays en emoji drapeau - VERSION MONDIALE
         const getFlagEmoji = (countryCode: string): string => {
           if (!countryCode || countryCode.length !== 2) {
-            return '🌍';
+            return 'ðŸŒ';
           }
           
-          // Méthode principale : utiliser les caractères régionaux Unicode
+          // MÃ©thode principale : utiliser les caractÃ¨res rÃ©gionaux Unicode
           try {
             const codePoints = countryCode
               .toUpperCase()
@@ -4043,54 +4083,54 @@ const optimizeLocationName = (locationName: string): string => {
               return String.fromCodePoint(...codePoints);
             }
           } catch (error) {
-            console.error('❌ [getFlagEmoji] Erreur génération drapeau:', error);
+            console.error('âŒ [getFlagEmoji] Erreur gÃ©nÃ©ration drapeau:', error);
           }
           
-          // Fallback : drapeaux connus pour les cas problématiques
+          // Fallback : drapeaux connus pour les cas problÃ©matiques
           const knownFlags: { [key: string]: string } = {
             // Afrique
-            'DZ': '🇩🇿', 'AO': '🇦🇴', 'BJ': '🇧🇯', 'BW': '🇧🇼', 'BF': '🇧🇫', 'BI': '🇧🇮', 'CM': '🇨🇲', 'CV': '🇨🇻', 'CF': '🇨🇫', 'TD': '🇹🇩',
-            'KM': '🇰🇲', 'CG': '🇨🇬', 'CD': '🇨🇩', 'DJ': '🇩🇯', 'EG': '🇪🇬', 'GQ': '🇬🇶', 'ER': '🇪🇷', 'ET': '🇪🇹', 'GA': '🇬🇦', 'GM': '🇬🇲',
-            'GH': '🇬🇭', 'GN': '🇬🇳', 'GW': '🇬🇼', 'CI': '🇨🇮', 'KE': '🇰🇪', 'LS': '🇱🇸', 'LR': '🇱🇷', 'LY': '🇱🇾', 'MG': '🇲🇬', 'MW': '🇲🇼',
-            'ML': '🇲🇱', 'MR': '🇲🇷', 'MU': '🇲🇺', 'YT': '🇾🇹', 'MA': '🇲🇦', 'MZ': '🇲🇿', 'NA': '🇳🇦', 'NE': '🇳🇪', 'NG': '🇳🇬', 'RW': '🇷🇼',
-            'ST': '🇸🇹', 'SN': '🇸🇳', 'SC': '🇸🇨', 'SL': '🇸🇱', 'SO': '🇸🇴', 'ZA': '🇿🇦', 'SS': '🇸🇸', 'SD': '🇸🇩', 'SZ': '🇸🇿', 'TZ': '🇹🇿',
-            'TG': '🇹🇬', 'TN': '🇹🇳', 'UG': '🇺🇬', 'EH': '🇪🇭', 'ZM': '🇿🇲', 'ZW': '🇿🇼',
+            'DZ': 'ðŸ‡©ðŸ‡¿', 'AO': 'ðŸ‡¦ðŸ‡´', 'BJ': 'ðŸ‡§ðŸ‡¯', 'BW': 'ðŸ‡§ðŸ‡¼', 'BF': 'ðŸ‡§ðŸ‡«', 'BI': 'ðŸ‡§ðŸ‡®', 'CM': 'ðŸ‡¨ðŸ‡²', 'CV': 'ðŸ‡¨ðŸ‡»', 'CF': 'ðŸ‡¨ðŸ‡«', 'TD': 'ðŸ‡¹ðŸ‡©',
+            'KM': 'ðŸ‡°ðŸ‡²', 'CG': 'ðŸ‡¨ðŸ‡¬', 'CD': 'ðŸ‡¨ðŸ‡©', 'DJ': 'ðŸ‡©ðŸ‡¯', 'EG': 'ðŸ‡ªðŸ‡¬', 'GQ': 'ðŸ‡¬ðŸ‡¶', 'ER': 'ðŸ‡ªðŸ‡·', 'ET': 'ðŸ‡ªðŸ‡¹', 'GA': 'ðŸ‡¬ðŸ‡¦', 'GM': 'ðŸ‡¬ðŸ‡²',
+            'GH': 'ðŸ‡¬ðŸ‡­', 'GN': 'ðŸ‡¬ðŸ‡³', 'GW': 'ðŸ‡¬ðŸ‡¼', 'CI': 'ðŸ‡¨ðŸ‡®', 'KE': 'ðŸ‡°ðŸ‡ª', 'LS': 'ðŸ‡±ðŸ‡¸', 'LR': 'ðŸ‡±ðŸ‡·', 'LY': 'ðŸ‡±ðŸ‡¾', 'MG': 'ðŸ‡²ðŸ‡¬', 'MW': 'ðŸ‡²ðŸ‡¼',
+            'ML': 'ðŸ‡²ðŸ‡±', 'MR': 'ðŸ‡²ðŸ‡·', 'MU': 'ðŸ‡²ðŸ‡º', 'YT': 'ðŸ‡¾ðŸ‡¹', 'MA': 'ðŸ‡²ðŸ‡¦', 'MZ': 'ðŸ‡²ðŸ‡¿', 'NA': 'ðŸ‡³ðŸ‡¦', 'NE': 'ðŸ‡³ðŸ‡ª', 'NG': 'ðŸ‡³ðŸ‡¬', 'RW': 'ðŸ‡·ðŸ‡¼',
+            'ST': 'ðŸ‡¸ðŸ‡¹', 'SN': 'ðŸ‡¸ðŸ‡³', 'SC': 'ðŸ‡¸ðŸ‡¨', 'SL': 'ðŸ‡¸ðŸ‡±', 'SO': 'ðŸ‡¸ðŸ‡´', 'ZA': 'ðŸ‡¿ðŸ‡¦', 'SS': 'ðŸ‡¸ðŸ‡¸', 'SD': 'ðŸ‡¸ðŸ‡©', 'SZ': 'ðŸ‡¸ðŸ‡¿', 'TZ': 'ðŸ‡¹ðŸ‡¿',
+            'TG': 'ðŸ‡¹ðŸ‡¬', 'TN': 'ðŸ‡¹ðŸ‡³', 'UG': 'ðŸ‡ºðŸ‡¬', 'EH': 'ðŸ‡ªðŸ‡­', 'ZM': 'ðŸ‡¿ðŸ‡²', 'ZW': 'ðŸ‡¿ðŸ‡¼',
             
-            // Amérique
-            'AR': '🇦🇷', 'BO': '🇧🇴', 'BR': '🇧🇷', 'CL': '🇨🇱', 'CO': '🇨🇴', 'EC': '🇪🇨', 'GY': '🇬🇾', 'PY': '🇵🇾', 'PE': '🇵🇪', 'SR': '🇸🇷',
-            'UY': '🇺🇾', 'VE': '🇻🇪', 'CA': '🇨🇦', 'US': '🇺🇸', 'MX': '🇲🇽', 'GT': '🇬🇹', 'BZ': '🇧🇿', 'SV': '🇸🇻', 'HN': '🇭🇳', 'NI': '🇳🇮',
-            'CR': '🇨🇷', 'PA': '🇵🇦', 'CU': '🇨🇺', 'JM': '🇯🇲', 'HT': '🇭🇹', 'DO': '🇩🇴', 'PR': '🇵🇷', 'TT': '🇹🇹', 'BB': '🇧🇧', 'GD': '🇬🇩',
-            'LC': '🇱🇨', 'VC': '🇻🇨', 'AG': '🇦🇬', 'KN': '🇰🇳', 'DM': '🇩🇲', 'BS': '🇧🇸', 'AI': '🇦🇮', 'TC': '🇹🇨', 'VG': '🇻🇬', 'VI': '🇻🇮',
-            'AW': '🇦🇼', 'CW': '🇨🇼', 'SX': '🇸🇽', 'BQ': '🇧🇶', 'FK': '🇫🇰', 'GF': '🇬🇫', 'PF': '🇵🇫', 'NC': '🇳🇨', 'GP': '🇬🇵', 'MQ': '🇲🇶',
-            'RE': '🇷🇪', 'YT': '🇾🇹', 'BL': '🇧🇱', 'MF': '🇲🇫', 'PM': '🇵🇲', 'WF': '🇼🇫',
+            // AmÃ©rique
+            'AR': 'ðŸ‡¦ðŸ‡·', 'BO': 'ðŸ‡§ðŸ‡´', 'BR': 'ðŸ‡§ðŸ‡·', 'CL': 'ðŸ‡¨ðŸ‡±', 'CO': 'ðŸ‡¨ðŸ‡´', 'EC': 'ðŸ‡ªðŸ‡¨', 'GY': 'ðŸ‡¬ðŸ‡¾', 'PY': 'ðŸ‡µðŸ‡¾', 'PE': 'ðŸ‡µðŸ‡ª', 'SR': 'ðŸ‡¸ðŸ‡·',
+            'UY': 'ðŸ‡ºðŸ‡¾', 'VE': 'ðŸ‡»ðŸ‡ª', 'CA': 'ðŸ‡¨ðŸ‡¦', 'US': 'ðŸ‡ºðŸ‡¸', 'MX': 'ðŸ‡²ðŸ‡½', 'GT': 'ðŸ‡¬ðŸ‡¹', 'BZ': 'ðŸ‡§ðŸ‡¿', 'SV': 'ðŸ‡¸ðŸ‡»', 'HN': 'ðŸ‡­ðŸ‡³', 'NI': 'ðŸ‡³ðŸ‡®',
+            'CR': 'ðŸ‡¨ðŸ‡·', 'PA': 'ðŸ‡µðŸ‡¦', 'CU': 'ðŸ‡¨ðŸ‡º', 'JM': 'ðŸ‡¯ðŸ‡²', 'HT': 'ðŸ‡­ðŸ‡¹', 'DO': 'ðŸ‡©ðŸ‡´', 'PR': 'ðŸ‡µðŸ‡·', 'TT': 'ðŸ‡¹ðŸ‡¹', 'BB': 'ðŸ‡§ðŸ‡§', 'GD': 'ðŸ‡¬ðŸ‡©',
+            'LC': 'ðŸ‡±ðŸ‡¨', 'VC': 'ðŸ‡»ðŸ‡¨', 'AG': 'ðŸ‡¦ðŸ‡¬', 'KN': 'ðŸ‡°ðŸ‡³', 'DM': 'ðŸ‡©ðŸ‡²', 'BS': 'ðŸ‡§ðŸ‡¸', 'AI': 'ðŸ‡¦ðŸ‡®', 'TC': 'ðŸ‡¹ðŸ‡¨', 'VG': 'ðŸ‡»ðŸ‡¬', 'VI': 'ðŸ‡»ðŸ‡®',
+            'AW': 'ðŸ‡¦ðŸ‡¼', 'CW': 'ðŸ‡¨ðŸ‡¼', 'SX': 'ðŸ‡¸ðŸ‡½', 'BQ': 'ðŸ‡§ðŸ‡¶', 'FK': 'ðŸ‡«ðŸ‡°', 'GF': 'ðŸ‡¬ðŸ‡«', 'PF': 'ðŸ‡µðŸ‡«', 'NC': 'ðŸ‡³ðŸ‡¨', 'GP': 'ðŸ‡¬ðŸ‡µ', 'MQ': 'ðŸ‡²ðŸ‡¶',
+            'RE': 'ðŸ‡·ðŸ‡ª', 'YT': 'ðŸ‡¾ðŸ‡¹', 'BL': 'ðŸ‡§ðŸ‡±', 'MF': 'ðŸ‡²ðŸ‡«', 'PM': 'ðŸ‡µðŸ‡²', 'WF': 'ðŸ‡¼ðŸ‡«',
             
             // Asie
-            'AF': '🇦🇫', 'AM': '🇦🇲', 'AZ': '🇦🇿', 'BH': '🇧🇭', 'BD': '🇧🇩', 'BT': '🇧🇹', 'BN': '🇧🇳', 'KH': '🇰🇭', 'CN': '🇨🇳', 'CY': '🇨🇾',
-            'GE': '🇬🇪', 'HK': '🇭🇰', 'IN': '🇮🇳', 'ID': '🇮🇩', 'IR': '🇮🇷', 'IQ': '🇮🇶', 'IL': '🇮🇱', 'JP': '🇯🇵', 'JO': '🇯🇴', 'KZ': '🇰🇿',
-            'KW': '🇰🇼', 'KG': '🇰🇬', 'LA': '🇱🇦', 'LB': '🇱🇧', 'MO': '🇲🇴', 'MY': '🇲🇾', 'MV': '🇲🇻', 'MN': '🇲🇳', 'MM': '🇲🇲', 'NP': '🇳🇵',
-            'OM': '🇴🇲', 'PK': '🇵🇰', 'PS': '🇵🇸', 'PH': '🇵🇭', 'QA': '🇶🇦', 'SA': '🇸🇦', 'SG': '🇸🇬', 'LK': '🇱🇰', 'SY': '🇸🇾', 'TW': '🇹🇼',
-            'TJ': '🇹🇯', 'TH': '🇹🇭', 'TL': '🇹🇱', 'TR': '🇹🇷', 'TM': '🇹🇲', 'AE': '🇦🇪', 'UZ': '🇺🇿', 'VN': '🇻🇳', 'YE': '🇾🇪', 'KR': '🇰🇷',
-            'KP': '🇰🇵', 'MN': '🇲🇳', 'KG': '🇰🇬', 'TJ': '🇹🇯', 'TM': '🇹🇲', 'UZ': '🇺🇿',
+            'AF': 'ðŸ‡¦ðŸ‡«', 'AM': 'ðŸ‡¦ðŸ‡²', 'AZ': 'ðŸ‡¦ðŸ‡¿', 'BH': 'ðŸ‡§ðŸ‡­', 'BD': 'ðŸ‡§ðŸ‡©', 'BT': 'ðŸ‡§ðŸ‡¹', 'BN': 'ðŸ‡§ðŸ‡³', 'KH': 'ðŸ‡°ðŸ‡­', 'CN': 'ðŸ‡¨ðŸ‡³', 'CY': 'ðŸ‡¨ðŸ‡¾',
+            'GE': 'ðŸ‡¬ðŸ‡ª', 'HK': 'ðŸ‡­ðŸ‡°', 'IN': 'ðŸ‡®ðŸ‡³', 'ID': 'ðŸ‡®ðŸ‡©', 'IR': 'ðŸ‡®ðŸ‡·', 'IQ': 'ðŸ‡®ðŸ‡¶', 'IL': 'ðŸ‡®ðŸ‡±', 'JP': 'ðŸ‡¯ðŸ‡µ', 'JO': 'ðŸ‡¯ðŸ‡´', 'KZ': 'ðŸ‡°ðŸ‡¿',
+            'KW': 'ðŸ‡°ðŸ‡¼', 'KG': 'ðŸ‡°ðŸ‡¬', 'LA': 'ðŸ‡±ðŸ‡¦', 'LB': 'ðŸ‡±ðŸ‡§', 'MO': 'ðŸ‡²ðŸ‡´', 'MY': 'ðŸ‡²ðŸ‡¾', 'MV': 'ðŸ‡²ðŸ‡»', 'MN': 'ðŸ‡²ðŸ‡³', 'MM': 'ðŸ‡²ðŸ‡²', 'NP': 'ðŸ‡³ðŸ‡µ',
+            'OM': 'ðŸ‡´ðŸ‡²', 'PK': 'ðŸ‡µðŸ‡°', 'PS': 'ðŸ‡µðŸ‡¸', 'PH': 'ðŸ‡µðŸ‡­', 'QA': 'ðŸ‡¶ðŸ‡¦', 'SA': 'ðŸ‡¸ðŸ‡¦', 'SG': 'ðŸ‡¸ðŸ‡¬', 'LK': 'ðŸ‡±ðŸ‡°', 'SY': 'ðŸ‡¸ðŸ‡¾', 'TW': 'ðŸ‡¹ðŸ‡¼',
+            'TJ': 'ðŸ‡¹ðŸ‡¯', 'TH': 'ðŸ‡¹ðŸ‡­', 'TL': 'ðŸ‡¹ðŸ‡±', 'TR': 'ðŸ‡¹ðŸ‡·', 'TM': 'ðŸ‡¹ðŸ‡²', 'AE': 'ðŸ‡¦ðŸ‡ª', 'UZ': 'ðŸ‡ºðŸ‡¿', 'VN': 'ðŸ‡»ðŸ‡³', 'YE': 'ðŸ‡¾ðŸ‡ª', 'KR': 'ðŸ‡°ðŸ‡·',
+            'KP': 'ðŸ‡°ðŸ‡µ', 'MN': 'ðŸ‡²ðŸ‡³', 'KG': 'ðŸ‡°ðŸ‡¬', 'TJ': 'ðŸ‡¹ðŸ‡¯', 'TM': 'ðŸ‡¹ðŸ‡²', 'UZ': 'ðŸ‡ºðŸ‡¿',
             
             // Europe
-            'AL': '🇦🇱', 'AD': '🇦🇩', 'AT': '🇦🇹', 'BY': '🇧🇾', 'BE': '🇧🇪', 'BA': '🇧🇦', 'BG': '🇧🇬', 'HR': '🇭🇷', 'CZ': '🇨🇿', 'DK': '🇩🇰',
-            'EE': '🇪🇪', 'FI': '🇫🇮', 'FR': '🇫🇷', 'DE': '🇩🇪', 'GR': '🇬🇷', 'HU': '🇭🇺', 'IS': '🇮🇸', 'IE': '🇮🇪', 'IT': '🇮🇹', 'LV': '🇱🇻',
-            'LI': '🇱🇮', 'LT': '🇱🇹', 'LU': '🇱🇺', 'MT': '🇲🇹', 'MD': '🇲🇩', 'MC': '🇲🇨', 'ME': '🇲🇪', 'NL': '🇳🇱', 'MK': '🇲🇰', 'NO': '🇳🇴',
-            'PL': '🇵🇱', 'PT': '🇵🇹', 'RO': '🇷🇴', 'RU': '🇷🇺', 'SM': '🇸🇲', 'RS': '🇷🇸', 'SK': '🇸🇰', 'SI': '🇸🇮', 'ES': '🇪🇸', 'SE': '🇸🇪',
-            'CH': '🇨🇭', 'UA': '🇺🇦', 'GB': '🇬🇧', 'VA': '🇻🇦', 'XK': '🇽🇰',
+            'AL': 'ðŸ‡¦ðŸ‡±', 'AD': 'ðŸ‡¦ðŸ‡©', 'AT': 'ðŸ‡¦ðŸ‡¹', 'BY': 'ðŸ‡§ðŸ‡¾', 'BE': 'ðŸ‡§ðŸ‡ª', 'BA': 'ðŸ‡§ðŸ‡¦', 'BG': 'ðŸ‡§ðŸ‡¬', 'HR': 'ðŸ‡­ðŸ‡·', 'CZ': 'ðŸ‡¨ðŸ‡¿', 'DK': 'ðŸ‡©ðŸ‡°',
+            'EE': 'ðŸ‡ªðŸ‡ª', 'FI': 'ðŸ‡«ðŸ‡®', 'FR': 'ðŸ‡«ðŸ‡·', 'DE': 'ðŸ‡©ðŸ‡ª', 'GR': 'ðŸ‡¬ðŸ‡·', 'HU': 'ðŸ‡­ðŸ‡º', 'IS': 'ðŸ‡®ðŸ‡¸', 'IE': 'ðŸ‡®ðŸ‡ª', 'IT': 'ðŸ‡®ðŸ‡¹', 'LV': 'ðŸ‡±ðŸ‡»',
+            'LI': 'ðŸ‡±ðŸ‡®', 'LT': 'ðŸ‡±ðŸ‡¹', 'LU': 'ðŸ‡±ðŸ‡º', 'MT': 'ðŸ‡²ðŸ‡¹', 'MD': 'ðŸ‡²ðŸ‡©', 'MC': 'ðŸ‡²ðŸ‡¨', 'ME': 'ðŸ‡²ðŸ‡ª', 'NL': 'ðŸ‡³ðŸ‡±', 'MK': 'ðŸ‡²ðŸ‡°', 'NO': 'ðŸ‡³ðŸ‡´',
+            'PL': 'ðŸ‡µðŸ‡±', 'PT': 'ðŸ‡µðŸ‡¹', 'RO': 'ðŸ‡·ðŸ‡´', 'RU': 'ðŸ‡·ðŸ‡º', 'SM': 'ðŸ‡¸ðŸ‡²', 'RS': 'ðŸ‡·ðŸ‡¸', 'SK': 'ðŸ‡¸ðŸ‡°', 'SI': 'ðŸ‡¸ðŸ‡®', 'ES': 'ðŸ‡ªðŸ‡¸', 'SE': 'ðŸ‡¸ðŸ‡ª',
+            'CH': 'ðŸ‡¨ðŸ‡­', 'UA': 'ðŸ‡ºðŸ‡¦', 'GB': 'ðŸ‡¬ðŸ‡§', 'VA': 'ðŸ‡»ðŸ‡¦', 'XK': 'ðŸ‡½ðŸ‡°',
             
-            // Océanie
-            'AU': '🇦🇺', 'FJ': '🇫🇯', 'KI': '🇰🇮', 'MH': '🇲🇭', 'FM': '🇫🇲', 'NR': '🇳🇷', 'NZ': '🇳🇿', 'PW': '🇵🇼', 'PG': '🇵🇬', 'WS': '🇼🇸',
-            'SB': '🇸🇧', 'TO': '🇹🇴', 'TV': '🇹🇻', 'VU': '🇻🇺', 'GU': '🇬🇺', 'MP': '🇲🇵', 'AS': '🇦🇸', 'CK': '🇨🇰', 'NU': '🇳🇺', 'TK': '🇹🇰',
-            'NC': '🇳🇨', 'PF': '🇵🇫', 'WF': '🇼🇫', 'PN': '🇵🇳', 'NF': '🇳🇫',
+            // OcÃ©anie
+            'AU': 'ðŸ‡¦ðŸ‡º', 'FJ': 'ðŸ‡«ðŸ‡¯', 'KI': 'ðŸ‡°ðŸ‡®', 'MH': 'ðŸ‡²ðŸ‡­', 'FM': 'ðŸ‡«ðŸ‡²', 'NR': 'ðŸ‡³ðŸ‡·', 'NZ': 'ðŸ‡³ðŸ‡¿', 'PW': 'ðŸ‡µðŸ‡¼', 'PG': 'ðŸ‡µðŸ‡¬', 'WS': 'ðŸ‡¼ðŸ‡¸',
+            'SB': 'ðŸ‡¸ðŸ‡§', 'TO': 'ðŸ‡¹ðŸ‡´', 'TV': 'ðŸ‡¹ðŸ‡»', 'VU': 'ðŸ‡»ðŸ‡º', 'GU': 'ðŸ‡¬ðŸ‡º', 'MP': 'ðŸ‡²ðŸ‡µ', 'AS': 'ðŸ‡¦ðŸ‡¸', 'CK': 'ðŸ‡¨ðŸ‡°', 'NU': 'ðŸ‡³ðŸ‡º', 'TK': 'ðŸ‡¹ðŸ‡°',
+            'NC': 'ðŸ‡³ðŸ‡¨', 'PF': 'ðŸ‡µðŸ‡«', 'WF': 'ðŸ‡¼ðŸ‡«', 'PN': 'ðŸ‡µðŸ‡³', 'NF': 'ðŸ‡³ðŸ‡«',
             
-            // Territoires et dépendances
-            'AQ': '🇦🇶', 'BV': '🇧🇻', 'IO': '🇮🇴', 'CX': '🇨🇽', 'CC': '🇨🇨', 'HM': '🇭🇲', 'GS': '🇬🇸', 'TF': '🇹🇫', 'SH': '🇸🇭', 'SJ': '🇸🇯',
-            'UM': '🇺🇲', 'AX': '🇦🇽', 'FO': '🇫🇴', 'GL': '🇬🇱', 'GI': '🇬🇮', 'JE': '🇯🇪', 'IM': '🇮🇲', 'GG': '🇬🇬', 'AD': '🇦🇩', 'MC': '🇲🇨',
-            'SM': '🇸🇲', 'VA': '🇻🇦', 'LI': '🇱🇮', 'MT': '🇲🇹', 'CY': '🇨🇾'
+            // Territoires et dÃ©pendances
+            'AQ': 'ðŸ‡¦ðŸ‡¶', 'BV': 'ðŸ‡§ðŸ‡»', 'IO': 'ðŸ‡®ðŸ‡´', 'CX': 'ðŸ‡¨ðŸ‡½', 'CC': 'ðŸ‡¨ðŸ‡¨', 'HM': 'ðŸ‡­ðŸ‡²', 'GS': 'ðŸ‡¬ðŸ‡¸', 'TF': 'ðŸ‡¹ðŸ‡«', 'SH': 'ðŸ‡¸ðŸ‡­', 'SJ': 'ðŸ‡¸ðŸ‡¯',
+            'UM': 'ðŸ‡ºðŸ‡²', 'AX': 'ðŸ‡¦ðŸ‡½', 'FO': 'ðŸ‡«ðŸ‡´', 'GL': 'ðŸ‡¬ðŸ‡±', 'GI': 'ðŸ‡¬ðŸ‡®', 'JE': 'ðŸ‡¯ðŸ‡ª', 'IM': 'ðŸ‡®ðŸ‡²', 'GG': 'ðŸ‡¬ðŸ‡¬', 'AD': 'ðŸ‡¦ðŸ‡©', 'MC': 'ðŸ‡²ðŸ‡¨',
+            'SM': 'ðŸ‡¸ðŸ‡²', 'VA': 'ðŸ‡»ðŸ‡¦', 'LI': 'ðŸ‡±ðŸ‡®', 'MT': 'ðŸ‡²ðŸ‡¹', 'CY': 'ðŸ‡¨ðŸ‡¾'
           };
           
-          return knownFlags[countryCode] || '🌍';
+          return knownFlags[countryCode] || 'ðŸŒ';
         };
 
 export const ResultatBesoin: React.FC = () => {
@@ -4112,12 +4152,12 @@ export const ResultatBesoin: React.FC = () => {
   const [contactMenuOpen, setContactMenuOpen] = useState<number | null>(null);
   const [showPrestataireGallery, setShowPrestataireGallery] = useState(false);
 
-  // États pour la gestion des fichiers
+  // Ã‰tats pour la gestion des fichiers
   const [uploadingFiles, setUploadingFiles] = useState(false);
   const [prestataireGallery, setPrestataireGallery] = useState<any[]>([]);
   const [loadingGallery, setLoadingGallery] = useState(false);
 
-  // États pour l'enregistrement audio
+  // Ã‰tats pour l'enregistrement audio
   const [isRecording, setIsRecording] = useState(false);
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
   const [audioChunks, setAudioChunks] = useState<Blob[]>([]);
@@ -4131,15 +4171,15 @@ export const ResultatBesoin: React.FC = () => {
     isNaN(userId) ? 0 : userId
   );
 
-  // WebSocket pour les notifications en temps réel
+  // WebSocket pour les notifications en temps rÃ©el
   const { isConnected: notificationsConnected, notifications } = useNotificationsWebSocket(
     isNaN(userId) ? 0 : userId
   );
 
-  // Hook pour récupérer les informations des prestataires
+  // Hook pour rÃ©cupÃ©rer les informations des prestataires
   const { prestataires, fetchPrestatairesBatch } = usePrestataireInfo();
 
-  // État pour les indicateurs de frappe et métriques WebSocket
+  // Ã‰tat pour les indicateurs de frappe et mÃ©triques WebSocket
   const [typingUsers, setTypingUsers] = useState<Set<number>>(new Set());
   const [wsMetrics, setWsMetrics] = useState({
     connectionTime: 0,
@@ -4152,10 +4192,10 @@ export const ResultatBesoin: React.FC = () => {
   // Initialiser le suivi GPS automatique
   useEffect(() => {
     if (user?.id) {
-      console.log('🚀 Initialisation du suivi GPS pour l\'utilisateur:', user.id);
+      console.log('ðŸš€ Initialisation du suivi GPS pour l\'utilisateur:', user.id);
       gpsTrackingService.startTracking();
       
-      // Nettoyer à la fermeture
+      // Nettoyer Ã  la fermeture
       return () => {
         gpsTrackingService.stopTracking();
       };
@@ -4163,11 +4203,11 @@ export const ResultatBesoin: React.FC = () => {
   }, [user?.id]);
   const [wsTypingStatus, setWsTypingStatus] = useState(false);
 
-  // Fonction pour gérer les indicateurs de frappe WebSocket
+  // Fonction pour gÃ©rer les indicateurs de frappe WebSocket
   const handleTypingIndicator = (serviceId: number, isTyping: boolean) => {
     if (isTyping) {
       setTypingUsers(prev => new Set([...prev, serviceId]));
-      // Auto-arrêt après 3 secondes
+      // Auto-arrÃªt aprÃ¨s 3 secondes
       setTimeout(() => {
         setTypingUsers(prev => {
           const newSet = new Set(prev);
@@ -4184,7 +4224,7 @@ export const ResultatBesoin: React.FC = () => {
     }
   };
 
-  // Fonction pour mettre à jour les métriques WebSocket
+  // Fonction pour mettre Ã  jour les mÃ©triques WebSocket
   const updateWsMetrics = (type: 'sent' | 'received' | 'ping', value?: number) => {
     setWsMetrics(prev => {
       switch (type) {
@@ -4204,7 +4244,7 @@ export const ResultatBesoin: React.FC = () => {
     });
   };
 
-  // État pour le mode hors ligne
+  // Ã‰tat pour le mode hors ligne
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const [offlineMessages, setOfflineMessages] = useState<Array<{
     id: string;
@@ -4215,14 +4255,14 @@ export const ResultatBesoin: React.FC = () => {
     audioBlob?: Blob;
   }>>([]);
 
-  // État pour l'édition des messages
+  // Ã‰tat pour l'Ã©dition des messages
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
 
 
 
   
 
-  // Récupérer les informations des prestataires quand les services sont chargés
+  // RÃ©cupÃ©rer les informations des prestataires quand les services sont chargÃ©s
   useEffect(() => {
     if (services.length > 0) {
       const userIds = services.map(service => service.user_id).filter(id => id !== undefined);
@@ -4242,7 +4282,7 @@ export const ResultatBesoin: React.FC = () => {
           return;
         }
         
-        // Trier les résultats par score de pertinence et proximité
+        // Trier les rÃ©sultats par score de pertinence et proximitÃ©
         const sortedResults = await sortResultsByRelevanceAndProximity(results);
         
         const serviceIds = sortedResults
@@ -4280,7 +4320,7 @@ export const ResultatBesoin: React.FC = () => {
           if (response.ok) {
             const service = await response.json();
             
-            // Enrichir le service avec les données de recherche (score, etc.)
+            // Enrichir le service avec les donnÃ©es de recherche (score, etc.)
             const enrichedService = {
               ...service,
               score: originalResults[index]?.score || 0,
@@ -4291,14 +4331,14 @@ export const ResultatBesoin: React.FC = () => {
             
             return enrichedService;
           } else if (response.status === 404) {
-            console.warn(`⚠️ Service ${serviceId} non trouvé (404)`);
+            console.warn(`âš ï¸ Service ${serviceId} non trouvÃ© (404)`);
             return null;
           } else {
-            console.error(`❌ Erreur ${response.status} pour le service ${serviceId}`);
+            console.error(`âŒ Erreur ${response.status} pour le service ${serviceId}`);
             return null;
           }
         } catch (error) {
-          console.error(`❌ Erreur réseau pour le service ${serviceId}:`, error);
+          console.error(`âŒ Erreur rÃ©seau pour le service ${serviceId}:`, error);
           return null;
         }
       });
@@ -4307,16 +4347,16 @@ export const ResultatBesoin: React.FC = () => {
       const validServices = results.filter(service => service !== null);
 
       if (validServices.length === 0) {
-        setError("Aucun service trouvé. Les services recherchés ne sont plus disponibles.");
+        setError("Aucun service trouvÃ©. Les services recherchÃ©s ne sont plus disponibles.");
         setServices([]);
       } else if (validServices.length < serviceIds.length) {
         const missingCount = serviceIds.length - validServices.length;
-        console.warn(`⚠️ ${missingCount} services manquants sur ${serviceIds.length} demandés`);
+        console.warn(`âš ï¸ ${missingCount} services manquants sur ${serviceIds.length} demandÃ©s`);
         
         // Afficher un toast d'information
         toast({
-          title: "Services partiellement trouvés",
-          description: `${validServices.length} sur ${serviceIds.length} services trouvés`,
+          title: "Services partiellement trouvÃ©s",
+          description: `${validServices.length} sur ${serviceIds.length} services trouvÃ©s`,
           type: "default"
         });
         
@@ -4325,8 +4365,8 @@ export const ResultatBesoin: React.FC = () => {
         setServices(validServices);
       }
     } catch (error) {
-      console.error('❌ Erreur lors de la récupération des services:', error);
-      setError('Erreur lors de la récupération des services');
+      console.error('âŒ Erreur lors de la rÃ©cupÃ©ration des services:', error);
+      setError('Erreur lors de la rÃ©cupÃ©ration des services');
       setServices([]);
     } finally {
       setLoading(false);
@@ -4369,10 +4409,10 @@ export const ResultatBesoin: React.FC = () => {
       });
 
       if (response.ok) {
-        console.log(`✅ Interaction ${action} enregistrée pour le service ${service.id}`);
+        console.log(`âœ… Interaction ${action} enregistrÃ©e pour le service ${service.id}`);
       }
     } catch (error) {
-      console.error('❌ Erreur lors de l\'enregistrement de l\'interaction:', error);
+      console.error('âŒ Erreur lors de l\'enregistrement de l\'interaction:', error);
     }
   };
 
@@ -4396,7 +4436,7 @@ export const ResultatBesoin: React.FC = () => {
     // Envoyer notification au prestataire via l'API existante
     sendNotificationToPrestataire(service, 'chat_request');
     
-    // Initialiser le chat avec un message de bienvenue personnalisé
+    // Initialiser le chat avec un message de bienvenue personnalisÃ©
     const prestataireInfo = prestataires.get(service.user_id);
     const nomPrestataire = prestataireInfo?.nom_complet || `Prestataire #${service.user_id}`;
     const titreService = getServiceFieldValue(service.data?.titre_service);
@@ -4405,14 +4445,14 @@ export const ResultatBesoin: React.FC = () => {
     const welcomeMessage = {
       id: Date.now().toString(),
       from: 'prestataire',
-      content: `Bonjour 👋, je suis ${nomPrestataire} pour le service "${titreService || 'Service'}"${categorieService ? ` (${categorieService})` : ''}. Que puis-je faire pour vous ?`,
+      content: `Bonjour ðŸ‘‹, je suis ${nomPrestataire} pour le service "${titreService || 'Service'}"${categorieService ? ` (${categorieService})` : ''}. Que puis-je faire pour vous ?`,
       timestamp: new Date(),
       status: 'read',
       type: 'text'
     };
     setChatMessages([welcomeMessage]);
     
-    // Activer les WebSockets pour le chat en temps réel
+    // Activer les WebSockets pour le chat en temps rÃ©el
     if (wsConnected) {
       // Envoyer un message de statut pour indiquer que l'utilisateur est en train de chatter
       checkUserStatus(service.user_id);
@@ -4420,24 +4460,24 @@ export const ResultatBesoin: React.FC = () => {
       // Simuler l'indicateur de frappe pour ce service
       handleTypingIndicator(service.id, true);
       
-      // Mettre à jour les métriques WebSocket
+      // Mettre Ã  jour les mÃ©triques WebSocket
       updateWsMetrics('sent');
       
-      // Notification WebSocket en temps réel
+      // Notification WebSocket en temps rÃ©el
       toast({
-        title: "Chat activé",
-        description: `Connexion WebSocket établie avec ${getServiceFieldValue(service.data?.titre_service)}`,
+        title: "Chat activÃ©",
+        description: `Connexion WebSocket Ã©tablie avec ${getServiceFieldValue(service.data?.titre_service)}`,
         type: "success"
       });
     }
 
   };
 
-  // Fonction pour récupérer la position de l'utilisateur
+  // Fonction pour rÃ©cupÃ©rer la position de l'utilisateur
   const getUserLocation = (): Promise<{lat: number, lon: number} | null> => {
     return new Promise((resolve) => {
       if (!navigator.geolocation) {
-        console.warn('Géolocalisation non supportée');
+        console.warn('GÃ©olocalisation non supportÃ©e');
         resolve(null);
         return;
       }
@@ -4445,11 +4485,11 @@ export const ResultatBesoin: React.FC = () => {
       navigator.geolocation.getCurrentPosition(
         (position) => {
           const { latitude: lat, longitude: lon } = position.coords;
-          console.log(`📍 Position utilisateur: ${lat}, ${lon}`);
+          console.log(`ðŸ“ Position utilisateur: ${lat}, ${lon}`);
           resolve({ lat, lon });
         },
         (error) => {
-          console.warn('Erreur géolocalisation:', error.message);
+          console.warn('Erreur gÃ©olocalisation:', error.message);
           resolve(null);
         },
         {
@@ -4461,19 +4501,19 @@ export const ResultatBesoin: React.FC = () => {
     });
   };
 
-  // Fonction pour trier les résultats par pertinence et proximité
+  // Fonction pour trier les rÃ©sultats par pertinence et proximitÃ©
   const sortResultsByRelevanceAndProximity = async (results: any[]): Promise<any[]> => {
     try {
-      // Récupérer la position de l'utilisateur
+      // RÃ©cupÃ©rer la position de l'utilisateur
       const userLocation = await getUserLocation();
       
       if (!userLocation) {
-        // Si pas de géolocalisation, trier seulement par score
-        console.log('📍 Géolocalisation non disponible, tri par score uniquement');
+        // Si pas de gÃ©olocalisation, trier seulement par score
+        console.log('ðŸ“ GÃ©olocalisation non disponible, tri par score uniquement');
         return results.sort((a: any, b: any) => (b.score || 0) - (a.score || 0));
       }
 
-      // Enrichir les résultats avec la distance calculée
+      // Enrichir les rÃ©sultats avec la distance calculÃ©e
       const enrichedResults = results.map((result: any) => {
         let distance = Infinity;
         
@@ -4499,14 +4539,14 @@ export const ResultatBesoin: React.FC = () => {
         };
       });
 
-      // Trier par score combiné (pertinence + proximité)
+      // Trier par score combinÃ© (pertinence + proximitÃ©)
       return enrichedResults.sort((a: any, b: any) => {
         const scoreA = (a.score || 0) * 0.7 + (a.proximityScore || 0) * 0.3;
         const scoreB = (b.score || 0) * 0.7 + (b.proximityScore || 0) * 0.3;
         return scoreB - scoreA;
       });
     } catch (error) {
-      console.error('❌ Erreur lors du tri des résultats:', error);
+      console.error('âŒ Erreur lors du tri des rÃ©sultats:', error);
       // Fallback: tri par score uniquement
       return results.sort((a: any, b: any) => (b.score || 0) - (a.score || 0));
     }
@@ -4515,7 +4555,7 @@ export const ResultatBesoin: React.FC = () => {
   const handleWhatsApp = (service: Service) => {
     const phone = getServiceFieldValue(service.data?.telephone);
     if (phone && phone !== 'Non spécifié') {
-      const message = `Bonjour ! Je suis intéressé par votre service : ${getServiceFieldValue(service.data?.titre_service)}`;
+      const message = `Bonjour ! Je suis intÃ©ressÃ© par votre service : ${getServiceFieldValue(service.data?.titre_service)}`;
       const whatsappUrl = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
       
       window.open(whatsappUrl, '_blank');
@@ -4524,8 +4564,8 @@ export const ResultatBesoin: React.FC = () => {
       sendNotificationToPrestataire(service, 'whatsapp_contact');
     } else {
       toast({
-        title: "Téléphone non disponible",
-        description: "Ce prestataire n'a pas encore renseigné son numéro de téléphone pour WhatsApp",
+        title: "TÃ©lÃ©phone non disponible",
+        description: "Ce prestataire n'a pas encore renseignÃ© son numÃ©ro de tÃ©lÃ©phone pour WhatsApp",
         type: "default"
       });
     }
@@ -4548,16 +4588,16 @@ export const ResultatBesoin: React.FC = () => {
 
       if (response.ok) {
         toast({
-          title: "Notification envoyée",
-          description: "Le prestataire a été notifié de votre intérêt",
+          title: "Notification envoyÃ©e",
+          description: "Le prestataire a Ã©tÃ© notifiÃ© de votre intÃ©rÃªt",
           type: "default"
         });
         
-        // Notification WebSocket en temps réel si connecté
+        // Notification WebSocket en temps rÃ©el si connectÃ©
         if (notificationsConnected) {
           toast({
-            title: "🔴 Notification temps réel",
-            description: "Le prestataire a été notifié via WebSocket en temps réel",
+            title: "ðŸ”´ Notification temps rÃ©el",
+            description: "Le prestataire a Ã©tÃ© notifiÃ© via WebSocket en temps rÃ©el",
             type: "success"
           });
         }
@@ -4603,7 +4643,7 @@ export const ResultatBesoin: React.FC = () => {
       });
 
       if (response.ok) {
-        // Marquer comme livré
+        // Marquer comme livrÃ©
         setChatMessages(prev => 
           prev.map(msg => 
             msg.id === message.id ? { ...msg, status: 'delivered' } : msg
@@ -4626,14 +4666,14 @@ export const ResultatBesoin: React.FC = () => {
       // Notifier le prestataire AVANT l'appel
       sendNotificationToPrestataire(service, 'appel_telephonique');
       
-      // Attendre un peu pour que la notification soit envoyée
+      // Attendre un peu pour que la notification soit envoyÃ©e
       setTimeout(() => {
         window.open(`tel:${phone}`, '_self');
       }, 500);
     } else {
       toast({
-        title: "Téléphone non disponible",
-        description: "Ce prestataire n'a pas encore renseigné son numéro de téléphone",
+        title: "TÃ©lÃ©phone non disponible",
+        description: "Ce prestataire n'a pas encore renseignÃ© son numÃ©ro de tÃ©lÃ©phone",
         type: "default"
       });
     }
@@ -4646,27 +4686,27 @@ export const ResultatBesoin: React.FC = () => {
     } else {
       toast({
         title: "Email non disponible",
-        description: "Ce prestataire n'a pas encore renseigné son email",
+        description: "Ce prestataire n'a pas encore renseignÃ© son email",
         type: "default"
       });
     }
   };
 
   const handleVideoCall = (service: Service) => {
-    // Vérifier si l'utilisateur a une caméra
+    // VÃ©rifier si l'utilisateur a une camÃ©ra
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       toast({
-        title: "Caméra non disponible",
-        description: "Votre navigateur ne supporte pas les appels vidéo",
+        title: "CamÃ©ra non disponible",
+        description: "Votre navigateur ne supporte pas les appels vidÃ©o",
         type: "error"
       });
       return;
     }
 
-    // Démarrer l'appel vidéo
+    // DÃ©marrer l'appel vidÃ©o
     navigator.mediaDevices.getUserMedia({ video: true, audio: true })
       .then((stream) => {
-        // Créer une nouvelle fenêtre pour l'appel vidéo
+        // CrÃ©er une nouvelle fenÃªtre pour l'appel vidÃ©o
         const videoWindow = window.open(
           `/video-call?service=${service.id}&user=${user?.id}`,
           'video-call',
@@ -4674,49 +4714,49 @@ export const ResultatBesoin: React.FC = () => {
         );
         
         if (videoWindow) {
-          // Notifier le prestataire AVANT d'ouvrir la fenêtre
+          // Notifier le prestataire AVANT d'ouvrir la fenÃªtre
           sendNotificationToPrestataire(service, 'appel_video');
           
           toast({
-            title: "Appel vidéo démarré",
-            description: "Fenêtre d'appel vidéo ouverte",
+            title: "Appel vidÃ©o dÃ©marrÃ©",
+            description: "FenÃªtre d'appel vidÃ©o ouverte",
             type: "success"
           });
         } else {
           toast({
             title: "Erreur",
-            description: "Impossible d'ouvrir la fenêtre d'appel vidéo",
+            description: "Impossible d'ouvrir la fenÃªtre d'appel vidÃ©o",
             type: "error"
           });
         }
       })
       .catch((error) => {
-        console.error('Erreur accès caméra:', error);
+        console.error('Erreur accÃ¨s camÃ©ra:', error);
         toast({
-          title: "Erreur caméra",
-          description: "Impossible d'accéder à votre caméra. Vérifiez les permissions.",
+          title: "Erreur camÃ©ra",
+          description: "Impossible d'accÃ©der Ã  votre camÃ©ra. VÃ©rifiez les permissions.",
           type: "error"
         });
       });
   };
 
-  // Fonction pour démarrer l'enregistrement audio avec délai
+  // Fonction pour dÃ©marrer l'enregistrement audio avec dÃ©lai
   const startAudioRecording = () => {
     if (isRecording) return;
     
-    // Enregistrer le moment où l'utilisateur commence à maintenir
+    // Enregistrer le moment oÃ¹ l'utilisateur commence Ã  maintenir
     setHoldStartTime(Date.now());
     
-    // Démarrer l'enregistrement après un délai de 300ms
+    // DÃ©marrer l'enregistrement aprÃ¨s un dÃ©lai de 300ms
     const timer = setTimeout(async () => {
       try {
-        // Réinitialiser le compteur
+        // RÃ©initialiser le compteur
         setRecordingSeconds(0);
         
         // Demander les permissions audio
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         
-        // Créer le MediaRecorder
+        // CrÃ©er le MediaRecorder
         const recorder = new MediaRecorder(stream);
         const chunks: Blob[] = [];
         
@@ -4730,11 +4770,11 @@ export const ResultatBesoin: React.FC = () => {
           const audioBlob = new Blob(chunks, { type: 'audio/wav' });
           const audioUrl = URL.createObjectURL(audioBlob);
           
-          // Créer et envoyer le message audio automatiquement
+          // CrÃ©er et envoyer le message audio automatiquement
           const audioMessage = {
             id: Date.now().toString(),
             type: 'audio',
-            content: '🎵 Message audio',
+            content: 'ðŸŽµ Message audio',
             timestamp: new Date().toISOString(),
             sender: 'client',
             from: 'client',
@@ -4749,27 +4789,27 @@ export const ResultatBesoin: React.FC = () => {
           // Nettoyer les chunks audio
           setAudioChunks([]);
           
-          // Arrêter tous les tracks audio
+          // ArrÃªter tous les tracks audio
           stream.getTracks().forEach(track => track.stop());
           
-          // Arrêter le compteur
+          // ArrÃªter le compteur
           setRecordingSeconds(0);
           
-          // Envoyer via l'API en arrière-plan
+          // Envoyer via l'API en arriÃ¨re-plan
           sendAudioMessageInBackground(audioBlob, audioMessage.id);
         };
         
-        // Démarrer l'enregistrement
+        // DÃ©marrer l'enregistrement
         recorder.start();
         setMediaRecorder(recorder);
         setIsRecording(true);
         
-        // Démarrer le compteur de secondes
+        // DÃ©marrer le compteur de secondes
         const interval = setInterval(() => {
           setRecordingSeconds(prev => prev + 1);
         }, 1000);
         
-        // Arrêter automatiquement après 60 secondes
+        // ArrÃªter automatiquement aprÃ¨s 60 secondes
         setTimeout(() => {
           if (recorder.state === 'recording') {
             clearInterval(interval);
@@ -4781,27 +4821,27 @@ export const ResultatBesoin: React.FC = () => {
         recorder.addEventListener('stop', () => clearInterval(interval));
         
       } catch (error) {
-        console.error('Erreur accès microphone:', error);
+        console.error('Erreur accÃ¨s microphone:', error);
         toast({
           title: "Erreur microphone",
-          description: "Impossible d'accéder au microphone. Vérifiez les permissions.",
+          description: "Impossible d'accÃ©der au microphone. VÃ©rifiez les permissions.",
           type: "error"
         });
       }
-    }, 300); // Délai de 300ms avant de démarrer l'enregistrement
+    }, 300); // DÃ©lai de 300ms avant de dÃ©marrer l'enregistrement
     
     setRecordingTimer(timer);
   };
 
-  // Fonction pour arrêter l'enregistrement audio
+  // Fonction pour arrÃªter l'enregistrement audio
   const stopAudioRecording = () => {
-    // Annuler le timer si l'enregistrement n'a pas encore commencé
+    // Annuler le timer si l'enregistrement n'a pas encore commencÃ©
     if (recordingTimer) {
       clearTimeout(recordingTimer);
       setRecordingTimer(null);
     }
     
-    // Réinitialiser le temps de maintien
+    // RÃ©initialiser le temps de maintien
     setHoldStartTime(null);
     
     if (!isRecording || !mediaRecorder) return;
@@ -4812,15 +4852,15 @@ export const ResultatBesoin: React.FC = () => {
       }
       setIsRecording(false);
       
-      // L'enregistrement sera automatiquement envoyé via l'événement onstop
+      // L'enregistrement sera automatiquement envoyÃ© via l'Ã©vÃ©nement onstop
       // Pas besoin d'appeler sendAudioMessage ici
       
     } catch (error) {
-      console.error('Erreur arrêt enregistrement:', error);
+      console.error('Erreur arrÃªt enregistrement:', error);
     }
   };
 
-  // Fonction pour annuler l'enregistrement si l'utilisateur relâche trop tôt
+  // Fonction pour annuler l'enregistrement si l'utilisateur relÃ¢che trop tÃ´t
   const cancelRecording = () => {
     if (recordingTimer) {
       clearTimeout(recordingTimer);
@@ -4845,20 +4885,20 @@ export const ResultatBesoin: React.FC = () => {
     if (!audioChunks.length || !selectedService) return;
     
     try {
-      // Créer un Blob à partir des chunks audio
+      // CrÃ©er un Blob Ã  partir des chunks audio
       const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
       
-      // Créer un message local immédiatement
+      // CrÃ©er un message local immÃ©diatement
       const audioMessage = {
         id: Date.now().toString(),
         type: 'audio',
-        content: '🎵 Message audio',
+        content: 'ðŸŽµ Message audio',
         timestamp: new Date().toISOString(),
         sender: 'client',
         from: 'client',
         isLocal: true,
         audioBlob: audioBlob,
-        audioUrl: URL.createObjectURL(audioBlob) // Créer l'URL pour l'affichage
+        audioUrl: URL.createObjectURL(audioBlob) // CrÃ©er l'URL pour l'affichage
       };
       
       // Ajouter le message au chat localement
@@ -4883,7 +4923,7 @@ export const ResultatBesoin: React.FC = () => {
       });
       
       if (response.ok) {
-        // Marquer le message comme envoyé
+        // Marquer le message comme envoyÃ©
         setChatMessages(prev => 
           prev.map(msg => 
             msg.id === audioMessage.id 
@@ -4892,12 +4932,12 @@ export const ResultatBesoin: React.FC = () => {
           )
         );
         
-        // Nettoyer les chunks audio après envoi réussi
+        // Nettoyer les chunks audio aprÃ¨s envoi rÃ©ussi
         setAudioChunks([]);
         
         toast({
-          title: "Message audio envoyé",
-          description: "Votre message audio a été envoyé avec succès",
+          title: "Message audio envoyÃ©",
+          description: "Votre message audio a Ã©tÃ© envoyÃ© avec succÃ¨s",
           type: "success"
         });
       } else {
@@ -4914,7 +4954,7 @@ export const ResultatBesoin: React.FC = () => {
     }
   };
 
-  // Fonction pour envoyer le message audio en arrière-plan
+  // Fonction pour envoyer le message audio en arriÃ¨re-plan
   const sendAudioMessageInBackground = async (audioBlob: Blob, messageId: string) => {
     try {
       // Envoyer via l'API
@@ -4933,7 +4973,7 @@ export const ResultatBesoin: React.FC = () => {
       });
       
       if (response.ok) {
-        // Marquer le message comme envoyé
+        // Marquer le message comme envoyÃ©
         setChatMessages(prev => 
           prev.map(msg => 
             msg.id === messageId 
@@ -4942,10 +4982,10 @@ export const ResultatBesoin: React.FC = () => {
           )
         );
         
-        // Notification discrète
+        // Notification discrÃ¨te
         toast({
-          title: "Audio envoyé",
-          description: "Message audio envoyé avec succès",
+          title: "Audio envoyÃ©",
+          description: "Message audio envoyÃ© avec succÃ¨s",
           type: "success"
         });
       } else {
@@ -4953,7 +4993,7 @@ export const ResultatBesoin: React.FC = () => {
       }
       
     } catch (error) {
-      console.error('Erreur envoi audio en arrière-plan:', error);
+      console.error('Erreur envoi audio en arriÃ¨re-plan:', error);
       
       // Marquer le message comme en erreur
       setChatMessages(prev => 
@@ -4964,7 +5004,7 @@ export const ResultatBesoin: React.FC = () => {
         )
       );
       
-      // Notification d'erreur discrète
+      // Notification d'erreur discrÃ¨te
       toast({
         title: "Erreur envoi",
         description: "Erreur lors de l'envoi du message audio",
@@ -4973,7 +5013,7 @@ export const ResultatBesoin: React.FC = () => {
     }
   };
 
-  // Fonction pour gérer l'upload d'images et vidéos
+  // Fonction pour gÃ©rer l'upload d'images et vidÃ©os
   const handleImageVideoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files || !selectedService) return;
@@ -4982,21 +5022,21 @@ export const ResultatBesoin: React.FC = () => {
     
     try {
       for (const file of Array.from(files)) {
-        // Vérifier la taille du fichier (max 10MB)
+        // VÃ©rifier la taille du fichier (max 10MB)
         if (file.size > 10 * 1024 * 1024) {
           toast({
             title: "Fichier trop volumineux",
-            description: `${file.name} dépasse la limite de 10MB`,
+            description: `${file.name} dÃ©passe la limite de 10MB`,
             type: "error"
           });
           continue;
         }
 
-        // Créer un message local
+        // CrÃ©er un message local
         const message = {
           id: Date.now().toString() + Math.random(),
           from: 'client',
-          content: file.type.startsWith('image/') ? '🖼️ Image' : '🎥 Vidéo',
+          content: file.type.startsWith('image/') ? 'ðŸ–¼ï¸ Image' : 'ðŸŽ¥ VidÃ©o',
           timestamp: new Date(),
           status: 'sent',
           type: file.type.startsWith('image/') ? 'image' : 'video',
@@ -5008,7 +5048,7 @@ export const ResultatBesoin: React.FC = () => {
         // Ajouter le message localement
         setChatMessages(prev => [...prev, message]);
 
-        // Créer un FormData pour envoyer le fichier
+        // CrÃ©er un FormData pour envoyer le fichier
         const formData = new FormData();
         formData.append('file', file);
         formData.append('service_id', selectedService.id.toString());
@@ -5025,7 +5065,7 @@ export const ResultatBesoin: React.FC = () => {
         });
 
         if (response.ok) {
-          // Marquer comme livré
+          // Marquer comme livrÃ©
           setChatMessages(prev => 
             prev.map(msg => 
               msg.id === message.id ? { ...msg, status: 'delivered' } : msg
@@ -5035,8 +5075,8 @@ export const ResultatBesoin: React.FC = () => {
       }
 
       toast({
-        title: "Fichiers envoyés",
-        description: "Vos fichiers ont été envoyés avec succès",
+        title: "Fichiers envoyÃ©s",
+        description: "Vos fichiers ont Ã©tÃ© envoyÃ©s avec succÃ¨s",
         type: "success"
       });
     } catch (error) {
@@ -5048,12 +5088,12 @@ export const ResultatBesoin: React.FC = () => {
       });
     } finally {
       setUploadingFiles(false);
-      // Réinitialiser l'input
+      // RÃ©initialiser l'input
       event.target.value = '';
     }
   };
 
-  // Fonction pour gérer l'upload de documents
+  // Fonction pour gÃ©rer l'upload de documents
   const handleDocumentUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files || !selectedService) return;
@@ -5062,21 +5102,21 @@ export const ResultatBesoin: React.FC = () => {
     
     try {
       for (const file of Array.from(files)) {
-        // Vérifier la taille du fichier (max 25MB)
+        // VÃ©rifier la taille du fichier (max 25MB)
         if (file.size > 25 * 1024 * 1024) {
           toast({
             title: "Document trop volumineux",
-            description: `${file.name} dépasse la limite de 25MB`,
+            description: `${file.name} dÃ©passe la limite de 25MB`,
             type: "error"
           });
           continue;
         }
 
-        // Créer un message local
+        // CrÃ©er un message local
         const message = {
           id: Date.now().toString() + Math.random(),
           from: 'client',
-          content: '📄 Document',
+          content: 'ðŸ“„ Document',
           timestamp: new Date(),
           status: 'sent',
           type: 'document',
@@ -5088,7 +5128,7 @@ export const ResultatBesoin: React.FC = () => {
         // Ajouter le message localement
         setChatMessages(prev => [...prev, message]);
 
-        // Créer un FormData pour envoyer le document
+        // CrÃ©er un FormData pour envoyer le document
         const formData = new FormData();
         formData.append('file', file);
         formData.append('service_id', selectedService.id.toString());
@@ -5105,7 +5145,7 @@ export const ResultatBesoin: React.FC = () => {
         });
 
         if (response.ok) {
-          // Marquer comme livré
+          // Marquer comme livrÃ©
           setChatMessages(prev => 
             prev.map(msg => 
               msg.id === message.id ? { ...msg, status: 'delivered' } : msg
@@ -5115,8 +5155,8 @@ export const ResultatBesoin: React.FC = () => {
       }
 
       toast({
-        title: "Documents envoyés",
-        description: "Vos documents ont été envoyés avec succès",
+        title: "Documents envoyÃ©s",
+        description: "Vos documents ont Ã©tÃ© envoyÃ©s avec succÃ¨s",
         type: "success"
       });
     } catch (error) {
@@ -5128,7 +5168,7 @@ export const ResultatBesoin: React.FC = () => {
       });
     } finally {
       setUploadingFiles(false);
-      // Réinitialiser l'input
+      // RÃ©initialiser l'input
       event.target.value = '';
     }
   };
@@ -5139,7 +5179,7 @@ export const ResultatBesoin: React.FC = () => {
 
     setLoadingGallery(true);
     try {
-      // Récupérer les médias du service depuis l'API
+      // RÃ©cupÃ©rer les mÃ©dias du service depuis l'API
       const response = await fetch(`/api/services/${selectedService.id}/media`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
@@ -5150,10 +5190,10 @@ export const ResultatBesoin: React.FC = () => {
         const media = await response.json();
         setPrestataireGallery(media);
       } else {
-        // Fallback: utiliser les données du service
+        // Fallback: utiliser les donnÃ©es du service
         const serviceMedia = [];
         
-        // Vérifier et traiter les réalisations
+        // VÃ©rifier et traiter les rÃ©alisations
         if (selectedService.data?.realisations && Array.isArray(selectedService.data.realisations)) {
           serviceMedia.push(...selectedService.data.realisations);
         } else if (selectedService.data?.realisations && typeof selectedService.data.realisations === 'object') {
@@ -5164,7 +5204,7 @@ export const ResultatBesoin: React.FC = () => {
           }
         }
         
-        // Vérifier et traiter les vidéos
+        // VÃ©rifier et traiter les vidÃ©os
         if (selectedService.data?.videos && Array.isArray(selectedService.data.videos)) {
           serviceMedia.push(...selectedService.data.videos);
         } else if (selectedService.data?.videos && typeof selectedService.data.videos === 'object') {
@@ -5179,10 +5219,10 @@ export const ResultatBesoin: React.FC = () => {
       }
     } catch (error) {
       console.error('Erreur chargement galerie:', error);
-      // Fallback: utiliser les données du service
+      // Fallback: utiliser les donnÃ©es du service
       const serviceMedia = [];
       
-      // Vérifier et traiter les réalisations
+      // VÃ©rifier et traiter les rÃ©alisations
       if (selectedService.data?.realisations && Array.isArray(selectedService.data.realisations)) {
         serviceMedia.push(...selectedService.data.realisations);
       } else if (selectedService.data?.realisations && typeof selectedService.data.realisations === 'object') {
@@ -5193,7 +5233,7 @@ export const ResultatBesoin: React.FC = () => {
         }
       }
       
-      // Vérifier et traiter les vidéos
+      // VÃ©rifier et traiter les vidÃ©os
       if (selectedService.data?.videos && Array.isArray(selectedService.data.videos)) {
         serviceMedia.push(...selectedService.data.videos);
       } else if (selectedService.data?.videos && typeof selectedService.data.videos === 'object') {
@@ -5210,21 +5250,21 @@ export const ResultatBesoin: React.FC = () => {
     }
   };
 
-  // Fonction pour envoyer un média de la galerie du prestataire
+  // Fonction pour envoyer un mÃ©dia de la galerie du prestataire
   const sendGalleryMedia = async (mediaItem: any) => {
     if (!selectedService) return;
 
     try {
-      // Créer un message local
+      // CrÃ©er un message local
       const message = {
         id: Date.now().toString() + Math.random(),
         from: 'prestataire',
-        content: mediaItem.type === 'image' ? '🖼️ Réalisation' : '🎥 Vidéo de présentation',
+        content: mediaItem.type === 'image' ? 'ðŸ–¼ï¸ RÃ©alisation' : 'ðŸŽ¥ VidÃ©o de prÃ©sentation',
         timestamp: new Date(),
         status: 'sent',
         type: mediaItem.type === 'image' ? 'image' : 'video',
         fileUrl: mediaItem.url || mediaItem.valeur,
-        fileName: mediaItem.label || mediaItem.nom || 'Média',
+        fileName: mediaItem.label || mediaItem.nom || 'MÃ©dia',
         fileSize: mediaItem.size || 0
       };
 
@@ -5235,18 +5275,18 @@ export const ResultatBesoin: React.FC = () => {
       await sendNotificationToPrestataire(selectedService, 'gallery_media_shared');
 
       toast({
-        title: "Média partagé",
-        description: "Le média a été partagé dans le chat",
+        title: "MÃ©dia partagÃ©",
+        description: "Le mÃ©dia a Ã©tÃ© partagÃ© dans le chat",
         type: "success"
       });
 
       // Fermer la galerie
       setShowPrestataireGallery(false);
     } catch (error) {
-      console.error('Erreur partage média:', error);
+      console.error('Erreur partage mÃ©dia:', error);
       toast({
         title: "Erreur",
-        description: "Erreur lors du partage du média",
+        description: "Erreur lors du partage du mÃ©dia",
         type: "error"
       });
     }
@@ -5257,13 +5297,13 @@ export const ResultatBesoin: React.FC = () => {
     if (!selectedService || !user?.id) return;
 
     try {
-      // Créer un avis local
+      // CrÃ©er un avis local
       const review: Review = {
         id: Date.now(),
         service_id: selectedService.id,
         user_id: Number(user.id),
         user_name: user.name || `Utilisateur #${user.id}`,
-        user_avatar: undefined, // Pas de propriété avatar_url dans User
+        user_avatar: undefined, // Pas de propriÃ©tÃ© avatar_url dans User
         rating,
         comment,
         created_at: new Date().toISOString(),
@@ -5300,8 +5340,8 @@ export const ResultatBesoin: React.FC = () => {
 
       if (response.ok) {
         toast({
-          title: "Avis envoyé",
-          description: "Votre avis a été enregistré avec succès",
+          title: "Avis envoyÃ©",
+          description: "Votre avis a Ã©tÃ© enregistrÃ© avec succÃ¨s",
           type: "success"
         });
 
@@ -5325,7 +5365,7 @@ export const ResultatBesoin: React.FC = () => {
     if (!selectedService) return;
 
     try {
-      // Mettre à jour localement
+      // Mettre Ã  jour localement
       setServices(prev => 
         prev.map(service => 
           service.id === selectedService.id 
@@ -5341,7 +5381,7 @@ export const ResultatBesoin: React.FC = () => {
         )
       );
 
-      // Envoyer la mise à jour via l'API
+      // Envoyer la mise Ã  jour via l'API
       const response = await fetch(`/api/reviews/${reviewId}/helpful`, {
         method: 'POST',
         headers: {
@@ -5350,7 +5390,7 @@ export const ResultatBesoin: React.FC = () => {
       });
 
       if (!response.ok) {
-        console.warn('Erreur mise à jour avis utile');
+        console.warn('Erreur mise Ã  jour avis utile');
       }
     } catch (error) {
       console.error('Erreur avis utile:', error);
@@ -5363,7 +5403,7 @@ export const ResultatBesoin: React.FC = () => {
       // Supprimer le message localement
       setChatMessages(prev => prev.filter(msg => msg.id !== messageId));
       
-      // Si le message a été envoyé au serveur, l'effacer aussi
+      // Si le message a Ã©tÃ© envoyÃ© au serveur, l'effacer aussi
       if (selectedService) {
         const response = await fetch(`/api/services/${selectedService.id}/messages/${messageId}`, {
           method: 'DELETE',
@@ -5374,8 +5414,8 @@ export const ResultatBesoin: React.FC = () => {
         
         if (response.ok) {
           toast({
-            title: "Message supprimé",
-            description: "Le message a été supprimé avec succès",
+            title: "Message supprimÃ©",
+            description: "Le message a Ã©tÃ© supprimÃ© avec succÃ¨s",
             type: "success"
           });
         }
@@ -5400,8 +5440,8 @@ export const ResultatBesoin: React.FC = () => {
     } else {
       navigator.clipboard.writeText(window.location.href);
       toast({
-        title: "Lien copié",
-        description: "Le lien du service a été copié dans le presse-papiers",
+        title: "Lien copiÃ©",
+        description: "Le lien du service a Ã©tÃ© copiÃ© dans le presse-papiers",
         type: "default"
       });
     }
@@ -5410,7 +5450,7 @@ export const ResultatBesoin: React.FC = () => {
   const handleFavorite = (service: Service) => {
     toast({
       title: "Favori",
-      description: "Fonctionnalité de favoris en cours de développement",
+      description: "FonctionnalitÃ© de favoris en cours de dÃ©veloppement",
       type: "default"
     });
   };
@@ -5456,7 +5496,7 @@ export const ResultatBesoin: React.FC = () => {
       setIsOffline(true);
       toast({
         title: "Mode hors ligne",
-        description: "Vous êtes hors ligne. Les messages seront synchronisés à la reconnexion.",
+        description: "Vous Ãªtes hors ligne. Les messages seront synchronisÃ©s Ã  la reconnexion.",
         type: "default"
       });
     };
@@ -5510,15 +5550,15 @@ export const ResultatBesoin: React.FC = () => {
       setOfflineMessages([]);
       
       toast({
-        title: "Synchronisation terminée",
-        description: `${offlineMessages.length} messages ont été synchronisés`,
+        title: "Synchronisation terminÃ©e",
+        description: `${offlineMessages.length} messages ont Ã©tÃ© synchronisÃ©s`,
         type: "success"
       });
     } catch (error) {
       console.error('Erreur synchronisation:', error);
       toast({
         title: "Erreur synchronisation",
-        description: "Certains messages n'ont pas pu être synchronisés",
+        description: "Certains messages n'ont pas pu Ãªtre synchronisÃ©s",
         type: "error"
       });
     }
@@ -5547,41 +5587,41 @@ export const ResultatBesoin: React.FC = () => {
               className="text-gray-600 hover:text-gray-800"
             >
               <ArrowLeft className="w-4 h-4 mr-2" />
-              Retour à l'accueil
+              Retour Ã  l'accueil
             </Button>
           </div>
         </div>
 
-      {/* Header avec statistiques et géolocalisation */}
+      {/* Header avec statistiques et gÃ©olocalisation */}
       <div className="mb-8 text-center">
         <h1 className="text-3xl font-bold text-gray-900 mb-4">
-          Services correspondants à votre besoin
+          Services correspondants Ã  votre besoin
         </h1>
         <div className="flex justify-center items-center gap-8 text-gray-600 mb-4">
           <div className="flex items-center gap-2">
             <CheckCircle className="w-5 h-5 text-green-500" />
-            <span>{services.length} service{services.length > 1 ? 's' : ''} trouvé{services.length > 1 ? 's' : ''}</span>
+            <span>{services.length} service{services.length > 1 ? 's' : ''} trouvÃ©{services.length > 1 ? 's' : ''}</span>
           </div>
           <div className="flex items-center gap-2">
             <Clock className="w-5 h-5 text-blue-500" />
-            <span>Résultats en temps réel</span>
+            <span>RÃ©sultats en temps rÃ©el</span>
           </div>
           
 
         </div>
         
-        {/* Bouton de géolocalisation */}
+        {/* Bouton de gÃ©olocalisation */}
         <div className="flex justify-center">
           <Button
             onClick={async () => {
               const userLocation = await getUserLocation();
               if (userLocation) {
                 toast({
-                  title: "Géolocalisation activée",
+                  title: "GÃ©olocalisation activÃ©e",
                   description: `Position: ${userLocation.lat.toFixed(4)}, ${userLocation.lon.toFixed(4)}`,
                   type: "default"
                 });
-                // Recharger les résultats avec le tri par proximité
+                // Recharger les rÃ©sultats avec le tri par proximitÃ©
                 if (location.state?.results) {
                   const sortedResults = await sortResultsByRelevanceAndProximity(location.state.results);
                   const serviceIds = sortedResults
@@ -5594,8 +5634,8 @@ export const ResultatBesoin: React.FC = () => {
                 }
               } else {
                 toast({
-                  title: "Géolocalisation échouée",
-                  description: "Impossible de récupérer votre position",
+                  title: "GÃ©olocalisation Ã©chouÃ©e",
+                  description: "Impossible de rÃ©cupÃ©rer votre position",
                   type: "error"
                 });
               }
@@ -5604,7 +5644,7 @@ export const ResultatBesoin: React.FC = () => {
             className="bg-gradient-to-r from-blue-500 to-purple-600 text-white border-0 hover:from-blue-600 hover:to-purple-700"
           >
             <MapPin className="w-4 h-4 mr-2" />
-            Activer la géolocalisation pour trier par proximité
+            Activer la gÃ©olocalisation pour trier par proximitÃ©
           </Button>
         </div>
       </div>
@@ -5628,9 +5668,9 @@ export const ResultatBesoin: React.FC = () => {
         <Card className="max-w-2xl mx-auto">
           <CardContent className="p-8 text-center">
             <AlertCircle className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold mb-2">Aucun service trouvé</h3>
+            <h3 className="text-xl font-semibold mb-2">Aucun service trouvÃ©</h3>
             <p className="text-gray-600 mb-6">
-              Aucun prestataire ne correspond à vos critères pour le moment.
+              Aucun prestataire ne correspond Ã  vos critÃ¨res pour le moment.
             </p>
             <Button onClick={() => navigate('/besoins')} className="px-6">
               Retour aux besoins
@@ -5651,7 +5691,7 @@ export const ResultatBesoin: React.FC = () => {
                   service.is_active ? 'bg-white' : 'bg-gray-50'
                 }`}
               >
-                {/* Bannière en arrière-plan */}
+                {/* BanniÃ¨re en arriÃ¨re-plan */}
                 {hasValidMediaField(service.data?.banniere) && (
                   <div 
                     className="absolute inset-0 bg-cover bg-center opacity-15 transition-opacity duration-300 group-hover:opacity-25"
@@ -5663,9 +5703,9 @@ export const ResultatBesoin: React.FC = () => {
                   />
                 )}
                 
-                {/* Overlay pour maintenir la lisibilité */}
+                {/* Overlay pour maintenir la lisibilitÃ© */}
                 <div className="relative bg-white/95 backdrop-blur-sm min-h-full">
-                  {/* Logo avatar en haut à droite - uniquement s'il existe */}
+                  {/* Logo avatar en haut Ã  droite - uniquement s'il existe */}
                   {hasValidMediaField(service.data?.logo) && (
                     <div className="absolute top-2 right-2 z-30">
                       <div className="w-14 h-14 rounded-full border-3 border-white shadow-lg overflow-hidden bg-white">
@@ -5681,37 +5721,37 @@ export const ResultatBesoin: React.FC = () => {
                     </div>
                   )}
                   
-                  {/* Indicateur de proximité - position dynamique selon la présence du logo et WebSocket */}
+                  {/* Indicateur de proximitÃ© - position dynamique selon la prÃ©sence du logo et WebSocket */}
                   {service.distance !== undefined && service.distance < Infinity && (
                     <div className={`absolute left-2 bg-gradient-to-r from-blue-400 to-purple-500 text-white px-2 py-0.5 rounded-full text-xs font-medium z-20 shadow-md ${
                       hasValidMediaField(service.data?.logo) ? 'top-20' : (wsConnected ? 'top-8' : 'top-2')
                     }`}>
-                      📍 {service.distance < 1 ? '< 1km' : `${Math.round(service.distance)}km`}
+                      ðŸ“ {service.distance < 1 ? '< 1km' : `${Math.round(service.distance)}km`}
                     </div>
                   )}
                   
-                  {/* Indicateur de promotion - position dynamique selon la présence du logo */}
+                  {/* Indicateur de promotion - position dynamique selon la prÃ©sence du logo */}
                   {service.promotion && service.promotion.active && (
                     <div className={`absolute right-3 bg-gradient-to-r from-orange-400 to-red-500 text-white px-3 py-1 rounded-full text-sm font-semibold z-20 shadow-lg ${
                       hasValidMediaField(service.data?.logo) ? 'top-20' : 'top-8'
                     }`}>
-                      🎉 {service.promotion.type === 'reduction' ? service.promotion.valeur : 'Promo'}
+                      ðŸŽ‰ {service.promotion.type === 'reduction' ? service.promotion.valeur : 'Promo'}
                     </div>
                   )}
                   
-                  {/* Indicateur de connectivité WebSocket - Centré horizontalement en haut avec ajustement automatique */}
+                  {/* Indicateur de connectivitÃ© WebSocket - CentrÃ© horizontalement en haut avec ajustement automatique */}
                   {wsConnected && (
                     <div className={`absolute left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-green-500 to-emerald-600 text-white px-2 py-0.5 rounded-full text-xs font-medium z-20 shadow-md ${
                       hasValidMediaField(service.data?.logo) ? 'top-1' : 'top-0.5'
                     }`}>
-                      🔴 Live
+                      ðŸ”´ Live
                     </div>
                   )}
                 
 
                 
                 <CardHeader className={`pb-4 ${calculateHeaderPadding(hasValidMediaField(service.data?.logo), wsConnected)}`}>
-                  {/* En-tête avec titre et actions */}
+                  {/* En-tÃªte avec titre et actions */}
                   <div className="flex justify-between items-start mb-3">
                     <div className="flex-1">
                       <CardTitle className="text-lg font-semibold text-gray-900 line-clamp-2">
@@ -5740,7 +5780,7 @@ export const ResultatBesoin: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Badges et métadonnées optimisés */}
+                  {/* Badges et mÃ©tadonnÃ©es optimisÃ©s */}
                   <div className="flex flex-wrap gap-2 mb-3 justify-between items-center">
                     <div className="flex flex-wrap gap-2">
                       <Badge variant="secondary" className="bg-blue-100 text-blue-800">
@@ -5749,25 +5789,25 @@ export const ResultatBesoin: React.FC = () => {
                       </Badge>
                       {getServiceFieldValue(service.data?.is_tarissable) === 'Oui' && (
                         <Badge variant="outline" className="text-green-600 border-green-300">
-                          💰 Tarissable
+                          ðŸ’° Tarissable
                         </Badge>
                       )}
                       {/* Badge de promotion */}
                       {service.promotion && service.promotion.active && (
                         <Badge variant="outline" className="text-orange-600 border-orange-300 bg-orange-50">
-                          🎉 {service.promotion.type === 'reduction' ? service.promotion.valeur : 'Promotion'}
+                          ðŸŽ‰ {service.promotion.type === 'reduction' ? service.promotion.valeur : 'Promotion'}
                         </Badge>
                       )}
                     </div>
                     
-                    {/* Date de création en haut à droite */}
+                    {/* Date de crÃ©ation en haut Ã  droite */}
                     <div className="flex items-center gap-1 text-xs text-gray-500 font-mono">
                       <Calendar className="w-3 h-3" />
                       {formatDate(service.created_at)}
                     </div>
                   </div>
 
-                  {/* Informations de localisation optimisées */}
+                  {/* Informations de localisation optimisÃ©es */}
                   <div className="flex items-center gap-1 text-sm text-gray-600 mb-3">
                     <MapPin className="w-4 h-4 text-blue-500 flex-shrink-0" />
                     <div className="font-medium text-gray-800 flex-1 min-w-0" title="Localisation du service">
@@ -5813,7 +5853,7 @@ export const ResultatBesoin: React.FC = () => {
                           ) : (
                             <>
                               <div className="w-3 h-3 bg-gray-300 rounded-full animate-pulse"></div>
-                              <span className="text-gray-400 text-sm">Vérification...</span>
+                              <span className="text-gray-400 text-sm">VÃ©rification...</span>
                             </>
                           )}
                         </div>
@@ -5828,7 +5868,7 @@ export const ResultatBesoin: React.FC = () => {
                     </p>
                   </div>
 
-                  {/* Galerie média du service */}
+                  {/* Galerie mÃ©dia du service */}
                   <div className="mb-4">
                     <ServiceMediaGallery
                       logo={undefined}
@@ -5860,9 +5900,9 @@ export const ResultatBesoin: React.FC = () => {
 
                   {/* Autres contacts utiles */}
                   <div className="border-t pt-4">
-                    <h4 className="text-sm font-medium text-gray-700 mb-3">📞 Autres contacts utiles</h4>
+                    <h4 className="text-sm font-medium text-gray-700 mb-3">ðŸ“ž Autres contacts utiles</h4>
                     <div className="grid grid-cols-2 gap-3">
-                      {/* WhatsApp - Seulement si le téléphone existe */}
+                      {/* WhatsApp - Seulement si le tÃ©lÃ©phone existe */}
                       {getServiceFieldValue(service.data?.telephone) && getServiceFieldValue(service.data?.telephone) !== 'Non spécifié' && (
                         <div className="flex items-center gap-3 p-3 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border border-green-200 hover:shadow-md transition-all duration-200">
                           <div className="w-10 h-10 bg-gradient-to-r from-green-500 to-emerald-600 rounded-full flex items-center justify-center shadow-lg">
@@ -5884,14 +5924,14 @@ export const ResultatBesoin: React.FC = () => {
                         </div>
                       )}
                       
-                      {/* Téléphone - Seulement si le téléphone existe */}
+                      {/* TÃ©lÃ©phone - Seulement si le tÃ©lÃ©phone existe */}
                       {getServiceFieldValue(service.data?.telephone) && getServiceFieldValue(service.data?.telephone) !== 'Non spécifié' && (
                         <div className="flex items-center gap-3 p-3 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200 hover:shadow-md transition-all duration-200">
                           <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full flex items-center justify-center shadow-lg">
                             <Phone className="w-5 h-5 text-white" />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-xs font-medium text-blue-700 uppercase tracking-wide">Téléphone</p>
+                            <p className="text-xs font-medium text-blue-700 uppercase tracking-wide">TÃ©lÃ©phone</p>
                             <p className="text-sm font-semibold text-gray-900 truncate">{getServiceFieldValue(service.data?.telephone)}</p>
                           </div>
                           <Button
@@ -5968,7 +6008,7 @@ export const ResultatBesoin: React.FC = () => {
         <div className="mt-12 text-center">
           <div className="max-w-2xl mx-auto p-6 bg-blue-50 rounded-lg border border-blue-200">
             <h3 className="text-lg font-semibold text-blue-800 mb-2">
-              Comment procéder ?
+              Comment procÃ©der ?
             </h3>
             <div className="grid md:grid-cols-3 gap-4 text-sm text-blue-700">
               <div className="flex items-center gap-2">
@@ -5981,7 +6021,7 @@ export const ResultatBesoin: React.FC = () => {
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-6 h-6 bg-blue-200 rounded-full flex items-center justify-center text-blue-800 font-semibold">3</div>
-                <span>Échangez et finalisez votre projet</span>
+                <span>Ã‰changez et finalisez votre projet</span>
               </div>
             </div>
           </div>
@@ -6000,7 +6040,7 @@ export const ResultatBesoin: React.FC = () => {
                 onClick={() => setShowContactModal(false)}
                 className="text-gray-500 hover:text-gray-700"
               >
-                ✕
+                âœ•
               </Button>
             </div>
             
@@ -6038,7 +6078,7 @@ export const ResultatBesoin: React.FC = () => {
                 className="w-full bg-purple-600 hover:bg-purple-700 text-white"
               >
                 <Video className="w-4 h-4 mr-2" />
-                Appel vidéo
+                Appel vidÃ©o
               </Button>
             </div>
 
@@ -6055,7 +6095,7 @@ export const ResultatBesoin: React.FC = () => {
         </div>
       )}
 
-      {/* Modal de chat intégré */}
+      {/* Modal de chat intÃ©grÃ© */}
       {selectedService && showChatModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg w-full max-w-2xl h-96 flex flex-col">
@@ -6083,11 +6123,11 @@ export const ResultatBesoin: React.FC = () => {
                         <span className="text-gray-500">Hors ligne</span>
                       </>
                     )}
-                    <span>•</span>
+                    <span>â€¢</span>
                     <span>{getServiceFieldValue(selectedService.data?.titre_service) || 'Service'}</span>
                     {getServiceFieldValue(selectedService.data?.category) && (
                       <>
-                        <span>•</span>
+                        <span>â€¢</span>
                         <span className="text-blue-600">{getServiceFieldValue(selectedService.data?.category)}</span>
                       </>
                     )}
@@ -6095,7 +6135,7 @@ export const ResultatBesoin: React.FC = () => {
                 </div>
               </div>
               
-              {/* Boutons d'action audio/vidéo */}
+              {/* Boutons d'action audio/vidÃ©o */}
               <div className="flex items-center gap-2">
                 {/* Appel audio */}
                 {getServiceFieldValue(selectedService.data?.telephone) && getServiceFieldValue(selectedService.data?.telephone) !== 'Non spécifié' && (
@@ -6110,13 +6150,13 @@ export const ResultatBesoin: React.FC = () => {
                   </Button>
                 )}
                 
-                {/* Appel vidéo */}
+                {/* Appel vidÃ©o */}
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => handleVideoCall(selectedService)}
                   className="text-purple-600 hover:text-purple-700 hover:bg-purple-50"
-                  title="Appel vidéo"
+                  title="Appel vidÃ©o"
                 >
                   <Video className="w-4 h-4" />
                 </Button>
@@ -6128,7 +6168,7 @@ export const ResultatBesoin: React.FC = () => {
                   onClick={() => setShowChatModal(false)}
                   className="text-gray-500 hover:text-gray-700"
                 >
-                  ✕
+                  âœ•
                 </Button>
               </div>
             </div>
@@ -6149,13 +6189,13 @@ export const ResultatBesoin: React.FC = () => {
                     {/* Affichage selon le type de message */}
                     {message.type === 'audio' ? (
                       <div className="flex items-center gap-2">
-                        <span className="text-sm">🎵</span>
+                        <span className="text-sm">ðŸŽµ</span>
                         <audio 
                           controls 
                           className="max-w-full"
                           src={message.audioUrl || (message.audioBlob ? URL.createObjectURL(message.audioBlob) : '')}
                         >
-                          Votre navigateur ne supporte pas l'élément audio.
+                          Votre navigateur ne supporte pas l'Ã©lÃ©ment audio.
                         </audio>
                       </div>
                     ) : message.type === 'image' ? (
@@ -6170,7 +6210,7 @@ export const ResultatBesoin: React.FC = () => {
                           }}
                         />
                         <div className="hidden text-xs opacity-70">
-                          🖼️ {message.fileName || 'Image'}
+                          ðŸ–¼ï¸ {message.fileName || 'Image'}
                         </div>
                       </div>
                     ) : message.type === 'video' ? (
@@ -6184,10 +6224,10 @@ export const ResultatBesoin: React.FC = () => {
                             e.currentTarget.nextElementSibling?.classList.remove('hidden');
                           }}
                         >
-                          Votre navigateur ne supporte pas l'élément vidéo.
+                          Votre navigateur ne supporte pas l'Ã©lÃ©ment vidÃ©o.
                         </video>
                         <div className="hidden text-xs opacity-70">
-                          🎥 {message.fileName || 'Vidéo'}
+                          ðŸŽ¥ {message.fileName || 'VidÃ©o'}
                         </div>
                       </div>
                     ) : message.type === 'document' ? (
@@ -6244,7 +6284,7 @@ export const ResultatBesoin: React.FC = () => {
 
             <div className="p-4 border-t bg-white">
               <div className="flex gap-2">
-                {/* Bouton audio intelligent unique - Gère tout automatiquement */}
+                {/* Bouton audio intelligent unique - GÃ¨re tout automatiquement */}
                 <Button
                   variant="ghost"
                   size="sm"
@@ -6263,10 +6303,10 @@ export const ResultatBesoin: React.FC = () => {
                   } transition-all duration-200 rounded-full w-12 h-12 p-0 flex items-center justify-center relative`}
                   title={
                     isRecording 
-                      ? "🎙️ Relâchez pour arrêter et envoyer" 
+                      ? "ðŸŽ™ï¸ RelÃ¢chez pour arrÃªter et envoyer" 
                       : holdStartTime && !isRecording
-                      ? "🎙️ Continuez à maintenir pour enregistrer..."
-                      : "🎙️ Maintenez enfoncé pour enregistrer, relâchez pour envoyer"
+                      ? "ðŸŽ™ï¸ Continuez Ã  maintenir pour enregistrer..."
+                      : "ðŸŽ™ï¸ Maintenez enfoncÃ© pour enregistrer, relÃ¢chez pour envoyer"
                   }
                 >
                   {isRecording ? (
@@ -6288,14 +6328,14 @@ export const ResultatBesoin: React.FC = () => {
                     </div>
                   )}
                   
-                  {/* Indicateur "Maintenez enfoncé" */}
+                  {/* Indicateur "Maintenez enfoncÃ©" */}
                   {!isRecording && !holdStartTime && (
                     <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-600 text-white text-xs px-2 py-1 rounded-full whitespace-nowrap opacity-80">
                       Maintenez
                     </div>
                   )}
                   
-                  {/* Indicateur "Continuez à maintenir" pendant le délai */}
+                  {/* Indicateur "Continuez Ã  maintenir" pendant le dÃ©lai */}
                   {holdStartTime && !isRecording && (
                     <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-yellow-500 text-white text-xs px-2 py-1 rounded-full whitespace-nowrap">
                       Continuez...
@@ -6303,13 +6343,13 @@ export const ResultatBesoin: React.FC = () => {
                   )}
                 </Button>
 
-                {/* Bouton d'envoi d'images et vidéos */}
+                {/* Bouton d'envoi d'images et vidÃ©os */}
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => document.getElementById('file-input-images')?.click()}
                   className="bg-gray-100 text-gray-700 hover:bg-gray-200 border-0 rounded-full w-12 h-12 p-0 flex items-center justify-center transition-all duration-200"
-                  title="Envoyer des images ou vidéos"
+                  title="Envoyer des images ou vidÃ©os"
                 >
                   <Image className="w-5 h-5" />
                 </Button>
@@ -6327,7 +6367,7 @@ export const ResultatBesoin: React.FC = () => {
                   </svg>
                 </Button>
 
-                {/* Bouton d'accès à la galerie du prestataire */}
+                {/* Bouton d'accÃ¨s Ã  la galerie du prestataire */}
                 <Button
                   variant="ghost"
                   size="sm"
@@ -6348,7 +6388,7 @@ export const ResultatBesoin: React.FC = () => {
                       <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" style={{animationDelay: '0.2s'}}></div>
                       <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" style={{animationDelay: '0.4s'}}></div>
                     </div>
-                    <span className="font-medium">🎙️ Enregistrement...</span>
+                    <span className="font-medium">ðŸŽ™ï¸ Enregistrement...</span>
                   </div>
                 )}
                 
@@ -6374,7 +6414,7 @@ export const ResultatBesoin: React.FC = () => {
                 </Button>
               </div>
 
-              {/* Inputs cachés pour la sélection de fichiers */}
+              {/* Inputs cachÃ©s pour la sÃ©lection de fichiers */}
               <input
                 id="file-input-images"
                 type="file"
@@ -6423,7 +6463,7 @@ export const ResultatBesoin: React.FC = () => {
                 <div>
                   <h3 className="text-lg font-semibold">Galerie du prestataire</h3>
                   <p className="text-sm text-gray-600">
-                    Réalisations et vidéos de {getServiceFieldValue(selectedService.data?.nom_prestataire) || `Prestataire #${selectedService.user_id}`}
+                    RÃ©alisations et vidÃ©os de {getServiceFieldValue(selectedService.data?.nom_prestataire) || `Prestataire #${selectedService.user_id}`}
                   </p>
                 </div>
               </div>
@@ -6455,7 +6495,7 @@ export const ResultatBesoin: React.FC = () => {
                   onClick={() => setShowPrestataireGallery(false)}
                   className="text-gray-500 hover:text-gray-700"
                 >
-                  ✕
+                  âœ•
                 </Button>
               </div>
             </div>
@@ -6474,15 +6514,15 @@ export const ResultatBesoin: React.FC = () => {
                     <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                     </svg>
-                    <h4 className="text-lg font-medium text-gray-600 mb-2">Aucun média disponible</h4>
+                    <h4 className="text-lg font-medium text-gray-600 mb-2">Aucun mÃ©dia disponible</h4>
                     <p className="text-gray-500 mb-4">
-                      Ce prestataire n'a pas encore ajouté de réalisations ou de vidéos à sa galerie.
+                      Ce prestataire n'a pas encore ajoutÃ© de rÃ©alisations ou de vidÃ©os Ã  sa galerie.
                     </p>
                     <Button
                       onClick={loadPrestataireGallery}
                       className="bg-blue-600 hover:bg-blue-700 text-white"
                     >
-                      🔄 Actualiser
+                      ðŸ”„ Actualiser
                     </Button>
                   </div>
                 </div>
@@ -6521,10 +6561,10 @@ export const ResultatBesoin: React.FC = () => {
                       
                       <div className="p-3">
                         <p className="text-sm font-medium text-gray-900 truncate">
-                          {mediaItem.label || mediaItem.nom || `Média ${index + 1}`}
+                          {mediaItem.label || mediaItem.nom || `MÃ©dia ${index + 1}`}
                         </p>
                         <p className="text-xs text-gray-500">
-                          {mediaItem.type === 'image' ? '🖼️ Image' : '🎥 Vidéo'}
+                          {mediaItem.type === 'image' ? 'ðŸ–¼ï¸ Image' : 'ðŸŽ¥ VidÃ©o'}
                         </p>
                         <div className="mt-2">
                           <Button
@@ -6535,7 +6575,7 @@ export const ResultatBesoin: React.FC = () => {
                               sendGalleryMedia(mediaItem);
                             }}
                           >
-                            📤 Partager dans le chat
+                            ðŸ“¤ Partager dans le chat
                           </Button>
                         </div>
                       </div>
@@ -6555,10 +6595,10 @@ export const ResultatBesoin: React.FC = () => {
   );
 };
 
-// Composant pour afficher la localisation de manière asynchrone avec drapeau
+// Composant pour afficher la localisation de maniÃ¨re asynchrone avec drapeau
         const AsyncLocationDisplay = ({ service, prestataires, user }: { service: any; prestataires: Map<number, any>; user: any }) => {
           const [location, setLocation] = useState<string>('Chargement...');
-          const [countryInfo, setCountryInfo] = useState<{ flag: string; code: string }>({ flag: '🌍', code: 'XX' });
+          const [countryInfo, setCountryInfo] = useState<{ flag: string; code: string }>({ flag: 'ðŸŒ', code: 'XX' });
           const [isLoading, setIsLoading] = useState(true);
         
           useEffect(() => {
@@ -6568,7 +6608,7 @@ export const ResultatBesoin: React.FC = () => {
                 const result = await formatLocation(service, prestataires, user);
                 setLocation(result);
                 
-                // Obtenir les informations du pays si on a des coordonnées GPS
+                // Obtenir les informations du pays si on a des coordonnÃ©es GPS
                 let coords = null;
                 if (service?.data?.gps_fixe) {
                   const gpsFixe = getServiceFieldValue(service.data.gps_fixe);
@@ -6590,7 +6630,7 @@ export const ResultatBesoin: React.FC = () => {
                 }
                 
               } catch (error) {
-                console.error('❌ [AsyncLocationDisplay] Erreur:', error);
+                console.error('âŒ [AsyncLocationDisplay] Erreur:', error);
                 setLocation('Erreur de chargement');
               } finally {
                 setIsLoading(false);
@@ -6600,12 +6640,12 @@ export const ResultatBesoin: React.FC = () => {
             loadLocation();
           }, [service, prestataires, user]);
         
-          // Fonction pour tronquer intelligemment le nom du lieu - VERSION AMÉLIORÉE
+          // Fonction pour tronquer intelligemment le nom du lieu - VERSION AMÃ‰LIORÃ‰E
           const truncateLocation = (locationText: string, maxLength: number = 35) => {
             if (locationText.length <= maxLength) return locationText;
             
-            // Essayer de tronquer à un endroit logique (virgule, tiret, etc.)
-            const truncatePoints = [',', ' - ', ' – ', ' | ', ' / ', ' • '];
+            // Essayer de tronquer Ã  un endroit logique (virgule, tiret, etc.)
+            const truncatePoints = [',', ' - ', ' â€“ ', ' | ', ' / ', ' â€¢ '];
             for (const point of truncatePoints) {
               const index = locationText.indexOf(point);
               if (index > 0 && index <= maxLength) {
@@ -6629,7 +6669,7 @@ export const ResultatBesoin: React.FC = () => {
           return (
             <span className="inline-flex items-center gap-1 w-full overflow-hidden" title={location}>
               <span className={`${isLoading ? 'text-yellow-600' : 'text-gray-800'} font-medium truncate`}>
-                {isLoading ? '⏳ ' : ''}{truncateLocation(location)}
+                {isLoading ? 'â³ ' : ''}{truncateLocation(location)}
               </span>
               <span className="inline-flex items-center gap-1 text-xs text-gray-600 flex-shrink-0">
                 {countryInfo.code !== 'XX' && (
@@ -6643,7 +6683,7 @@ export const ResultatBesoin: React.FC = () => {
                     className="w-4 h-3 object-cover rounded-sm border border-gray-200"
                     title={`Drapeau: ${countryInfo.flag} (Code: ${countryInfo.code})`}
                     onError={(e) => {
-                      console.log('❌ [Drapeau] Erreur chargement:', countryInfo.code, 'URL:', e.currentTarget.src);
+                      console.log('âŒ [Drapeau] Erreur chargement:', countryInfo.code, 'URL:', e.currentTarget.src);
                       // Fallback vers emoji si l'image ne charge pas
                       e.currentTarget.style.display = 'none';
                       const emojiSpan = document.createElement('span');
@@ -6652,7 +6692,7 @@ export const ResultatBesoin: React.FC = () => {
                       e.currentTarget.parentNode?.appendChild(emojiSpan);
                     }}
                     onLoad={() => {
-                      console.log('✅ [Drapeau] Chargé avec succès:', countryInfo.code);
+                      console.log('âœ… [Drapeau] ChargÃ© avec succÃ¨s:', countryInfo.code);
                     }}
                   />
                 )}
@@ -6662,3 +6702,5 @@ export const ResultatBesoin: React.FC = () => {
         };
 
 export default ResultatBesoin;
+
+

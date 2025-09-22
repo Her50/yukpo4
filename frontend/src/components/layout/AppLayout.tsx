@@ -7,7 +7,7 @@ import Footer from "@/components/Footer";
 import LanguageSwitcher from "@/components/ui/LanguageSwitcher";
 import { useUser } from "@/hooks/useUser";
 import FlushFloatingButton from "@/components/admin/FlushFloatingButton";
-import { GlobalIAStatsProvider, GlobalIAStatsPanel } from '@/components/intelligence/GlobalIAStats';
+import { GlobalIAStatsProvider } from '@/components/intelligence/GlobalIAStats';
 import ChatNotifications from "@/components/notifications/ChatNotifications";
 import ChatButton from "@/components/chat/ChatButton";
 import ChatList from "@/components/chat/ChatList";
@@ -49,7 +49,6 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children, padding = true }) => {
         </div>
       </div>
 
-      <GlobalIAStatsPanel />
 
       {/* 🌍 Contenu principal */}
       <main

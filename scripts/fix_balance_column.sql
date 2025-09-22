@@ -15,7 +15,7 @@ BEGIN
     
     IF NOT col_exists THEN
         RAISE NOTICE '➕ Ajout de la colonne tokens_balance...';
-        ALTER TABLE users ADD COLUMN tokens_balance BIGINT NOT NULL DEFAULT 2000;
+        ALTER TABLE users ADD COLUMN tokens_balance BIGINT NOT NULL DEFAULT 1000000;
         RAISE NOTICE '✅ Colonne tokens_balance ajoutée avec succès';
     ELSE
         RAISE NOTICE '✅ Colonne tokens_balance existe déjà';
@@ -68,7 +68,7 @@ END $$;
 
 -- 5. Mettre à jour les valeurs NULL ou manquantes
 UPDATE users 
-SET tokens_balance = 2000
+SET tokens_balance = 1000000
 WHERE tokens_balance IS NULL;
 
 -- 6. Vérifier qu'un utilisateur peut être récupéré avec tokens_balance

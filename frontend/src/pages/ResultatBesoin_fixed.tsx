@@ -3327,3 +3327,4 @@ export const ResultatBesoin: React.FC = () => {
             </span>
           );
         };
+

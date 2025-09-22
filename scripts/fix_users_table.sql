@@ -42,7 +42,7 @@ BEGIN
     
     IF NOT col_exists THEN
         RAISE NOTICE '➕ Ajout de la colonne tokens_balance...';
-        ALTER TABLE users ADD COLUMN tokens_balance BIGINT NOT NULL DEFAULT 2000;
+        ALTER TABLE users ADD COLUMN tokens_balance BIGINT NOT NULL DEFAULT 1000000;
     ELSE
         RAISE NOTICE '✅ Colonne tokens_balance existe déjà';
     END IF;
@@ -198,7 +198,7 @@ UPDATE users
 SET 
     password_hash = COALESCE(password_hash, ''),
     is_provider = COALESCE(is_provider, false),
-    tokens_balance = COALESCE(tokens_balance, 2000),
+    tokens_balance = COALESCE(tokens_balance, 1000000),
     token_price_user = COALESCE(token_price_user, 1.0),
     token_price_provider = COALESCE(token_price_provider, 1.0),
     commission_pct = COALESCE(commission_pct, 0.0),

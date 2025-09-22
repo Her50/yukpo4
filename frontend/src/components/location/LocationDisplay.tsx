@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { MapPin, Navigation, ExternalLink, User, Home } from 'lucide-react';
 import { Button } from '@/components/ui/buttons/Button';
 import { useUser } from '@/hooks/useUser';
+import { ExternalLink, MapPin, Navigation } from 'lucide-react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 
 interface LocationDisplayProps {
   service: any;
@@ -11,8 +11,8 @@ interface LocationDisplayProps {
   showMap?: boolean;
 }
 
-export const LocationDisplay: React.FC<LocationDisplayProps> = ({ 
-  service, 
+export const LocationDisplay: React.FC<LocationDisplayProps> = ({
+  service,
   serviceCreatorInfo, // Renommé pour plus de clarté
   className = '',
   compact = false,
@@ -31,7 +31,7 @@ export const LocationDisplay: React.FC<LocationDisplayProps> = ({
 
   const getFieldValue = useCallback((field: any): string => {
     if (!field) return '';
-    
+
     // ?? CORRECTION : Gérer la structure { type_donnee, valeur, origine_champs }
     if (typeof field === 'object') {
       // Structure du service : { type_donnee, valeur, origine_champs }
@@ -43,13 +43,13 @@ export const LocationDisplay: React.FC<LocationDisplayProps> = ({
         if (Array.isArray(value)) return value.join(', ');
         return String(value);
       }
-      
+
       // Fallback pour d'autres structures
       if (field.value !== undefined) return field.value;
       if (field.content !== undefined) return field.content;
       if (field.text !== undefined) return field.text;
       if (field.data !== undefined) return field.data;
-      
+
       // Si c'est un objet avec des clés, essayer de trouver une valeur
       if (Object.keys(field).length > 0) {
         const possibleValues = ['value', 'content', 'text', 'data', 'info'];
@@ -63,19 +63,68 @@ export const LocationDisplay: React.FC<LocationDisplayProps> = ({
         }
       }
     }
-    
+
     // Valeur directe
     if (typeof field === 'string') return field;
     if (typeof field === 'boolean') return field ? 'Oui' : 'Non';
     if (typeof field === 'number') return field.toString();
-    
+
     return '';
+  }, []);
+
+  // Fonction pour détecter les coordonnées Nigeria par défaut
+  const isNigeriaDefaultCoords = useCallback((lat: number, lng: number): boolean => {
+    const nigeriaCoords = [
+      { lat: 9.818276, lng: 4.033640 },
+      { lat: 9.818119, lng: 4.033687 },
+    ];
+
+    const tolerance = 0.001;
+
+    for (const coord of nigeriaCoords) {
+      if (Math.abs(lat - coord.lat) < tolerance && Math.abs(lng - coord.lng) < tolerance) {
+        return true;
+      }
+    }
+
+    // Zone générale du Nigeria par défaut
+    if (lat >= 9.5 && lat <= 10.5 && lng >= 3.5 && lng <= 4.5) {
+      return true;
+    }
+
+    return false;
   }, []);
 
   // Fonction pour obtenir la position GPS actuelle de l'utilisateur connecté
   const getCurrentUserLocation = useCallback(async (): Promise<string | null> => {
-    // Cette fonction n'est plus utilisée - supprimée
-    return null;
+    console.log('🌍 [getCurrentUserLocation] Tentative d\'obtention de la position courante...');
+
+    if (!navigator.geolocation) {
+      console.warn('⚠️ [getCurrentUserLocation] Géolocalisation non supportée');
+      return null;
+    }
+
+    try {
+      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(
+          resolve,
+          reject,
+          {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 300000 // 5 minutes de cache
+          }
+        );
+      });
+
+      const coords = `${position.coords.latitude.toFixed(6)},${position.coords.longitude.toFixed(6)}`;
+      console.log(`📍 [getCurrentUserLocation] Position courante obtenue: ${coords}`);
+      return coords;
+
+    } catch (error) {
+      console.warn('⚠️ [getCurrentUserLocation] Erreur obtention position courante:', error);
+      return null;
+    }
   }, []);
 
   // Fonction simplifiée pour extraire le pays depuis la réponse Google Maps
@@ -83,20 +132,20 @@ export const LocationDisplay: React.FC<LocationDisplayProps> = ({
     console.log('🏳️ [extractCountryInfo] Données reçues:', data);
     console.log('🏳️ [extractCountryInfo] Type de données:', typeof data);
     console.log('🏳️ [extractCountryInfo] Clés disponibles:', Object.keys(data));
-    
+
     // Priorité 1: Extraire depuis address_components
     if (data.address_components && Array.isArray(data.address_components)) {
       console.log('🏳️ [extractCountryInfo] address_components trouvé, longueur:', data.address_components.length);
       console.log('🏳️ [extractCountryInfo] address_components:', data.address_components);
-      
+
       const country = data.address_components.find((c: any) => c.types.includes('country'));
       if (country) {
         const countryCode = country.short_name;
         const countryName = country.long_name;
         console.log('🏳️ [extractCountryInfo] Pays trouvé dans address_components:', { code: countryCode, name: countryName });
-        
-        return { 
-          flag: '', 
+
+        return {
+          flag: '',
           code: countryCode,
           countryName: countryName
         };
@@ -107,12 +156,12 @@ export const LocationDisplay: React.FC<LocationDisplayProps> = ({
       console.log('🏳️ [extractCountryInfo] address_components non trouvé ou invalide');
       console.log('🏳️ [extractCountryInfo] Type de address_components:', typeof data.address_components);
     }
-    
+
     // Priorité 2: Extraire depuis formatted_address
     if (data.formatted_address) {
       const address = data.formatted_address.toLowerCase();
       console.log('🏳️ [extractCountryInfo] Tentative extraction depuis formatted_address:', address);
-      
+
       // Détection par mots-clés dans l'adresse
       if (address.includes('douala') || address.includes('littoral') || address.includes('cameroun')) {
         console.log('🏳️ [extractCountryInfo] Cameroun détecté dans l\'adresse');
@@ -186,29 +235,29 @@ export const LocationDisplay: React.FC<LocationDisplayProps> = ({
         console.log('🏳️ [extractCountryInfo] Afrique du Sud détecté dans l\'adresse');
         return { flag: '', code: 'ZA', countryName: 'Afrique du Sud' };
       }
-      
+
       console.log('🏳️ [extractCountryInfo] Aucun pays reconnu dans formatted_address');
     } else {
       console.log('🏳️ [extractCountryInfo] formatted_address non trouvé');
     }
-    
+
     // Priorité 3: Vérifier s'il y a d'autres champs utiles
     if (data.results && Array.isArray(data.results) && data.results.length > 0) {
       console.log('🏳️ [extractCountryInfo] Tentative depuis data.results[0]');
       return extractCountryInfo(data.results[0]);
     }
-    
+
     console.log('🏳️ [extractCountryInfo] Retour des valeurs par défaut');
     return { flag: '', code: 'XX', countryName: 'Pays inconnu' };
   }, []);
 
   const convertGpsToLocation = useCallback(async (gpsString: string): Promise<string> => {
     if (!gpsString || !gpsString.includes(',')) return gpsString;
-    
+
     try {
       const coords = gpsString.split(',').map((coord: string) => parseFloat(coord.trim()));
       if (coords.length !== 2 || coords.some(isNaN)) return gpsString;
-      
+
       let lat, lng;
       if (coords[0] >= -90 && coords[0] <= 90) { lat = coords[0]; lng = coords[1]; }
       else if (coords[1] >= -90 && coords[1] <= 90) { lat = coords[1]; lng = coords[0]; }
@@ -218,46 +267,46 @@ export const LocationDisplay: React.FC<LocationDisplayProps> = ({
       try {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 secondes de timeout
-        
+
         console.log('🌐 [LocationDisplay] Tentative API backend Google Maps pour:', { lat, lng });
-        
+
         const response = await fetch('/api/geocoding/reverse', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ latitude: lat, longitude: lng, detail_level: 'high' }),
           signal: controller.signal
         });
-        
+
         clearTimeout(timeoutId);
-        
+
         if (response.ok) {
           const data = await response.json();
           console.log('✅ [LocationDisplay] API Google Maps réussie:', data);
           console.log('🔍 [LocationDisplay] Structure complète des données:', JSON.stringify(data, null, 2));
-          
+
           if (data.formatted_address) {
             let locationName = data.formatted_address;
-            
+
             // Extraire les informations de pays
             const countryInfo = extractCountryInfo(data);
             setCountryInfo(countryInfo);
-            
+
             // Créer un nom de lieu plus précis
             if (data.address_components) {
               const components = data.address_components;
               const neighbourhood = components.find((c: any) => c.types.includes('neighbourhood'));
               const sublocality = components.find((c: any) => c.types.includes('sublocality'));
               const locality = components.find((c: any) => c.types.includes('locality'));
-              
-              if (neighbourhood && locality) { 
-                locationName = `${neighbourhood.long_name}, ${locality.long_name}`; 
-              } else if (sublocality && locality) { 
-                locationName = `${sublocality.long_name}, ${locality.long_name}`; 
-              } else if (locality) { 
-                locationName = locality.long_name; 
+
+              if (neighbourhood && locality) {
+                locationName = `${neighbourhood.long_name}, ${locality.long_name}`;
+              } else if (sublocality && locality) {
+                locationName = `${sublocality.long_name}, ${locality.long_name}`;
+              } else if (locality) {
+                locationName = locality.long_name;
               }
             }
-            
+
             return locationName;
           }
         } else {
@@ -277,9 +326,9 @@ export const LocationDisplay: React.FC<LocationDisplayProps> = ({
       console.log('🔄 [LocationDisplay] API échouée, affichage des coordonnées');
       const latFormatted = Math.abs(lat) < 10 ? lat.toFixed(3) : lat.toFixed(2);
       const lngFormatted = Math.abs(lng) < 10 ? lng.toFixed(3) : lng.toFixed(2);
-      
+
       return `Coordonnées GPS (${latFormatted}, ${lngFormatted})`;
-      
+
     } catch (error) {
       console.error('❌ [convertGpsToLocation] Erreur:', error);
       return gpsString;
@@ -293,114 +342,100 @@ export const LocationDisplay: React.FC<LocationDisplayProps> = ({
     console.log('🔑 [LocationDisplay] User hook:', user);
 
     try {
-      // Priorité 1: GPS fixe du service (priorité absolue)
+      // 1. PRIORITÉ 1: gps_fixe du service (SI coordonnées valides choisies par l'utilisateur)
       const gpsFixe = getFieldValue(service?.data?.gps_fixe);
       console.log('📍 [LocationDisplay] GPS fixe du service:', gpsFixe);
-      
-      if (gpsFixe && gpsFixe.includes(',')) {
-        const result = await convertGpsToLocation(gpsFixe);
-        if (result && result !== 'Localisation non disponible') {
-          console.log('✅ [LocationDisplay] Utilisation GPS fixe du service:', result);
-          setLocationSource('service'); // GPS fixe du service = symbole maison
-          const coords = gpsFixe.split(',').map((coord: string) => parseFloat(coord.trim()));
-          if (coords.length === 2 && !coords.some(isNaN)) {
-            let lat, lng;
-            if (coords[0] >= -90 && coords[0] <= 90) { lat = coords[0]; lng = coords[1]; }
-            else { lat = coords[1]; lng = coords[0]; }
-            setCoordinates({ lat, lng });
+
+      if (gpsFixe && gpsFixe !== 'Non spécifié' && gpsFixe.includes(',')) {
+        const coords = gpsFixe.split(',').map((coord: string) => parseFloat(coord.trim()));
+        if (coords.length === 2 && !coords.some(isNaN)) {
+          let lat, lng;
+          if (coords[0] >= -90 && coords[0] <= 90) { lat = coords[0]; lng = coords[1]; }
+          else { lat = coords[1]; lng = coords[0]; }
+
+          // Vérifier si ce sont des coordonnées Nigeria par défaut
+          if (!isNigeriaDefaultCoords(lat, lng)) {
+            console.log('✅ [LocationDisplay] Coordonnées gps_fixe valides choisies par l\'utilisateur:', gpsFixe);
+            const result = await convertGpsToLocation(gpsFixe);
+            if (result && result !== 'Localisation non disponible') {
+              setLocationSource('service');
+              setCoordinates({ lat, lng });
+              return result;
+            }
+          } else {
+            console.log('🚫 [LocationDisplay] Coordonnées Nigeria par défaut détectées, ignorées');
           }
-          return result;
         }
       } else {
         console.log('❌ [LocationDisplay] GPS fixe non valide ou absent');
       }
 
-      // Priorité 2: GPS de l'utilisateur qui a créé le service (dans la table users)
-      console.log('🔍 [LocationDisplay] Recherche GPS du créateur du service...');
-      
-      if (serviceCreatorInfo?.gps && serviceCreatorInfo.gps.includes(',')) {
-        console.log('✅ [LocationDisplay] GPS créateur du service trouvé:', serviceCreatorInfo.gps);
-        
-        // ?? NOUVEAU : Vérifier si le GPS du créateur est "suspicieux" (Nigeria par défaut)
-        const coords = serviceCreatorInfo.gps.split(',').map((coord: string) => parseFloat(coord.trim()));
-        if (coords.length === 2 && !coords.some(isNaN)) {
-          let lat, lng;
-          if (coords[0] >= -90 && coords[0] <= 90) { lat = coords[0]; lng = coords[1]; }
-          else { lat = coords[1]; lng = coords[0]; }
-          
-          // ?? NOUVEAU : Détecter les coordonnées suspectes (Nigeria par défaut)
-          const isSuspiciousLocation = (
-            (lat >= 6.0 && lat <= 7.0 && lng >= 3.0 && lng <= 4.0) || // Lagos, Nigeria
-            (lat >= 8.0 && lat <= 9.0 && lng >= 4.0 && lng <= 5.0) || // Abuja, Nigeria
-            (lat >= 9.0 && lat <= 10.0 && lng >= 4.0 && lng <= 5.0)   // Kwara, Nigeria
-          );
-          
-          if (isSuspiciousLocation) {
-            console.log('⚠️ [LocationDisplay] GPS créateur suspect (Nigeria par défaut), récupération position temps réel');
-            // Au lieu d'afficher les coordonnées suspectes, récupérer la position en temps réel
-            try {
-              if (navigator.geolocation) {
-                const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-                  navigator.geolocation.getCurrentPosition(resolve, reject, {
-                    enableHighAccuracy: true,
-                    timeout: 10000,
-                    maximumAge: 60000
-                  });
-                });
-                
-                const realTimeCoords = `${position.coords.latitude},${position.coords.longitude}`;
-                console.log('📍 [LocationDisplay] Position temps réel récupérée:', realTimeCoords);
-                
-                const result = await convertGpsToLocation(realTimeCoords);
-                if (result && result !== 'Localisation non disponible') {
-                  setLocationSource('user');
-                  setCoordinates({ lat: position.coords.latitude, lng: position.coords.longitude });
-                  return result;
-                }
-              }
-            } catch (error) {
-              console.warn('⚠️ [LocationDisplay] Impossible de récupérer la position temps réel:', error);
-            }
-            
-            // Fallback si la géolocalisation échoue
-            setLocationSource('creator');
-            setCoordinates({ lat, lng });
-            return 'Position du créateur du service';
-          }
-          
-          // ?? NOUVEAU : GPS créateur valide, l'utiliser avec avertissement
-          console.log('✅ [LocationDisplay] GPS créateur valide, utilisation avec avertissement');
-          const result = await convertGpsToLocation(serviceCreatorInfo.gps);
+      // 2. PRIORITÉ 2: Position courante de l'utilisateur (par défaut)
+      console.log('🌍 [LocationDisplay] Tentative d\'obtention de la position courante...');
+      try {
+        const currentLocation = await getCurrentUserLocation();
+        if (currentLocation) {
+          console.log('✅ [LocationDisplay] Utilisation de la position courante:', currentLocation);
+          const result = await convertGpsToLocation(currentLocation);
           if (result && result !== 'Localisation non disponible') {
-            console.log('✅ [LocationDisplay] Résultat GPS créateur du service:', result);
-            setLocationSource('creator'); // GPS créateur = symbole personne (temps réel)
-            setCoordinates({ lat, lng });
-            return `${result} 📍 (Position actuelle du créateur)`;
+            setLocationSource('user');
+            const coords = currentLocation.split(',').map((coord: string) => parseFloat(coord.trim()));
+            if (coords.length === 2 && !coords.some(isNaN)) {
+              setCoordinates({ lat: coords[0], lng: coords[1] });
+            }
+            return result;
           }
         }
-      } else {
-        console.log('❌ [LocationDisplay] GPS créateur du service non trouvé ou invalide');
+      } catch (error) {
+        console.warn('⚠️ [LocationDisplay] Erreur obtention position courante:', error);
       }
 
-      // Priorité 3: Adresse du service
-      const adresse = getFieldValue(service?.data?.adresse);
-      console.log('🏠 [LocationDisplay] Adresse du service:', adresse);
-      if (adresse) {
-        console.log('✅ [LocationDisplay] Utilisation de l\'adresse:', adresse);
-        setLocationSource('adresse'); // Adresse = symbole maison
-        return adresse;
+      // 3. PRIORITÉ 3: GPS du créateur du service
+      console.log('🔍 [LocationDisplay] Recherche GPS du créateur du service...');
+
+      if (serviceCreatorInfo?.gps && serviceCreatorInfo.gps !== 'Non spécifié') {
+        console.log('✅ [LocationDisplay] GPS créateur du service trouvé:', serviceCreatorInfo.gps);
+
+        if (typeof serviceCreatorInfo.gps === 'string' && serviceCreatorInfo.gps.includes(',')) {
+          const coords = serviceCreatorInfo.gps.split(',').map((coord: string) => parseFloat(coord.trim()));
+          if (coords.length === 2 && !coords.some(isNaN)) {
+            let lat, lng;
+            if (coords[0] >= -90 && coords[0] <= 90) { lat = coords[0]; lng = coords[1]; }
+            else { lat = coords[1]; lng = coords[0]; }
+
+            // Vérifier si ce ne sont pas des coordonnées Nigeria par défaut
+            if (!isNigeriaDefaultCoords(lat, lng)) {
+              const result = await convertGpsToLocation(serviceCreatorInfo.gps);
+              if (result && result !== 'Localisation non disponible') {
+                console.log('✅ [LocationDisplay] Localisation créateur:', result);
+                setLocationSource('creator');
+                setCoordinates({ lat, lng });
+                return result;
+              }
+            } else {
+              console.log('🚫 [LocationDisplay] GPS créateur Nigeria par défaut, ignoré');
+            }
+          }
+        } else {
+          console.log('✅ [LocationDisplay] Localisation créateur textuelle:', serviceCreatorInfo.gps);
+          setLocationSource('creator');
+          return serviceCreatorInfo.gps;
+        }
       }
 
-      // Priorité 4: Titre du service
-      const titre = getFieldValue(service?.data?.titre);
-      console.log('📝 [LocationDisplay] Titre du service:', titre);
-      if (titre) {
-        console.log('✅ [LocationDisplay] Utilisation du titre:', titre);
-        setLocationSource('titre'); // Titre = symbole maison
-        return titre;
+      // 4. PRIORITÉ 4: Adresse textuelle du service
+      if (service?.data?.adresse) {
+        const adresse = getFieldValue(service.data.adresse);
+        console.log('🏠 [LocationDisplay] Adresse du service:', adresse);
+        if (adresse && adresse !== 'Non spécifié') {
+          console.log('✅ [LocationDisplay] Utilisation de l\'adresse:', adresse);
+          setLocationSource('adresse');
+          return adresse;
+        }
       }
 
-      console.log('❌ [LocationDisplay] Aucune localisation trouvée');
+      // 5. FALLBACK
+      console.log('⚠️ [LocationDisplay] Aucune localisation valide trouvée');
       return 'Localisation non disponible';
     } catch (error) {
       console.error('❌ [formatLocation] Erreur:', error);
@@ -411,17 +446,17 @@ export const LocationDisplay: React.FC<LocationDisplayProps> = ({
   useEffect(() => {
     // Éviter les re-renders multiples et la boucle infinie
     if (hasLoadedRef.current) return;
-    
+
     console.log('🚀 [LocationDisplay] useEffect déclenché');
     console.log('📦 [LocationDisplay] Props reçues:', { service, serviceCreatorInfo, compact, showMap });
-    
+
     const loadLocation = async () => {
       try {
         setIsLoading(true);
         const result = await formatLocation();
         console.log('✅ [LocationDisplay] Résultat final:', result);
         setLocation(result);
-        
+
         if (result && result !== 'Localisation non disponible' && result !== 'Erreur de chargement' && !result.includes('Chargement')) {
           let detailed = result;
           if (countryInfo.code !== 'XX') {
@@ -430,7 +465,7 @@ export const LocationDisplay: React.FC<LocationDisplayProps> = ({
           }
           setDetailedLocation(detailed);
         }
-        
+
         hasLoadedRef.current = true;
       } catch (error) {
         console.error('❌ [LocationDisplay] Erreur:', error);
@@ -440,7 +475,7 @@ export const LocationDisplay: React.FC<LocationDisplayProps> = ({
         setIsLoading(false);
       }
     };
-    
+
     loadLocation();
   }, []); // Dépendances vides pour éviter la boucle infinie
 
@@ -485,14 +520,14 @@ export const LocationDisplay: React.FC<LocationDisplayProps> = ({
             <span className="text-gray-800 font-medium truncate max-w-[200px]" title={location}>
               {location}
             </span>
-            
+
             {/* Nom du pays sur la même ligne */}
             {countryInfo?.countryName && (
               <span className="text-xs text-gray-600 bg-gray-100 px-2 py-1 rounded flex-shrink-0">
                 {countryInfo.countryName}
               </span>
             )}
-            
+
             {/* Symbole conditionnel pour indiquer la source de la position GPS */}
             <span className="ml-auto text-lg flex-shrink-0">
               {locationSource === 'user' && (
@@ -506,7 +541,7 @@ export const LocationDisplay: React.FC<LocationDisplayProps> = ({
                 </span>
               )}
             </span>
-            
+
             {/* Bouton carte sur la même ligne si showMap est activé */}
             {showMap && location !== 'Localisation non disponible' && location !== 'Erreur de chargement' && (
               <Button
@@ -521,7 +556,7 @@ export const LocationDisplay: React.FC<LocationDisplayProps> = ({
               </Button>
             )}
           </div>
-          
+
           {/* Informations détaillées en dessous seulement si pas compact */}
           {!compact && detailedLocation && detailedLocation !== location && (
             <div className="text-xs text-gray-600 bg-gray-50 px-3 py-2 rounded-md">
