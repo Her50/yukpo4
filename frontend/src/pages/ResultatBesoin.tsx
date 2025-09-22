@@ -1,27 +1,26 @@
-import { useState, useEffect } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { Card, CardContent } from '@/components/ui/card';
+import AppLayout from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/buttons/Button';
+import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
 import { useUser } from '@/hooks/useUser';
-import { usePrestataireStatus, useNotificationsWebSocket } from '@/hooks/useWebSocket';
-import AppLayout from '@/components/layout/AppLayout';
+import { useNotificationsWebSocket, usePrestataireStatus } from '@/hooks/useWebSocket';
 import { gpsTrackingService } from '@/services/gpsTrackingService';
-import { 
+import { Service } from '@/types/service';
+import {
   AlertCircle,
+  ArrowLeft,
   CheckCircle,
   Clock,
-  MapPin,
-  ArrowLeft
+  MapPin
 } from 'lucide-react';
-import { Service } from '@/types/service';
+import { useEffect, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 // Composants modulaires
-import ServiceCard from '@/components/services/ServiceCard';
 import ChatModal from '@/components/chat/ChatModal';
 import ContactModal from '@/components/contact/ContactModal';
 import GalleryModal from '@/components/gallery/GalleryModal';
-import LocationDisplay from '@/components/location/LocationDisplay';
+import ServiceCard from '@/components/services/ServiceCard';
 
 // Hooks et services
 import { usePrestataireInfo } from '@/hooks/usePrestataireInfo';
@@ -42,7 +41,7 @@ export const ResultatBesoin: React.FC = () => {
   const location = useLocation();
   const { user } = useUser();
   const { toast } = useToast();
-  
+
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedService, setSelectedService] = useState<Service | null>(null);
@@ -61,7 +60,7 @@ export const ResultatBesoin: React.FC = () => {
   );
   const { prestataires, fetchPrestatairesBatch, loading: prestatairesLoading } = usePrestataireInfo();
   const [prestatairesLoaded, setPrestatairesLoaded] = useState(false);
-  
+
   // Marquer les prestataires comme chargés quand ils arrivent
   useEffect(() => {
     if (prestataires.size > 0 && !prestatairesLoading) {
@@ -75,7 +74,7 @@ export const ResultatBesoin: React.FC = () => {
     if (user?.id) {
       console.log('🚀 Initialisation du suivi GPS pour l\'utilisateur:', user.id);
       gpsTrackingService.startTracking();
-      
+
       return () => {
         gpsTrackingService.stopTracking();
       };
@@ -87,37 +86,37 @@ export const ResultatBesoin: React.FC = () => {
   useEffect(() => {
     console.log('🔄 [ResultatBesoin] useEffect prestataires déclenché:', {
       servicesLength: services.length,
-      services: services.map(s => ({ 
-        id: s.id, 
+      services: services.map(s => ({
+        id: s.id,
         userId: s.user_id,
         // ?? NOUVEAU : Log des données GPS pour déboguer
         gpsData: s.data?.gps_fixe,
         rawGps: s.data?.gps_fixe_coords
       }))
     });
-    
-          // ?? NOUVEAU : Log détaillé des coordonnées GPS pour identifier le problème
-      services.forEach((service, index) => {
-        console.log(`📍 [ResultatBesoin] Service ${index + 1} GPS:`, {
-          serviceId: service.id,
-          gpsFixe: service.data?.gps_fixe,
-          gpsCoords: service.data?.gps_fixe_coords,
-          hasGpsData: !!service.data?.gps_fixe,
-          hasGpsCoords: !!service.data?.gps_fixe_coords,
-          // ?? NOUVEAU : Vérifier si on utilise le GPS en temps réel
-          usesRealtimeGPS: !service.data?.gps_fixe && !!service.data?.gps_fixe_coords
-        });
-        
-        // ?? NOUVEAU : Avertissement si on utilise le GPS en temps réel
-        if (!service.data?.gps_fixe && service.data?.gps_fixe_coords) {
-          console.warn(`⚠️ [ResultatBesoin] Service ${service.id} utilise le GPS en temps réel au lieu du GPS fixe`);
-        }
+
+    // ?? NOUVEAU : Log détaillé des coordonnées GPS pour identifier le problème
+    services.forEach((service, index) => {
+      console.log(`📍 [ResultatBesoin] Service ${index + 1} GPS:`, {
+        serviceId: service.id,
+        gpsFixe: service.data?.gps_fixe,
+        gpsCoords: service.data?.gps_fixe_coords,
+        hasGpsData: !!service.data?.gps_fixe,
+        hasGpsCoords: !!service.data?.gps_fixe_coords,
+        // ?? NOUVEAU : Vérifier si on utilise le GPS en temps réel
+        usesRealtimeGPS: !service.data?.gps_fixe && !!service.data?.gps_fixe_coords
       });
-    
+
+      // ?? NOUVEAU : Avertissement si on utilise le GPS en temps réel
+      if (!service.data?.gps_fixe && service.data?.gps_fixe_coords) {
+        console.warn(`⚠️ [ResultatBesoin] Service ${service.id} utilise le GPS en temps réel au lieu du GPS fixe`);
+      }
+    });
+
     if (services.length > 0) {
       const userIds = services.map(service => service.user_id).filter(id => id !== undefined);
       console.log('👥 [ResultatBesoin] UserIDs extraits:', userIds);
-      
+
       if (userIds.length > 0) {
         console.log('🚀 [ResultatBesoin] Appel fetchPrestatairesBatch avec:', userIds);
         fetchPrestatairesBatch(userIds);
@@ -129,20 +128,20 @@ export const ResultatBesoin: React.FC = () => {
     const processResults = async () => {
       if (location.state?.results) {
         const results = location.state.results;
-        
+
         if (!Array.isArray(results)) {
           setLoading(false);
           return;
         }
-        
+
         // Trier les résultats par score de pertinence et proximité
         const sortedResults = await sortResultsByRelevanceAndProximity(results);
-        
+
         const serviceIds = sortedResults
           .map((result: any) => result.service_id)
           .filter((id: any) => id && id !== 'undefined')
           .map((id: any) => id.toString());
-        
+
         if (serviceIds.length > 0) {
           fetchServicesByIds(serviceIds, sortedResults);
         } else {
@@ -157,7 +156,7 @@ export const ResultatBesoin: React.FC = () => {
   }, [location.state]);
 
   // Fonction pour récupérer la position de l'utilisateur
-  const getUserLocation = (): Promise<{lat: number, lon: number} | null> => {
+  const getUserLocation = (): Promise<{ lat: number, lon: number } | null> => {
     return new Promise((resolve) => {
       if (!navigator.geolocation) {
         console.warn('Géolocalisation non supportée');
@@ -189,10 +188,10 @@ export const ResultatBesoin: React.FC = () => {
     const R = 6371; // Rayon de la Terre en km
     const dLat = (lat2 - lat1) * Math.PI / 180;
     const dLon = (lon2 - lon1) * Math.PI / 180;
-    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-              Math.sin(dLon/2) * Math.sin(dLon/2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return R * c;
   };
 
@@ -201,7 +200,7 @@ export const ResultatBesoin: React.FC = () => {
     try {
       // Récupérer la position de l'utilisateur
       const userLocation = await getUserLocation();
-      
+
       if (!userLocation) {
         // Si pas de géolocalisation, trier seulement par score
         console.log('📍 Géolocalisation non disponible, tri par score uniquement');
@@ -211,7 +210,7 @@ export const ResultatBesoin: React.FC = () => {
       // Enrichir les résultats avec la distance calculée
       const enrichedResults = results.map((result) => {
         let distance = Infinity;
-        
+
         if (result.gps && typeof result.gps === 'string' && result.gps.includes(',')) {
           try {
             const coords = result.gps.split(',');
@@ -226,7 +225,7 @@ export const ResultatBesoin: React.FC = () => {
             console.warn('Erreur parsing GPS:', error);
           }
         }
-        
+
         return {
           ...result,
           distance,
@@ -251,7 +250,7 @@ export const ResultatBesoin: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
-      
+
       const servicePromises = serviceIds.map(async (serviceId, index) => {
         try {
           const response = await fetch(`/api/services/${serviceId}`, {
@@ -263,7 +262,7 @@ export const ResultatBesoin: React.FC = () => {
 
           if (response.ok) {
             const service = await response.json();
-            
+
             // Enrichir le service avec les données de recherche (score, etc.)
             const enrichedService = {
               ...service,
@@ -274,7 +273,7 @@ export const ResultatBesoin: React.FC = () => {
               distance: originalResults[index]?.distance,
               proximityScore: originalResults[index]?.proximityScore
             };
-            
+
             return enrichedService;
           } else if (response.status === 404) {
             console.warn(`⚠️ Service ${serviceId} non trouvé (404)`);
@@ -298,13 +297,13 @@ export const ResultatBesoin: React.FC = () => {
       } else if (validServices.length < serviceIds.length) {
         const missingCount = serviceIds.length - validServices.length;
         console.warn(`⚠️ ${missingCount} services manquants sur ${serviceIds.length} demandés`);
-        
+
         toast({
           title: "Services partiellement trouvés",
           description: `${validServices.length} sur ${serviceIds.length} services trouvés`,
           type: "default"
         });
-        
+
         setServices(validServices);
       } else {
         setServices(validServices);
@@ -329,7 +328,7 @@ export const ResultatBesoin: React.FC = () => {
       navigate('/login', { state: { from: `/resultat-besoin` } });
       return;
     }
-    
+
     setSelectedService(service);
     setShowContactModal(true);
   };
@@ -415,7 +414,7 @@ export const ResultatBesoin: React.FC = () => {
           <h1 className="text-3xl font-bold text-gray-900 mb-4">
             Services correspondants à votre besoin
           </h1>
-          
+
           {/* ?? NOUVEAU : Avertissement GPS si des services utilisent le GPS en temps réel */}
           {services.some(service => !service.data?.gps_fixe && service.data?.gps_fixe_coords) && (
             <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg max-w-2xl mx-auto">
@@ -430,7 +429,7 @@ export const ResultatBesoin: React.FC = () => {
               </p>
             </div>
           )}
-          
+
           <div className="flex justify-center items-center gap-8 text-gray-600 mb-4">
             <div className="flex items-center gap-2">
               <CheckCircle className="w-5 h-5 text-green-500" />
@@ -441,7 +440,7 @@ export const ResultatBesoin: React.FC = () => {
               <span>Résultats en temps réel</span>
             </div>
           </div>
-          
+
           {/* Bouton de géolocalisation */}
           <div className="flex justify-center">
             <Button
@@ -493,12 +492,11 @@ export const ResultatBesoin: React.FC = () => {
           </Card>
         ) : (
           <div className="flex justify-center">
-            <div className={`grid gap-6 ${
-              services.length === 1 ? 'grid-cols-1 max-w-md' : 
-              services.length === 2 ? 'grid-cols-1 md:grid-cols-2 max-w-4xl' : 
-              services.length <= 4 ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 max-w-5xl' :
-              'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 max-w-7xl'
-            }`}>
+            <div className={`grid gap-6 ${services.length === 1 ? 'grid-cols-1 max-w-md' :
+                services.length === 2 ? 'grid-cols-1 md:grid-cols-2 max-w-4xl' :
+                  services.length <= 4 ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 max-w-5xl' :
+                    'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 max-w-7xl'
+              }`}>
               {Array.isArray(services) && services.map((service) => (
                 <ServiceCard
                   key={service.id}

@@ -10,6 +10,7 @@ import ChatList from "@/components/chat/ChatList";
 import ChatHistory from "@/components/chat/ChatHistory";
 import ChatNotifications from "@/components/notifications/ChatNotifications";
 import VideoCallNotification from "@/components/notifications/VideoCallNotification";
+import NotificationHistory from "@/components/notifications/NotificationHistory";
 import LanguageSwitcher from "@/components/ui/LanguageSwitcher";
 import { useChatManager } from "@/hooks/useChatManager";
 import { useUser } from "@/hooks/useUser";
@@ -32,6 +33,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children, padding = true }) => {
   } = useChatManager();
 
   const [showChatHistory, setShowChatHistory] = useState(false);
+  const [showNotificationHistory, setShowNotificationHistory] = useState(false);
 
   const {
     incomingCalls,
@@ -110,14 +112,28 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children, padding = true }) => {
         <>
           <div className="fixed bottom-6 right-6 flex flex-col gap-3 z-40">
             <ChatButton
+              onClick={() => setShowNotificationHistory(true)}
+              unreadCount={3}
+              className="bg-orange-600 hover:bg-orange-700"
+              title="Historique des notifications"
+            >
+              🔔
+            </ChatButton>
+            <ChatButton
               onClick={() => setShowChatHistory(true)}
               unreadCount={0}
               className="bg-green-600 hover:bg-green-700"
-            />
+              title="Historique des chats"
+            >
+              💬
+            </ChatButton>
             <ChatButton
               onClick={openChatList}
               unreadCount={0}
-            />
+              title="Chats actifs"
+            >
+              💭
+            </ChatButton>
           </div>
           <ChatList
             isOpen={showChatList}
@@ -130,6 +146,10 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children, padding = true }) => {
             isOpen={showChatHistory}
             onClose={() => setShowChatHistory(false)}
             onChatSelect={openChat}
+          />
+          <NotificationHistory
+            isOpen={showNotificationHistory}
+            onClose={() => setShowNotificationHistory(false)}
           />
         </>
       )}
