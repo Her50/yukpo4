@@ -110,12 +110,12 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children, padding = true }) => {
       {/* 🌐 Chat global - ACCESSIBLE PARTOUT */}
       {user && (
         <>
-          <div className="fixed bottom-6 right-6 flex flex-col gap-3 z-40">
+          <div className="fixed bottom-6 right-6 flex flex-row gap-3 z-40">
             <ChatButton
               onClick={() => setShowNotificationHistory(true)}
-              unreadCount={3}
+              unreadCount={0}
               className="bg-orange-600 hover:bg-orange-700"
-              title="Historique des notifications"
+              title="Notifications"
             >
               🔔
             </ChatButton>

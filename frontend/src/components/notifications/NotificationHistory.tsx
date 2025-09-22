@@ -68,66 +68,8 @@ const NotificationHistory: React.FC<NotificationHistoryProps> = ({
         const data = await response.json();
         setNotifications(data.notifications || []);
       } else {
-        // Simulation pour le développement
-        const mockNotifications: NotificationItem[] = [
-          {
-            id: '1',
-            type: 'warning',
-            title: 'Service désactivé automatiquement',
-            message: 'Votre service "Réparation iPhone" a été désactivé automatiquement après 30 jours d\'inactivité. Vous pouvez le réactiver pour 1000 FCFA.',
-            timestamp: new Date(Date.now() - 1000 * 60 * 30),
-            isRead: false,
-            category: 'service',
-            actionUrl: '/mes-services',
-            actionText: 'Réactiver le service',
-            metadata: { serviceId: 'service-1', reactivationCost: 1000 }
-          },
-          {
-            id: '2',
-            type: 'success',
-            title: 'Paiement reçu',
-            message: 'Vous avez reçu un paiement de 15,000 FCFA pour le service "Cours de guitare".',
-            timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2),
-            isRead: true,
-            category: 'payment',
-            actionUrl: '/mon-solde',
-            actionText: 'Voir le solde'
-          },
-          {
-            id: '3',
-            type: 'info',
-            title: 'Nouvelle fonctionnalité disponible',
-            message: 'Les appels vidéo sont maintenant disponibles ! Vous pouvez maintenant communiquer en temps réel avec vos clients.',
-            timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24),
-            isRead: true,
-            category: 'system',
-            actionUrl: '/dashboard',
-            actionText: 'Découvrir'
-          },
-          {
-            id: '4',
-            type: 'error',
-            title: 'Échec de paiement',
-            message: 'Le paiement de 5,000 FCFA a échoué. Vérifiez votre méthode de paiement.',
-            timestamp: new Date(Date.now() - 1000 * 60 * 60 * 48),
-            isRead: false,
-            category: 'payment',
-            actionUrl: '/recharge-tokens',
-            actionText: 'Recharger'
-          },
-          {
-            id: '5',
-            type: 'warning',
-            title: 'Tentative de connexion suspecte',
-            message: 'Une tentative de connexion depuis un nouvel appareil a été détectée. Si ce n\'était pas vous, changez votre mot de passe.',
-            timestamp: new Date(Date.now() - 1000 * 60 * 60 * 72),
-            isRead: true,
-            category: 'security',
-            actionUrl: '/mon-profil',
-            actionText: 'Sécurité'
-          }
-        ];
-        setNotifications(mockNotifications);
+        // Aucune notification fictive - les vraies données viennent de l'API
+        setNotifications([]);
       }
     } catch (error) {
       console.error('Erreur chargement notifications:', error);

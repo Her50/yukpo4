@@ -1,24 +1,20 @@
-import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import ResponsiveContainer from '@/components/layout/ResponsiveContainer';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/buttons/Button';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { 
-  MessageCircle, 
-  Phone, 
-  Video, 
-  Star, 
-  Clock, 
-  MapPin, 
-  Calendar,
-  Filter,
-  Search,
-  Heart,
-  Share2
-} from 'lucide-react';
-import { useUser } from '@/hooks/useUser';
+import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
-import ResponsiveContainer from '@/components/layout/ResponsiveContainer';
+import { useUser } from '@/hooks/useUser';
+import {
+  Clock,
+  MapPin,
+  MessageCircle,
+  Phone,
+  Search,
+  Star,
+  Video
+} from 'lucide-react';
+import React, { useEffect, useState } from 'react';
 
 interface InteractedService {
   id: string;
@@ -134,7 +130,7 @@ const InteractedServicesPage: React.FC = () => {
   const filteredServices = services
     .filter(service => {
       const matchesSearch = service.serviceTitle.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           service.prestataireName.toLowerCase().includes(searchTerm.toLowerCase());
+        service.prestataireName.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesFilter = filterType === 'all' || service.interactionType === filterType;
       return matchesSearch && matchesFilter;
     })
@@ -199,10 +195,10 @@ const InteractedServicesPage: React.FC = () => {
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Services Interagis
+            Dashboard Prestataire
           </h1>
           <p className="text-gray-600">
-            Retrouvez tous les services avec lesquels vous avez interagi
+            Tableau de bord intelligent avec statistiques en temps réel
           </p>
         </div>
 

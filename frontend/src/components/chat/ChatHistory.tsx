@@ -56,30 +56,8 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({
         const data = await response.json();
         setChats(data.chats || []);
       } else {
-        // Simulation pour le développement
-        const mockChats: ChatHistoryItem[] = [
-          {
-            id: '1',
-            serviceId: 'service-1',
-            serviceTitle: 'Réparation iPhone',
-            prestataireName: 'Jean Tech',
-            lastMessage: 'Merci pour votre confiance !',
-            lastMessageTime: new Date(Date.now() - 1000 * 60 * 30), // 30 min ago
-            unreadCount: 2,
-            isActive: true
-          },
-          {
-            id: '2',
-            serviceId: 'service-2',
-            serviceTitle: 'Cours de guitare',
-            prestataireName: 'Marie Music',
-            lastMessage: 'À bientôt pour la prochaine leçon',
-            lastMessageTime: new Date(Date.now() - 1000 * 60 * 60 * 2), // 2h ago
-            unreadCount: 0,
-            isActive: false
-          }
-        ];
-        setChats(mockChats);
+        // Aucune donnée fictive - les vraies données viennent de l'API
+        setChats([]);
       }
     } catch (error) {
       console.error('Erreur chargement historique chats:', error);

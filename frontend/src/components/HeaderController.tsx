@@ -199,11 +199,11 @@ const HeaderController: React.FC = () => {
               📋 Mes Services
             </Link>
             <Link
-              to="/services-interagis"
+              to="/dashboard-prestataire"
               className="text-purple-600 hover:text-purple-700 text-xs font-medium"
-              title="Services avec lesquels j'ai interagi"
+              title="Dashboard prestataire avec statistiques"
             >
-              💬 Interagis
+              📊 Dashboard
             </Link>
             <span className="text-gray-400">|</span>
             <Link
