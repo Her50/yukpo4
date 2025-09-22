@@ -74,13 +74,13 @@ const NotificationHistory: React.FC<NotificationHistoryProps> = ({
             id: '1',
             type: 'warning',
             title: 'Service désactivé automatiquement',
-            message: 'Votre service "Réparation iPhone" a été désactivé automatiquement après 30 jours d\'inactivité. Vous pouvez le réactiver pour 2000 FCFA.',
+            message: 'Votre service "Réparation iPhone" a été désactivé automatiquement après 30 jours d\'inactivité. Vous pouvez le réactiver pour 1000 FCFA.',
             timestamp: new Date(Date.now() - 1000 * 60 * 30),
             isRead: false,
             category: 'service',
             actionUrl: '/mes-services',
             actionText: 'Réactiver le service',
-            metadata: { serviceId: 'service-1', reactivationCost: 2000 }
+            metadata: { serviceId: 'service-1', reactivationCost: 1000 }
           },
           {
             id: '2',

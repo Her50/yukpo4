@@ -207,7 +207,7 @@ const MesServices = () => {
 
   const toggleServiceStatus = async (serviceId: number, currentStatus: boolean) => {
     try {
-              // Si on réactive un service (passage de inactif à actif), facturer 500 FCFA
+              // Si on réactive un service (passage de inactif à actif), facturer 1000 FCFA
         if (!currentStatus) {
           // Vérifier le solde avant la réactivation
           const token = localStorage.getItem('token');
@@ -218,7 +218,7 @@ const MesServices = () => {
           });
           
           const currentBalance = balanceResponse.data.tokens_balance;
-          const activationCost = 500; // 500 FCFA pour réactivation
+          const activationCost = 1000; // 1000 FCFA pour réactivation
         
         if (currentBalance < activationCost) {
           toast.error(`Solde insuffisant pour réactiver le service. Solde actuel: ${currentBalance} FCFA, Coût: ${activationCost} FCFA`);

@@ -92,6 +92,75 @@ pub async fn confirmer_desactivation(
     Ok(())
 }
 
+/// ?? Réactive un service désactivé avec paiement du coût de réactivation
+pub async fn reactiver_service(
+    pool: &PgPool,
+    service_id: i32,
+    user_id: i32,
+) -> Result<bool, sqlx::Error> {
+    const COUT_REACTIVATION: i64 = 1000; // 1000 FCFA pour la réactivation
+    
+    // Vérifier que le service existe et appartient à l'utilisateur
+    let service = sqlx::query!(
+        "SELECT id, user_id, is_active FROM services WHERE id = $1 AND user_id = $2",
+        service_id,
+        user_id
+    )
+    .fetch_optional(pool)
+    .await?;
+
+    match service {
+        Some(service) => {
+            if service.is_active {
+                return Ok(false); // Service déjà actif
+            }
+
+            // Vérifier le solde de l'utilisateur
+            let user_balance = sqlx::query!(
+                "SELECT tokens_balance FROM users WHERE id = $1",
+                user_id
+            )
+            .fetch_optional(pool)
+            .await?;
+
+            match user_balance {
+                Some(user) => {
+                    if user.tokens_balance >= COUT_REACTIVATION {
+                        // Débiter le coût de réactivation
+                        sqlx::query!(
+                            "UPDATE users SET tokens_balance = tokens_balance - $1 WHERE id = $2",
+                            COUT_REACTIVATION,
+                            user_id
+                        )
+                        .execute(pool)
+                        .await?;
+
+                        // Réactiver le service
+                        sqlx::query!(
+                            "UPDATE services SET is_active = TRUE, updated_at = NOW() WHERE id = $1",
+                            service_id
+                        )
+                        .execute(pool)
+                        .await?;
+
+                        info!("Service {} réactivé par l'utilisateur {} pour {} FCFA", service_id, user_id, COUT_REACTIVATION);
+                        Ok(true)
+                    } else {
+                        Ok(false) // Solde insuffisant
+                    }
+                }
+                None => Ok(false) // Utilisateur non trouvé
+            }
+        }
+        None => Ok(false) // Service non trouvé
+    }
+}
+
+/// ?? Récupère le coût de réactivation actuel
+pub fn get_cout_reactivation() -> i32 {
+    1000 // 1000 FCFA
+}
+
 
 
 
