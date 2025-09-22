@@ -22,7 +22,6 @@ import ChatModal from '@/components/chat/ChatModal';
 import ContactModal from '@/components/contact/ContactModal';
 import GalleryModal from '@/components/gallery/GalleryModal';
 import LocationDisplay from '@/components/location/LocationDisplay';
-import ShareServiceButton from '@/components/sharing/ShareServiceButton';
 
 // Hooks et services
 import { usePrestataireInfo } from '@/hooks/usePrestataireInfo';
@@ -81,6 +80,7 @@ export const ResultatBesoin: React.FC = () => {
         gpsTrackingService.stopTracking();
       };
     }
+    return undefined;
   }, [user?.id]);
 
   // Récupérer les informations des prestataires quand les services sont chargés

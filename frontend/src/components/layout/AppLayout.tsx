@@ -1,12 +1,13 @@
 // @ts-check
 import Footer from "@/components/Footer";
 import HeaderController from "@/components/HeaderController";
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 // import QuickAccessMenu from "@/components/tools/QuickAccessMenu";
 // import DevFloatingMenu from "@/components/tools/DevFloatingMenu";
 import FlushFloatingButton from "@/components/admin/FlushFloatingButton";
 import ChatButton from "@/components/chat/ChatButton";
 import ChatList from "@/components/chat/ChatList";
+import ChatHistory from "@/components/chat/ChatHistory";
 import ChatNotifications from "@/components/notifications/ChatNotifications";
 import VideoCallNotification from "@/components/notifications/VideoCallNotification";
 import LanguageSwitcher from "@/components/ui/LanguageSwitcher";
@@ -29,6 +30,8 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children, padding = true }) => {
     editMessage,
     deleteMessage
   } = useChatManager();
+
+  const [showChatHistory, setShowChatHistory] = useState(false);
 
   const {
     incomingCalls,
@@ -105,16 +108,28 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children, padding = true }) => {
       {/* 🌐 Chat global - ACCESSIBLE PARTOUT */}
       {user && (
         <>
-          <ChatButton
-            onClick={openChatList}
-            unreadCount={0}
-          />
+          <div className="fixed bottom-6 right-6 flex flex-col gap-3 z-40">
+            <ChatButton
+              onClick={() => setShowChatHistory(true)}
+              unreadCount={0}
+              className="bg-green-600 hover:bg-green-700"
+            />
+            <ChatButton
+              onClick={openChatList}
+              unreadCount={0}
+            />
+          </div>
           <ChatList
             isOpen={showChatList}
             onClose={closeChatList}
             onChatSelect={openChat}
             chats={[]} // TODO: Charger les chats depuis l'API
             loading={false}
+          />
+          <ChatHistory
+            isOpen={showChatHistory}
+            onClose={() => setShowChatHistory(false)}
+            onChatSelect={openChat}
           />
         </>
       )}

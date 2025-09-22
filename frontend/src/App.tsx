@@ -40,6 +40,7 @@ import MonProfil from '@/pages/dashboard/MonProfil';
 import { ServiceView } from '@/pages/ServiceView';
 import VideoCall from '@/pages/VideoCall';
 import ExternalServiceShare from '@/components/sharing/ExternalServiceShare';
+import InteractedServicesPage from '@/pages/InteractedServicesPage';
 function App() {
   return (
     <GPSManager>
@@ -83,6 +84,11 @@ function App() {
                 <Route path={ROUTES.MES_SERVICES} element={
                   <RequireAuth>
                     <MesServices />
+                  </RequireAuth>
+                } />
+                <Route path="/services-interagis" element={
+                  <RequireAuth>
+                    <InteractedServicesPage />
                   </RequireAuth>
                 } />
                 <Route path="/dashboard/profil" element={

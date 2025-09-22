@@ -189,24 +189,31 @@ const HeaderController: React.FC = () => {
             </>
           ) : (
             <>
-              {/* ✅ Mes Services et Solde dans le même conteneur */}
-              <div className="hidden sm:flex items-center space-x-2">
-                <Link
-                  to={ROUTES.MES_SERVICES}
-                  className="text-blue-600 hover:text-blue-700 text-xs font-medium"
-                  title="Voir mes services"
-                >
-                  📋 Mes Services
-                </Link>
-                <span className="text-gray-400">|</span>
-                <Link
-                  to={ROUTES.MON_SOLDE}
-                  className="text-green-600 font-bold hover:underline text-xs"
-                  title="Voir mon historique IA"
-                >
-                  💰 {formatBalance()}
-                </Link>
-              </div>
+          {/* ✅ Mes Services et Solde dans le même conteneur */}
+          <div className="hidden sm:flex items-center space-x-2">
+            <Link
+              to={ROUTES.MES_SERVICES}
+              className="text-blue-600 hover:text-blue-700 text-xs font-medium"
+              title="Voir mes services"
+            >
+              📋 Mes Services
+            </Link>
+            <Link
+              to="/services-interagis"
+              className="text-purple-600 hover:text-purple-700 text-xs font-medium"
+              title="Services avec lesquels j'ai interagi"
+            >
+              💬 Interagis
+            </Link>
+            <span className="text-gray-400">|</span>
+            <Link
+              to={ROUTES.MON_SOLDE}
+              className="text-green-600 font-bold hover:underline text-xs"
+              title="Voir mon historique IA"
+            >
+              💰 {formatBalance()}
+            </Link>
+          </div>
 
               {/* ✅ Solde uniquement sur mobile */}
               <div className="sm:hidden">
