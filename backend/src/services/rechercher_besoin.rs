@@ -5,7 +5,6 @@ use sqlx::Row;
 use crate::utils::log::{log_info, log_warn};
 use serde_json::{Value, json};
 use crate::services::native_search_service::NativeSearchService;
-use crate::config::search_config::create_production_config;
 
 
 /// Recherche de fallback SQL quand Pinecone n'est pas disponible
@@ -226,7 +225,7 @@ pub async fn rechercher_besoin_direct(
     let pool = sqlx::PgPool::connect(&std::env::var("DATABASE_URL").expect("DATABASE_URL doit être défini")).await.map_err(|e| crate::core::types::AppError::Internal(format!("Erreur connexion base: {}", e)))?;
     
     // Configuration de la recherche native
-    let config = create_production_config();
+    let config = crate::config::search_config::SearchConfig::default();
     let native_search = NativeSearchService::with_config(pool.clone(), config);
     
     // Recherche native intelligente avec le mot-clé principal ET filtrage GPS
@@ -731,8 +730,7 @@ pub async fn rechercher_besoin(
     let location_filter = extract_location_from_ia_json(&data_with_media);
     
     // Configuration de la recherche native
-            let config = create_production_config();
-    
+    let config = crate::config::search_config::SearchConfig::default();
     let native_search = NativeSearchService::with_config(pool.clone(), config);
     
     // Recherche native intelligente

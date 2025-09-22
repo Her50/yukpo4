@@ -1,17 +1,18 @@
 // @ts-check
-import React, { useEffect, useState } from "react";
-import HeaderController from "@/components/HeaderController";
 import Footer from "@/components/Footer";
+import HeaderController from "@/components/HeaderController";
+import React, { useEffect } from "react";
 // import QuickAccessMenu from "@/components/tools/QuickAccessMenu";
 // import DevFloatingMenu from "@/components/tools/DevFloatingMenu";
-import LanguageSwitcher from "@/components/ui/LanguageSwitcher";
-import { useUser } from "@/hooks/useUser";
 import FlushFloatingButton from "@/components/admin/FlushFloatingButton";
-import { GlobalIAStatsProvider } from '@/components/intelligence/GlobalIAStats';
-import ChatNotifications from "@/components/notifications/ChatNotifications";
 import ChatButton from "@/components/chat/ChatButton";
 import ChatList from "@/components/chat/ChatList";
+import ChatNotifications from "@/components/notifications/ChatNotifications";
+import VideoCallNotification from "@/components/notifications/VideoCallNotification";
+import LanguageSwitcher from "@/components/ui/LanguageSwitcher";
 import { useChatManager } from "@/hooks/useChatManager";
+import { useUser } from "@/hooks/useUser";
+import { useVideoCallNotifications } from "@/hooks/useVideoCallNotifications";
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -28,6 +29,13 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children, padding = true }) => {
     editMessage,
     deleteMessage
   } = useChatManager();
+
+  const {
+    incomingCalls,
+    answerCall,
+    declineCall,
+    removeCall
+  } = useVideoCallNotifications();
 
   useEffect(() => {
     const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
@@ -52,9 +60,8 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children, padding = true }) => {
 
       {/* 🌍 Contenu principal */}
       <main
-        className={`pt-24 min-h-screen transition-all duration-300 bg-gradient-to-br from-yellow-50 via-white to-pink-50 dark:from-gray-900 dark:via-gray-950 dark:to-gray-900 ${
-          padding ? "px-4 sm:px-6 lg:px-8" : ""
-        }`}
+        className={`pt-24 min-h-screen transition-all duration-300 bg-gradient-to-br from-yellow-50 via-white to-pink-50 dark:from-gray-900 dark:via-gray-950 dark:to-gray-900 ${padding ? "px-4 sm:px-6 lg:px-8" : ""
+          }`}
       >
         <div className="max-w-7xl mx-auto relative">{children}</div>
       </main>
@@ -86,7 +93,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children, padding = true }) => {
                 action_type: "admin_flush",
                 action_target: "flush-test-data",
               }),
-            }).catch(() => {});
+            }).catch(() => { });
 
             // Recharger stats IA (si dashboard visible)
             const event = new CustomEvent("refresh:ia:load");
@@ -94,15 +101,15 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children, padding = true }) => {
           }}
         />
       )}
-      
+
       {/* 🌐 Chat global - ACCESSIBLE PARTOUT */}
       {user && (
         <>
-          <ChatButton 
-            onClick={openChatList} 
-            unreadCount={0} 
+          <ChatButton
+            onClick={openChatList}
+            unreadCount={0}
           />
-          <ChatList 
+          <ChatList
             isOpen={showChatList}
             onClose={closeChatList}
             onChatSelect={openChat}
@@ -111,6 +118,17 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children, padding = true }) => {
           />
         </>
       )}
+
+      {/* 📞 Notifications d'appel vidéo */}
+      {incomingCalls.map((call) => (
+        <VideoCallNotification
+          key={call.id}
+          call={call}
+          onAnswer={answerCall}
+          onDecline={declineCall}
+          onDismiss={removeCall}
+        />
+      ))}
     </>
   );
 };

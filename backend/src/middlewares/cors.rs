@@ -81,7 +81,6 @@ pub async fn cors_middleware(
             "Pragma".to_string(),
         ],
         allow_credentials: true,
-        max_age: std::time::Duration::from_secs(86400),
     };
     
     // Ajouter les headers CORS

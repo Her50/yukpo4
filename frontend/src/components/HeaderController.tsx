@@ -1,11 +1,10 @@
+import logo from "@/assets/logo.png";
+import LangSwitcher from "@/components/LangSwitcher";
+import MobileMenu from "@/components/MobileMenu";
+import { useUser } from "@/hooks/useUser";
+import { ROUTES } from "@/routes/AppRoutesRegistry";
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import logo from "@/assets/logo.png";
-import MobileMenu from "@/components/MobileMenu";
-import LangSwitcher from "@/components/LangSwitcher";
-import { useUser } from "@/hooks/useUser";
-import { useUserPlan } from "@/hooks/useUserPlan";
-import { ROUTES } from "@/routes/AppRoutesRegistry";
 
 const HeaderController: React.FC = () => {
   const { user, logout } = useUser();
@@ -19,12 +18,12 @@ const HeaderController: React.FC = () => {
   useEffect(() => {
     console.log('[HeaderController] user from useUser:', user);
     console.log('[HeaderController] user.credits:', user?.credits);
-    
+
     // Réinitialiser hasFetchedBalance quand l'utilisateur change
     if (user?.id) {
       setHasFetchedBalance(false);
     }
-    
+
     // Essayer de charger le solde depuis localStorage au démarrage
     const storedBalance = localStorage.getItem('tokens_balance');
     if (storedBalance) {
@@ -90,14 +89,14 @@ const HeaderController: React.FC = () => {
       fetchBalance();
       setHasFetchedBalance(true);
     }
-    
+
     // Rafraîchir toutes les 60 secondes seulement si l'utilisateur est connecté
     const interval = setInterval(() => {
       if (user?.id && !balanceLoading) {
         fetchBalance();
       }
     }, 60000);
-    
+
     return () => clearInterval(interval);
   }, [user?.id]); // Utiliser seulement user.id au lieu de tout l'objet user
 
@@ -115,7 +114,7 @@ const HeaderController: React.FC = () => {
           window.dispatchEvent(new CustomEvent('tokens_updated'));
         }
       }
-      
+
       // 🔄 Gérer le nouveau JWT avec solde mis à jour
       const newJwt = response.headers.get('x-new-jwt');
       if (newJwt) {
@@ -124,7 +123,7 @@ const HeaderController: React.FC = () => {
         // Déclencher un CustomEvent pour notifier useUser
         window.dispatchEvent(new CustomEvent('tokens_updated'));
       }
-      
+
       return response;
     };
 
@@ -169,7 +168,7 @@ const HeaderController: React.FC = () => {
   return (
     <header className="fixed top-0 left-0 w-full z-50 bg-white dark:bg-gray-900 shadow-sm border-b dark:border-gray-700">
       <div className="max-w-screen-2xl mx-auto px-6 h-24 flex items-center justify-between">
-        
+
         {/* ✅ Bloc 1 : logo Yukpo agrandi */}
         <div className="flex items-center gap-4 min-w-[140px]">
           <Link to={ROUTES.HOME} className="flex items-center gap-2">
@@ -178,20 +177,20 @@ const HeaderController: React.FC = () => {
         </div>
 
         {/* ✅ Bloc 3 : profil utilisateur, solde, langue, thème */}
-        <div className="hidden md:flex items-center gap-4 min-w-[300px] justify-end text-sm text-gray-700 dark:text-gray-200 relative">
+        <div className="flex items-center gap-2 md:gap-4 min-w-[200px] md:min-w-[300px] justify-end text-sm text-gray-700 dark:text-gray-200 relative">
           {!user?.id ? (
             <>
-              <Link to={ROUTES.LOGIN} className="text-blue-600 hover:underline">
+              <Link to={ROUTES.LOGIN} className="text-blue-600 hover:underline text-xs md:text-sm px-2 py-1 rounded">
                 Connexion
               </Link>
-              <Link to={ROUTES.REGISTER} className="text-yellow-600 hover:underline">
+              <Link to={ROUTES.REGISTER} className="text-yellow-600 hover:underline text-xs md:text-sm px-2 py-1 rounded">
                 Inscription
               </Link>
             </>
           ) : (
             <>
               {/* ✅ Mes Services et Solde dans le même conteneur */}
-              <div className="flex items-center space-x-2">
+              <div className="hidden sm:flex items-center space-x-2">
                 <Link
                   to={ROUTES.MES_SERVICES}
                   className="text-blue-600 hover:text-blue-700 text-xs font-medium"
@@ -200,6 +199,17 @@ const HeaderController: React.FC = () => {
                   📋 Mes Services
                 </Link>
                 <span className="text-gray-400">|</span>
+                <Link
+                  to={ROUTES.MON_SOLDE}
+                  className="text-green-600 font-bold hover:underline text-xs"
+                  title="Voir mon historique IA"
+                >
+                  💰 {formatBalance()}
+                </Link>
+              </div>
+
+              {/* ✅ Solde uniquement sur mobile */}
+              <div className="sm:hidden">
                 <Link
                   to={ROUTES.MON_SOLDE}
                   className="text-green-600 font-bold hover:underline text-xs"
@@ -224,7 +234,7 @@ const HeaderController: React.FC = () => {
                     onClick={() => setOpenProfileMenu(!openProfileMenu)}
                   >
                     {user.name && user.name.trim() !== ''
-                      ? user.name.replace(/[^\p{L}\p{N}]/gu, '').slice(0,2).toUpperCase()
+                      ? user.name.replace(/[^\p{L}\p{N}]/gu, '').slice(0, 2).toUpperCase()
                       : (user.email ? user.email[0].toUpperCase() : '?')}
                   </div>
                 )}
@@ -276,8 +286,8 @@ const HeaderController: React.FC = () => {
           </button>
         </div>
 
-        {/* ✅ Bloc 4 : menu mobile toujours visible */}
-        <div className="md:hidden">
+        {/* ✅ Bloc 4 : menu mobile pour très petits écrans */}
+        <div className="hidden sm:block">
           <MobileMenu />
         </div>
       </div>

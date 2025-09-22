@@ -39,6 +39,7 @@ import Dashboard from '@/pages/Dashboard';
 import MonProfil from '@/pages/dashboard/MonProfil';
 import { ServiceView } from '@/pages/ServiceView';
 import VideoCall from '@/pages/VideoCall';
+import ExternalServiceShare from '@/components/sharing/ExternalServiceShare';
 function App() {
   return (
     <GPSManager>
@@ -95,6 +96,8 @@ function App() {
                 <Route path="/test-location-display" element={<LocationDisplayDemo />} />
                 {/* ��Ļ Page de visualisation de service public */}
                 <Route path="/service/:serviceId" element={<ServiceView />} />
+                {/* 🔗 Service partagé vers l'extérieur */}
+                <Route path="/shared-service" element={<ExternalServiceShare />} />
                 {/* ��Ƽ Chat entre utilisateurs */}
                 <Route path="/chat/:prestataireId" element={
                   <RequireAuth>

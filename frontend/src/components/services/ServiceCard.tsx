@@ -1,44 +1,28 @@
-import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/buttons/Button';
-import { Badge } from '@/components/ui/badge';
+import LocationDisplayModern from '@/components/location/LocationDisplayModern';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { 
-  Tag,
-  Star, 
-  Phone, 
-  Mail,
-  Video,
-  Share2,
-  Heart,
-  Clock,
-  MessageSquare,
-  Wifi,
-  WifiOff,
-  Globe,
-  Calendar,
-  MapPin,
-  MessageCircle,
-  Eye,
-  ThumbsUp,
-  TrendingUp,
-  Users
-} from 'lucide-react';
-import { Service } from '@/types/service';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/buttons/Button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import ServiceMediaGallery from '@/components/ui/ServiceMediaGallery';
 import { ServiceRating } from '@/components/ui/ServiceRating';
-import LocationDisplay from '@/components/location/LocationDisplay';
-import LocationDisplayModern from '@/components/location/LocationDisplayModern';
-import ServiceStats from './ServiceStats';
 import { useToast } from '@/components/ui/use-toast';
 import useServiceMedia from '@/hooks/useServiceMedia';
+import { Service } from '@/types/service';
+import {
+  Eye,
+  Heart,
+  MessageCircle,
+  Share2
+} from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import ServiceStats from './ServiceStats';
 
 // Fonction utilitaire pour extraire la valeur d'un champ de service
 const getServiceFieldValue = (field: any): string => {
   if (!field) return 'Non spécifié';
-  
+
   if (typeof field === 'string') return field;
-  
+
   if (field && typeof field === 'object') {
     if (field.valeur !== undefined) {
       const value = field.valeur;
@@ -48,7 +32,7 @@ const getServiceFieldValue = (field: any): string => {
       if (Array.isArray(value)) return value.join(', ');
       return String(value);
     }
-    
+
     if (Object.keys(field).length > 0) {
       const possibleValues = ['value', 'content', 'text', 'data', 'info'];
       for (const key of possibleValues) {
@@ -61,10 +45,10 @@ const getServiceFieldValue = (field: any): string => {
       }
     }
   }
-  
+
   if (typeof field === 'boolean') return field ? 'Oui' : 'Non';
   if (typeof field === 'number') return field.toString();
-  
+
   return 'Non spécifié';
 };
 
@@ -106,12 +90,12 @@ const formatDate = (dateString: string): string => {
     const day = date.getDate();
     const month = date.getMonth();
     const year = date.getFullYear();
-    
+
     const monthNames = [
       'janvier', 'février', 'mars', 'avril', 'mai', 'juin',
       'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'
     ];
-    
+
     return `${day} ${monthNames[month]} ${year}`;
   } catch {
     return 'Date invalide';
@@ -130,7 +114,7 @@ const useOnlineStatus = (userId: number, wsConnected: boolean, userStatus: any, 
       // Vérifier le statut réel depuis les données WebSocket
       const isUserOnline = userStatus.status === 'online' || userStatus.isActive;
       setIsOnline(isUserOnline);
-      
+
       if (!isUserOnline && userStatus.lastSeen) {
         setLastSeen(new Date(userStatus.lastSeen));
       }
@@ -170,7 +154,7 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
   const prestataireInfo = prestataires.get(service.user_id);
   const { isOnline, lastSeen } = useOnlineStatus(service.user_id, wsConnected, userStatus, service.created_at);
   const { toast } = useToast();
-  
+
   // Récupérer les médias réels depuis la base de données
   const serviceMedia = useServiceMedia(service.id);
 
@@ -183,20 +167,26 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
   };
 
   const handleShare = () => {
+    // Générer le lien de partage externe avec redirection intelligente
+    const shareUrl = `${window.location.origin}/shared-service?serviceId=${service.id}`;
+
     if (navigator.share) {
       navigator.share({
-        title: getServiceFieldValue(service.data?.titre_service),
-        text: getServiceFieldValue(service.data?.description),
-        url: `${window.location.origin}/service/${service.id}`
+        title: getServiceFieldValue(service.data?.titre_service) || 'Service intéressant',
+        text: getServiceFieldValue(service.data?.description) || 'Découvrez ce service sur Yukpo',
+        url: shareUrl
       }).catch(console.error);
     } else {
-      const serviceUrl = `${window.location.origin}/service/${service.id}`;
-      navigator.clipboard.writeText(serviceUrl).then(() => {
+      // Fallback : copier le lien de partage externe
+      navigator.clipboard.writeText(shareUrl).then(() => {
         toast({
-          title: "Lien copié !",
-          description: "Le lien du service a été copié dans le presse-papier",
+          title: "Lien de partage copié !",
+          description: "Le lien a été copié. Les personnes non connectées seront redirigées vers l'inscription.",
           type: "success"
         });
+      }).catch(() => {
+        // Fallback final : afficher le lien
+        alert(`Lien de partage : ${shareUrl}`);
       });
     }
   };
@@ -231,20 +221,20 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
       return {
         images: getServiceMediaValue(service.data?.images_realisations),
         videos: getServiceMediaValue(service.data?.videos),
-        hasMedia: getServiceMediaValue(service.data?.images_realisations).length > 0 || 
-                 getServiceMediaValue(service.data?.videos).length > 0
+        hasMedia: getServiceMediaValue(service.data?.images_realisations).length > 0 ||
+          getServiceMediaValue(service.data?.videos).length > 0
       };
     }
 
     // Utiliser les médias de la base de données (URLs déjà construites)
     const hasMedia = serviceMedia.images.length > 0 || serviceMedia.videos.length > 0;
-    
+
     console.log('✅ [ServiceCard] Utilisation médias DB:', {
       images: serviceMedia.images,
       videos: serviceMedia.videos,
       hasMedia
     });
-    
+
     return {
       images: serviceMedia.images,
       videos: serviceMedia.videos,
@@ -258,19 +248,19 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
     <Card className="relative overflow-hidden transition-all duration-300 hover:shadow-xl border-2 border-blue-200 hover:border-blue-400 bg-white group transform hover:scale-[1.01] font-['SF_Pro_Display',_'Segoe_UI',_'system-ui',_sans-serif]">
       {/* Fond subtil et élégant */}
       <div className="absolute inset-0 bg-gradient-to-br from-blue-50/40 to-indigo-50/60"></div>
-      
+
       {/* Bannière en arrière-plan très subtile */}
       {hasValidMediaField(service.data?.banniere) && (
-        <div 
+        <div
           className="absolute inset-0 bg-cover bg-center opacity-8 transition-opacity duration-300 group-hover:opacity-12"
-          style={{ 
+          style={{
             backgroundImage: `url(${getServiceFieldValue(service.data?.banniere)})`,
             backgroundSize: 'cover',
             backgroundPosition: 'center'
           }}
         />
       )}
-      
+
       {/* Contenu principal */}
       <div className="relative z-10">
         {/* Logo en haut à droite si disponible */}
@@ -278,8 +268,8 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
           <div className="absolute top-3 right-3 z-20">
             <div className="w-12 h-12 rounded-xl bg-white shadow-md border border-gray-100 p-1">
               <Avatar className="w-full h-full rounded-lg">
-                <AvatarImage 
-                  src={getServiceFieldValue(service.data?.logo)} 
+                <AvatarImage
+                  src={getServiceFieldValue(service.data?.logo)}
                   alt="Logo"
                   className="object-cover rounded-lg"
                 />
@@ -295,7 +285,7 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
           {/* Statistiques épurées */}
           <div className="flex items-center justify-between mb-3">
             <ServiceStats service={service} compact={true} />
-            
+
             {/* Bouton partage simple */}
             <Button
               variant="ghost"
@@ -333,11 +323,11 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
           {/* Créateur sans avatar */}
           <div className="text-center mb-2 bg-blue-50 rounded-lg p-2 border border-blue-100">
             <h4 className="font-semibold text-base text-gray-900 mb-1">
-              {prestataireInfo?.nom_complet || 
-               getServiceFieldValue(service.data?.nom_prestataire) || 
-               `Créateur #${service.user_id}`}
+              {prestataireInfo?.nom_complet ||
+                getServiceFieldValue(service.data?.nom_prestataire) ||
+                `Créateur #${service.user_id}`}
             </h4>
-            
+
             {/* Statut simple */}
             <div className="flex items-center justify-center gap-1">
               {wsConnected && userStatus ? (
@@ -370,9 +360,9 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
                 <span className="text-yellow-600 text-xs font-medium">Localisation en cours...</span>
               </div>
             ) : (
-              <LocationDisplayModern 
-                service={service} 
-                serviceCreatorInfo={prestataires.get(service.user_id)} 
+              <LocationDisplayModern
+                service={service}
+                serviceCreatorInfo={prestataires.get(service.user_id)}
                 compact={true}
                 className="bg-green-50 rounded-lg border border-green-100"
               />
@@ -396,32 +386,29 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
 
           {/* Bouton conversation principal */}
           <div className="mb-3">
-            <Button 
+            <Button
               onClick={() => onChat(service)}
               className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg transition-all duration-300 transform hover:scale-[1.02] shadow-lg hover:shadow-xl"
             >
               <div className="flex items-center justify-center gap-2">
                 <MessageCircle className="w-5 h-5" />
                 <span className="text-base">Démarrer une conversation</span>
-                {isOnline && (
-                  <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-                )}
               </div>
             </Button>
           </div>
 
           {/* Actions secondaires épurées */}
           <div className="grid grid-cols-2 gap-3 mb-3">
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={handleGalleryClick}
               className="bg-white hover:bg-gray-50 border-gray-200 hover:border-gray-300 text-gray-700 hover:text-gray-900 py-2 rounded-lg transition-all duration-300 text-sm font-medium"
             >
               <Eye className="w-4 h-4 mr-2" />
               Galerie
             </Button>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={handleFavorite}
               className="bg-white hover:bg-red-50 border-gray-200 hover:border-red-200 text-gray-700 hover:text-red-600 py-2 rounded-lg transition-all duration-300 text-sm font-medium"
             >
@@ -434,8 +421,47 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
           <div className="border-t border-gray-200 pt-3">
             <ServiceRating
               service={service}
-              onRatingSubmit={() => {}}
-              onReviewHelpful={() => {}}
+              onRatingSubmit={async (rating, comment) => {
+                try {
+                  const response = await fetch(`/api/services/${service.id}/reviews`, {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    },
+                    body: JSON.stringify({ rating, comment })
+                  });
+
+                  if (response.ok) {
+                    toast({
+                      title: "Avis envoyé",
+                      description: "Merci pour votre avis !",
+                      type: "success"
+                    });
+                  } else {
+                    throw new Error('Erreur lors de l\'envoi');
+                  }
+                } catch (error) {
+                  console.error('Erreur envoi avis:', error);
+                  toast({
+                    title: "Erreur",
+                    description: "Impossible d'envoyer l'avis",
+                    type: "error"
+                  });
+                }
+              }}
+              onReviewHelpful={async (reviewId) => {
+                try {
+                  await fetch(`/api/reviews/${reviewId}/helpful`, {
+                    method: 'POST',
+                    headers: {
+                      'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    }
+                  });
+                } catch (error) {
+                  console.error('Erreur marquer utile:', error);
+                }
+              }}
               className="bg-gray-50 rounded-lg p-3 border border-gray-100"
             />
           </div>

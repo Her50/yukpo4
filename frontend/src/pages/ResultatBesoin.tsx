@@ -22,6 +22,7 @@ import ChatModal from '@/components/chat/ChatModal';
 import ContactModal from '@/components/contact/ContactModal';
 import GalleryModal from '@/components/gallery/GalleryModal';
 import LocationDisplay from '@/components/location/LocationDisplay';
+import ShareServiceButton from '@/components/sharing/ShareServiceButton';
 
 // Hooks et services
 import { usePrestataireInfo } from '@/hooks/usePrestataireInfo';

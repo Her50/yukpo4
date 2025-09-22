@@ -148,11 +148,8 @@ async fn handle_notifications_websocket(
         loop {
             tokio::time::sleep(tokio::time::Duration::from_secs(30)).await;
             
-            // Vérifier si la connexion est toujours ouverte
-            if sender.is_closed() {
-                log::info!("Connexion WebSocket fermée, arrêt des notifications pour l'utilisateur {}", user_id);
-                break;
-            }
+            // Note: Vérification de l'état de connexion simplifiée
+            // Dans une implémentation complète, on utiliserait un canal de communication
             
             let notification = serde_json::json!({
                 "message_type": "notification",
@@ -164,19 +161,12 @@ async fn handle_notifications_websocket(
                 "timestamp": Utc::now()
             });
             
-            // Tentative d'envoi avec gestion d'erreur améliorée
-            match sender.try_send(Message::Text(notification.to_string().into())) {
-                Ok(_) => {
-                    log::debug!("Notification envoyée avec succès à l'utilisateur {}", user_id);
-                }
-                Err(e) => {
-                    log::warn!("Impossible d'envoyer la notification à l'utilisateur {}: {}", user_id, e);
-                    // Si la connexion est fermée, arrêter la tâche
-                    if sender.is_closed() {
-                        log::info!("Connexion fermée, arrêt des notifications pour l'utilisateur {}", user_id);
-                        break;
-                    }
-                }
+            // Envoi de notification avec gestion d'erreur
+            if let Err(e) = sender.send(Message::Text(notification.to_string().into())).await {
+                log::warn!("Impossible d'envoyer la notification à l'utilisateur {}: {}", user_id, e);
+                break;
+            } else {
+                log::debug!("Notification envoyée avec succès à l'utilisateur {}", user_id);
             }
         }
     });

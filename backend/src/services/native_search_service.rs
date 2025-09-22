@@ -1,6 +1,6 @@
 use crate::core::types::AppResult;
 use crate::utils::log::{log_info, log_error};
-use crate::config::search_config::{SearchConfig, ConfigManager};
+use crate::config::search_config::SearchConfig;
 use serde_json::Value;
 use sqlx::{PgPool, Row};
 
@@ -25,30 +25,21 @@ pub struct SearchResult {
 pub struct NativeSearchService {
     pool: PgPool,
     config: SearchConfig,
-    config_manager: ConfigManager,
 }
 
 impl NativeSearchService {
     pub fn new(pool: PgPool) -> Self {
-        let config_manager = ConfigManager::new();
-        let config = config_manager.get_config().clone();
-        
-        Self {
-            pool,
-            config,
-            config_manager,
-        }
+        let config = SearchConfig::default();
+        Self { pool, config }
     }
 
     pub fn with_config(pool: PgPool, config: SearchConfig) -> Self {
-        let config_manager = ConfigManager::new();
-        Self { pool, config, config_manager }
+        Self { pool, config }
     }
 
     /// Charger la configuration depuis un fichier et les variables d'environnement
-    pub async fn load_config(&mut self, config_path: Option<&str>) -> Result<(), String> {
-        self.config_manager.load_config(config_path).await?;
-        self.config = self.config_manager.get_config().clone();
+    pub async fn load_config(&mut self, _config_path: Option<&str>) -> Result<(), String> {
+        // Configuration déjà chargée par défaut
         Ok(())
     }
 
@@ -79,7 +70,7 @@ impl NativeSearchService {
         ).await?;
         
         // Recherche trigram de fallback si pas assez de résultats
-        if fulltext_results.len() < self.config.general.max_results as usize {
+        if fulltext_results.len() < self.config.max_results as usize {
             let trigram_results = self.trigram_search_with_gps(
                 &normalized_query, 
                 category_filter, 
@@ -97,7 +88,7 @@ impl NativeSearchService {
         }
 
         // Recherche par mots clés individuels si encore pas assez de résultats
-        if fulltext_results.len() < self.config.general.max_results as usize / 2 {
+        if fulltext_results.len() < self.config.max_results as usize / 2 {
             let keyword_results = self.keyword_search_with_gps(
                 &normalized_query, 
                 category_filter, 
@@ -116,7 +107,7 @@ impl NativeSearchService {
 
         // Trier et limiter les résultats
         fulltext_results.sort_by(|a, b| b.total_score.partial_cmp(&a.total_score).unwrap_or(std::cmp::Ordering::Equal));
-        fulltext_results.truncate(self.config.general.max_results as usize);
+        fulltext_results.truncate(self.config.max_results as usize);
 
         let duration = start_time.elapsed();
         log_info(&format!(
@@ -171,7 +162,7 @@ impl NativeSearchService {
                 .bind(query)
                 .bind(gps_zone)
                 .bind(radius)
-                .bind(self.config.general.max_results)
+                .bind(self.config.max_results)
                 .fetch_all(&self.pool)
                 .await
                 .map_err(|e| {
@@ -320,7 +311,7 @@ SELECT DISTINCT
             .bind(query)
             .bind(category_filter)
             .bind(location_filter)
-            .bind(self.config.general.max_results)
+            .bind(self.config.max_results)
             .fetch_all(&self.pool)
             .await
             .map_err(|e| {
@@ -399,7 +390,7 @@ SELECT DISTINCT
                 .bind(query)
                 .bind(gps_zone)
                 .bind(radius)
-                .bind(self.config.general.max_results)
+                .bind(self.config.max_results)
                 .fetch_all(&self.pool)
                 .await
                 .map_err(|e| {
@@ -472,7 +463,7 @@ SELECT DISTINCT
             .bind(query)
             .bind(category_filter)
             .bind(location_filter)
-            .bind(self.config.general.max_results)
+            .bind(self.config.max_results)
             .fetch_all(&self.pool)
             .await
             .map_err(|e| {
@@ -551,7 +542,7 @@ SELECT DISTINCT
                 .bind(query)
                 .bind(gps_zone)
                 .bind(radius)
-                .bind(self.config.general.max_results / 2)
+                .bind(self.config.max_results / 2)
                 .fetch_all(&self.pool)
                 .await
                 .map_err(|e| {
@@ -665,7 +656,7 @@ SELECT DISTINCT
             .bind(query)
             .bind(category_filter)
             .bind(location_filter)
-            .bind(self.config.general.max_results / 2)
+            .bind(self.config.max_results / 2)
             .fetch_all(&self.pool)
             .await
             .map_err(|e| {
@@ -705,8 +696,8 @@ SELECT DISTINCT
         let now = chrono::Utc::now();
         let days_old = now.signed_duration_since(created_at).num_days();
         
-        if days_old <= self.config.scoring.recency_days {
-            self.config.scoring.recency_boost
+        if days_old <= self.config.recency_days {
+            self.config.recency_boost
         } else {
             0.0
         }
@@ -849,7 +840,7 @@ SELECT DISTINCT
 
         let results = sqlx::query(sql)
             .bind(category)
-            .bind(self.config.general.max_results)
+            .bind(self.config.max_results)
             .fetch_all(&self.pool)
             .await
             .map_err(|e| {
@@ -978,13 +969,13 @@ SELECT DISTINCT
                 .bind(location)
                 .bind(lat)
                 .bind(lng)
-                .bind(self.config.general.max_results)
+                .bind(self.config.max_results)
                 .fetch_all(&self.pool)
                 .await
         } else {
             sqlx::query(sql)
                 .bind(location)
-                .bind(self.config.general.max_results)
+                .bind(self.config.max_results)
                 .fetch_all(&self.pool)
                 .await
         }.map_err(|e| {

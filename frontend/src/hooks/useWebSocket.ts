@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useUser } from './useUser';
 
 // Hook pour gérer le statut du prestataire - VERSION TEST
@@ -15,19 +15,37 @@ export const usePrestataireStatus = (userId: number) => {
     setIsOnline(true);
     setLastSeen(new Date());
     setUserStatus({ id: targetUserId, status: 'online' });
-    
+
     // Simuler une connexion WebSocket
     setIsConnected(true);
   }, []);
 
   useEffect(() => {
     if (userId > 0) {
-      // Simulation du statut en ligne
-      setIsOnline(true);
-      setIsConnected(true);
-      setLastSeen(new Date());
-      // Initialiser userStatus pour éviter l'affichage "Hors ligne"
-      setUserStatus({ id: userId, status: 'online' });
+      // Vérifier la connectivité réseau
+      const updateOnlineStatus = () => {
+        const isOnline = navigator.onLine;
+        setIsOnline(isOnline);
+        setIsConnected(isOnline);
+        setLastSeen(new Date());
+        setUserStatus({ id: userId, status: isOnline ? 'online' : 'offline' });
+      };
+
+      // Mise à jour initiale
+      updateOnlineStatus();
+
+      // Écouter les changements de connectivité
+      window.addEventListener('online', updateOnlineStatus);
+      window.addEventListener('offline', updateOnlineStatus);
+
+      // Vérifier périodiquement (toutes les 30 secondes)
+      const interval = setInterval(updateOnlineStatus, 30000);
+
+      return () => {
+        window.removeEventListener('online', updateOnlineStatus);
+        window.removeEventListener('offline', updateOnlineStatus);
+        clearInterval(interval);
+      };
     }
   }, [userId]);
 
@@ -50,9 +68,9 @@ export const useNotificationsWebSocket = (userId: number) => {
 
   // Fonction pour marquer une notification comme lue
   const markAsRead = useCallback((notificationId: string) => {
-    setNotifications(prev => 
-      prev.map(notif => 
-        notif.id === notificationId 
+    setNotifications(prev =>
+      prev.map(notif =>
+        notif.id === notificationId
           ? { ...notif, read: true }
           : notif
       )
@@ -62,7 +80,7 @@ export const useNotificationsWebSocket = (userId: number) => {
 
   // Fonction pour marquer toutes les notifications comme lues
   const markAllAsRead = useCallback(() => {
-    setNotifications(prev => 
+    setNotifications(prev =>
       prev.map(notif => ({ ...notif, read: true }))
     );
     setUnreadCount(0);
@@ -92,7 +110,7 @@ export const useNotificationsWebSocket = (userId: number) => {
     if (userId > 0) {
       // Simuler une connexion WebSocket
       setIsConnected(true);
-      
+
       // Simuler quelques notifications de test
       const testNotifications = [
         {

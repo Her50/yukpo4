@@ -131,7 +131,7 @@ impl TimeoutConfig {
     }
 }
 
-/// Instance globale de configuration des timeouts
+// Instance globale de configuration des timeouts
 lazy_static::lazy_static! {
     pub static ref TIMEOUT_CONFIG: TimeoutConfig = TimeoutConfig::from_env();
 }
