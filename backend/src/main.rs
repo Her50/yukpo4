@@ -11,6 +11,7 @@ use yukpomnang_backend::{
     state::AppState,
     services::app_ia::AppIA,
     controllers::ia_status_controller::IAStats,
+    config::timeouts::TimeoutConfig,
 };
 use axum::serve;
 
@@ -23,8 +24,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     yukpomnang_backend::init_logging();
 
     let db_url = env::var("DATABASE_URL")?;
+    let timeout_config = TimeoutConfig::from_env();
+    
     let pg_pool = PgPoolOptions::new()
-        .max_connections(5)
+        .max_connections(10) // Augmenté de 5 à 10 pour de meilleures performances
+        .acquire_timeout(timeout_config.get_database_timeout())
+        .idle_timeout(Some(std::time::Duration::from_secs(600))) // 10 minutes
+        .max_lifetime(Some(std::time::Duration::from_secs(1800))) // 30 minutes
         .connect(&db_url)
         .await?;
 
