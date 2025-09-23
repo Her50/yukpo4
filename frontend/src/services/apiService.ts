@@ -1,7 +1,7 @@
 // Service API centralise avec gestion d'authentification amelioree
 // Remplace les appels fetch directs avec gestion des tokens
 
-import { getValidToken, getAuthHeaders } from '../utils/auth';
+import { getValidToken } from '../utils/auth';
 
 interface ApiServiceOptions extends RequestInit {
   isAuthenticated?: boolean;
@@ -14,7 +14,7 @@ export const apiService = async (
   const { isAuthenticated = true, headers, ...rest } = options;
 
   const defaultHeaders: HeadersInit = {
-    'Content-Type': 'application/json',
+      'Content-Type': 'application/json',
   };
 
   if (isAuthenticated) {
@@ -37,7 +37,8 @@ export const apiService = async (
     },
   };
 
-  const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}${endpoint}`, config);
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || 'https://yukpomnang.onrender.com';
+  const response = await fetch(`${baseUrl}${endpoint}`, config);
 
   if (!response.ok) {
     // Handle specific error codes, e.g., 401 for unauthorized
@@ -61,17 +62,17 @@ export const apiGet = async (endpoint: string, options: ApiServiceOptions = {}) 
 // Helper function for POST requests
 export const apiPost = async (endpoint: string, data: any, options: ApiServiceOptions = {}) => {
   return apiService(endpoint, {
-    ...options,
-    method: 'POST',
+      ...options,
+      method: 'POST',
     body: JSON.stringify(data),
-  });
+    });
 };
 
 // Helper function for PUT requests
 export const apiPut = async (endpoint: string, data: any, options: ApiServiceOptions = {}) => {
   return apiService(endpoint, {
-    ...options,
-    method: 'PUT',
+      ...options,
+      method: 'PUT',
     body: JSON.stringify(data),
   });
 };

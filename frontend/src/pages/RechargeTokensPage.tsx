@@ -1,20 +1,22 @@
-import React, { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/buttons/Button';
-import { Badge } from '@/components/ui/badge';
-import { 
-  CreditCard, 
-  CheckCircle, 
-  AlertCircle, 
-  Coins, 
-  Zap,
-  Shield,
-  Star,
-  Info
-} from 'lucide-react';
-import { useUser } from '@/hooks/useUser';
-import { useToast } from '@/components/ui/use-toast';
 import ResponsiveContainer from '@/components/layout/ResponsiveContainer';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/buttons/Button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useToast } from '@/components/ui/use-toast';
+import { useUser } from '@/hooks/useUser';
+import {
+  AlertCircle,
+  CheckCircle,
+  Coins,
+  CreditCard,
+  Info,
+  Shield,
+  Smartphone,
+  Star,
+  Wallet,
+  Zap
+} from 'lucide-react';
+import React, { useState } from 'react';
 
 interface RechargeOption {
   id: string;
@@ -25,9 +27,20 @@ interface RechargeOption {
   description: string;
 }
 
+interface PaymentMethod {
+  id: string;
+  name: string;
+  icon: React.ReactNode;
+  description: string;
+  available: boolean;
+  processingTime: string;
+  fees: number;
+}
+
 const RechargeTokensPage: React.FC = () => {
   const [selectedOption, setSelectedOption] = useState<string>('');
   const [customAmount, setCustomAmount] = useState<number>(2000);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const { user } = useUser();
   const { toast } = useToast();
@@ -58,6 +71,46 @@ const RechargeTokensPage: React.FC = () => {
     }
   ];
 
+  // Modes de paiement disponibles
+  const paymentMethods: PaymentMethod[] = [
+    {
+      id: 'orange_money',
+      name: 'Orange Money',
+      icon: <Smartphone className="w-6 h-6 text-orange-600" />,
+      description: 'Paiement mobile Orange Money',
+      available: true,
+      processingTime: 'Instantané',
+      fees: 0
+    },
+    {
+      id: 'mtn_money',
+      name: 'MTN Money',
+      icon: <Smartphone className="w-6 h-6 text-yellow-600" />,
+      description: 'Paiement mobile MTN Money',
+      available: true,
+      processingTime: 'Instantané',
+      fees: 0
+    },
+    {
+      id: 'visa_card',
+      name: 'Carte Visa',
+      icon: <CreditCard className="w-6 h-6 text-blue-600" />,
+      description: 'Paiement par carte bancaire Visa',
+      available: true,
+      processingTime: '2-5 minutes',
+      fees: 50
+    },
+    {
+      id: 'mastercard',
+      name: 'Mastercard',
+      icon: <CreditCard className="w-6 h-6 text-red-600" />,
+      description: 'Paiement par carte Mastercard',
+      available: true,
+      processingTime: '2-5 minutes',
+      fees: 50
+    }
+  ];
+
   const handleRecharge = async (option: RechargeOption | null) => {
     if (!user?.id) {
       toast({
@@ -68,12 +121,22 @@ const RechargeTokensPage: React.FC = () => {
       return;
     }
 
+    if (!selectedPaymentMethod) {
+      toast({
+        title: "Mode de paiement requis",
+        description: "Veuillez selectionner un mode de paiement",
+        type: "error"
+      });
+      return;
+    }
+
     setLoading(true);
-    
+
     try {
       const amount = option ? option.amount : customAmount;
       const tokens = option ? option.tokens : customAmount;
-      
+      const paymentMethod = paymentMethods.find(pm => pm.id === selectedPaymentMethod);
+
       // Validation du montant minimum
       if (amount < 2000) {
         toast({
@@ -95,14 +158,16 @@ const RechargeTokensPage: React.FC = () => {
         body: JSON.stringify({
           amount: amount,
           tokens: tokens,
-          payment_method: 'mobile_money',
+          payment_method: selectedPaymentMethod,
+          payment_method_name: paymentMethod?.name,
+          fees: paymentMethod?.fees || 0,
           user_id: user.id
         })
       });
 
       if (response.ok) {
         const data = await response.json();
-        
+
         toast({
           title: "Recharge reussie !",
           description: `Vous avez recu ${tokens.toLocaleString()} tokens (${amount.toLocaleString()} FCFA)`,
@@ -172,7 +237,7 @@ const RechargeTokensPage: React.FC = () => {
                 <p className="text-gray-600">Les tokens vous permettent d'utiliser l'IA pour creer et optimiser vos services</p>
               </div>
             </div>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="flex items-center gap-2 text-sm">
                 <Zap className="w-4 h-4 text-yellow-500" />
@@ -203,11 +268,10 @@ const RechargeTokensPage: React.FC = () => {
               {rechargeOptions.map((option) => (
                 <div
                   key={option.id}
-                  className={`relative p-6 border-2 rounded-xl cursor-pointer transition-all hover:shadow-lg ${
-                    selectedOption === option.id
+                  className={`relative p-6 border-2 rounded-xl cursor-pointer transition-all hover:shadow-lg ${selectedOption === option.id
                       ? 'border-blue-500 bg-blue-50'
                       : 'border-gray-200 hover:border-gray-300'
-                  }`}
+                    }`}
                   onClick={() => setSelectedOption(option.id)}
                 >
                   {option.popular && (
@@ -215,7 +279,7 @@ const RechargeTokensPage: React.FC = () => {
                       Populaire
                     </Badge>
                   )}
-                  
+
                   <div className="text-center">
                     <div className="text-2xl font-bold text-gray-900 mb-2">
                       {option.amount.toLocaleString()} FCFA
@@ -239,11 +303,16 @@ const RechargeTokensPage: React.FC = () => {
             <div className="mt-6 text-center">
               <Button
                 onClick={() => selectedOption && handleRecharge(rechargeOptions.find(o => o.id === selectedOption)!)}
-                disabled={!selectedOption || loading}
+                disabled={!selectedOption || !selectedPaymentMethod || loading}
                 className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 text-lg font-semibold"
               >
                 {loading ? 'Traitement...' : 'Recharger maintenant'}
               </Button>
+              {!selectedPaymentMethod && (
+                <p className="text-sm text-red-600 mt-2">
+                  Veuillez sélectionner un mode de paiement
+                </p>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -279,14 +348,83 @@ const RechargeTokensPage: React.FC = () => {
               <div className="text-center">
                 <Button
                   onClick={handleCustomRecharge}
-                  disabled={customAmount < 2000 || loading}
+                  disabled={customAmount < 2000 || !selectedPaymentMethod || loading}
                   variant="outline"
                   className="w-full py-3 text-lg font-semibold border-blue-500 text-blue-600 hover:bg-blue-50"
                 >
                   {loading ? 'Traitement...' : `Recharger ${customAmount.toLocaleString()} FCFA`}
                 </Button>
+                {!selectedPaymentMethod && (
+                  <p className="text-sm text-red-600 mt-2">
+                    Veuillez sélectionner un mode de paiement
+                  </p>
+                )}
               </div>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Sélection du mode de paiement */}
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Wallet className="w-5 h-5" />
+              Choisir votre mode de paiement
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {paymentMethods.map((method) => (
+                <div
+                  key={method.id}
+                  className={`relative p-4 border-2 rounded-xl cursor-pointer transition-all hover:shadow-lg ${selectedPaymentMethod === method.id
+                      ? 'border-blue-500 bg-blue-50'
+                      : 'border-gray-200 hover:border-gray-300'
+                    } ${!method.available ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  onClick={() => method.available && setSelectedPaymentMethod(method.id)}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="flex-shrink-0">
+                      {method.icon}
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between">
+                        <h3 className="font-semibold text-gray-900">{method.name}</h3>
+                        {method.fees > 0 && (
+                          <span className="text-xs text-gray-500">+{method.fees} FCFA</span>
+                        )}
+                      </div>
+                      <p className="text-sm text-gray-600 mb-1">{method.description}</p>
+                      <div className="flex items-center gap-2 text-xs text-gray-500">
+                        <Clock className="w-3 h-3" />
+                        <span>{method.processingTime}</span>
+                        {method.fees === 0 && (
+                          <>
+                            <span>•</span>
+                            <span className="text-green-600 font-medium">Sans frais</span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {selectedPaymentMethod && (
+              <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="flex items-center gap-2 mb-2">
+                  <CheckCircle className="w-5 h-5 text-blue-600" />
+                  <span className="font-medium text-blue-900">Mode de paiement sélectionné</span>
+                </div>
+                <p className="text-sm text-blue-800">
+                  {paymentMethods.find(pm => pm.id === selectedPaymentMethod)?.name} -
+                  {paymentMethods.find(pm => pm.id === selectedPaymentMethod)?.processingTime}
+                  {paymentMethods.find(pm => pm.id === selectedPaymentMethod)?.fees === 0 ? ' (Sans frais)' :
+                    ` (+${paymentMethods.find(pm => pm.id === selectedPaymentMethod)?.fees} FCFA de frais)`}
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -294,7 +432,7 @@ const RechargeTokensPage: React.FC = () => {
         <Card className="bg-gray-50">
           <CardContent className="p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">
-              Methodes de paiement acceptees
+              Informations importantes
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="flex items-center gap-3">
@@ -316,12 +454,12 @@ const RechargeTokensPage: React.FC = () => {
                 </div>
               </div>
             </div>
-            
+
             <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
               <div className="flex items-start gap-2">
                 <AlertCircle className="w-5 h-5 text-yellow-600 mt-0.5" />
                 <div className="text-sm text-yellow-800">
-                  <strong>Important :</strong> Les tokens sont credites instantanement apres confirmation du paiement. 
+                  <strong>Important :</strong> Les tokens sont credites instantanement apres confirmation du paiement.
                   En cas de probleme, contactez le support.
                 </div>
               </div>

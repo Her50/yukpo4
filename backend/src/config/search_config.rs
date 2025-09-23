@@ -19,7 +19,7 @@ pub struct SearchConfig {
 impl Default for SearchConfig {
     fn default() -> Self {
         Self {
-            max_results: 50,
+            max_results: 1000, // Augmenté pour afficher tous les services correspondants
             default_language: "fr".to_string(),
             title_boost: 2.0,
             default_radius_km: 20.0,

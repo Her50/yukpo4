@@ -61,7 +61,6 @@ async fn search_services_fallback(
                 OR s.category ILIKE $1
             )
             ORDER BY s.created_at DESC
-            LIMIT 15
             "#,
             format!("%{}%", term)
         )
@@ -331,7 +330,6 @@ async fn search_services_direct_fallback(
         FROM services s
         WHERE {}
         ORDER BY s.created_at DESC
-        LIMIT 20
         "#,
         where_clause
     );

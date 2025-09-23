@@ -8,6 +8,7 @@ pub mod service_status_checker;
 pub mod archived_service_cleaner;
 pub mod reactivate_service;
 pub mod service_deactivation;
+pub mod intelligent_service_task;
 
 // ajoute ici d?autres modules de t?ches, par ex.
 // pub mod notification_scheduler;

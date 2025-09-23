@@ -105,9 +105,8 @@ impl NativeSearchService {
             }
         }
 
-        // Trier et limiter les résultats
+        // Trier les résultats (pas de limite)
         fulltext_results.sort_by(|a, b| b.total_score.partial_cmp(&a.total_score).unwrap_or(std::cmp::Ordering::Equal));
-        fulltext_results.truncate(self.config.max_results as usize);
 
         let duration = start_time.elapsed();
         log_info(&format!(
@@ -162,7 +161,6 @@ impl NativeSearchService {
                 .bind(query)
                 .bind(gps_zone)
                 .bind(radius)
-                .bind(self.config.max_results)
                 .fetch_all(&self.pool)
                 .await
                 .map_err(|e| {
@@ -304,14 +302,12 @@ SELECT DISTINCT
             AND ($2::text IS NULL OR s.category = $2 OR s.data->'category'->>'valeur' = $2)
             AND ($3::text IS NULL OR s.gps ILIKE '%' || $3 || '%')
             ORDER BY fulltext_score DESC
-            LIMIT $4
         "#, partial_conditions, partial_conditions);
 
         let results = sqlx::query(&sql)
             .bind(query)
             .bind(category_filter)
             .bind(location_filter)
-            .bind(self.config.max_results)
             .fetch_all(&self.pool)
             .await
             .map_err(|e| {
@@ -390,7 +386,6 @@ SELECT DISTINCT
                 .bind(query)
                 .bind(gps_zone)
                 .bind(radius)
-                .bind(self.config.max_results)
                 .fetch_all(&self.pool)
                 .await
                 .map_err(|e| {
@@ -456,14 +451,12 @@ SELECT DISTINCT
             AND ($2::text IS NULL OR s.category = $2 OR s.data->'category'->>'valeur' = $2)
             AND ($3::text IS NULL OR s.gps ILIKE '%' || $3 || '%')
             ORDER BY trigram_score DESC
-            LIMIT $4
         "#;
 
         let results = sqlx::query(sql)
             .bind(query)
             .bind(category_filter)
             .bind(location_filter)
-            .bind(self.config.max_results)
             .fetch_all(&self.pool)
             .await
             .map_err(|e| {
@@ -542,7 +535,6 @@ SELECT DISTINCT
                 .bind(query)
                 .bind(gps_zone)
                 .bind(radius)
-                .bind(self.config.max_results / 2)
                 .fetch_all(&self.pool)
                 .await
                 .map_err(|e| {
@@ -649,14 +641,12 @@ SELECT DISTINCT
             AND ($2::text IS NULL OR s.category = $2 OR s.data->'category'->>'valeur' = $2)
             AND ($3::text IS NULL OR s.gps ILIKE '%' || $3 || '%')
             ORDER BY keyword_score DESC
-            LIMIT $4
         "#, conditions.join(" OR "));
 
         let results = sqlx::query(&sql)
             .bind(query)
             .bind(category_filter)
             .bind(location_filter)
-            .bind(self.config.max_results / 2)
             .fetch_all(&self.pool)
             .await
             .map_err(|e| {
@@ -835,12 +825,10 @@ SELECT DISTINCT
                        OR s.data->'category'->>'valeur' = $1
                    )
                    ORDER BY s.created_at DESC
-                   LIMIT $2
                "#;
 
         let results = sqlx::query(sql)
             .bind(category)
-            .bind(self.config.max_results)
             .fetch_all(&self.pool)
             .await
             .map_err(|e| {
@@ -960,7 +948,6 @@ SELECT DISTINCT
                     s.data->>'gps_fixe' ILIKE '%' || $1 || '%' OR s.gps ILIKE '%' || $1 || '%'
                 )
                 ORDER BY location_score DESC, s.created_at DESC
-                LIMIT $2
             "#
         };
 
@@ -969,13 +956,11 @@ SELECT DISTINCT
                 .bind(location)
                 .bind(lat)
                 .bind(lng)
-                .bind(self.config.max_results)
                 .fetch_all(&self.pool)
                 .await
         } else {
             sqlx::query(sql)
                 .bind(location)
-                .bind(self.config.max_results)
                 .fetch_all(&self.pool)
                 .await
         }.map_err(|e| {

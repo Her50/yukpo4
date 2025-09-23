@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/buttons/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { MessageCircle, Clock, User, Search, X } from 'lucide-react';
-import { useUser } from '@/hooks/useUser';
 import { useToast } from '@/components/ui/use-toast';
+import { useUser } from '@/hooks/useUser';
+import { Clock, MessageCircle, Search, X } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
 
 interface ChatHistoryItem {
   id: string;
@@ -56,16 +56,33 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({
         const data = await response.json();
         setChats(data.chats || []);
       } else {
-        // Aucune donnée fictive - les vraies données viennent de l'API
-        setChats([]);
+        // Charger les conversations depuis le localStorage si l'API échoue
+        const savedChats = localStorage.getItem('chatHistory');
+        if (savedChats) {
+          try {
+            const parsedChats = JSON.parse(savedChats);
+            setChats(parsedChats);
+          } catch (e) {
+            setChats([]);
+          }
+        } else {
+          setChats([]);
+        }
       }
     } catch (error) {
       console.error('Erreur chargement historique chats:', error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de charger l'historique des chats",
-        type: "error"
-      });
+      // Fallback: charger depuis localStorage
+      const savedChats = localStorage.getItem('chatHistory');
+      if (savedChats) {
+        try {
+          const parsedChats = JSON.parse(savedChats);
+          setChats(parsedChats);
+        } catch (e) {
+          setChats([]);
+        }
+      } else {
+        setChats([]);
+      }
     } finally {
       setLoading(false);
     }
@@ -136,9 +153,8 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({
                     onChatSelect(chat.serviceId);
                     onClose();
                   }}
-                  className={`p-3 rounded-lg border cursor-pointer transition-all hover:bg-gray-50 ${
-                    chat.isActive ? 'bg-blue-50 border-blue-200' : 'bg-white border-gray-200'
-                  }`}
+                  className={`p-3 rounded-lg border cursor-pointer transition-all hover:bg-gray-50 ${chat.isActive ? 'bg-blue-50 border-blue-200' : 'bg-white border-gray-200'
+                    }`}
                 >
                   <div className="flex items-start gap-3">
                     <Avatar className="w-10 h-10">

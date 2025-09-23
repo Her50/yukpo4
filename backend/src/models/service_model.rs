@@ -41,6 +41,8 @@ pub struct Service {
     pub embedding_last_attempt: Option<DateTime<Utc>>,
     /// Nombre de tentatives d'embedding effectu?es
     pub embedding_attempts: Option<i32>,
+    /// Coût proratisé de réactivation pour les services tarissables (en FCFA)
+    pub prorated_reactivation_cost: Option<i32>,
 }
 
 /// ? Donn?es re?ues via l'API pour cr?er un nouveau service

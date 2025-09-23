@@ -1,31 +1,22 @@
-import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import ResponsiveContainer from '@/components/layout/ResponsiveContainer';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/buttons/Button';
-import { 
-  BarChart3, 
-  TrendingUp, 
-  Users, 
-  MessageCircle, 
-  Eye, 
-  Star, 
-  Clock, 
-  DollarSign,
-  Activity,
-  Target,
-  Zap,
-  Calendar,
-  Phone,
-  Video,
-  Mail,
-  MapPin,
-  Filter,
-  Search,
-  RefreshCw
-} from 'lucide-react';
-import { useUser } from '@/hooks/useUser';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
-import ResponsiveContainer from '@/components/layout/ResponsiveContainer';
+import { useUser } from '@/hooks/useUser';
+import {
+  Activity,
+  BarChart3,
+  Clock,
+  Eye,
+  MessageCircle,
+  RefreshCw,
+  Star,
+  Target,
+  TrendingUp,
+  Zap
+} from 'lucide-react';
+import React, { useEffect, useState } from 'react';
 
 interface ServiceStats {
   id: string;
@@ -48,14 +39,15 @@ interface DashboardData {
   activeServices: number;
   totalViews: number;
   totalInteractions: number;
-  totalRevenue: number;
+  budgetConsumed: number;
+  budgetRemaining: number;
   averageRating: number;
   recentActivity: any[];
   topPerformingServices: ServiceStats[];
   monthlyStats: {
     views: number[];
     interactions: number[];
-    revenue: number[];
+    budgetConsumed: number[];
   };
 }
 
@@ -86,23 +78,62 @@ const DashboardPrestataire: React.FC = () => {
         const data = await response.json();
         setDashboardData(data);
       } else {
-        // Simulation pour le développement - À remplacer par de vraies données
-        const mockData: DashboardData = {
-          totalServices: 0,
-          activeServices: 0,
-          totalViews: 0,
-          totalInteractions: 0,
-          totalRevenue: 0,
-          averageRating: 0,
+        // Charger les données réelles depuis l'API des services et du budget
+        const [servicesResponse, budgetResponse] = await Promise.all([
+          fetch('/api/services/user', {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+          }),
+          fetch('/api/users/budget', {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+          })
+        ]);
+
+        const servicesData = servicesResponse.ok ? await servicesResponse.json() : { services: [] };
+        const budgetData = budgetResponse.ok ? await budgetResponse.json() : { consumed: 0, remaining: 0 };
+
+        // Calculer les statistiques réelles
+        const services = servicesData.services || [];
+        const activeServices = services.filter((s: any) => s.is_active).length;
+        const totalViews = services.reduce((sum: number, s: any) => sum + (s.views || 0), 0);
+        const totalInteractions = services.reduce((sum: number, s: any) => sum + (s.interactions || 0), 0);
+        const averageRating = services.length > 0
+          ? services.reduce((sum: number, s: any) => sum + (s.rating || 0), 0) / services.length
+          : 0;
+
+        const realData: DashboardData = {
+          totalServices: services.length,
+          activeServices,
+          totalViews,
+          totalInteractions,
+          budgetConsumed: budgetData.consumed || 0,
+          budgetRemaining: budgetData.remaining || 0,
+          averageRating: Math.round(averageRating * 10) / 10,
           recentActivity: [],
-          topPerformingServices: [],
+          topPerformingServices: services
+            .sort((a: any, b: any) => (b.interactions || 0) - (a.interactions || 0))
+            .slice(0, 5)
+            .map((s: any) => ({
+              id: s.id,
+              title: s.data?.title || 'Service sans titre',
+              views: s.views || 0,
+              interactions: s.interactions || 0,
+              messages: s.messages || 0,
+              calls: s.calls || 0,
+              videoCalls: s.videoCalls || 0,
+              rating: s.rating || 0,
+              revenue: 0, // Supprimé
+              lastActivity: new Date(s.updated_at || s.created_at),
+              status: s.is_active ? 'active' : 'inactive',
+              category: s.data?.category || 'Non spécifié',
+              location: s.data?.location || 'Non spécifié'
+            })),
           monthlyStats: {
             views: [],
             interactions: [],
-            revenue: []
+            budgetConsumed: []
           }
         };
-        setDashboardData(mockData);
+        setDashboardData(realData);
       }
     } catch (error) {
       console.error('Erreur chargement dashboard:', error);
@@ -176,7 +207,7 @@ const DashboardPrestataire: React.FC = () => {
               Tableau de bord intelligent avec statistiques en temps réel
             </p>
           </div>
-          
+
           <div className="flex items-center gap-4 mt-4 md:mt-0">
             <select
               value={selectedPeriod}
@@ -187,7 +218,7 @@ const DashboardPrestataire: React.FC = () => {
               <option value="30d">30 derniers jours</option>
               <option value="90d">90 derniers jours</option>
             </select>
-            
+
             <Button
               onClick={loadDashboardData}
               variant="outline"
@@ -245,11 +276,11 @@ const DashboardPrestataire: React.FC = () => {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-orange-100 text-sm font-medium">Revenus</p>
-                  <p className="text-3xl font-bold">{formatCurrency(dashboardData.totalRevenue)}</p>
-                  <p className="text-orange-200 text-sm">+8% ce mois</p>
+                  <p className="text-orange-100 text-sm font-medium">Budget Consommé</p>
+                  <p className="text-3xl font-bold">{formatCurrency(dashboardData.budgetConsumed)}</p>
+                  <p className="text-orange-200 text-sm">Restant: {formatCurrency(dashboardData.budgetRemaining)}</p>
                 </div>
-                <DollarSign className="w-12 h-12 text-orange-200" />
+                <Zap className="w-12 h-12 text-orange-200" />
               </div>
             </CardContent>
           </Card>

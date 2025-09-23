@@ -14,13 +14,14 @@ use tokio::io::AsyncReadExt;
 
 use crate::{
     controllers::{
-        // interaction_controller::{post_message, post_review, get_service_interactions, get_service_reviews, get_service_score, post_audio, post_call, post_share},
+        interaction_controller::{post_message, post_review, get_service_interactions, get_service_reviews, get_service_score, post_audio, post_call, post_share, post_review_helpful},
         service_controller::{get_services_for_prestataire, toggle_service_status, modifier_service, supprimer_service, get_service_by_id},
+        intelligent_service_controller::{process_services_intelligently, get_services_pending_processing, reactivate_service_intelligent},
     },
     core::types::{AppResult, AppError},
     services::creer_service,
     state::AppState,
-    middlewares::{request_size_limit, hide_headers, rate_limit, monitoring, audit_log, jwt::jwt_auth, check_tokens::check_tokens},
+    middlewares::{request_size_limit, hide_headers, rate_limit, monitoring, audit_log, jwt::jwt_auth, check_tokens::check_tokens, service_interaction::track_service_interaction},
 };
 use crate::models::input_model::MultiModalInput;
 use axum::response::IntoResponse;
@@ -82,19 +83,26 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
         // Nouveau endpoint pour consulter les m?triques d'optimisation
         .route("/api/ia/metrics", get(handle_optimization_metrics))
         // Routes d'interaction sur services avec middleware de tracking et d?bit prestataire
-        // .route("/services/{id}/message", post(post_message)
-        //     .layer(axum::middleware::from_fn_with_state(state.clone(), track_service_interaction)))
-        // .route("/services/{id}/review", post(post_review)
-        //     .layer(axum::middleware::from_fn_with_state(state.clone(), track_service_interaction)))
-        // .route("/services/{id}/interactions", get(get_service_interactions))
-        // .route("/services/{id}/reviews", get(get_service_reviews))
-        // .route("/services/{id}/score", get(get_service_score))
-        // .route("/services/{id}/audio", post(post_audio)
-        //     .layer(axum::middleware::from_fn_with_state(state.clone(), track_service_interaction)))
-        // .route("/services/{id}/call", post(post_call)
-        //     .layer(axum::middleware::from_fn_with_state(state.clone(), track_service_interaction)))
-        // .route("/services/{id}/share", post(post_share)
-        //     .layer(axum::middleware::from_fn_with_state(state.clone(), track_service_interaction)))
+        .route("/api/services/{id}/message", post(post_message)
+            .layer(axum::middleware::from_fn_with_state(state.clone(), jwt_auth))
+            .layer(axum::middleware::from_fn_with_state(state.clone(), track_service_interaction)))
+        .route("/api/services/{id}/reviews", post(post_review)
+            .layer(axum::middleware::from_fn_with_state(state.clone(), jwt_auth))
+            .layer(axum::middleware::from_fn_with_state(state.clone(), track_service_interaction)))
+        .route("/api/services/{id}/interactions", get(get_service_interactions))
+        .route("/api/services/{id}/reviews", get(get_service_reviews))
+        .route("/api/services/{id}/score", get(get_service_score))
+        .route("/api/services/{id}/audio", post(post_audio)
+            .layer(axum::middleware::from_fn_with_state(state.clone(), jwt_auth))
+            .layer(axum::middleware::from_fn_with_state(state.clone(), track_service_interaction)))
+        .route("/api/services/{id}/call", post(post_call)
+            .layer(axum::middleware::from_fn_with_state(state.clone(), jwt_auth))
+            .layer(axum::middleware::from_fn_with_state(state.clone(), track_service_interaction)))
+        .route("/api/services/{id}/share", post(post_share)
+            .layer(axum::middleware::from_fn_with_state(state.clone(), jwt_auth))
+            .layer(axum::middleware::from_fn_with_state(state.clone(), track_service_interaction)))
+        .route("/api/reviews/{id}/helpful", post(post_review_helpful)
+            .layer(axum::middleware::from_fn_with_state(state.clone(), jwt_auth)))
         // Routes de cr?ation de service (gestion des tokens dans le contrôleur)
         .route("/api/services/draft", post(handle_brouillon_service))
         .route("/api/services/create", post(handle_creer_service))
@@ -114,6 +122,10 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route("/api/users/{user_id}", get(crate::controllers::user_controller::get_user_by_id))
         // Route pour récupérer le dernier service (pour préremplissage contact)
         .route("/api/services/last", get(crate::controllers::service_controller::get_last_service_for_user))
+        // Routes pour le système intelligent de gestion des services
+        .route("/api/admin/process-services-intelligently", post(process_services_intelligently))
+        .route("/api/admin/services-pending-processing", get(get_services_pending_processing))
+        .route("/api/services/{service_id}/reactivate-intelligent", post(reactivate_service_intelligent))
         .layer(axum::middleware::from_fn(jwt_auth))
         .layer(axum::middleware::from_fn(monitoring::monitoring))
         .layer(axum::middleware::from_fn(audit_log::audit_log))

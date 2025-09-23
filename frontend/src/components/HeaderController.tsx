@@ -177,43 +177,50 @@ const HeaderController: React.FC = () => {
         </div>
 
         {/* ✅ Bloc 3 : profil utilisateur, solde, langue, thème */}
-        <div className="flex items-center gap-2 md:gap-4 min-w-[200px] md:min-w-[300px] justify-end text-sm text-gray-700 dark:text-gray-200 relative">
+        <div className="flex items-center gap-1 md:gap-4 min-w-[150px] md:min-w-[300px] justify-end text-sm text-gray-700 dark:text-gray-200 relative">
           {!user?.id ? (
             <>
-              <Link to={ROUTES.LOGIN} className="text-blue-600 hover:underline text-xs md:text-sm px-2 py-1 rounded">
+              <Link to={ROUTES.LOGIN} className="text-blue-600 hover:underline text-xs md:text-sm px-1 md:px-2 py-1 rounded">
                 Connexion
               </Link>
-              <Link to={ROUTES.REGISTER} className="text-yellow-600 hover:underline text-xs md:text-sm px-2 py-1 rounded">
+              <Link to={ROUTES.REGISTER} className="text-yellow-600 hover:underline text-xs md:text-sm px-1 md:px-2 py-1 rounded">
                 Inscription
               </Link>
             </>
           ) : (
             <>
-          {/* ✅ Mes Services et Solde dans le même conteneur */}
-          <div className="hidden sm:flex items-center space-x-2">
-            <Link
-              to={ROUTES.MES_SERVICES}
-              className="text-blue-600 hover:text-blue-700 text-xs font-medium"
-              title="Voir mes services"
-            >
-              📋 Mes Services
-            </Link>
-            <Link
-              to="/dashboard-prestataire"
-              className="text-purple-600 hover:text-purple-700 text-xs font-medium"
-              title="Dashboard prestataire avec statistiques"
-            >
-              📊 Dashboard
-            </Link>
-            <span className="text-gray-400">|</span>
-            <Link
-              to={ROUTES.MON_SOLDE}
-              className="text-green-600 font-bold hover:underline text-xs"
-              title="Voir mon historique IA"
-            >
-              💰 {formatBalance()}
-            </Link>
-          </div>
+              {/* ✅ Mes Services et Solde dans le même conteneur */}
+              <div className="hidden sm:flex items-center space-x-2">
+                <Link
+                  to={ROUTES.MES_SERVICES}
+                  className="text-blue-600 hover:text-blue-700 text-xs font-medium"
+                  title="Voir mes services"
+                >
+                  📋 Mes Services
+                </Link>
+                <Link
+                  to="/dashboard-prestataire"
+                  className="text-purple-600 hover:text-purple-700 text-xs font-medium"
+                  title="Dashboard prestataire avec statistiques"
+                >
+                  📊 Dashboard
+                </Link>
+                <Link
+                  to="/services-interagis"
+                  className="text-orange-600 hover:text-orange-700 text-xs font-medium"
+                  title="Services avec lesquels vous avez interagi"
+                >
+                  🔗 Services Interagis
+                </Link>
+                <span className="text-gray-400">|</span>
+                <Link
+                  to={ROUTES.MON_SOLDE}
+                  className="text-green-600 font-bold hover:underline text-xs"
+                  title="Voir mon historique IA"
+                >
+                  💰 {formatBalance()}
+                </Link>
+              </div>
 
               {/* ✅ Solde uniquement sur mobile */}
               <div className="sm:hidden">
@@ -246,7 +253,7 @@ const HeaderController: React.FC = () => {
                   </div>
                 )}
                 {openProfileMenu && (
-                  <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded shadow text-sm z-50 p-3">
+                  <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded shadow text-sm z-[100] p-3">
                     <p className="text-gray-800 dark:text-gray-100 font-semibold mb-2">
                       👤 {user.name || "Utilisateur"}
                     </p>

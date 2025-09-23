@@ -117,9 +117,17 @@ export const LocationDisplay: React.FC<LocationDisplayProps> = ({
         );
       });
 
-      const coords = `${position.coords.latitude.toFixed(6)},${position.coords.longitude.toFixed(6)}`;
-      console.log(`📍 [getCurrentUserLocation] Position courante obtenue: ${coords}`);
-      return coords;
+      const { latitude, longitude } = position.coords;
+
+      // Vérifier si ce sont des coordonnées Nigeria par défaut
+      if (!isNigeriaDefaultCoords(latitude, longitude)) {
+        const locationName = await geocodingService.getLocationFromCoordinates(latitude, longitude);
+        console.log(`📍 [getCurrentUserLocation] Position courante obtenue: ${locationName}`);
+        return locationName;
+      } else {
+        console.log('🚫 [getCurrentUserLocation] Coordonnées Nigeria par défaut détectées, ignorées');
+        return null;
+      }
 
     } catch (error) {
       console.warn('⚠️ [getCurrentUserLocation] Erreur obtention position courante:', error);
