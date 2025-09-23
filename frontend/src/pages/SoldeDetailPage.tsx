@@ -43,15 +43,19 @@ const SoldeDetailPage: React.FC = () => {
   const { user, mutate } = useUserSWR();
   const { creditDevise, devise } = useUserCredit();
   
-  // Récupérer le solde depuis localStorage ou JWT
+  // Récupérer le solde depuis localStorage ou JWT (même logique que HeaderController)
   const getCurrentBalance = () => {
-    const storedBalance = localStorage.getItem('user_balance');
+    // Priorité : solde récupéré depuis l'API (même clé que HeaderController)
+    const storedBalance = localStorage.getItem('tokens_balance');
     if (storedBalance) {
-      return parseFloat(storedBalance);
+      return parseInt(storedBalance, 10);
     }
+    
+    // Fallback : solde du JWT (sans conversion /10)
     if (user?.credits) {
-      return user.credits / 10; // Convertir les XAF/10ème en XAF réels
+      return user.credits;
     }
+    
     return 0;
   };
   

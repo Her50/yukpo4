@@ -6,14 +6,12 @@ import {
   Lock,
   Shield,
   Sparkles,
-  Plus,
   Wallet
 } from 'lucide-react';
 import React, { useState } from 'react';
 import { toast } from 'react-hot-toast';
-import SavedPaymentMethods from '../components/payment/SavedPaymentMethods';
 import AddPaymentMethodModal from '../components/payment/AddPaymentMethodModal';
-import PaymentMethodIcons from '../components/payment/PaymentMethodIcons';
+import SavedPaymentMethods from '../components/payment/SavedPaymentMethods';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/buttons/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
@@ -160,14 +158,14 @@ const RechargeTokensPage: React.FC = () => {
       }
 
       const result = await response.json();
-      
+
       // Mettre à jour le solde local
       const newBalance = (balance || 0) + option.tokens;
       localStorage.setItem('user_balance', newBalance.toString());
-      
+
       // Déclencher l'événement de mise à jour du solde
-      window.dispatchEvent(new CustomEvent('tokens_updated', { 
-        detail: { newBalance, tokensAdded: option.tokens } 
+      window.dispatchEvent(new CustomEvent('tokens_updated', {
+        detail: { newBalance, tokensAdded: option.tokens }
       }));
 
       toast.success(`Recharge de ${formatAmount(option.amount)} effectuée avec succès ! +${option.tokens} tokens ajoutés`);
@@ -221,14 +219,14 @@ const RechargeTokensPage: React.FC = () => {
       }
 
       const result = await response.json();
-      
+
       // Mettre à jour le solde local
       const newBalance = (balance || 0) + totalTokens;
       localStorage.setItem('user_balance', newBalance.toString());
-      
+
       // Déclencher l'événement de mise à jour du solde
-      window.dispatchEvent(new CustomEvent('tokens_updated', { 
-        detail: { newBalance, tokensAdded: totalTokens } 
+      window.dispatchEvent(new CustomEvent('tokens_updated', {
+        detail: { newBalance, tokensAdded: totalTokens }
       }));
 
       toast.success(`Recharge de ${formatAmount(customAmount)} effectuée avec succès ! +${totalTokens} tokens ajoutés`);
@@ -246,8 +244,8 @@ const RechargeTokensPage: React.FC = () => {
   const getSelectedOption = () => {
     if (selectedOption === 'custom') {
       return {
-      id: 'custom',
-      amount: customAmount,
+        id: 'custom',
+        amount: customAmount,
         tokens: Math.floor(customAmount),
         bonus: customAmount >= 10000 ? Math.floor(customAmount * 0.2) :
           customAmount >= 5000 ? Math.floor(customAmount * 0.1) :
@@ -288,7 +286,7 @@ const RechargeTokensPage: React.FC = () => {
                   <span className="text-3xl font-bold">
                     {balance?.toLocaleString() || '0'} tokens
                   </span>
-              </div>
+                </div>
                 <p className="text-blue-100 mt-1">
                   Équivalent à {formatAmount(balance || 0)}
                 </p>
@@ -318,8 +316,8 @@ const RechargeTokensPage: React.FC = () => {
               return (
                 <div key={step.key} className="flex items-center">
                   <div className={`flex items-center justify-center w-10 h-10 rounded-full ${isActive || isCompleted
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-200 text-gray-400'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-200 text-gray-400'
                     }`}>
                     <Icon className="w-5 h-5" />
                   </div>
@@ -342,24 +340,23 @@ const RechargeTokensPage: React.FC = () => {
             {/* Sélection du montant */}
             {currentStep === 'amount' && (
               <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
                     <Coins className="w-5 h-5" />
                     Choisissez votre montant
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-              {rechargeOptions.map((option) => (
+                    {rechargeOptions.map((option) => (
                       <Card
-                  key={option.id}
-                        className={`cursor-pointer transition-all ${
-                          selectedOption === option.id
-                            ? 'ring-2 ring-blue-500 bg-blue-50'
-                            : 'hover:shadow-md'
-                    }`}
-                  onClick={() => setSelectedOption(option.id)}
-                >
+                        key={option.id}
+                        className={`cursor-pointer transition-all ${selectedOption === option.id
+                          ? 'ring-2 ring-blue-500 bg-blue-50'
+                          : 'hover:shadow-md'
+                          }`}
+                        onClick={() => setSelectedOption(option.id)}
+                      >
                         <CardContent className="p-4">
                           <div className="text-center">
                             <div className="text-2xl font-bold text-blue-600 mb-2">
@@ -373,16 +370,16 @@ const RechargeTokensPage: React.FC = () => {
                                 +{option.bonus} bonus
                               </div>
                             )}
-                  {option.popular && (
+                            {option.popular && (
                               <Badge className="mt-2 bg-orange-100 text-orange-800">
-                      Populaire
-                    </Badge>
-                  )}
-                    </div>
+                                Populaire
+                              </Badge>
+                            )}
+                          </div>
                         </CardContent>
                       </Card>
                     ))}
-                    </div>
+                  </div>
 
                   <div className="border-t pt-4">
                     <div className="text-center mb-4">
@@ -403,21 +400,21 @@ const RechargeTokensPage: React.FC = () => {
                         )}
                       </div>
                     </div>
-            </div>
+                  </div>
 
                   {selectedOptionData && (
                     <div className="mt-6">
-              <Button
+                      <Button
                         onClick={() => setCurrentStep('payment')}
                         className="w-full bg-blue-600 hover:bg-blue-700 text-lg py-3"
-              >
+                      >
                         Continuer vers le paiement
                         <ArrowRight className="w-5 h-5 ml-2" />
-              </Button>
+                      </Button>
                     </div>
-              )}
-          </CardContent>
-        </Card>
+                  )}
+                </CardContent>
+              </Card>
             )}
 
             {/* Sélection du moyen de paiement */}
@@ -473,13 +470,13 @@ const RechargeTokensPage: React.FC = () => {
             {/* Confirmation */}
             {currentStep === 'confirm' && selectedOptionData && (
               <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
                     <CheckCircle className="w-5 h-5" />
                     Confirmez votre recharge
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
                   <div className="space-y-6">
                     {/* Résumé de la recharge */}
                     <div className="bg-gray-50 rounded-lg p-6">
@@ -497,7 +494,7 @@ const RechargeTokensPage: React.FC = () => {
                           <div className="flex justify-between text-green-600">
                             <span>Bonus:</span>
                             <span className="font-semibold">+{selectedOptionData?.bonus?.toLocaleString() || '0'}</span>
-                    </div>
+                          </div>
                         )}
                         <div className="border-t pt-3">
                           <div className="flex justify-between text-lg font-bold">
@@ -550,7 +547,7 @@ const RechargeTokensPage: React.FC = () => {
                 </CardContent>
               </Card>
             )}
-            </div>
+          </div>
 
           {/* Colonne latérale */}
           <div className="space-y-6">
@@ -578,26 +575,26 @@ const RechargeTokensPage: React.FC = () => {
                     Voir tout l'historique
                   </Button>
                 </div>
-          </CardContent>
-        </Card>
+              </CardContent>
+            </Card>
 
             {/* Informations de sécurité */}
             <Card className="bg-green-50 border-green-200">
               <CardContent className="p-4">
                 <div className="flex items-start gap-3">
                   <Shield className="w-5 h-5 text-green-600 mt-0.5" />
-                <div>
+                  <div>
                     <h5 className="font-medium text-green-900 mb-1">Paiement sécurisé</h5>
                     <p className="text-sm text-green-700">
                       Tous vos paiements sont protégés par un chiffrement de niveau bancaire.
                       Vos informations ne sont jamais stockées.
                     </p>
-              </div>
+                  </div>
                 </div>
               </CardContent>
             </Card>
-              </div>
-            </div>
+          </div>
+        </div>
 
         {/* Modal d'ajout de moyen de paiement */}
         <AddPaymentMethodModal

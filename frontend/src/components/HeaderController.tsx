@@ -306,7 +306,7 @@ const HeaderController: React.FC = () => {
                       to={ROUTES.MON_SOLDE}
                       className="block px-3 py-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
                     >
-                      🧾 Historisation consommation
+                      🧾 Historique de consommation
                     </Link>
                     <Link
                       to={ROUTES.RECHARGE_TOKENS}
