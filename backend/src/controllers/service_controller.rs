@@ -750,7 +750,7 @@ pub async fn get_shared_service(
     let pg_pool = &state.pg;
     
     // Vérifier la signature si fournie (liens signés)
-    if let (Some(sig), Some(exp)) = (params.get("sig"), params.get("exp")) {
+    if let (Some(_sig), Some(exp)) = (params.get("sig"), params.get("exp")) {
         if let Ok(expires_at) = exp.parse::<u64>() {
             // TODO: Implémenter la vérification de signature avec le service
             // Pour l'instant, on vérifie juste l'expiration
