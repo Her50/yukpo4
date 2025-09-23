@@ -49,6 +49,25 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children, padding = true }) => {
     document.documentElement.classList.toggle("dark", isDark);
   }, []);
 
+  useEffect(() => {
+    // Écouter les événements d'ouverture d'historique depuis la homepage
+    const handleNotificationHistoryEvent = () => {
+      setShowNotificationHistory(true);
+    };
+
+    const handleChatHistoryEvent = () => {
+      setShowChatHistory(true);
+    };
+
+    window.addEventListener('open:notification:history', handleNotificationHistoryEvent);
+    window.addEventListener('open:chat:history', handleChatHistoryEvent);
+    
+    return () => {
+      window.removeEventListener('open:notification:history', handleNotificationHistoryEvent);
+      window.removeEventListener('open:chat:history', handleChatHistoryEvent);
+    };
+  }, []);
+
   return (
     <>
       {/* 🌐 Barre supérieure + langue */}
