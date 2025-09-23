@@ -26,6 +26,14 @@ export interface User {
   isUser: boolean;
   name: string;
   photo: string;
+  // Champs de profil utilisateur
+  nom?: string;
+  prenom?: string;
+  nom_complet?: string;
+  photo_profil?: string;
+  avatar_url?: string;
+  phone?: string;
+  bio?: string;
   lang?: string;
   credits?: number;
   currency?: string;
@@ -159,9 +167,34 @@ export const useUser = () => {
     }
   }, []);
 
+  // Fonction pour récupérer les informations complètes de l'utilisateur
+  const fetchUserDetails = useCallback(async () => {
+    if (!user?.id) return;
+    
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+      
+      const response = await fetch('/api/users/profile', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        const userDetails = await response.json();
+        setUser(prev => prev ? { ...prev, ...userDetails } : null);
+      }
+    } catch (error) {
+      console.error('[useUser] Erreur récupération détails utilisateur:', error);
+    }
+  }, [user?.id]);
+
   return {
     user,
     isLoading,
+    fetchUserDetails,
     login: (token: string) => {
       console.log('[useUser] Login avec token de longueur:', token.length);
       localStorage.setItem('token', token);

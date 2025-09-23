@@ -1,8 +1,7 @@
 // src/components/LangSwitcher.tsx
 // @ts-check
-import TranslationService from "@/services/translationService";
-import React, { useEffect, useState } from "react";
-import { useTranslation } from "react-i18next";
+import React from "react";
+import { useTranslation } from "@/hooks/useTranslation";
 
 const languages = [
   { code: "fr", label: "🇫🇷 Français" },
@@ -13,37 +12,17 @@ const languages = [
 ];
 
 const LangSwitcher: React.FC = () => {
-  const { i18n } = useTranslation();
-  const [lang, setLang] = useState(() => {
-    return localStorage.getItem("preferred_lang") || i18n.language;
-  });
-  const [isTranslating, setIsTranslating] = useState(false);
+  const { currentLanguage, isTranslating, changeLanguage } = useTranslation();
 
-  useEffect(() => {
-    i18n.changeLanguage(lang);
-    localStorage.setItem("preferred_lang", lang);
-    
-    // Traduction automatique pour toutes les langues
-    handleAutoTranslation(lang);
-  }, [lang, i18n]);
-
-  const handleAutoTranslation = async (targetLanguage: string) => {
-    setIsTranslating(true);
-    try {
-      const translationService = TranslationService.getInstance();
-      await translationService.translateFullPage(targetLanguage);
-    } catch (error) {
-      console.error('Erreur traduction automatique:', error);
-    } finally {
-      setIsTranslating(false);
-    }
+  const handleLanguageChange = (languageCode: string) => {
+    changeLanguage(languageCode);
   };
 
   return (
     <div className="flex items-center gap-2">
       <select
-        value={lang}
-        onChange={(e) => setLang(e.target.value)}
+        value={currentLanguage}
+        onChange={(e) => handleLanguageChange(e.target.value)}
         className="border text-sm rounded px-2 py-1 bg-white focus:outline-none focus:ring-2 focus:ring-primary"
         aria-label="Sélecteur de langue"
         disabled={isTranslating}

@@ -15,6 +15,23 @@ use crate::{
 use crate::state::AppState;
 
 #[derive(Serialize)]
+pub struct UserProfileResponse {
+    pub id: i32,
+    pub email: String,
+    pub role: String,
+    pub nom: Option<String>,
+    pub prenom: Option<String>,
+    pub nom_complet: Option<String>,
+    pub photo_profil: Option<String>,
+    pub avatar_url: Option<String>,
+    pub phone: Option<String>,
+    pub bio: Option<String>,
+    pub preferred_lang: Option<String>,
+    pub tokens_balance: i64,
+    pub created_at: chrono::DateTime<chrono::Utc>,
+}
+
+#[derive(Serialize)]
 pub struct BalanceResponse {
     pub tokens_balance: i64,
 }
@@ -709,5 +726,50 @@ pub async fn recharge_tokens(
         transaction_id,
         new_balance,
     }))
+}
+
+/// Récupère le profil complet de l'utilisateur
+pub async fn get_user_profile(
+    State(state): State<Arc<AppState>>,
+    user: AuthenticatedUser,
+) -> AppResult<Json<UserProfileResponse>> {
+    info!("[get_user_profile] Récupération profil pour user_id={}", user.id);
+    
+    let row = sqlx::query!(
+        r#"
+        SELECT 
+            id, email, role, nom, prenom, nom_complet, 
+            photo_profil, avatar_url, phone, bio, 
+            preferred_lang, tokens_balance, created_at
+        FROM users 
+        WHERE id = $1
+        "#,
+        user.id
+    )
+    .fetch_one(&state.pg)
+    .await
+    .map_err(|e| {
+        error!("[get_user_profile] Erreur requête SQL: {e:?}");
+        crate::core::types::AppError::Database(format!("Erreur récupération profil: {e}"))
+    })?;
+
+    let profile = UserProfileResponse {
+        id: row.id,
+        email: row.email,
+        role: row.role,
+        nom: row.nom,
+        prenom: row.prenom,
+        nom_complet: row.nom_complet,
+        photo_profil: row.photo_profil,
+        avatar_url: row.avatar_url,
+        phone: row.phone,
+        bio: row.bio,
+        preferred_lang: row.preferred_lang,
+        tokens_balance: row.tokens_balance,
+        created_at: row.created_at,
+    };
+
+    info!("[get_user_profile] Profil récupéré avec succès pour user_id={}", user.id);
+    Ok(Json(profile))
 }
 

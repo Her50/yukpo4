@@ -129,27 +129,35 @@ const UserSettingsPage: React.FC = () => {
     // Mettre à jour les paramètres quand l'utilisateur change
     useEffect(() => {
         if (user) {
+            // Construire le nom complet à partir des champs disponibles
+            const fullName = user.nom_complet || 
+                            (user.nom && user.prenom ? `${user.prenom} ${user.nom}` : '') ||
+                            user.name || 
+                            '';
+            
             setSettings(prev => ({
                 ...prev,
-                name: user.name || '',
+                name: fullName,
                 email: user.email || '',
                 phone: user.phone || '',
                 bio: user.bio || '',
-                avatar: user.photo || ''
+                avatar: user.photo_profil || user.avatar_url || user.photo || ''
             }));
         }
     }, [user]);
 
     // Charger les paramètres depuis l'API
     useEffect(() => {
-        loadUserSettings();
-    }, [user]);
+        if (user?.id) {
+            loadUserSettings();
+        }
+    }, [user?.id]);
 
     const loadUserSettings = async () => {
         if (!user?.id) return;
 
         try {
-            const response = await fetch(`/api/users/${user.id}/settings`, {
+            const response = await fetch('/api/user/me', {
                 headers: {
                     'Authorization': `Bearer ${localStorage.getItem('token')}`
                 }
@@ -157,7 +165,20 @@ const UserSettingsPage: React.FC = () => {
 
             if (response.ok) {
                 const data = await response.json();
-                setSettings(prev => ({ ...prev, ...data }));
+                // Construire le nom complet à partir des champs disponibles
+                const fullName = data.nom_complet || 
+                                (data.nom && data.prenom ? `${data.prenom} ${data.nom}` : '') ||
+                                data.name || 
+                                '';
+                
+                setSettings(prev => ({
+                    ...prev,
+                    name: fullName,
+                    email: data.email || '',
+                    phone: data.phone || '',
+                    bio: data.bio || '',
+                    avatar: data.photo_profil || data.avatar_url || data.photo || ''
+                }));
             }
         } catch (error) {
             console.error('Erreur chargement paramètres:', error);

@@ -1,25 +1,32 @@
-import ResponsiveContainer from '@/components/layout/ResponsiveContainer';
-import HistorySummary from '@/components/recharge/HistorySummary';
-import PaymentMethods from '@/components/recharge/PaymentMethods';
-import RechargeOptions from '@/components/recharge/RechargeOptions';
-import { Button } from '@/components/ui/buttons/Button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { useToast } from '@/components/ui/use-toast';
-import { useUser } from '@/hooks/useUser';
-import { useUserCredit } from '@/hooks/useUserCredit';
-import {
-  AlertCircle,
-  CheckCircle,
-  Coins,
-  CreditCard,
-  Info,
-  Shield,
-  Smartphone,
+import React, { useState, useEffect } from 'react';
+import { useUser } from '../hooks/useUser';
+import { useUserCredit } from '../hooks/useUserCredit';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { Button } from '../components/ui/buttons/Button';
+import { Badge } from '../components/ui/badge';
+import { 
+  CreditCard, 
+  Wallet, 
+  Info, 
+  CheckCircle, 
+  TrendingUp, 
+  TrendingDown, 
+  Clock, 
+  History,
+  Zap,
   Star,
-  Wallet,
-  Zap
+  Shield,
+  Lock,
+  ArrowRight,
+  Gift,
+  Sparkles,
+  Coins,
+  Smartphone
 } from 'lucide-react';
-import React, { useEffect, useState } from 'react';
+import { toast } from 'react-hot-toast';
+import AmountSelector from '../components/recharge/AmountSelector';
+import PaymentMethodManager from '../components/payment/PaymentMethodManager';
+import HistorySummary from '../components/recharge/HistorySummary';
 
 interface RechargeOption {
   id: string;
@@ -27,485 +34,516 @@ interface RechargeOption {
   tokens: number;
   bonus: number;
   popular?: boolean;
-  description: string;
+  savings?: number;
 }
 
 interface PaymentMethod {
   id: string;
   name: string;
-  icon: React.ReactNode;
-  description: string;
-  available: boolean;
+  type: 'card' | 'mobile' | 'bank';
   processingTime: string;
   fees: number;
-}
-
-interface ConsumptionHistory {
-  id: string;
-  date: string;
-  service: string;
-  amount: number;
-  type: 'consumption' | 'recharge';
-  description: string;
-}
-
-interface PaymentHistory {
-  id: string;
-  date: string;
-  amount: number;
-  payment_method: string;
-  status: 'completed' | 'pending' | 'failed';
-  transaction_id?: string;
-  description: string;
+  available: boolean;
+  icon: string;
 }
 
 const RechargeTokensPage: React.FC = () => {
-  const [selectedOption, setSelectedOption] = useState<string>('');
-  const [customAmount, setCustomAmount] = useState<number>(2000);
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>('');
-  const [loading, setLoading] = useState(false);
-  const [consumptionHistory, setConsumptionHistory] = useState<ConsumptionHistory[]>([]);
-  const [paymentHistory, setPaymentHistory] = useState<PaymentHistory[]>([]);
-  const [historyLoading, setHistoryLoading] = useState(false);
   const { user } = useUser();
-  const { creditDevise, devise } = useUserCredit();
-  const { toast } = useToast();
+  const { balance, devise, formatAmount } = useUserCredit();
+  const [loading, setLoading] = useState(false);
+  const [selectedOption, setSelectedOption] = useState<string | null>(null);
+  const [customAmount, setCustomAmount] = useState<number>(0);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string | null>(null);
+  const [currentStep, setCurrentStep] = useState<'amount' | 'payment' | 'confirm'>('amount');
 
-  // Fonction pour charger l'historique des consommations
-  const loadConsumptionHistory = async () => {
-    if (!user?.id) return;
+  // Options de recharge prédéfinies (en FCFA de base, converties selon la devise)
+  const baseAmounts = [2000, 5000, 10000, 20000, 50000]; // Montants en FCFA
+  const rechargeOptions: RechargeOption[] = baseAmounts.map((baseAmount, index) => {
+    const tokens = baseAmount; // 1 FCFA = 1 token
+    const bonus = baseAmount >= 10000 ? Math.floor(baseAmount * 0.2) : 
+                  baseAmount >= 5000 ? Math.floor(baseAmount * 0.1) : 
+                  baseAmount >= 2000 ? Math.floor(baseAmount * 0.05) : 0;
+    
+    return {
+      id: ['basic', 'standard', 'premium', 'pro', 'enterprise'][index],
+      amount: baseAmount, // Montant en FCFA (sera converti par formatAmount)
+      tokens: tokens + bonus,
+      bonus: bonus,
+      popular: baseAmount === 10000,
+      description: ['Recharge de base', 'Recharge standard', 'Recharge premium', 'Recharge professionnelle', 'Recharge entreprise'][index]
+    };
+  });
 
-    setHistoryLoading(true);
-    try {
-      const response = await fetch('/api/users/consumption-history', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setConsumptionHistory(data.history || []);
-      }
-    } catch (error) {
-      console.error('Erreur chargement historique:', error);
-    } finally {
-      setHistoryLoading(false);
-    }
+  // Méthodes de paiement disponibles (frais en FCFA de base)
+  const baseFees = {
+    mobile: 0,      // Mobile Money gratuit
+    card: 50,       // Cartes bancaires : 50 FCFA
+    bank: 0         // Virement bancaire gratuit
   };
-
-  // Fonction pour charger l'historique des paiements
-  const loadPaymentHistory = async () => {
-    if (!user?.id) return;
-
-    try {
-      const response = await fetch('/api/users/payment-history', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setPaymentHistory(data.payments || []);
-      }
-    } catch (error) {
-      console.error('Erreur chargement historique paiements:', error);
-    }
-  };
-
-  // Charger l'historique au montage du composant
-  useEffect(() => {
-    loadConsumptionHistory();
-    loadPaymentHistory();
-  }, [user?.id]);
-
-  // Options de recharge predéfinies (converties selon la devise de l'utilisateur)
-  const getRechargeOptions = (): RechargeOption[] => {
-    const baseAmounts = [2000, 5000, 10000]; // Montants de base en FCFA
-    const baseTokens = [2000, 5500, 12000];
-    const bonuses = [0, 500, 2000];
-
-    return baseAmounts.map((amount, index) => ({
-      id: ['basic', 'standard', 'premium'][index],
-      amount: amount,
-      tokens: baseTokens[index],
-      bonus: bonuses[index],
-      popular: index === 1,
-      description: ['Recharge de base', 'Recharge standard avec bonus', 'Recharge premium avec bonus maximum'][index]
-    }));
-  };
-
-  const rechargeOptions = getRechargeOptions();
-
-  // Fonction pour formater les montants selon la devise
-  const formatAmount = (amount: number, showCurrency: boolean = true) => {
-    if (devise === 'XAF') {
-      return showCurrency ? `${amount.toLocaleString()} FCFA` : amount.toLocaleString();
-    }
-
-    // Pour les autres devises, utiliser le formatage standard
-    return new Intl.NumberFormat('fr-FR', {
-      style: 'currency',
-      currency: devise,
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    }).format(amount);
-  };
-
-  // Modes de paiement disponibles
+  
   const paymentMethods: PaymentMethod[] = [
-    {
-      id: 'orange_money',
-      name: 'Orange Money',
-      icon: <Smartphone className="w-6 h-6 text-orange-600" />,
-      description: 'Paiement mobile Orange Money',
-      available: true,
-      processingTime: 'Instantané',
-      fees: 0
-    },
     {
       id: 'mtn_money',
       name: 'MTN Money',
-      icon: <Smartphone className="w-6 h-6 text-yellow-600" />,
-      description: 'Paiement mobile MTN Money',
-      available: true,
+      type: 'mobile',
       processingTime: 'Instantané',
-      fees: 0
+      fees: baseFees.mobile,
+      available: true,
+      icon: '📱'
     },
     {
-      id: 'visa_card',
-      name: 'Carte Visa',
-      icon: <CreditCard className="w-6 h-6 text-blue-600" />,
-      description: 'Paiement par carte bancaire Visa',
+      id: 'orange_money',
+      name: 'Orange Money',
+      type: 'mobile',
+      processingTime: 'Instantané',
+      fees: baseFees.mobile,
       available: true,
-      processingTime: '2-5 minutes',
-      fees: 50
+      icon: '🍊'
+    },
+    {
+      id: 'moov_money',
+      name: 'Moov Money',
+      type: 'mobile',
+      processingTime: 'Instantané',
+      fees: baseFees.mobile,
+      available: true,
+      icon: '📲'
+    },
+    {
+      id: 'visa',
+      name: 'Visa',
+      type: 'card',
+      processingTime: '2-3 minutes',
+      fees: baseFees.card,
+      available: true,
+      icon: '💳'
     },
     {
       id: 'mastercard',
       name: 'Mastercard',
-      icon: <CreditCard className="w-6 h-6 text-red-600" />,
-      description: 'Paiement par carte Mastercard',
+      type: 'card',
+      processingTime: '2-3 minutes',
+      fees: baseFees.card,
       available: true,
-      processingTime: '2-5 minutes',
-      fees: 50
+      icon: '💳'
+    },
+    {
+      id: 'bank_transfer',
+      name: 'Virement bancaire',
+      type: 'bank',
+      processingTime: '1-2 heures',
+      fees: baseFees.bank,
+      available: true,
+      icon: '🏦'
     }
   ];
 
-  const handleRecharge = async (option: RechargeOption | null) => {
-    if (!user?.id) {
-      toast({
-        title: "Erreur",
-        description: "Vous devez etre connecte pour recharger",
-        type: "error"
-      });
-      return;
+  // Historique de consommation (mock)
+  const consumptionHistory = [
+    {
+      id: '1',
+      service: 'Génération de contenu IA',
+      tokens: 150,
+      date: new Date(Date.now() - 1000 * 60 * 30),
+      type: 'consumption'
+    },
+    {
+      id: '2',
+      service: 'Recherche de services',
+      tokens: 50,
+      date: new Date(Date.now() - 1000 * 60 * 60 * 2),
+      type: 'consumption'
     }
+  ];
 
+  // Historique de paiement (mock)
+  const paymentHistory = [
+    {
+      id: '1',
+      amount: 5000,
+      method: 'MTN Money',
+      date: new Date(Date.now() - 1000 * 60 * 60 * 24),
+      status: 'completed'
+    },
+    {
+      id: '2',
+      amount: 10000,
+      method: 'Orange Money',
+      date: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3),
+      status: 'completed'
+    }
+  ];
+
+  const handleRecharge = async (option: RechargeOption) => {
     if (!selectedPaymentMethod) {
-      toast({
-        title: "Mode de paiement requis",
-        description: "Veuillez selectionner un mode de paiement",
-        type: "error"
-      });
+      toast.error('Veuillez sélectionner un moyen de paiement');
       return;
     }
 
     setLoading(true);
-
     try {
-      const amount = option ? option.amount : customAmount;
-      const tokens = option ? option.tokens : customAmount;
-      const paymentMethod = paymentMethods.find(pm => pm.id === selectedPaymentMethod);
-
-      // Validation du montant minimum
-      if (amount < 2000) {
-        toast({
-          title: "Montant insuffisant",
-          description: `Le montant minimum de recharge est de ${formatAmount(2000)}`,
-          type: "error"
-        });
-        setLoading(false);
-        return;
-      }
-
-      // Simulation de l'appel API
-      const response = await fetch('/api/tokens/recharge', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({
-          amount: amount,
-          tokens: tokens,
-          payment_method: selectedPaymentMethod,
-          payment_method_name: paymentMethod?.name,
-          fees: paymentMethod?.fees || 0,
-          user_id: user.id
-        })
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-
-        toast({
-          title: "Recharge reussie !",
-          description: `Vous avez reçu ${tokens.toLocaleString()} tokens (${formatAmount(amount)})`,
-          type: "success"
-        });
-
-        // Recharger les historiques
-        loadConsumptionHistory();
-        loadPaymentHistory();
-
-        // Mettre à jour le solde dans localStorage
-        localStorage.setItem('tokens_balance', data.new_balance.toString());
-
-        // Déclencher un événement pour mettre à jour l'affichage du solde
-        window.dispatchEvent(new CustomEvent('balanceUpdated', {
-          detail: { newBalance: data.new_balance }
-        }));
-      } else {
-        throw new Error('Erreur de recharge');
-      }
+      // Simuler la recharge
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      toast.success(`Recharge de ${formatAmount(option.amount)} effectuée avec succès !`);
+      setCurrentStep('amount');
+      setSelectedOption(null);
+      setSelectedPaymentMethod(null);
     } catch (error) {
-      console.error('Erreur recharge:', error);
-      toast({
-        title: "Erreur de recharge",
-        description: "Impossible de traiter votre recharge. Veuillez reessayer.",
-        type: "error"
-      });
+      toast.error('Erreur lors de la recharge');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleCustomRecharge = () => {
-    if (customAmount < 2000) {
-      toast({
-        title: "Montant insuffisant",
-        description: `Le montant minimum de recharge est de ${formatAmount(2000)}`,
-        type: "error"
-      });
+  const handleCustomRecharge = async () => {
+    if (customAmount < 1000) {
+      toast.error('Montant minimum: 1000 FCFA');
       return;
     }
 
-    const customOption: RechargeOption = {
-      id: 'custom',
-      amount: customAmount,
-      tokens: customAmount,
-      bonus: 0,
-      description: 'Montant personnalise'
-    };
+    if (!selectedPaymentMethod) {
+      toast.error('Veuillez sélectionner un moyen de paiement');
+      return;
+    }
 
-    handleRecharge(customOption);
+    setLoading(true);
+    try {
+      // Simuler la recharge personnalisée
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      toast.success(`Recharge de ${formatAmount(customAmount)} effectuée avec succès !`);
+      setCurrentStep('amount');
+      setCustomAmount(0);
+      setSelectedPaymentMethod(null);
+    } catch (error) {
+      toast.error('Erreur lors de la recharge');
+    } finally {
+      setLoading(false);
+    }
   };
 
+  const getSelectedOption = () => {
+    if (selectedOption === 'custom') {
+      return {
+        id: 'custom',
+        amount: customAmount,
+        tokens: Math.floor(customAmount),
+        bonus: customAmount >= 10000 ? Math.floor(customAmount * 0.2) : 
+               customAmount >= 5000 ? Math.floor(customAmount * 0.1) : 
+               customAmount >= 2000 ? Math.floor(customAmount * 0.05) : 0
+      };
+    }
+    return rechargeOptions.find(opt => opt.id === selectedOption);
+  };
+
+  const selectedOptionData = getSelectedOption();
+
   return (
-    <ResponsiveContainer>
-      <div className="py-8">
-        {/* Header */}
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+      <div className="container mx-auto px-4 py-8 max-w-6xl">
+        {/* En-tête */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Recharger mes Tokens
+          <div className="inline-flex items-center gap-2 bg-blue-100 text-blue-800 px-4 py-2 rounded-full text-sm font-medium mb-4">
+            <Sparkles className="w-4 h-4" />
+            Recharge instantanée
+          </div>
+          <h1 className="text-4xl font-bold text-gray-900 mb-2">
+            Rechargez vos tokens
           </h1>
-          <p className="text-gray-600">
-            Achetez des tokens pour utiliser les fonctionnalites IA de Yukpo
+          <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+            Accédez à tous les services Yukpo avec des tokens. 
+            Rechargez facilement et profitez de bonus exclusifs !
           </p>
         </div>
 
         {/* Solde actuel */}
-        <Card className="mb-8 bg-gradient-to-r from-green-50 to-blue-50 border-green-200">
+        <Card className="mb-8 bg-gradient-to-r from-blue-600 to-purple-600 text-white border-0">
           <CardContent className="p-6">
-            <div className="flex items-center gap-4 mb-4">
-              <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center">
-                <Wallet className="w-6 h-6 text-white" />
-              </div>
+            <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-lg font-semibold text-gray-900">Solde actuel</h3>
-                <p className="text-2xl font-bold text-green-600">
-                  {creditDevise !== null ? formatAmount(creditDevise) : "Chargement..."}
+                <h3 className="text-lg font-medium mb-1">Solde actuel</h3>
+                <div className="flex items-center gap-2">
+                  <Coins className="w-6 h-6" />
+                  <span className="text-3xl font-bold">
+                    {balance.toLocaleString()} tokens
+                  </span>
+                </div>
+                <p className="text-blue-100 mt-1">
+                  Équivalent à {formatAmount(balance)}
                 </p>
-                <p className="text-sm text-gray-600">
-                  Devise détectée: {devise}
-                </p>
+              </div>
+              <div className="text-right">
+                <Badge className="bg-white/20 text-white border-white/30">
+                  <Shield className="w-3 h-3 mr-1" />
+                  Sécurisé
+                </Badge>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* Informations sur les tokens */}
-        <Card className="mb-8 bg-gradient-to-r from-blue-50 to-purple-50 border-blue-200">
-          <CardContent className="p-6">
-            <div className="flex items-center gap-4 mb-4">
-              <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center">
-                <Coins className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900">A quoi servent les tokens ?</h3>
-                <p className="text-gray-600">Les tokens vous permettent d'utiliser l'IA pour creer et optimiser vos services</p>
-              </div>
-            </div>
+        {/* Étapes de progression */}
+        <div className="mb-8">
+          <div className="flex items-center justify-center space-x-8">
+            {[
+              { key: 'amount', label: 'Montant', icon: Coins },
+              { key: 'payment', label: 'Paiement', icon: CreditCard },
+              { key: 'confirm', label: 'Confirmation', icon: CheckCircle }
+            ].map((step, index) => {
+              const Icon = step.icon;
+              const isActive = currentStep === step.key;
+              const isCompleted = ['amount', 'payment', 'confirm'].indexOf(currentStep) > index;
+              
+              return (
+                <div key={step.key} className="flex items-center">
+                  <div className={`flex items-center justify-center w-10 h-10 rounded-full ${
+                    isActive || isCompleted 
+                      ? 'bg-blue-600 text-white' 
+                      : 'bg-gray-200 text-gray-400'
+                  }`}>
+                    <Icon className="w-5 h-5" />
+                  </div>
+                  <span className={`ml-2 font-medium ${
+                    isActive ? 'text-blue-600' : 'text-gray-500'
+                  }`}>
+                    {step.label}
+                  </span>
+                  {index < 2 && (
+                    <ArrowRight className="w-4 h-4 text-gray-400 mx-4" />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="flex items-center gap-2 text-sm">
-                <Zap className="w-4 h-4 text-yellow-500" />
-                <span>Creation de services IA</span>
-              </div>
-              <div className="flex items-center gap-2 text-sm">
-                <Shield className="w-4 h-4 text-green-500" />
-                <span>Optimisation automatique</span>
-              </div>
-              <div className="flex items-center gap-2 text-sm">
-                <Star className="w-4 h-4 text-purple-500" />
-                <span>Suggestions intelligentes</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Colonne principale */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Sélection du montant */}
+            {currentStep === 'amount' && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Coins className="w-5 h-5" />
+                    Choisissez votre montant
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <AmountSelector
+                    options={rechargeOptions}
+                    selectedOption={selectedOption}
+                    onSelectOption={setSelectedOption}
+                    customAmount={customAmount}
+                    onCustomAmountChange={setCustomAmount}
+                    formatAmount={formatAmount}
+                    currency={devise}
+                  />
+                  
+                  {selectedOptionData && (
+                    <div className="mt-6">
+                      <Button
+                        onClick={() => setCurrentStep('payment')}
+                        className="w-full bg-blue-600 hover:bg-blue-700 text-lg py-3"
+                      >
+                        Continuer vers le paiement
+                        <ArrowRight className="w-5 h-5 ml-2" />
+                      </Button>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
 
-        {/* Options de recharge predéfinies */}
-        <Card className="mb-8">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <CreditCard className="w-5 h-5" />
-              Options de recharge
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <RechargeOptions
-              options={rechargeOptions}
-              selectedOption={selectedOption}
-              onSelectOption={setSelectedOption}
-              formatAmount={formatAmount}
-            />
+            {/* Sélection du moyen de paiement */}
+            {currentStep === 'payment' && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <CreditCard className="w-5 h-5" />
+                    Choisissez votre moyen de paiement
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                    {paymentMethods.map((method) => (
+                      <Card
+                        key={method.id}
+                        className={`cursor-pointer transition-all ${
+                          selectedPaymentMethod === method.id
+                            ? 'ring-2 ring-blue-500 bg-blue-50'
+                            : 'hover:shadow-md'
+                        }`}
+                        onClick={() => setSelectedPaymentMethod(method.id)}
+                      >
+                        <CardContent className="p-4">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className="text-2xl">{method.icon}</div>
+                              <div>
+                                <h4 className="font-medium">{method.name}</h4>
+                                <p className="text-sm text-gray-600">{method.processingTime}</p>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <div className="text-sm font-medium">
+                                {method.fees === 0 ? 'Gratuit' : `+${formatAmount(method.fees)}`}
+                              </div>
+                              {selectedPaymentMethod === method.id && (
+                                <CheckCircle className="w-5 h-5 text-blue-600 ml-auto" />
+                              )}
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
 
-            {selectedOption && (
-              <div className="mt-6">
-                <h4 className="text-lg font-semibold mb-4">Choisir votre mode de paiement</h4>
-                <PaymentMethods
-                  methods={paymentMethods}
-                  selectedMethod={selectedPaymentMethod}
-                  onSelectMethod={setSelectedPaymentMethod}
-                  formatAmount={formatAmount}
-                />
-                
-                {selectedPaymentMethod && (
-                  <div className="mt-6 text-center">
+                  <div className="flex gap-4">
                     <Button
-                      onClick={() => handleRecharge(rechargeOptions.find(o => o.id === selectedOption)!)}
-                      disabled={loading}
-                      className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 text-lg font-semibold"
+                      variant="outline"
+                      onClick={() => setCurrentStep('amount')}
+                      className="flex-1"
                     >
-                      {loading ? 'Traitement...' : 'Recharger maintenant'}
+                      Retour
+                    </Button>
+                    <Button
+                      onClick={() => setCurrentStep('confirm')}
+                      disabled={!selectedPaymentMethod}
+                      className="flex-1 bg-blue-600 hover:bg-blue-700"
+                    >
+                      Continuer
+                      <ArrowRight className="w-4 h-4 ml-2" />
                     </Button>
                   </div>
-                )}
-              </div>
+                </CardContent>
+              </Card>
             )}
-          </CardContent>
-        </Card>
 
-        {/* Montant personnalise */}
-        <Card className="mb-8">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Info className="w-5 h-5" />
-              Montant personnalise
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="max-w-md mx-auto">
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Montant en {devise} (minimum {formatAmount(2000)})
-                </label>
-                <input
-                  type="number"
-                  min="2000"
-                  step="100"
-                  value={customAmount}
-                  onChange={(e) => setCustomAmount(Number(e.target.value))}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-lg"
-                  placeholder="2000"
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  Vous recevrez {customAmount.toLocaleString()} tokens
-                </p>
-              </div>
+            {/* Confirmation */}
+            {currentStep === 'confirm' && selectedOptionData && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <CheckCircle className="w-5 h-5" />
+                    Confirmez votre recharge
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-6">
+                    {/* Résumé de la recharge */}
+                    <div className="bg-gray-50 rounded-lg p-6">
+                      <h4 className="font-semibold mb-4">Résumé de votre recharge</h4>
+                      <div className="space-y-3">
+                        <div className="flex justify-between">
+                          <span>Montant:</span>
+                          <span className="font-semibold">{formatAmount(selectedOptionData.amount)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Tokens:</span>
+                          <span className="font-semibold">{selectedOptionData.tokens.toLocaleString()}</span>
+                        </div>
+                        {selectedOptionData.bonus > 0 && (
+                          <div className="flex justify-between text-green-600">
+                            <span>Bonus:</span>
+                            <span className="font-semibold">+{selectedOptionData.bonus.toLocaleString()}</span>
+                          </div>
+                        )}
+                        <div className="border-t pt-3">
+                          <div className="flex justify-between text-lg font-bold">
+                            <span>Total tokens:</span>
+                            <span>{(selectedOptionData.tokens + selectedOptionData.bonus).toLocaleString()}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
 
-              <div className="text-center">
-                <Button
-                  onClick={handleCustomRecharge}
-                  disabled={customAmount < 2000 || !selectedPaymentMethod || loading}
-                  variant="outline"
-                  className="w-full py-3 text-lg font-semibold border-blue-500 text-blue-600 hover:bg-blue-50"
-                >
-                  {loading ? 'Traitement...' : `Recharger ${formatAmount(customAmount)}`}
-                </Button>
-                {!selectedPaymentMethod && (
-                  <p className="text-sm text-red-600 mt-2">
-                    Veuillez sélectionner un mode de paiement
-                  </p>
-                )}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+                    {/* Moyen de paiement sélectionné */}
+                    <div className="bg-blue-50 rounded-lg p-4">
+                      <h5 className="font-medium mb-2">Moyen de paiement</h5>
+                      <div className="flex items-center gap-2">
+                        <span className="text-2xl">
+                          {paymentMethods.find(pm => pm.id === selectedPaymentMethod)?.icon}
+                        </span>
+                        <span>{paymentMethods.find(pm => pm.id === selectedPaymentMethod)?.name}</span>
+                      </div>
+                    </div>
 
+                    {/* Boutons d'action */}
+                    <div className="flex gap-4">
+                      <Button
+                        variant="outline"
+                        onClick={() => setCurrentStep('payment')}
+                        className="flex-1"
+                      >
+                        Retour
+                      </Button>
+                      <Button
+                        onClick={() => handleRecharge(selectedOptionData as RechargeOption)}
+                        disabled={loading}
+                        className="flex-1 bg-green-600 hover:bg-green-700 text-lg py-3"
+                      >
+                        {loading ? (
+                          <div className="flex items-center gap-2">
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                            Traitement...
+                          </div>
+                        ) : (
+                          <>
+                            <Lock className="w-4 h-4 mr-2" />
+                            Payer {formatAmount(selectedOptionData.amount)}
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
 
-        {/* Historique compact */}
-        <HistorySummary
-          consumptionHistory={consumptionHistory}
-          paymentHistory={paymentHistory}
-          formatAmount={formatAmount}
-          onViewFullHistory={() => {
-            window.location.href = '/mon-solde';
-          }}
-        />
+          {/* Colonne latérale */}
+          <div className="space-y-6">
+            {/* Gestion des moyens de paiement */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Moyens de paiement</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <PaymentMethodManager />
+              </CardContent>
+            </Card>
 
-        {/* Informations de paiement */}
-        <Card className="bg-gray-50">
-          <CardContent className="p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
-              Informations importantes
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-green-500 rounded flex items-center justify-center">
-                  <span className="text-white font-bold text-sm">M</span>
+            {/* Historique compact */}
+            <HistorySummary
+              consumptionHistory={consumptionHistory}
+              paymentHistory={paymentHistory}
+              formatAmount={formatAmount}
+              onViewFullHistory={() => {
+                window.location.href = '/mon-solde';
+              }}
+            />
+
+            {/* Informations de sécurité */}
+            <Card className="bg-green-50 border-green-200">
+              <CardContent className="p-4">
+                <div className="flex items-start gap-3">
+                  <Shield className="w-5 h-5 text-green-600 mt-0.5" />
+                  <div>
+                    <h5 className="font-medium text-green-900 mb-1">Paiement sécurisé</h5>
+                    <p className="text-sm text-green-700">
+                      Tous vos paiements sont protégés par un chiffrement de niveau bancaire. 
+                      Vos informations ne sont jamais stockées.
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <div className="font-medium">Mobile Money</div>
-                  <div className="text-sm text-gray-600">MTN, Orange, Nexttel</div>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-blue-500 rounded flex items-center justify-center">
-                  <span className="text-white font-bold text-sm">C</span>
-                </div>
-                <div>
-                  <div className="font-medium">Carte bancaire</div>
-                  <div className="text-sm text-gray-600">Visa, Mastercard</div>
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-              <div className="flex items-start gap-2">
-                <AlertCircle className="w-5 h-5 text-yellow-600 mt-0.5" />
-                <div className="text-sm text-yellow-800">
-                  <strong>Important :</strong> Les tokens sont credites instantanement apres confirmation du paiement.
-                  En cas de probleme, contactez le support.
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
       </div>
-    </ResponsiveContainer>
+    </div>
   );
 };
 
