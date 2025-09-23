@@ -606,8 +606,9 @@ const RechargeTokensPage: React.FC = () => {
           onSave={(method) => {
             console.log('Nouveau moyen de paiement:', method);
             toast.success('Moyen de paiement ajouté avec succès');
-            // Rafraîchir la page pour recharger les moyens de paiement
-            window.location.reload();
+            // Pour l'instant, on ne rafraîchit pas la page car les données sont simulées
+            // TODO: Rafraîchir quand l'API sera prête
+            // window.location.reload();
           }}
         />
       </div>

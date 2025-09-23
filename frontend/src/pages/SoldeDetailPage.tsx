@@ -81,7 +81,7 @@ const SoldeDetailPage: React.FC = () => {
   const handleExportCSV = () => {
     const csv = logs
       .map((log) =>
-        [new Date(log.date).toLocaleString(), log.usage_type, log.moteur, log.montant.toFixed(2)].join(",")
+        [new Date(log.date).toLocaleString(), log.usage_type, log.moteur, (log.montant || 0).toFixed(2)].join(",")
       )
       .join("\n");
 
@@ -133,9 +133,9 @@ const SoldeDetailPage: React.FC = () => {
     }).format(amount);
   };
 
-  const totalConsumed = logs.reduce((sum, log) => sum + log.montant, 0);
-  const totalPaid = paymentLogs.reduce((sum, payment) => sum + payment.amount, 0);
-  const totalTokensAdded = paymentLogs.reduce((sum, payment) => sum + payment.tokens_added, 0);
+  const totalConsumed = logs.reduce((sum, log) => sum + (log.montant || 0), 0);
+  const totalPaid = paymentLogs.reduce((sum, payment) => sum + (payment.amount || 0), 0);
+  const totalTokensAdded = paymentLogs.reduce((sum, payment) => sum + (payment.tokens_added || 0), 0);
 
   return (
     <ResponsiveContainer>
@@ -157,7 +157,7 @@ const SoldeDetailPage: React.FC = () => {
               <div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-1">Solde actuel</h3>
                 <p className="text-3xl font-bold text-green-600">
-                  {creditDevise !== null ? `${creditDevise.toFixed(0)} ${devise}` : "Chargement..."}
+                  {creditDevise !== null && creditDevise !== undefined ? `${creditDevise.toFixed(0)} ${devise}` : "Chargement..."}
                 </p>
               </div>
               <div className="text-right">
@@ -311,7 +311,7 @@ const SoldeDetailPage: React.FC = () => {
                           </div>
                         </div>
                         <div className="text-right">
-                          <p className="font-semibold text-red-600">-{formatCurrency(log.montant)}</p>
+                          <p className="font-semibold text-red-600">-{formatCurrency(log.montant || 0)}</p>
                           <p className="text-xs text-gray-500">
                             {new Date(log.date).toLocaleDateString()}
                           </p>
@@ -392,11 +392,11 @@ const SoldeDetailPage: React.FC = () => {
                           <div>
                             <p className="font-medium text-gray-900">{payment.payment_method}</p>
                             <p className="text-sm text-gray-600">ID: {payment.transaction_id}</p>
-                            <p className="text-xs text-blue-600">+{payment.tokens_added.toLocaleString()} tokens</p>
+                            <p className="text-xs text-blue-600">+{(payment.tokens_added || 0).toLocaleString()} tokens</p>
                           </div>
                         </div>
                         <div className="text-right">
-                          <p className="font-semibold text-green-600">+{formatCurrency(payment.amount)}</p>
+                          <p className="font-semibold text-green-600">+{formatCurrency(payment.amount || 0)}</p>
                           <Badge className={getStatusColor(payment.status)}>
                             {payment.status}
                           </Badge>

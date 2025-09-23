@@ -93,7 +93,7 @@ const AddPaymentMethodModal: React.FC<AddPaymentMethodModalProps> = ({
         };
       }
 
-      // Appel API pour sauvegarder le moyen de paiement
+      // Pour l'instant, simuler la sauvegarde car l'API n'existe pas encore
       const token = localStorage.getItem('token');
       if (!token) {
         alert('Vous devez être connecté pour ajouter un moyen de paiement');
@@ -101,6 +101,23 @@ const AddPaymentMethodModal: React.FC<AddPaymentMethodModalProps> = ({
         return;
       }
 
+      // Simulation de la sauvegarde
+      console.log('Simulation de la sauvegarde du moyen de paiement:', methodData);
+      
+      // Créer un objet simulé avec un ID
+      const savedMethod = {
+        id: Date.now().toString(),
+        ...methodData,
+        lastUsed: new Date().toISOString().split('T')[0]
+      };
+      
+      console.log('Moyen de paiement simulé sauvegardé:', savedMethod);
+      
+      onSave(savedMethod);
+      onClose();
+      
+      // TODO: Remplacer par un vrai appel API quand l'endpoint sera disponible
+      /*
       const response = await fetch('https://yukpomnang.onrender.com/api/users/payment-methods', {
         method: 'POST',
         headers: {
@@ -119,6 +136,7 @@ const AddPaymentMethodModal: React.FC<AddPaymentMethodModalProps> = ({
       
       onSave(savedMethod);
       onClose();
+      */
     } catch (error) {
       console.error('Erreur lors de la sauvegarde:', error);
       alert('Erreur lors de la sauvegarde du moyen de paiement');

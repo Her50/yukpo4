@@ -34,10 +34,17 @@ const SavedPaymentMethods: React.FC<SavedPaymentMethodsProps> = ({
         const token = localStorage.getItem('token');
         if (!token) {
           setLoading(false);
+          setSavedMethods([]); // Pas de token, afficher l'interface d'ajout
           return;
         }
 
-        // Appel API pour récupérer les moyens de paiement sauvegardés
+        // Pour l'instant, l'API n'existe pas encore, donc on force une liste vide
+        // TODO: Remplacer par un vrai appel API quand l'endpoint sera disponible
+        console.log('API des moyens de paiement pas encore disponible, affichage de l\'interface d\'ajout');
+        setSavedMethods([]);
+        
+        // Code commenté pour quand l'API sera prête :
+        /*
         const response = await fetch('https://yukpomnang.onrender.com/api/users/payment-methods', {
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -49,12 +56,12 @@ const SavedPaymentMethods: React.FC<SavedPaymentMethodsProps> = ({
           const methods = await response.json();
           setSavedMethods(methods || []);
         } else {
-          // Si pas de moyens de paiement sauvegardés, laisser vide
           setSavedMethods([]);
         }
+        */
       } catch (error) {
         console.error('Erreur lors du chargement des moyens de paiement:', error);
-        // En cas d'erreur, laisser vide pour forcer l'utilisateur à ajouter un moyen
+        // En cas d'erreur, afficher l'interface d'ajout
         setSavedMethods([]);
       } finally {
         setLoading(false);
@@ -104,10 +111,14 @@ const SavedPaymentMethods: React.FC<SavedPaymentMethodsProps> = ({
           <svg className="w-12 h-12 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
           </svg>
-          <p>Aucun moyen de paiement sauvegardé</p>
+          <p className="text-lg font-medium text-gray-700 mb-2">Aucun moyen de paiement sauvegardé</p>
+          <p className="text-sm text-gray-500">Ajoutez votre premier moyen de paiement pour continuer</p>
         </div>
-        <Button onClick={onAddNew} className="w-full">
-          <Plus className="w-4 h-4 mr-2" />
+        <Button 
+          onClick={onAddNew} 
+          className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 text-lg"
+        >
+          <Plus className="w-5 h-5 mr-2" />
           Ajouter un moyen de paiement
         </Button>
       </div>
@@ -128,6 +139,15 @@ const SavedPaymentMethods: React.FC<SavedPaymentMethodsProps> = ({
           Ajouter
         </Button>
       </div>
+      
+      {/* Bouton d'ajout toujours visible */}
+      <Button
+        onClick={onAddNew}
+        className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+      >
+        <Plus className="w-4 h-4 mr-2" />
+        Ajouter un nouveau moyen de paiement
+      </Button>
 
       <div className="space-y-2">
         {savedMethods.map((method) => (
