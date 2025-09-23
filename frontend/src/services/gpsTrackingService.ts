@@ -1,5 +1,6 @@
 import { useUser } from '@/hooks/useUser';
 import { API_BASE_URL } from '@/config/api';
+import { apiService } from './apiService';
 
 interface GPSLocation {
   latitude: number;
@@ -152,12 +153,8 @@ class GPSTrackingService {
    */
   private async sendLocationToBackend(location: GPSLocation): Promise<void> {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/user/me/gps_location`, {
+      const response = await apiService('/api/user/me/gps_location', {
         method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
         body: JSON.stringify({
           latitude: location.latitude,
           longitude: location.longitude,
@@ -165,13 +162,9 @@ class GPSTrackingService {
         })
       });
 
-      if (response.ok) {
-        console.log('✅ Position GPS envoyée au backend');
-      } else {
-        console.warn('⚠️ Erreur lors de l\'envoi de la position GPS:', response.status);
-      }
+      console.log('✅ Position GPS envoyée au backend');
     } catch (error) {
-      console.error('❌ Erreur lors de l\'envoi de la position GPS:', error);
+      console.warn(`⚠️ Erreur lors de l'envoi de la position GPS:`, error);
     }
   }
 

@@ -3,6 +3,7 @@ import LangSwitcher from "@/components/LangSwitcher";
 import MobileMenu from "@/components/MobileMenu";
 import { useUser } from "@/hooks/useUser";
 import { ROUTES } from "@/routes/AppRoutesRegistry";
+import { apiGet } from "@/services/apiService";
 import { Bell, MessageCircle } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
@@ -52,31 +53,17 @@ const HeaderController: React.FC = () => {
 
       setBalanceLoading(true);
       try {
-        const response = await fetch('/api/users/balance', {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          console.log('[HeaderController] Solde récupéré:', data.tokens_balance);
-          setTokensBalance(data.tokens_balance);
-          // Sauvegarder dans localStorage pour affichage immédiat
-          localStorage.setItem('tokens_balance', data.tokens_balance.toString());
-          // Déclencher un CustomEvent pour notifier useUser
-          window.dispatchEvent(new CustomEvent('tokens_updated'));
-        } else {
-          console.error('[HeaderController] Erreur récupération solde:', response.status);
-          // En cas d'erreur, utiliser le solde du JWT si disponible
-          if (user.credits !== undefined) {
-            setTokensBalance(user.credits);
-          }
-        }
+        const response = await apiGet('/api/users/balance');
+        const data = await response.json();
+        console.log('[HeaderController] Solde récupéré:', data.tokens_balance);
+        setTokensBalance(data.tokens_balance);
+        // Sauvegarder dans localStorage pour affichage immédiat
+        localStorage.setItem('tokens_balance', data.tokens_balance.toString());
+        // Déclencher un CustomEvent pour notifier useUser
+        window.dispatchEvent(new CustomEvent('tokens_updated'));
       } catch (error) {
-        console.error('[HeaderController] Erreur réseau:', error);
-        // En cas d'erreur réseau, utiliser le solde du JWT si disponible
+        console.error('[HeaderController] Erreur récupération solde:', error);
+        // En cas d'erreur, utiliser le solde du JWT si disponible
         if (user.credits !== undefined) {
           setTokensBalance(user.credits);
         }
@@ -158,12 +145,20 @@ const HeaderController: React.FC = () => {
   // Fonction pour formater le solde
   const formatBalance = () => {
     if (balanceLoading) return "⏳";
-    if (tokensBalance === null) {
-      // Si pas de solde, utiliser celui du JWT ou afficher 0
-      const fallbackBalance = user?.credits ?? 0;
-      return `${fallbackBalance.toLocaleString()} XAF`;
+    
+    // Priorité : solde récupéré depuis l'API
+    if (tokensBalance !== null && tokensBalance !== undefined) {
+      return `${tokensBalance.toLocaleString()} XAF`;
     }
-    return `${tokensBalance.toLocaleString()} XAF`;
+    
+    // Fallback : solde du JWT ou localStorage
+    const fallbackBalance = user?.credits ?? 
+                           (() => {
+                             const stored = localStorage.getItem('tokens_balance');
+                             return stored ? parseInt(stored, 10) : 0;
+                           })();
+    
+    return `${fallbackBalance.toLocaleString()} XAF`;
   };
 
   return (

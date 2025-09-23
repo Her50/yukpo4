@@ -1,13 +1,5 @@
 // Configuration API pour Vite avec gestion d'erreur
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || (
-  // En production (Vercel ou Netlify), utiliser des URLs relatives pour profiter des rewrites
-  typeof window !== 'undefined' && (
-    window.location.hostname.includes('vercel.app') || 
-    window.location.hostname.includes('netlify.app')
-  ) 
-    ? '' 
-    : 'https://yukpomnang.onrender.com'
-);
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://yukpomnang.onrender.com';
 
 // Configuration de fallback pour le d�veloppement
 const FALLBACK_API_URL = 'https://jsonplaceholder.typicode.com';

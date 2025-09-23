@@ -110,5 +110,26 @@ export function useUserCredit(polling: boolean = true) {
     return () => clearInterval(interval);
   }, [user, devise, polling]);
 
-  return { creditDevise, devise };
+  // Fonction pour formater les montants selon la devise
+  const formatAmount = (amount: number): string => {
+    if (creditDevise === null) return "0";
+    
+    try {
+      return new Intl.NumberFormat('fr-FR', {
+        style: 'currency',
+        currency: devise,
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 2,
+      }).format(amount);
+    } catch (error) {
+      // Fallback si la devise n'est pas supportée
+      return `${amount.toLocaleString('fr-FR')} ${devise}`;
+    }
+  };
+
+  return { 
+    balance: creditDevise, 
+    devise, 
+    formatAmount 
+  };
 }
