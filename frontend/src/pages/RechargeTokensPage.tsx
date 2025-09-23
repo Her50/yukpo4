@@ -1,32 +1,22 @@
-import React, { useState, useEffect } from 'react';
+import {
+  ArrowRight,
+  CheckCircle,
+  Coins,
+  CreditCard,
+  Lock,
+  Shield,
+  Sparkles
+} from 'lucide-react';
+import React, { useState } from 'react';
+import { toast } from 'react-hot-toast';
+import PaymentMethodManager from '../components/payment/PaymentMethodManager';
+import AmountSelector from '../components/recharge/AmountSelector';
+import HistorySummary from '../components/recharge/HistorySummary';
+import { Badge } from '../components/ui/badge';
+import { Button } from '../components/ui/buttons/Button';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { useUser } from '../hooks/useUser';
 import { useUserCredit } from '../hooks/useUserCredit';
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
-import { Button } from '../components/ui/buttons/Button';
-import { Badge } from '../components/ui/badge';
-import { 
-  CreditCard, 
-  Wallet, 
-  Info, 
-  CheckCircle, 
-  TrendingUp, 
-  TrendingDown, 
-  Clock, 
-  History,
-  Zap,
-  Star,
-  Shield,
-  Lock,
-  ArrowRight,
-  Gift,
-  Sparkles,
-  Coins,
-  Smartphone
-} from 'lucide-react';
-import { toast } from 'react-hot-toast';
-import AmountSelector from '../components/recharge/AmountSelector';
-import PaymentMethodManager from '../components/payment/PaymentMethodManager';
-import HistorySummary from '../components/recharge/HistorySummary';
 
 interface RechargeOption {
   id: string;
@@ -60,10 +50,10 @@ const RechargeTokensPage: React.FC = () => {
   const baseAmounts = [2000, 5000, 10000, 20000, 50000]; // Montants en FCFA
   const rechargeOptions: RechargeOption[] = baseAmounts.map((baseAmount, index) => {
     const tokens = baseAmount; // 1 FCFA = 1 token
-    const bonus = baseAmount >= 10000 ? Math.floor(baseAmount * 0.2) : 
-                  baseAmount >= 5000 ? Math.floor(baseAmount * 0.1) : 
-                  baseAmount >= 2000 ? Math.floor(baseAmount * 0.05) : 0;
-    
+    const bonus = baseAmount >= 10000 ? Math.floor(baseAmount * 0.2) :
+      baseAmount >= 5000 ? Math.floor(baseAmount * 0.1) :
+        baseAmount >= 2000 ? Math.floor(baseAmount * 0.05) : 0;
+
     return {
       id: ['basic', 'standard', 'premium', 'pro', 'enterprise'][index],
       amount: baseAmount, // Montant en FCFA (sera converti par formatAmount)
@@ -80,7 +70,7 @@ const RechargeTokensPage: React.FC = () => {
     card: 50,       // Cartes bancaires : 50 FCFA
     bank: 0         // Virement bancaire gratuit
   };
-  
+
   const paymentMethods: PaymentMethod[] = [
     {
       id: 'mtn_money',
@@ -184,7 +174,7 @@ const RechargeTokensPage: React.FC = () => {
     try {
       // Simuler la recharge
       await new Promise(resolve => setTimeout(resolve, 2000));
-      
+
       toast.success(`Recharge de ${formatAmount(option.amount)} effectuée avec succès !`);
       setCurrentStep('amount');
       setSelectedOption(null);
@@ -211,7 +201,7 @@ const RechargeTokensPage: React.FC = () => {
     try {
       // Simuler la recharge personnalisée
       await new Promise(resolve => setTimeout(resolve, 2000));
-      
+
       toast.success(`Recharge de ${formatAmount(customAmount)} effectuée avec succès !`);
       setCurrentStep('amount');
       setCustomAmount(0);
@@ -229,9 +219,9 @@ const RechargeTokensPage: React.FC = () => {
         id: 'custom',
         amount: customAmount,
         tokens: Math.floor(customAmount),
-        bonus: customAmount >= 10000 ? Math.floor(customAmount * 0.2) : 
-               customAmount >= 5000 ? Math.floor(customAmount * 0.1) : 
-               customAmount >= 2000 ? Math.floor(customAmount * 0.05) : 0
+        bonus: customAmount >= 10000 ? Math.floor(customAmount * 0.2) :
+          customAmount >= 5000 ? Math.floor(customAmount * 0.1) :
+            customAmount >= 2000 ? Math.floor(customAmount * 0.05) : 0
       };
     }
     return rechargeOptions.find(opt => opt.id === selectedOption);
@@ -252,7 +242,7 @@ const RechargeTokensPage: React.FC = () => {
             Rechargez vos tokens
           </h1>
           <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-            Accédez à tous les services Yukpo avec des tokens. 
+            Accédez à tous les services Yukpo avec des tokens.
             Rechargez facilement et profitez de bonus exclusifs !
           </p>
         </div>
@@ -294,19 +284,17 @@ const RechargeTokensPage: React.FC = () => {
               const Icon = step.icon;
               const isActive = currentStep === step.key;
               const isCompleted = ['amount', 'payment', 'confirm'].indexOf(currentStep) > index;
-              
+
               return (
                 <div key={step.key} className="flex items-center">
-                  <div className={`flex items-center justify-center w-10 h-10 rounded-full ${
-                    isActive || isCompleted 
-                      ? 'bg-blue-600 text-white' 
+                  <div className={`flex items-center justify-center w-10 h-10 rounded-full ${isActive || isCompleted
+                      ? 'bg-blue-600 text-white'
                       : 'bg-gray-200 text-gray-400'
-                  }`}>
+                    }`}>
                     <Icon className="w-5 h-5" />
                   </div>
-                  <span className={`ml-2 font-medium ${
-                    isActive ? 'text-blue-600' : 'text-gray-500'
-                  }`}>
+                  <span className={`ml-2 font-medium ${isActive ? 'text-blue-600' : 'text-gray-500'
+                    }`}>
                     {step.label}
                   </span>
                   {index < 2 && (
@@ -340,7 +328,7 @@ const RechargeTokensPage: React.FC = () => {
                     formatAmount={formatAmount}
                     currency={devise}
                   />
-                  
+
                   {selectedOptionData && (
                     <div className="mt-6">
                       <Button
@@ -370,11 +358,10 @@ const RechargeTokensPage: React.FC = () => {
                     {paymentMethods.map((method) => (
                       <Card
                         key={method.id}
-                        className={`cursor-pointer transition-all ${
-                          selectedPaymentMethod === method.id
+                        className={`cursor-pointer transition-all ${selectedPaymentMethod === method.id
                             ? 'ring-2 ring-blue-500 bg-blue-50'
                             : 'hover:shadow-md'
-                        }`}
+                          }`}
                         onClick={() => setSelectedPaymentMethod(method.id)}
                       >
                         <CardContent className="p-4">
@@ -533,7 +520,7 @@ const RechargeTokensPage: React.FC = () => {
                   <div>
                     <h5 className="font-medium text-green-900 mb-1">Paiement sécurisé</h5>
                     <p className="text-sm text-green-700">
-                      Tous vos paiements sont protégés par un chiffrement de niveau bancaire. 
+                      Tous vos paiements sont protégés par un chiffrement de niveau bancaire.
                       Vos informations ne sont jamais stockées.
                     </p>
                   </div>

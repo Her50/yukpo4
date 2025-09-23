@@ -24,8 +24,6 @@ pub struct UserProfileResponse {
     pub nom_complet: Option<String>,
     pub photo_profil: Option<String>,
     pub avatar_url: Option<String>,
-    pub phone: Option<String>,
-    pub bio: Option<String>,
     pub preferred_lang: Option<String>,
     pub tokens_balance: i64,
     pub created_at: chrono::DateTime<chrono::Utc>,
@@ -187,33 +185,6 @@ pub async fn deduct_balance(
     }
 }
 
-/// ? GET /user/me ? profil complet
-pub async fn get_user_profile(
-    Extension(user): Extension<AuthenticatedUser>,
-    State(state): State<Arc<AppState>>,
-) -> AppResult<Json<User>> {
-    info!("Appel get_user_profile pour user_id={}", user.id);
-    let result = sqlx::query_as::<_, User>(
-        r#"
-        SELECT id, email, password_hash, role, is_provider, tokens_balance,
-               token_price_user, token_price_provider, commission_pct,
-               preferred_lang, created_at, updated_at, gps, gps_consent,
-               nom, prenom, nom_complet, photo_profil, avatar_url
-        FROM users WHERE id = $1
-        "#
-    )
-    .bind(user.id)
-    .fetch_one(&state.pg)
-    .await;
-
-    match result {
-        Ok(profile) => Ok(Json(profile)),
-        Err(e) => {
-            error!("[get_user_profile] DB error: {e:?}");
-            Err(crate::core::types::AppError::Database(format!("DB error: {e}")))
-        }
-    }
-}
 
 #[derive(Deserialize)]
 pub struct UpdateProfileInput {
@@ -730,8 +701,8 @@ pub async fn recharge_tokens(
 
 /// Récupère le profil complet de l'utilisateur
 pub async fn get_user_profile(
+    Extension(user): Extension<AuthenticatedUser>,
     State(state): State<Arc<AppState>>,
-    user: AuthenticatedUser,
 ) -> AppResult<Json<UserProfileResponse>> {
     info!("[get_user_profile] Récupération profil pour user_id={}", user.id);
     
@@ -739,8 +710,8 @@ pub async fn get_user_profile(
         r#"
         SELECT 
             id, email, role, nom, prenom, nom_complet, 
-            photo_profil, avatar_url, phone, bio, 
-            preferred_lang, tokens_balance, created_at
+            photo_profil, avatar_url, preferred_lang, 
+            tokens_balance, created_at
         FROM users 
         WHERE id = $1
         "#,
@@ -762,8 +733,6 @@ pub async fn get_user_profile(
         nom_complet: row.nom_complet,
         photo_profil: row.photo_profil,
         avatar_url: row.avatar_url,
-        phone: row.phone,
-        bio: row.bio,
         preferred_lang: row.preferred_lang,
         tokens_balance: row.tokens_balance,
         created_at: row.created_at,

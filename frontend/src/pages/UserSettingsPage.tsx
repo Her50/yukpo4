@@ -175,8 +175,8 @@ const UserSettingsPage: React.FC = () => {
                     ...prev,
                     name: fullName,
                     email: data.email || '',
-                    phone: data.phone || '',
-                    bio: data.bio || '',
+                    phone: '', // Champ non disponible dans la base
+                    bio: '', // Champ non disponible dans la base
                     avatar: data.photo_profil || data.avatar_url || data.photo || ''
                 }));
             }
