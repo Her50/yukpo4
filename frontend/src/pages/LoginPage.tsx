@@ -1,14 +1,15 @@
-import React, { useState, useEffect, useRef } from "react";
-import { useLocation, Link, useNavigate } from "react-router-dom";
-import { ROUTES } from "@/routes/AppRoutesRegistry";
 import OAuthButton from "@/components/auth/OAuthButton";
-import { useUser } from "@/hooks/useUser";
-import { toast } from "react-hot-toast";
 import { API_BASE_URL } from "@/config/api";
+import { useUser } from "@/hooks/useUser";
+import { ROUTES } from "@/routes/AppRoutesRegistry";
+import React, { useEffect, useRef, useState } from "react";
+import { toast } from "react-hot-toast";
+import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 
 const LoginPage: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { login } = useUser();
   const [showLogoutMessage, setShowLogoutMessage] = useState(false);
   const [email, setEmail] = useState('');
@@ -16,6 +17,11 @@ const LoginPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const passwordInputRef = useRef<HTMLInputElement>(null);
+
+  // Gestion de la redirection après connexion
+  const redirectUrl = searchParams.get('redirect');
+  const source = searchParams.get('source');
+  const isSharedService = source === 'shared_service';
 
   useEffect(() => {
     if (location.state?.loggedOut) {
@@ -43,37 +49,46 @@ const LoginPage: React.FC = () => {
     if (e) e.preventDefault();
     setError(null);
     setLoading(true);
-    
+
     console.log('[LoginPage] Tentative de connexion pour:', email);
-    
+
     try {
       const loginData = { email, password };
       console.log('[LoginPage] Donnes de connexion:', { email, password: '***' });
-      
+
       // CORRECTION: Utiliser l'API_BASE_URL au lieu d'une URL relative
       const res = await fetch(`${API_BASE_URL}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(loginData)
       });
-      
+
       console.log('[LoginPage] Rponse du serveur:', res.status, res.statusText);
-      
+
       if (res.ok) {
         const data = await res.json();
         console.log('[LoginPage] Donnes reues:', { token: !!data.token, tokens_balance: data.tokens_balance });
-        
+
         if (data.token) {
           console.log('[LoginPage] Token reu, connexion...');
-          
+
           if (data.tokens_balance !== undefined) {
             localStorage.setItem('tokens_balance', data.tokens_balance.toString());
             window.dispatchEvent(new CustomEvent('tokens_updated'));
             console.log('[LoginPage] Solde initial sauvegard:', data.tokens_balance);
           }
-          
+
           login(data.token);
-          navigate(ROUTES.HOME);
+          
+          // Redirection intelligente selon la source
+          if (isSharedService && redirectUrl) {
+            // Rediriger vers le service partagé
+            toast.success('Connexion réussie ! Redirection vers le service...');
+            navigate(decodeURIComponent(redirectUrl));
+          } else {
+            // Redirection normale vers l'accueil
+            navigate(ROUTES.HOME);
+          }
           window.location.reload();
         } else {
           console.error('[LoginPage] Pas de token dans la rponse');
@@ -82,7 +97,7 @@ const LoginPage: React.FC = () => {
       } else {
         const errorText = await res.text();
         console.error('[LoginPage] Erreur serveur:', res.status, errorText);
-        
+
         let errorMessage = 'Erreur de connexion';
         try {
           const errorData = JSON.parse(errorText);
@@ -90,7 +105,7 @@ const LoginPage: React.FC = () => {
         } catch {
           errorMessage = `${errorMessage}: ${errorText}`;
         }
-        
+
         setError(errorMessage);
       }
     } catch (err) {
@@ -152,15 +167,15 @@ const LoginPage: React.FC = () => {
             disabled={loading}
             ref={passwordInputRef}
           />
-          <button 
-            type="submit" 
-            className="bg-green-600 hover:bg-green-700 text-white py-2 rounded-md transition font-semibold disabled:opacity-50" 
+          <button
+            type="submit"
+            className="bg-green-600 hover:bg-green-700 text-white py-2 rounded-md transition font-semibold disabled:opacity-50"
             disabled={loading}
           >
             {loading ? 'Connexion...' : 'Se connecter'}
           </button>
         </form>
-        
+
         <p className="text-center text-sm mt-6 text-gray-700 dark:text-gray-300">
           Pas encore inscrit ?{" "}
           <Link to={ROUTES.REGISTER} className="text-primary underline font-medium">

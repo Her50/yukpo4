@@ -3,6 +3,7 @@ import LangSwitcher from "@/components/LangSwitcher";
 import MobileMenu from "@/components/MobileMenu";
 import { useUser } from "@/hooks/useUser";
 import { ROUTES } from "@/routes/AppRoutesRegistry";
+import { Bell, MessageCircle } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
@@ -208,9 +209,9 @@ const HeaderController: React.FC = () => {
                 <Link
                   to="/services-interagis"
                   className="text-orange-600 hover:text-orange-700 text-xs font-medium"
-                  title="Services avec lesquels vous avez interagi"
+                  title="Mon historique d'interactions"
                 >
-                  🔗 Services Interagis
+                  📋 Mon historique
                 </Link>
                 <span className="text-gray-400">|</span>
                 <Link
@@ -231,6 +232,37 @@ const HeaderController: React.FC = () => {
                 >
                   💰 {formatBalance()}
                 </Link>
+              </div>
+
+              {/* ✅ Icônes de notifications et chats en haut à droite */}
+              <div className="flex items-center gap-2 mr-2">
+                {/* Icône Notifications */}
+                <button
+                  onClick={() => {
+                    const event = new CustomEvent('open:notification:history');
+                    window.dispatchEvent(event);
+                  }}
+                  className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors relative"
+                  title="Notifications"
+                >
+                  <Bell className="h-5 w-5 text-gray-600 dark:text-gray-300" />
+                  {/* Badge de notification si nécessaire */}
+                  <span className="absolute -top-1 -right-1 h-3 w-3 bg-red-500 rounded-full text-xs"></span>
+                </button>
+
+                {/* Icône Chats/Historique des conversations */}
+                <button
+                  onClick={() => {
+                    const event = new CustomEvent('open:chat:history');
+                    window.dispatchEvent(event);
+                  }}
+                  className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors relative"
+                  title="Historique des conversations"
+                >
+                  <MessageCircle className="h-5 w-5 text-gray-600 dark:text-gray-300" />
+                  {/* Badge de message non lu si nécessaire */}
+                  <span className="absolute -top-1 -right-1 h-3 w-3 bg-green-500 rounded-full text-xs"></span>
+                </button>
               </div>
 
               {/* ✅ Profil utilisateur rond + menu */}

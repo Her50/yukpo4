@@ -132,7 +132,7 @@ const SoldeDetailPage: React.FC = () => {
             Historique de Consommation
           </h1>
           <p className="text-gray-600">
-            Suivez vos dépenses IA et vos recharges de tokens
+            Suivez vos dépenses Yukpo et vos recharges de tokens
           </p>
         </div>
 
@@ -165,7 +165,7 @@ const SoldeDetailPage: React.FC = () => {
               className="flex items-center gap-2"
             >
               <Zap className="w-4 h-4" />
-              Consommation IA
+              Consommation Yukpo
             </Button>
             <Button
               variant={selectedTab === 'payments' ? 'default' : 'outline'}
@@ -200,7 +200,7 @@ const SoldeDetailPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Onglet Consommation IA */}
+        {/* Onglet Consommation Yukpo */}
         {selectedTab === 'consumption' && (
           <div className="space-y-6">
             {/* Statistiques de consommation */}
@@ -276,7 +276,7 @@ const SoldeDetailPage: React.FC = () => {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <FileText className="w-5 h-5" />
-                  Détail des utilisations IA
+                  Détail des utilisations Yukpo
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -308,7 +308,7 @@ const SoldeDetailPage: React.FC = () => {
                 ) : (
                   <div className="text-center py-8 text-gray-500">
                     <Zap className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-                    <p>Aucune utilisation IA enregistrée</p>
+                    <p>Aucune utilisation Yukpo enregistrée</p>
                   </div>
                 )}
               </CardContent>

@@ -44,6 +44,8 @@ const ServicesInteragisPage: React.FC = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [filterType, setFilterType] = useState<string>('all');
     const [filterCategory, setFilterCategory] = useState<string>('all');
+    const [availableCategories, setAvailableCategories] = useState<string[]>([]);
+    const [availableTypes, setAvailableTypes] = useState<string[]>([]);
     const { user } = useUser();
     const { toast } = useToast();
 
@@ -64,7 +66,14 @@ const ServicesInteragisPage: React.FC = () => {
 
             if (response.ok) {
                 const data = await response.json();
-                setServices(data.services || []);
+                const servicesData = data.services || [];
+                setServices(servicesData);
+
+                // Extraire les catégories et types disponibles
+                const categories = [...new Set(servicesData.map((s: InteractedService) => s.category))];
+                const types = [...new Set(servicesData.map((s: InteractedService) => s.interactionType))];
+                setAvailableCategories(categories);
+                setAvailableTypes(types);
             } else {
                 // Charger depuis localStorage si l'API échoue
                 const savedServices = localStorage.getItem('interactedServices');
@@ -72,11 +81,21 @@ const ServicesInteragisPage: React.FC = () => {
                     try {
                         const parsedServices = JSON.parse(savedServices);
                         setServices(parsedServices);
+
+                        // Extraire les catégories et types disponibles
+                        const categories = [...new Set(parsedServices.map((s: InteractedService) => s.category))];
+                        const types = [...new Set(parsedServices.map((s: InteractedService) => s.interactionType))];
+                        setAvailableCategories(categories);
+                        setAvailableTypes(types);
                     } catch (e) {
                         setServices([]);
+                        setAvailableCategories([]);
+                        setAvailableTypes([]);
                     }
                 } else {
                     setServices([]);
+                    setAvailableCategories([]);
+                    setAvailableTypes([]);
                 }
             }
         } catch (error) {
@@ -172,10 +191,10 @@ const ServicesInteragisPage: React.FC = () => {
                 {/* Header */}
                 <div className="mb-8">
                     <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                        Services Interagis
+                        Mon historique
                     </h1>
                     <p className="text-gray-600">
-                        Retrouvez tous les services avec lesquels vous avez interagi
+                        Retrouvez tous vos échanges et interactions avec les services
                     </p>
                 </div>
 
@@ -200,13 +219,17 @@ const ServicesInteragisPage: React.FC = () => {
                                 className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                             >
                                 <option value="all">Tous les types</option>
-                                <option value="message">Messages</option>
-                                <option value="call">Appels</option>
-                                <option value="video">Vidéos</option>
-                                <option value="review">Avis</option>
-                                <option value="favorite">Favoris</option>
-                                <option value="share">Partages</option>
-                                <option value="view">Vues</option>
+                                {availableTypes.map(type => (
+                                    <option key={type} value={type}>
+                                        {type === 'message' ? 'Messages' :
+                                            type === 'call' ? 'Appels' :
+                                                type === 'video' ? 'Vidéos' :
+                                                    type === 'review' ? 'Avis' :
+                                                        type === 'favorite' ? 'Favoris' :
+                                                            type === 'share' ? 'Partages' :
+                                                                type === 'view' ? 'Vues' : type}
+                                    </option>
+                                ))}
                             </select>
 
                             <select
@@ -215,11 +238,11 @@ const ServicesInteragisPage: React.FC = () => {
                                 className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                             >
                                 <option value="all">Toutes les catégories</option>
-                                <option value="Électronique">Électronique</option>
-                                <option value="Formation">Formation</option>
-                                <option value="Beauté">Beauté</option>
-                                <option value="Mécanique">Mécanique</option>
-                                <option value="Coiffure">Coiffure</option>
+                                {availableCategories.map(category => (
+                                    <option key={category} value={category}>
+                                        {category}
+                                    </option>
+                                ))}
                             </select>
 
                             <Button

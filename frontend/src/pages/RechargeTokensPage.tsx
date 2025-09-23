@@ -1,5 +1,7 @@
 import ResponsiveContainer from '@/components/layout/ResponsiveContainer';
-import { Badge } from '@/components/ui/badge';
+import HistorySummary from '@/components/recharge/HistorySummary';
+import PaymentMethods from '@/components/recharge/PaymentMethods';
+import RechargeOptions from '@/components/recharge/RechargeOptions';
 import { Button } from '@/components/ui/buttons/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
@@ -8,7 +10,6 @@ import { useUserCredit } from '@/hooks/useUserCredit';
 import {
   AlertCircle,
   CheckCircle,
-  Clock,
   Coins,
   CreditCard,
   Info,
@@ -16,12 +17,9 @@ import {
   Smartphone,
   Star,
   Wallet,
-  Zap,
-  History,
-  TrendingDown,
-  TrendingUp
+  Zap
 } from 'lucide-react';
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 
 interface RechargeOption {
   id: string;
@@ -76,7 +74,7 @@ const RechargeTokensPage: React.FC = () => {
   // Fonction pour charger l'historique des consommations
   const loadConsumptionHistory = async () => {
     if (!user?.id) return;
-    
+
     setHistoryLoading(true);
     try {
       const response = await fetch('/api/users/consumption-history', {
@@ -84,7 +82,7 @@ const RechargeTokensPage: React.FC = () => {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
       });
-      
+
       if (response.ok) {
         const data = await response.json();
         setConsumptionHistory(data.history || []);
@@ -99,14 +97,14 @@ const RechargeTokensPage: React.FC = () => {
   // Fonction pour charger l'historique des paiements
   const loadPaymentHistory = async () => {
     if (!user?.id) return;
-    
+
     try {
       const response = await fetch('/api/users/payment-history', {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
       });
-      
+
       if (response.ok) {
         const data = await response.json();
         setPaymentHistory(data.payments || []);
@@ -127,7 +125,7 @@ const RechargeTokensPage: React.FC = () => {
     const baseAmounts = [2000, 5000, 10000]; // Montants de base en FCFA
     const baseTokens = [2000, 5500, 12000];
     const bonuses = [0, 500, 2000];
-    
+
     return baseAmounts.map((amount, index) => ({
       id: ['basic', 'standard', 'premium'][index],
       amount: amount,
@@ -145,7 +143,7 @@ const RechargeTokensPage: React.FC = () => {
     if (devise === 'XAF') {
       return showCurrency ? `${amount.toLocaleString()} FCFA` : amount.toLocaleString();
     }
-    
+
     // Pour les autres devises, utiliser le formatage standard
     return new Intl.NumberFormat('fr-FR', {
       style: 'currency',
@@ -261,13 +259,13 @@ const RechargeTokensPage: React.FC = () => {
         // Recharger les historiques
         loadConsumptionHistory();
         loadPaymentHistory();
-        
+
         // Mettre à jour le solde dans localStorage
         localStorage.setItem('tokens_balance', data.new_balance.toString());
-        
+
         // Déclencher un événement pour mettre à jour l'affichage du solde
-        window.dispatchEvent(new CustomEvent('balanceUpdated', { 
-          detail: { newBalance: data.new_balance } 
+        window.dispatchEvent(new CustomEvent('balanceUpdated', {
+          detail: { newBalance: data.new_balance }
         }));
       } else {
         throw new Error('Erreur de recharge');
@@ -377,41 +375,12 @@ const RechargeTokensPage: React.FC = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {rechargeOptions.map((option) => (
-                <div
-                  key={option.id}
-                  className={`relative p-6 border-2 rounded-xl cursor-pointer transition-all hover:shadow-lg ${selectedOption === option.id
-                      ? 'border-blue-500 bg-blue-50'
-                      : 'border-gray-200 hover:border-gray-300'
-                    }`}
-                  onClick={() => setSelectedOption(option.id)}
-                >
-                  {option.popular && (
-                    <Badge className="absolute -top-2 left-1/2 transform -translate-x-1/2 bg-yellow-500 text-white">
-                      Populaire
-                    </Badge>
-                  )}
-
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-gray-900 mb-2">
-                      {formatAmount(option.amount)}
-                    </div>
-                    <div className="text-lg text-blue-600 font-semibold mb-1">
-                      {option.tokens.toLocaleString()} tokens
-                    </div>
-                    {option.bonus > 0 && (
-                      <div className="text-sm text-green-600 font-medium">
-                        +{option.bonus.toLocaleString()} bonus
-                      </div>
-                    )}
-                    <div className="text-sm text-gray-500 mt-2">
-                      {option.description}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
+            <RechargeOptions
+              options={rechargeOptions}
+              selectedOption={selectedOption}
+              onSelectOption={setSelectedOption}
+              formatAmount={formatAmount}
+            />
 
             <div className="mt-6 text-center">
               <Button
@@ -486,43 +455,12 @@ const RechargeTokensPage: React.FC = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {paymentMethods.map((method) => (
-                <div
-                  key={method.id}
-                  className={`relative p-4 border-2 rounded-xl cursor-pointer transition-all hover:shadow-lg ${selectedPaymentMethod === method.id
-                      ? 'border-blue-500 bg-blue-50'
-                      : 'border-gray-200 hover:border-gray-300'
-                    } ${!method.available ? 'opacity-50 cursor-not-allowed' : ''}`}
-                  onClick={() => method.available && setSelectedPaymentMethod(method.id)}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="flex-shrink-0">
-                      {method.icon}
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between">
-                        <h3 className="font-semibold text-gray-900">{method.name}</h3>
-                        {method.fees > 0 && (
-                          <span className="text-xs text-gray-500">+{formatAmount(method.fees)}</span>
-                        )}
-                      </div>
-                      <p className="text-sm text-gray-600 mb-1">{method.description}</p>
-                      <div className="flex items-center gap-2 text-xs text-gray-500">
-                        <Clock className="w-3 h-3" />
-                        <span>{method.processingTime}</span>
-                        {method.fees === 0 && (
-                          <>
-                            <span>•</span>
-                            <span className="text-green-600 font-medium">Sans frais</span>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
+            <PaymentMethods
+              methods={paymentMethods}
+              selectedMethod={selectedPaymentMethod}
+              onSelectMethod={setSelectedPaymentMethod}
+              formatAmount={formatAmount}
+            />
 
             {selectedPaymentMethod && (
               <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
@@ -541,143 +479,15 @@ const RechargeTokensPage: React.FC = () => {
           </CardContent>
         </Card>
 
-        {/* Historique des consommations */}
-        <Card className="mb-8">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <History className="w-5 h-5" />
-              Historique des consommations
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {historyLoading ? (
-              <div className="text-center py-4">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-                <p className="text-gray-600 mt-2">Chargement de l'historique...</p>
-              </div>
-            ) : consumptionHistory.length > 0 ? (
-              <div className="space-y-3">
-                {consumptionHistory.slice(0, 10).map((item) => (
-                  <div key={item.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                        item.type === 'consumption' ? 'bg-red-100' : 'bg-green-100'
-                      }`}>
-                        {item.type === 'consumption' ? (
-                          <TrendingDown className="w-4 h-4 text-red-600" />
-                        ) : (
-                          <TrendingUp className="w-4 h-4 text-green-600" />
-                        )}
-                      </div>
-                      <div>
-                        <p className="font-medium text-gray-900">{item.service}</p>
-                        <p className="text-sm text-gray-600">{item.description}</p>
-                        <p className="text-xs text-gray-500">{new Date(item.date).toLocaleDateString('fr-FR')}</p>
-                      </div>
-                    </div>
-                    <div className={`font-semibold ${
-                      item.type === 'consumption' ? 'text-red-600' : 'text-green-600'
-                    }`}>
-                      {item.type === 'consumption' ? '-' : '+'}{formatAmount(item.amount)}
-                    </div>
-                  </div>
-                ))}
-                {consumptionHistory.length > 10 && (
-                  <div className="text-center pt-4">
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        // Rediriger vers la page de détail du solde
-                        window.location.href = '/mon-solde';
-                      }}
-                    >
-                      Voir tout l'historique
-                    </Button>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="text-center py-8 text-gray-500">
-                <History className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-                <p>Aucune consommation enregistrée</p>
-                <p className="text-sm">Vos consommations de tokens apparaîtront ici</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Historique des paiements */}
-        <Card className="mb-8">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <CreditCard className="w-5 h-5" />
-              Historique des paiements
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {paymentHistory.length > 0 ? (
-              <div className="space-y-3">
-                {paymentHistory.slice(0, 10).map((payment) => (
-                  <div key={payment.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                        payment.status === 'completed' ? 'bg-green-100' : 
-                        payment.status === 'pending' ? 'bg-yellow-100' : 'bg-red-100'
-                      }`}>
-                        {payment.status === 'completed' ? (
-                          <CheckCircle className="w-4 h-4 text-green-600" />
-                        ) : payment.status === 'pending' ? (
-                          <Clock className="w-4 h-4 text-yellow-600" />
-                        ) : (
-                          <AlertCircle className="w-4 h-4 text-red-600" />
-                        )}
-                      </div>
-                      <div>
-                        <p className="font-medium text-gray-900">{payment.description}</p>
-                        <p className="text-sm text-gray-600">{payment.payment_method}</p>
-                        <p className="text-xs text-gray-500">{new Date(payment.date).toLocaleDateString('fr-FR')}</p>
-                        {payment.transaction_id && (
-                          <p className="text-xs text-gray-400">ID: {payment.transaction_id}</p>
-                        )}
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="font-semibold text-gray-900">
-                        {formatAmount(payment.amount)}
-                      </div>
-                      <div className={`text-xs font-medium ${
-                        payment.status === 'completed' ? 'text-green-600' : 
-                        payment.status === 'pending' ? 'text-yellow-600' : 'text-red-600'
-                      }`}>
-                        {payment.status === 'completed' ? 'Complété' : 
-                         payment.status === 'pending' ? 'En attente' : 'Échoué'}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-                {paymentHistory.length > 10 && (
-                  <div className="text-center pt-4">
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        // Rediriger vers la page de détail du solde
-                        window.location.href = '/mon-solde';
-                      }}
-                    >
-                      Voir tout l'historique
-                    </Button>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="text-center py-8 text-gray-500">
-                <CreditCard className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-                <p>Aucun paiement enregistré</p>
-                <p className="text-sm">Vos paiements apparaîtront ici</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        {/* Historique compact */}
+        <HistorySummary
+          consumptionHistory={consumptionHistory}
+          paymentHistory={paymentHistory}
+          formatAmount={formatAmount}
+          onViewFullHistory={() => {
+            window.location.href = '/mon-solde';
+          }}
+        />
 
         {/* Informations de paiement */}
         <Card className="bg-gray-50">

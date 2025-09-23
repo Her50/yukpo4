@@ -13,7 +13,7 @@ export default defineConfig({
     outDir: "dist",
     assetsDir: "assets",
     sourcemap: false,
-    chunkSizeWarningLimit: 2000,
+    chunkSizeWarningLimit: 3000,
     rollupOptions: {
       output: {
         manualChunks: {
@@ -24,7 +24,10 @@ export default defineConfig({
           "radix-vendor": ["@radix-ui/react-dialog", "@radix-ui/react-tabs", "@radix-ui/react-tooltip"],
           "utils-vendor": ["axios", "i18next", "react-i18next"],
           "maps-vendor": ["@react-google-maps/api", "@mapbox/mapbox-gl-geocoder"],
-          "lucide-vendor": ["lucide-react"]
+          "lucide-vendor": ["lucide-react"],
+          "charts-vendor": ["recharts"],
+          "framer-vendor": ["framer-motion"],
+          "toast-vendor": ["react-hot-toast", "react-toastify"]
         }
       }
     }

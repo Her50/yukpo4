@@ -7,10 +7,10 @@ import React, { useEffect, useState } from "react";
 import FlushFloatingButton from "@/components/admin/FlushFloatingButton";
 import ChatButton from "@/components/chat/ChatButton";
 import ChatList from "@/components/chat/ChatList";
-import ChatHistory from "@/components/chat/ChatHistory";
+import IntegratedChatManager from "@/components/chat/IntegratedChatManager";
 import ChatNotifications from "@/components/notifications/ChatNotifications";
-import VideoCallNotification from "@/components/notifications/VideoCallNotification";
 import NotificationHistory from "@/components/notifications/NotificationHistory";
+import VideoCallNotification from "@/components/notifications/VideoCallNotification";
 import LanguageSwitcher from "@/components/ui/LanguageSwitcher";
 import { useChatManager } from "@/hooks/useChatManager";
 import { useUser } from "@/hooks/useUser";
@@ -34,6 +34,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children, padding = true }) => {
 
   const [showChatHistory, setShowChatHistory] = useState(false);
   const [showNotificationHistory, setShowNotificationHistory] = useState(false);
+  const [showIntegratedChat, setShowIntegratedChat] = useState(false);
 
   const {
     incomingCalls,
@@ -56,12 +57,12 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children, padding = true }) => {
     };
 
     const handleChatHistoryEvent = () => {
-      setShowChatHistory(true);
+      setShowIntegratedChat(true);
     };
 
     window.addEventListener('open:notification:history', handleNotificationHistoryEvent);
     window.addEventListener('open:chat:history', handleChatHistoryEvent);
-    
+
     return () => {
       window.removeEventListener('open:notification:history', handleNotificationHistoryEvent);
       window.removeEventListener('open:chat:history', handleChatHistoryEvent);
@@ -139,19 +140,12 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children, padding = true }) => {
               🔔
             </ChatButton>
             <ChatButton
-              onClick={() => setShowChatHistory(true)}
+              onClick={() => setShowIntegratedChat(true)}
               unreadCount={0}
               className="bg-green-600 hover:bg-green-700"
-              title="Historique des chats"
+              title="Conversations"
             >
               💬
-            </ChatButton>
-            <ChatButton
-              onClick={openChatList}
-              unreadCount={0}
-              title="Chats actifs"
-            >
-              💭
             </ChatButton>
           </div>
           <ChatList
@@ -161,9 +155,9 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children, padding = true }) => {
             chats={[]} // TODO: Charger les chats depuis l'API
             loading={false}
           />
-          <ChatHistory
-            isOpen={showChatHistory}
-            onClose={() => setShowChatHistory(false)}
+          <IntegratedChatManager
+            isOpen={showIntegratedChat}
+            onClose={() => setShowIntegratedChat(false)}
             onChatSelect={openChat}
           />
           <NotificationHistory
