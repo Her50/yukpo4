@@ -18,8 +18,10 @@ import {
   MapPin,
   User,
   CheckCircle,
-  AlertCircle
+  AlertCircle,
+  Shield
 } from 'lucide-react';
+import ReCaptcha from '../security/ReCaptcha';
 import { Service } from '@/types/service';
 import ServiceCard from '@/components/services/ServiceCard';
 import { usePrestataireInfo } from '@/hooks/usePrestataireInfo';
@@ -42,6 +44,8 @@ export const ExternalServiceShare: React.FC<ExternalServiceShareProps> = ({
   const [service, setService] = useState<Service | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null);
+  const [showRecaptcha, setShowRecaptcha] = useState(false);
   
   // Hook pour récupérer les informations des prestataires
   const { prestataires, fetchPrestatairesBatch, loading: prestatairesLoading } = usePrestataireInfo();
@@ -59,13 +63,24 @@ export const ExternalServiceShare: React.FC<ExternalServiceShareProps> = ({
     }
   }, [sharedServiceId]);
 
-  const loadService = async (id: string) => {
+  const loadService = async (id: string, captchaToken?: string) => {
     try {
       setLoading(true);
       // Utiliser la route sécurisée pour les services partagés
-      const response = await fetch(`/api/services/shared/${id}`);
+      const url = new URL(`/api/services/shared/${id}`, window.location.origin);
+      if (captchaToken) {
+        url.searchParams.set('captcha', captchaToken);
+      }
+      
+      const response = await fetch(url.toString());
       
       if (!response.ok) {
+        if (response.status === 429) {
+          // Rate limit atteint, afficher reCAPTCHA
+          setShowRecaptcha(true);
+          setLoading(false);
+          return;
+        }
         throw new Error('Service non trouvé');
       }
       
@@ -85,6 +100,25 @@ export const ExternalServiceShare: React.FC<ExternalServiceShareProps> = ({
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleRecaptchaVerify = (token: string) => {
+    setRecaptchaToken(token);
+    setShowRecaptcha(false);
+    // Recharger le service avec le token reCAPTCHA
+    if (sharedServiceId) {
+      loadService(sharedServiceId, token);
+    }
+  };
+
+  const handleRecaptchaExpire = () => {
+    setRecaptchaToken(null);
+    setShowRecaptcha(true);
+  };
+
+  const handleRecaptchaError = () => {
+    setRecaptchaToken(null);
+    setError('Erreur de vérification. Veuillez réessayer.');
   };
 
   const handleViewService = () => {
@@ -162,6 +196,30 @@ export const ExternalServiceShare: React.FC<ExternalServiceShareProps> = ({
             }
           </p>
         </div>
+
+        {/* reCAPTCHA si nécessaire */}
+        {showRecaptcha && (
+          <Card className="mb-6">
+            <CardContent className="p-6 text-center">
+              <div className="flex items-center justify-center gap-2 mb-4">
+                <Shield className="h-5 w-5 text-blue-600" />
+                <h3 className="text-lg font-semibold">Vérification de sécurité</h3>
+              </div>
+              <p className="text-gray-600 mb-4">
+                Pour des raisons de sécurité, veuillez compléter la vérification ci-dessous :
+              </p>
+              <ReCaptcha
+                siteKey={import.meta.env.VITE_RECAPTCHA_SITE_KEY || '6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI'}
+                onVerify={handleRecaptchaVerify}
+                onExpire={handleRecaptchaExpire}
+                onError={handleRecaptchaError}
+                theme="light"
+                size="normal"
+                className="flex justify-center"
+              />
+            </CardContent>
+          </Card>
+        )}
 
         {/* Carte de service complète comme dans resultatbesoin */}
         <div className="flex justify-center mb-8">

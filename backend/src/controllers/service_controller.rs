@@ -745,8 +745,26 @@ pub async fn get_services_for_prestataire(
 pub async fn get_shared_service(
     State(state): State<Arc<AppState>>,
     Path(service_id): Path<i32>,
+    Query(params): Query<std::collections::HashMap<String, String>>,
 ) -> impl IntoResponse {
-    let pg_pool = &state.pg_pool;
+    let pg_pool = &state.pg;
+    
+    // Vérifier la signature si fournie (liens signés)
+    if let (Some(sig), Some(exp)) = (params.get("sig"), params.get("exp")) {
+        if let Ok(expires_at) = exp.parse::<u64>() {
+            // TODO: Implémenter la vérification de signature avec le service
+            // Pour l'instant, on vérifie juste l'expiration
+            let now = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_secs();
+            
+            if now > expires_at {
+                warn!("[get_shared_service] Lien expiré pour service {}", service_id);
+                return (StatusCode::FORBIDDEN, Json(json!({"error": "Lien expiré"}))).into_response();
+            }
+        }
+    }
     
     // Vérifier que le service existe et est actif
     let service_row = match sqlx::query!(
@@ -793,13 +811,49 @@ pub async fn get_shared_service(
         }
     };
 
+    // Masquer les champs sensibles dans les données du service
+    let mut safe_data = service_row.data.clone();
+    if let Some(data_obj) = safe_data.as_object_mut() {
+        // Masquer les coordonnées GPS précises (garder seulement la zone générale)
+        if let Some(location) = data_obj.get_mut("location") {
+            if let Some(loc_obj) = location.as_object_mut() {
+                // Remplacer les coordonnées précises par une zone approximative
+                if let (Some(lat), Some(lng)) = (loc_obj.get("latitude"), loc_obj.get("longitude")) {
+                    if let (Ok(lat_val), Ok(lng_val)) = (lat.as_f64(), lng.as_f64()) {
+                        // Arrondir à 2 décimales pour masquer la précision exacte
+                        loc_obj.insert("latitude".to_string(), json!((lat_val * 100.0).round() / 100.0));
+                        loc_obj.insert("longitude".to_string(), json!((lng_val * 100.0).round() / 100.0));
+                        loc_obj.insert("precision_masked".to_string(), json!(true));
+                    }
+                }
+            }
+        }
+        
+        // Masquer les informations de contact sensibles
+        data_obj.remove("phone");
+        data_obj.remove("email");
+        data_obj.remove("internal_notes");
+        data_obj.remove("admin_notes");
+        
+        // Garder seulement les informations publiques nécessaires
+        let allowed_fields = ["title", "description", "category", "price", "location", "images", "tags"];
+        let mut filtered_data = serde_json::Map::new();
+        for field in &allowed_fields {
+            if let Some(value) = data_obj.get(*field) {
+                filtered_data.insert(field.to_string(), value.clone());
+            }
+        }
+        *data_obj = filtered_data;
+    }
+
     // Retourner seulement les données nécessaires pour l'affichage public
     let shared_data = json!({
         "id": service_row.id,
-        "data": service_row.data,
+        "data": safe_data,
         "prestataire": prestataire_info,
         "created_at": service_row.created_at,
-        "is_shared": true // Indicateur que c'est un service partagé
+        "is_shared": true, // Indicateur que c'est un service partagé
+        "security_level": "public" // Niveau de sécurité appliqué
     });
 
     info!("[get_shared_service] Service {} partagé avec succès", service_id);
