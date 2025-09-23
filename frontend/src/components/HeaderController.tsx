@@ -1,15 +1,19 @@
 import logo from "@/assets/logo.png";
 import LangSwitcher from "@/components/LangSwitcher";
 import MobileMenu from "@/components/MobileMenu";
+import NotificationBadge from "@/components/ui/NotificationBadge";
+import { useNotificationCounts } from "@/hooks/useNotificationCounts";
 import { useUser } from "@/hooks/useUser";
 import { ROUTES } from "@/routes/AppRoutesRegistry";
 import { apiGet } from "@/services/apiService";
+import { notificationService } from "@/services/notificationService";
 import { Bell, MessageCircle } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
 const HeaderController: React.FC = () => {
   const { user, logout } = useUser();
+  const { notifications, conversations, loading: countsLoading, refreshCounts } = useNotificationCounts();
   const [theme, setTheme] = useState("light");
   const [openProfileMenu, setOpenProfileMenu] = useState(false);
   const [tokensBalance, setTokensBalance] = useState<number | null>(null);
@@ -145,19 +149,19 @@ const HeaderController: React.FC = () => {
   // Fonction pour formater le solde
   const formatBalance = () => {
     if (balanceLoading) return "⏳";
-    
+
     // Priorité : solde récupéré depuis l'API
     if (tokensBalance !== null && tokensBalance !== undefined) {
       return `${tokensBalance.toLocaleString()} XAF`;
     }
-    
+
     // Fallback : solde du JWT ou localStorage
-    const fallbackBalance = user?.credits ?? 
-                           (() => {
-                             const stored = localStorage.getItem('tokens_balance');
-                             return stored ? parseInt(stored, 10) : 0;
-                           })();
-    
+    const fallbackBalance = user?.credits ??
+      (() => {
+        const stored = localStorage.getItem('tokens_balance');
+        return stored ? parseInt(stored, 10) : 0;
+      })();
+
     return `${fallbackBalance.toLocaleString()} XAF`;
   };
 
@@ -212,7 +216,7 @@ const HeaderController: React.FC = () => {
                 <Link
                   to={ROUTES.MON_SOLDE}
                   className="text-green-600 font-bold hover:underline text-xs"
-                  title="Voir mon historique IA"
+                  title="Voir mon historique de consommation"
                 >
                   💰 {formatBalance()}
                 </Link>
@@ -223,7 +227,7 @@ const HeaderController: React.FC = () => {
                 <Link
                   to={ROUTES.MON_SOLDE}
                   className="text-green-600 font-bold hover:underline text-xs"
-                  title="Voir mon historique IA"
+                  title="Voir mon historique de consommation"
                 >
                   💰 {formatBalance()}
                 </Link>
@@ -238,11 +242,13 @@ const HeaderController: React.FC = () => {
                     window.dispatchEvent(event);
                   }}
                   className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors relative"
-                  title="Notifications"
+                  title={`Notifications${notifications > 0 ? ` (${notifications} nouvelles)` : ''}`}
                 >
                   <Bell className="h-5 w-5 text-gray-600 dark:text-gray-300" />
-                  {/* Badge de notification si nécessaire */}
-                  <span className="absolute -top-1 -right-1 h-3 w-3 bg-red-500 rounded-full text-xs"></span>
+                  <NotificationBadge
+                    count={notifications}
+                    variant="error"
+                  />
                 </button>
 
                 {/* Icône Chats/Historique des conversations */}
@@ -252,12 +258,46 @@ const HeaderController: React.FC = () => {
                     window.dispatchEvent(event);
                   }}
                   className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors relative"
-                  title="Historique des conversations"
+                  title={`Conversations${conversations > 0 ? ` (${conversations} nouvelles)` : ''}`}
                 >
                   <MessageCircle className="h-5 w-5 text-gray-600 dark:text-gray-300" />
-                  {/* Badge de message non lu si nécessaire */}
-                  <span className="absolute -top-1 -right-1 h-3 w-3 bg-green-500 rounded-full text-xs"></span>
+                  <NotificationBadge
+                    count={conversations}
+                    variant="success"
+                  />
                 </button>
+
+                {/* Boutons de test temporaires - À supprimer en production */}
+                {process.env.NODE_ENV === 'development' && (
+                  <div className="flex gap-1 ml-2">
+                    <button
+                      onClick={() => {
+                        // Simuler l'ajout d'une notification
+                        notificationService.addTestNotification();
+                        const event = new CustomEvent('notification:updated');
+                        window.dispatchEvent(event);
+                        refreshCounts();
+                      }}
+                      className="px-2 py-1 text-xs bg-red-100 text-red-600 rounded hover:bg-red-200"
+                      title="Simuler notification"
+                    >
+                      +N
+                    </button>
+                    <button
+                      onClick={() => {
+                        // Simuler l'ajout d'une conversation
+                        notificationService.addTestConversation();
+                        const event = new CustomEvent('conversation:updated');
+                        window.dispatchEvent(event);
+                        refreshCounts();
+                      }}
+                      className="px-2 py-1 text-xs bg-green-100 text-green-600 rounded hover:bg-green-200"
+                      title="Simuler conversation"
+                    >
+                      +C
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* ✅ Profil utilisateur rond + menu */}
@@ -298,7 +338,7 @@ const HeaderController: React.FC = () => {
                       to={ROUTES.MON_SOLDE}
                       className="block px-3 py-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
                     >
-                      🧾 Historique IA
+                      🧾 Historisation consommation
                     </Link>
                     <Link
                       to={ROUTES.RECHARGE_TOKENS}

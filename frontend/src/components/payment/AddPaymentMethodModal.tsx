@@ -55,6 +55,7 @@ const AddPaymentMethodModal: React.FC<AddPaymentMethodModalProps> = ({
       if (selectedType === 'mobile') {
         if (!phoneNumber || !selectedProvider) {
           alert('Veuillez remplir tous les champs requis');
+          setLoading(false);
           return;
         }
         methodData = {
@@ -66,6 +67,7 @@ const AddPaymentMethodModal: React.FC<AddPaymentMethodModalProps> = ({
       } else if (selectedType === 'card') {
         if (!cardNumber || !expiryDate || !cvv || !cardholderName || !selectedProvider) {
           alert('Veuillez remplir tous les champs requis');
+          setLoading(false);
           return;
         }
         methodData = {
@@ -80,6 +82,7 @@ const AddPaymentMethodModal: React.FC<AddPaymentMethodModalProps> = ({
       } else if (selectedType === 'bank') {
         if (!bankAccount) {
           alert('Veuillez remplir tous les champs requis');
+          setLoading(false);
           return;
         }
         methodData = {
@@ -90,13 +93,35 @@ const AddPaymentMethodModal: React.FC<AddPaymentMethodModalProps> = ({
         };
       }
 
-      // TODO: Appel API pour sauvegarder le moyen de paiement
-      console.log('Sauvegarde du moyen de paiement:', methodData);
+      // Appel API pour sauvegarder le moyen de paiement
+      const token = localStorage.getItem('token');
+      if (!token) {
+        alert('Vous devez être connecté pour ajouter un moyen de paiement');
+        setLoading(false);
+        return;
+      }
+
+      const response = await fetch('https://yukpomnang.onrender.com/api/users/payment-methods', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(methodData)
+      });
+
+      if (!response.ok) {
+        throw new Error('Erreur lors de la sauvegarde');
+      }
+
+      const savedMethod = await response.json();
+      console.log('Moyen de paiement sauvegardé:', savedMethod);
       
-      onSave(methodData);
+      onSave(savedMethod);
       onClose();
     } catch (error) {
       console.error('Erreur lors de la sauvegarde:', error);
+      alert('Erreur lors de la sauvegarde du moyen de paiement');
     } finally {
       setLoading(false);
     }

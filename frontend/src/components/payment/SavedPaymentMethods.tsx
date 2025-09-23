@@ -31,37 +31,31 @@ const SavedPaymentMethods: React.FC<SavedPaymentMethodsProps> = ({
   useEffect(() => {
     const loadSavedMethods = async () => {
       try {
-        // Simuler le chargement depuis l'API
         const token = localStorage.getItem('token');
         if (!token) {
           setLoading(false);
           return;
         }
 
-        // Pour l'instant, utiliser des données d'exemple
-        // TODO: Remplacer par un appel API réel
-        const mockMethods: SavedPaymentMethod[] = [
-          {
-            id: '1',
-            type: 'mobile',
-            name: 'MTN Mobile Money',
-            details: '*** *** 1234',
-            isDefault: true,
-            lastUsed: '2024-01-15'
-          },
-          {
-            id: '2',
-            type: 'card',
-            name: 'Visa **** 5678',
-            details: '**** **** **** 5678',
-            isDefault: false,
-            lastUsed: '2024-01-10'
+        // Appel API pour récupérer les moyens de paiement sauvegardés
+        const response = await fetch('https://yukpomnang.onrender.com/api/users/payment-methods', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
           }
-        ];
+        });
 
-        setSavedMethods(mockMethods);
+        if (response.ok) {
+          const methods = await response.json();
+          setSavedMethods(methods || []);
+        } else {
+          // Si pas de moyens de paiement sauvegardés, laisser vide
+          setSavedMethods([]);
+        }
       } catch (error) {
         console.error('Erreur lors du chargement des moyens de paiement:', error);
+        // En cas d'erreur, laisser vide pour forcer l'utilisateur à ajouter un moyen
+        setSavedMethods([]);
       } finally {
         setLoading(false);
       }

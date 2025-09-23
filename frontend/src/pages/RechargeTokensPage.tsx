@@ -140,15 +140,43 @@ const RechargeTokensPage: React.FC = () => {
 
     setLoading(true);
     try {
-      // Simuler la recharge
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Appel API pour effectuer la recharge
+      const response = await fetch('https://yukpomnang.onrender.com/api/users/recharge', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({
+          amount: option.amount,
+          tokens: option.tokens,
+          payment_method: selectedPaymentMethod.id,
+          payment_type: selectedPaymentMethod.type
+        })
+      });
 
-      toast.success(`Recharge de ${formatAmount(option.amount)} effectuée avec succès !`);
+      if (!response.ok) {
+        throw new Error('Erreur lors de la recharge');
+      }
+
+      const result = await response.json();
+      
+      // Mettre à jour le solde local
+      const newBalance = (balance || 0) + option.tokens;
+      localStorage.setItem('user_balance', newBalance.toString());
+      
+      // Déclencher l'événement de mise à jour du solde
+      window.dispatchEvent(new CustomEvent('tokens_updated', { 
+        detail: { newBalance, tokensAdded: option.tokens } 
+      }));
+
+      toast.success(`Recharge de ${formatAmount(option.amount)} effectuée avec succès ! +${option.tokens} tokens ajoutés`);
       setCurrentStep('amount');
       setSelectedOption(null);
       setSelectedPaymentMethod(null);
     } catch (error) {
-      toast.error('Erreur lors de la recharge');
+      console.error('Erreur lors de la recharge:', error);
+      toast.error('Erreur lors de la recharge. Veuillez réessayer.');
     } finally {
       setLoading(false);
     }
@@ -167,15 +195,49 @@ const RechargeTokensPage: React.FC = () => {
 
     setLoading(true);
     try {
-      // Simuler la recharge personnalisée
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      const tokens = Math.floor(customAmount);
+      const bonus = customAmount >= 10000 ? Math.floor(customAmount * 0.2) :
+        customAmount >= 5000 ? Math.floor(customAmount * 0.1) :
+          customAmount >= 2000 ? Math.floor(customAmount * 0.05) : 0;
+      const totalTokens = tokens + bonus;
 
-      toast.success(`Recharge de ${formatAmount(customAmount)} effectuée avec succès !`);
+      // Appel API pour effectuer la recharge personnalisée
+      const response = await fetch('https://yukpomnang.onrender.com/api/users/recharge', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({
+          amount: customAmount,
+          tokens: totalTokens,
+          payment_method: selectedPaymentMethod.id,
+          payment_type: selectedPaymentMethod.type
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Erreur lors de la recharge');
+      }
+
+      const result = await response.json();
+      
+      // Mettre à jour le solde local
+      const newBalance = (balance || 0) + totalTokens;
+      localStorage.setItem('user_balance', newBalance.toString());
+      
+      // Déclencher l'événement de mise à jour du solde
+      window.dispatchEvent(new CustomEvent('tokens_updated', { 
+        detail: { newBalance, tokensAdded: totalTokens } 
+      }));
+
+      toast.success(`Recharge de ${formatAmount(customAmount)} effectuée avec succès ! +${totalTokens} tokens ajoutés`);
       setCurrentStep('amount');
       setCustomAmount(0);
       setSelectedPaymentMethod(null);
     } catch (error) {
-      toast.error('Erreur lors de la recharge');
+      console.error('Erreur lors de la recharge:', error);
+      toast.error('Erreur lors de la recharge. Veuillez réessayer.');
     } finally {
       setLoading(false);
     }
@@ -184,8 +246,8 @@ const RechargeTokensPage: React.FC = () => {
   const getSelectedOption = () => {
     if (selectedOption === 'custom') {
       return {
-        id: 'custom',
-        amount: customAmount,
+      id: 'custom',
+      amount: customAmount,
         tokens: Math.floor(customAmount),
         bonus: customAmount >= 10000 ? Math.floor(customAmount * 0.2) :
           customAmount >= 5000 ? Math.floor(customAmount * 0.1) :
@@ -226,7 +288,7 @@ const RechargeTokensPage: React.FC = () => {
                   <span className="text-3xl font-bold">
                     {balance?.toLocaleString() || '0'} tokens
                   </span>
-                </div>
+              </div>
                 <p className="text-blue-100 mt-1">
                   Équivalent à {formatAmount(balance || 0)}
                 </p>
@@ -280,24 +342,24 @@ const RechargeTokensPage: React.FC = () => {
             {/* Sélection du montant */}
             {currentStep === 'amount' && (
               <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
                     <Coins className="w-5 h-5" />
                     Choisissez votre montant
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-                    {rechargeOptions.map((option) => (
+              {rechargeOptions.map((option) => (
                       <Card
-                        key={option.id}
+                  key={option.id}
                         className={`cursor-pointer transition-all ${
                           selectedOption === option.id
                             ? 'ring-2 ring-blue-500 bg-blue-50'
                             : 'hover:shadow-md'
-                        }`}
-                        onClick={() => setSelectedOption(option.id)}
-                      >
+                    }`}
+                  onClick={() => setSelectedOption(option.id)}
+                >
                         <CardContent className="p-4">
                           <div className="text-center">
                             <div className="text-2xl font-bold text-blue-600 mb-2">
@@ -311,16 +373,16 @@ const RechargeTokensPage: React.FC = () => {
                                 +{option.bonus} bonus
                               </div>
                             )}
-                            {option.popular && (
+                  {option.popular && (
                               <Badge className="mt-2 bg-orange-100 text-orange-800">
-                                Populaire
-                              </Badge>
-                            )}
-                          </div>
+                      Populaire
+                    </Badge>
+                  )}
+                    </div>
                         </CardContent>
                       </Card>
                     ))}
-                  </div>
+                    </div>
 
                   <div className="border-t pt-4">
                     <div className="text-center mb-4">
@@ -341,21 +403,21 @@ const RechargeTokensPage: React.FC = () => {
                         )}
                       </div>
                     </div>
-                  </div>
+            </div>
 
                   {selectedOptionData && (
                     <div className="mt-6">
-                      <Button
+              <Button
                         onClick={() => setCurrentStep('payment')}
                         className="w-full bg-blue-600 hover:bg-blue-700 text-lg py-3"
-                      >
+              >
                         Continuer vers le paiement
                         <ArrowRight className="w-5 h-5 ml-2" />
-                      </Button>
+              </Button>
                     </div>
-                  )}
-                </CardContent>
-              </Card>
+              )}
+          </CardContent>
+        </Card>
             )}
 
             {/* Sélection du moyen de paiement */}
@@ -374,6 +436,19 @@ const RechargeTokensPage: React.FC = () => {
                     selectedMethodId={selectedPaymentMethod?.id}
                   />
 
+                  {/* Message d'information si aucun moyen de paiement */}
+                  {!selectedPaymentMethod && (
+                    <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                      <div className="flex items-center gap-2 text-yellow-800">
+                        <CreditCard className="w-5 h-5" />
+                        <span className="font-medium">Aucun moyen de paiement sélectionné</span>
+                      </div>
+                      <p className="text-sm text-yellow-700 mt-1">
+                        Veuillez ajouter et sélectionner un moyen de paiement pour continuer.
+                      </p>
+                    </div>
+                  )}
+
                   <div className="flex gap-4 mt-6">
                     <Button
                       variant="outline"
@@ -385,7 +460,7 @@ const RechargeTokensPage: React.FC = () => {
                     <Button
                       onClick={() => setCurrentStep('confirm')}
                       disabled={!selectedPaymentMethod}
-                      className="flex-1 bg-blue-600 hover:bg-blue-700"
+                      className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       Continuer
                       <ArrowRight className="w-4 h-4 ml-2" />
@@ -398,13 +473,13 @@ const RechargeTokensPage: React.FC = () => {
             {/* Confirmation */}
             {currentStep === 'confirm' && selectedOptionData && (
               <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
                     <CheckCircle className="w-5 h-5" />
                     Confirmez votre recharge
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
                   <div className="space-y-6">
                     {/* Résumé de la recharge */}
                     <div className="bg-gray-50 rounded-lg p-6">
@@ -422,7 +497,7 @@ const RechargeTokensPage: React.FC = () => {
                           <div className="flex justify-between text-green-600">
                             <span>Bonus:</span>
                             <span className="font-semibold">+{selectedOptionData?.bonus?.toLocaleString() || '0'}</span>
-                          </div>
+                    </div>
                         )}
                         <div className="border-t pt-3">
                           <div className="flex justify-between text-lg font-bold">
@@ -475,7 +550,7 @@ const RechargeTokensPage: React.FC = () => {
                 </CardContent>
               </Card>
             )}
-          </div>
+            </div>
 
           {/* Colonne latérale */}
           <div className="space-y-6">
@@ -497,41 +572,42 @@ const RechargeTokensPage: React.FC = () => {
                   </div>
                   <Button
                     variant="outline"
-                    onClick={() => window.location.href = '/mon-solde'}
+                    onClick={() => window.location.href = '/dashboard/solde'}
                     className="w-full"
                   >
                     Voir tout l'historique
                   </Button>
                 </div>
-              </CardContent>
-            </Card>
+          </CardContent>
+        </Card>
 
             {/* Informations de sécurité */}
             <Card className="bg-green-50 border-green-200">
               <CardContent className="p-4">
                 <div className="flex items-start gap-3">
                   <Shield className="w-5 h-5 text-green-600 mt-0.5" />
-                  <div>
+                <div>
                     <h5 className="font-medium text-green-900 mb-1">Paiement sécurisé</h5>
                     <p className="text-sm text-green-700">
                       Tous vos paiements sont protégés par un chiffrement de niveau bancaire.
                       Vos informations ne sont jamais stockées.
                     </p>
-                  </div>
+              </div>
                 </div>
               </CardContent>
             </Card>
-          </div>
-        </div>
+              </div>
+            </div>
 
         {/* Modal d'ajout de moyen de paiement */}
         <AddPaymentMethodModal
           isOpen={showAddPaymentModal}
           onClose={() => setShowAddPaymentModal(false)}
           onSave={(method) => {
-            // TODO: Sauvegarder le moyen de paiement
             console.log('Nouveau moyen de paiement:', method);
             toast.success('Moyen de paiement ajouté avec succès');
+            // Rafraîchir la page pour recharger les moyens de paiement
+            window.location.reload();
           }}
         />
       </div>
