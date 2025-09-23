@@ -786,14 +786,14 @@ pub async fn get_shared_service(
 
     // Récupérer les informations du prestataire (limitées)
     let prestataire_info = match sqlx::query!(
-        r#"SELECT name, photo FROM users WHERE id = $1"#,
+        r#"SELECT username, photo FROM users WHERE id = $1"#,
         service_row.user_id
     )
     .fetch_optional(pg_pool)
     .await {
         Ok(Some(user)) => json!({
             "id": service_row.user_id,
-            "name": user.name,
+            "name": user.username,
             "photo": user.photo
         }),
         Ok(None) => json!({
@@ -819,7 +819,7 @@ pub async fn get_shared_service(
             if let Some(loc_obj) = location.as_object_mut() {
                 // Remplacer les coordonnées précises par une zone approximative
                 if let (Some(lat), Some(lng)) = (loc_obj.get("latitude"), loc_obj.get("longitude")) {
-                    if let (Ok(lat_val), Ok(lng_val)) = (lat.as_f64(), lng.as_f64()) {
+                    if let (Some(lat_val), Some(lng_val)) = (lat.as_f64(), lng.as_f64()) {
                         // Arrondir à 2 décimales pour masquer la précision exacte
                         loc_obj.insert("latitude".to_string(), json!((lat_val * 100.0).round() / 100.0));
                         loc_obj.insert("longitude".to_string(), json!((lng_val * 100.0).round() / 100.0));
