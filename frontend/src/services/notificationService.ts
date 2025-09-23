@@ -10,8 +10,8 @@ interface ConversationCount {
 }
 
 // Simulation de données pour les tests - Variables mutables pour les tests
-let mockNotificationCount = 3; // Simuler 3 notifications non lues
-let mockConversationCount = 2; // Simuler 2 conversations non lues
+let mockNotificationCount = 0; // Commencer avec 0 notifications
+let mockConversationCount = 0; // Commencer avec 0 conversations
 
 export const notificationService = {
   // Récupérer le nombre de notifications non lues

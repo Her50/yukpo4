@@ -52,16 +52,30 @@ const SoldeDetailPage: React.FC = () => {
     mutate(); // force le rafraîchissement du user/tokens à chaque affichage
 
     // Charger l'historique de consommation
-    axios.get(`/api/user/credit/history/${user.id}?period=${selectedPeriod}`).then((res) => {
+    axios.get(`https://yukpomnang.onrender.com/api/user/credit/history/${user.id}?period=${selectedPeriod}`, {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      }
+    }).then((res) => {
       const data = Array.isArray(res.data) ? res.data : [];
       setLogs(data);
-    }).catch(console.error);
+    }).catch((error) => {
+      console.error('Erreur lors du chargement de l\'historique de consommation:', error);
+      setLogs([]); // En cas d'erreur, initialiser avec une liste vide
+    });
 
     // Charger l'historique des paiements
-    axios.get(`/api/user/payments/history/${user.id}?period=${selectedPeriod}`).then((res) => {
+    axios.get(`https://yukpomnang.onrender.com/api/user/payments/history/${user.id}?period=${selectedPeriod}`, {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      }
+    }).then((res) => {
       const data = Array.isArray(res.data) ? res.data : [];
       setPaymentLogs(data);
-    }).catch(console.error);
+    }).catch((error) => {
+      console.error('Erreur lors du chargement de l\'historique des paiements:', error);
+      setPaymentLogs([]); // En cas d'erreur, initialiser avec une liste vide
+    });
   }, [user, mutate, selectedPeriod]);
 
   const handleExportCSV = () => {

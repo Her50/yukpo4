@@ -6,7 +6,6 @@ import { useNotificationCounts } from "@/hooks/useNotificationCounts";
 import { useUser } from "@/hooks/useUser";
 import { ROUTES } from "@/routes/AppRoutesRegistry";
 import { apiGet } from "@/services/apiService";
-import { notificationService } from "@/services/notificationService";
 import { Bell, MessageCircle } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
@@ -267,37 +266,6 @@ const HeaderController: React.FC = () => {
                   />
                 </button>
 
-                {/* Boutons de test temporaires - À supprimer en production */}
-                {process.env.NODE_ENV === 'development' && (
-                  <div className="flex gap-1 ml-2">
-                    <button
-                      onClick={() => {
-                        // Simuler l'ajout d'une notification
-                        notificationService.addTestNotification();
-                        const event = new CustomEvent('notification:updated');
-                        window.dispatchEvent(event);
-                        refreshCounts();
-                      }}
-                      className="px-2 py-1 text-xs bg-red-100 text-red-600 rounded hover:bg-red-200"
-                      title="Simuler notification"
-                    >
-                      +N
-                    </button>
-                    <button
-                      onClick={() => {
-                        // Simuler l'ajout d'une conversation
-                        notificationService.addTestConversation();
-                        const event = new CustomEvent('conversation:updated');
-                        window.dispatchEvent(event);
-                        refreshCounts();
-                      }}
-                      className="px-2 py-1 text-xs bg-green-100 text-green-600 rounded hover:bg-green-200"
-                      title="Simuler conversation"
-                    >
-                      +C
-                    </button>
-                  </div>
-                )}
               </div>
 
               {/* ✅ Profil utilisateur rond + menu */}

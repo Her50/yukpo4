@@ -51,6 +51,55 @@ export default function FormulaireDemandeOuService() {
   const [successData, setSuccessData] = useState<{ serviceId: string; cout: number } | null>(null);
   const { setStats } = useContext(GlobalIAStatsContext);
 
+  // Charger les données du service à modifier
+  useEffect(() => {
+    const loadServiceData = async () => {
+      if (mode === 'edit' && serviceId) {
+        try {
+          const token = localStorage.getItem('token');
+          const response = await axios.get(`https://yukpomnang.onrender.com/api/services/${serviceId}`, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          
+          const serviceData = response.data;
+          console.log('Données du service à modifier:', serviceData);
+          
+          // Pré-remplir les champs avec les données existantes
+          if (serviceData.data) {
+            const existingValues: Record<string, any> = {};
+            
+            // Extraire les valeurs des champs existants
+            Object.keys(serviceData.data).forEach(key => {
+              const fieldData = serviceData.data[key];
+              if (fieldData && fieldData.valeur) {
+                existingValues[key] = fieldData.valeur;
+              } else if (typeof fieldData === 'string') {
+                existingValues[key] = fieldData;
+              }
+            });
+            
+            setValeursFormulaire(existingValues);
+            console.log('Valeurs pré-remplies:', existingValues);
+          }
+          
+          // Pré-remplir les médias si disponibles
+          if (serviceData.base64_image) {
+            setMediaFiles(prev => ({
+              ...prev,
+              images: Array.isArray(serviceData.base64_image) ? serviceData.base64_image : [serviceData.base64_image]
+            }));
+          }
+          
+        } catch (error) {
+          console.error('Erreur lors du chargement du service:', error);
+          toast.error('Erreur lors du chargement des données du service');
+        }
+      }
+    };
+    
+    loadServiceData();
+  }, [mode, serviceId]);
+
   const handleMediaChange = (newMediaFiles: any) => {
     setMediaFiles(newMediaFiles);
   };
@@ -855,10 +904,10 @@ export default function FormulaireDemandeOuService() {
                     {chargement ? (
                       <>
                         <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                        Création en cours...
+                        {mode === 'edit' ? 'Modification en cours...' : 'Création en cours...'}
                       </>
                     ) : (
-                      '🚀 Créer ce service'
+                      mode === 'edit' ? '✏️ Modifier ce service' : '🚀 Créer ce service'
                     )}
                   </Button>
                 )}

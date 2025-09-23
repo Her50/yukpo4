@@ -103,7 +103,21 @@ const MesServices = () => {
       } catch (error) {
         console.error("[MesServices] Erreur lors du chargement des services:", error);
         console.error("[MesServices] Détails de l'erreur:", error.response?.data);
-        toast.error("Erreur lors du chargement des services");
+        
+        // Essayer de charger depuis le localStorage en cas d'erreur
+        const cachedServices = localStorage.getItem('mes_services');
+        if (cachedServices) {
+          try {
+            const parsedServices = JSON.parse(cachedServices);
+            setServices(parsedServices);
+            console.log('[MesServices] Services chargés depuis le cache:', parsedServices.length);
+          } catch (parseError) {
+            console.error('[MesServices] Erreur lors du parsing du cache:', parseError);
+            setServices([]);
+          }
+        } else {
+          setServices([]);
+        }
       } finally {
         setLoading(false);
       }
