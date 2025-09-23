@@ -21,7 +21,6 @@ const MesServices = () => {
   });
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"tous" | "actif" | "inactif">("tous");
-  const [refreshing, setRefreshing] = useState(false);
   const [hasFetched, setHasFetched] = useState(false);
   const [promotionModalOpen, setPromotionModalOpen] = useState(false);
   const [selectedServiceForPromotion, setSelectedServiceForPromotion] = useState<any>(null);
@@ -39,87 +38,28 @@ const MesServices = () => {
     }
   }, [user, isLoading, navigate]);
 
-  // Écouter les événements de création de service et le flag localStorage
+  // Écouter seulement les événements de création de service
   useEffect(() => {
-      const handleServiceCreated = () => {
-    console.log('[MesServices] Event service_created reçu, actualisation immédiate des services...');
-    triggerImmediateRefresh();
-  };
-
-    // Écouter aussi les événements de navigation pour rafraîchir si on revient sur la page
-    const handleVisibilityChange = () => {
-      if (!document.hidden && user) {
-        console.log('[MesServices] Page redevenue visible, rafraîchissement des services...');
-        triggerImmediateRefresh();
-      }
+    const handleServiceCreated = () => {
+      console.log('[MesServices] Event service_created reçu, actualisation des services...');
+      setHasFetched(false); // Forcer un nouveau chargement
     };
-
-    // Vérifier le flag de rafraîchissement forcé toutes les 2 secondes
-    const checkForceRefresh = () => {
-      const forceRefreshFlag = localStorage.getItem('force_refresh_services');
-      if (forceRefreshFlag) {
-        console.log('[MesServices] Flag de rafraîchissement forcé détecté, actualisation...');
-        localStorage.removeItem('force_refresh_services'); // Consommer le flag
-        // Utiliser la fonction de rafraîchissement immédiat
-        triggerImmediateRefresh();
-      }
-    };
-
-    const intervalId = setInterval(checkForceRefresh, 2000); // Vérifier toutes les 2 secondes
 
     window.addEventListener('service_created', handleServiceCreated);
-    document.addEventListener('visibilitychange', handleVisibilityChange);
     
     return () => {
       window.removeEventListener('service_created', handleServiceCreated);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      clearInterval(intervalId);
     };
-  }, [user]);
+  }, []);
 
-  // Fonction centralisée pour forcer le rafraîchissement
-  const forceRefresh = () => {
-    console.log('[MesServices] Force refresh déclenché');
-    
-    // Invalider TOUS les caches possibles
-    localStorage.removeItem('mes_services');
-    sessionStorage.removeItem('mes_services');
-    
-    // Forcer un rafraîchissement immédiat
+  // Fonction simple pour rafraîchir les services
+  const refreshServices = () => {
+    console.log('[MesServices] Rafraîchissement manuel des services...');
     setHasFetched(false);
-    setServices([]); // Vider la liste pour forcer le rechargement
-    
-    // Rafraîchissement immédiat
-    setTimeout(() => {
-      console.log('[MesServices] Actualisation immédiate après création de service');
-      setHasFetched(false);
-    }, 1000); // Réduit à 1 seconde pour un rafraîchissement rapide
-    
-    // Rafraîchissement de sécurité après 30 secondes
-    setTimeout(() => {
-      console.log('[MesServices] Actualisation de sécurité après 30 secondes');
-      setHasFetched(false);
-    }, 30000);
   };
 
-  // Fonction pour déclencher un rafraîchissement immédiat
-  const triggerImmediateRefresh = () => {
-    console.log('[MesServices] Rafraîchissement immédiat déclenché');
-    setHasFetched(false);
-    setServices([]);
-  };
-
-  // Rafraîchissement automatique toutes les 30 secondes si l'utilisateur est connecté
-  useEffect(() => {
-    if (!user) return;
-    
-    const interval = setInterval(() => {
-      console.log('[MesServices] Rafraîchissement automatique des services...');
-      triggerImmediateRefresh();
-    }, 30000); // 30 secondes
-    
-    return () => clearInterval(interval);
-  }, [user]);
+  // Suppression du rafraîchissement automatique permanent
+  // Les services ne se rafraîchissent que lors des actions utilisateur
 
   useEffect(() => {
     if (!user || hasFetched) {
@@ -141,7 +81,7 @@ const MesServices = () => {
         const token = localStorage.getItem('token');
         console.log('[MesServices] Token présent:', !!token);
         
-        const res = await axios.get("/api/prestataire/services", {
+        const res = await axios.get("https://yukpomnang.onrender.com/api/prestataire/services", {
           headers: {
             Authorization: `Bearer ${token}`
           },
@@ -327,80 +267,6 @@ const MesServices = () => {
     }
   };
 
-  // Fonction pour rafraîchir les services
-  const refreshServices = async () => {
-    try {
-      setRefreshing(true);
-      localStorage.removeItem('mes_services'); // Invalider le cache
-      setHasFetched(false); // Forcer un nouveau fetch
-      
-      const token = localStorage.getItem('token');
-      const res = await axios.get("/api/prestataire/services", {
-        headers: {
-          Authorization: `Bearer ${token}`
-        },
-        timeout: 10000
-      });
-      
-      const servicesTries = res.data.sort((a: any, b: any) => {
-        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-      });
-      
-      console.log('[MesServices] Services récupérés depuis l\'API:', servicesTries.length, 'services');
-      console.log('[MesServices] Premier service (le plus récent):', servicesTries[0]);
-      console.log('[MesServices] Dernier service (le plus ancien):', servicesTries[servicesTries.length - 1]);
-      console.log('[MesServices] IDs des 5 derniers services:', servicesTries.slice(0, 5).map(s => s.id));
-      
-      setServices(servicesTries);
-      localStorage.setItem('mes_services', JSON.stringify(servicesTries));
-      toast.success("Services mis à jour !");
-    } catch (error) {
-      console.error("[MesServices] Erreur lors du rafraîchissement:", error);
-      toast.error("Erreur lors du rafraîchissement");
-    } finally {
-      setRefreshing(false);
-    }
-  };
-
-  // Fonction pour forcer un rafraîchissement immédiat sans cache
-  const forceImmediateRefresh = async () => {
-    try {
-      console.log('[MesServices] 🔄 Forçage rafraîchissement immédiat...');
-      setRefreshing(true);
-      
-      // Supprimer tous les caches
-      localStorage.removeItem('mes_services');
-      localStorage.removeItem('force_refresh_services');
-      setHasFetched(false);
-      
-      // Attendre un peu pour s'assurer que la base de données est à jour
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      const token = localStorage.getItem('token');
-      const res = await axios.get("/api/prestataire/services", {
-        headers: {
-          Authorization: `Bearer ${token}`
-        },
-        timeout: 15000
-      });
-      
-      const servicesTries = res.data.sort((a: any, b: any) => {
-        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-      });
-      
-      console.log('[MesServices] 🔄 Services récupérés après forçage:', servicesTries.length, 'services');
-      console.log('[MesServices] 🔄 IDs des services:', servicesTries.map(s => s.id));
-      
-      setServices(servicesTries);
-      localStorage.setItem('mes_services', JSON.stringify(servicesTries));
-      toast.success(`Services mis à jour ! (${servicesTries.length} services)`);
-    } catch (error) {
-      console.error("[MesServices] Erreur lors du forçage:", error);
-      toast.error("Erreur lors du forçage");
-    } finally {
-      setRefreshing(false);
-    }
-  };
 
   return (
     <AppLayout>
@@ -418,12 +284,12 @@ const MesServices = () => {
             </Button>
             <Button 
               onClick={refreshServices}
-              disabled={refreshing}
+              disabled={loading}
               variant="outline"
               size="sm"
               className="flex items-center gap-2"
             >
-              {refreshing ? (
+              {loading ? (
                 <>
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
                   Actualisation...
@@ -805,7 +671,7 @@ const MesServices = () => {
                           toast.success('Promotion désactivée avec succès');
                           setPromotionModalOpen(false);
                           // Recharger les services
-                          chargerServices();
+                          setHasFetched(false);
                         }
                       }}
                       variant="outline"

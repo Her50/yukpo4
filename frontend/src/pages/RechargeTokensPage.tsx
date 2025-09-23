@@ -5,13 +5,15 @@ import {
   CreditCard,
   Lock,
   Shield,
-  Sparkles
+  Sparkles,
+  Plus,
+  Wallet
 } from 'lucide-react';
 import React, { useState } from 'react';
 import { toast } from 'react-hot-toast';
-import PaymentMethodManager from '../components/payment/PaymentMethodManager';
-import AmountSelector from '../components/recharge/AmountSelector';
-import HistorySummary from '../components/recharge/HistorySummary';
+import SavedPaymentMethods from '../components/payment/SavedPaymentMethods';
+import AddPaymentMethodModal from '../components/payment/AddPaymentMethodModal';
+import PaymentMethodIcons from '../components/payment/PaymentMethodIcons';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/buttons/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
@@ -43,8 +45,9 @@ const RechargeTokensPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [customAmount, setCustomAmount] = useState<number>(0);
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string | null>(null);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<any>(null);
   const [currentStep, setCurrentStep] = useState<'amount' | 'payment' | 'confirm'>('amount');
+  const [showAddPaymentModal, setShowAddPaymentModal] = useState(false);
 
   // Options de recharge prédéfinies (en FCFA de base, converties selon la devise)
   const baseAmounts = [2000, 5000, 10000, 20000, 50000]; // Montants en FCFA
@@ -128,41 +131,6 @@ const RechargeTokensPage: React.FC = () => {
     }
   ];
 
-  // Historique de consommation (mock)
-  const consumptionHistory = [
-    {
-      id: '1',
-      service: 'Génération de contenu IA',
-      tokens: 150,
-      date: new Date(Date.now() - 1000 * 60 * 30),
-      type: 'consumption'
-    },
-    {
-      id: '2',
-      service: 'Recherche de services',
-      tokens: 50,
-      date: new Date(Date.now() - 1000 * 60 * 60 * 2),
-      type: 'consumption'
-    }
-  ];
-
-  // Historique de paiement (mock)
-  const paymentHistory = [
-    {
-      id: '1',
-      amount: 5000,
-      method: 'MTN Money',
-      date: new Date(Date.now() - 1000 * 60 * 60 * 24),
-      status: 'completed'
-    },
-    {
-      id: '2',
-      amount: 10000,
-      method: 'Orange Money',
-      date: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3),
-      status: 'completed'
-    }
-  ];
 
   const handleRecharge = async (option: RechargeOption) => {
     if (!selectedPaymentMethod) {
@@ -260,7 +228,7 @@ const RechargeTokensPage: React.FC = () => {
                   </span>
                 </div>
                 <p className="text-blue-100 mt-1">
-                  Équivalent à {formatAmount(balance)}
+                  Équivalent à {formatAmount(balance || 0)}
                 </p>
               </div>
               <div className="text-right">
@@ -319,15 +287,61 @@ const RechargeTokensPage: React.FC = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <AmountSelector
-                    options={rechargeOptions}
-                    selectedOption={selectedOption}
-                    onSelectOption={setSelectedOption}
-                    customAmount={customAmount}
-                    onCustomAmountChange={setCustomAmount}
-                    formatAmount={formatAmount}
-                    currency={devise}
-                  />
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+                    {rechargeOptions.map((option) => (
+                      <Card
+                        key={option.id}
+                        className={`cursor-pointer transition-all ${
+                          selectedOption === option.id
+                            ? 'ring-2 ring-blue-500 bg-blue-50'
+                            : 'hover:shadow-md'
+                        }`}
+                        onClick={() => setSelectedOption(option.id)}
+                      >
+                        <CardContent className="p-4">
+                          <div className="text-center">
+                            <div className="text-2xl font-bold text-blue-600 mb-2">
+                              {formatAmount(option.amount)}
+                            </div>
+                            <div className="text-sm text-gray-600 mb-1">
+                              {option.tokens.toLocaleString()} tokens
+                            </div>
+                            {option.bonus > 0 && (
+                              <div className="text-xs text-green-600 font-medium">
+                                +{option.bonus} bonus
+                              </div>
+                            )}
+                            {option.popular && (
+                              <Badge className="mt-2 bg-orange-100 text-orange-800">
+                                Populaire
+                              </Badge>
+                            )}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+
+                  <div className="border-t pt-4">
+                    <div className="text-center mb-4">
+                      <p className="text-sm text-gray-600 mb-2">Ou entrez un montant personnalisé</p>
+                      <div className="max-w-xs mx-auto">
+                        <input
+                          type="number"
+                          placeholder="Montant en FCFA"
+                          value={customAmount || ''}
+                          onChange={(e) => setCustomAmount(Number(e.target.value))}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          min="2000"
+                        />
+                        {customAmount > 0 && (
+                          <p className="text-xs text-gray-500 mt-1">
+                            Vous recevrez {Math.floor(customAmount).toLocaleString()} tokens
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
 
                   {selectedOptionData && (
                     <div className="mt-6">
@@ -354,40 +368,13 @@ const RechargeTokensPage: React.FC = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                    {paymentMethods.map((method) => (
-                      <Card
-                        key={method.id}
-                        className={`cursor-pointer transition-all ${selectedPaymentMethod === method.id
-                            ? 'ring-2 ring-blue-500 bg-blue-50'
-                            : 'hover:shadow-md'
-                          }`}
-                        onClick={() => setSelectedPaymentMethod(method.id)}
-                      >
-                        <CardContent className="p-4">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                              <div className="text-2xl">{method.icon}</div>
-                              <div>
-                                <h4 className="font-medium">{method.name}</h4>
-                                <p className="text-sm text-gray-600">{method.processingTime}</p>
-                              </div>
-                            </div>
-                            <div className="text-right">
-                              <div className="text-sm font-medium">
-                                {method.fees === 0 ? 'Gratuit' : `+${formatAmount(method.fees)}`}
-                              </div>
-                              {selectedPaymentMethod === method.id && (
-                                <CheckCircle className="w-5 h-5 text-blue-600 ml-auto" />
-                              )}
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
+                  <SavedPaymentMethods
+                    onSelectMethod={(method) => setSelectedPaymentMethod(method)}
+                    onAddNew={() => setShowAddPaymentModal(true)}
+                    selectedMethodId={selectedPaymentMethod?.id}
+                  />
 
-                  <div className="flex gap-4">
+                  <div className="flex gap-4 mt-6">
                     <Button
                       variant="outline"
                       onClick={() => setCurrentStep('amount')}
@@ -492,25 +479,32 @@ const RechargeTokensPage: React.FC = () => {
 
           {/* Colonne latérale */}
           <div className="space-y-6">
-            {/* Gestion des moyens de paiement */}
+
+            {/* Historique des paiements récents */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">Moyens de paiement</CardTitle>
+                <CardTitle className="flex items-center gap-2">
+                  <Wallet className="w-5 h-5" />
+                  Paiements récents
+                </CardTitle>
               </CardHeader>
               <CardContent>
-                <PaymentMethodManager />
+                <div className="space-y-3">
+                  <div className="text-center py-8 text-gray-500">
+                    <Wallet className="w-12 h-12 mx-auto mb-2 text-gray-300" />
+                    <p>Aucun paiement récent</p>
+                    <p className="text-sm">Vos transactions apparaîtront ici</p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    onClick={() => window.location.href = '/mon-solde'}
+                    className="w-full"
+                  >
+                    Voir tout l'historique
+                  </Button>
+                </div>
               </CardContent>
             </Card>
-
-            {/* Historique compact */}
-            <HistorySummary
-              consumptionHistory={consumptionHistory}
-              paymentHistory={paymentHistory}
-              formatAmount={formatAmount}
-              onViewFullHistory={() => {
-                window.location.href = '/mon-solde';
-              }}
-            />
 
             {/* Informations de sécurité */}
             <Card className="bg-green-50 border-green-200">
@@ -529,6 +523,17 @@ const RechargeTokensPage: React.FC = () => {
             </Card>
           </div>
         </div>
+
+        {/* Modal d'ajout de moyen de paiement */}
+        <AddPaymentMethodModal
+          isOpen={showAddPaymentModal}
+          onClose={() => setShowAddPaymentModal(false)}
+          onSave={(method) => {
+            // TODO: Sauvegarder le moyen de paiement
+            console.log('Nouveau moyen de paiement:', method);
+            toast.success('Moyen de paiement ajouté avec succès');
+          }}
+        />
       </div>
     </div>
   );
