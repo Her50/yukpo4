@@ -792,14 +792,12 @@ pub async fn get_shared_service(
     .fetch_optional(pg_pool)
     .await {
         Ok(Some(user)) => {
-            let name = user.nom_complet.unwrap_or_else(|| {
-                match (user.nom.as_ref(), user.prenom.as_ref()) {
-                    (Some(nom), Some(prenom)) => format!("{} {}", prenom, nom),
-                    (Some(nom), None) => nom.clone(),
-                    (None, Some(prenom)) => prenom.clone(),
-                    (None, None) => "Prestataire".to_string(),
-                }
-            });
+            let name = match (user.nom.as_ref(), user.prenom.as_ref()) {
+                (Some(nom), Some(prenom)) => format!("{} {}", prenom, nom),
+                (Some(nom), None) => nom.clone(),
+                (None, Some(prenom)) => prenom.clone(),
+                (None, None) => "Prestataire".to_string(),
+            };
             json!({
                 "id": service_row.user_id,
                 "name": name,

@@ -3,7 +3,7 @@ import useSWR from 'swr';
 import axios from 'axios';
 
 export function useUserSWR() {
-  const { data: user, mutate, isLoading } = useSWR('/user/me', async (url: string) => {
+  const { data: user, mutate, isLoading } = useSWR('/api/user/me', async (url: string) => {
     const token = localStorage.getItem('token');
     const res = await axios.get(url, {
       headers: token ? { Authorization: `Bearer ${token}` } : {},

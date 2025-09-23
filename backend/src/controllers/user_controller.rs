@@ -733,7 +733,7 @@ pub async fn get_user_profile(
         nom_complet: row.nom_complet,
         photo_profil: row.photo_profil,
         avatar_url: row.avatar_url,
-        preferred_lang: row.preferred_lang,
+        preferred_lang: Some(row.preferred_lang),
         tokens_balance: row.tokens_balance,
         created_at: row.created_at,
     };

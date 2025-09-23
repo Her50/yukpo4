@@ -256,7 +256,7 @@ const RechargeTokensPage: React.FC = () => {
                 <div className="flex items-center gap-2">
                   <Coins className="w-6 h-6" />
                   <span className="text-3xl font-bold">
-                    {balance.toLocaleString()} tokens
+                    {balance?.toLocaleString() || '0'} tokens
                   </span>
                 </div>
                 <p className="text-blue-100 mt-1">
@@ -429,18 +429,18 @@ const RechargeTokensPage: React.FC = () => {
                         </div>
                         <div className="flex justify-between">
                           <span>Tokens:</span>
-                          <span className="font-semibold">{selectedOptionData.tokens.toLocaleString()}</span>
+                          <span className="font-semibold">{selectedOptionData?.tokens?.toLocaleString() || '0'}</span>
                         </div>
                         {selectedOptionData.bonus > 0 && (
                           <div className="flex justify-between text-green-600">
                             <span>Bonus:</span>
-                            <span className="font-semibold">+{selectedOptionData.bonus.toLocaleString()}</span>
+                            <span className="font-semibold">+{selectedOptionData?.bonus?.toLocaleString() || '0'}</span>
                           </div>
                         )}
                         <div className="border-t pt-3">
                           <div className="flex justify-between text-lg font-bold">
                             <span>Total tokens:</span>
-                            <span>{(selectedOptionData.tokens + selectedOptionData.bonus).toLocaleString()}</span>
+                            <span>{((selectedOptionData?.tokens || 0) + (selectedOptionData?.bonus || 0)).toLocaleString()}</span>
                           </div>
                         </div>
                       </div>
