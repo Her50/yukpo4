@@ -4,9 +4,11 @@ import { Button } from '@/components/ui/buttons/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
 import { useUser } from '@/hooks/useUser';
+import { useUserCredit } from '@/hooks/useUserCredit';
 import {
   AlertCircle,
   CheckCircle,
+  Clock,
   Coins,
   CreditCard,
   Info,
@@ -14,9 +16,12 @@ import {
   Smartphone,
   Star,
   Wallet,
-  Zap
+  Zap,
+  History,
+  TrendingDown,
+  TrendingUp
 } from 'lucide-react';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 interface RechargeOption {
   id: string;
@@ -37,39 +42,118 @@ interface PaymentMethod {
   fees: number;
 }
 
+interface ConsumptionHistory {
+  id: string;
+  date: string;
+  service: string;
+  amount: number;
+  type: 'consumption' | 'recharge';
+  description: string;
+}
+
+interface PaymentHistory {
+  id: string;
+  date: string;
+  amount: number;
+  payment_method: string;
+  status: 'completed' | 'pending' | 'failed';
+  transaction_id?: string;
+  description: string;
+}
+
 const RechargeTokensPage: React.FC = () => {
   const [selectedOption, setSelectedOption] = useState<string>('');
   const [customAmount, setCustomAmount] = useState<number>(2000);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>('');
   const [loading, setLoading] = useState(false);
+  const [consumptionHistory, setConsumptionHistory] = useState<ConsumptionHistory[]>([]);
+  const [paymentHistory, setPaymentHistory] = useState<PaymentHistory[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
   const { user } = useUser();
+  const { creditDevise, devise } = useUserCredit();
   const { toast } = useToast();
 
-  // Options de recharge predéfinies (max 3 options, min 2000 FCFA)
-  const rechargeOptions: RechargeOption[] = [
-    {
-      id: 'basic',
-      amount: 2000,
-      tokens: 2000,
-      bonus: 0,
-      description: 'Recharge de base'
-    },
-    {
-      id: 'standard',
-      amount: 5000,
-      tokens: 5500,
-      bonus: 500,
-      popular: true,
-      description: 'Recharge standard avec bonus'
-    },
-    {
-      id: 'premium',
-      amount: 10000,
-      tokens: 12000,
-      bonus: 2000,
-      description: 'Recharge premium avec bonus maximum'
+  // Fonction pour charger l'historique des consommations
+  const loadConsumptionHistory = async () => {
+    if (!user?.id) return;
+    
+    setHistoryLoading(true);
+    try {
+      const response = await fetch('/api/users/consumption-history', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setConsumptionHistory(data.history || []);
+      }
+    } catch (error) {
+      console.error('Erreur chargement historique:', error);
+    } finally {
+      setHistoryLoading(false);
     }
-  ];
+  };
+
+  // Fonction pour charger l'historique des paiements
+  const loadPaymentHistory = async () => {
+    if (!user?.id) return;
+    
+    try {
+      const response = await fetch('/api/users/payment-history', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setPaymentHistory(data.payments || []);
+      }
+    } catch (error) {
+      console.error('Erreur chargement historique paiements:', error);
+    }
+  };
+
+  // Charger l'historique au montage du composant
+  useEffect(() => {
+    loadConsumptionHistory();
+    loadPaymentHistory();
+  }, [user?.id]);
+
+  // Options de recharge predéfinies (converties selon la devise de l'utilisateur)
+  const getRechargeOptions = (): RechargeOption[] => {
+    const baseAmounts = [2000, 5000, 10000]; // Montants de base en FCFA
+    const baseTokens = [2000, 5500, 12000];
+    const bonuses = [0, 500, 2000];
+    
+    return baseAmounts.map((amount, index) => ({
+      id: ['basic', 'standard', 'premium'][index],
+      amount: amount,
+      tokens: baseTokens[index],
+      bonus: bonuses[index],
+      popular: index === 1,
+      description: ['Recharge de base', 'Recharge standard avec bonus', 'Recharge premium avec bonus maximum'][index]
+    }));
+  };
+
+  const rechargeOptions = getRechargeOptions();
+
+  // Fonction pour formater les montants selon la devise
+  const formatAmount = (amount: number, showCurrency: boolean = true) => {
+    if (devise === 'XAF') {
+      return showCurrency ? `${amount.toLocaleString()} FCFA` : amount.toLocaleString();
+    }
+    
+    // Pour les autres devises, utiliser le formatage standard
+    return new Intl.NumberFormat('fr-FR', {
+      style: 'currency',
+      currency: devise,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(amount);
+  };
 
   // Modes de paiement disponibles
   const paymentMethods: PaymentMethod[] = [
@@ -141,7 +225,7 @@ const RechargeTokensPage: React.FC = () => {
       if (amount < 2000) {
         toast({
           title: "Montant insuffisant",
-          description: "Le montant minimum de recharge est de 2000 FCFA",
+          description: `Le montant minimum de recharge est de ${formatAmount(2000)}`,
           type: "error"
         });
         setLoading(false);
@@ -170,12 +254,21 @@ const RechargeTokensPage: React.FC = () => {
 
         toast({
           title: "Recharge reussie !",
-          description: `Vous avez recu ${tokens.toLocaleString()} tokens (${amount.toLocaleString()} FCFA)`,
+          description: `Vous avez reçu ${tokens.toLocaleString()} tokens (${formatAmount(amount)})`,
           type: "success"
         });
 
-        // Recharger les donnees utilisateur
-        window.location.reload();
+        // Recharger les historiques
+        loadConsumptionHistory();
+        loadPaymentHistory();
+        
+        // Mettre à jour le solde dans localStorage
+        localStorage.setItem('tokens_balance', data.new_balance.toString());
+        
+        // Déclencher un événement pour mettre à jour l'affichage du solde
+        window.dispatchEvent(new CustomEvent('balanceUpdated', { 
+          detail: { newBalance: data.new_balance } 
+        }));
       } else {
         throw new Error('Erreur de recharge');
       }
@@ -195,7 +288,7 @@ const RechargeTokensPage: React.FC = () => {
     if (customAmount < 2000) {
       toast({
         title: "Montant insuffisant",
-        description: "Le montant minimum de recharge est de 2000 FCFA",
+        description: `Le montant minimum de recharge est de ${formatAmount(2000)}`,
         type: "error"
       });
       return;
@@ -224,6 +317,26 @@ const RechargeTokensPage: React.FC = () => {
             Achetez des tokens pour utiliser les fonctionnalites IA de Yukpo
           </p>
         </div>
+
+        {/* Solde actuel */}
+        <Card className="mb-8 bg-gradient-to-r from-green-50 to-blue-50 border-green-200">
+          <CardContent className="p-6">
+            <div className="flex items-center gap-4 mb-4">
+              <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center">
+                <Wallet className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">Solde actuel</h3>
+                <p className="text-2xl font-bold text-green-600">
+                  {creditDevise !== null ? formatAmount(creditDevise) : "Chargement..."}
+                </p>
+                <p className="text-sm text-gray-600">
+                  Devise détectée: {devise}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Informations sur les tokens */}
         <Card className="mb-8 bg-gradient-to-r from-blue-50 to-purple-50 border-blue-200">
@@ -282,7 +395,7 @@ const RechargeTokensPage: React.FC = () => {
 
                   <div className="text-center">
                     <div className="text-2xl font-bold text-gray-900 mb-2">
-                      {option.amount.toLocaleString()} FCFA
+                      {formatAmount(option.amount)}
                     </div>
                     <div className="text-lg text-blue-600 font-semibold mb-1">
                       {option.tokens.toLocaleString()} tokens
@@ -329,7 +442,7 @@ const RechargeTokensPage: React.FC = () => {
             <div className="max-w-md mx-auto">
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Montant en FCFA (minimum 2000)
+                  Montant en {devise} (minimum {formatAmount(2000)})
                 </label>
                 <input
                   type="number"
@@ -352,7 +465,7 @@ const RechargeTokensPage: React.FC = () => {
                   variant="outline"
                   className="w-full py-3 text-lg font-semibold border-blue-500 text-blue-600 hover:bg-blue-50"
                 >
-                  {loading ? 'Traitement...' : `Recharger ${customAmount.toLocaleString()} FCFA`}
+                  {loading ? 'Traitement...' : `Recharger ${formatAmount(customAmount)}`}
                 </Button>
                 {!selectedPaymentMethod && (
                   <p className="text-sm text-red-600 mt-2">
@@ -391,7 +504,7 @@ const RechargeTokensPage: React.FC = () => {
                       <div className="flex items-center justify-between">
                         <h3 className="font-semibold text-gray-900">{method.name}</h3>
                         {method.fees > 0 && (
-                          <span className="text-xs text-gray-500">+{method.fees} FCFA</span>
+                          <span className="text-xs text-gray-500">+{formatAmount(method.fees)}</span>
                         )}
                       </div>
                       <p className="text-sm text-gray-600 mb-1">{method.description}</p>
@@ -421,8 +534,146 @@ const RechargeTokensPage: React.FC = () => {
                   {paymentMethods.find(pm => pm.id === selectedPaymentMethod)?.name} -
                   {paymentMethods.find(pm => pm.id === selectedPaymentMethod)?.processingTime}
                   {paymentMethods.find(pm => pm.id === selectedPaymentMethod)?.fees === 0 ? ' (Sans frais)' :
-                    ` (+${paymentMethods.find(pm => pm.id === selectedPaymentMethod)?.fees} FCFA de frais)`}
+                    ` (+${formatAmount(paymentMethods.find(pm => pm.id === selectedPaymentMethod)?.fees || 0)} de frais)`}
                 </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Historique des consommations */}
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <History className="w-5 h-5" />
+              Historique des consommations
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {historyLoading ? (
+              <div className="text-center py-4">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                <p className="text-gray-600 mt-2">Chargement de l'historique...</p>
+              </div>
+            ) : consumptionHistory.length > 0 ? (
+              <div className="space-y-3">
+                {consumptionHistory.slice(0, 10).map((item) => (
+                  <div key={item.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                        item.type === 'consumption' ? 'bg-red-100' : 'bg-green-100'
+                      }`}>
+                        {item.type === 'consumption' ? (
+                          <TrendingDown className="w-4 h-4 text-red-600" />
+                        ) : (
+                          <TrendingUp className="w-4 h-4 text-green-600" />
+                        )}
+                      </div>
+                      <div>
+                        <p className="font-medium text-gray-900">{item.service}</p>
+                        <p className="text-sm text-gray-600">{item.description}</p>
+                        <p className="text-xs text-gray-500">{new Date(item.date).toLocaleDateString('fr-FR')}</p>
+                      </div>
+                    </div>
+                    <div className={`font-semibold ${
+                      item.type === 'consumption' ? 'text-red-600' : 'text-green-600'
+                    }`}>
+                      {item.type === 'consumption' ? '-' : '+'}{formatAmount(item.amount)}
+                    </div>
+                  </div>
+                ))}
+                {consumptionHistory.length > 10 && (
+                  <div className="text-center pt-4">
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        // Rediriger vers la page de détail du solde
+                        window.location.href = '/mon-solde';
+                      }}
+                    >
+                      Voir tout l'historique
+                    </Button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-gray-500">
+                <History className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                <p>Aucune consommation enregistrée</p>
+                <p className="text-sm">Vos consommations de tokens apparaîtront ici</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Historique des paiements */}
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <CreditCard className="w-5 h-5" />
+              Historique des paiements
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {paymentHistory.length > 0 ? (
+              <div className="space-y-3">
+                {paymentHistory.slice(0, 10).map((payment) => (
+                  <div key={payment.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                        payment.status === 'completed' ? 'bg-green-100' : 
+                        payment.status === 'pending' ? 'bg-yellow-100' : 'bg-red-100'
+                      }`}>
+                        {payment.status === 'completed' ? (
+                          <CheckCircle className="w-4 h-4 text-green-600" />
+                        ) : payment.status === 'pending' ? (
+                          <Clock className="w-4 h-4 text-yellow-600" />
+                        ) : (
+                          <AlertCircle className="w-4 h-4 text-red-600" />
+                        )}
+                      </div>
+                      <div>
+                        <p className="font-medium text-gray-900">{payment.description}</p>
+                        <p className="text-sm text-gray-600">{payment.payment_method}</p>
+                        <p className="text-xs text-gray-500">{new Date(payment.date).toLocaleDateString('fr-FR')}</p>
+                        {payment.transaction_id && (
+                          <p className="text-xs text-gray-400">ID: {payment.transaction_id}</p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="font-semibold text-gray-900">
+                        {formatAmount(payment.amount)}
+                      </div>
+                      <div className={`text-xs font-medium ${
+                        payment.status === 'completed' ? 'text-green-600' : 
+                        payment.status === 'pending' ? 'text-yellow-600' : 'text-red-600'
+                      }`}>
+                        {payment.status === 'completed' ? 'Complété' : 
+                         payment.status === 'pending' ? 'En attente' : 'Échoué'}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {paymentHistory.length > 10 && (
+                  <div className="text-center pt-4">
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        // Rediriger vers la page de détail du solde
+                        window.location.href = '/mon-solde';
+                      }}
+                    >
+                      Voir tout l'historique
+                    </Button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-gray-500">
+                <CreditCard className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                <p>Aucun paiement enregistré</p>
+                <p className="text-sm">Vos paiements apparaîtront ici</p>
               </div>
             )}
           </CardContent>

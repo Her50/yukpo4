@@ -408,3 +408,306 @@ pub async fn get_user_by_id(
     }
 }
 
+#[derive(Serialize)]
+pub struct ConsumptionHistoryItem {
+    pub id: String,
+    pub date: String,
+    pub service: String,
+    pub amount: i64,
+    pub r#type: String, // "consumption" ou "recharge"
+    pub description: String,
+}
+
+#[derive(Serialize)]
+pub struct ConsumptionHistoryResponse {
+    pub history: Vec<ConsumptionHistoryItem>,
+}
+
+/// GET /users/consumption-history - Récupère l'historique des consommations de tokens
+pub async fn get_consumption_history(
+    Extension(user): Extension<AuthenticatedUser>,
+    State(state): State<Arc<AppState>>,
+) -> AppResult<Json<ConsumptionHistoryResponse>> {
+    info!("Appel get_consumption_history pour user_id={}", user.id);
+    
+    // Récupérer l'historique des consommations depuis la table token_consumption_logs
+    let rows = sqlx::query(
+        r#"
+        SELECT 
+            id,
+            created_at,
+            service_name,
+            amount_consumed,
+            'consumption' as type,
+            description
+        FROM token_consumption_logs 
+        WHERE user_id = $1 
+        ORDER BY created_at DESC 
+        LIMIT 50
+        "#
+    )
+    .bind(user.id)
+    .fetch_all(&state.pg)
+    .await;
+
+    let mut history = Vec::new();
+
+    match rows {
+        Ok(rows) => {
+            for row in rows {
+                let id: String = row.try_get("id").unwrap_or_else(|_| "unknown".to_string());
+                let created_at: chrono::DateTime<chrono::Utc> = row.try_get("created_at").unwrap_or_else(|_| chrono::Utc::now());
+                let service_name: String = row.try_get("service_name").unwrap_or_else(|_| "Service inconnu".to_string());
+                let amount_consumed: i64 = row.try_get("amount_consumed").unwrap_or(0);
+                let description: String = row.try_get("description").unwrap_or_else(|_| "Consommation de tokens".to_string());
+
+                history.push(ConsumptionHistoryItem {
+                    id,
+                    date: created_at.format("%Y-%m-%d %H:%M:%S").to_string(),
+                    service: service_name,
+                    amount: amount_consumed,
+                    r#type: "consumption".to_string(),
+                    description,
+                });
+            }
+        },
+        Err(e) => {
+            error!("[get_consumption_history] DB error: {e:?}");
+            // Ne pas retourner d'erreur, juste un historique vide
+        }
+    }
+
+    // Récupérer aussi l'historique des recharges depuis la table purchase_history
+    let recharge_rows = sqlx::query(
+        r#"
+        SELECT 
+            id,
+            created_at,
+            'Recharge de tokens' as service_name,
+            amount_paid,
+            'recharge' as type,
+            CONCAT('Recharge de ', amount_paid, ' FCFA') as description
+        FROM purchase_history 
+        WHERE user_id = $1 
+        ORDER BY created_at DESC 
+        LIMIT 20
+        "#
+    )
+    .bind(user.id)
+    .fetch_all(&state.pg)
+    .await;
+
+    match recharge_rows {
+        Ok(rows) => {
+            for row in rows {
+                let id: String = row.try_get("id").unwrap_or_else(|_| "unknown".to_string());
+                let created_at: chrono::DateTime<chrono::Utc> = row.try_get("created_at").unwrap_or_else(|_| chrono::Utc::now());
+                let service_name: String = row.try_get("service_name").unwrap_or_else(|_| "Recharge".to_string());
+                let amount_paid: i64 = row.try_get("amount_paid").unwrap_or(0);
+                let description: String = row.try_get("description").unwrap_or_else(|_| "Recharge de tokens".to_string());
+
+                history.push(ConsumptionHistoryItem {
+                    id,
+                    date: created_at.format("%Y-%m-%d %H:%M:%S").to_string(),
+                    service: service_name,
+                    amount: amount_paid,
+                    r#type: "recharge".to_string(),
+                    description,
+                });
+            }
+        },
+        Err(e) => {
+            error!("[get_consumption_history] DB error for recharges: {e:?}");
+            // Ne pas retourner d'erreur, juste continuer
+        }
+    }
+
+    // Trier par date décroissante
+    history.sort_by(|a, b| b.date.cmp(&a.date));
+
+    Ok(Json(ConsumptionHistoryResponse { history }))
+}
+
+#[derive(Serialize)]
+pub struct PaymentHistoryItem {
+    pub id: String,
+    pub date: String,
+    pub amount: i64,
+    pub payment_method: String,
+    pub status: String, // "completed", "pending", "failed"
+    pub transaction_id: Option<String>,
+    pub description: String,
+}
+
+#[derive(Serialize)]
+pub struct PaymentHistoryResponse {
+    pub payments: Vec<PaymentHistoryItem>,
+}
+
+/// GET /users/payment-history - Récupère l'historique des paiements
+pub async fn get_payment_history(
+    Extension(user): Extension<AuthenticatedUser>,
+    State(state): State<Arc<AppState>>,
+) -> AppResult<Json<PaymentHistoryResponse>> {
+    info!("Appel get_payment_history pour user_id={}", user.id);
+    
+    // Récupérer l'historique des paiements depuis la table purchase_history
+    let rows = sqlx::query(
+        r#"
+        SELECT 
+            id,
+            created_at,
+            amount_paid,
+            payment_method,
+            status,
+            transaction_id,
+            CONCAT('Recharge de ', amount_paid, ' FCFA') as description
+        FROM purchase_history 
+        WHERE user_id = $1 
+        ORDER BY created_at DESC 
+        LIMIT 50
+        "#
+    )
+    .bind(user.id)
+    .fetch_all(&state.pg)
+    .await;
+
+    let mut payments = Vec::new();
+
+    match rows {
+        Ok(rows) => {
+            for row in rows {
+                let id: String = row.try_get("id").unwrap_or_else(|_| "unknown".to_string());
+                let created_at: chrono::DateTime<chrono::Utc> = row.try_get("created_at").unwrap_or_else(|_| chrono::Utc::now());
+                let amount_paid: i64 = row.try_get("amount_paid").unwrap_or(0);
+                let payment_method: String = row.try_get("payment_method").unwrap_or_else(|_| "Inconnu".to_string());
+                let status: String = row.try_get("status").unwrap_or_else(|_| "completed".to_string());
+                let transaction_id: Option<String> = row.try_get("transaction_id").ok();
+                let description: String = row.try_get("description").unwrap_or_else(|_| "Paiement".to_string());
+
+                payments.push(PaymentHistoryItem {
+                    id,
+                    date: created_at.format("%Y-%m-%d %H:%M:%S").to_string(),
+                    amount: amount_paid,
+                    payment_method,
+                    status,
+                    transaction_id,
+                    description,
+                });
+            }
+        },
+        Err(e) => {
+            error!("[get_payment_history] DB error: {e:?}");
+            // Ne pas retourner d'erreur, juste un historique vide
+        }
+    }
+
+    Ok(Json(PaymentHistoryResponse { payments }))
+}
+
+#[derive(Deserialize)]
+pub struct RechargeRequest {
+    pub amount: i64,
+    pub tokens: i64,
+    pub payment_method: String,
+    pub payment_method_name: String,
+    pub fees: i64,
+    pub user_id: i64,
+}
+
+#[derive(Serialize)]
+pub struct RechargeResponse {
+    pub success: bool,
+    pub message: String,
+    pub transaction_id: String,
+    pub new_balance: i64,
+}
+
+/// POST /tokens/recharge - Recharge des tokens
+pub async fn recharge_tokens(
+    Extension(user): Extension<AuthenticatedUser>,
+    State(state): State<Arc<AppState>>,
+    Json(payload): Json<RechargeRequest>,
+) -> AppResult<Json<RechargeResponse>> {
+    info!("Appel recharge_tokens pour user_id={}, amount={}", user.id, payload.amount);
+    
+    // Validation du montant minimum
+    if payload.amount < 2000 {
+        return Err(crate::core::types::AppError::BadRequest("Le montant minimum de recharge est de 2000 FCFA".to_string()));
+    }
+
+    // Générer un ID de transaction unique
+    let transaction_id = format!("TXN_{}_{}", user.id, chrono::Utc::now().timestamp());
+
+    // Commencer une transaction
+    let mut tx = state.pg.begin().await.map_err(|e| {
+        error!("[recharge_tokens] Erreur début transaction: {e:?}");
+        crate::core::types::AppError::Database(format!("Erreur base de données: {e}"))
+    })?;
+
+    // Récupérer le solde actuel
+    let current_balance_row = sqlx::query("SELECT tokens_balance FROM users WHERE id = $1")
+        .bind(user.id)
+        .fetch_one(&mut *tx)
+        .await
+        .map_err(|e| {
+            error!("[recharge_tokens] Erreur récupération solde: {e:?}");
+            crate::core::types::AppError::Database(format!("Erreur récupération solde: {e}"))
+        })?;
+
+    let current_balance: i64 = current_balance_row.try_get("tokens_balance").map_err(|e| {
+        error!("[recharge_tokens] Erreur parsing solde: {e:?}");
+        crate::core::types::AppError::Database(format!("Erreur parsing solde: {e}"))
+    })?;
+
+    // Calculer le nouveau solde (ajouter les tokens)
+    let new_balance = current_balance + payload.tokens;
+
+    // Mettre à jour le solde de l'utilisateur
+    sqlx::query("UPDATE users SET tokens_balance = $1 WHERE id = $2")
+        .bind(new_balance)
+        .bind(user.id)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| {
+            error!("[recharge_tokens] Erreur mise à jour solde: {e:?}");
+            crate::core::types::AppError::Database(format!("Erreur mise à jour solde: {e}"))
+        })?;
+
+    // Enregistrer l'historique de paiement
+    sqlx::query(
+        r#"
+        INSERT INTO purchase_history (user_id, amount_paid, tokens_received, payment_method, status, transaction_id, created_at)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
+        "#
+    )
+    .bind(user.id)
+    .bind(payload.amount)
+    .bind(payload.tokens)
+    .bind(&payload.payment_method)
+    .bind("completed")
+    .bind(&transaction_id)
+    .bind(chrono::Utc::now())
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| {
+        error!("[recharge_tokens] Erreur enregistrement historique: {e:?}");
+        crate::core::types::AppError::Database(format!("Erreur enregistrement historique: {e}"))
+    })?;
+
+    // Valider la transaction
+    tx.commit().await.map_err(|e| {
+        error!("[recharge_tokens] Erreur commit transaction: {e:?}");
+        crate::core::types::AppError::Database(format!("Erreur commit transaction: {e}"))
+    })?;
+
+    info!("[recharge_tokens] Recharge réussie pour user_id={}, nouveau solde={}", user.id, new_balance);
+
+    Ok(Json(RechargeResponse {
+        success: true,
+        message: format!("Recharge de {} tokens réussie", payload.tokens),
+        transaction_id,
+        new_balance,
+    }))
+}
+
