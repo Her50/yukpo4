@@ -297,10 +297,10 @@ const HeaderController: React.FC = () => {
                     </p>
                     <hr className="my-2 border-gray-200 dark:border-gray-700" />
                     <Link
-                      to="/mon-compte"
-                      className="block px-3 py-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+                      to={ROUTES.RECHARGE_TOKENS}
+                      className="block px-3 py-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-green-600"
                     >
-                      ⚙️ Paramètres
+                      💳 Recharger tokens
                     </Link>
                     <Link
                       to={ROUTES.MON_SOLDE}
@@ -309,10 +309,10 @@ const HeaderController: React.FC = () => {
                       🧾 Historique de consommation
                     </Link>
                     <Link
-                      to={ROUTES.RECHARGE_TOKENS}
-                      className="block px-3 py-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-green-600"
+                      to="/mon-compte"
+                      className="block px-3 py-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
                     >
-                      💳 Recharger tokens
+                      ⚙️ Paramètres
                     </Link>
                     <button
                       onClick={logout}
