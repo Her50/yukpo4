@@ -42,6 +42,20 @@ type PaymentLog = {
 const SoldeDetailPage: React.FC = () => {
   const { user, mutate } = useUserSWR();
   const { creditDevise, devise } = useUserCredit();
+  
+  // Récupérer le solde depuis localStorage ou JWT
+  const getCurrentBalance = () => {
+    const storedBalance = localStorage.getItem('user_balance');
+    if (storedBalance) {
+      return parseFloat(storedBalance);
+    }
+    if (user?.credits) {
+      return user.credits / 10; // Convertir les XAF/10ème en XAF réels
+    }
+    return 0;
+  };
+  
+  const currentBalance = getCurrentBalance();
   const [logs, setLogs] = useState<UsageLog[]>([]);
   const [paymentLogs, setPaymentLogs] = useState<PaymentLog[]>([]);
   const [selectedPeriod, setSelectedPeriod] = useState<'7d' | '30d' | '90d' | 'all'>('30d');
@@ -145,9 +159,6 @@ const SoldeDetailPage: React.FC = () => {
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
             Historique de Consommation
           </h1>
-          <p className="text-gray-600">
-            Suivez vos dépenses Yukpo et vos recharges de tokens
-          </p>
         </div>
 
         {/* Solde actuel */}
@@ -157,7 +168,7 @@ const SoldeDetailPage: React.FC = () => {
               <div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-1">Solde actuel</h3>
                 <p className="text-3xl font-bold text-green-600">
-                  {creditDevise !== null && creditDevise !== undefined ? `${creditDevise.toFixed(0)} ${devise}` : "Chargement..."}
+                  {currentBalance.toFixed(0)} {devise}
                 </p>
               </div>
               <div className="text-right">

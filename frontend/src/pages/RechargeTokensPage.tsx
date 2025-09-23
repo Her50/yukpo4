@@ -572,7 +572,7 @@ const RechargeTokensPage: React.FC = () => {
                   </div>
                   <Button
                     variant="outline"
-                    onClick={() => window.location.href = '/dashboard/solde'}
+                    onClick={() => window.location.href = '/mon-solde'}
                     className="w-full"
                   >
                     Voir tout l'historique
