@@ -16,9 +16,13 @@ import {
   ArrowRight,
   Clock,
   MapPin,
-  User
+  User,
+  CheckCircle,
+  AlertCircle
 } from 'lucide-react';
 import { Service } from '@/types/service';
+import ServiceCard from '@/components/services/ServiceCard';
+import { usePrestataireInfo } from '@/hooks/usePrestataireInfo';
 
 interface ExternalServiceShareProps {
   serviceId?: string;
@@ -38,6 +42,9 @@ export const ExternalServiceShare: React.FC<ExternalServiceShareProps> = ({
   const [service, setService] = useState<Service | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // Hook pour récupérer les informations des prestataires
+  const { prestataires, fetchPrestatairesBatch, loading: prestatairesLoading } = usePrestataireInfo();
   
   // Récupérer l'ID du service depuis les paramètres URL ou les props
   const serviceIdFromUrl = searchParams.get('serviceId') || serviceId;
@@ -59,6 +66,11 @@ export const ExternalServiceShare: React.FC<ExternalServiceShareProps> = ({
         requireAuth: false // Permettre l'accès sans authentification
       });
       setService(serviceData);
+      
+      // Récupérer les informations du prestataire
+      if (serviceData.user_id) {
+        fetchPrestatairesBatch([serviceData.user_id]);
+      }
     } catch (err) {
       console.error('Erreur lors du chargement du service:', err);
       setError('Service non trouvé ou inaccessible');
@@ -143,78 +155,90 @@ export const ExternalServiceShare: React.FC<ExternalServiceShareProps> = ({
           </p>
         </div>
 
-        {/* Aperçu du service */}
+        {/* Carte de service complète comme dans resultatbesoin */}
+        <div className="flex justify-center mb-8">
+          <div className="max-w-md w-full">
+            {prestatairesLoading ? (
+              <Card className="p-8 text-center">
+                <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-500 mx-auto mb-4"></div>
+                <h3 className="text-xl font-semibold mb-2">Chargement des informations</h3>
+                <p className="text-gray-600">Récupération des données du prestataire...</p>
+              </Card>
+            ) : (
+              <ServiceCard
+                service={service}
+                prestataires={prestataires}
+                user={user}
+                wsConnected={false} // Pas de WebSocket pour les utilisateurs externes
+                userStatus={null}
+                onContact={(service) => {
+                  if (isAuthenticated) {
+                    // Rediriger vers la page de contact
+                    navigate(`/service/${service.id}/contact`);
+                  } else {
+                    handleRegister();
+                  }
+                }}
+                onChat={(service) => {
+                  if (isAuthenticated) {
+                    // Rediriger vers le chat
+                    navigate(`/service/${service.id}/chat`);
+                  } else {
+                    handleRegister();
+                  }
+                }}
+                onGallery={(service) => {
+                  if (isAuthenticated) {
+                    // Rediriger vers la galerie
+                    navigate(`/service/${service.id}/gallery`);
+                  } else {
+                    handleRegister();
+                  }
+                }}
+              />
+            )}
+          </div>
+        </div>
+
+        {/* Actions d'authentification */}
         <Card className="mb-8">
           <CardContent className="p-6">
-            <div className="flex items-start justify-between mb-4">
-              <div className="flex-1">
-                <h2 className="text-2xl font-semibold text-gray-900 mb-2">
-                  {service.data?.title || 'Titre non disponible'}
-                </h2>
-                <p className="text-gray-600 mb-4">
-                  {service.data?.description || 'Description non disponible'}
-                </p>
-                
-                <div className="flex items-center space-x-4 text-sm text-gray-500">
-                  <div className="flex items-center">
-                    <MapPin className="h-4 w-4 mr-1" />
-                    {service.data?.location || 'Localisation non disponible'}
-                  </div>
-                  <div className="flex items-center">
-                    <User className="h-4 w-4 mr-1" />
-                    Prestataire #{service.user_id}
-                  </div>
+            {isAuthenticated ? (
+              <div className="flex items-center justify-between">
+                <div className="flex items-center text-green-600">
+                  <CheckCircle className="h-5 w-5 mr-2" />
+                  <span>Vous êtes connecté - Accès complet disponible</span>
                 </div>
+                <Button onClick={handleViewService} className="flex items-center">
+                  Accéder à l'application
+                  <ArrowRight className="h-4 w-4 ml-2" />
+                </Button>
               </div>
-              
-              {service.data?.image_url && (
-                <img 
-                  src={service.data.image_url} 
-                  alt={service.data.title}
-                  className="w-24 h-24 object-cover rounded-lg ml-4"
-                />
-              )}
-            </div>
-
-            {/* Actions selon l'état d'authentification */}
-            <div className="border-t pt-4">
-              {isAuthenticated ? (
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center text-green-600">
-                    <CheckCircle className="h-5 w-5 mr-2" />
-                    <span>Vous êtes connecté</span>
+            ) : (
+              <div className="space-y-4">
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                  <div className="flex items-center text-yellow-800 mb-2">
+                    <ExternalLink className="h-5 w-5 mr-2" />
+                    <span className="font-medium">Accès limité</span>
                   </div>
-                  <Button onClick={handleViewService} className="flex items-center">
-                    Voir le service complet
-                    <ArrowRight className="h-4 w-4 ml-2" />
+                  <p className="text-yellow-700 text-sm">
+                    Pour contacter le prestataire, voir la galerie complète et accéder à toutes les fonctionnalités, 
+                    vous devez créer un compte ou vous connecter.
+                  </p>
+                </div>
+                
+                <div className="flex space-x-3">
+                  <Button onClick={handleRegister} className="flex-1">
+                    <UserPlus className="h-4 w-4 mr-2" />
+                    Créer un compte
+                  </Button>
+                  <Button onClick={handleLogin} variant="outline" className="flex-1">
+                    <LogIn className="h-4 w-4 mr-2" />
+                    Se connecter
                   </Button>
                 </div>
-              ) : (
-                <div className="space-y-4">
-                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                    <div className="flex items-center text-yellow-800 mb-2">
-                      <ExternalLink className="h-5 w-5 mr-2" />
-                      <span className="font-medium">Accès limité</span>
-                    </div>
-                    <p className="text-yellow-700 text-sm">
-                      Pour accéder à toutes les fonctionnalités de ce service, 
-                      vous devez créer un compte ou vous connecter.
-                    </p>
-                  </div>
-                  
-                  <div className="flex space-x-3">
-                    <Button onClick={handleRegister} className="flex-1">
-                      <UserPlus className="h-4 w-4 mr-2" />
-                      Créer un compte
-                    </Button>
-                    <Button onClick={handleLogin} variant="outline" className="flex-1">
-                      <LogIn className="h-4 w-4 mr-2" />
-                      Se connecter
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 

@@ -234,3 +234,4 @@ Votre application est maintenant **100% internationale** avec :
 ✅ **Prêt pour la production**  
 
 **L'application s'adapte automatiquement à la langue de l'utilisateur partout dans le monde !** 🌍
+

@@ -193,3 +193,4 @@ async function testGpsFix() {
 // Exécuter le test
 testGpsFix().catch(console.error);
 
+

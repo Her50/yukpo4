@@ -138,3 +138,4 @@ async fn get_recent_service_logs(pool: &PgPool) -> Result<Vec<ServiceLog>, sqlx:
         reason: log.reason,
     }).collect())
 }
+

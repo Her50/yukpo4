@@ -175,3 +175,4 @@ const optimizeLocationName = (locationName: string): string => {
 // Import nécessaire (à ajouter dans le fichier principal)
 // import { geocodingService } from '@/services/geocodingService';
 
+

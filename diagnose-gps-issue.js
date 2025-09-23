@@ -154,3 +154,4 @@ async function testGpsIssue() {
 // Exécuter le test
 testGpsIssue().catch(console.error);
 
+

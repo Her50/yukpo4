@@ -144,3 +144,4 @@ foreach ($file in $filesToCheck) {
 Write-Host "`n🎯 Correction GPS prête à être appliquée !" -ForegroundColor Green
 Write-Host "`n💡 Conseil: Testez d'abord sur un fichier pour vérifier que la correction fonctionne." -ForegroundColor Cyan
 
+

@@ -185,3 +185,4 @@ export const useIntelligentLanguage = (): UseIntelligentLanguageReturn => {
 };
 
 export default useIntelligentLanguage;
+

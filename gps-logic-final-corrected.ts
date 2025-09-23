@@ -187,3 +187,4 @@ console.log(`
 - La logique de priorité respecte vos spécifications
 `);
 
+
