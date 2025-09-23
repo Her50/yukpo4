@@ -44,48 +44,23 @@ const IntegratedChatManager: React.FC<IntegratedChatManagerProps> = ({
     const loadChats = async () => {
         setLoading(true);
         try {
-            // Simuler le chargement des chats
-            const mockChats: Chat[] = [
-                {
-                    id: '1',
-                    serviceId: '1',
-                    serviceTitle: 'Réparation smartphone',
-                    prestataireName: 'Jean Tech',
-                    prestataireAvatar: '',
-                    lastMessage: 'Bonjour, je peux réparer votre téléphone',
-                    lastMessageTime: new Date(Date.now() - 1000 * 60 * 30), // 30 min ago
-                    unreadCount: 2,
-                    isActive: true,
-                    status: 'online'
-                },
-                {
-                    id: '2',
-                    serviceId: '2',
-                    serviceTitle: 'Cours de mathématiques',
-                    prestataireName: 'Marie Prof',
-                    prestataireAvatar: '',
-                    lastMessage: 'Merci pour le cours, c\'était très utile',
-                    lastMessageTime: new Date(Date.now() - 1000 * 60 * 60 * 2), // 2h ago
-                    unreadCount: 0,
-                    isActive: false,
-                    status: 'offline'
-                },
-                {
-                    id: '3',
-                    serviceId: '3',
-                    serviceTitle: 'Coiffure à domicile',
-                    prestataireName: 'Sophie Coiffure',
-                    prestataireAvatar: '',
-                    lastMessage: 'À quelle heure souhaitez-vous le rendez-vous ?',
-                    lastMessageTime: new Date(Date.now() - 1000 * 60 * 60 * 24), // 1 day ago
-                    unreadCount: 1,
-                    isActive: false,
-                    status: 'away'
+            // Charger les chats depuis l'API
+            const response = await fetch('/api/chats/history', {
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
                 }
-            ];
-            setChats(mockChats);
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                setChats(data.chats || []);
+            } else {
+                // Si pas de chats, laisser la liste vide
+                setChats([]);
+            }
         } catch (error) {
             console.error('Erreur chargement chats:', error);
+            setChats([]);
         } finally {
             setLoading(false);
         }

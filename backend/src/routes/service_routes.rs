@@ -10,6 +10,7 @@ use crate::controllers::service_controller::{
     reactivate_service,
     insert_user,
     get_last_service_for_user,
+    get_shared_service,
 };
 use crate::middlewares::jwt::jwt_auth;
 use crate::state::AppState;
@@ -17,6 +18,8 @@ use axum::middleware;
 
 pub fn service_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
     Router::new()
+        // Route publique pour les services partagés (sans authentification)
+        .route("/services/shared/{id}", get(get_shared_service))
         .route("/services/create", post(creer_service))
         .route("/services/filter", get(filter_services))
         .route("/services/related/{id}", get(get_related_services))

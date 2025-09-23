@@ -740,3 +740,76 @@ pub async fn get_services_for_prestataire(
     info!("[get_services_for_prestataire] R?ponse envoy?e avec {} services", result.len());
     (StatusCode::OK, Json(serde_json::Value::Array(result))).into_response()
 }
+
+/// Récupère un service pour le partage public avec restrictions de sécurité
+pub async fn get_shared_service(
+    State(state): State<Arc<AppState>>,
+    Path(service_id): Path<i32>,
+) -> impl IntoResponse {
+    let pg_pool = &state.pg_pool;
+    
+    // Vérifier que le service existe et est actif
+    let service_row = match sqlx::query!(
+        r#"SELECT id, data, is_active, created_at, user_id FROM services WHERE id = $1 AND is_active = true"#,
+        service_id
+    )
+    .fetch_optional(pg_pool)
+    .await {
+        Ok(Some(row)) => row,
+        Ok(None) => {
+            warn!("[get_shared_service] Service {} non trouvé ou inactif", service_id);
+            return (StatusCode::NOT_FOUND, Json(json!({"error": "Service non trouvé ou inactif"}))).into_response();
+        },
+        Err(e) => {
+            error!("[get_shared_service] Erreur requête SQL: {}", e);
+            return (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": "Erreur serveur"}))).into_response();
+        }
+    };
+
+    // Récupérer les informations du prestataire (limitées)
+    let prestataire_info = match sqlx::query!(
+        r#"SELECT name, photo FROM users WHERE id = $1"#,
+        service_row.user_id
+    )
+    .fetch_optional(pg_pool)
+    .await {
+        Ok(Some(user)) => json!({
+            "id": service_row.user_id,
+            "name": user.name,
+            "photo": user.photo
+        }),
+        Ok(None) => json!({
+            "id": service_row.user_id,
+            "name": "Prestataire",
+            "photo": null
+        }),
+        Err(e) => {
+            error!("[get_shared_service] Erreur récupération prestataire: {}", e);
+            json!({
+                "id": service_row.user_id,
+                "name": "Prestataire",
+                "photo": null
+            })
+        }
+    };
+
+    // Retourner seulement les données nécessaires pour l'affichage public
+    let shared_data = json!({
+        "id": service_row.id,
+        "data": service_row.data,
+        "prestataire": prestataire_info,
+        "created_at": service_row.created_at,
+        "is_shared": true // Indicateur que c'est un service partagé
+    });
+
+    info!("[get_shared_service] Service {} partagé avec succès", service_id);
+    
+    // Headers de sécurité pour les services partagés
+    let mut response = (StatusCode::OK, Json(shared_data)).into_response();
+    let headers = response.headers_mut();
+    headers.insert("X-Content-Type-Options", "nosniff".parse().unwrap());
+    headers.insert("X-Frame-Options", "DENY".parse().unwrap());
+    headers.insert("Cache-Control", "public, max-age=300".parse().unwrap()); // Cache 5 minutes
+    
+    response
+}

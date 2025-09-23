@@ -126,6 +126,20 @@ const UserSettingsPage: React.FC = () => {
         confirmPassword: ''
     });
 
+    // Mettre à jour les paramètres quand l'utilisateur change
+    useEffect(() => {
+        if (user) {
+            setSettings(prev => ({
+                ...prev,
+                name: user.name || '',
+                email: user.email || '',
+                phone: user.phone || '',
+                bio: user.bio || '',
+                avatar: user.photo || ''
+            }));
+        }
+    }, [user]);
+
     // Charger les paramètres depuis l'API
     useEffect(() => {
         loadUserSettings();

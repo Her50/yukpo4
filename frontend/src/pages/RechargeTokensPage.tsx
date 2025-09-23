@@ -382,20 +382,29 @@ const RechargeTokensPage: React.FC = () => {
               formatAmount={formatAmount}
             />
 
-            <div className="mt-6 text-center">
-              <Button
-                onClick={() => selectedOption && handleRecharge(rechargeOptions.find(o => o.id === selectedOption)!)}
-                disabled={!selectedOption || !selectedPaymentMethod || loading}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 text-lg font-semibold"
-              >
-                {loading ? 'Traitement...' : 'Recharger maintenant'}
-              </Button>
-              {!selectedPaymentMethod && (
-                <p className="text-sm text-red-600 mt-2">
-                  Veuillez sélectionner un mode de paiement
-                </p>
-              )}
-            </div>
+            {selectedOption && (
+              <div className="mt-6">
+                <h4 className="text-lg font-semibold mb-4">Choisir votre mode de paiement</h4>
+                <PaymentMethods
+                  methods={paymentMethods}
+                  selectedMethod={selectedPaymentMethod}
+                  onSelectMethod={setSelectedPaymentMethod}
+                  formatAmount={formatAmount}
+                />
+                
+                {selectedPaymentMethod && (
+                  <div className="mt-6 text-center">
+                    <Button
+                      onClick={() => handleRecharge(rechargeOptions.find(o => o.id === selectedOption)!)}
+                      disabled={loading}
+                      className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 text-lg font-semibold"
+                    >
+                      {loading ? 'Traitement...' : 'Recharger maintenant'}
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -446,38 +455,6 @@ const RechargeTokensPage: React.FC = () => {
           </CardContent>
         </Card>
 
-        {/* Sélection du mode de paiement */}
-        <Card className="mb-8">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Wallet className="w-5 h-5" />
-              Choisir votre mode de paiement
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <PaymentMethods
-              methods={paymentMethods}
-              selectedMethod={selectedPaymentMethod}
-              onSelectMethod={setSelectedPaymentMethod}
-              formatAmount={formatAmount}
-            />
-
-            {selectedPaymentMethod && (
-              <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                <div className="flex items-center gap-2 mb-2">
-                  <CheckCircle className="w-5 h-5 text-blue-600" />
-                  <span className="font-medium text-blue-900">Mode de paiement sélectionné</span>
-                </div>
-                <p className="text-sm text-blue-800">
-                  {paymentMethods.find(pm => pm.id === selectedPaymentMethod)?.name} -
-                  {paymentMethods.find(pm => pm.id === selectedPaymentMethod)?.processingTime}
-                  {paymentMethods.find(pm => pm.id === selectedPaymentMethod)?.fees === 0 ? ' (Sans frais)' :
-                    ` (+${formatAmount(paymentMethods.find(pm => pm.id === selectedPaymentMethod)?.fees || 0)} de frais)`}
-                </p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
 
         {/* Historique compact */}
         <HistorySummary

@@ -22,11 +22,9 @@ const LangSwitcher: React.FC = () => {
   useEffect(() => {
     i18n.changeLanguage(lang);
     localStorage.setItem("preferred_lang", lang);
-
-    // Traduction automatique si ce n'est pas le français
-    if (lang !== 'fr') {
-      handleAutoTranslation(lang);
-    }
+    
+    // Traduction automatique pour toutes les langues
+    handleAutoTranslation(lang);
   }, [lang, i18n]);
 
   const handleAutoTranslation = async (targetLanguage: string) => {

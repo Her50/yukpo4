@@ -105,11 +105,13 @@ const ChatNotifications: React.FC<ChatNotificationsProps> = ({ userId }) => {
     setNotifications(prev => [newNotification, ...prev]);
     setUnreadCount(prev => prev + 1);
 
-    // Notification toast
-    toast.success(`Nouveau message de ${newNotification.sender.name}`, {
-      duration: 4000,
-      icon: '💬',
-    });
+    // Notification toast seulement si le nom du sender est défini
+    if (newNotification.sender.name) {
+      toast.success(`Nouveau message de ${newNotification.sender.name}`, {
+        duration: 4000,
+        icon: '💬',
+      });
+    }
   };
 
   const markAsRead = (notificationId: string) => {

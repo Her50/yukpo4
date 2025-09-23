@@ -62,14 +62,22 @@ export const ExternalServiceShare: React.FC<ExternalServiceShareProps> = ({
   const loadService = async (id: string) => {
     try {
       setLoading(true);
-      const serviceData = await apiService.get<Service>(`/api/services/${id}`, {
-        requireAuth: false // Permettre l'accès sans authentification
-      });
+      // Utiliser la route sécurisée pour les services partagés
+      const response = await fetch(`/api/services/shared/${id}`);
+      
+      if (!response.ok) {
+        throw new Error('Service non trouvé');
+      }
+      
+      const serviceData = await response.json();
       setService(serviceData);
       
-      // Récupérer les informations du prestataire
-      if (serviceData.user_id) {
-        fetchPrestatairesBatch([serviceData.user_id]);
+      // Les informations du prestataire sont déjà incluses dans la réponse
+      if (serviceData.prestataire) {
+        setPrestataireInfo(prev => ({
+          ...prev,
+          [serviceData.prestataire.id]: serviceData.prestataire
+        }));
       }
     } catch (err) {
       console.error('Erreur lors du chargement du service:', err);
