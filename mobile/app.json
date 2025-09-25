@@ -1,0 +1,47 @@
+{
+    "expo": {
+        "name": "Yukpo",
+        "slug": "yukpomnang-mobile",
+        "version": "1.0.0",
+        "orientation": "portrait",
+        "userInterfaceStyle": "automatic",
+        "assetBundlePatterns": [
+            "**/*"
+        ],
+        "ios": {
+            "supportsTablet": true,
+            "bundleIdentifier": "com.hernandezlele.yukpomnangmobile",
+            "buildNumber": "1.0.0"
+        },
+        "android": {
+            "package": "com.hernandezlele.yukpomnangmobile",
+            "versionCode": 1,
+            "permissions": [
+                "ACCESS_FINE_LOCATION",
+                "ACCESS_COARSE_LOCATION",
+                "CAMERA",
+                "READ_EXTERNAL_STORAGE",
+                "WRITE_EXTERNAL_STORAGE",
+                "RECORD_AUDIO"
+            ]
+        },
+        "web": {
+            "bundler": "metro"
+        },
+        "plugins": [
+            "expo-location",
+            "expo-image-picker",
+            "expo-font"
+        ],
+        "extra": {
+            "eas": {
+                "projectId": "944bbf0d-5541-4e56-ba75-87ffc4c5e51f"
+            }
+        },
+        "owner": "hernandezlele",
+        "scheme": "yukpomnang",
+        "privacy": "public"
+    }
+}
+
+
