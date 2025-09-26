@@ -30,7 +30,7 @@ import ServiceDetailScreen from '../screens/service/ServiceDetailScreen';
 // Composant de chargement simple
 const LoadingScreen = () => (
   <View style={styles.loadingContainer}>
-    <ActivityIndicator size="large" color={theme.colors.primary} />
+    <ActivityIndicator size="large" color="#007AFF" />
     <Text style={styles.loadingText}>Chargement...</Text>
   </View>
 );

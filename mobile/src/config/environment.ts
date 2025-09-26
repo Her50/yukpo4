@@ -49,5 +49,12 @@ export const ENVIRONMENT = {
     },
 };
 
+// Configuration pour l'API
+export const config = {
+    API_BASE_URL: ENVIRONMENT.API_URL,
+    ENVIRONMENT: ENVIRONMENT.ENVIRONMENT,
+    GOOGLE_TRANSLATE_API_KEY: ENVIRONMENT.GOOGLE_TRANSLATE_API_KEY,
+};
+
 export default ENVIRONMENT;
 
