@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+﻿import * as React from 'react';
+import { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { Text, Card, Button, Chip, Avatar, Divider } from 'react-native-paper';
 import { useRoute, useNavigation } from '@react-navigation/native';
@@ -174,7 +175,7 @@ const ServiceDetailScreen: React.FC = () => {
               </Text>
               <Text style={styles.reviewAuthor}>- Marie L.</Text>
             </View>
-            <Divider style={styles.divider} />
+            <View style={styles.divider} />
             <View style={styles.reviewItem}>
               <Text style={styles.reviewText}>
                 "Je recommande vivement ce prestataire."
@@ -186,23 +187,18 @@ const ServiceDetailScreen: React.FC = () => {
 
         {/* Action Buttons */}
         <View style={styles.actionButtons}>
-          <Button
-            mode="outlined"
+          <TouchableOpacity
             onPress={handleContact}
             style={styles.contactButton}
-            textColor="#FFD700"
           >
-            Contacter
-          </Button>
-          <Button
-            mode="contained"
+            <Text style={{ color: "#FFD700" }}>Contacter</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
             onPress={handleBook}
             style={styles.bookButton}
-            buttonColor="#FFD700"
-            textColor="#000"
           >
-            Réserver
-          </Button>
+            <Text style={{ color: "#000" }}>Réserver</Text>
+          </TouchableOpacity>
         </View>
       </View>
     </ScrollView>
@@ -345,6 +341,11 @@ const styles = StyleSheet.create({
 });
 
 export default ServiceDetailScreen;
+
+
+
+
+
 
 
 

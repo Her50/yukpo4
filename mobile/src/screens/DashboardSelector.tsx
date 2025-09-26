@@ -1,4 +1,7 @@
-﻿import React, { useState, useEffect } from 'react';
+﻿import * as React from "react";
+import { useState, useEffect } from 'react';
+import { Text } from 'react-native';
+import { View } from 'react-native';
 import ResponsiveContainer from '@/components/layout/ResponsiveContainer';
 
 import { ROUTES } from "@/routes/AppRoutesRegistry"; // ✅ Ajout de l'import manquant
@@ -6,7 +9,7 @@ import { ROUTES } from "@/routes/AppRoutesRegistry"; // ✅ Ajout de l'import ma
 const DashboardSelector: React.FC = () => {
   return (
     <View style="p-4">
-      <h2>DashboardSelector</h2>
+      <Text>DashboardSelector</Text>
 
       {/* 🚀 CONTEXTUAL BUTTONS START */}
       <View style="mt-6 flex flex-wrap gap-4 justify-center">
@@ -35,3 +38,7 @@ const DashboardSelector: React.FC = () => {
 };
 
 export default DashboardSelector;
+
+
+
+

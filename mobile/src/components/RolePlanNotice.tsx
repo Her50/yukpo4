@@ -1,12 +1,18 @@
-﻿import React from "react";
+﻿import * as React from "react";
+import { Text } from 'react-native';
+import { View } from 'react-native';
 
 const RolePlanNotice: React.FC = () => {
   return (
     <View style="p-4">
-      <h2>RolePlanNotice</h2>
+      <Text>RolePlanNotice</Text>
     </View>
   );
 };
 
 export default RolePlanNotice;
+
+
+
+
 

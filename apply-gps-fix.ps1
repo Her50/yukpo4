@@ -145,3 +145,6 @@ Write-Host "`n🎯 Correction GPS prête à être appliquée !" -ForegroundColor
 Write-Host "`n💡 Conseil: Testez d'abord sur un fichier pour vérifier que la correction fonctionne." -ForegroundColor Cyan
 
 
+
+
+

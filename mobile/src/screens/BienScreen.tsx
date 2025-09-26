@@ -1,4 +1,7 @@
-﻿import React, { useState, useEffect } from 'react';
+﻿import * as React from "react";
+import { useState, useEffect } from 'react';
+import { Text } from 'react-native';
+import { View } from 'react-native';
 import ResponsiveContainer from '@/components/layout/ResponsiveContainer';
 
 import { Link } from "@react-navigation/native";
@@ -8,10 +11,10 @@ const BienPage = () => {
     <View style="mb-5">
       <section style="bg-white py-16">
         <View style="">
-          <h1 style="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
+          <Text style="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
             Découvrez nos biens disponibles
-          </h1>
-          <p style="text-lg md:text-xl text-gray-600 mb-8">
+          </Text>
+          <Text style="text-lg md:text-xl text-gray-600 mb-8">
             Trouvez le bien immobilier qui vous correspond grâce à notre sélection intelligente.
           </Text>
           <Link
@@ -34,10 +37,10 @@ const BienPage = () => {
                 style="w-full h-48 object-cover"
               />
               <View style="p-4">
-                <h3 style="text-xl font-semibold text-gray-800">
+                <Text style="text-xl font-semibold text-gray-800">
                   Maison moderne à Douala
-                </h3>
-                <p style="text-gray-600 mt-2">
+                </Text>
+                <Text style="text-gray-600 mt-2">
                   3 chambres, 2 salles de bain, quartier sécurisé.
                 </Text>
                 <Link
@@ -58,3 +61,7 @@ const BienPage = () => {
 };
 
 export default BienPage;
+
+
+
+

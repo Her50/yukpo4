@@ -1,4 +1,6 @@
-import React, { useState } from 'react';
+﻿import * as React from 'react';
+import { TouchableOpacity } from 'react-native';
+import { useState } from 'react';
 import { View, StyleSheet, ScrollView, Alert } from 'react-native';
 import { Text, Card, TextInput, Button, Chip, SegmentedButtons } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
@@ -150,17 +152,13 @@ const CreateServiceScreen: React.FC = () => {
               placeholder="Email ou téléphone"
             />
 
-            <Button
-              mode="contained"
+            <TouchableOpacity
               onPress={handleSubmit}
-              loading={loading}
               disabled={loading}
               style={styles.submitButton}
-              buttonColor="#FFD700"
-              textColor="#000"
             >
-              Créer le service
-            </Button>
+              <Text style={{ color: "#000" }}>Créer le service</Text>
+            </TouchableOpacity>
           </Card.Content>
         </Card>
       </View>
@@ -238,6 +236,12 @@ const styles = StyleSheet.create({
 });
 
 export default CreateServiceScreen;
+
+
+
+
+
+
 
 
 

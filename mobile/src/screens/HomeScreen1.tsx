@@ -1,5 +1,7 @@
 ﻿// src/pages/HomePage.tsx
-import React, { useState } from "react";
+import * as React from "react";
+import { useState } from "react";
+import { Text } from 'react-native';
 import AppLayout from "@/components/layout/AppLayout";
 import StarterHero from "@/components/StarterHero";
 import WhyUsSection from "@/components/WhyUsSection";
@@ -30,7 +32,7 @@ const HomePage: React.FC = () => {
       <StarterHero />
       <main style="bg-white pt-12 space-y-16">
         <section style="max-w-3xl mx-auto px-4">
-          <h2 style="text-2xl font-bold mb-4">Exprimez votre besoin en langage naturel</h2>
+          <Text style="text-2xl font-bold mb-4">Exprimez votre besoin en langage naturel</Text>
           <ChatInputPanel onSubmit={handleChatSubmit} loading={chargement} />
         </section>
         <WhyUsSection />
@@ -42,4 +44,8 @@ const HomePage: React.FC = () => {
 };
 
 export default HomePage;
+
+
+
+
 

@@ -1,18 +1,18 @@
 ﻿// FormulaireServiceModerne.tsx - Page moderne pour créer des services
-import React, { useEffect, useState } from 'react';
-import { useLocation, useNavigation } from 'react-router-dom';
 import AppLayout from '@/components/layout/AppLayout';
-import { dispatchChampsFormulaireIA, ComposantFrontend } from '@/utils/form_constraint_dispatcher';
-import DynamicField from '@/components/intelligence/DynamicFields';
 import { creerService, vectoriserService } from '@/lib/yukpoaclient';
-import { useUser } from '@/hooks/useUser';
 import { ROUTES } from '@/routes/AppRoutesRegistry';
+import { ComposantFrontend, dispatchChampsFormulaireIA } from '@/utils/form_constraint_dispatcher';
+import * as React from "react";
+import { useEffect, useState } from 'react';
+import { Text, TouchableOpacity } from 'react-native';
+import { useLocation, useNavigation } from 'react-router-dom';
 
 // Mantine imports
+import { showServiceCreationErrorToast, showSimpleServiceCreationToast } from '@/utils/toastUtils';
+import { Badge, Card, Grid, Group, SimpleGrid, Skeleton, Stack, Stepper, TextInput, Title } from '@mantine/core';
 import { useForm } from '@mantine/form';
-import { Paper, Title, Stepper, Grid, Card, TextInput, Group, Button, Skeleton, Badge, Text, Stack, SimpleGrid } from '@mantine/core';
 import { toast } from 'react-hot-toast';
-import { showSimpleServiceCreationToast, showServiceCreationErrorToast } from '@/utils/toastUtils';
 
 const FormulaireServiceModerne: React.FC = () => {
   const location = useLocation();
@@ -42,10 +42,10 @@ const FormulaireServiceModerne: React.FC = () => {
     setLoading(true);
     try {
       await creerService({ intention: suggestion.intention || 'creation_service', data: values });
-      
+
       // Déclencher l'événement service_created pour notifier MesServices
       window.dispatchEvent(new CustomEvent('service_created'));
-      
+
       showSimpleServiceCreationToast();
       navigation.navigate(ROUTES.MES_SERVICES);
     } catch (e: any) {
@@ -70,7 +70,7 @@ const FormulaireServiceModerne: React.FC = () => {
 
   return (
     <AppLayout padding>
-      <Paper p="lg" shadow="sm" radius="md" style="max-w-4xl mx-auto">
+      <View style={{ padding: 16, maxWidth: 896, marginHorizontal: 'auto' }}>
         <Title order={2} mb="md">Finalisez votre service</Title>
         <Stepper active={activeStep} onStepClick={setActiveStep} mb="xl">
           <Stepper.Step label="Génération IA" />
@@ -89,18 +89,18 @@ const FormulaireServiceModerne: React.FC = () => {
               </Group>
               <SimpleGrid cols={2} spacing="md" breakpoints={[{ maxWidth: 'sm', cols: 1 }]} mb="md">
                 {composants.map((champ) => (
-                  <Paper key={champ.nomChamp} p="sm" withBorder radius="md">
+                  <View key={champ.nomChamp} style={{ padding: 8, borderWidth: 1, borderRadius: 4 }}>
                     <Text weight={500}>{champ.nomChamp}</Text>
                     <Text size="sm" mt="xs">
-                      {typeof form.values[champ.nomChamp] === 'object' 
-                        ? form.values[champ.nomChamp]?.valeur ?? '-' 
+                      {typeof form.values[champ.nomChamp] === 'object'
+                        ? form.values[champ.nomChamp]?.valeur ?? '-'
                         : form.values[champ.nomChamp] ?? '-'}
                     </Text>
-                  </Paper>
+                  </View>
                 ))}
               </SimpleGrid>
               <Group position="right">
-                <TouchableOpacity onClick={() => setActiveStep(2)}>Suivant</TouchableOpacity>
+                <TouchableOpacity onPress={() => setActiveStep(2)}>Suivant</TouchableOpacity>
               </Group>
             </Stack>
           ) : (
@@ -119,19 +119,23 @@ const FormulaireServiceModerne: React.FC = () => {
                 ))}
               </Grid>
               <Group position="apart" mt="md">
-                <TouchableOpacity variant="outline" onClick={() => setActiveStep(1)}>Précédent</TouchableOpacity>
+                <TouchableOpacity variant="outline" onPress={() => setActiveStep(1)}>Précédent</TouchableOpacity>
                 <Group>
                   <TouchableOpacity type="submit" loading={loading}>Enregistrer</TouchableOpacity>
-                  <TouchableOpacity variant="outline" onClick={handleVectorisation} loading={loading}>Vectoriser</TouchableOpacity>
+                  <TouchableOpacity variant="outline" onPress={handleVectorisation} loading={loading}>Vectoriser</TouchableOpacity>
                 </Group>
               </Group>
             </form>
           )
         )}
-      </Paper>
+      </View>
     </AppLayout>
   );
 };
 
 export default FormulaireServiceModerne;
+
+
+
+
 

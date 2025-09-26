@@ -1,4 +1,8 @@
-﻿import React, { useState } from "react";
+﻿import * as React from "react";
+import { useState } from "react";
+import { Text } from 'react-native';
+import { View } from 'react-native';
+import { TouchableOpacity } from 'react-native';
 import axios from "axios";
 
 const ExportShareCard = ({ content }: { content: string }) => {
@@ -25,7 +29,7 @@ const ExportShareCard = ({ content }: { content: string }) => {
 
   return (
     <View style="p-4 border rounded mt-4 bg-white shadow">
-      <h3 style="text-md font-bold mb-2">📤 Partager le contenu</h3>
+      <Text style="text-md font-bold mb-2">📤 Partager le contenu</Text>
 
       <select
         value={medium}
@@ -45,13 +49,13 @@ const ExportShareCard = ({ content }: { content: string }) => {
       />
 
       <TouchableOpacity
-        onClick={handleShare}
+        onPress={handleShare}
         style="bg-green-600 text-white px-3 py-1 rounded"
       >
         Générer le lien
       </TouchableOpacity>
 
-      {status && <p style="mt-2 text-sm">{status}</Text>}
+      {status && <Text style="mt-2 text-sm">{status}</Text>}
 
       {link && (
         <View style="mt-2">
@@ -65,4 +69,8 @@ const ExportShareCard = ({ content }: { content: string }) => {
 };
 
 export default ExportShareCard;
+
+
+
+
 

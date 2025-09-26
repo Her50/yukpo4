@@ -1,4 +1,7 @@
-﻿import React, { useState, useEffect } from 'react';
+﻿import * as React from "react";
+import { useState, useEffect } from 'react';
+import { Text } from 'react-native';
+import { View } from 'react-native';
 import ResponsiveContainer from '@/components/layout/ResponsiveContainer';
 
 import { useNavigation } from "@react-navigation/native";
@@ -18,11 +21,11 @@ const Unauthorized: React.FC = () => {
   return (
     <View style="">
       <View style="">
-        <h1 style="text-4xl font-bold text-red-600 mb-4">⛔ Accès refusé</h1>
-        <p style="text-gray-700 mb-6">
+        <Text style="text-4xl font-bold text-red-600 mb-4">⛔ Accès refusé</Text>
+        <Text style="text-gray-700 mb-6">
           Vous n'avez pas les autorisations nécessaires pour accéder à cette page.
         </Text>
-        <p style="text-sm text-gray-500">
+        <Text style="text-sm text-gray-500">
           Redirection automatique vers la page de connexion dans 5 secondes...
         </Text>
       </View>
@@ -31,3 +34,7 @@ const Unauthorized: React.FC = () => {
 };
 
 export default Unauthorized;
+
+
+
+

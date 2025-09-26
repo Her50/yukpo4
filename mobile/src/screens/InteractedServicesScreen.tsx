@@ -14,7 +14,11 @@ import {
   Star,
   Video
 } from 'lucide-react';
-import React, { useEffect, useState } from 'react';
+import * as React from "react";
+import { useEffect, useState } from 'react';
+import { Text } from 'react-native';
+import { View } from 'react-native';
+import { TouchableOpacity } from 'react-native';
 
 interface InteractedService {
   id: string;
@@ -62,58 +66,8 @@ const InteractedServicesPage: React.FC = () => {
         const data = await response.json();
         setServices(data.services || []);
       } else {
-        // Simulation pour le développement
-        const mockServices: InteractedService[] = [
-          {
-            id: '1',
-            serviceId: 'service-1',
-            serviceTitle: 'Réparation iPhone 12 Pro',
-            serviceDescription: 'Réparation écran et batterie iPhone 12 Pro',
-            prestataireName: 'Jean Tech',
-            prestataireRating: 4.8,
-            lastInteraction: new Date(Date.now() - 1000 * 60 * 30),
-            interactionType: 'message',
-            interactionCount: 15,
-            isFavorite: true,
-            location: 'Douala, Cameroun',
-            price: 25000,
-            category: 'Électronique',
-            status: 'active'
-          },
-          {
-            id: '2',
-            serviceId: 'service-2',
-            serviceTitle: 'Cours de guitare acoustique',
-            serviceDescription: 'Apprentissage guitare pour débutants et intermédiaires',
-            prestataireName: 'Marie Music',
-            prestataireRating: 4.9,
-            lastInteraction: new Date(Date.now() - 1000 * 60 * 60 * 2),
-            interactionType: 'video',
-            interactionCount: 8,
-            isFavorite: false,
-            location: 'Yaoundé, Cameroun',
-            price: 5000,
-            category: 'Formation',
-            status: 'completed'
-          },
-          {
-            id: '3',
-            serviceId: 'service-3',
-            serviceTitle: 'Coiffure mariée',
-            serviceDescription: 'Coiffure sophistiquée pour mariage',
-            prestataireName: 'Sophie Coiffure',
-            prestataireRating: 4.7,
-            lastInteraction: new Date(Date.now() - 1000 * 60 * 60 * 24),
-            interactionType: 'call',
-            interactionCount: 5,
-            isFavorite: true,
-            location: 'Douala, Cameroun',
-            price: 15000,
-            category: 'Beauté',
-            status: 'completed'
-          }
-        ];
-        setServices(mockServices);
+        // Si pas de services interagis, afficher une liste vide
+        setServices([]);
       }
     } catch (error) {
       console.error('Erreur chargement services interagis:', error);
@@ -162,7 +116,7 @@ const InteractedServicesPage: React.FC = () => {
   const getInteractionIcon = (type: string) => {
     switch (type) {
       case 'message': return <MessageCircle style="w-4 h-4" />;
-      case 'call': return <Phone style="w-4 h-4" />;
+      case 'call': return <Texthone style="w-4 h-4" />;
       case 'video': return <Video style="w-4 h-4" />;
       case 'review': return <Star style="w-4 h-4" />;
       default: return <MessageCircle style="w-4 h-4" />;
@@ -183,7 +137,7 @@ const InteractedServicesPage: React.FC = () => {
       <ResponsiveContainer>
         <View style="text-center py-12">
           <View style="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></View>
-          <p style="mt-4 text-gray-600">Chargement de vos services...</Text>
+          <Text style="mt-4 text-gray-600">Chargement de vos services...</Text>
         </View>
       </ResponsiveContainer>
     );
@@ -194,10 +148,10 @@ const InteractedServicesPage: React.FC = () => {
       <View style="py-8">
         {/* Header */}
         <View style="mb-8">
-          <h1 style="text-3xl font-bold text-gray-900 mb-2">
+          <Text style="text-3xl font-bold text-gray-900 mb-2">
             Dashboard Prestataire
-          </h1>
-          <p style="text-gray-600">
+          </Text>
+          <Text style="text-gray-600">
             Tableau de bord intelligent avec statistiques en temps réel
           </Text>
         </View>
@@ -251,10 +205,10 @@ const InteractedServicesPage: React.FC = () => {
             <Card>
               <CardContent style="text-center py-12">
                 <MessageCircle style="w-16 h-16 mx-auto mb-4 text-gray-300" />
-                <h3 style="text-lg font-medium text-gray-900 mb-2">
+                <Text style="text-lg font-medium text-gray-900 mb-2">
                   Aucun service interagi
-                </h3>
-                <p style="text-gray-600">
+                </Text>
+                <Text style="text-gray-600">
                   Commencez à interagir avec des services pour les voir apparaître ici
                 </Text>
               </CardContent>
@@ -274,15 +228,15 @@ const InteractedServicesPage: React.FC = () => {
 
                       <View style="flex-1">
                         <View style="flex items-center gap-2 mb-2">
-                          <h3 style="text-lg font-semibold text-gray-900">
+                          <Text style="text-lg font-semibold text-gray-900">
                             {service.serviceTitle}
-                          </h3>
+                          </Text>
                           <Badge style={getStatusColor(service.status)}>
                             {service.status}
                           </Badge>
                         </View>
 
-                        <p style="text-gray-600 mb-2">
+                        <Text style="text-gray-600 mb-2">
                           {service.serviceDescription}
                         </Text>
 
@@ -334,7 +288,7 @@ const InteractedServicesPage: React.FC = () => {
                       <TouchableOpacity
                         variant="outline"
                         size="sm"
-                        onClick={() => {
+                        onPress={() => {
                           // Ouvrir le chat
                           toast({
                             title: "Ouverture du chat",
@@ -349,7 +303,7 @@ const InteractedServicesPage: React.FC = () => {
                       <TouchableOpacity
                         variant="outline"
                         size="sm"
-                        onClick={() => {
+                        onPress={() => {
                           // Appeler
                           toast({
                             title: "Appel",
@@ -358,7 +312,7 @@ const InteractedServicesPage: React.FC = () => {
                           });
                         }}
                       >
-                        <Phone style="w-4 h-4 mr-2" />
+                        <Texthone style="w-4 h-4 mr-2" />
                         Appeler
                       </TouchableOpacity>
                     </View>
@@ -374,4 +328,8 @@ const InteractedServicesPage: React.FC = () => {
 };
 
 export default InteractedServicesPage;
+
+
+
+
 

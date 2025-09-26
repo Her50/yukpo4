@@ -1,9 +1,12 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Card, Title, Paragraph, Button, ActivityIndicator } from 'react-native-paper';
-import { Ionicons } from '@expo/vector-icons';
+﻿import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
+import * as React from 'react';
+import { useEffect, useState } from 'react';
+import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Title } from 'react-native-paper';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import ServiceCard from '../components/ServiceCard';
 import { useAuth } from '../contexts/AuthContext';
 import { theme } from '../theme/theme';
 
@@ -15,6 +18,10 @@ interface Service {
   createdAt: string;
   views: number;
   interactions: number;
+  user_id: string;
+  data?: any;
+  score?: number;
+  [key: string]: any;
 }
 
 const MesServicesScreen: React.FC = () => {
@@ -30,30 +37,24 @@ const MesServicesScreen: React.FC = () => {
   const loadServices = async () => {
     try {
       setLoading(true);
-      const mockServices: Service[] = [
-        {
-          id: '1',
-          title: 'Réparation plomberie',
-          description: 'Service de réparation de plomberie à domicile',
-          status: 'active',
-          createdAt: '2024-01-15',
-          views: 45,
-          interactions: 12
-        },
-        {
-          id: '2',
-          title: 'Cours de mathématiques',
-          description: 'Cours particuliers de mathématiques niveau lycée',
-          status: 'active',
-          createdAt: '2024-01-10',
-          views: 23,
-          interactions: 8
+      // Charger les services réels depuis l'API
+      const response = await fetch('/api/services/user', {
+        headers: {
+          'Authorization': `Bearer ${await AsyncStorage.getItem('auth_token')}`
         }
-      ];
-      setServices(mockServices);
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setServices(data.services || []);
+      } else {
+        // Si pas de services, afficher une liste vide
+        setServices([]);
+      }
     } catch (error) {
       console.error('Erreur chargement services:', error);
       Alert.alert('Erreur', 'Impossible de charger vos services');
+      setServices([]);
     } finally {
       setLoading(false);
     }
@@ -109,64 +110,120 @@ const MesServicesScreen: React.FC = () => {
             <Text style={styles.emptyText}>
               Vous n'avez pas encore créé de service. Créez votre premier service pour commencer.
             </Text>
-            <Button
-              mode="contained"
+            <TouchableOpacity
               onPress={() => navigation.navigate('CreateService' as never)}
               style={styles.createButton}
             >
-              Créer un service
-            </Button>
+              <Text>Créer un service</Text>
+            </TouchableOpacity>
           </View>
         ) : (
           services.map((service) => (
-            <Card key={service.id} style={styles.serviceCard}>
-              <Card.Content>
-                <View style={styles.serviceHeader}>
-                  <Title style={styles.serviceTitle}>{service.title}</Title>
-                  <View style={[styles.statusBadge, { backgroundColor: getStatusColor(service.status) }]}>
-                    <Text style={styles.statusText}>{getStatusText(service.status)}</Text>
-                  </View>
-                </View>
-                
-                <Paragraph style={styles.serviceDescription}>
-                  {service.description}
-                </Paragraph>
-                
-                <View style={styles.serviceStats}>
-                  <View style={styles.statItem}>
-                    <Ionicons name="eye" size={16} color={theme.colors.primary} />
-                    <Text style={styles.statText}>{service.views} vues</Text>
-                  </View>
-                  <View style={styles.statItem}>
-                    <Ionicons name="chatbubbles" size={16} color={theme.colors.primary} />
-                    <Text style={styles.statText}>{service.interactions} interactions</Text>
-                  </View>
-                  <View style={styles.statItem}>
-                    <Ionicons name="calendar" size={16} color={theme.colors.primary} />
-                    <Text style={styles.statText}>{new Date(service.createdAt).toLocaleDateString()}</Text>
-                  </View>
-                </View>
-                
-                <View style={styles.serviceActions}>
-                  <Button
-                    mode="outlined"
-                    onPress={() => navigation.navigate('ServiceDetail' as never, { serviceId: service.id })}
-                    style={styles.actionButton}
-                  >
-                    Voir
-                  </Button>
-                  <Button
-                    mode="outlined"
-                    onPress={() => {
-                      Alert.alert('Édition', 'Fonctionnalité d\'édition à implémenter');
-                    }}
-                    style={styles.actionButton}
-                  >
-                    Modifier
-                  </Button>
-                </View>
-              </Card.Content>
-            </Card>
+            <View key={service.id} style={styles.serviceContainer}>
+              <ServiceCard
+                service={{
+                  id: service.id,
+                  titre: service.title,
+                  description: service.description,
+                  user_id: service.user_id || user?.id?.toString() || 'unknown',
+                  data: service.data,
+                  score: service.score,
+                  created_at: service.createdAt,
+                  ...service
+                }}
+                prestataire={{
+                  id: user?.id?.toString() || 'unknown',
+                  name: user?.nom_complet || user?.name || 'Vous',
+                  email: user?.email || '',
+                  isOnline: true,
+                }}
+                isOnline={true}
+                onContact={(service) => {
+                  // Pour un prestataire, cela pourrait ouvrir les statistiques de contact
+                  Alert.alert('Statistiques', `Voir les statistiques de contact pour: ${service.titre}`);
+                }}
+                onChat={(service) => {
+                  // Pour un prestataire, cela pourrait ouvrir l'historique des conversations
+                  Alert.alert('Conversations', `Voir l'historique des conversations pour: ${service.titre}`);
+                }}
+                onGallery={(service) => {
+                  // Ouvrir la galerie du service
+                  Alert.alert('Galerie', `Voir la galerie du service: ${service.titre}`);
+                }}
+                onFavorite={(service) => {
+                  // Pour un prestataire, cela pourrait être "Marquer comme favori" ou "Promouvoir"
+                  Alert.alert('Promotion', `Promouvoir le service: ${service.titre}`);
+                }}
+                onShare={(service) => {
+                  // Partager le service
+                  Alert.alert('Partage', `Partager le service: ${service.titre}`);
+                }}
+                showActions={false} // Désactiver les actions par défaut
+              />
+
+              {/* Actions spécifiques pour les prestataires */}
+              <View style={styles.prestataireActions}>
+                <TouchableOpacity
+                  style={[styles.actionButton, styles.editButton]}
+                  onPress={() => {
+                    Alert.alert('Modifier', `Modifier le service: ${service.title}`);
+                  }}
+                >
+                  <Ionicons name="create-outline" size={16} color="white" />
+                  <Text style={styles.actionButtonText}>Modifier</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.actionButton, styles.viewButton]}
+                  onPress={() => {
+                    Alert.alert('Voir', `Voir le service: ${service.title}`);
+                  }}
+                >
+                  <Ionicons name="eye-outline" size={16} color="white" />
+                  <Text style={styles.actionButtonText}>Voir</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.actionButton, styles.shareButton]}
+                  onPress={() => {
+                    Alert.alert('Partager', `Partager le service: ${service.title}`);
+                  }}
+                >
+                  <Ionicons name="share-outline" size={16} color="white" />
+                  <Text style={styles.actionButtonText}>Partager</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.actionButton, service.status === 'active' ? styles.deactivateButton : styles.activateButton]}
+                  onPress={() => {
+                    const newStatus = service.status === 'active' ? 'inactive' : 'active';
+                    Alert.alert(
+                      newStatus === 'active' ? 'Activer' : 'Désactiver',
+                      `Voulez-vous ${newStatus === 'active' ? 'activer' : 'désactiver'} ce service ?`,
+                      [
+                        { text: 'Annuler', style: 'cancel' },
+                        {
+                          text: newStatus === 'active' ? 'Activer' : 'Désactiver',
+                          onPress: () => {
+                            // Ici vous feriez l'appel API pour changer le statut
+                            Alert.alert('Succès', `Service ${newStatus === 'active' ? 'activé' : 'désactivé'}`);
+                          }
+                        }
+                      ]
+                    );
+                  }}
+                >
+                  <Ionicons
+                    name={service.status === 'active' ? 'pause-outline' : 'play-outline'}
+                    size={16}
+                    color="white"
+                  />
+                  <Text style={styles.actionButtonText}>
+                    {service.status === 'active' ? 'Désactiver' : 'Activer'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
           ))
         )}
       </ScrollView>
@@ -239,6 +296,51 @@ const styles = StyleSheet.create({
   createButton: {
     backgroundColor: theme.colors.primary,
   },
+  serviceContainer: {
+    marginBottom: 16,
+  },
+  prestataireActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#e9ecef',
+  },
+  actionButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 4,
+    marginHorizontal: 2,
+    borderRadius: 6,
+  },
+  actionButtonText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: '500',
+    marginLeft: 4,
+  },
+  editButton: {
+    backgroundColor: '#17a2b8',
+  },
+  viewButton: {
+    backgroundColor: '#6c757d',
+  },
+  shareButton: {
+    backgroundColor: '#007bff',
+  },
+  activateButton: {
+    backgroundColor: '#28a745',
+  },
+  deactivateButton: {
+    backgroundColor: '#dc3545',
+  },
   serviceCard: {
     marginBottom: 16,
     elevation: 2,
@@ -295,3 +397,6 @@ const styles = StyleSheet.create({
 });
 
 export default MesServicesScreen;
+
+
+

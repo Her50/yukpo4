@@ -27,3 +27,4 @@ npx expo start --dev-client --clear
 
 Write-Host "`n✅ Débogage terminé." -ForegroundColor Green
 
+

@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
-import { Card, Title, Paragraph, Chip } from 'react-native-paper';
-import { Ionicons } from '@expo/vector-icons';
+﻿import { Ionicons } from '@expo/vector-icons';
+import * as React from 'react';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Card, Chip, Title } from 'react-native-paper';
 import { useAuth } from '../contexts/AuthContext';
 import { userApi } from '../services/api';
 import { theme } from '../theme/theme';
@@ -56,17 +57,17 @@ const DashboardPrestataireScreen: React.FC = () => {
     setLoading(true);
     try {
       console.log('[DashboardPrestataireScreen] Chargement des données pour la période:', selectedPeriod);
-      
+
       // Essayer d'abord l'endpoint spécialisé
       const response = await userApi.getDashboardPrestataire(selectedPeriod);
-      
+
       if (response.success && response.data) {
         console.log('[DashboardPrestataireScreen] Données reçues:', response.data);
         setDashboardData(response.data as DashboardData);
       } else {
         // Charger les données réelles depuis l'API des services et du budget
         console.log('[DashboardPrestataireScreen] Chargement des données alternatives...');
-        
+
         const [servicesResponse, budgetResponse] = await Promise.all([
           userApi.getUserProfile(), // Utiliser getUserProfile à la place
           userApi.getUserBudget()
@@ -83,24 +84,24 @@ const DashboardPrestataireScreen: React.FC = () => {
           ? services.reduce((sum: number, s: any) => sum + (s.rating || 0), 0) / services.length
           : 0;
 
-        // Simuler des données de services avec statistiques
-        const topPerformingServices: ServiceStats[] = services.slice(0, 5).map((service: any, index: number) => ({
-          id: service.id || `service-${index}`,
-          title: service.nom || service.title || `Service ${index + 1}`,
-          views: Math.floor(Math.random() * 1000) + 100,
-          interactions: Math.floor(Math.random() * 100) + 10,
-          messages: Math.floor(Math.random() * 50) + 5,
-          calls: Math.floor(Math.random() * 20) + 1,
-          videoCalls: Math.floor(Math.random() * 10),
-          rating: Math.round((Math.random() * 2 + 3) * 10) / 10, // 3.0 à 5.0
-          revenue: Math.floor(Math.random() * 50000) + 10000,
-          lastActivity: new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000),
+        // Utiliser les données réelles des services
+        const topPerformingServices: ServiceStats[] = services.slice(0, 5).map((service: any) => ({
+          id: service.id,
+          title: service.nom || service.title || 'Service',
+          views: service.views || 0,
+          interactions: service.interactions || 0,
+          messages: service.messages || 0,
+          calls: service.calls || 0,
+          videoCalls: service.video_calls || 0,
+          rating: service.rating || 0,
+          revenue: service.revenue || 0,
+          lastActivity: new Date(service.last_activity || service.created_at),
           status: service.is_active ? 'active' : 'inactive',
           category: service.categorie || 'Général',
           location: service.location || 'Non spécifié'
         }));
 
-        const mockDashboardData: DashboardData = {
+        const realDashboardData: DashboardData = {
           totalServices: services.length,
           activeServices,
           totalViews,
@@ -108,20 +109,16 @@ const DashboardPrestataireScreen: React.FC = () => {
           budgetConsumed: budgetData.consumed || 0,
           budgetRemaining: budgetData.remaining || 0,
           averageRating,
-          recentActivity: [
-            { type: 'view', service: 'Service 1', time: '2h' },
-            { type: 'message', service: 'Service 2', time: '4h' },
-            { type: 'call', service: 'Service 3', time: '1j' }
-          ],
+          recentActivity: [], // Charger depuis l'API si disponible
           topPerformingServices,
           monthlyStats: {
-            views: [120, 150, 180, 200, 220, 250, 280],
-            interactions: [15, 20, 25, 30, 35, 40, 45],
-            budgetConsumed: [5000, 7500, 10000, 12000, 15000, 18000, 20000]
+            views: [], // Charger depuis l'API si disponible
+            interactions: [], // Charger depuis l'API si disponible
+            budgetConsumed: [] // Charger depuis l'API si disponible
           }
         };
 
-        setDashboardData(mockDashboardData);
+        setDashboardData(realDashboardData);
       }
     } catch (error) {
       console.error('[DashboardPrestataireScreen] Erreur chargement données:', error);
@@ -190,7 +187,7 @@ const DashboardPrestataireScreen: React.FC = () => {
       <View style={styles.header}>
         <Title style={styles.title}>📊 Dashboard Prestataire</Title>
         <Text style={styles.subtitle}>Statistiques et performances de vos services</Text>
-        
+
         <View style={styles.periodSelector}>
           {(['7d', '30d', '90d'] as const).map((period) => (
             <TouchableOpacity
@@ -279,19 +276,19 @@ const DashboardPrestataireScreen: React.FC = () => {
       <Card style={styles.sectionCard}>
         <Card.Content>
           <Title style={styles.sectionTitle}>🏆 Services les mieux performants</Title>
-          
+
           {dashboardData.topPerformingServices.map((service, index) => (
             <View key={service.id} style={styles.serviceItem}>
               <View style={styles.serviceHeader}>
                 <Text style={styles.serviceTitle}>{service.title}</Text>
-                <Chip 
+                <Chip
                   style={[styles.statusChip, { backgroundColor: getStatusColor(service.status) + '20' }]}
                   textStyle={{ color: getStatusColor(service.status) }}
                 >
                   {getStatusText(service.status)}
                 </Chip>
               </View>
-              
+
               <View style={styles.serviceStats}>
                 <View style={styles.serviceStat}>
                   <Ionicons name="eye" size={16} color={theme.colors.textSecondary} />
@@ -319,25 +316,25 @@ const DashboardPrestataireScreen: React.FC = () => {
       <Card style={styles.sectionCard}>
         <Card.Content>
           <Title style={styles.sectionTitle}>🕒 Activité récente</Title>
-          
+
           {dashboardData.recentActivity.map((activity, index) => (
             <View key={index} style={styles.activityItem}>
               <View style={styles.activityIcon}>
-                <Ionicons 
+                <Ionicons
                   name={
                     activity.type === 'view' ? 'eye' :
-                    activity.type === 'message' ? 'chatbubble' :
-                    activity.type === 'call' ? 'call' : 'notifications'
-                  } 
-                  size={20} 
-                  color={theme.colors.primary} 
+                      activity.type === 'message' ? 'chatbubble' :
+                        activity.type === 'call' ? 'call' : 'notifications'
+                  }
+                  size={20}
+                  color={theme.colors.primary}
                 />
               </View>
               <View style={styles.activityContent}>
                 <Text style={styles.activityText}>
                   {activity.type === 'view' ? 'Vue' :
-                   activity.type === 'message' ? 'Message' :
-                   activity.type === 'call' ? 'Appel' : 'Activité'} sur {activity.service}
+                    activity.type === 'message' ? 'Message' :
+                      activity.type === 'call' ? 'Appel' : 'Activité'} sur {activity.service}
                 </Text>
                 <Text style={styles.activityTime}>Il y a {activity.time}</Text>
               </View>
@@ -350,17 +347,17 @@ const DashboardPrestataireScreen: React.FC = () => {
       <Card style={styles.sectionCard}>
         <Card.Content>
           <Title style={styles.sectionTitle}>⚡ Actions rapides</Title>
-          
+
           <TouchableOpacity style={styles.actionButton}>
             <Ionicons name="refresh" size={20} color={theme.colors.primary} />
             <Text style={styles.actionButtonText}>Actualiser les données</Text>
           </TouchableOpacity>
-          
+
           <TouchableOpacity style={styles.actionButton}>
             <Ionicons name="create" size={20} color={theme.colors.primary} />
             <Text style={styles.actionButtonText}>Créer un nouveau service</Text>
           </TouchableOpacity>
-          
+
           <TouchableOpacity style={styles.actionButton}>
             <Ionicons name="analytics" size={20} color={theme.colors.primary} />
             <Text style={styles.actionButtonText}>Voir les statistiques détaillées</Text>
@@ -567,3 +564,6 @@ const styles = StyleSheet.create({
 });
 
 export default DashboardPrestataireScreen;
+
+
+

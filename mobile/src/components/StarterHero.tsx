@@ -1,7 +1,8 @@
 ﻿// @ts-check
-import React from "react";
+import * as React from "react";
+import { View } from 'react-native';
 import banner from "@/assets/banner.png";
-import { motion } // Animation React Native;
+// import { motion } from 'framer-motion'; // Animation React Native
 import { Link } from "@react-navigation/native";
 import { ROUTES } from "@/routes/AppRoutesRegistry";
 import { useUser } from "@/hooks/useUser";
@@ -43,4 +44,8 @@ const StarterHero: React.FC = () => {
 };
 
 export default StarterHero;
+
+
+
+
 

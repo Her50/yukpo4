@@ -1,5 +1,6 @@
 ﻿// @ts-check
-import React from "react";
+import * as React from "react";
+import { Text } from 'react-native';
 import { Link, useLocation } from "@react-navigation/native";
 
 const links = [
@@ -14,7 +15,7 @@ const ClientSidebar: React.FC = () => {
 
   return (
     <aside style="w-64 h-full p-6 bg-white shadow-md hidden md:flex flex-col gap-4">
-      <h2 style="text-lg font-bold text-primary">👤 Espace Client</h2>
+      <Text style="text-lg font-bold text-primary">👤 Espace Client</Text>
       {links.map((link) => (
         <Link
           key={link.path}
@@ -31,4 +32,8 @@ const ClientSidebar: React.FC = () => {
 };
 
 export default ClientSidebar;
+
+
+
+
 

@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+﻿import * as React from "react";
+import { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View, ActivityIndicator } from 'react-native';
 import { Card, Title, Paragraph } from 'react-native-paper';
 import { useAuth } from '../../contexts/AuthContext';
@@ -327,3 +328,6 @@ const styles = StyleSheet.create({
 });
 
 export default MyServicesScreen;
+
+
+

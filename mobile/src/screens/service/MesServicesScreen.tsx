@@ -1,6 +1,7 @@
-import { Ionicons } from '@expo/vector-icons';
+﻿import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import React, { useEffect, useState } from 'react';
+import * as React from "react";
+import { useEffect, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { ActivityIndicator, Button, Card, Paragraph, Title } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -110,13 +111,13 @@ const MesServicesScreen: React.FC = () => {
                         <Text style={styles.emptyText}>
                             Vous n'avez pas encore créé de service. Créez votre premier service pour commencer.
                         </Text>
-                        <Button
+                        <TouchableOpacity
                             mode="contained"
                             onPress={() => navigation.navigate('CreateService' as never)}
                             style={styles.createButton}
                         >
                             Créer un service
-                        </Button>
+                        </TouchableOpacity>
                     </View>
                 ) : (
                     services.map((service) => (
@@ -149,14 +150,14 @@ const MesServicesScreen: React.FC = () => {
                                 </View>
 
                                 <View style={styles.serviceActions}>
-                                    <Button
+                                    <TouchableOpacity
                                         mode="outlined"
                                         onPress={() => navigation.navigate('ServiceDetail' as never, { serviceId: service.id })}
                                         style={styles.actionButton}
                                     >
                                         Voir
-                                    </Button>
-                                    <Button
+                                    </TouchableOpacity>
+                                    <TouchableOpacity
                                         mode="outlined"
                                         onPress={() => {
                                             // TODO: Implémenter l'édition
@@ -165,7 +166,7 @@ const MesServicesScreen: React.FC = () => {
                                         style={styles.actionButton}
                                     >
                                         Modifier
-                                    </Button>
+                                    </TouchableOpacity>
                                 </View>
                             </Card.Content>
                         </Card>
@@ -297,4 +298,9 @@ const styles = StyleSheet.create({
 });
 
 export default MesServicesScreen;
+
+
+
+
+
 

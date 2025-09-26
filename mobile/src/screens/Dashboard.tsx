@@ -1,5 +1,8 @@
 ﻿// @ts-check
-import React, { useState, useEffect } from 'react';
+import * as React from "react";
+import { useState, useEffect } from 'react';
+import { Text } from 'react-native';
+import { View } from 'react-native';
 import { Link } from "@react-navigation/native";
 import ResponsiveContainer from '@/components/layout/ResponsiveContainer';
 import RequireAccess from '@/components/auth/RequireAccess';
@@ -45,9 +48,9 @@ const Dashboard: React.FC = () => {
         </View>
       )}
 
-      <h1 style="text-3xl font-bold mb-6">
+      <Text style="text-3xl font-bold mb-6">
         📊 Tableau de bord Yukpomnang
-      </h1>
+      </Text>
 
       <ul style="space-y-2">
         <RequireAccess plan="enterprise">
@@ -86,4 +89,8 @@ const Dashboard: React.FC = () => {
 };
 
 export default Dashboard;
+
+
+
+
 

@@ -1,5 +1,6 @@
-﻿import React, { useState, useEffect } from 'react';
-import ResponsiveContainer from '@/components/layout/ResponsiveContainer';
+﻿import * as React from "react";
+import { useState } from 'react';
+import { Text, TouchableOpacity, View } from 'react-native';
 
 import styled, { keyframes } from "styled-components";
 
@@ -52,7 +53,7 @@ const BourseLivrePage: React.FC = () => {
 
   return (
     <View style="">
-      <h1 style="text-3xl font-bold mb-6">📘 Publier un livre (Bourse du Livre)</h1>
+      <Text style="text-3xl font-bold mb-6">📘 Publier un livre (Bourse du Livre)</Text>
 
       <form onSubmit={handleSubmit} style="">
         <label style="block font-semibold mt-4">
@@ -128,7 +129,7 @@ const BourseLivrePage: React.FC = () => {
 
         {result && (
           <View style="mt-6 bg-gray-100 p-4 rounded">
-            <h3 style="font-bold mb-2">📖 Résultat Yukpomnang :</h3>
+            <Text style="font-bold mb-2">📖 Résultat Yukpomnang :</Text>
             <Text><strong>Titre :</strong> {result.titre}</Text>
             <Text><strong>Auteur :</strong> {result.auteur}</Text>
             <Text><strong>État estimé :</strong> {result.etat}</Text>
@@ -143,12 +144,16 @@ const BourseLivrePage: React.FC = () => {
         </TouchableOpacity>
       </form>
 
-      <PulseBox style="">
-        <h2 style="text-lg font-bold mb-2">🧠 Résumé Yukpomnang :</h2>
+      <View style={{}}>
+        <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 8 }}>🧠 Résumé Yukpomnang :</Text>
         <Text>{iaResponse}</Text>
-      </PulseBox>
+      </View>
     </View>
   );
 };
 
 export default BourseLivrePage;
+
+
+
+

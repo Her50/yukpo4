@@ -1,7 +1,11 @@
 ﻿// 📦 Yukpo – Affinage intelligent des besoins utilisateur (responsive)
 // @ts-nocheck
 
-import React, { useEffect, useState } from "react";
+import * as React from "react";
+import { useEffect, useState } from "react";
+import { Text } from 'react-native';
+import { View } from 'react-native';
+import { TouchableOpacity } from 'react-native';
 import AppLayout from "@/components/layout/AppLayout";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -73,13 +77,13 @@ const AffinerBesoinPanel = () => {
           <SheetTrigger asChild>
             <TouchableOpacity
               style="absolute top-4 right-4 text-gray-600 hover:text-primary focus:outline-none"
-              onClick={() => setOpenMenu(true)}
+              onPress={() => setOpenMenu(true)}
             >
               <Menu style="w-6 h-6" />
             </TouchableOpacity>
           </SheetTrigger>
           <SheetContent side="right" style="w-64 p-4 bg-white border-l border-gray-200">
-            <h2 style="text-lg font-semibold mb-4 text-primary">⚙️ Options</h2>
+            <Text style="text-lg font-semibold mb-4 text-primary">⚙️ Options</Text>
             <ul style="space-y-2 text-sm">
               <li><TouchableOpacity variant="ghost" style="w-full">📋 Mes besoins</TouchableOpacity></li>
               <li><TouchableOpacity variant="ghost" style="w-full">🧪 Tester un autre besoin</TouchableOpacity></li>
@@ -87,10 +91,10 @@ const AffinerBesoinPanel = () => {
           </SheetContent>
         </Sheet>
 
-        <h1 style="text-2xl font-bold text-center text-primary">
+        <Text style="text-2xl font-bold text-center text-primary">
           🛠️ Yukpo affine votre besoin
-        </h1>
-        <p style="text-sm text-gray-600 text-center">
+        </Text>
+        <Text style="text-sm text-gray-600 text-center">
           Quelques précisions supplémentaires aideront Yukpo à mieux répondre à votre demande.
         </Text>
 
@@ -126,7 +130,7 @@ const AffinerBesoinPanel = () => {
 
         {blueprintFields.length > 0 && (
           <View style="space-y-3">
-            <h2 style="text-lg font-semibold mt-6">🔎 Détails spécifiques Yukpo</h2>
+            <Text style="text-lg font-semibold mt-6">🔎 Détails spécifiques Yukpo</Text>
             {blueprintFields.map((field, i) => (
               <TextInput
                 key={i}
@@ -139,7 +143,7 @@ const AffinerBesoinPanel = () => {
         )}
 
         <View style="text-center mt-6">
-          <TouchableOpacity onClick={handleRelancerAnalyse} disabled={loading}>
+          <TouchableOpacity onPress={handleRelancerAnalyse} disabled={loading}>
             {loading ? "Chargement..." : "📤 Relancer l’analyse Yukpo"}
           </TouchableOpacity>
         </View>
@@ -149,4 +153,8 @@ const AffinerBesoinPanel = () => {
 };
 
 export default AffinerBesoinPanel;
+
+
+
+
 

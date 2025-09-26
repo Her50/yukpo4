@@ -7,11 +7,14 @@ import { PaperProvider } from 'react-native-paper';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 // Contexts
-import { AuthProvider } from './src/contexts/AuthContext';
 import { GlobalIAStatsProvider } from './src/components/intelligence/GlobalIAStats';
+import { AuthProvider } from './src/contexts/AuthContext';
 
 // Navigation
 import AppNavigator from './src/navigation/AppNavigator';
+
+// Components
+import ErrorBoundary from './src/components/ErrorBoundary';
 
 // Theme
 import { theme } from './src/theme/theme';
@@ -29,20 +32,22 @@ export default function App() {
 
   try {
     return (
-      <GestureHandlerRootView style={{ flex: 1 }}>
-        <SafeAreaProvider>
-          <PaperProvider theme={theme}>
-            <AuthProvider>
-              <GlobalIAStatsProvider>
-                <NavigationContainer>
-                  <StatusBar style="auto" />
-                  <AppNavigator />
-                </NavigationContainer>
-              </GlobalIAStatsProvider>
-            </AuthProvider>
-          </PaperProvider>
-        </SafeAreaProvider>
-      </GestureHandlerRootView>
+      <ErrorBoundary>
+        <GestureHandlerRootView style={{ flex: 1 }}>
+          <SafeAreaProvider>
+            <PaperProvider theme={theme}>
+              <AuthProvider>
+                <GlobalIAStatsProvider>
+                  <NavigationContainer>
+                    <StatusBar style="auto" />
+                    <AppNavigator />
+                  </NavigationContainer>
+                </GlobalIAStatsProvider>
+              </AuthProvider>
+            </PaperProvider>
+          </SafeAreaProvider>
+        </GestureHandlerRootView>
+      </ErrorBoundary>
     );
   } catch (error) {
     console.error('[App] Erreur critique:', error);

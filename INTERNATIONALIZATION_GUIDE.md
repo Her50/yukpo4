@@ -235,3 +235,4 @@ Votre application est maintenant **100% internationale** avec :
 
 **L'application s'adapte automatiquement à la langue de l'utilisateur partout dans le monde !** 🌍
 
+

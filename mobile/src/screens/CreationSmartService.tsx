@@ -1,5 +1,8 @@
 ﻿// src/pages/CreationSmartService.tsx
-import React, { useEffect } from 'react';
+import * as React from "react";
+import { useEffect } from 'react';
+import { Text } from 'react-native';
+import { View } from 'react-native';
 import { useNavigation } from 'react-router-dom';
 import { detectServiceType } from '@/utils/serviceClassifier'; // À créer si besoin
 import { Loader } from '@/components/ui/loader';
@@ -26,10 +29,14 @@ const CreationSmartService = () => {
   return (
     <View style="flex flex-col items-center justify-center min-h-screen">
       <Loader />
-      <p style="mt-4 text-gray-600">Analyse du type de service en cours…</Text>
+      <Text style="mt-4 text-gray-600">Analyse du type de service en cours…</Text>
     </View>
   );
 };
 
 export default CreationSmartService;
+
+
+
+
 

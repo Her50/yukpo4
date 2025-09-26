@@ -1,4 +1,8 @@
-﻿import React, { useState, useEffect } from 'react';
+﻿import * as React from "react";
+import { useState, useEffect } from 'react';
+import { Text } from 'react-native';
+import { View } from 'react-native';
+import { TouchableOpacity } from 'react-native';
 import ResponsiveContainer from '@/components/layout/ResponsiveContainer';
 
 import { Button } from "@/components/ui/buttons";
@@ -50,7 +54,7 @@ const AuthLogViewer: React.FC = () => {
 
   return (
     <View style="p-6">
-      <h2 style="text-xl font-bold mb-4">🔐 Connexions Admin</h2>
+      <Text style="text-xl font-bold mb-4">🔐 Connexions Admin</Text>
 
       <View style="flex items-center gap-4 mb-4">
         <TextInput
@@ -58,7 +62,7 @@ const AuthLogViewer: React.FC = () => {
           placeholder="Filtrer par utilisateur ou statut..."
           onChange={(e) => setFilter(e.target.value)}
         />
-        <TouchableOpacity onClick={exportCSV}>📥 Export CSV</TouchableOpacity>
+        <TouchableOpacity onPress={exportCSV}>📥 Export CSV</TouchableOpacity>
       </View>
 
       <table style="w-full border text-sm">
@@ -88,3 +92,7 @@ const AuthLogViewer: React.FC = () => {
 };
 
 export default AuthLogViewer;
+
+
+
+

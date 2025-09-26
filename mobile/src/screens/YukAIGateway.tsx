@@ -1,5 +1,6 @@
-﻿import React, { useState, useEffect } from 'react';
-import ResponsiveContainer from '@/components/layout/ResponsiveContainer';
+﻿import * as React from "react";
+import { useState } from 'react';
+import { Text, TouchableOpacity, View } from 'react-native';
 
 import axios from "axios";
 
@@ -20,7 +21,7 @@ const YukAIGateway: React.FC = () => {
 
   return (
     <View style="">
-      <h1 style="text-2xl font-bold mb-4">🔗 YukAI Gateway</h1>
+      <Text style="text-2xl font-bold mb-4">🔗 YukAI Gateway</Text>
 
       <label style="block mb-2 font-semibold">Service cible :</label>
       <select
@@ -44,18 +45,22 @@ const YukAIGateway: React.FC = () => {
 
       <TouchableOpacity
         style=""
-        onClick={handleSubmit}
+        onPress={handleSubmit}
       >
         🚀 Envoyer
       </TouchableOpacity>
 
       {result && (
-        <pre style="bg-gray-100 mt-6 p-4 rounded whitespace-pre-wrap text-sm text-gray-800">
+        <Text style={{ backgroundColor: '#f3f4f6', marginTop: 24, padding: 16, borderRadius: 4, fontSize: 14, color: '#374151' }}>
           {result}
-        </pre>
+        </Text>
       )}
     </View>
   );
 };
 
 export default YukAIGateway;
+
+
+
+

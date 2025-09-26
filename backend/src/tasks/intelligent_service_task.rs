@@ -51,3 +51,4 @@ pub async fn run_complete_service_processing(pool: &PgPool) {
     info!("🎉 Traitement complet des services terminé");
 }
 
+

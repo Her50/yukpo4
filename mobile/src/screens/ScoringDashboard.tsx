@@ -1,4 +1,7 @@
-﻿import React, { useState, useEffect } from 'react';
+﻿import * as React from "react";
+import { useState, useEffect } from 'react';
+import { Text } from 'react-native';
+import { View } from 'react-native';
 import ResponsiveContainer from '@/components/layout/ResponsiveContainer';
 
 import { ROUTES } from "@/routes/AppRoutesRegistry"; // ✅ Import ajouté
@@ -6,8 +9,8 @@ import { ROUTES } from "@/routes/AppRoutesRegistry"; // ✅ Import ajouté
 const ScoringDashboard: React.FC = () => {
   return (
     <View style="p-6">
-      <h1 style="text-xl font-bold mb-4">Tableau de scoring IA</h1>
-      <p style="text-sm text-gray-600 mb-6">
+      <Text style="text-xl font-bold mb-4">Tableau de scoring IA</Text>
+      <Text style="text-sm text-gray-600 mb-6">
         Comparaison des prestataires, clients et services...
       </Text>
 
@@ -37,3 +40,7 @@ const ScoringDashboard: React.FC = () => {
 };
 
 export default ScoringDashboard;
+
+
+
+

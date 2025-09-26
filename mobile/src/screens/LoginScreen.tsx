@@ -2,7 +2,11 @@
 import { API_BASE_URL } from "@/config/api";
 import { useUser } from "@/hooks/useUser";
 import { ROUTES } from "@/routes/AppRoutesRegistry";
-import React, { useEffect, useRef, useState } from "react";
+import * as React from "react";
+import { useEffect, useRef, useState } from "react";
+import { Text } from 'react-native';
+import { View } from 'react-native';
+import { TouchableOpacity } from 'react-native';
 import { toast } from "react-hot-toast";
 import { Link, useLocation, useNavigation, useSearchParams } from "@react-navigation/native";
 
@@ -129,20 +133,20 @@ const LoginPage: React.FC = () => {
             ? {error}
           </View>
         )}
-        <h1 style="text-3xl font-bold text-center mb-4">
+        <Text style="text-3xl font-bold text-center mb-4">
           Connexion {" "}
           <Text style="bg-gradient-to-r from-yellow-500 via-orange-500 to-red-500 bg-clip-text text-transparent">
             Yukpo
           </Text>
-        </h1>
-        <p style="text-center text-gray-600 dark:text-gray-300 mb-6">
+        </Text>
+        <Text style="text-center text-gray-600 dark:text-gray-300 mb-6">
           Connectez-vous avec votre compte <strong>Google</strong> ou <strong>Facebook</strong>
         </Text>
         <View style="flex flex-col sm:flex-row justify-center gap-4 mb-6">
           <OAuthButton provider="google" />
           <OAuthButton provider="facebook" />
         </View>
-        <p style="text-center text-sm text-gray-500 dark:text-gray-400 mb-4">
+        <Text style="text-center text-sm text-gray-500 dark:text-gray-400 mb-4">
           ou utilisez vos identifiants :
         </Text>
         <form style="flex flex-col gap-4 mt-2" onSubmit={handleLogin}>
@@ -176,7 +180,7 @@ const LoginPage: React.FC = () => {
           </TouchableOpacity>
         </form>
 
-        <p style="text-center text-sm mt-6 text-gray-700 dark:text-gray-300">
+        <Text style="text-center text-sm mt-6 text-gray-700 dark:text-gray-300">
           Pas encore inscrit ?{" "}
           <Link to={ROUTES.REGISTER} style="text-primary underline font-medium">
             Crer un compte
@@ -188,4 +192,8 @@ const LoginPage: React.FC = () => {
 };
 
 export default LoginPage;
+
+
+
+
 

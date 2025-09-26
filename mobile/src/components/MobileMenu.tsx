@@ -1,5 +1,8 @@
 ﻿// @ts-check
-import React, { useState, useRef, useEffect } from "react";
+import * as React from "react";
+import { useState, useRef, useEffect } from "react";
+import { View } from 'react-native';
+import { TouchableOpacity } from 'react-native';
 import { Link } from "@react-navigation/native";
 import { useUser } from "@/hooks/useUser";
 import { useTranslation } from "react-i18next";
@@ -56,7 +59,7 @@ const MobileMenu: React.FC = () => {
   return (
     <View style="md:hidden relative z-50" ref={menuRef}>
       <TouchableOpacity
-        onClick={toggleMenu}
+        onPress={toggleMenu}
         style="p-2 text-xl text-primary"
         aria-label="Menu mobile"
       >
@@ -70,7 +73,7 @@ const MobileMenu: React.FC = () => {
               <Link
                 key={to}
                 to={to}
-                onClick={() => setOpen(false)}
+                onPress={() => setOpen(false)}
                 style="hover:text-primary"
               >
                 {label}
@@ -84,7 +87,7 @@ const MobileMenu: React.FC = () => {
                     Rôle : <strong>{user.role}</strong>
                   </View>
                   <TouchableOpacity
-                    onClick={handleLogout}
+                    onPress={handleLogout}
                     style="text-red-600 hover:underline mt-2"
                   >
                     🚪 {t("Déconnexion")}
@@ -94,14 +97,14 @@ const MobileMenu: React.FC = () => {
                 <>
                   <Link
                     to={ROUTES.LOGIN}
-                    onClick={() => setOpen(false)}
+                    onPress={() => setOpen(false)}
                     style="text-blue-600 hover:underline"
                   >
                     Connexion
                   </Link>
                   <Link
                     to={ROUTES.REGISTER}
-                    onClick={() => setOpen(false)}
+                    onPress={() => setOpen(false)}
                     style="text-yellow-600 hover:underline"
                   >
                     Inscription
@@ -129,4 +132,8 @@ const MobileMenu: React.FC = () => {
 };
 
 export default MobileMenu;
+
+
+
+
 

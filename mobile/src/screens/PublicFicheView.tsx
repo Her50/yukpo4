@@ -1,4 +1,5 @@
-﻿import React, { useState, useEffect } from 'react';
+﻿import * as React from "react";
+import { useState, useEffect } from 'react';
 import ResponsiveContainer from '@/components/layout/ResponsiveContainer';
 
 import { useParams } from "@react-navigation/native";
@@ -16,3 +17,7 @@ const PublicFicheView: React.FC = () => {
 };
 
 export default PublicFicheView;
+
+
+
+

@@ -1,16 +1,17 @@
-import React, { useState, useEffect } from 'react';
+﻿import { Ionicons } from '@expo/vector-icons';
+import * as React from 'react';
+import { useEffect, useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  Modal,
-  TouchableOpacity,
-  ScrollView,
-  TextInput,
   Alert,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-import { Card, Title, Paragraph, Button, Badge, IconButton } from 'react-native-paper';
-import { Ionicons } from '@expo/vector-icons';
+import { Badge, Card, IconButton, Title } from 'react-native-paper';
 import { useAuth } from '../contexts/AuthContext';
 import { notificationsApi } from '../services/api';
 import { theme } from '../theme/theme';
@@ -55,7 +56,7 @@ const NotificationHistoryModal: React.FC<NotificationHistoryModalProps> = ({
     setLoading(true);
     try {
       const response = await notificationsApi.getNotifications();
-      
+
       if (response.data) {
         const notificationsData = (response.data as NotificationItem[]) || [];
         setNotifications(notificationsData);
@@ -73,7 +74,7 @@ const NotificationHistoryModal: React.FC<NotificationHistoryModalProps> = ({
   const filteredNotifications = notifications
     .filter(notification => {
       const matchesSearch = notification.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           notification.message.toLowerCase().includes(searchTerm.toLowerCase());
+        notification.message.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesType = filterType === 'all' || notification.type === filterType;
       const matchesCategory = filterCategory === 'all' || notification.category === filterCategory;
       const matchesRead = showRead || !notification.isRead;
@@ -84,9 +85,9 @@ const NotificationHistoryModal: React.FC<NotificationHistoryModalProps> = ({
   const markAsRead = async (notificationId: string) => {
     try {
       await notificationsApi.markAsRead(notificationId);
-      setNotifications(prev => 
-        prev.map(notif => 
-          notif.id === notificationId 
+      setNotifications(prev =>
+        prev.map(notif =>
+          notif.id === notificationId
             ? { ...notif, isRead: true }
             : notif
         )
@@ -99,7 +100,7 @@ const NotificationHistoryModal: React.FC<NotificationHistoryModalProps> = ({
   const markAllAsRead = async () => {
     try {
       // TODO: Implémenter l'API pour marquer toutes les notifications comme lues
-      setNotifications(prev => 
+      setNotifications(prev =>
         prev.map(notif => ({ ...notif, isRead: true }))
       );
       Alert.alert('Succès', 'Toutes les notifications ont été marquées comme lues');
@@ -177,20 +178,20 @@ const NotificationHistoryModal: React.FC<NotificationHistoryModalProps> = ({
               🔔 Historique des notifications
             </Title>
             {unreadCount > 0 && (
-              <Badge style={styles.unreadBadge}>{unreadCount} non lues</Badge>
+              <Badge style={styles.unreadBadge}>{`${unreadCount} non lues`}</Badge>
             )}
           </View>
-          
+
           <View style={styles.headerRight}>
             <TouchableOpacity
               style={styles.markAllButton}
               onPress={markAllAsRead}
               disabled={unreadCount === 0}
             >
-              <Ionicons 
-                name="checkmark-circle" 
-                size={20} 
-                color={unreadCount === 0 ? '#9E9E9E' : theme.colors.primary} 
+              <Ionicons
+                name="checkmark-circle"
+                size={20}
+                color={unreadCount === 0 ? '#9E9E9E' : theme.colors.primary}
               />
               <Text style={[
                 styles.markAllText,
@@ -199,7 +200,7 @@ const NotificationHistoryModal: React.FC<NotificationHistoryModalProps> = ({
                 Tout marquer comme lu
               </Text>
             </TouchableOpacity>
-            
+
             <IconButton
               icon="close"
               size={24}
@@ -230,7 +231,7 @@ const NotificationHistoryModal: React.FC<NotificationHistoryModalProps> = ({
                 Tous les types
               </Text>
             </TouchableOpacity>
-            
+
             {['info', 'success', 'warning', 'error'].map(type => (
               <TouchableOpacity
                 key={type}
@@ -247,10 +248,10 @@ const NotificationHistoryModal: React.FC<NotificationHistoryModalProps> = ({
               style={[styles.filterChip, !showRead && styles.filterChipActive]}
               onPress={() => setShowRead(!showRead)}
             >
-              <Ionicons 
-                name={showRead ? "eye-off" : "eye"} 
-                size={16} 
-                color={!showRead ? 'white' : theme.colors.primary} 
+              <Ionicons
+                name={showRead ? "eye-off" : "eye"}
+                size={16}
+                color={!showRead ? 'white' : theme.colors.primary}
               />
               <Text style={[styles.filterChipText, !showRead && styles.filterChipTextActive]}>
                 {showRead ? 'Masquer lues' : 'Afficher lues'}
@@ -287,7 +288,7 @@ const NotificationHistoryModal: React.FC<NotificationHistoryModalProps> = ({
                         size={24}
                         color={getTypeColor(notification.type)}
                       />
-                      
+
                       <View style={styles.notificationInfo}>
                         <View style={styles.notificationTitleRow}>
                           <Text style={[
@@ -296,7 +297,7 @@ const NotificationHistoryModal: React.FC<NotificationHistoryModalProps> = ({
                           ]}>
                             {notification.title}
                           </Text>
-                          
+
                           <View style={styles.badgesContainer}>
                             <Badge style={[styles.typeBadge, { backgroundColor: getTypeColor(notification.type) }]}>
                               {notification.type}
@@ -306,11 +307,11 @@ const NotificationHistoryModal: React.FC<NotificationHistoryModalProps> = ({
                             </Badge>
                           </View>
                         </View>
-                        
+
                         <Text style={styles.notificationMessage}>
                           {notification.message}
                         </Text>
-                        
+
                         <View style={styles.notificationMeta}>
                           <Text style={styles.timestamp}>
                             {formatTime(notification.timestamp)}
@@ -325,18 +326,16 @@ const NotificationHistoryModal: React.FC<NotificationHistoryModalProps> = ({
 
                   <View style={styles.notificationActions}>
                     {notification.actionUrl && (
-                      <Button
-                        mode="outlined"
-                        compact
+                      <TouchableOpacity
                         onPress={() => {
                           // TODO: Naviguer vers l'action
                           Alert.alert('Action', `Action: ${notification.actionText || 'Voir'}`);
                         }}
                       >
-                        {notification.actionText || 'Voir'}
-                      </Button>
+                        <Text>{notification.actionText || 'Voir'}</Text>
+                      </TouchableOpacity>
                     )}
-                    
+
                     <View style={styles.actionButtons}>
                       {!notification.isRead && (
                         <TouchableOpacity
@@ -347,7 +346,7 @@ const NotificationHistoryModal: React.FC<NotificationHistoryModalProps> = ({
                           <Text style={styles.actionButtonText}>Marquer lu</Text>
                         </TouchableOpacity>
                       )}
-                      
+
                       <TouchableOpacity
                         style={styles.actionButton}
                         onPress={() => deleteNotification(notification.id)}
@@ -569,5 +568,9 @@ const styles = StyleSheet.create({
 });
 
 export default NotificationHistoryModal;
+
+
+
+
 
 

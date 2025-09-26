@@ -1,9 +1,11 @@
-﻿import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, TextInput } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Card, Title, Paragraph, Button, ActivityIndicator, RadioButton } from 'react-native-paper';
-import { Ionicons } from '@expo/vector-icons';
+﻿import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
+import * as React from 'react';
+import { useState } from 'react';
+import { Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Card, RadioButton, Title } from 'react-native-paper';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import ReceiptModal from '../components/ReceiptModal';
 import { useAuth } from '../contexts/AuthContext';
 import { theme } from '../theme/theme';
 
@@ -34,6 +36,8 @@ const RechargeTokensScreen: React.FC = () => {
   const [customAmount, setCustomAmount] = useState<string>('');
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string | null>(null);
   const [currentStep, setCurrentStep] = useState<'amount' | 'payment' | 'confirm'>('amount');
+  const [showReceiptModal, setShowReceiptModal] = useState(false);
+  const [receiptData, setReceiptData] = useState<any>(null);
 
   // Options de recharge prédéfinies
   const rechargeOptions: RechargeOption[] = [
@@ -110,27 +114,64 @@ const RechargeTokensScreen: React.FC = () => {
 
     try {
       setLoading(true);
-      
-      const amount = selectedOption 
+
+      const amount = selectedOption
         ? rechargeOptions.find(opt => opt.id === selectedOption)?.amount || 0
         : parseInt(customAmount) || 0;
 
-      // Simuler le processus de paiement
-      await new Promise(resolve => setTimeout(resolve, 3000));
-      
-      Alert.alert(
-        'Paiement réussi',
-        `Votre compte a été rechargé de ${amount.toLocaleString()} XAF`,
-        [
-          {
-            text: 'OK',
-            onPress: () => navigation.goBack(),
-          },
-        ]
-      );
+      // Appel API pour initier le paiement
+      const response = await fetch('https://yukpomnang.onrender.com/api/payments/initiate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${user?.token}`
+        },
+        body: JSON.stringify({
+          amount_xaf: amount,
+          payment_method: selectedPaymentMethod,
+          currency: 'XAF',
+          phone_number: selectedPaymentMethod === 'mobile_money' ? user?.phone : null
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Erreur lors de l\'initiation du paiement');
+      }
+
+      const paymentData = await response.json();
+
+      // Calculer les tokens et bonus
+      const tokens = amount; // 1 XAF = 1 token
+      const bonus = amount >= 10000 ? Math.floor(amount * 0.2) :
+        amount >= 5000 ? Math.floor(amount * 0.1) :
+          amount >= 2000 ? Math.floor(amount * 0.05) : 0;
+
+      // Générer le reçu
+      const receipt = {
+        id: paymentData.payment_id,
+        amount: amount,
+        tokens: tokens,
+        bonus: bonus,
+        paymentMethod: paymentMethods.find(method => method.id === selectedPaymentMethod)?.name || 'Méthode de paiement',
+        transactionId: paymentData.payment_id,
+        date: new Date().toISOString(),
+        status: 'completed' as const,
+        instructions: paymentData.instructions
+      };
+
+      setReceiptData(receipt);
+      setShowReceiptModal(true);
+
+      // Réinitialiser le formulaire
+      setSelectedOption(null);
+      setCustomAmount('');
+      setSelectedPaymentMethod(null);
+      setCurrentStep('amount');
     } catch (error) {
       console.error('Erreur paiement:', error);
-      Alert.alert('Erreur', 'Le paiement a échoué. Veuillez réessayer.');
+      const errorMessage = error instanceof Error ? error.message : 'Le paiement a échoué. Veuillez réessayer.';
+      Alert.alert('Erreur', errorMessage);
     } finally {
       setLoading(false);
     }
@@ -155,7 +196,7 @@ const RechargeTokensScreen: React.FC = () => {
   const renderAmountStep = () => (
     <View style={styles.stepContainer}>
       <Title style={styles.stepTitle}>Choisissez le montant</Title>
-      
+
       {/* Options prédéfinies */}
       <View style={styles.optionsContainer}>
         {rechargeOptions.map((option) => (
@@ -174,26 +215,26 @@ const RechargeTokensScreen: React.FC = () => {
             {option.popular && (
               <View style={styles.popularBadge}>
                 <Text style={styles.popularText}>Populaire</Text>
-          </View>
+              </View>
             )}
-            
+
             <View style={styles.optionContent}>
               <Text style={styles.optionAmount}>
                 {option.amount.toLocaleString()} XAF
-          </Text>
+              </Text>
               <Text style={styles.optionTokens}>
                 {option.tokens} tokens
                 {option.bonus > 0 && (
                   <Text style={styles.bonusText}> + {option.bonus} bonus</Text>
                 )}
-                  </Text>
+              </Text>
               {option.savings && (
                 <Text style={styles.savingsText}>
                   Économisez {option.savings}%
                 </Text>
               )}
             </View>
-            
+
             <RadioButton
               value={option.id}
               status={selectedOption === option.id ? 'checked' : 'unchecked'}
@@ -203,14 +244,14 @@ const RechargeTokensScreen: React.FC = () => {
               }}
             />
           </TouchableOpacity>
-                    ))}
-                  </View>
+        ))}
+      </View>
 
       {/* Option personnalisée */}
       <Card style={styles.customCard}>
         <Card.Content>
           <Title style={styles.customTitle}>Montant personnalisé</Title>
-                        <TextInput
+          <TextInput
             style={styles.customInput}
             placeholder="Entrez le montant en XAF"
             value={customAmount}
@@ -223,26 +264,25 @@ const RechargeTokensScreen: React.FC = () => {
           {customAmount && (
             <Text style={styles.customTokens}>
               Vous recevrez {getSelectedTokens()} tokens
-                          </Text>
-                        )}
+            </Text>
+          )}
         </Card.Content>
       </Card>
 
-      <Button
-        mode="contained"
+      <TouchableOpacity
         onPress={() => setCurrentStep('payment')}
         disabled={!selectedOption && !customAmount}
         style={styles.nextButton}
       >
-        Continuer
-      </Button>
-                      </View>
+        <Text>Continuer</Text>
+      </TouchableOpacity>
+    </View>
   );
 
   const renderPaymentStep = () => (
     <View style={styles.stepContainer}>
       <Title style={styles.stepTitle}>Méthode de paiement</Title>
-      
+
       <View style={styles.paymentMethodsContainer}>
         {paymentMethods.map((method) => (
           <TouchableOpacity
@@ -254,10 +294,10 @@ const RechargeTokensScreen: React.FC = () => {
             onPress={() => setSelectedPaymentMethod(method.id)}
           >
             <View style={styles.paymentContent}>
-              <Ionicons 
-                name={method.icon as any} 
-                size={24} 
-                color={theme.colors.primary} 
+              <Ionicons
+                name={method.icon as any}
+                size={24}
+                color={theme.colors.primary}
               />
               <View style={styles.paymentInfo}>
                 <Text style={styles.paymentName}>{method.name}</Text>
@@ -265,42 +305,40 @@ const RechargeTokensScreen: React.FC = () => {
                   {method.processingTime}
                   {method.fees > 0 && ` • Frais: ${method.fees}%`}
                 </Text>
-                    </View>
-                  </View>
+              </View>
+            </View>
 
             <RadioButton
               value={method.id}
               status={selectedPaymentMethod === method.id ? 'checked' : 'unchecked'}
               onPress={() => setSelectedPaymentMethod(method.id)}
             />
-                      </TouchableOpacity>
+          </TouchableOpacity>
         ))}
-                    </View>
+      </View>
 
       <View style={styles.navigationButtons}>
-        <Button
-          mode="outlined"
+        <TouchableOpacity
           onPress={() => setCurrentStep('amount')}
           style={styles.backButton}
-                    >
-                      Retour
-        </Button>
-        <Button
-          mode="contained"
+        >
+          <Text>Retour</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
           onPress={() => setCurrentStep('confirm')}
-                      disabled={!selectedPaymentMethod}
+          disabled={!selectedPaymentMethod}
           style={styles.nextButton}
-                    >
-                      Continuer
-        </Button>
-                          </View>
-                        </View>
+        >
+          <Text>Continuer</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
   );
 
   const renderConfirmStep = () => (
     <View style={styles.stepContainer}>
       <Title style={styles.stepTitle}>Confirmation</Title>
-      
+
       <Card style={styles.confirmCard}>
         <Card.Content>
           <View style={styles.confirmRow}>
@@ -308,19 +346,19 @@ const RechargeTokensScreen: React.FC = () => {
             <Text style={styles.confirmValue}>
               {getSelectedAmount().toLocaleString()} XAF
             </Text>
-                      </View>
-          
+          </View>
+
           <View style={styles.confirmRow}>
             <Text style={styles.confirmLabel}>Tokens à recevoir:</Text>
             <Text style={styles.confirmValue}>{getSelectedTokens()}</Text>
-                    </View>
+          </View>
 
           <View style={styles.confirmRow}>
             <Text style={styles.confirmLabel}>Méthode de paiement:</Text>
             <Text style={styles.confirmValue}>
               {paymentMethods.find(m => m.id === selectedPaymentMethod)?.name}
-                        </Text>
-                    </View>
+            </Text>
+          </View>
 
           <View style={styles.confirmRow}>
             <Text style={styles.confirmLabel}>Temps de traitement:</Text>
@@ -332,24 +370,21 @@ const RechargeTokensScreen: React.FC = () => {
       </Card>
 
       <View style={styles.navigationButtons}>
-        <Button
-          mode="outlined"
+        <TouchableOpacity
           onPress={() => setCurrentStep('payment')}
           style={styles.backButton}
-                      >
-                        Retour
-        </Button>
-        <Button
-          mode="contained"
+        >
+          <Text>Retour</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
           onPress={handleRecharge}
-          loading={loading}
-                        disabled={loading}
+          disabled={loading}
           style={styles.confirmButton}
         >
-          Confirmer le paiement
-        </Button>
-                    </View>
-                  </View>
+          <Text>Confirmer le paiement</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
   );
 
   return (
@@ -373,8 +408,8 @@ const RechargeTokensScreen: React.FC = () => {
           <View style={[styles.step, currentStep === 'payment' && styles.stepActive]}>
             <Text style={[styles.stepText, currentStep === 'payment' && styles.stepTextActive]}>
               2. Paiement
-                    </Text>
-                  </View>
+            </Text>
+          </View>
           <View style={[styles.step, currentStep === 'confirm' && styles.stepActive]}>
             <Text style={[styles.stepText, currentStep === 'confirm' && styles.stepTextActive]}>
               3. Confirmation
@@ -387,6 +422,13 @@ const RechargeTokensScreen: React.FC = () => {
         {currentStep === 'payment' && renderPaymentStep()}
         {currentStep === 'confirm' && renderConfirmStep()}
       </ScrollView>
+
+      {/* Modal de reçu */}
+      <ReceiptModal
+        visible={showReceiptModal}
+        onClose={() => setShowReceiptModal(false)}
+        receiptData={receiptData}
+      />
     </SafeAreaView>
   );
 };
@@ -605,3 +647,6 @@ const styles = StyleSheet.create({
 });
 
 export default RechargeTokensScreen;
+
+
+

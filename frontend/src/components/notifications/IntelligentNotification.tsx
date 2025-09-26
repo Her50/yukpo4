@@ -218,3 +218,4 @@ const IntelligentNotification: React.FC<IntelligentNotificationProps> = ({
 
 export default IntelligentNotification;
 
+

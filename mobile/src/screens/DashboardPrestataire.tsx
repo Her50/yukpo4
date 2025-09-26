@@ -16,7 +16,11 @@ import {
   TrendingUp,
   Zap
 } from 'lucide-react';
-import React, { useEffect, useState } from 'react';
+import * as React from "react";
+import { useEffect, useState } from 'react';
+import { Text } from 'react-native';
+import { View } from 'react-native';
+import { TouchableOpacity } from 'react-native';
 
 interface ServiceStats {
   id: string;
@@ -172,7 +176,7 @@ const DashboardPrestataire: React.FC = () => {
       <ResponsiveContainer>
         <View style="text-center py-12">
           <View style="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></View>
-          <p style="mt-4 text-gray-600">Chargement du dashboard...</Text>
+          <Text style="mt-4 text-gray-600">Chargement du dashboard...</Text>
         </View>
       </ResponsiveContainer>
     );
@@ -183,10 +187,10 @@ const DashboardPrestataire: React.FC = () => {
       <ResponsiveContainer>
         <View style="text-center py-12">
           <BarChart3 style="w-16 h-16 mx-auto mb-4 text-gray-300" />
-          <h3 style="text-lg font-medium text-gray-900 mb-2">
+          <Text style="text-lg font-medium text-gray-900 mb-2">
             Aucune donnée disponible
-          </h3>
-          <p style="text-gray-600">
+          </Text>
+          <Text style="text-gray-600">
             Créez votre premier service pour voir les statistiques
           </Text>
         </View>
@@ -200,10 +204,10 @@ const DashboardPrestataire: React.FC = () => {
         {/* Header avec contrôles */}
         <View style="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
           <View>
-            <h1 style="text-3xl font-bold text-gray-900 mb-2">
+            <Text style="text-3xl font-bold text-gray-900 mb-2">
               Dashboard Prestataire
-            </h1>
-            <p style="text-gray-600">
+            </Text>
+            <Text style="text-gray-600">
               Tableau de bord intelligent avec statistiques en temps réel
             </Text>
           </View>
@@ -220,7 +224,7 @@ const DashboardPrestataire: React.FC = () => {
             </select>
 
             <TouchableOpacity
-              onClick={loadDashboardData}
+              onPress={loadDashboardData}
               variant="outline"
               size="sm"
               style="flex items-center gap-2"
@@ -237,9 +241,9 @@ const DashboardPrestataire: React.FC = () => {
             <CardContent style="p-6">
               <View style="flex items-center justify-between">
                 <View>
-                  <p style="text-blue-100 text-sm font-medium">Services Actifs</Text>
-                  <p style="text-3xl font-bold">{dashboardData.activeServices}</Text>
-                  <p style="text-blue-200 text-sm">sur {dashboardData.totalServices} total</Text>
+                  <Text style="text-blue-100 text-sm font-medium">Services Actifs</Text>
+                  <Text style="text-3xl font-bold">{dashboardData.activeServices}</Text>
+                  <Text style="text-blue-200 text-sm">sur {dashboardData.totalServices} total</Text>
                 </View>
                 <Target style="w-12 h-12 text-blue-200" />
               </View>
@@ -250,9 +254,9 @@ const DashboardPrestataire: React.FC = () => {
             <CardContent style="p-6">
               <View style="flex items-center justify-between">
                 <View>
-                  <p style="text-green-100 text-sm font-medium">Vues Total</Text>
-                  <p style="text-3xl font-bold">{formatNumber(dashboardData.totalViews)}</Text>
-                  <p style="text-green-200 text-sm">+12% ce mois</Text>
+                  <Text style="text-green-100 text-sm font-medium">Vues Total</Text>
+                  <Text style="text-3xl font-bold">{formatNumber(dashboardData.totalViews)}</Text>
+                  <Text style="text-green-200 text-sm">+12% ce mois</Text>
                 </View>
                 <Eye style="w-12 h-12 text-green-200" />
               </View>
@@ -263,9 +267,9 @@ const DashboardPrestataire: React.FC = () => {
             <CardContent style="p-6">
               <View style="flex items-center justify-between">
                 <View>
-                  <p style="text-purple-100 text-sm font-medium">Interactions</Text>
-                  <p style="text-3xl font-bold">{formatNumber(dashboardData.totalInteractions)}</Text>
-                  <p style="text-purple-200 text-sm">Messages + Appels</Text>
+                  <Text style="text-purple-100 text-sm font-medium">Interactions</Text>
+                  <Text style="text-3xl font-bold">{formatNumber(dashboardData.totalInteractions)}</Text>
+                  <Text style="text-purple-200 text-sm">Messages + Appels</Text>
                 </View>
                 <Activity style="w-12 h-12 text-purple-200" />
               </View>
@@ -276,9 +280,9 @@ const DashboardPrestataire: React.FC = () => {
             <CardContent style="p-6">
               <View style="flex items-center justify-between">
                 <View>
-                  <p style="text-orange-100 text-sm font-medium">Budget Consommé</Text>
-                  <p style="text-3xl font-bold">{formatCurrency(dashboardData.budgetConsumed)}</Text>
-                  <p style="text-orange-200 text-sm">Restant: {formatCurrency(dashboardData.budgetRemaining)}</Text>
+                  <Text style="text-orange-100 text-sm font-medium">Budget Consommé</Text>
+                  <Text style="text-3xl font-bold">{formatCurrency(dashboardData.budgetConsumed)}</Text>
+                  <Text style="text-orange-200 text-sm">Restant: {formatCurrency(dashboardData.budgetRemaining)}</Text>
                 </View>
                 <Zap style="w-12 h-12 text-orange-200" />
               </View>
@@ -301,7 +305,7 @@ const DashboardPrestataire: React.FC = () => {
                 <View style="text-center">
                   <BarChart3 style="w-16 h-16 mx-auto mb-4 text-gray-300" />
                   <Text>Graphique des performances</Text>
-                  <p style="text-sm">Données en temps réel</Text>
+                  <Text style="text-sm">Données en temps réel</Text>
                 </View>
               </View>
             </CardContent>
@@ -330,13 +334,13 @@ const DashboardPrestataire: React.FC = () => {
                           {index + 1}
                         </View>
                         <View>
-                          <p style="font-medium text-gray-900">{service.title}</Text>
-                          <p style="text-sm text-gray-500">{service.category}</Text>
+                          <Text style="font-medium text-gray-900">{service.title}</Text>
+                          <Text style="text-sm text-gray-500">{service.category}</Text>
                         </View>
                       </View>
                       <View style="text-right">
-                        <p style="font-semibold text-gray-900">{formatNumber(service.views)} vues</Text>
-                        <p style="text-sm text-gray-500">{service.interactions} interactions</Text>
+                        <Text style="font-semibold text-gray-900">{formatNumber(service.views)} vues</Text>
+                        <Text style="text-sm text-gray-500">{service.interactions} interactions</Text>
                       </View>
                     </View>
                   ))}
@@ -368,8 +372,8 @@ const DashboardPrestataire: React.FC = () => {
                       <MessageCircle style="w-5 h-5 text-blue-600" />
                     </View>
                     <View style="flex-1">
-                      <p style="font-medium text-gray-900">{activity.description}</Text>
-                      <p style="text-sm text-gray-500">{activity.timestamp}</Text>
+                      <Text style="font-medium text-gray-900">{activity.description}</Text>
+                      <Text style="text-sm text-gray-500">{activity.timestamp}</Text>
                     </View>
                     <Badge style={getStatusColor(activity.status)}>
                       {activity.status}
@@ -386,4 +390,8 @@ const DashboardPrestataire: React.FC = () => {
 };
 
 export default DashboardPrestataire;
+
+
+
+
 

@@ -1,6 +1,7 @@
-import { Ionicons } from '@expo/vector-icons';
+﻿import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
-import React, { useState } from 'react';
+import * as React from 'react';
+import { useState } from 'react';
 import {
   Alert,
   KeyboardAvoidingView,
@@ -11,7 +12,7 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
-import { Button, Card, Paragraph, TextInput, Title } from 'react-native-paper';
+import { Card, Paragraph, TextInput, Title } from 'react-native-paper';
 import { useAuth } from '../../contexts/AuthContext';
 import { theme } from '../../theme/theme';
 // TODO: Ajouter les packages OAuth pour React Native
@@ -139,10 +140,7 @@ const RegisterScreen: React.FC = () => {
 
   // Fonction pour naviguer vers la connexion
   const goToLogin = () => {
-    navigation.navigate('Login' as never, {
-      email: form.email,
-      message: 'Veuillez vous connecter avec vos identifiants.'
-    });
+    navigation.navigate('Login' as never);
   };
 
   // Composant OAuth Button
@@ -158,7 +156,7 @@ const RegisterScreen: React.FC = () => {
         onPress={onPress}
         disabled={formLoading || loading}
       >
-        <Ionicons name={iconName} size={20} color="white" />
+        <Ionicons name={iconName as any} size={20} color="white" />
         <Text style={styles.oauthButtonText}>Continuer avec {label}</Text>
       </TouchableOpacity>
     );
@@ -190,23 +188,23 @@ const RegisterScreen: React.FC = () => {
               </Paragraph>
 
               <View style={styles.successActions}>
-                <Button
-                  mode="contained"
+                <TouchableOpacity
                   onPress={goToLogin}
                   style={styles.successButton}
-                  labelStyle={styles.successButtonLabel}
                 >
-                  Se connecter maintenant →
-                </Button>
+                  <Text style={styles.successButtonLabel}>
+                    Se connecter maintenant →
+                  </Text>
+                </TouchableOpacity>
 
-                <Button
-                  mode="outlined"
+                <TouchableOpacity
                   onPress={() => navigation.navigate('Home' as never)}
                   style={styles.homeButton}
-                  labelStyle={styles.homeButtonLabel}
                 >
-                  Retour à l'accueil
-                </Button>
+                  <Text style={styles.homeButtonLabel}>
+                    Retour à l'accueil
+                  </Text>
+                </TouchableOpacity>
               </View>
 
               <Text style={styles.supportText}>
@@ -321,16 +319,15 @@ const RegisterScreen: React.FC = () => {
               Mot de passe requis : 8 caractères, 1 majuscule, 1 chiffre.
             </Text>
 
-            <Button
-              mode="contained"
+            <TouchableOpacity
               onPress={handleRegister}
-              loading={formLoading || loading}
               disabled={formLoading || loading}
               style={styles.registerButton}
-              labelStyle={styles.registerButtonLabel}
             >
-              {formLoading || loading ? 'Création du compte...' : 'Créer mon compte'}
-            </Button>
+              <Text style={styles.registerButtonLabel}>
+                {formLoading || loading ? 'Création du compte...' : 'Créer mon compte'}
+              </Text>
+            </TouchableOpacity>
           </Card.Content>
         </Card>
 
@@ -537,4 +534,8 @@ const styles = StyleSheet.create({
 });
 
 export default RegisterScreen;
+
+
+
+
 

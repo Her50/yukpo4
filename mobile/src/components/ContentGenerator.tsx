@@ -1,4 +1,8 @@
-﻿import React, { useState } from "react";
+﻿import * as React from "react";
+import { useState } from "react";
+import { Text } from 'react-native';
+import { View } from 'react-native';
+import { TouchableOpacity } from 'react-native';
 import axios from "axios";
 import { useTranslation } from "react-i18next";
 
@@ -28,7 +32,7 @@ const ContentGenerator: React.FC = () => {
 
   return (
     <View style="p-4 border rounded bg-white shadow">
-      <h2 style="text-lg font-semibold mb-2">🧠 Générateur IA multilingue</h2>
+      <Text style="text-lg font-semibold mb-2">🧠 Générateur IA multilingue</Text>
 
       <TextInput
         type="text"
@@ -46,7 +50,7 @@ const ContentGenerator: React.FC = () => {
       />
 
       <TouchableOpacity
-        onClick={generate}
+        onPress={generate}
         disabled={loading}
         style="px-4 py-2 bg-blue-600 text-white rounded"
       >
@@ -64,4 +68,8 @@ const ContentGenerator: React.FC = () => {
 };
 
 export default ContentGenerator;
+
+
+
+
 

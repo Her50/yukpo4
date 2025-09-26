@@ -1,4 +1,8 @@
-﻿import React, { useState, useEffect } from 'react';
+﻿import * as React from "react";
+import { useState, useEffect } from 'react';
+import { Text } from 'react-native';
+import { View } from 'react-native';
+import { TouchableOpacity } from 'react-native';
 import ResponsiveContainer from '@/components/layout/ResponsiveContainer';
 
 import axios from "axios";
@@ -18,7 +22,7 @@ const RecoPanel: React.FC = () => {
 
   return (
     <View style="p-6">
-      <h2 style="text-xl font-bold mb-4">✨ Recommandations IA</h2>
+      <Text style="text-xl font-bold mb-4">✨ Recommandations IA</Text>
       <TextInput
         style="border p-2 mr-2"
         value={userId}
@@ -27,7 +31,7 @@ const RecoPanel: React.FC = () => {
       />
       <TouchableOpacity
         style=""
-        onClick={fetchRecommendations}
+        onPress={fetchRecommendations}
       >
         Voir Suggestions
       </TouchableOpacity>
@@ -43,3 +47,7 @@ const RecoPanel: React.FC = () => {
 };
 
 export default RecoPanel;
+
+
+
+

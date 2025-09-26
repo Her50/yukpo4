@@ -1,5 +1,7 @@
 ﻿// @ts-check
 import React from 'react';
+import { Text } from 'react-native';
+import { View } from 'react-native';
 import ResponsiveContainer from '@/components/layout/ResponsiveContainer';
 import RequireAccess from '@/components/auth/RequireAccess';
 
@@ -17,17 +19,17 @@ const UserInteractionIACenter: React.FC = () => {
   return (
     <ResponsiveContainer>
       <View style="pt-24 font-sans">
-        <h1 style="text-3xl font-bold mb-8">🧠 Interactions IA</h1>
+        <Text style="text-3xl font-bold mb-8">🧠 Interactions IA</Text>
 
         <ul style="space-y-6">
           {logs.map((log, index) => (
             <li key={index} style="border-b pb-4">
-              <p style="font-semibold">{log.action}</Text>
-              <p style="text-sm text-gray-500">{log.time}</Text>
+              <Text style="font-semibold">{log.action}</Text>
+              <Text style="text-sm text-gray-500">{log.time}</Text>
 
               {log.plan === 'enterprise' && (
                 <RequireAccess plan="enterprise">
-                  <p style="mt-2 text-orange-600">🔒 Accès réservé aux comptes Premium</Text>
+                  <Text style="mt-2 text-orange-600">🔒 Accès réservé aux comptes Premium</Text>
                 </RequireAccess>
               )}
             </li>
@@ -39,4 +41,8 @@ const UserInteractionIACenter: React.FC = () => {
 };
 
 export default UserInteractionIACenter;
+
+
+
+
 

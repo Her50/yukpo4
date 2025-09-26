@@ -1,4 +1,7 @@
 ﻿import React from 'react';
+import { Text } from 'react-native';
+import { View } from 'react-native';
+import { TouchableOpacity } from 'react-native';
 import {
   Card,
   CardContent,
@@ -224,7 +227,7 @@ const ServiceDisplay: React.FC<ServiceDisplayProps> = ({
             {service.telephone && (
               <Grid item xs={12} sm={6}>
                 <Box display="flex" alignItems="center" gap={1}>
-                  <Phone fontSize="small" color="action" />
+                  <Texthone fontSize="small" color="action" />
                   <Typography variant="body2" color="text.secondary">
                     {service.telephone}
                   </Typography>
@@ -258,7 +261,7 @@ const ServiceDisplay: React.FC<ServiceDisplayProps> = ({
                 <TouchableOpacity
                   variant="outlined"
                   size="small"
-                  onClick={() => onViewDetails(service)}
+                  onPress={() => onViewDetails(service)}
                   fullWidth
                 >
                   {t('service.actions.view_details', 'Voir les détails')}
@@ -268,7 +271,7 @@ const ServiceDisplay: React.FC<ServiceDisplayProps> = ({
                 <TouchableOpacity
                   variant="contained"
                   size="small"
-                  onClick={() => onContact(service)}
+                  onPress={() => onContact(service)}
                   fullWidth
                 >
                   {t('service.actions.contact', 'Contacter')}
@@ -283,3 +286,7 @@ const ServiceDisplay: React.FC<ServiceDisplayProps> = ({
 };
 
 export default ServiceDisplay; 
+
+
+
+

@@ -1,4 +1,6 @@
-import React, { useState, useEffect } from 'react';
+﻿import * as React from "react";
+import { useState, useEffect } from 'react';
+import { TouchableOpacity } from 'react-native';
 import { View, Text, StyleSheet, ScrollView, Share, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Card, Title, Paragraph, Button, ActivityIndicator } from 'react-native-paper';
@@ -101,13 +103,13 @@ const ExternalServiceShare: React.FC = () => {
           <Text style={styles.errorText}>
             Le service que vous recherchez n'existe pas ou a été supprimé.
           </Text>
-          <Button
+          <TouchableOpacity
             mode="contained"
             onPress={() => navigation.goBack()}
             style={styles.backButton}
           >
             Retour
-          </Button>
+          </TouchableOpacity>
         </View>
       </SafeAreaView>
     );
@@ -147,23 +149,23 @@ const ExternalServiceShare: React.FC = () => {
         </Card>
         
         <View style={styles.actionsContainer}>
-          <Button
+          <TouchableOpacity
             mode="contained"
             onPress={handleContact}
             style={styles.contactButton}
             icon="message"
           >
             Contacter le prestataire
-          </Button>
+          </TouchableOpacity>
           
-          <Button
+          <TouchableOpacity
             mode="outlined"
             onPress={handleShare}
             style={styles.shareButton}
             icon="share"
           >
             Partager ce service
-          </Button>
+          </TouchableOpacity>
         </View>
         
         <Card style={styles.infoCard}>
@@ -294,4 +296,9 @@ const styles = StyleSheet.create({
 });
 
 export default ExternalServiceShare;
+
+
+
+
+
 

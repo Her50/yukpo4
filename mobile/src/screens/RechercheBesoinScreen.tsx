@@ -1,4 +1,6 @@
-import React, { useState, useCallback } from 'react';
+﻿import * as React from 'react';
+import { TouchableOpacity } from 'react-native';
+import { useState, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, Alert } from 'react-native';
 import { TextInput, Button, Card, Title, Paragraph } from 'react-native-paper';
 import { Ionicons } from '@expo/vector-icons';
@@ -33,9 +35,9 @@ const RechercheBesoinScreen: React.FC = () => {
       ];
 
       // Naviguer vers les résultats
-      navigation.navigate('ResultatBesoin' as never, { 
-        searchResults: mockResults 
-      } as never);
+      (navigation as any).navigate('ResultatBesoin', {
+        searchResults: mockResults
+      });
     } catch (error) {
       console.error('Erreur recherche:', error);
       Alert.alert('Erreur', 'Une erreur est survenue lors de la recherche');
@@ -74,16 +76,15 @@ const RechercheBesoinScreen: React.FC = () => {
             </View>
           )}
 
-          <Button
-            mode="contained"
+          <TouchableOpacity
             onPress={handleSearch}
-            loading={loading}
             disabled={loading}
             style={styles.searchButton}
-            labelStyle={styles.searchButtonLabel}
           >
-            Rechercher
-          </Button>
+            <Text style={styles.searchButtonLabel}>
+              Rechercher
+            </Text>
+          </TouchableOpacity>
         </Card.Content>
       </Card>
 
@@ -170,3 +171,8 @@ const styles = StyleSheet.create({
 });
 
 export default RechercheBesoinScreen;
+
+
+
+
+

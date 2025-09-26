@@ -1,4 +1,7 @@
-﻿import React, { useState, useEffect } from 'react';
+﻿import * as React from "react";
+import { useState, useEffect } from 'react';
+import { Text } from 'react-native';
+import { View } from 'react-native';
 import ResponsiveContainer from '@/components/layout/ResponsiveContainer';
 
 import {
@@ -27,7 +30,7 @@ const ThreatDashboard: React.FC = () => {
 
   return (
     <View style="p-4">
-      <h1 style="text-xl font-bold mb-4">🛡️ Menaces IA détectées</h1>
+      <Text style="text-xl font-bold mb-4">🛡️ Menaces IA détectées</Text>
 
         <LineChart data={chartData}>
           <XAxis dataKey="date" />
@@ -83,3 +86,7 @@ const ThreatDashboard: React.FC = () => {
 };
 
 export default ThreatDashboard;
+
+
+
+

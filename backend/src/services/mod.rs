@@ -50,6 +50,7 @@ pub mod native_search_service;
 pub mod image_search_service;
 pub mod geocoding_service;
 pub mod intelligent_service_manager;
+pub mod phone_validation_service;
 // pub mod push_notifications;
 // pub mod typing_status;
 // pub mod voice_messages;

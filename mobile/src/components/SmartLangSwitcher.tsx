@@ -1,5 +1,7 @@
 ﻿// 📁 src/components/SmartLangSwitcher.tsx
-import React, { useEffect, useState } from "react";
+import * as React from "react";
+import { useEffect, useState } from "react";
+import { View } from 'react-native';
 import { useTranslation } from "react-i18next";
 
 const LANGUAGES = [
@@ -48,4 +50,8 @@ const SmartLangSwitcher: React.FC = () => {
 };
 
 export default SmartLangSwitcher;
+
+
+
+
 

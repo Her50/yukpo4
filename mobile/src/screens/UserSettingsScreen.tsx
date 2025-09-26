@@ -28,7 +28,11 @@ import {
     Upload,
     User
 } from 'lucide-react';
-import React, { useEffect, useState } from 'react';
+import * as React from "react";
+import { useEffect, useState } from 'react';
+import { Text } from 'react-native';
+import { View } from 'react-native';
+import { TouchableOpacity } from 'react-native';
 
 interface UserSettings {
     // Profil
@@ -341,10 +345,10 @@ const UserSettingsPage: React.FC = () => {
             <View style="py-8">
                 {/* Header */}
                 <View style="mb-8">
-                    <h1 style="text-3xl font-bold text-gray-900 mb-2">
+                    <Text style="text-3xl font-bold text-gray-900 mb-2">
                         Paramètres du compte
-                    </h1>
-                    <p style="text-gray-600">
+                    </Text>
+                    <Text style="text-gray-600">
                         Gérez vos préférences et paramètres personnels
                     </Text>
                 </View>
@@ -360,7 +364,7 @@ const UserSettingsPage: React.FC = () => {
                                         return (
                                             <TouchableOpacity
                                                 key={tab.id}
-                                                onClick={() => setActiveTab(tab.id as any)}
+                                                onPress={() => setActiveTab(tab.id as any)}
                                                 style={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors ${activeTab === tab.id
                                                         ? 'bg-blue-100 text-blue-700'
                                                         : 'text-gray-600 hover:bg-gray-100'
@@ -401,7 +405,7 @@ const UserSettingsPage: React.FC = () => {
                                                 <Upload style="w-4 h-4 mr-2" />
                                                 Changer la photo
                                             </TouchableOpacity>
-                                            <p style="text-sm text-gray-500 mt-1">
+                                            <Text style="text-sm text-gray-500 mt-1">
                                                 JPG, PNG ou GIF. Max 2MB.
                                             </Text>
                                         </View>
@@ -509,15 +513,15 @@ const UserSettingsPage: React.FC = () => {
                                         {/* Détection automatique */}
                                         <View style="flex items-center justify-between p-4 bg-blue-50 rounded-lg">
                                             <View>
-                                                <h3 style="font-medium text-blue-900">Détection automatique GPS</h3>
-                                                <p style="text-sm text-blue-700">
+                                                <Text style="font-medium text-blue-900">Détection automatique GPS</Text>
+                                                <Text style="text-sm text-blue-700">
                                                     Détecter la langue basée sur votre position
                                                 </Text>
                                             </View>
                                             <TouchableOpacity
                                                 variant="outline"
                                                 size="sm"
-                                                onClick={detectAndSetLanguage}
+                                                onPress={detectAndSetLanguage}
                                                 disabled={isDetecting}
                                             >
                                                 {isDetecting ? (
@@ -536,7 +540,7 @@ const UserSettingsPage: React.FC = () => {
                                                     <CheckCircle style="w-5 h-5 text-green-600" />
                                                     <Text style="font-medium text-green-900">Langue détectée</Text>
                                                 </View>
-                                                <p style="text-sm text-green-700">
+                                                <Text style="text-sm text-green-700">
                                                     {detectionResult.language} - {detectionResult.reasoning}
                                                 </Text>
                                                 <Badge style="mt-2 bg-green-100 text-green-800">
@@ -548,8 +552,8 @@ const UserSettingsPage: React.FC = () => {
                                         {/* Traduction automatique */}
                                         <View style="flex items-center justify-between">
                                             <View>
-                                                <h3 style="font-medium text-gray-900">Traduction automatique</h3>
-                                                <p style="text-sm text-gray-600">
+                                                <Text style="font-medium text-gray-900">Traduction automatique</Text>
+                                                <Text style="text-sm text-gray-600">
                                                     Traduire automatiquement le contenu dans votre langue
                                                 </Text>
                                             </View>
@@ -570,13 +574,13 @@ const UserSettingsPage: React.FC = () => {
                                         {/* Statistiques d'usage */}
                                         {languageUsageStats.length > 0 && (
                                             <View>
-                                                <h3 style="font-medium text-gray-900 mb-3">Statistiques d'usage des langues</h3>
+                                                <Text style="font-medium text-gray-900 mb-3">Statistiques d'usage des langues</Text>
                                                 <View style="space-y-2">
                                                     {languageUsageStats.map((stat) => (
                                                         <View key={stat.language} style="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                                                             <View>
                                                                 <Text style="font-medium">{stat.language}</Text>
-                                                                <p style="text-sm text-gray-600">
+                                                                <Text style="text-sm text-gray-600">
                                                                     {stat.contexts.join(', ')}
                                                                 </Text>
                                                             </View>
@@ -591,7 +595,7 @@ const UserSettingsPage: React.FC = () => {
 
                                         {/* Cache de traduction */}
                                         <View style="p-4 bg-gray-50 rounded-lg">
-                                            <h3 style="font-medium text-gray-900 mb-2">Cache de traduction</h3>
+                                            <Text style="font-medium text-gray-900 mb-2">Cache de traduction</Text>
                                             <View style="flex items-center justify-between text-sm text-gray-600">
                                                 <Text>Entrées en cache: {translationCacheStats.size}</Text>
                                                 <Text>Taux de réussite: {Math.round(translationCacheStats.hitRate * 100)}%</Text>
@@ -599,7 +603,7 @@ const UserSettingsPage: React.FC = () => {
                                             <TouchableOpacity
                                                 variant="outline"
                                                 size="sm"
-                                                onClick={clearLanguageData}
+                                                onPress={clearLanguageData}
                                                 style="mt-3"
                                             >
                                                 <Trash2 style="w-4 h-4 mr-2" />
@@ -629,8 +633,8 @@ const UserSettingsPage: React.FC = () => {
                                     ].map((notification) => (
                                         <View key={notification.key} style="flex items-center justify-between">
                                             <View>
-                                                <h3 style="font-medium text-gray-900">{notification.label}</h3>
-                                                <p style="text-sm text-gray-600">{notification.description}</Text>
+                                                <Text style="font-medium text-gray-900">{notification.label}</Text>
+                                                <Text style="text-sm text-gray-600">{notification.description}</Text>
                                             </View>
                                             <label style="relative inline-flex items-center cursor-pointer">
                                                 <TextInput
@@ -664,8 +668,8 @@ const UserSettingsPage: React.FC = () => {
                                     ].map((privacy) => (
                                         <View key={privacy.key} style="flex items-center justify-between">
                                             <View>
-                                                <h3 style="font-medium text-gray-900">{privacy.label}</h3>
-                                                <p style="text-sm text-gray-600">{privacy.description}</Text>
+                                                <Text style="font-medium text-gray-900">{privacy.label}</Text>
+                                                <Text style="text-sm text-gray-600">{privacy.description}</Text>
                                             </View>
                                             <label style="relative inline-flex items-center cursor-pointer">
                                                 <TextInput
@@ -687,7 +691,7 @@ const UserSettingsPage: React.FC = () => {
                             <Card>
                                 <CardHeader>
                                     <CardTitle style="flex items-center gap-2">
-                                        <Palette style="w-5 h-5" />
+                                        <Textalette style="w-5 h-5" />
                                         Apparence et thème
                                     </CardTitle>
                                 </CardHeader>
@@ -724,8 +728,8 @@ const UserSettingsPage: React.FC = () => {
 
                                     <View style="flex items-center justify-between">
                                         <View>
-                                            <h3 style="font-medium text-gray-900">Mode compact</h3>
-                                            <p style="text-sm text-gray-600">
+                                            <Text style="font-medium text-gray-900">Mode compact</Text>
+                                            <Text style="text-sm text-gray-600">
                                                 Interface plus dense avec moins d'espacement
                                             </Text>
                                         </View>
@@ -755,11 +759,11 @@ const UserSettingsPage: React.FC = () => {
                                 <CardContent style="space-y-6">
                                     {/* Mot de passe */}
                                     <View>
-                                        <h3 style="font-medium text-gray-900 mb-3">Mot de passe</h3>
+                                        <Text style="font-medium text-gray-900 mb-3">Mot de passe</Text>
                                         {!showPasswordForm ? (
                                             <TouchableOpacity
                                                 variant="outline"
-                                                onClick={() => setShowPasswordForm(true)}
+                                                onPress={() => setShowPasswordForm(true)}
                                             >
                                                 <Key style="w-4 h-4 mr-2" />
                                                 Changer le mot de passe
@@ -800,13 +804,13 @@ const UserSettingsPage: React.FC = () => {
                                                     />
                                                 </View>
                                                 <View style="flex gap-2">
-                                                    <TouchableOpacity onClick={handlePasswordChange}>
+                                                    <TouchableOpacity onPress={handlePasswordChange}>
                                                         <Save style="w-4 h-4 mr-2" />
                                                         Sauvegarder
                                                     </TouchableOpacity>
                                                     <TouchableOpacity
                                                         variant="outline"
-                                                        onClick={() => setShowPasswordForm(false)}
+                                                        onPress={() => setShowPasswordForm(false)}
                                                     >
                                                         Annuler
                                                     </TouchableOpacity>
@@ -818,8 +822,8 @@ const UserSettingsPage: React.FC = () => {
                                     {/* Authentification à deux facteurs */}
                                     <View style="flex items-center justify-between">
                                         <View>
-                                            <h3 style="font-medium text-gray-900">Authentification à deux facteurs</h3>
-                                            <p style="text-sm text-gray-600">
+                                            <Text style="font-medium text-gray-900">Authentification à deux facteurs</Text>
+                                            <Text style="text-sm text-gray-600">
                                                 Ajouter une couche de sécurité supplémentaire
                                             </Text>
                                         </View>
@@ -852,8 +856,8 @@ const UserSettingsPage: React.FC = () => {
                                     {/* Alertes de connexion */}
                                     <View style="flex items-center justify-between">
                                         <View>
-                                            <h3 style="font-medium text-gray-900">Alertes de connexion</h3>
-                                            <p style="text-sm text-gray-600">
+                                            <Text style="font-medium text-gray-900">Alertes de connexion</Text>
+                                            <Text style="text-sm text-gray-600">
                                                 Recevoir des notifications pour les nouvelles connexions
                                             </Text>
                                         </View>
@@ -885,14 +889,14 @@ const UserSettingsPage: React.FC = () => {
                                         {/* Export des données */}
                                         <View style="flex items-center justify-between p-4 bg-blue-50 rounded-lg">
                                             <View>
-                                                <h3 style="font-medium text-blue-900">Exporter mes données</h3>
-                                                <p style="text-sm text-blue-700">
+                                                <Text style="font-medium text-blue-900">Exporter mes données</Text>
+                                                <Text style="text-sm text-blue-700">
                                                     Télécharger une copie de toutes vos données
                                                 </Text>
                                             </View>
                                             <TouchableOpacity
                                                 variant="outline"
-                                                onClick={exportUserData}
+                                                onPress={exportUserData}
                                             >
                                                 <Download style="w-4 h-4 mr-2" />
                                                 Exporter
@@ -901,22 +905,22 @@ const UserSettingsPage: React.FC = () => {
 
                                         {/* Statistiques d'usage */}
                                         <View>
-                                            <h3 style="font-medium text-gray-900 mb-3">Statistiques d'usage</h3>
+                                            <Text style="font-medium text-gray-900 mb-3">Statistiques d'usage</Text>
                                             <View style="grid grid-cols-1 md:grid-cols-3 gap-4">
                                                 <View style="p-4 bg-gray-50 rounded-lg text-center">
                                                     <BarChart3 style="w-8 h-8 mx-auto mb-2 text-blue-600" />
-                                                    <p style="text-2xl font-bold text-gray-900">0</Text>
-                                                    <p style="text-sm text-gray-600">Services créés</Text>
+                                                    <Text style="text-2xl font-bold text-gray-900">0</Text>
+                                                    <Text style="text-sm text-gray-600">Services créés</Text>
                                                 </View>
                                                 <View style="p-4 bg-gray-50 rounded-lg text-center">
                                                     <Activity style="w-8 h-8 mx-auto mb-2 text-green-600" />
-                                                    <p style="text-2xl font-bold text-gray-900">0</Text>
-                                                    <p style="text-sm text-gray-600">Interactions</Text>
+                                                    <Text style="text-2xl font-bold text-gray-900">0</Text>
+                                                    <Text style="text-sm text-gray-600">Interactions</Text>
                                                 </View>
                                                 <View style="p-4 bg-gray-50 rounded-lg text-center">
                                                     <Globe style="w-8 h-8 mx-auto mb-2 text-purple-600" />
-                                                    <p style="text-2xl font-bold text-gray-900">0</Text>
-                                                    <p style="text-sm text-gray-600">Recherches</Text>
+                                                    <Text style="text-2xl font-bold text-gray-900">0</Text>
+                                                    <Text style="text-sm text-gray-600">Recherches</Text>
                                                 </View>
                                             </View>
                                         </View>
@@ -925,14 +929,14 @@ const UserSettingsPage: React.FC = () => {
                                         <View style="p-4 bg-red-50 border border-red-200 rounded-lg">
                                             <View style="flex items-center gap-2 mb-2">
                                                 <AlertCircle style="w-5 h-5 text-red-600" />
-                                                <h3 style="font-medium text-red-900">Zone dangereuse</h3>
+                                                <Text style="font-medium text-red-900">Zone dangereuse</Text>
                                             </View>
-                                            <p style="text-sm text-red-700 mb-4">
+                                            <Text style="text-sm text-red-700 mb-4">
                                                 La suppression de votre compte est irréversible. Toutes vos données seront définitivement supprimées.
                                             </Text>
                                             <TouchableOpacity
                                                 variant="outline"
-                                                onClick={deleteAccount}
+                                                onPress={deleteAccount}
                                                 style="border-red-300 text-red-700 hover:bg-red-50"
                                             >
                                                 <Trash2 style="w-4 h-4 mr-2" />
@@ -948,12 +952,12 @@ const UserSettingsPage: React.FC = () => {
                         <View style="flex justify-end gap-4 pt-6">
                             <TouchableOpacity
                                 variant="outline"
-                                onClick={() => window.location.reload()}
+                                onPress={() => window.location.reload()}
                             >
                                 Annuler
                             </TouchableOpacity>
                             <TouchableOpacity
-                                onClick={saveSettings}
+                                onPress={saveSettings}
                                 disabled={loading}
                             >
                                 {loading ? (
@@ -972,5 +976,9 @@ const UserSettingsPage: React.FC = () => {
 };
 
 export default UserSettingsPage;
+
+
+
+
 
 

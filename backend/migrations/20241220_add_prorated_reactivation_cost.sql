@@ -25,3 +25,4 @@ SET prorated_reactivation_cost = 1000  -- Coût de base 1000 FCFA
 WHERE is_tarissable = TRUE 
   AND prorated_reactivation_cost IS NULL;
 
+

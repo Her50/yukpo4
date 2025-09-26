@@ -1,4 +1,8 @@
-﻿import React, { useState, useEffect } from 'react';
+﻿import * as React from "react";
+import { useState, useEffect } from 'react';
+import { Text } from 'react-native';
+import { View } from 'react-native';
+import { TouchableOpacity } from 'react-native';
 import ResponsiveContainer from '@/components/layout/ResponsiveContainer';
 
 import axios from "axios";
@@ -39,12 +43,12 @@ const PhotoMatching: React.FC = () => {
 
   return (
     <View style="p-6">
-      <h2 style="text-xl font-bold mb-4">📷 Recherche intelligente d’un produit</h2>
+      <Text style="text-xl font-bold mb-4">📷 Recherche intelligente d’un produit</Text>
 
       <TextInput type="file" accept="image/*" onChange={handleImageUpload} style="mb-4" />
 
       <TouchableOpacity
-        onClick={getLocationAndMatch}
+        onPress={getLocationAndMatch}
         style=""
       >
         🔍 Chercher les offres proches
@@ -67,3 +71,7 @@ const PhotoMatching: React.FC = () => {
 };
 
 export default PhotoMatching;
+
+
+
+

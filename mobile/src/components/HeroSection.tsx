@@ -1,7 +1,8 @@
 ﻿// @ts-check
-import React from "react";
-import banner from "@/assets/banner.png";
-import { motion } // Animation React Native;
+import * as React from "react";
+import { View } from 'react-native';
+// import banner from "@/assets/banner.png";
+// import { motion } from 'framer-motion'; // Animation React Native
 
 const HeroSection: React.FC = () => {
   return (
@@ -29,4 +30,8 @@ const HeroSection: React.FC = () => {
 };
 
 export default HeroSection;
+
+
+
+
 

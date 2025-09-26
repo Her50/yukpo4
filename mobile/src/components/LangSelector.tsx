@@ -1,4 +1,4 @@
-﻿import React from "react";
+﻿import * as React from "react";
 import { useTranslation } from "react-i18next";
 
 const LangSelector: React.FC = () => {
@@ -25,4 +25,8 @@ const LangSelector: React.FC = () => {
 };
 
 export default LangSelector;
+
+
+
+
 

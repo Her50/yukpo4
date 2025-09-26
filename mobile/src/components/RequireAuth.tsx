@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { ActivityIndicator } from 'react-native-paper';
 import { useAuth } from '../contexts/AuthContext';
@@ -69,4 +69,9 @@ const styles = StyleSheet.create({
 });
 
 export default RequireAuth;
+
+
+
+
+
 

@@ -1,4 +1,8 @@
-﻿import React, { useState, useEffect } from 'react';
+﻿import * as React from "react";
+import { useState, useEffect } from 'react';
+import { Text } from 'react-native';
+import { View } from 'react-native';
+import { TouchableOpacity } from 'react-native';
 import ResponsiveContainer from '@/components/layout/ResponsiveContainer';
 
 ﻿// src/pages/CreationPage.tsx
@@ -34,7 +38,7 @@ export function CreationPage() {
 
   return (
     <View style="">
-      <h1 style="text-2xl font-bold mb-4">Création intelligente</h1>
+      <Text style="text-2xl font-bold mb-4">Création intelligente</Text>
       <form onSubmit={handleSubmit} style="space-y-4">
         <textarea
           name="description"
@@ -67,3 +71,7 @@ export function CreationPage() {
 }
 
 export default CreationPage;
+
+
+
+

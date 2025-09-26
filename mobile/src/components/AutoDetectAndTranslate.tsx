@@ -1,7 +1,6 @@
-﻿import React, { useState } from 'react';
-import axios from 'axios';
-import { Button } from '@/components/ui/buttons';
-import { Textarea } from '@/components/ui/textarea';
+﻿import * as React from 'react';
+import { useState } from 'react';
+import { View, Text, TouchableOpacity, TextInput } from 'react-native';
 
 const AutoDetectAndTranslate = () => {
   const [originalText, setOriginalText] = useState('');
@@ -17,14 +16,14 @@ const AutoDetectAndTranslate = () => {
       const detectRes = await axios.post('/api/detect-lang', {
         text: originalText,
       });
-      const lang = detectRes.data.language;
+      const lang = (detectRes.data as any).language;
       setDetectedLang(lang);
 
       const translateRes = await axios.post('/api/translate', {
         text: originalText,
         target_lang: 'fr', // tu peux adapter ici dynamiquement
       });
-      setTranslatedText(translateRes.data.translated_text);
+      setTranslatedText((translateRes.data as any).translated_text);
     } catch (err) {
       console.error('Erreur IA', err);
       setTranslatedText('Erreur lors de la traduction');
@@ -34,23 +33,25 @@ const AutoDetectAndTranslate = () => {
   };
 
   return (
-    <View style="max-w-2xl mx-auto space-y-4">
-      <Textarea
-        placeholder="Entrer un texte dans n’importe quelle langue..."
+    <View style={{maxWidth: 600, margin: 'auto', gap: 16}}>
+      <TextInput
+        placeholder="Entrer un texte dans n'importe quelle langue..."
         value={originalText}
-        onChange={(e) => setOriginalText(e.target.value)}
+        onChangeText={setOriginalText}
+        multiline
+        style={{borderWidth: 1, borderColor: '#ccc', padding: 10, borderRadius: 4}}
       />
-      <TouchableOpacity onClick={handleProcess} disabled={loading}>
-        {loading ? 'Analyse en cours...' : 'Détecter + Traduire'}
+      <TouchableOpacity onPress={handleProcess} disabled={loading}>
+        <Text>{loading ? 'Analyse en cours...' : 'Détecter + Traduire'}</Text>
       </TouchableOpacity>
 
       {detectedLang && (
-        <p style="text-sm text-gray-600">Langue détectée : <strong>{detectedLang}</strong></Text>
+        <Text style={{fontSize: 14, color: '#666'}}>Langue détectée : {detectedLang}</Text>
       )}
 
       {translatedText && (
-        <View style="p-4 bg-gray-100 dark:bg-gray-800 rounded text-gray-900 dark:text-white shadow">
-          {translatedText}
+        <View style={{padding: 16, backgroundColor: '#f5f5f5', borderRadius: 8}}>
+          <Text>{translatedText}</Text>
         </View>
       )}
     </View>
@@ -58,4 +59,8 @@ const AutoDetectAndTranslate = () => {
 };
 
 export default AutoDetectAndTranslate;
+
+
+
+
 

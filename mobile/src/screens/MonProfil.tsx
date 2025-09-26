@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+﻿import * as React from "react";
+import { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Card, Title, Paragraph, Button, Avatar, TextInput } from 'react-native-paper';
@@ -137,20 +138,20 @@ const MonProfilScreen: React.FC = () => {
 
         {editing && (
           <View style={styles.editActions}>
-            <Button
+            <TouchableOpacity
               mode="outlined"
               onPress={handleCancel}
               style={styles.cancelButton}
             >
               Annuler
-            </Button>
-            <Button
+            </TouchableOpacity>
+            <TouchableOpacity
               mode="contained"
               onPress={handleSave}
               style={styles.saveButton}
             >
               Sauvegarder
-            </Button>
+            </TouchableOpacity>
           </View>
         )}
 
@@ -304,3 +305,6 @@ const styles = StyleSheet.create({
 });
 
 export default MonProfilScreen;
+
+
+

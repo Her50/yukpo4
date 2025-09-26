@@ -1,5 +1,9 @@
 ﻿// src/pages/CataloguePage.tsx
-import React, { useEffect, useState } from "react";
+import * as React from "react";
+import { useEffect, useState } from "react";
+import { Text } from 'react-native';
+import { View } from 'react-native';
+import { TouchableOpacity } from 'react-native';
 import AppLayout from "@/components/layout/AppLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/buttons";
@@ -59,9 +63,9 @@ const CataloguePage: React.FC = () => {
     <AppLayout>
       <section style="py-16">
         <View style="max-w-5xl mx-auto px-4">
-          <h1 style="text-3xl font-bold text-center mb-6">
+          <Text style="text-3xl font-bold text-center mb-6">
             🎯 Catalogue des services disponibles
-          </h1>
+          </Text>
 
           <TextInput
             type="text"
@@ -76,12 +80,12 @@ const CataloguePage: React.FC = () => {
               <Card key={service.id} style="shadow-md border">
                 <CardContent style="p-4 space-y-3">
                   <View style="flex justify-between items-center">
-                    <h3 style="text-lg font-bold">{service.nom}</h3>
+                    <Text style="text-lg font-bold">{service.nom}</Text>
                     <Text style="text-xs px-2 py-1 bg-gray-200 text-gray-800 rounded">
                       {service.categorie}
                     </Text>
                   </View>
-                  <p style="text-sm text-gray-600 dark:text-gray-300">
+                  <Text style="text-sm text-gray-600 dark:text-gray-300">
                     {service.description}
                   </Text>
                   <View style="flex justify-between items-center">
@@ -98,7 +102,7 @@ const CataloguePage: React.FC = () => {
           </View>
 
           {filtered.length === 0 && (
-            <p style="text-center text-gray-500 mt-10">
+            <Text style="text-center text-gray-500 mt-10">
               Aucun service ne correspond à votre recherche.
             </Text>
           )}
@@ -109,4 +113,8 @@ const CataloguePage: React.FC = () => {
 };
 
 export default CataloguePage;
+
+
+
+
 

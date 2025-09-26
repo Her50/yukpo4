@@ -1,4 +1,8 @@
-﻿import React, { useState, useEffect } from 'react';
+﻿import * as React from "react";
+import { useState, useEffect } from 'react';
+import { Text } from 'react-native';
+import { View } from 'react-native';
+import { TouchableOpacity } from 'react-native';
 import { useSearchParams, useNavigation } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { 
@@ -207,14 +211,14 @@ const ResultatsBesoin: React.FC = () => {
       {/* Résultats */}
       <View style="space-y-6">
         <View style="flex items-center justify-between">
-          <h2 style="text-2xl font-bold">
+          <Text style="text-2xl font-bold">
             Résultats de recherche
             {query && (
               <Text style="text-gray-600 font-normal ml-2">
                 pour "{query}"
               </Text>
             )}
-          </h2>
+          </Text>
           <Badge variant="secondary">
             {services.length} service{services.length !== 1 ? 's' : ''} trouvé{services.length !== 1 ? 's' : ''}
           </Badge>
@@ -234,11 +238,11 @@ const ResultatsBesoin: React.FC = () => {
           <Card>
             <CardContent style="pt-6">
               <View style="text-center">
-                <h3 style="text-xl font-semibold mb-2">Aucun service trouvé</h3>
-                <p style="text-gray-600 mb-4">
+                <Text style="text-xl font-semibold mb-2">Aucun service trouvé</Text>
+                <Text style="text-gray-600 mb-4">
                   Essayez de modifier vos critères de recherche ou vos filtres.
                 </Text>
-                <TouchableOpacity onClick={() => navigation.navigate('/recherche-besoin')}>
+                <TouchableOpacity onPress={() => navigation.navigate('/recherche-besoin')}>
                   Nouvelle recherche
                 </TouchableOpacity>
               </View>
@@ -251,7 +255,7 @@ const ResultatsBesoin: React.FC = () => {
             <Card 
               key={service.id} 
               style="cursor-pointer hover:shadow-lg transition-shadow"
-              onClick={() => handleServiceClick(service.id)}
+              onPress={() => handleServiceClick(service.id)}
             >
               <CardHeader>
                 <View style="flex items-start justify-between">
@@ -274,7 +278,7 @@ const ResultatsBesoin: React.FC = () => {
                 </View>
               </CardHeader>
               <CardContent>
-                <p style="text-gray-700 mb-4 line-clamp-3">
+                <Text style="text-gray-700 mb-4 line-clamp-3">
                   {service.description}
                 </Text>
                 
@@ -303,7 +307,7 @@ const ResultatsBesoin: React.FC = () => {
                     <TouchableOpacity
                       size="sm"
                       variant="ghost"
-                      onClick={(e) => {
+                      onPress={(e) => {
                         e.stopPropagation();
                         handleContact(service.prestataire.id, 'message');
                       }}
@@ -313,17 +317,17 @@ const ResultatsBesoin: React.FC = () => {
                     <TouchableOpacity
                       size="sm"
                       variant="ghost"
-                      onClick={(e) => {
+                      onPress={(e) => {
                         e.stopPropagation();
                         handleContact(service.prestataire.id, 'call');
                       }}
                     >
-                      <Phone style="h-4 w-4" />
+                      <Texthone style="h-4 w-4" />
                     </TouchableOpacity>
                     <TouchableOpacity
                       size="sm"
                       variant="ghost"
-                      onClick={(e) => {
+                      onPress={(e) => {
                         e.stopPropagation();
                         handleShare(service);
                       }}
@@ -342,4 +346,8 @@ const ResultatsBesoin: React.FC = () => {
 };
 
 export default ResultatsBesoin;
+
+
+
+
 

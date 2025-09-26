@@ -198,3 +198,4 @@ Les utilisateurs peuvent :
 
 *Rapport généré automatiquement le 25 Septembre 2025*  
 *Tests effectués sur l'environnement Preview avec l'API backend https://yukpomnang.onrender.com*
+

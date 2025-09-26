@@ -1,11 +1,19 @@
 ﻿// 📁 src/components/GroupeForm.tsx
 
-import React, { useEffect, useState } from "react";
-import { motion, AnimatePresence } // Animation React Native;
-import DynamicField from "@/components/intelligence/DynamicFields";
-import { Button } from "@/components/ui/buttons";
-import { ComposantFrontend, dispatchChampsFormulaireIA } from "@/utils/form_constraint_dispatcher";
-import { toast } from "react-toastify";
+import * as React from "react";
+import { useEffect, useState } from "react";
+import { Text, TouchableOpacity, View } from 'react-native';
+// import { motion, AnimatePresence } from 'framer-motion'; // Animation React Native
+// import DynamicField from "@/components/intelligence/DynamicFields";
+// import { Button } from "@/components/ui/buttons";
+// import { ComposantFrontend, dispatchChampsFormulaireIA } from "@/utils/form_constraint_dispatcher";
+// import { toast } from "react-toastify";
+
+interface ComposantFrontend {
+  type: string;
+  label: string;
+  required: boolean;
+}
 
 interface GroupeFormProps {
   groupe: {
@@ -119,10 +127,10 @@ const GroupeForm: React.FC<GroupeFormProps> = ({ groupe, onNext }) => {
       transition={{ duration: 0.4 }}
     >
       <View style="text-center">
-        <h2 style="text-xl sm:text-2xl font-semibold mb-1">
+        <Text style="text-xl sm:text-2xl font-semibold mb-1">
           Étape {groupe.ordre_groupe + 1} — {groupe.groupe_actuel}
-        </h2>
-        <p style="text-sm text-gray-500">Remplissez les informations suivantes</Text>
+        </Text>
+        <Text style="text-sm text-gray-500">Remplissez les informations suivantes</Text>
       </View>
 
       <AnimatePresence>
@@ -141,7 +149,7 @@ const GroupeForm: React.FC<GroupeFormProps> = ({ groupe, onNext }) => {
               onChange={(val) => handleChange(champ.nomChamp, val)}
             />
             {erreurs[champ.nomChamp] && (
-              <p style="text-sm text-red-500 mt-1">{erreurs[champ.nomChamp]}</Text>
+              <Text style="text-sm text-red-500 mt-1">{erreurs[champ.nomChamp]}</Text>
             )}
           </motion.div>
         ))}
@@ -149,7 +157,7 @@ const GroupeForm: React.FC<GroupeFormProps> = ({ groupe, onNext }) => {
 
       <View style="mt-6 flex justify-end">
         <TouchableOpacity
-          onClick={handleSubmit}
+          onPress={handleSubmit}
           style="w-full sm:w-auto px-8 py-2"
           disabled={loading}
         >
@@ -161,4 +169,8 @@ const GroupeForm: React.FC<GroupeFormProps> = ({ groupe, onNext }) => {
 };
 
 export default GroupeForm;
+
+
+
+
 

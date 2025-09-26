@@ -1,32 +1,43 @@
-﻿import React, { useState, useEffect } from 'react';
-import ResponsiveContainer from '@/components/layout/ResponsiveContainer';
-
-import { useSearchParams } from "@react-navigation/native";
+﻿import * as React from "react";
+import { useState, useEffect } from 'react';
+import { Text, View } from 'react-native';
+import { useRoute } from "@react-navigation/native";
 
 const AcquisitionTracker: React.FC = () => {
-  const [params] = useSearchParams();
+  const route = useRoute();
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const source = params.get("src") || "unknown";
-    fetch("/acquisition/track", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ source }),
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.redirect_url) {
-          window.location.href = data.redirect_url;
-        }
-      })
-      .catch((err) => {
+    const source = (route.params as any)?.src || "unknown";
+    
+    // Simuler le tracking pour mobile
+    const trackAcquisition = async () => {
+      try {
+        // Ici vous pouvez implémenter le tracking réel
+        console.log("Tracking acquisition:", source);
+        
+        // Simuler un délai
+        setTimeout(() => {
+          setLoading(false);
+        }, 2000);
+      } catch (err) {
         console.error("Erreur de tracking :", err);
-      });
-  }, [params]);
+        setLoading(false);
+      }
+    };
+
+    trackAcquisition();
+  }, [route.params]);
 
   return (
+    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
       <Text>🔄 Redirection en cours...</Text>
+    </View>
   );
 };
 
 export default AcquisitionTracker;
+
+
+
+

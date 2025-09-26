@@ -1,4 +1,8 @@
-﻿import React, { useState, useEffect } from 'react';
+﻿import * as React from "react";
+import { useState, useEffect } from 'react';
+import { Text } from 'react-native';
+import { View } from 'react-native';
+import { TouchableOpacity } from 'react-native';
 import ResponsiveContainer from '@/components/layout/ResponsiveContainer';
 
 import axios from "axios";
@@ -19,7 +23,7 @@ const TrendExplorer: React.FC = () => {
 
   return (
     <View style="p-6">
-      <h2 style="text-xl font-bold mb-4">📡 Explorer les tendances virales</h2>
+      <Text style="text-xl font-bold mb-4">📡 Explorer les tendances virales</Text>
       <View style="flex items-center gap-2">
         <TextInput
           value={keyword}
@@ -28,7 +32,7 @@ const TrendExplorer: React.FC = () => {
           placeholder="Mot-clé (ex: logement Douala)"
         />
         <TouchableOpacity
-          onClick={fetchTrends}
+          onPress={fetchTrends}
           style=""
         >
           🔍 Lancer l’analyse
@@ -45,3 +49,7 @@ const TrendExplorer: React.FC = () => {
 };
 
 export default TrendExplorer;
+
+
+
+

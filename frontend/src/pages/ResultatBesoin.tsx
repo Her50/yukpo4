@@ -11,6 +11,8 @@ import {
   ArrowLeft,
   CheckCircle,
   Clock,
+  DollarSign,
+  Filter,
   MapPin
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -49,6 +51,15 @@ export const ResultatBesoin: React.FC = () => {
   const [showChatModal, setShowChatModal] = useState(false);
   const [showGalleryModal, setShowGalleryModal] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // États pour le filtre par prix
+  const [priceFilter, setPriceFilter] = useState<{
+    min: number | null;
+    max: number | null;
+    currency: string;
+  }>({ min: null, max: null, currency: 'XAF' });
+  const [sortBy, setSortBy] = useState<'relevance' | 'price_asc' | 'price_desc' | 'distance'>('relevance');
+  const [showPriceFilter, setShowPriceFilter] = useState(false);
 
   // WebSocket et statut
   const userId = user?.id ? parseInt(user.id, 10) : 0;
@@ -193,6 +204,89 @@ export const ResultatBesoin: React.FC = () => {
       Math.sin(dLon / 2) * Math.sin(dLon / 2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return R * c;
+  };
+
+  // Fonction pour extraire le prix d'un service
+  const getServicePrice = (service: Service): number | null => {
+    // Chercher dans les produits
+    const produitsField = service.data?.produits;
+    if (produitsField) {
+      let produits = [];
+      if (Array.isArray(produitsField)) {
+        produits = produitsField;
+      } else if (produitsField.valeur && Array.isArray(produitsField.valeur)) {
+        produits = produitsField.valeur;
+      }
+
+      if (produits.length > 0) {
+        // Retourner le prix du premier produit
+        const firstProduct = produits[0];
+        if (firstProduct.price) {
+          return parseFloat(firstProduct.price);
+        }
+      }
+    }
+
+    // Chercher dans les champs de prix directs
+    const priceField = service.data?.prix || service.data?.price;
+    if (priceField) {
+      if (typeof priceField === 'number') return priceField;
+      if (typeof priceField === 'string') {
+        const parsed = parseFloat(priceField);
+        return isNaN(parsed) ? null : parsed;
+      }
+    }
+
+    return null;
+  };
+
+  // Fonction pour filtrer et trier les services
+  const filterAndSortServices = (servicesList: Service[]): Service[] => {
+    let filteredServices = [...servicesList];
+
+    // Appliquer le filtre par prix
+    if (priceFilter.min !== null || priceFilter.max !== null) {
+      filteredServices = filteredServices.filter(service => {
+        const price = getServicePrice(service);
+        if (price === null) return false;
+
+        if (priceFilter.min !== null && price < priceFilter.min) return false;
+        if (priceFilter.max !== null && price > priceFilter.max) return false;
+
+        return true;
+      });
+    }
+
+    // Appliquer le tri
+    filteredServices.sort((a, b) => {
+      switch (sortBy) {
+        case 'price_asc': {
+          const priceA = getServicePrice(a) || Infinity;
+          const priceB = getServicePrice(b) || Infinity;
+          return priceA - priceB;
+        }
+        case 'price_desc': {
+          const priceA = getServicePrice(a) || 0;
+          const priceB = getServicePrice(b) || 0;
+          return priceB - priceA;
+        }
+        case 'distance': {
+          // Tri par distance (si disponible)
+          const distanceA = a.distance || Infinity;
+          const distanceB = b.distance || Infinity;
+          return distanceA - distanceB;
+        }
+        case 'relevance':
+        default: {
+          // Tri par pertinence (score)
+          const scoreA = a.score || 0;
+          const scoreB = b.score || 0;
+          return scoreB - scoreA;
+        }
+      }
+    });
+
+    return filteredServices;
   };
 
   // Fonction pour trier les résultats par pertinence et proximité
@@ -433,7 +527,19 @@ export const ResultatBesoin: React.FC = () => {
           <div className="flex justify-center items-center gap-8 text-gray-600 mb-4">
             <div className="flex items-center gap-2">
               <CheckCircle className="w-5 h-5 text-green-500" />
-              <span>{services.length} service{services.length > 1 ? 's' : ''} trouvé{services.length > 1 ? 's' : ''}</span>
+              <span>
+                {(() => {
+                  const filteredServices = filterAndSortServices(services);
+                  return `${filteredServices.length} service${filteredServices.length > 1 ? 's' : ''} trouvé${filteredServices.length > 1 ? 's' : ''}`;
+                })()}
+                {(() => {
+                  const filteredServices = filterAndSortServices(services);
+                  if (filteredServices.length !== services.length) {
+                    return ` (${services.length} au total)`;
+                  }
+                  return '';
+                })()}
+              </span>
             </div>
             <div className="flex items-center gap-2">
               <Clock className="w-5 h-5 text-blue-500" />
@@ -441,8 +547,8 @@ export const ResultatBesoin: React.FC = () => {
             </div>
           </div>
 
-          {/* Bouton de géolocalisation */}
-          <div className="flex justify-center">
+          {/* Filtres et tri */}
+          <div className="flex flex-wrap justify-center gap-4 mb-6">
             <Button
               onClick={handleGeolocation}
               variant="outline"
@@ -451,7 +557,93 @@ export const ResultatBesoin: React.FC = () => {
               <MapPin className="w-4 h-4 mr-2" />
               Activer la géolocalisation pour trier par proximité
             </Button>
+
+            <Button
+              onClick={() => setShowPriceFilter(!showPriceFilter)}
+              variant="outline"
+              className="bg-gradient-to-r from-green-500 to-emerald-600 text-white border-0 hover:from-green-600 hover:to-emerald-700"
+            >
+              <DollarSign className="w-4 h-4 mr-2" />
+              Filtre par prix
+            </Button>
+
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as any)}
+              className="px-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="relevance">Trier par pertinence</option>
+              <option value="price_asc">Prix croissant</option>
+              <option value="price_desc">Prix décroissant</option>
+              <option value="distance">Distance</option>
+            </select>
           </div>
+
+          {/* Filtre par prix */}
+          {showPriceFilter && (
+            <div className="bg-white border border-gray-200 rounded-lg p-4 mb-6 max-w-2xl mx-auto">
+              <h3 className="text-lg font-semibold mb-4 flex items-center">
+                <Filter className="w-5 h-5 mr-2" />
+                Filtre par prix
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Prix minimum
+                  </label>
+                  <input
+                    type="number"
+                    value={priceFilter.min || ''}
+                    onChange={(e) => setPriceFilter(prev => ({ ...prev, min: e.target.value ? parseFloat(e.target.value) : null }))}
+                    placeholder="0"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Prix maximum
+                  </label>
+                  <input
+                    type="number"
+                    value={priceFilter.max || ''}
+                    onChange={(e) => setPriceFilter(prev => ({ ...prev, max: e.target.value ? parseFloat(e.target.value) : null }))}
+                    placeholder="100000"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Devise
+                  </label>
+                  <select
+                    value={priceFilter.currency}
+                    onChange={(e) => setPriceFilter(prev => ({ ...prev, currency: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="XAF">FCFA (XAF)</option>
+                    <option value="USD">Dollar US (USD)</option>
+                    <option value="EUR">Euro (EUR)</option>
+                    <option value="GBP">Livre Sterling (GBP)</option>
+                  </select>
+                </div>
+              </div>
+              <div className="flex justify-end gap-2 mt-4">
+                <Button
+                  onClick={() => setPriceFilter({ min: null, max: null, currency: 'XAF' })}
+                  variant="outline"
+                  size="sm"
+                >
+                  Réinitialiser
+                </Button>
+                <Button
+                  onClick={() => setShowPriceFilter(false)}
+                  size="sm"
+                >
+                  Appliquer
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
 
         {error && (
@@ -492,12 +684,14 @@ export const ResultatBesoin: React.FC = () => {
           </Card>
         ) : (
           <div className="flex justify-center">
-            <div className={`grid gap-6 ${services.length === 1 ? 'grid-cols-1 max-w-md' :
-                services.length === 2 ? 'grid-cols-1 md:grid-cols-2 max-w-4xl' :
-                  services.length <= 4 ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 max-w-5xl' :
-                    'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 max-w-7xl'
-              }`}>
-              {Array.isArray(services) && services.map((service) => (
+            <div className={`grid gap-6 ${(() => {
+              const filteredServices = filterAndSortServices(services);
+              return filteredServices.length === 1 ? 'grid-cols-1 max-w-md' :
+                filteredServices.length === 2 ? 'grid-cols-1 md:grid-cols-2 max-w-4xl' :
+                  filteredServices.length <= 4 ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 max-w-5xl' :
+                    'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 max-w-7xl';
+            })()}`}>
+              {Array.isArray(services) && filterAndSortServices(services).map((service) => (
                 <ServiceCard
                   key={service.id}
                   service={service}

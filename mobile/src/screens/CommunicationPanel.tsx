@@ -1,4 +1,8 @@
-﻿import React, { useState, useEffect } from 'react';
+﻿import * as React from "react";
+import { useState, useEffect } from 'react';
+import { Text } from 'react-native';
+import { View } from 'react-native';
+import { TouchableOpacity } from 'react-native';
 import ResponsiveContainer from '@/components/layout/ResponsiveContainer';
 
 
@@ -29,27 +33,27 @@ export default function CommunicationPanel() {
 
   return (
     <View style="">
-      <h1 style="text-3xl font-bold text-center mb-10">
+      <Text style="text-3xl font-bold text-center mb-10">
         📨 Centre Yukpomnang : Export & Partage
-      </h1>
+      </Text>
 
       <View style="">
         <TouchableOpacity
-          onClick={generatePdf}
+          onPress={generatePdf}
           style=""
         >
           📄 Générer un PDF Yukpomnang
         </TouchableOpacity>
 
         <TouchableOpacity
-          onClick={() => sendAction('email')}
+          onPress={() => sendAction('email')}
           style=""
         >
           ✉️ Envoyer par Email
         </TouchableOpacity>
 
         <TouchableOpacity
-          onClick={() => sendAction('whatsapp')}
+          onPress={() => sendAction('whatsapp')}
           style=""
         >
           📲 Partager via WhatsApp
@@ -68,3 +72,7 @@ export default function CommunicationPanel() {
     </View>
   );
 }
+
+
+
+

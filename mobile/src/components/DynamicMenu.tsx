@@ -1,12 +1,14 @@
 ﻿// @ts-check
 import React from 'react';
+import { Text } from 'react-native';
+import { View } from 'react-native';
 import { ROUTES_CONFIG, Role } from "@/routes/routes";
 
 interface Props {
   role: Role;
 }
 
-const DynamicMenu: React.FC<Props> = ({ role }) => {
+const DynamicMenu: React.FC<Textrops> = ({ role }) => {
   const routesByRole = {
     public: ROUTES_CONFIG.filter((r) => r.roles.includes('public')),
     user: ROUTES_CONFIG.filter((r) => r.roles.includes('user')),
@@ -17,7 +19,7 @@ const DynamicMenu: React.FC<Props> = ({ role }) => {
     <View style="space-y-6">
       {role === 'admin' && (
         <section>
-          <h3 style="font-bold text-sm text-gray-500 mb-1">🔐 Admin</h3>
+          <Text style="font-bold text-sm text-gray-500 mb-1">🔐 Admin</Text>
           {routesByRole.admin.map((r) => (
             <a
               href={String(r.path)}
@@ -32,7 +34,7 @@ const DynamicMenu: React.FC<Props> = ({ role }) => {
 
       {role !== 'public' && (
         <section>
-          <h3 style="font-bold text-sm text-gray-500 mb-1">👤 Utilisateur</h3>
+          <Text style="font-bold text-sm text-gray-500 mb-1">👤 Utilisateur</Text>
           {routesByRole.user.map((r) => (
             <a
               href={String(r.path)}
@@ -46,7 +48,7 @@ const DynamicMenu: React.FC<Props> = ({ role }) => {
       )}
 
       <section>
-        <h3 style="font-bold text-sm text-gray-500 mb-1">🌍 Public</h3>
+        <Text style="font-bold text-sm text-gray-500 mb-1">🌍 Public</Text>
         {routesByRole.public.map((r) => (
           <a
             href={String(r.path)}
@@ -62,4 +64,8 @@ const DynamicMenu: React.FC<Props> = ({ role }) => {
 };
 
 export default DynamicMenu;
+
+
+
+
 

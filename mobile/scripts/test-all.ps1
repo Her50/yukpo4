@@ -72,3 +72,4 @@ Write-Host "4. Pour tout faire: .\build-simple.ps1 -Transform -Install -Build" -
 
 Write-Host "`n=== TRANSFORMATION AUTOMATIQUE OPERATIONNELLE ===" -ForegroundColor Green
 
+

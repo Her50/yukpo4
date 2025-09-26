@@ -1,5 +1,6 @@
 ﻿import { Ionicons } from '@expo/vector-icons';
-import React, { useState } from 'react';
+import * as React from 'react';
+import { useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Button, Card, Paragraph, Searchbar, Title } from 'react-native-paper';
 import { theme } from '../theme/theme';
@@ -167,26 +168,24 @@ const ServicesScreen: React.FC = () => {
         </View>
 
               <View style={styles.serviceActions}>
-                <Button
-                  mode="outlined"
+                <TouchableOpacity
                   onPress={() => {
                     // Navigation vers les détails du service
                     console.log('Voir détails:', service.id);
                   }}
                   style={styles.actionButton}
                 >
-                  Voir détails
-                </Button>
-                <Button
-                  mode="contained"
+                  <Text>Voir détails</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
                   onPress={() => {
                     // Contacter le prestataire
                     console.log('Contacter:', service.id);
                   }}
                   style={styles.contactButton}
                 >
-                  Contacter
-                </Button>
+                  <Text>Contacter</Text>
+                </TouchableOpacity>
                 </View>
             </Card.Content>
           </Card>
@@ -202,16 +201,15 @@ const ServicesScreen: React.FC = () => {
             <Paragraph style={styles.ctaDescription}>
               Rejoignez notre plateforme et commencez à proposer vos services dès aujourd'hui.
             </Paragraph>
-            <Button
-              mode="contained"
+            <TouchableOpacity
               onPress={() => {
                 // Navigation vers la création de service
                 console.log('Créer un service');
               }}
               style={styles.ctaButton}
             >
-              Créer un service
-            </Button>
+              <Text>Créer un service</Text>
+            </TouchableOpacity>
           </Card.Content>
         </Card>
         </View>
@@ -407,3 +405,6 @@ const styles = StyleSheet.create({
 });
 
 export default ServicesScreen;
+
+
+

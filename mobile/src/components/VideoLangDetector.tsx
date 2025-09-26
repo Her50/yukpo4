@@ -1,4 +1,7 @@
-﻿import React, { useState } from 'react';
+﻿import * as React from "react";
+import { useState } from 'react';
+import { Text } from 'react-native';
+import { TouchableOpacity } from 'react-native';
 import axios from 'axios';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -42,7 +45,7 @@ const VideoLangDetector = () => {
 
   return (
     <Card style="p-6 space-y-4">
-      <h2 style="text-lg font-semibold">🎥 Analyse de la langue et redirection automatique</h2>
+      <Text style="text-lg font-semibold">🎥 Analyse de la langue et redirection automatique</Text>
 
       <TextInput
         type="file"
@@ -50,12 +53,12 @@ const VideoLangDetector = () => {
         onChange={(e) => setVideoFile(e.target.files?.[0] || null)}
       />
 
-      <TouchableOpacity onClick={handleSubmit} disabled={loading || !videoFile}>
+      <TouchableOpacity onPress={handleSubmit} disabled={loading || !videoFile}>
         {loading ? 'Analyse en cours...' : 'Analyser et rediriger'}
       </TouchableOpacity>
 
       {result && (
-        <p style="text-md mt-2">
+        <Text style="text-md mt-2">
           🌍 Langue : <strong>{result.language}</strong> | 📄 Texte : {result.transcription}
         </Text>
       )}
@@ -64,4 +67,8 @@ const VideoLangDetector = () => {
 };
 
 export default VideoLangDetector;
+
+
+
+
 

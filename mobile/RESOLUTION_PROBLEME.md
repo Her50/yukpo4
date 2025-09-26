@@ -140,3 +140,4 @@ L'application mobile Yukpo fonctionne maintenant correctement. Le problème de c
 *Résolution effectuée le 25 Septembre 2025*  
 *Build ID de test : ee4add62-8144-4d60-99dc-e68f2a0a39e8*  
 *Statut : ✅ Problème résolu*
+

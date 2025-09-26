@@ -39,6 +39,7 @@ use crate::routes::{
     history_routes::history_routes,
     payment_routes::payment_routes,
     prestataire_routes::prestataire_routes,
+    webhook_routes::webhook_routes,
 };
 #[cfg(feature = "image_search")]
 use crate::routes::image_search_routes::image_search_routes;
@@ -105,7 +106,9 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
     // History routes (prot?g?es par JWT dans le module history_routes.rs)
     let history = history_routes();
     // Payment routes (prot?g?es par JWT dans le module payment_routes.rs)
-    let payments = payment_routes(state.clone());
+    let payments = payment_routes();
+    // Webhook routes (public, pour recevoir les notifications des providers)
+    let webhooks = webhook_routes();
     // Prestataire routes (prot?g?es par JWT)
     let prestataires = prestataire_routes(state.clone());
     // Routes de recherche d'images
@@ -129,6 +132,7 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .merge(echanges)
         .merge(history)
         .merge(payments)
+        .merge(webhooks)
         .merge(prestataires)
         .merge(image_search)
         .merge(websocket)

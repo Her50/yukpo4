@@ -1,6 +1,7 @@
-import { Ionicons } from '@expo/vector-icons';
+﻿import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import React, { useEffect, useState } from 'react';
+import * as React from 'react';
+import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -10,7 +11,9 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { Button, Card, TextInput } from 'react-native-paper';
+import { Card, TextInput } from 'react-native-paper';
+import GPSSelector from '../components/GPSSelector';
+import ProductManager from '../components/ProductManager';
 import { useAuth } from '../contexts/AuthContext';
 import { useLocation } from '../contexts/LocationContext';
 import { apiPost } from '../services/api';
@@ -49,6 +52,10 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
   const [composants, setComposants] = useState<DynamicField[]>([]);
   const [loading, setLoading] = useState(false);
   const [valeursFormulaire, setValeursFormulaire] = useState<Record<string, any>>({});
+  const [showGPSModal, setShowGPSModal] = useState(false);
+  const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [showProductManager, setShowProductManager] = useState(false);
+  const [products, setProducts] = useState<any[]>([]);
   const [mediaFiles, setMediaFiles] = useState({
     images: mediaData.base64_image || [],
     audios: mediaData.audio_base64 || [],
@@ -109,7 +116,32 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       const gpsString = `${(location as any).coords.latitude},${(location as any).coords.longitude}`;
       setGps(gpsString);
     }
-  }, [location]);
+
+    // Traiter les données GPS reçues depuis HomeScreen
+    if (gpsData && Object.keys(gpsData).length > 0) {
+      console.log('[FormulaireYukpoIntelligent] Données GPS reçues:', gpsData);
+
+      if (gpsData.gps_fixe) {
+        try {
+          // Parser les coordonnées GPS
+          const coords = gpsData.gps_fixe.split(',');
+          if (coords.length === 2) {
+            const lat = parseFloat(coords[0]);
+            const lng = parseFloat(coords[1]);
+            if (!isNaN(lat) && !isNaN(lng)) {
+              setSelectedLocation({ lat, lng });
+              setValeursFormulaire(prev => ({
+                ...prev,
+                gps_fixe: gpsData.gps_fixe
+              }));
+            }
+          }
+        } catch (error) {
+          console.warn('[FormulaireYukpoIntelligent] Erreur parsing GPS:', error);
+        }
+      }
+    }
+  }, [location, gpsData]);
 
   // Générer le formulaire dynamique
   const genererFormulaire = async () => {
@@ -161,7 +193,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
       // Navigation vers le service créé
       setTimeout(() => {
-        navigation.navigate('ServiceDetail' as never, { serviceId: service_id } as never);
+        (navigation as any).navigate('ServiceDetail', { serviceId: service_id });
       }, 2000);
     } catch (error) {
       console.error('Erreur soumission:', error);
@@ -274,15 +306,13 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
             </Card.Content>
           </Card>
 
-          <Button
-            mode="contained"
+          <TouchableOpacity
             onPress={genererFormulaire}
             style={styles.generateButton}
-            labelStyle={styles.buttonLabel}
           >
             <Ionicons name="sparkles" size={20} color="white" style={styles.buttonIcon} />
-            Générer le formulaire
-          </Button>
+            <Text style={styles.buttonLabel}>Générer le formulaire</Text>
+          </TouchableOpacity>
         </View>
       )}
 
@@ -293,27 +323,135 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
           {composants.map(renderField)}
 
+          {/* Section GPS */}
+          <Card style={styles.gpsCard}>
+            <Card.Content>
+              <Text style={styles.gpsTitle}>🎯 Position GPS (optionnel)</Text>
+              <Text style={styles.gpsDescription}>
+                Définissez une position précise pour votre service
+              </Text>
+
+              <TouchableOpacity
+                style={styles.gpsButton}
+                onPress={() => setShowGPSModal(true)}
+              >
+                <Ionicons
+                  name={selectedLocation ? "location" : "location-outline"}
+                  size={20}
+                  color={selectedLocation ? theme.colors.primary : theme.colors.textSecondary}
+                />
+                <Text style={[
+                  styles.gpsButtonText,
+                  selectedLocation && styles.gpsButtonTextActive
+                ]}>
+                  {selectedLocation ? 'Position sélectionnée' : 'Sélectionner une position'}
+                </Text>
+              </TouchableOpacity>
+
+              {selectedLocation && (
+                <View style={styles.locationInfo}>
+                  <Text style={styles.locationText}>
+                    📍 {selectedLocation.lat.toFixed(6)}, {selectedLocation.lng.toFixed(6)}
+                  </Text>
+                  <TouchableOpacity
+                    onPress={() => {
+                      setSelectedLocation(null);
+                      setValeursFormulaire(prev => ({
+                        ...prev,
+                        gps_fixe: undefined
+                      }));
+                    }}
+                    style={styles.clearLocationButton}
+                  >
+                    <Ionicons name="close-circle" size={16} color="#F44336" />
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              {gps && !selectedLocation && (
+                <View style={styles.currentLocationInfo}>
+                  <Text style={styles.currentLocationText}>
+                    📍 Position actuelle: {gps}
+                  </Text>
+                </View>
+              )}
+            </Card.Content>
+          </Card>
+
+          {/* Section Produits */}
+          <Card style={styles.productsCard}>
+            <Card.Content>
+              <View style={styles.productsHeader}>
+                <View>
+                  <Text style={styles.productsTitle}>🛍️ Produits</Text>
+                  <Text style={styles.productsDescription}>
+                    Gérez les produits de votre service
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  style={styles.productsButton}
+                  onPress={() => setShowProductManager(true)}
+                >
+                  <Ionicons name="cube-outline" size={20} color={theme.colors.primary} />
+                  <Text style={styles.productsButtonText}>
+                    {products.length > 0 ? `${products.length} produit(s)` : 'Ajouter des produits'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              {products.length > 0 && (
+                <View style={styles.productsList}>
+                  {products.map((product, index) => (
+                    <View key={product.id || index} style={styles.productItem}>
+                      <View style={styles.productInfo}>
+                        <Text style={styles.productName}>{product.name}</Text>
+                        <Text style={styles.productPrice}>
+                          {product.price} {product.currency}
+                        </Text>
+                      </View>
+                      <View style={styles.productMedia}>
+                        <Text style={styles.productMediaText}>
+                          📷 {product.images?.length || 0} • 🎥 {product.videos?.length || 0}
+                        </Text>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              )}
+
+              {products.length === 0 && (
+                <View style={styles.noProductsContainer}>
+                  <Ionicons name="cube-outline" size={32} color="#9E9E9E" />
+                  <Text style={styles.noProductsText}>
+                    Aucun produit ajouté
+                  </Text>
+                  <Text style={styles.noProductsDescription}>
+                    Ajoutez des produits pour enrichir votre service
+                  </Text>
+                </View>
+              )}
+            </Card.Content>
+          </Card>
+
           <View style={styles.buttonContainer}>
-            <Button
-              mode="outlined"
+            <TouchableOpacity
               onPress={() => setActiveStep(1)}
               style={styles.backButton}
             >
               <Ionicons name="arrow-back" size={20} color={theme.colors.primary} style={styles.buttonIcon} />
-              Retour
-            </Button>
+              <Text>Retour</Text>
+            </TouchableOpacity>
 
-            <Button
-              mode="contained"
+            <TouchableOpacity
               onPress={soumettreFormulaire}
-              loading={loading}
               disabled={loading}
               style={styles.submitButton}
-              labelStyle={styles.buttonLabel}
             >
               <Ionicons name="checkmark" size={20} color="white" style={styles.buttonIcon} />
-              {mode === 'edit' ? 'Mettre à jour' : 'Créer le service'}
-            </Button>
+              <Text style={styles.buttonLabel}>
+                {mode === 'edit' ? 'Mettre à jour' : 'Créer le service'}
+              </Text>
+            </TouchableOpacity>
           </View>
         </View>
       )}
@@ -332,6 +470,33 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           </View>
         </View>
       )}
+
+      <GPSSelector
+        visible={showGPSModal}
+        onClose={() => setShowGPSModal(false)}
+        onSelect={(coordinates) => {
+          setSelectedLocation(coordinates);
+          setValeursFormulaire(prev => ({
+            ...prev,
+            gps_fixe: `${coordinates.lat},${coordinates.lng}`
+          }));
+          setShowGPSModal(false);
+        }}
+        currentLocation={selectedLocation}
+      />
+
+      <ProductManager
+        visible={showProductManager}
+        onClose={() => setShowProductManager(false)}
+        onSave={(savedProducts) => {
+          setProducts(savedProducts);
+          setValeursFormulaire(prev => ({
+            ...prev,
+            produits: savedProducts
+          }));
+        }}
+        initialProducts={products}
+      />
     </ScrollView>
   );
 };
@@ -480,9 +645,172 @@ const styles = StyleSheet.create({
     color: theme.colors.textSecondary,
     fontStyle: 'italic',
   },
+  gpsCard: {
+    marginVertical: 16,
+    elevation: 2,
+  },
+  gpsTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: theme.colors.text,
+    marginBottom: 4,
+  },
+  gpsDescription: {
+    fontSize: 14,
+    color: theme.colors.textSecondary,
+    marginBottom: 16,
+  },
+  gpsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#e9ecef',
+    marginBottom: 12,
+  },
+  gpsButtonText: {
+    marginLeft: 8,
+    fontSize: 14,
+    color: theme.colors.textSecondary,
+  },
+  gpsButtonTextActive: {
+    color: theme.colors.primary,
+    fontWeight: '600',
+  },
+  locationInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: '#e8f5e8',
+    borderRadius: 6,
+    borderLeftWidth: 3,
+    borderLeftColor: theme.colors.primary,
+  },
+  locationText: {
+    fontSize: 12,
+    color: theme.colors.text,
+    fontFamily: 'monospace',
+    flex: 1,
+  },
+  clearLocationButton: {
+    padding: 4,
+  },
+  currentLocationInfo: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: '#f0f8ff',
+    borderRadius: 6,
+    borderLeftWidth: 3,
+    borderLeftColor: '#2196F3',
+  },
+  currentLocationText: {
+    fontSize: 12,
+    color: theme.colors.text,
+    fontFamily: 'monospace',
+  },
+  productsCard: {
+    marginVertical: 16,
+    elevation: 2,
+  },
+  productsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  productsTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: theme.colors.text,
+    marginBottom: 4,
+  },
+  productsDescription: {
+    fontSize: 14,
+    color: theme.colors.textSecondary,
+  },
+  productsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: '#f0f8ff',
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: theme.colors.primary,
+  },
+  productsButtonText: {
+    fontSize: 14,
+    color: theme.colors.primary,
+    fontWeight: '600',
+    marginLeft: 6,
+  },
+  productsList: {
+    gap: 8,
+  },
+  productItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 6,
+    borderLeftWidth: 3,
+    borderLeftColor: theme.colors.primary,
+  },
+  productInfo: {
+    flex: 1,
+  },
+  productName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: theme.colors.text,
+    marginBottom: 2,
+  },
+  productPrice: {
+    fontSize: 12,
+    color: theme.colors.primary,
+    fontWeight: '500',
+  },
+  productMedia: {
+    marginLeft: 8,
+  },
+  productMediaText: {
+    fontSize: 12,
+    color: theme.colors.textSecondary,
+  },
+  noProductsContainer: {
+    alignItems: 'center',
+    paddingVertical: 24,
+  },
+  noProductsText: {
+    fontSize: 16,
+    color: theme.colors.textSecondary,
+    marginTop: 12,
+    marginBottom: 4,
+  },
+  noProductsDescription: {
+    fontSize: 14,
+    color: theme.colors.textSecondary,
+    textAlign: 'center',
+  },
 });
 
 export default FormulaireYukpoIntelligentScreen;
+
+
+
+
+
+
+
+
+
 
 
 

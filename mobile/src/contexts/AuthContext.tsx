@@ -1,7 +1,9 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+﻿import AsyncStorage from '@react-native-async-storage/async-storage';
 import { jwtDecode } from 'jwt-decode';
-import React, { createContext, ReactNode, useContext, useEffect, useState } from 'react';
+import * as React from 'react';
+import { createContext, ReactNode, useContext, useEffect, useState } from 'react';
 import { authApi } from '../services/api';
+import { APP_CONFIG, logAuth, createTimeout } from '../config/appConfig';
 
 // Fonctions de gestion du token
 const getAuthToken = async (): Promise<string | null> => {
@@ -74,7 +76,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  console.log('[AuthProvider] État actuel:', { user: !!user, loading, userId: user?.id });
+  logAuth('État actuel', { user: !!user, loading, userId: user?.id });
 
   // Vérifier l'authentification au démarrage
   useEffect(() => {
@@ -83,34 +85,56 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const checkAuthStatus = async () => {
     try {
-      const token = await AsyncStorage.getItem('auth_token');
-      console.log('[AuthContext] Token trouvé:', !!token);
+      // Timeout de sécurité pour éviter que loading reste à true
+      const timeoutPromise = createTimeout(
+        APP_CONFIG.AUTH.FORCE_LOADING_END_DELAY,
+        'Vérification d\'authentification'
+      );
 
-      if (token) {
-        // Vérifier la validité du token
-        console.log('[AuthContext] Vérification du token...');
-        const response = await authApi.verifyToken();
-        console.log('[AuthContext] Réponse verifyToken:', response);
+      const authCheckPromise = async () => {
+        const token = await AsyncStorage.getItem('auth_token');
+        logAuth('Token trouvé', !!token);
 
-        if (response.data) {
-          console.log('[AuthContext] Utilisateur connecté:', response.data);
-          setUser(response.data as User);
+        if (token) {
+          // Décoder le JWT directement comme dans le frontend
+          logAuth('Décodage JWT direct...');
+          const decoded = jwtDecode<DecodedToken>(token);
+          logAuth('Token décodé', decoded);
+
+          if (decoded.exp * 1000 > Date.now()) {
+            const userData: User = {
+              id: String(decoded.sub),
+              email: decoded.email,
+              role: decoded.role,
+              name: decoded.name || '',
+              credits: decoded.tokens_balance ?? 0,
+              phone: '',
+              photo: '',
+              token: token
+            };
+
+            logAuth('Utilisateur connecté depuis JWT', userData);
+            setUser(userData);
+          } else {
+            logAuth('Token expiré, déconnexion...');
+            await authApi.logout();
+            setUser(null);
+          }
         } else {
-          console.log('[AuthContext] Token invalide, déconnexion...');
-          // Token invalide, supprimer
-          await authApi.logout();
+          logAuth('Aucun token trouvé');
           setUser(null);
         }
-      } else {
-        console.log('[AuthContext] Aucun token trouvé');
-        setUser(null);
-      }
+      };
+
+      // Exécuter avec timeout
+      await Promise.race([authCheckPromise(), timeoutPromise]);
     } catch (error) {
-      console.error('[AuthContext] Erreur vérification auth:', error);
+      logAuth('Erreur vérification auth', error);
       await authApi.logout();
       setUser(null);
     } finally {
       setLoading(false);
+      logAuth('Vérification auth terminée, loading = false');
     }
   };
 
@@ -120,11 +144,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const response = await authApi.login(email, password);
 
       if (response.data?.token) {
-        console.log('[AuthContext] Token reçu, décodage JWT...');
+        logAuth('Token reçu, décodage JWT...');
 
         // Décoder le JWT comme dans le frontend
         const decoded = jwtDecode<DecodedToken>(response.data.token);
-        console.log('[AuthContext] Token décodé:', decoded);
+        logAuth('Token décodé', decoded);
 
         if (decoded.exp * 1000 > Date.now()) {
           // Sauvegarder le token
@@ -141,18 +165,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             token: response.data.token
           };
 
-          console.log('[AuthContext] Utilisateur créé depuis JWT:', userData);
+          logAuth('Utilisateur créé depuis JWT', userData);
           setUser(userData);
-          console.log('[AuthContext] Utilisateur défini dans le contexte');
-
-          // Attendre un cycle de rendu avant de mettre loading à false
-          await new Promise(resolve => setTimeout(resolve, 100));
+          logAuth('Utilisateur défini dans le contexte');
         } else {
-          console.error('[AuthContext] Token expiré');
+          logAuth('Token expiré');
           throw new Error('Token expiré');
         }
       } else {
-        console.error('[AuthContext] Aucun token dans la réponse:', response);
+        logAuth('Aucun token dans la réponse', response);
         throw new Error('Token non reçu lors de la connexion');
       }
     } catch (error) {
@@ -202,9 +223,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
             setUser(newUserData);
             console.log('[AuthContext] Inscription réussie avec token direct, utilisateur défini:', newUserData);
-
-            // Attendre un cycle de rendu avant de mettre loading à false
-            await new Promise(resolve => setTimeout(resolve, 100));
             return { success: true, data: newUserData };
           } else {
             throw new Error('Token expiré');
@@ -245,7 +263,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const token = await getAuthToken();
       if (token) {
         const decoded = jwtDecode<DecodedToken>(token);
-        
+
         if (decoded.exp * 1000 > Date.now()) {
           const userData: User = {
             id: String(decoded.sub),
@@ -257,7 +275,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             photo: '',
             token: token
           };
-          
+
           setUser(userData);
           console.log('[AuthContext] Utilisateur actualisé depuis JWT:', userData);
         } else {
@@ -306,10 +324,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         await removeAuthToken();
       } finally {
         setLoading(false);
+        console.log('[AuthContext] Initialisation terminée, loading = false');
       }
     };
 
-    initializeUser();
+    // Timeout de sécurité pour éviter que loading reste à true
+    const timeoutId = setTimeout(() => {
+      console.log('[AuthContext] Timeout de sécurité - forcer loading = false');
+      setLoading(false);
+    }, 5000);
+
+    initializeUser().finally(() => {
+      clearTimeout(timeoutId);
+    });
   }, []);
 
   const value: AuthContextType = {
@@ -336,6 +363,9 @@ export const useAuth = (): AuthContextType => {
   }
   return context;
 };
+
+
+
 
 
 

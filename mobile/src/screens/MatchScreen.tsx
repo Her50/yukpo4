@@ -1,5 +1,9 @@
 ﻿// @ts-check
-import React, { useState } from "react";
+import * as React from "react";
+import { useState } from "react";
+import { Text } from 'react-native';
+import { View } from 'react-native';
+import { TouchableOpacity } from 'react-native';
 import AppLayout from "@/components/layout/AppLayout";
 import { useUser } from "@/hooks/useUser";
 
@@ -16,10 +20,10 @@ const MatchPage: React.FC = () => {
   return (
     <AppLayout>
       <section style="max-w-3xl mx-auto py-16 px-4 text-center font-sans">
-        <h1 style="text-4xl font-bold text-gray-900 dark:text-white mb-6">
+        <Text style="text-4xl font-bold text-gray-900 dark:text-white mb-6">
           🎯 Rechercher un service intelligent
-        </h1>
-        <p style="text-gray-600 dark:text-gray-300 mb-8">
+        </Text>
+        <Text style="text-gray-600 dark:text-gray-300 mb-8">
           {user
             ? `Bienvenue ${user.name || ""}, décris ton besoin en quelques mots.`
             : "Exprime ton besoin, l’IA Yukpo se charge du reste."}
@@ -34,7 +38,7 @@ const MatchPage: React.FC = () => {
             style="flex-1 px-4 py-3 border rounded shadow-sm w-full dark:bg-gray-800 dark:text-white"
           />
           <TouchableOpacity
-            onClick={handleSearch}
+            onPress={handleSearch}
             style="px-6 py-3 bg-primary text-white font-semibold rounded hover:bg-opacity-90 transition"
           >
             Trouver
@@ -52,4 +56,8 @@ const MatchPage: React.FC = () => {
 };
 
 export default MatchPage;
+
+
+
+
 

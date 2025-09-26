@@ -1,13 +1,17 @@
-﻿import { Ionicons } from '@expo/vector-icons';
+﻿import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
-import React, { useState } from 'react';
+import * as React from 'react';
+import { useState } from 'react';
 import { Alert, Dimensions, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { Button, Card, Paragraph, Title } from 'react-native-paper';
+import { Card, Paragraph, Title } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../contexts/AuthContext';
 // import { useGlobalIAStats } from '../components/intelligence/GlobalIAStats';
 import ChatHistoryModal from '../components/ChatHistoryModal';
+import GPSSelector from '../components/GPSSelector';
+import LanguageSelector from '../components/LanguageSelector';
 import NotificationHistoryModal from '../components/NotificationHistoryModal';
+import TranslatedText from '../components/TranslatedText';
 import { theme } from '../theme/theme';
 
 const HomeScreen: React.FC = () => {
@@ -21,8 +25,33 @@ const HomeScreen: React.FC = () => {
     const [showCreateServiceAlert, setShowCreateServiceAlert] = useState(false);
     const [showNotificationModal, setShowNotificationModal] = useState(false);
     const [showChatModal, setShowChatModal] = useState(false);
+    const [showGPSModal, setShowGPSModal] = useState(false);
+    const [showLanguageModal, setShowLanguageModal] = useState(false);
+    const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: number } | null>(null);
+    const [currentGPS, setCurrentGPS] = useState<string | null>(null);
 
     const { width, height } = Dimensions.get('window');
+
+    // Détection automatique GPS au chargement (comme dans le frontend)
+    React.useEffect(() => {
+        if (typeof navigator !== 'undefined' && (navigator as any).geolocation) {
+            (navigator as any).geolocation.getCurrentPosition(
+                (position: any) => {
+                    const coords = `${position.coords.latitude},${position.coords.longitude}`;
+                    setCurrentGPS(coords);
+                    console.log('[HomeScreen] Position GPS automatique:', coords);
+                },
+                (error: any) => {
+                    console.warn('[HomeScreen] Impossible d\'obtenir la position GPS:', error);
+                },
+                {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 300000 // 5 minutes de cache
+                }
+            );
+        }
+    }, []);
 
     const handleSubmit = async () => {
         if (!inputText.trim()) {
@@ -60,9 +89,13 @@ const HomeScreen: React.FC = () => {
             await new Promise(resolve => setTimeout(resolve, 2000));
 
             // Rediriger vers les résultats de recherche
-            navigation.navigate('ResultatBesoin' as never, {
+            (navigation as any).navigate('ResultatBesoin', {
                 searchQuery: inputText,
-                type: 'recherche_besoin'
+                type: 'recherche_besoin',
+                gpsData: selectedLocation ? {
+                    gps_fixe: `${selectedLocation.lat},${selectedLocation.lng}`,
+                    gps_fixe_coords: JSON.stringify([selectedLocation])
+                } : undefined
             });
         } catch (err: any) {
             console.error('Erreur lors de la recherche:', err);
@@ -76,9 +109,13 @@ const HomeScreen: React.FC = () => {
             await new Promise(resolve => setTimeout(resolve, 2000));
 
             // Rediriger vers le formulaire de création
-            navigation.navigate('FormulaireYukpoIntelligent' as never, {
+            (navigation as any).navigate('FormulaireYukpoIntelligent', {
                 inputText: inputText,
-                type: 'creation_service'
+                type: 'creation_service',
+                gpsData: selectedLocation ? {
+                    gps_fixe: `${selectedLocation.lat},${selectedLocation.lng}`,
+                    gps_fixe_coords: JSON.stringify([selectedLocation])
+                } : undefined
             });
         } catch (error) {
             console.error('Erreur lors de la création:', error);
@@ -108,7 +145,7 @@ const HomeScreen: React.FC = () => {
                 <View style={styles.header}>
                     <View style={styles.headerLeft}>
                         <Title style={styles.welcomeText}>
-                            Bonjour {user?.name || 'Utilisateur'} 👋
+                            <TranslatedText text={`Bonjour ${user?.name || 'Utilisateur'} 👋`} />
                         </Title>
                     </View>
                     <View style={styles.headerRight}>
@@ -135,8 +172,7 @@ const HomeScreen: React.FC = () => {
                             <YukpoBrand />
                         </Title>
                         <Paragraph style={styles.subtitle}>
-                            Créez ou trouvez un service en un instant.
-                            {'\n'}Une description, une image, un audio ou un fichier suffit.
+                            <TranslatedText text="Créez ou trouvez un service en un instant.{'\n'}Une description, une image, un audio ou un fichier suffit." />
                         </Paragraph>
                     </View>
 
@@ -150,7 +186,7 @@ const HomeScreen: React.FC = () => {
                                 {isCreateService && <Ionicons name="checkmark" size={16} color="white" />}
                             </View>
                             <Text style={styles.checkboxLabel}>
-                                Je souhaite créer un service/prestation
+                                <TranslatedText text="Je souhaite créer un service/prestation" />
                             </Text>
                         </TouchableOpacity>
                     </View>
@@ -167,22 +203,54 @@ const HomeScreen: React.FC = () => {
                                 numberOfLines={4}
                                 textAlignVertical="top"
                             />
+
+                            {/* Sélection GPS */}
+                            <View style={styles.gpsContainer}>
+                                <TouchableOpacity
+                                    style={styles.gpsButton}
+                                    onPress={() => setShowGPSModal(true)}
+                                >
+                                    <Ionicons
+                                        name={selectedLocation ? "location" : "location-outline"}
+                                        size={20}
+                                        color={selectedLocation ? theme.colors.primary : theme.colors.textSecondary}
+                                    />
+                                    <Text style={[
+                                        styles.gpsButtonText,
+                                        selectedLocation && styles.gpsButtonTextActive
+                                    ]}>
+                                        {selectedLocation ? 'Position sélectionnée' : 'Sélectionner une position'}
+                                    </Text>
+                                </TouchableOpacity>
+
+                                {selectedLocation && (
+                                    <View style={styles.locationInfo}>
+                                        <Text style={styles.locationText}>
+                                            📍 {selectedLocation.lat.toFixed(6)}, {selectedLocation.lng.toFixed(6)}
+                                        </Text>
+                                        <TouchableOpacity
+                                            onPress={() => setSelectedLocation(null)}
+                                            style={styles.clearLocationButton}
+                                        >
+                                            <Ionicons name="close-circle" size={16} color="#F44336" />
+                                        </TouchableOpacity>
+                                    </View>
+                                )}
+                            </View>
                         </Card.Content>
                     </Card>
 
                     {/* Bouton d'envoi moderne et responsive */}
                     <View style={[styles.submitContainer, { width: width - 32 }]}>
-                        <Button
-                            mode="contained"
+                        <TouchableOpacity
                             onPress={handleSubmit}
-                            loading={loading}
                             disabled={loading || !inputText.trim()}
                             style={[styles.submitButton, { width: width - 64 }]}
-                            contentStyle={styles.submitButtonContent}
-                            labelStyle={styles.submitButtonLabel}
                         >
-                            {loading ? 'Traitement...' : (isCreateService ? 'Créer un service' : 'Rechercher')}
-                        </Button>
+                            <Text style={styles.submitButtonLabel}>
+                                {loading ? 'Traitement...' : (isCreateService ? 'Créer un service' : 'Rechercher')}
+                            </Text>
+                        </TouchableOpacity>
                     </View>
 
                     {/* Indicateurs visuels */}
@@ -201,42 +269,6 @@ const HomeScreen: React.FC = () => {
                         </View>
                     </View>
 
-                    {/* Actions rapides pour utilisateurs connectés */}
-                    {user && (
-                        <View style={styles.quickActions}>
-                            <Title style={styles.quickActionsTitle}>Actions rapides</Title>
-                            <View style={styles.actionsGrid}>
-                                <TouchableOpacity
-                                    style={styles.actionCard}
-                                    onPress={() => navigation.navigate('MyServices' as never)}
-                                >
-                                    <Ionicons name="briefcase" size={32} color={theme.colors.primary} />
-                                    <Text style={styles.actionText}>Mes Services</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity
-                                    style={styles.actionCard}
-                                    onPress={() => navigation.navigate('Profile' as never)}
-                                >
-                                    <Ionicons name="person" size={32} color={theme.colors.primary} />
-                                    <Text style={styles.actionText}>Mon Profil</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity
-                                    style={styles.actionCard}
-                                    onPress={() => navigation.navigate('SoldeDetail' as never)}
-                                >
-                                    <Ionicons name="time" size={32} color={theme.colors.primary} />
-                                    <Text style={styles.actionText}>Historique</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity
-                                    style={styles.actionCard}
-                                    onPress={() => navigation.navigate('RechargeTokens' as never)}
-                                >
-                                    <Ionicons name="card" size={32} color={theme.colors.primary} />
-                                    <Text style={styles.actionText}>Recharger</Text>
-                                </TouchableOpacity>
-                            </View>
-                        </View>
-                    )}
                 </View>
             </ScrollView>
 
@@ -251,27 +283,78 @@ const HomeScreen: React.FC = () => {
                             Êtes-vous sûr de vouloir créer un service/prestation sur la plateforme ?
                         </Paragraph>
                         <View style={styles.alertButtons}>
-                            <Button
-                                mode="outlined"
+                            <TouchableOpacity
                                 onPress={cancelCreateService}
                                 disabled={loading}
                                 style={styles.alertButton}
                             >
-                                Non, rechercher
-                            </Button>
-                            <Button
-                                mode="contained"
+                                <Text>Non, rechercher</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
                                 onPress={confirmCreateService}
-                                loading={loading}
                                 disabled={loading}
                                 style={[styles.alertButton, styles.alertButtonPrimary]}
                             >
-                                Oui, créer un service
-                            </Button>
+                                <Text>Oui, créer un service</Text>
+                            </TouchableOpacity>
                         </View>
                     </View>
                 </View>
             )}
+
+            {/* Menu d'accès rapide */}
+            <View style={styles.quickAccessSection}>
+                <Card style={styles.quickAccessCard}>
+                    <Card.Content>
+                        <View style={styles.quickAccessHeader}>
+                            <Title style={styles.quickAccessTitle}>
+                                <TranslatedText text="Accès rapide" />
+                            </Title>
+                        </View>
+                        <View style={styles.quickAccessButtons}>
+                            <TouchableOpacity
+                                style={styles.quickAccessButton}
+                                onPress={() => (navigation as any).navigate('MesServices')}
+                            >
+                                <Ionicons name="briefcase" size={20} color={theme.colors.primary} />
+                                <Text style={styles.quickAccessButtonText}>
+                                    <TranslatedText text="Mes Services" />
+                                </Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                style={styles.quickAccessButton}
+                                onPress={() => (navigation as any).navigate('Historique')}
+                            >
+                                <Ionicons name="time" size={20} color={theme.colors.primary} />
+                                <Text style={styles.quickAccessButtonText}>
+                                    <TranslatedText text="Mon Historique" />
+                                </Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                style={styles.quickAccessButton}
+                                onPress={() => (navigation as any).navigate('RechargeTokens')}
+                            >
+                                <Ionicons name="card" size={20} color={theme.colors.primary} />
+                                <Text style={styles.quickAccessButtonText}>
+                                    <TranslatedText text="Recharger Tokens" />
+                                </Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                style={styles.quickAccessButton}
+                                onPress={() => setShowLanguageModal(true)}
+                            >
+                                <Ionicons name="language" size={20} color={theme.colors.primary} />
+                                <Text style={styles.quickAccessButtonText}>
+                                    <TranslatedText text="Langue" />
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
+                    </Card.Content>
+                </Card>
+            </View>
 
             {/* Modales */}
             <NotificationHistoryModal
@@ -284,6 +367,24 @@ const HomeScreen: React.FC = () => {
                 onOpenChat={(chatId: string) => {
                     console.log('Ouvrir chat:', chatId);
                     setShowChatModal(false);
+                }}
+            />
+
+            <GPSSelector
+                visible={showGPSModal}
+                onClose={() => setShowGPSModal(false)}
+                onSelect={(coordinates) => {
+                    setSelectedLocation(coordinates);
+                    setShowGPSModal(false);
+                }}
+                currentLocation={selectedLocation}
+            />
+
+            <LanguageSelector
+                visible={showLanguageModal}
+                onClose={() => setShowLanguageModal(false)}
+                onLanguageChange={(languageCode) => {
+                    console.log('Langue changée:', languageCode);
                 }}
             />
         </SafeAreaView>
@@ -382,6 +483,50 @@ const styles = StyleSheet.create({
         color: theme.colors.text,
         minHeight: 100,
         textAlignVertical: 'top',
+        marginBottom: 12,
+    },
+    gpsContainer: {
+        marginTop: 8,
+    },
+    gpsButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        backgroundColor: '#f8f9fa',
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: '#e9ecef',
+    },
+    gpsButtonText: {
+        marginLeft: 8,
+        fontSize: 14,
+        color: theme.colors.textSecondary,
+    },
+    gpsButtonTextActive: {
+        color: theme.colors.primary,
+        fontWeight: '600',
+    },
+    locationInfo: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginTop: 8,
+        paddingVertical: 8,
+        paddingHorizontal: 12,
+        backgroundColor: '#e8f5e8',
+        borderRadius: 6,
+        borderLeftWidth: 3,
+        borderLeftColor: theme.colors.primary,
+    },
+    locationText: {
+        fontSize: 12,
+        color: theme.colors.text,
+        fontFamily: 'monospace',
+        flex: 1,
+    },
+    clearLocationButton: {
+        padding: 4,
     },
     submitContainer: {
         alignItems: 'center',
@@ -415,36 +560,6 @@ const styles = StyleSheet.create({
     featureText: {
         fontSize: 12,
         color: theme.colors.textSecondary,
-        textAlign: 'center',
-    },
-    quickActions: {
-        width: '100%',
-    },
-    quickActionsTitle: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        color: theme.colors.text,
-        marginBottom: 16,
-        textAlign: 'center',
-    },
-    actionsGrid: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        justifyContent: 'space-between',
-    },
-    actionCard: {
-        width: '48%',
-        backgroundColor: theme.colors.surface,
-        padding: 16,
-        borderRadius: 12,
-        alignItems: 'center',
-        marginBottom: 12,
-        elevation: 2,
-    },
-    actionText: {
-        fontSize: 14,
-        color: theme.colors.text,
-        marginTop: 8,
         textAlign: 'center',
     },
     alertOverlay: {
@@ -489,9 +604,55 @@ const styles = StyleSheet.create({
     alertButtonPrimary: {
         backgroundColor: theme.colors.primary,
     },
+    quickAccessSection: {
+        marginTop: 24,
+        marginBottom: 16,
+    },
+    quickAccessCard: {
+        elevation: 2,
+    },
+    quickAccessHeader: {
+        marginBottom: 16,
+    },
+    quickAccessTitle: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: theme.colors.text,
+        textAlign: 'center',
+    },
+    quickAccessButtons: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 12,
+    },
+    quickAccessButton: {
+        flex: 1,
+        minWidth: '45%',
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        backgroundColor: '#f8f9fa',
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: '#e9ecef',
+    },
+    quickAccessButtonText: {
+        fontSize: 14,
+        color: theme.colors.primary,
+        fontWeight: '600',
+        marginLeft: 8,
+    },
 });
 
 export default HomeScreen;
+
+
+
+
+
+
 
 
 

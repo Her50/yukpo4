@@ -1,4 +1,8 @@
-﻿import React, { useState, useEffect } from 'react';
+﻿import * as React from "react";
+import { useState, useEffect } from 'react';
+import { Text } from 'react-native';
+import { View } from 'react-native';
+import { TouchableOpacity } from 'react-native';
 import ResponsiveContainer from '@/components/layout/ResponsiveContainer';
 import RequireAccess from '@/components/auth/RequireAccess';
 import { API_BASE_URL } from '@/config/api';
@@ -36,7 +40,7 @@ const ContactEnterprisePage: React.FC = () => {
   return (
     <ResponsiveContainer>
       <View style="font-inter">
-        <h1 style="text-3xl font-bold text-center mb-10">ðŸ“§ Contactez l'entreprise</h1>
+        <Text style="text-3xl font-bold text-center mb-10">ðŸ“§ Contactez l'entreprise</Text>
 
         <form onSubmit={handleSubmit} style="space-y-6">
           <View>
@@ -92,7 +96,7 @@ const ContactEnterprisePage: React.FC = () => {
 
         <RequireAccess plan="enterprise">
           <View style="mt-10 text-center">
-            <p style="text-lg font-semibold">
+            <Text style="text-lg font-semibold">
               ðŸ” AccÃ©dez Ã  des fonctionnalitÃ©s Premium
             </Text>
           </View>
@@ -103,4 +107,8 @@ const ContactEnterprisePage: React.FC = () => {
 };
 
 export default ContactEnterprisePage;
+
+
+
+
 

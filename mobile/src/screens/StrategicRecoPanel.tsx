@@ -1,5 +1,8 @@
 ﻿// @ts-check
 import React from 'react';
+import { Text } from 'react-native';
+import { View } from 'react-native';
+import { TouchableOpacity } from 'react-native';
 import ResponsiveContainer from '@/components/layout/ResponsiveContainer';
 import RequireAccess from '@/components/auth/RequireAccess';
 
@@ -23,15 +26,15 @@ const StrategicRecoPanel: React.FC = () => {
   return (
     <ResponsiveContainer>
       <View style="pt-24 font-sans">
-        <h1 style="text-3xl font-bold text-center mb-10">
+        <Text style="text-3xl font-bold text-center mb-10">
           🧠 Recommandations Stratégiques Yukpomnang
-        </h1>
+        </Text>
 
         <View style="space-y-4">
           {recoData.map((r, i) => (
             <View key={i} style="bg-gray-50 border-l-4 border-orange-500 p-4 rounded shadow-sm">
-              <p style="text-sm text-gray-500 mb-1 uppercase font-semibold">{r.type}</Text>
-              <p style="text-lg text-gray-800 font-medium">{r.conseil}</Text>
+              <Text style="text-sm text-gray-500 mb-1 uppercase font-semibold">{r.type}</Text>
+              <Text style="text-lg text-gray-800 font-medium">{r.conseil}</Text>
             </View>
           ))}
         </View>
@@ -40,13 +43,13 @@ const StrategicRecoPanel: React.FC = () => {
           <RequireAccess plan="enterprise">
             <View style="flex flex-col sm:flex-row gap-4 justify-center">
               <TouchableOpacity
-                onClick={() => handleExport('pdf')}
+                onPress={() => handleExport('pdf')}
                 style="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
               >
                 📄 Exporter en PDF
               </TouchableOpacity>
               <TouchableOpacity
-                onClick={() => handleExport('whatsapp')}
+                onPress={() => handleExport('whatsapp')}
                 style="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition"
               >
                 📲 Envoyer par WhatsApp
@@ -60,4 +63,8 @@ const StrategicRecoPanel: React.FC = () => {
 };
 
 export default StrategicRecoPanel;
+
+
+
+
 

@@ -98,3 +98,4 @@ if (args.includes('--restore')) {
         process.exit(success ? 0 : 1);
     });
 }
+

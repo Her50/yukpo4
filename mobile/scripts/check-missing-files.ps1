@@ -102,3 +102,4 @@ if ($MissingPages.Count -eq 0 -and $MissingComponents.Count -eq 0) {
     Write-Host "`nIl faut creer les fichiers manquants avant le deployement." -ForegroundColor Yellow
 }
 
+

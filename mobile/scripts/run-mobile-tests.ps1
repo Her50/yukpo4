@@ -9,13 +9,13 @@ param(
 
 # Couleurs pour les logs
 $Colors = @{
-    Red = "Red"
-    Green = "Green"
-    Yellow = "Yellow"
-    Blue = "Blue"
+    Red     = "Red"
+    Green   = "Green"
+    Yellow  = "Yellow"
+    Blue    = "Blue"
     Magenta = "Magenta"
-    Cyan = "Cyan"
-    White = "White"
+    Cyan    = "Cyan"
+    White   = "White"
 }
 
 function Write-ColorLog {
@@ -34,7 +34,8 @@ function Test-Prerequisites {
     try {
         $nodeVersion = node --version
         Write-ColorLog "✅ Node.js: $nodeVersion" -Color $Colors.Green
-    } catch {
+    }
+    catch {
         Write-ColorLog "❌ Node.js non installé" -Color $Colors.Red
         return $false
     }
@@ -43,7 +44,8 @@ function Test-Prerequisites {
     try {
         $npmVersion = npm --version
         Write-ColorLog "✅ npm: $npmVersion" -Color $Colors.Green
-    } catch {
+    }
+    catch {
         Write-ColorLog "❌ npm non installé" -Color $Colors.Red
         return $false
     }
@@ -52,7 +54,8 @@ function Test-Prerequisites {
     try {
         $easVersion = npx eas --version
         Write-ColorLog "✅ EAS CLI: $easVersion" -Color $Colors.Green
-    } catch {
+    }
+    catch {
         Write-ColorLog "❌ EAS CLI non installé" -Color $Colors.Red
         return $false
     }
@@ -64,15 +67,17 @@ function Start-EASBuild {
     Write-ColorLog "🚀 Lancement du build EAS Android..." -Color $Colors.Magenta
     
     try {
-        $buildResult = npx eas build --platform android --profile preview --non-interactive
+        npx eas build --platform android --profile preview --non-interactive
         if ($LASTEXITCODE -eq 0) {
             Write-ColorLog "✅ Build EAS terminé avec succès" -Color $Colors.Green
             return $true
-        } else {
+        }
+        else {
             Write-ColorLog "❌ Échec du build EAS" -Color $Colors.Red
             return $false
         }
-    } catch {
+    }
+    catch {
         Write-ColorLog "❌ Erreur lors du build EAS: $($_.Exception.Message)" -Color $Colors.Red
         return $false
     }
@@ -82,15 +87,17 @@ function Start-AuthTests {
     Write-ColorLog "🧪 Lancement des tests d'authentification..." -Color $Colors.Blue
     
     try {
-        $testResult = node scripts/test-auth-mobile.js
+        node scripts/test-auth-mobile.js
         if ($LASTEXITCODE -eq 0) {
             Write-ColorLog "✅ Tests d'authentification réussis" -Color $Colors.Green
             return $true
-        } else {
+        }
+        else {
             Write-ColorLog "❌ Échec des tests d'authentification" -Color $Colors.Red
             return $false
         }
-    } catch {
+    }
+    catch {
         Write-ColorLog "❌ Erreur lors des tests d'authentification: $($_.Exception.Message)" -Color $Colors.Red
         return $false
     }
@@ -100,21 +107,23 @@ function Start-FeatureTests {
     Write-ColorLog "🧪 Lancement des tests de fonctionnalités..." -Color $Colors.Blue
     
     try {
-        $testResult = node scripts/test-mobile-features.js
+        node scripts/test-mobile-features.js
         if ($LASTEXITCODE -eq 0) {
             Write-ColorLog "✅ Tests de fonctionnalités réussis" -Color $Colors.Green
             return $true
-        } else {
+        }
+        else {
             Write-ColorLog "❌ Échec des tests de fonctionnalités" -Color $Colors.Red
             return $false
         }
-    } catch {
+    }
+    catch {
         Write-ColorLog "❌ Erreur lors des tests de fonctionnalités: $($_.Exception.Message)" -Color $Colors.Red
         return $false
     }
 }
 
-function Generate-TestReport {
+function New-TestReport {
     param(
         [bool]$BuildSuccess,
         [bool]$AuthTestsSuccess,
@@ -129,7 +138,8 @@ function Generate-TestReport {
     
     $conclusion = if ($BuildSuccess -and $AuthTestsSuccess -and $FeatureTestsSuccess) {
         'TOUS LES TESTS SONT PASSES !' + "`n" + 'L application mobile Yukpo est prete pour les tests utilisateur.'
-    } else {
+    }
+    else {
         'CERTAINS TESTS ONT ECHOUE' + "`n" + 'Verifiez les logs pour plus de details.'
     }
     
@@ -187,7 +197,8 @@ function Main {
     # Build EAS (si non ignoré)
     if (-not $SkipBuild) {
         $buildSuccess = Start-EASBuild
-    } else {
+    }
+    else {
         Write-ColorLog "⏭️ Build EAS ignoré" -Color $Colors.Yellow
     }
     
@@ -195,13 +206,14 @@ function Main {
     if (-not $SkipTests) {
         $authTestsSuccess = Start-AuthTests
         $featureTestsSuccess = Start-FeatureTests
-    } else {
+    }
+    else {
         Write-ColorLog "⏭️ Tests ignorés" -Color $Colors.Yellow
     }
     
     # Générer le rapport
     if ($GenerateReport) {
-        $reportPath = Generate-TestReport -BuildSuccess $buildSuccess -AuthTestsSuccess $authTestsSuccess -FeatureTestsSuccess $featureTestsSuccess
+        New-TestReport -BuildSuccess $buildSuccess -AuthTestsSuccess $authTestsSuccess -FeatureTestsSuccess $featureTestsSuccess
     }
     
     # Résumé final
@@ -214,7 +226,8 @@ function Main {
     if ($buildSuccess -and $authTestsSuccess -and $featureTestsSuccess) {
         Write-ColorLog "🎉 TOUS LES TESTS SONT PASSÉS !" -Color $Colors.Green
         exit 0
-    } else {
+    }
+    else {
         Write-ColorLog "❌ CERTAINS TESTS ONT ÉCHOUÉ" -Color $Colors.Red
         exit 1
     }

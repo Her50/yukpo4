@@ -1,4 +1,8 @@
-﻿import React, { useState } from 'react';
+﻿import * as React from "react";
+import { useState } from 'react';
+import { Text } from 'react-native';
+import { View } from 'react-native';
+import { TouchableOpacity } from 'react-native';
 import axios from 'axios';
 import { useTranslation } from 'react-i18next';
 import { Textarea } from '@/components/ui/textarea';
@@ -32,7 +36,7 @@ const MultilingualForm = () => {
 
   return (
     <View style="max-w-xl mx-auto flex flex-col gap-4 p-4">
-      <h2 style="text-xl font-bold text-center">{t('form.describe_need')}</h2>
+      <Text style="text-xl font-bold text-center">{t('form.describe_need')}</Text>
 
       <Textarea
         placeholder={t('form.describe_need')}
@@ -53,15 +57,15 @@ const MultilingualForm = () => {
           <option value="ff">🌍 Fulfulde</option>
         </select>
 
-        <TouchableOpacity onClick={handleTranslate} disabled={loading}>
+        <TouchableOpacity onPress={handleTranslate} disabled={loading}>
           {loading ? t('status.loading') : t('form.send')}
         </TouchableOpacity>
       </View>
 
       {translated && (
         <View style="bg-gray-100 dark:bg-gray-800 p-4 rounded shadow">
-          <h3 style="font-semibold mb-2">{t('matching.similar_results')}:</h3>
-          <p style="text-gray-700 dark:text-gray-100">{translated}</Text>
+          <Text style="font-semibold mb-2">{t('matching.similar_results')}:</Text>
+          <Text style="text-gray-700 dark:text-gray-100">{translated}</Text>
         </View>
       )}
     </View>
@@ -69,4 +73,8 @@ const MultilingualForm = () => {
 };
 
 export default MultilingualForm;
+
+
+
+
 

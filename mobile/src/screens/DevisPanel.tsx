@@ -1,4 +1,8 @@
-﻿import React, { useState, useEffect } from 'react';
+﻿import * as React from "react";
+import { useState, useEffect } from 'react';
+import { Text } from 'react-native';
+import { View } from 'react-native';
+import { TouchableOpacity } from 'react-native';
 import ResponsiveContainer from '@/components/layout/ResponsiveContainer';
 
 import axios from "axios";
@@ -23,7 +27,7 @@ const DevisPanel: React.FC = () => {
 
   return (
     <View style="p-6">
-      <h2 style="text-2xl font-bold mb-4">📄 Génération automatique de devis</h2>
+      <Text style="text-2xl font-bold mb-4">📄 Génération automatique de devis</Text>
 
       <TextInput
         style="border p-2 mb-2 w-full"
@@ -38,7 +42,7 @@ const DevisPanel: React.FC = () => {
         onChange={(e) => setCategorie(e.target.value)}
       />
 
-      <TouchableOpacity style="bg-blue-600 text-white p-2 rounded" onClick={handleGenerateDevis}>
+      <TouchableOpacity style="bg-blue-600 text-white p-2 rounded" onPress={handleGenerateDevis}>
         Générer Devis
       </TouchableOpacity>
 
@@ -54,3 +58,7 @@ const DevisPanel: React.FC = () => {
 };
 
 export default DevisPanel;
+
+
+
+

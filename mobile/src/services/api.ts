@@ -3,6 +3,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // Configuration de base
 import { config } from '../config/environment';
 
+// Gestionnaire d'erreurs
+import { errorHandler } from './errorHandler';
+
 const API_BASE_URL = config.API_BASE_URL;
 
 // Types pour les réponses API
@@ -92,10 +95,26 @@ const apiCall = async <T>(
       data: data,
     };
   } catch (error: any) {
-    console.error('Erreur API:', error);
+    // Gérer les erreurs de timeout
+    if (error.name === 'AbortError') {
+      const timeoutError = errorHandler.handleApiError({
+        code: 'TIMEOUT',
+        message: 'Request timeout'
+      }, 'API Call');
+
+      return {
+        success: false,
+        error: timeoutError.message,
+        data: null,
+      };
+    }
+
+    // Gérer les autres erreurs
+    const apiError = errorHandler.handleApiError(error, 'API Call');
     return {
       success: false,
-      error: error.message || 'Erreur de connexion',
+      error: apiError.message,
+      data: null,
     };
   }
 };
@@ -421,6 +440,11 @@ export default {
   aiService,
   serviceService,
 };
+
+
+
+
+
 
 
 

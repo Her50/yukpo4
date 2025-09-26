@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+﻿import * as React from "react";
+import { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { Card, Title, Button } from 'react-native-paper';
 import { Ionicons } from '@expo/vector-icons';
@@ -57,7 +58,7 @@ const LocationDisplayDemo: React.FC = () => {
             )}
           </View>
           
-          <Button
+          <TouchableOpacity
             mode="contained"
             onPress={handleGetLocation}
             loading={loading}
@@ -66,7 +67,7 @@ const LocationDisplayDemo: React.FC = () => {
             icon="refresh"
           >
             {loading ? 'Récupération...' : 'Obtenir ma position'}
-          </Button>
+          </TouchableOpacity>
           
           <Text style={styles.note}>
             Cette démonstration utilise le GPS de votre appareil pour obtenir votre position actuelle.
@@ -126,4 +127,9 @@ const styles = StyleSheet.create({
 });
 
 export default LocationDisplayDemo;
+
+
+
+
+
 

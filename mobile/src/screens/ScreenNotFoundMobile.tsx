@@ -1,4 +1,8 @@
-﻿import React, { useState, useEffect } from 'react';
+﻿import * as React from "react";
+import { useState, useEffect } from 'react';
+import { Text } from 'react-native';
+import { View } from 'react-native';
+import { TouchableOpacity } from 'react-native';
 import ResponsiveContainer from '@/components/layout/ResponsiveContainer';
 
 import { useNavigation } from "@react-navigation/native";
@@ -12,16 +16,16 @@ const PageNotFoundMobile: React.FC = () => {
 
   return (
     <View style="">
-      <h1 style="text-5xl font-extrabold text-primary mb-4">404</h1>
-      <p style="text-lg font-semibold text-gray-800 mb-2">
+      <Text style="text-5xl font-extrabold text-primary mb-4">404</Text>
+      <Text style="text-lg font-semibold text-gray-800 mb-2">
         {t("notfound.title", "Page introuvable")}
       </Text>
-      <p style="text-sm text-gray-600 mb-6">
+      <Text style="text-sm text-gray-600 mb-6">
         {t("notfound.subtitle", "Cette page n'existe pas ou n'est plus disponible.")}
       </Text>
 
       <TouchableOpacity
-        onClick={() => navigation.navigate(ROUTES.HOME)}
+        onPress={() => navigation.navigate(ROUTES.HOME)}
         style=""
       >
         <ArrowLeft size={18} />
@@ -32,3 +36,7 @@ const PageNotFoundMobile: React.FC = () => {
 };
 
 export default PageNotFoundMobile;
+
+
+
+

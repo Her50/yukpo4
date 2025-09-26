@@ -1,4 +1,8 @@
-﻿import React, { useState, useEffect } from 'react';
+﻿import * as React from "react";
+import { useState, useEffect } from 'react';
+import { Text } from 'react-native';
+import { View } from 'react-native';
+import { TouchableOpacity } from 'react-native';
 import ResponsiveContainer from '@/components/layout/ResponsiveContainer';
 
 import axios from "axios";
@@ -28,13 +32,13 @@ const ProductCatalogue: React.FC = () => {
 
   return (
     <View style="p-6">
-      <h2 style="text-xl font-bold mb-4">🛒 Ajouter un produit au catalogue</h2>
+      <Text style="text-xl font-bold mb-4">🛒 Ajouter un produit au catalogue</Text>
       <TextInput style="border p-2 mb-2 w-full" placeholder="Nom" value={nom} onChange={(e) => setNom(e.target.value)} />
       <TextInput style="border p-2 mb-2 w-full" placeholder="Description" value={desc} onChange={(e) => setDesc(e.target.value)} />
       <TextInput style="border p-2 mb-2 w-full" type="number" placeholder="Prix" value={prix} onChange={(e) => setPrix(e.target.value)} />
       <TextInput style="border p-2 mb-2 w-full" placeholder="URL image" value={img} onChange={(e) => setImg(e.target.value)} />
       <TextInput style="border p-2 mb-2 w-full" placeholder="Catégorie" value={cat} onChange={(e) => setCat(e.target.value)} />
-      <TouchableOpacity style="" onClick={handleSubmit}>
+      <TouchableOpacity style="" onPress={handleSubmit}>
         Ajouter
       </TouchableOpacity>
 
@@ -49,3 +53,7 @@ const ProductCatalogue: React.FC = () => {
 };
 
 export default ProductCatalogue;
+
+
+
+

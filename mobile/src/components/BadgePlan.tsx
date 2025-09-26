@@ -1,5 +1,6 @@
 ﻿// @ts-check
-import React from "react";
+import * as React from "react";
+import { Text } from 'react-native';
 import { useUserPlan } from "@/hooks/useUserPlan";
 
 const BadgePlan = () => {
@@ -25,4 +26,8 @@ const BadgePlan = () => {
 };
 
 export default BadgePlan;
+
+
+
+
 

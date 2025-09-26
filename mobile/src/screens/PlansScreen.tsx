@@ -1,5 +1,6 @@
 ﻿// src/pages/PlansPage.tsx
-import React from "react";
+import * as React from "react";
+import { View } from 'react-native';
 import AppLayout from "@/components/layout/AppLayout";
 
 // Cette page a été désactivée. Les plans d'abonnement ne sont plus proposés.
@@ -13,4 +14,8 @@ export default function PlansPage() {
     </AppLayout>
   );
 }
+
+
+
+
 

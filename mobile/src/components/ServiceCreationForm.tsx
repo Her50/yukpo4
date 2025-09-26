@@ -1,31 +1,29 @@
-﻿import React, { useState, useRef } from 'react';
-import { 
-  Box, 
-  TextField, 
-  Button, 
-  Typography, 
-  Grid, 
-  FormControl, 
-  InputLabel, 
-  Select, 
-  MenuItem, 
-  Switch, 
-  FormControlLabel,
-  Card,
-  CardContent,
-  IconButton,
-  Chip,
-  Alert,
-  CircularProgress
-} from '@mui/material';
-import { 
-  Add as AddIcon, 
-  Delete as DeleteIcon,
-  LocationOn as LocationIcon,
+﻿import {
+  Add as AddIcon,
   Image as ImageIcon,
+  LocationOn as LocationIcon,
   VideoLibrary as VideoIcon
 } from '@mui/icons-material';
+import {
+  Alert,
+  Box,
+  Card,
+  CardContent,
+  Chip,
+  CircularProgress,
+  FormControl,
+  FormControlLabel,
+  Grid,
+  MenuItem,
+  Select,
+  Switch,
+  TextField,
+  Typography
+} from '@mui/material';
+import * as React from "react";
+import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Text, TouchableOpacity } from 'react-native';
 
 interface ServiceFormData {
   titre_service: string;
@@ -52,9 +50,9 @@ interface ServiceCreationFormProps {
   loading?: boolean;
 }
 
-const ServiceCreationForm: React.FC<ServiceCreationFormProps> = ({ 
-  onSubmit, 
-  loading = false 
+const ServiceCreationForm: React.FC<ServiceCreationFormProps> = ({
+  onSubmit,
+  loading = false
 }) => {
   const { t } = useTranslation();
   const [formData, setFormData] = useState<ServiceFormData>({
@@ -77,7 +75,7 @@ const ServiceCreationForm: React.FC<ServiceCreationFormProps> = ({
     zone_intervention: ''
   });
 
-  const [errors, setErrors] = useState<Partial<ServiceFormData>>({});
+  const [errors, setErrors] = useState<Textartial<ServiceFormData>>({});
   const fileInputRefs = {
     logo: useRef<HTMLInputElement>(null),
     banniere: useRef<HTMLInputElement>(null),
@@ -119,15 +117,15 @@ const ServiceCreationForm: React.FC<ServiceCreationFormProps> = ({
       setFormData(prev => ({ ...prev, [field]: files[0] }));
     } else if (field === 'images_realisations') {
       const newImages = Array.from(files);
-      setFormData(prev => ({ 
-        ...prev, 
-        images_realisations: [...prev.images_realisations, ...newImages] 
+      setFormData(prev => ({
+        ...prev,
+        images_realisations: [...prev.images_realisations, ...newImages]
       }));
     } else if (field === 'videos') {
       const newVideos = Array.from(files);
-      setFormData(prev => ({ 
-        ...prev, 
-        videos: [...prev.videos, ...newVideos] 
+      setFormData(prev => ({
+        ...prev,
+        videos: [...prev.videos, ...newVideos]
       }));
     }
   };
@@ -167,7 +165,7 @@ const ServiceCreationForm: React.FC<ServiceCreationFormProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateForm()) return;
 
     try {
@@ -192,7 +190,7 @@ const ServiceCreationForm: React.FC<ServiceCreationFormProps> = ({
           <Typography variant="h6" gutterBottom>
             {t('service.creation.basic_info', 'Informations de Base')}
           </Typography>
-          
+
           <Grid container spacing={3}>
             <Grid item xs={12}>
               <TextField
@@ -208,7 +206,7 @@ const ServiceCreationForm: React.FC<ServiceCreationFormProps> = ({
 
             <Grid item xs={12} md={6}>
               <FormControl fullWidth error={!!errors.category}>
-                <TextInputLabel>{t('service.creation.category_label', 'Catégorie *')}</InputLabel>
+                <Text>{t('service.creation.category_label', 'Catégorie *')}</Text>
                 <Select
                   value={formData.category}
                   onChange={(e) => handleInputChange('category', e.target.value)}
@@ -236,7 +234,7 @@ const ServiceCreationForm: React.FC<ServiceCreationFormProps> = ({
             {formData.is_tarissable && (
               <Grid item xs={12} md={6}>
                 <FormControl fullWidth>
-                  <TextInputLabel>{t('service.creation.vitesse_label', 'Vitesse de tarissement')}</InputLabel>
+                  <Text>{t('service.creation.vitesse_label', 'Vitesse de tarissement')}</Text>
                   <Select
                     value={formData.vitesse_tarissement || ''}
                     onChange={(e) => handleInputChange('vitesse_tarissement', e.target.value)}
@@ -274,7 +272,7 @@ const ServiceCreationForm: React.FC<ServiceCreationFormProps> = ({
           <Typography variant="h6" gutterBottom>
             {t('service.creation.location', 'Localisation')}
           </Typography>
-          
+
           <Grid container spacing={3}>
             <Grid item xs={12} md={6}>
               <TextField
@@ -318,7 +316,7 @@ const ServiceCreationForm: React.FC<ServiceCreationFormProps> = ({
           <Typography variant="h6" gutterBottom>
             {t('service.creation.media', 'Médias et Visuels')}
           </Typography>
-          
+
           <Grid container spacing={3}>
             {/* Logo */}
             <Grid item xs={12} md={6}>
@@ -329,15 +327,15 @@ const ServiceCreationForm: React.FC<ServiceCreationFormProps> = ({
                 <TouchableOpacity
                   variant="outlined"
                   startIcon={<ImageIcon />}
-                  onClick={() => openFileDialog('logo')}
+                  onPress={() => openFileDialog('logo')}
                   sx={{ mb: 2 }}
                 >
                   {formData.logo ? t('service.creation.change_logo', 'Changer le logo') : t('service.creation.add_logo', 'Ajouter un logo')}
                 </TouchableOpacity>
                 {formData.logo && (
                   <Box display="flex" alignItems="center" gap={1}>
-                    <Chip 
-                      label={formData.logo.name} 
+                    <Chip
+                      label={formData.logo.name}
                       onDelete={() => removeFile('logo')}
                       color="primary"
                     />
@@ -362,15 +360,15 @@ const ServiceCreationForm: React.FC<ServiceCreationFormProps> = ({
                 <TouchableOpacity
                   variant="outlined"
                   startIcon={<ImageIcon />}
-                  onClick={() => openFileDialog('banniere')}
+                  onPress={() => openFileDialog('banniere')}
                   sx={{ mb: 2 }}
                 >
                   {formData.banniere ? t('service.creation.change_banniere', 'Changer la bannière') : t('service.creation.add_banniere', 'Ajouter une bannière')}
                 </TouchableOpacity>
                 {formData.banniere && (
                   <Box display="flex" alignItems="center" gap={1}>
-                    <Chip 
-                      label={formData.banniere.name} 
+                    <Chip
+                      label={formData.banniere.name}
                       onDelete={() => removeFile('banniere')}
                       color="primary"
                     />
@@ -395,7 +393,7 @@ const ServiceCreationForm: React.FC<ServiceCreationFormProps> = ({
                 <TouchableOpacity
                   variant="outlined"
                   startIcon={<AddIcon />}
-                  onClick={() => openFileDialog('images_realisations')}
+                  onPress={() => openFileDialog('images_realisations')}
                   sx={{ mb: 2 }}
                 >
                   {t('service.creation.add_images', 'Ajouter des images')}
@@ -432,7 +430,7 @@ const ServiceCreationForm: React.FC<ServiceCreationFormProps> = ({
                 <TouchableOpacity
                   variant="outlined"
                   startIcon={<VideoIcon />}
-                  onClick={() => openFileDialog('videos')}
+                  onPress={() => openFileDialog('videos')}
                   sx={{ mb: 2 }}
                 >
                   {t('service.creation.add_videos', 'Ajouter des vidéos')}
@@ -468,7 +466,7 @@ const ServiceCreationForm: React.FC<ServiceCreationFormProps> = ({
           <Typography variant="h6" gutterBottom>
             {t('service.creation.contact', 'Informations de Contact')}
           </Typography>
-          
+
           <Grid container spacing={3}>
             <Grid item xs={12} md={6}>
               <TextField
@@ -523,4 +521,8 @@ const ServiceCreationForm: React.FC<ServiceCreationFormProps> = ({
   );
 };
 
-export default ServiceCreationForm; 
+export default ServiceCreationForm;
+
+
+
+

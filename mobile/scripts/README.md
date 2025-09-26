@@ -141,3 +141,4 @@ mobile/src/
 - Vérifiez que les routes sont correctement mappées
 - Adaptez manuellement les navigations complexes
 
+

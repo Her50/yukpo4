@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+﻿import * as React from "react";
+import { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Card, Title, Paragraph, Button, ActivityIndicator } from 'react-native-paper';
@@ -109,13 +110,13 @@ const MesServicesScreen: React.FC = () => {
             <Text style={styles.emptyText}>
               Vous n'avez pas encore créé de service. Créez votre premier service pour commencer.
             </Text>
-            <Button
+            <TouchableOpacity
               mode="contained"
               onPress={() => navigation.navigate('CreateService' as never)}
               style={styles.createButton}
             >
               Créer un service
-            </Button>
+            </TouchableOpacity>
           </View>
         ) : (
           services.map((service) => (
@@ -148,14 +149,14 @@ const MesServicesScreen: React.FC = () => {
                 </View>
                 
                 <View style={styles.serviceActions}>
-                  <Button
+                  <TouchableOpacity
                     mode="outlined"
                     onPress={() => navigation.navigate('ServiceDetail' as never, { serviceId: service.id })}
                     style={styles.actionButton}
                   >
                     Voir
-                  </Button>
-                  <Button
+                  </TouchableOpacity>
+                  <TouchableOpacity
                     mode="outlined"
                     onPress={() => {
                       Alert.alert('Édition', 'Fonctionnalité d\'édition à implémenter');
@@ -163,7 +164,7 @@ const MesServicesScreen: React.FC = () => {
                     style={styles.actionButton}
                   >
                     Modifier
-                  </Button>
+                  </TouchableOpacity>
                 </View>
               </Card.Content>
             </Card>
@@ -295,3 +296,6 @@ const styles = StyleSheet.create({
 });
 
 export default MesServicesScreen;
+
+
+

@@ -1,4 +1,8 @@
-﻿import React, { useState, useEffect, useRef } from 'react';
+﻿import * as React from "react";
+import { useState, useEffect, useRef } from 'react';
+import { Text } from 'react-native';
+import { View } from 'react-native';
+import { TouchableOpacity } from 'react-native';
 import {
   Box,
   Card,
@@ -201,7 +205,7 @@ const AdvancedGeospatialSearch: React.FC<AdvancedGeospatialSearchProps> = ({
               <TouchableOpacity
                 variant="outlined"
                 startIcon={<MyLocation />}
-                onClick={getCurrentLocation}
+                onPress={getCurrentLocation}
                 disabled={loading}
               >
                 {t('search.geospatial.use_current', 'Utiliser ma position')}
@@ -282,7 +286,7 @@ const AdvancedGeospatialSearch: React.FC<AdvancedGeospatialSearchProps> = ({
             </Box>
 
             <FormControl fullWidth sx={{ mb: 2 }}>
-              <TextInputLabel>{t('search.geospatial.category', 'Catégorie')}</InputLabel>
+              <Text>{t('search.geospatial.category', 'Catégorie')}</Text>
               <Select
                 value={searchParams.category}
                 onChange={(e) => handleParamChange('category', e.target.value)}
@@ -372,7 +376,7 @@ const AdvancedGeospatialSearch: React.FC<AdvancedGeospatialSearchProps> = ({
               <TouchableOpacity
                 variant="contained"
                 startIcon={<Search />}
-                onClick={handleSearch}
+                onPress={handleSearch}
                 disabled={loading}
                 size="large"
               >
@@ -389,7 +393,7 @@ const AdvancedGeospatialSearch: React.FC<AdvancedGeospatialSearchProps> = ({
               <TouchableOpacity
                 variant="outlined"
                 startIcon={<Clear />}
-                onClick={clearSearch}
+                onPress={clearSearch}
                 disabled={loading}
               >
                 {t('search.geospatial.clear', 'Effacer')}
@@ -411,7 +415,7 @@ const AdvancedGeospatialSearch: React.FC<AdvancedGeospatialSearchProps> = ({
                 <Chip
                   key={searchItem.id}
                   label={searchItem.name}
-                  onClick={() => reuseSearch(searchItem)}
+                  onPress={() => reuseSearch(searchItem)}
                   variant="outlined"
                   size="small"
                   clickable
@@ -426,3 +430,7 @@ const AdvancedGeospatialSearch: React.FC<AdvancedGeospatialSearchProps> = ({
 };
 
 export default AdvancedGeospatialSearch; 
+
+
+
+

@@ -9,6 +9,7 @@ use std::sync::Arc;
 use crate::{
     core::types::{AppResult, AppError},
     middlewares::jwt::AuthenticatedUser,
+    services::phone_validation_service::{PhoneValidationService, PhoneValidationRequest},
 };
 use crate::state::AppState;
 
@@ -52,6 +53,21 @@ pub struct PaymentHistoryQuery {
     pub offset: Option<i64>,
 }
 
+#[derive(Deserialize)]
+pub struct ValidatePhoneRequest {
+    pub phone_number: String,
+    pub country: Option<String>,
+}
+
+#[derive(Serialize)]
+pub struct ValidatePhoneResponse {
+    pub is_valid: bool,
+    pub formatted_number: Option<String>,
+    pub country_code: Option<String>,
+    pub carrier: Option<String>,
+    pub error_message: Option<String>,
+}
+
 /// Initier un paiement
 pub async fn initiate_payment(
     State(state): State<Arc<AppState>>,
@@ -67,6 +83,24 @@ pub async fn initiate_payment(
     
     if req.amount_xaf < 100 {
         return Err(AppError::BadRequest("Montant minimum: 100 tokens".to_string()));
+    }
+    
+    // Valider le numéro de téléphone si fourni (pour mobile money)
+    if let Some(phone_number) = &req.phone_number {
+        let phone_service = PhoneValidationService::new();
+        let phone_validation = phone_service.validate_phone_number(PhoneValidationRequest {
+            phone_number: phone_number.clone(),
+            country: None, // Détection automatique
+        });
+        
+        if !phone_validation.is_valid {
+            return Err(AppError::BadRequest(
+                phone_validation.error_message.unwrap_or("Numéro de téléphone invalide".to_string())
+            ));
+        }
+        
+        log::info!("[initiate_payment] Numéro validé: {} - Pays: {:?} - Opérateur: {:?}", 
+                  phone_number, phone_validation.country_code, phone_validation.carrier);
     }
     
     // G?n?rer un ID de paiement unique
@@ -247,4 +281,23 @@ pub async fn get_payment_history(
         .collect();
     
     Ok(Json(history))
+}
+
+/// Valider un numéro de téléphone
+pub async fn validate_phone_number(
+    Json(req): Json<ValidatePhoneRequest>,
+) -> AppResult<JsonResponse<ValidatePhoneResponse>> {
+    let phone_service = PhoneValidationService::new();
+    let validation_result = phone_service.validate_phone_number(PhoneValidationRequest {
+        phone_number: req.phone_number,
+        country: req.country,
+    });
+    
+    Ok(Json(ValidatePhoneResponse {
+        is_valid: validation_result.is_valid,
+        formatted_number: validation_result.formatted_number,
+        country_code: validation_result.country_code,
+        carrier: validation_result.carrier,
+        error_message: validation_result.error_message,
+    }))
 }

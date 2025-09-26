@@ -12,6 +12,7 @@ pub mod assistance_controller;
 // pub mod fournitures_controller;
 pub mod history_controller;
 pub mod payment_controller;
+pub mod webhook_controller;
 pub mod embedding_controller;
 pub mod intelligent_service_controller;
 

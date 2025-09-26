@@ -1,4 +1,8 @@
-﻿import React, { useState, useEffect } from 'react';
+﻿import * as React from "react";
+import { useState, useEffect } from 'react';
+import { Text } from 'react-native';
+import { View } from 'react-native';
+import { TouchableOpacity } from 'react-native';
 import ResponsiveContainer from '@/components/layout/ResponsiveContainer';
 
 import axios from "axios";
@@ -26,7 +30,7 @@ const PartnerReviewPanel: React.FC = () => {
 
   return (
     <View style="p-6">
-      <h2 style="text-xl font-bold mb-4">🙏 Ajouter un partenaire / prestataire</h2>
+      <Text style="text-xl font-bold mb-4">🙏 Ajouter un partenaire / prestataire</Text>
       <TextInput
         style="border p-2 mb-2 w-full"
         placeholder="Nom"
@@ -53,14 +57,14 @@ const PartnerReviewPanel: React.FC = () => {
       />
       <TouchableOpacity
         style=""
-        onClick={handleSubmit}
+        onPress={handleSubmit}
       >
         Valider
       </TouchableOpacity>
 
       {result && (
         <View style="mt-4 text-green-700">
-          <p style="font-semibold">✅ {result.statut}</Text>
+          <Text style="font-semibold">✅ {result.statut}</Text>
           <Text>ID attribué : <strong>{result.id}</strong></Text>
         </View>
       )}
@@ -69,3 +73,7 @@ const PartnerReviewPanel: React.FC = () => {
 };
 
 export default PartnerReviewPanel;
+
+
+
+

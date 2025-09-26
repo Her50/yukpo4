@@ -1,7 +1,8 @@
 ﻿// @ts-check
-import React from 'react';
-import ResponsiveContainer from '@/components/layout/ResponsiveContainer';
 import RequireAccess from '@/components/auth/RequireAccess';
+import ResponsiveContainer from '@/components/layout/ResponsiveContainer';
+import React from 'react';
+import { Text, View } from 'react-native';
 import styled, { keyframes } from 'styled-components';
 
 // Animation pulsante
@@ -28,8 +29,8 @@ const OutilsPage: React.FC = () => {
     <RequireAccess role="user" plan="pro">
       <ResponsiveContainer>
         <View style="pt-24 min-h-screen bg-white font-sans">
-          <h1 style="text-3xl text-center mb-10 font-bold">🛠️ Outils Yukpomnang</h1>
-          <PulseBox>⚙️ Module Yukpomnang en cours d’activation...</PulseBox>
+          <Text style="text-3xl text-center mb-10 font-bold">🛠️ Outils Yukpomnang</Text>
+          <View>⚙️ Module Yukpomnang en cours d'activation...</View>
         </View>
       </ResponsiveContainer>
     </RequireAccess>
@@ -37,4 +38,8 @@ const OutilsPage: React.FC = () => {
 };
 
 export default OutilsPage;
+
+
+
+
 

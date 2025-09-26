@@ -1,4 +1,8 @@
-﻿import React, { useState, useEffect } from 'react';
+﻿import * as React from "react";
+import { useState, useEffect } from 'react';
+import { Text } from 'react-native';
+import { View } from 'react-native';
+import { TouchableOpacity } from 'react-native';
 import ResponsiveContainer from '@/components/layout/ResponsiveContainer';
 
 import axios from "axios";
@@ -21,14 +25,14 @@ const VitrineGenerator: React.FC = () => {
 
   return (
     <View style="">
-      <h2 style="text-xl font-bold mb-4">🪟 Générer votre vitrine Yukpomnang</h2>
+      <Text style="text-xl font-bold mb-4">🪟 Générer votre vitrine Yukpomnang</Text>
       <TextInput
         value={id}
         onChange={(e) => setId(e.target.value)}
         placeholder="ID du prestataire"
         style="border p-2 w-full mb-4"
       />
-      <TouchableOpacity onClick={handleGenerate} style="">
+      <TouchableOpacity onPress={handleGenerate} style="">
         Générer
       </TouchableOpacity>
 
@@ -52,3 +56,7 @@ const VitrineGenerator: React.FC = () => {
 };
 
 export default VitrineGenerator;
+
+
+
+

@@ -1,5 +1,8 @@
 ﻿// @ts-check
-import React, { useState } from 'react';
+import * as React from "react";
+import { useState } from 'react';
+import { Text } from 'react-native';
+import { View } from 'react-native';
 import ResponsiveContainer from '@/components/layout/ResponsiveContainer';
 
 import { Yukpomnang_PRODUCTS, getProductsByPlan } from "@/lib/IAProductRegistry";
@@ -19,7 +22,7 @@ const DashboardIA: React.FC = () => {
 
   return (
     <ResponsiveContainer>
-      <h1 style="text-3xl font-bold mb-6">🤖 Tableau de bord IA Yukpomnang</h1>
+      <Text style="text-3xl font-bold mb-6">🤖 Tableau de bord IA Yukpomnang</Text>
 
       <Tabs defaultValue={plan} onValueChange={(val) => setPlan(val as YukpomnangPlan)}>
         <TabsList>
@@ -35,8 +38,8 @@ const DashboardIA: React.FC = () => {
                 {getProductsByPlan(level).map((product) => (
                   <Card key={product.id} style="border shadow">
                     <CardContent style="p-4">
-                      <h3 style="text-lg font-semibold mb-2">{product.name}</h3>
-                      <p style="text-sm text-gray-600">{product.description}</Text>
+                      <Text style="text-lg font-semibold mb-2">{product.name}</Text>
+                      <Text style="text-sm text-gray-600">{product.description}</Text>
                     </CardContent>
                   </Card>
                 ))}
@@ -73,4 +76,8 @@ const DashboardIA: React.FC = () => {
 };
 
 export default DashboardIA;
+
+
+
+
 

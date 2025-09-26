@@ -1,6 +1,8 @@
 ﻿// src/components/LangSwitcher.tsx
 // @ts-check
-import React from "react";
+import * as React from "react";
+import { Text } from 'react-native';
+import { View } from 'react-native';
 import { useTranslation } from "@/hooks/useTranslation";
 
 const languages = [
@@ -44,4 +46,8 @@ const LangSwitcher: React.FC = () => {
 };
 
 export default LangSwitcher;
+
+
+
+
 

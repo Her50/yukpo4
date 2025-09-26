@@ -1,4 +1,8 @@
-﻿import React, { useState, useEffect } from 'react';
+﻿import * as React from "react";
+import { useState, useEffect } from 'react';
+import { Text } from 'react-native';
+import { View } from 'react-native';
+import { TouchableOpacity } from 'react-native';
 import ResponsiveContainer from '@/components/layout/ResponsiveContainer';
 
 ﻿// @generated
@@ -23,7 +27,7 @@ function ComparePage() {
 
   return (
     <View style="p-6">
-      <h1 style="text-xl font-bold mb-4">Comparateur Yukpomnang</h1>
+      <Text style="text-xl font-bold mb-4">Comparateur Yukpomnang</Text>
 
       <View style="mb-4">
         <label style="mr-2 font-semibold">Région :</label>
@@ -42,7 +46,7 @@ function ComparePage() {
         {catalogue.map((item: any) => (
           <TouchableOpacity
             key={item.id}
-            onClick={() => toggleSelect(item.id)}
+            onPress={() => toggleSelect(item.id)}
             style={`p-2 border rounded ${
               selected.includes(item.id) ? 'bg-green-200' : ''
             }`}
@@ -58,3 +62,7 @@ function ComparePage() {
 }
 
 export default ComparePage;
+
+
+
+

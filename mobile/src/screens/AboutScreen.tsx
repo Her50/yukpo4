@@ -1,4 +1,4 @@
-﻿import React from 'react';
+﻿import * as React from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { theme } from '../theme/theme';
@@ -122,3 +122,6 @@ const styles = StyleSheet.create({
 });
 
 export default AboutScreen;
+
+
+

@@ -1,4 +1,8 @@
-﻿import React, { useState, useEffect } from 'react';
+﻿import * as React from "react";
+import { useState, useEffect } from 'react';
+import { Text } from 'react-native';
+import { View } from 'react-native';
+import { TouchableOpacity } from 'react-native';
 import ResponsiveContainer from '@/components/layout/ResponsiveContainer';
 
 import { Button } from "@/components/ui/buttons";
@@ -37,7 +41,7 @@ const SecurityDashboard: React.FC = () => {
 
   return (
     <View style="p-6 min-h-screen bg-white">
-      <h1 style="text-2xl font-bold mb-6">🛡️ Tableau de Sécurité IA</h1>
+      <Text style="text-2xl font-bold mb-6">🛡️ Tableau de Sécurité IA</Text>
 
       {stats && (
         <View style="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-center">
@@ -50,9 +54,9 @@ const SecurityDashboard: React.FC = () => {
       )}
 
       <View style="mt-8 flex flex-wrap gap-4">
-        <TouchableOpacity onClick={fetchStats}>🔄 Recharger</TouchableOpacity>
-        <TouchableOpacity onClick={handlePrint}>🖨️ Imprimer</TouchableOpacity>
-        <TouchableOpacity onClick={handleSendPdf}>📧 Envoyer PDF</TouchableOpacity>
+        <TouchableOpacity onPress={fetchStats}>🔄 Recharger</TouchableOpacity>
+        <TouchableOpacity onPress={handlePrint}>🖨️ Imprimer</TouchableOpacity>
+        <TouchableOpacity onPress={handleSendPdf}>📧 Envoyer PDF</TouchableOpacity>
       </View>
 
       {/* 🚀 CONTEXTUAL BUTTONS */}
@@ -77,7 +81,7 @@ const SecurityDashboard: React.FC = () => {
         </a>
       </View>
 
-      <PDFModal
+      <TextDFModal
         isOpen={isPdfModalOpen}
         onClose={() => setIsPdfModalOpen(false)}
         pdfUrl="/dist/reports/security_report.pdf"
@@ -88,3 +92,7 @@ const SecurityDashboard: React.FC = () => {
 };
 
 export default SecurityDashboard;
+
+
+
+

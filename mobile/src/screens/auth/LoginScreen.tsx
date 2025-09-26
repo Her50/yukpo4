@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+﻿import * as React from 'react';
+import { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -185,16 +186,15 @@ const LoginScreen: React.FC = () => {
               left={<TextInput.Icon icon="lock" />}
             />
             
-            <Button
-              mode="contained"
+            <TouchableOpacity
               onPress={handleLogin}
-              loading={formLoading || loading}
               disabled={formLoading || loading}
               style={styles.loginButton}
-              labelStyle={styles.loginButtonLabel}
             >
-              {formLoading || loading ? 'Connexion...' : 'Se connecter'}
-            </Button>
+              <Text style={styles.loginButtonLabel}>
+                {formLoading || loading ? 'Connexion...' : 'Se connecter'}
+              </Text>
+            </TouchableOpacity>
           </Card.Content>
         </Card>
 
@@ -364,5 +364,10 @@ const styles = StyleSheet.create({
 });
 
 export default LoginScreen;
+
+
+
+
+
 
 

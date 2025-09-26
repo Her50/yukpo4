@@ -1,4 +1,7 @@
 ﻿import { useState, useEffect, useRef } from 'react';
+import { Text } from 'react-native';
+import { View } from 'react-native';
+import { TouchableOpacity } from 'react-native';
 import { useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/buttons/Button';
 import { Phone, Video, Mic, MicOff, VideoOff, Video as VideoIcon } from 'lucide-react';
@@ -173,8 +176,8 @@ const VideoCall = () => {
         {/* Header */}
         <View style="flex justify-between items-center mb-6">
           <View>
-            <h1 style="text-2xl font-bold">Appel vidéo</h1>
-            <p style="text-gray-400">
+            <Text style="text-2xl font-bold">Appel vidéo</Text>
+            <Text style="text-gray-400">
               Service: {serviceId} | Utilisateur: {userId}
             </Text>
           </View>
@@ -192,7 +195,7 @@ const VideoCall = () => {
         <View style="grid grid-cols-2 gap-4 mb-6">
           {/* Vidéo locale */}
           <View style="relative">
-            <h3 style="text-sm font-medium mb-2">Vous</h3>
+            <Text style="text-sm font-medium mb-2">Vous</Text>
             <video
               ref={localVideoRef}
               autoPlay
@@ -214,7 +217,7 @@ const VideoCall = () => {
 
           {/* Vidéo distante */}
           <View style="relative">
-            <h3 style="text-sm font-medium mb-2">Prestataire</h3>
+            <Text style="text-sm font-medium mb-2">Prestataire</Text>
             <video
               ref={remoteVideoRef}
               autoPlay
@@ -225,7 +228,7 @@ const VideoCall = () => {
               <View style="absolute inset-0 flex items-center justify-center bg-gray-800 rounded-lg">
                 <View style="text-center">
                   <View style="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-2"></View>
-                  <p style="text-gray-400">En attente de connexion...</Text>
+                  <Text style="text-gray-400">En attente de connexion...</Text>
                 </View>
               </View>
             )}
@@ -235,7 +238,7 @@ const VideoCall = () => {
         {/* Contrôles */}
         <View style="flex justify-center items-center gap-4">
           <TouchableOpacity
-            onClick={toggleMute}
+            onPress={toggleMute}
             style={`rounded-full p-4 ${
               isMuted ? 'bg-red-600 hover:bg-red-700' : 'bg-gray-700 hover:bg-gray-600'
             }`}
@@ -245,7 +248,7 @@ const VideoCall = () => {
           </TouchableOpacity>
 
           <TouchableOpacity
-            onClick={toggleVideo}
+            onPress={toggleVideo}
             style={`rounded-full p-4 ${
               isVideoOff ? 'bg-red-600 hover:bg-red-700' : 'bg-gray-700 hover:bg-gray-600'
             }`}
@@ -255,7 +258,7 @@ const VideoCall = () => {
           </TouchableOpacity>
 
           <TouchableOpacity
-            onClick={startRecording}
+            onPress={startRecording}
             disabled={isRecording}
             style={`rounded-full p-4 ${
               isRecording ? 'bg-red-600' : 'bg-gray-700 hover:bg-gray-600'
@@ -272,11 +275,11 @@ const VideoCall = () => {
           </TouchableOpacity>
 
           <TouchableOpacity
-            onClick={endCall}
+            onPress={endCall}
             style="bg-red-600 hover:bg-red-700 rounded-full p-4"
             title="Terminer l'appel"
           >
-            <Phone style="w-6 h-6 rotate-90" />
+            <Texthone style="w-6 h-6 rotate-90" />
           </TouchableOpacity>
         </View>
 
@@ -291,3 +294,7 @@ const VideoCall = () => {
 };
 
 export default VideoCall; 
+
+
+
+

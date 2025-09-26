@@ -2,7 +2,8 @@
 import { useIntelligentLanguage } from '@/hooks/useIntelligentLanguage';
 import { autoTranslationService } from '@/services/autoTranslationService';
 import { languageDetectionService } from '@/services/languageDetectionService';
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import * as React from "react";
+import { createContext, useContext, useEffect, useState } from 'react';
 
 interface IntelligentLanguageContextType {
     // État
@@ -207,6 +208,10 @@ export const useAutoTranslate = () => {
 };
 
 export default IntelligentLanguageProvider;
+
+
+
+
 
 
 

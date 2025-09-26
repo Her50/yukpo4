@@ -1,4 +1,8 @@
-﻿import React, { useState, useEffect } from 'react';
+﻿import * as React from "react";
+import { useState, useEffect } from 'react';
+import { Text } from 'react-native';
+import { View } from 'react-native';
+import { TouchableOpacity } from 'react-native';
 import ResponsiveContainer from '@/components/layout/ResponsiveContainer';
 
 import { ROUTES } from "@/routes/AppRoutesRegistry"; // ✅ Import ajouté
@@ -23,10 +27,10 @@ const SummaryDashboard: React.FC = () => {
   return (
     <View style="p-4 bg-white dark:bg-gray-900 min-h-screen text-gray-900 dark:text-gray-100">
       <View style="flex justify-between mb-4 items-center">
-        <h1 style="text-xl font-bold">🧠 Résumés automatiques</h1>
+        <Text style="text-xl font-bold">🧠 Résumés automatiques</Text>
         <TouchableOpacity
           style=""
-          onClick={sendToEmail}
+          onPress={sendToEmail}
         >
           📤 Envoyer à mon email
         </TouchableOpacity>
@@ -76,3 +80,7 @@ const SummaryDashboard: React.FC = () => {
 };
 
 export default SummaryDashboard;
+
+
+
+

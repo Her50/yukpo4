@@ -1,9 +1,11 @@
 ﻿// @ts-check
-import React from "react";
+import * as React from "react";
+import { Text } from 'react-native';
+import { View } from 'react-native';
 
 const TestimonialsAndPartners = () => (
   <section style="py-16 bg-gray-50 text-center">
-    <h2 style="text-3xl font-bold text-gray-800 mb-10">Ce que disent nos utilisateurs</h2>
+    <Text style="text-3xl font-bold text-gray-800 mb-10">Ce que disent nos utilisateurs</Text>
 
     <View style="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-6xl mx-auto mb-16">
       {[
@@ -21,13 +23,13 @@ const TestimonialsAndPartners = () => (
         },
       ].map((item, idx) => (
         <View key={idx} style="bg-white p-6 rounded-xl shadow-md">
-          <p style="italic text-gray-600">“{item.message}”</Text>
-          <p style="mt-4 font-semibold">{item.name}</Text>
+          <Text style="italic text-gray-600">“{item.message}”</Text>
+          <Text style="mt-4 font-semibold">{item.name}</Text>
         </View>
       ))}
     </View>
 
-    <h2 style="text-3xl font-bold text-gray-800 mb-6">Ils nous font confiance</h2>
+    <Text style="text-3xl font-bold text-gray-800 mb-6">Ils nous font confiance</Text>
     <View style="flex justify-center items-center gap-10 flex-wrap max-w-4xl mx-auto opacity-80">
       <img src="/partner1.png" alt="Partenaire 1" style="h-10" />
       <img src="/partner2.png" alt="Partenaire 2" style="h-10" />
@@ -38,4 +40,8 @@ const TestimonialsAndPartners = () => (
 );
 
 export default TestimonialsAndPartners;
+
+
+
+
 

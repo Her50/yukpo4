@@ -1,5 +1,8 @@
 ﻿// @ts-check
-import React from "react";
+import * as React from "react";
+import { Text } from 'react-native';
+import { View } from 'react-native';
+import { TouchableOpacity } from 'react-native';
 import useSpeechRecognition from "@/hooks/useSpeechRecognition";
 
 const VoiceButton: React.FC = () => {
@@ -12,7 +15,7 @@ const VoiceButton: React.FC = () => {
       </TouchableOpacity>
 
       {transcript && (
-        <p style="mt-2 text-sm text-gray-700">
+        <Text style="mt-2 text-sm text-gray-700">
           🔊 {transcript}
         </Text>
       )}
@@ -21,4 +24,8 @@ const VoiceButton: React.FC = () => {
 };
 
 export default VoiceButton;
+
+
+
+
 

@@ -1,4 +1,8 @@
-﻿import React, { useState, useEffect } from 'react';
+﻿import * as React from "react";
+import { useState, useEffect } from 'react';
+import { Text } from 'react-native';
+import { View } from 'react-native';
+import { TouchableOpacity } from 'react-native';
 import ResponsiveContainer from '@/components/layout/ResponsiveContainer';
 
 import axios from "axios";
@@ -25,7 +29,7 @@ const AutoMarketingPanel: React.FC = () => {
 
   return (
     <View style="p-6">
-      <h2 style="text-xl font-bold mb-4">🧠 Génération de contenu marketing auto</h2>
+      <Text style="text-xl font-bold mb-4">🧠 Génération de contenu marketing auto</Text>
 
       <TextInput
         style="border p-2 w-full mb-2"
@@ -55,7 +59,7 @@ const AutoMarketingPanel: React.FC = () => {
       </select>
 
       <TouchableOpacity
-        onClick={handleGenerate}
+        onPress={handleGenerate}
         style=""
       >
         Générer
@@ -72,3 +76,7 @@ const AutoMarketingPanel: React.FC = () => {
 };
 
 export default AutoMarketingPanel;
+
+
+
+

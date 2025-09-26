@@ -140,3 +140,4 @@ if (Test-Path $ComponentsPath) {
 Write-Host "Transformation terminee!" -ForegroundColor Green
 Write-Host "Fichiers generes dans: $MobilePath" -ForegroundColor Yellow
 
+

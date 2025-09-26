@@ -149,3 +149,4 @@ node scripts/test-simple-app.js
 - ⏳ **Test Utilisateur** : En attente
 
 **Prochaine Action** : Tester la nouvelle version simplifiée sur l'appareil Android
+

@@ -1,97 +1,53 @@
-// Configuration des variables d'environnement pour Yukpo Mobile
-// Inspiré du frontend Vite
+// Configuration de l'environnement pour l'application mobile
+export const ENVIRONMENT = {
+    // Clé API Google Translate
+    GOOGLE_TRANSLATE_API_KEY: process.env.EXPO_PUBLIC_GOOGLE_TRANSLATE_API_KEY || '',
 
-interface EnvironmentConfig {
-    // URLs de base
-    API_BASE_URL: string;
+    // URL de l'API backend
+    API_URL: process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000',
 
-    // Endpoints d'authentification
-    AUTH_LOGIN_URL: string;
-    AUTH_REGISTER_URL: string;
-    AUTH_VERIFY_URL: string;
+    // Environnement (development, production, staging)
+    ENVIRONMENT: process.env.EXPO_PUBLIC_ENVIRONMENT || 'development',
 
-    // Endpoints de recherche et IA
-    SEARCH_DIRECT_URL: string;
-    IA_CREATION_URL: string;
-    IA_AUTO_URL: string;
-    IA_ANALYZE_URL: string;
+    // Configuration de traduction
+    TRANSLATION: {
+        // Langue par défaut
+        DEFAULT_LANGUAGE: 'fr',
 
-    // Configuration de débogage
-    DEBUG: boolean;
-    LOG_LEVEL: 'debug' | 'info' | 'warn' | 'error';
+        // Langues supportées
+        SUPPORTED_LANGUAGES: ['fr', 'en', 'es', 'de', 'it', 'pt', 'ar', 'zh', 'ja', 'ko', 'ru', 'hi'],
 
-    // Configuration de l'environnement
-    ENVIRONMENT: 'development' | 'preview' | 'production';
+        // Cache de traduction (en millisecondes)
+        CACHE_DURATION: 24 * 60 * 60 * 1000, // 24 heures
 
-    // Variables d'environnement Expo (équivalentes aux VITE_ du frontend)
-    EXPO_PUBLIC_API_BASE_URL?: string;
-    EXPO_PUBLIC_DEV_MODE?: string;
-    EXPO_PUBLIC_DEBUG_TRANSLATION?: string;
-}
+        // Taille maximale du cache
+        MAX_CACHE_SIZE: 1000,
+    },
 
-// Configuration par défaut (production) - basée sur le frontend .env
-const defaultConfig: EnvironmentConfig = {
-    API_BASE_URL: process.env.EXPO_PUBLIC_API_BASE_URL || 'https://yukpomnang.onrender.com',
-    AUTH_LOGIN_URL: '/auth/login',
-    AUTH_REGISTER_URL: '/auth/register',
-    AUTH_VERIFY_URL: '/api/user/me',
-    SEARCH_DIRECT_URL: '/api/search/direct',
-    IA_CREATION_URL: '/api/ia/creation-service',
-    IA_AUTO_URL: '/api/ia/auto',
-    IA_ANALYZE_URL: '/api/ia/analyze',
-    DEBUG: process.env.EXPO_PUBLIC_DEV_MODE === 'true' || false,
-    LOG_LEVEL: process.env.EXPO_PUBLIC_DEBUG_TRANSLATION === 'true' ? 'debug' : 'info',
-    ENVIRONMENT: 'production',
-    EXPO_PUBLIC_API_BASE_URL: process.env.EXPO_PUBLIC_API_BASE_URL,
-    EXPO_PUBLIC_DEV_MODE: process.env.EXPO_PUBLIC_DEV_MODE,
-    EXPO_PUBLIC_DEBUG_TRANSLATION: process.env.EXPO_PUBLIC_DEBUG_TRANSLATION,
+    // Configuration GPS
+    GPS: {
+        // Timeout pour la détection GPS (en millisecondes)
+        TIMEOUT: 10000,
+
+        // Précision maximale
+        MAXIMUM_AGE: 300000, // 5 minutes
+
+        // Rayon de recherche par défaut (en kilomètres)
+        DEFAULT_SEARCH_RADIUS: 50,
+    },
+
+    // Configuration de l'API
+    API: {
+        // Timeout des requêtes (en millisecondes)
+        TIMEOUT: 30000,
+
+        // Nombre de tentatives en cas d'échec
+        MAX_RETRIES: 3,
+
+        // Délai entre les tentatives (en millisecondes)
+        RETRY_DELAY: 1000,
+    },
 };
 
-// Configuration pour le développement
-const developmentConfig: EnvironmentConfig = {
-    ...defaultConfig,
-    DEBUG: true,
-    LOG_LEVEL: 'debug',
-    ENVIRONMENT: 'development',
-};
+export default ENVIRONMENT;
 
-// Configuration pour preview
-const previewConfig: EnvironmentConfig = {
-    ...defaultConfig,
-    DEBUG: true,
-    LOG_LEVEL: 'info',
-    ENVIRONMENT: 'preview',
-};
-
-// Fonction pour obtenir la configuration selon l'environnement
-export const getEnvironmentConfig = (): EnvironmentConfig => {
-    const environment = process.env.EXPO_PUBLIC_ENVIRONMENT || 'production';
-
-    switch (environment) {
-        case 'development':
-            return developmentConfig;
-        case 'preview':
-            return previewConfig;
-        case 'production':
-        default:
-            return defaultConfig;
-    }
-};
-
-// Configuration exportée
-export const config = getEnvironmentConfig();
-
-// Fonctions utilitaires
-export const getApiUrl = (endpoint: string): string => {
-    const baseUrl = config.API_BASE_URL;
-    const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
-    return `${baseUrl}${cleanEndpoint}`;
-};
-
-export const log = (level: string, message: string, data?: any) => {
-    if (config.DEBUG || config.LOG_LEVEL === 'debug') {
-        console.log(`[${level.toUpperCase()}] ${message}`, data || '');
-    }
-};
-
-export default config;

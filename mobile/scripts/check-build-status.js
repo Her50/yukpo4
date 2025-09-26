@@ -91,3 +91,4 @@ checkBuildStatus().then(() => {
     log('red', '❌ Erreur:', error.message);
     process.exit(1);
 });
+

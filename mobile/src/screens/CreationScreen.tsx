@@ -1,4 +1,8 @@
-﻿import React, { useState, useEffect } from 'react';
+﻿import * as React from "react";
+import { useState, useEffect } from 'react';
+import { Text } from 'react-native';
+import { View } from 'react-native';
+import { TouchableOpacity } from 'react-native';
 import ResponsiveContainer from '@/components/layout/ResponsiveContainer';
 import RequireAccess from '@/components/auth/RequireAccess';
 import { useSemanticRedirect } from '@/hooks/useSemanticRedirect';
@@ -43,7 +47,7 @@ function CreationPage() {
   return (
     <ResponsiveContainer>
       <View style="pb-24">
-        <h1 style="text-3xl font-bold mb-8">⚙️ Créer un nouveau service</h1>
+        <Text style="text-3xl font-bold mb-8">⚙️ Créer un nouveau service</Text>
 
         <form onSubmit={handleSubmit} style="bg-white p-6 rounded-2xl shadow-xl space-y-6 border">
           <View>
@@ -195,13 +199,13 @@ function CreationPage() {
         {/* Réponse IA */}
         <Card style="mt-12 border-orange-100 animate-fade-in">
           <CardContent style="py-6">
-            <h2 style="text-xl font-bold mb-2">🧠 Réponse Yukpomnang</h2>
-            <p style="text-gray-700">{ia_response}</Text>
+            <Text style="text-xl font-bold mb-2">🧠 Réponse Yukpomnang</Text>
+            <Text style="text-gray-700">{ia_response}</Text>
 
             {plan === 'free' && (
               <View style="mt-4 text-sm text-red-600">
                 <RequireAccess plan="enterprise">
-                  <p style="font-semibold">
+                  <Text style="font-semibold">
                     ⚠️ Fonctions Premium désactivées : passez au plan Entreprise pour tout débloquer.
                   </Text>
                 </RequireAccess>
@@ -215,4 +219,8 @@ function CreationPage() {
 }
 
 export default CreationPage;
+
+
+
+
 

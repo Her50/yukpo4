@@ -1,6 +1,8 @@
-﻿import React, { useState, useEffect } from 'react';
-import { API_BASE_URL } from '@/config/api';
-import ResponsiveContainer from '@/components/layout/ResponsiveContainer';
+﻿import * as React from "react";
+import { useState } from 'react';
+import { Text, TouchableOpacity, View } from 'react-native';
+// import { API_BASE_URL } from '@/config/api';
+// import ResponsiveContainer from '@/components/layout/ResponsiveContainer';
 
 
 export default function ChatbotAI() {
@@ -9,7 +11,7 @@ export default function ChatbotAI() {
 
   const handleAsk = async () => {
     try {
-      const res = await fetch(`${API_BASE_URL}/api/ask", {
+      const res = await fetch(`http://localhost:3000/api/ask`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt }),
@@ -23,7 +25,7 @@ export default function ChatbotAI() {
 
   return (
     <View style="p-4">
-      <h2 style="text-xl font-bold mb-4">ðŸ¤– Chatbot Yukpomnang</h2>
+      <Text style="text-xl font-bold mb-4">ðŸ¤– Chatbot Yukpomnang</Text>
       <TextInput
         style="border p-2 w-full mb-2"
         placeholder="Posez votre question"
@@ -32,7 +34,7 @@ export default function ChatbotAI() {
       />
       <TouchableOpacity
         style=""
-        onClick={handleAsk}
+        onPress={handleAsk}
       >
         Demander
       </TouchableOpacity>
@@ -44,4 +46,8 @@ export default function ChatbotAI() {
     </View>
   );
 }
+
+
+
+
 

@@ -1,4 +1,7 @@
 ﻿import React from 'react';
+import { Text } from 'react-native';
+import { View } from 'react-native';
+import { TouchableOpacity } from 'react-native';
 import { Button } from '@/components/ui/buttons/Button';
 import { useToast } from '@/components/ui/use-toast';
 import { Copy, Facebook, Share2, X, MessageCircle, Twitter, Mail, Link } from 'lucide-react';
@@ -93,13 +96,13 @@ const ShareServiceModal: React.FC<ShareServiceModalProps> = ({ open, onClose, se
       <View style="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-md mx-auto relative animate-in fade-in-0 zoom-in-95 duration-200">
         {/* Header */}
         <View style="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
-          <h2 style="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+          <Text style="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
             <Share2 style="h-5 w-5 text-blue-600" />
             Partager ce service
-          </h2>
+          </Text>
           <TouchableOpacity
             style="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800"
-            onClick={onClose}
+            onPress={onClose}
           >
             <X style="h-5 w-5" />
           </TouchableOpacity>
@@ -123,7 +126,7 @@ const ShareServiceModal: React.FC<ShareServiceModalProps> = ({ open, onClose, se
               <TouchableOpacity 
                 variant="outline" 
                 size="sm" 
-                onClick={handleCopy}
+                onPress={handleCopy}
                 style="shrink-0"
                 title="Copier le lien"
               >
@@ -134,14 +137,14 @@ const ShareServiceModal: React.FC<ShareServiceModalProps> = ({ open, onClose, se
 
           {/* Share Options */}
           <View style="space-y-3">
-            <h3 style="text-sm font-medium text-gray-700 dark:text-gray-300">
+            <Text style="text-sm font-medium text-gray-700 dark:text-gray-300">
               Partager sur
-            </h3>
+            </Text>
             
             <View style="grid grid-cols-3 gap-2">
               <TouchableOpacity
                 style="w-full bg-green-500 hover:bg-green-600 text-white transition-colors"
-                onClick={() => handleShare('whatsapp')}
+                onPress={() => handleShare('whatsapp')}
               >
                 <MessageCircle style="h-4 w-4 mr-2" />
                 WhatsApp
@@ -149,7 +152,7 @@ const ShareServiceModal: React.FC<ShareServiceModalProps> = ({ open, onClose, se
               
               <TouchableOpacity
                 style="w-full bg-blue-600 hover:bg-blue-700 text-white transition-colors"
-                onClick={() => handleShare('facebook')}
+                onPress={() => handleShare('facebook')}
               >
                 <Facebook style="h-4 w-4 mr-2" />
                 Facebook
@@ -157,7 +160,7 @@ const ShareServiceModal: React.FC<ShareServiceModalProps> = ({ open, onClose, se
               
               <TouchableOpacity
                 style="w-full bg-sky-500 hover:bg-sky-600 text-white transition-colors"
-                onClick={() => handleShare('twitter')}
+                onPress={() => handleShare('twitter')}
               >
                 <Twitter style="h-4 w-4 mr-2" />
                 Twitter
@@ -165,27 +168,27 @@ const ShareServiceModal: React.FC<ShareServiceModalProps> = ({ open, onClose, se
               
               <TouchableOpacity
                 style="w-full bg-blue-700 hover:bg-blue-800 text-white transition-colors"
-                onClick={() => handleShare('linkedin')}
+                onPress={() => handleShare('linkedin')}
               >
                 <svg style="h-4 w-4 mr-2" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+                  <Textath d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
                 </svg>
                 LinkedIn
               </TouchableOpacity>
               
               <TouchableOpacity
                 style="w-full bg-blue-500 hover:bg-blue-600 text-white transition-colors"
-                onClick={() => handleShare('telegram')}
+                onPress={() => handleShare('telegram')}
               >
                 <svg style="h-4 w-4 mr-2" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/>
+                  <Textath d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/>
                 </svg>
                 Telegram
               </TouchableOpacity>
               
               <TouchableOpacity
                 style="w-full bg-gray-600 hover:bg-gray-700 text-white transition-colors"
-                onClick={() => handleShare('email')}
+                onPress={() => handleShare('email')}
               >
                 <Mail style="h-4 w-4 mr-2" />
                 Email
@@ -197,7 +200,7 @@ const ShareServiceModal: React.FC<ShareServiceModalProps> = ({ open, onClose, se
           <View style="pt-2">
             <TouchableOpacity
               style="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white transition-all duration-200"
-              onClick={handleNativeShare}
+              onPress={handleNativeShare}
             >
               <Link style="h-4 w-4 mr-2" />
               Partage natif
@@ -210,3 +213,7 @@ const ShareServiceModal: React.FC<ShareServiceModalProps> = ({ open, onClose, se
 };
 
 export default ShareServiceModal; 
+
+
+
+

@@ -6,9 +6,11 @@ import { useNotificationCounts } from "@/hooks/useNotificationCounts";
 import { useUser } from "@/hooks/useUser";
 import { ROUTES } from "@/routes/AppRoutesRegistry";
 import { apiGet } from "@/services/apiService";
-import { Bell, MessageCircle } from "lucide-react";
-import React, { useEffect, useState } from "react";
 import { Link } from "@react-navigation/native";
+import { Bell, MessageCircle } from "lucide-react";
+import * as React from "react";
+import { useEffect, useState } from "react";
+import { Text, TouchableOpacity, View } from 'react-native';
 
 const HeaderController: React.FC = () => {
   const { user, logout } = useUser();
@@ -236,7 +238,7 @@ const HeaderController: React.FC = () => {
               <View style="flex items-center gap-2 mr-2">
                 {/* Icône Notifications */}
                 <TouchableOpacity
-                  onClick={() => {
+                  onPress={() => {
                     const event = new CustomEvent('open:notification:history');
                     window.dispatchEvent(event);
                   }}
@@ -252,7 +254,7 @@ const HeaderController: React.FC = () => {
 
                 {/* Icône Chats/Historique des conversations */}
                 <TouchableOpacity
-                  onClick={() => {
+                  onPress={() => {
                     const event = new CustomEvent('open:chat:history');
                     window.dispatchEvent(event);
                   }}
@@ -275,12 +277,12 @@ const HeaderController: React.FC = () => {
                     src={user.photo}
                     alt="profil"
                     style="w-10 h-10 rounded-full object-cover cursor-pointer border-2 border-[#0F52BA]"
-                    onClick={() => setOpenProfileMenu(!openProfileMenu)}
+                    onPress={() => setOpenProfileMenu(!openProfileMenu)}
                   />
                 ) : (
                   <View
                     style="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold text-lg cursor-pointer border-2 border-[#0F52BA] select-none"
-                    onClick={() => setOpenProfileMenu(!openProfileMenu)}
+                    onPress={() => setOpenProfileMenu(!openProfileMenu)}
                   >
                     {user.name && user.name.trim() !== ''
                       ? user.name.replace(/[^\p{L}\p{N}]/gu, '').slice(0, 2).toUpperCase()
@@ -289,10 +291,10 @@ const HeaderController: React.FC = () => {
                 )}
                 {openProfileMenu && (
                   <View style="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded shadow text-sm z-[100] p-3">
-                    <p style="text-gray-800 dark:text-gray-100 font-semibold mb-2">
+                    <Text style="text-gray-800 dark:text-gray-100 font-semibold mb-2">
                       👤 {user.name || "Utilisateur"}
                     </Text>
-                    <p style="text-gray-500 dark:text-gray-300">
+                    <Text style="text-gray-500 dark:text-gray-300">
                       🛡 Rôle : <strong>{user.role}</strong>
                     </Text>
                     <hr style="my-2 border-gray-200 dark:border-gray-700" />
@@ -315,7 +317,7 @@ const HeaderController: React.FC = () => {
                       ⚙️ Paramètres
                     </Link>
                     <TouchableOpacity
-                      onClick={logout}
+                      onPress={logout}
                       style="w-full text-left px-3 py-1 text-red-600 hover:underline mt-2"
                     >
                       🚪 Déconnexion
@@ -327,7 +329,7 @@ const HeaderController: React.FC = () => {
           )}
           <LangSwitcher />
           <TouchableOpacity
-            onClick={toggleTheme}
+            onPress={toggleTheme}
             title="Changer le thème"
             style="text-xl hover:text-yellow-500"
           >
@@ -345,4 +347,8 @@ const HeaderController: React.FC = () => {
 };
 
 export default HeaderController;
+
+
+
+
 

@@ -1,12 +1,77 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
-import { Card, Title, Paragraph, Button, Avatar } from 'react-native-paper';
-import { Ionicons } from '@expo/vector-icons';
+﻿import { Ionicons } from '@expo/vector-icons';
+import * as React from 'react';
+import { useEffect, useState } from 'react';
+import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Avatar, Button, Card, Title } from 'react-native-paper';
 import { useAuth } from '../contexts/AuthContext';
+import { servicesApi, userApi } from '../services/api';
 import { theme } from '../theme/theme';
 
 const ProfileScreen: React.FC = () => {
   const { user, logout } = useAuth();
+  const [stats, setStats] = useState([
+    { label: 'Services', value: '0' },
+    { label: 'Clients', value: '0' },
+    { label: 'Évaluations', value: '0' },
+  ]);
+  const [loading, setLoading] = useState(true);
+  const [accountInfo, setAccountInfo] = useState({
+    memberSince: '',
+    accountType: 'Utilisateur',
+    status: 'Actif'
+  });
+
+  useEffect(() => {
+    if (user?.id) {
+      loadProfileData();
+    }
+  }, [user?.id]);
+
+  const loadProfileData = async () => {
+    try {
+      setLoading(true);
+
+      // Charger les données du profil utilisateur
+      const [profileResponse, servicesResponse] = await Promise.all([
+        userApi.getUserProfile(),
+        servicesApi.getUserServices()
+      ]);
+
+      if (profileResponse.success && profileResponse.data) {
+        const profileData = profileResponse.data as any;
+        setAccountInfo({
+          memberSince: profileData.created_at ? new Date(profileData.created_at).toLocaleDateString('fr-FR', {
+            year: 'numeric',
+            month: 'long'
+          }) : 'Non disponible',
+          accountType: profileData.role === 'admin' ? 'Administrateur' :
+            profileData.role === 'prestataire' ? 'Prestataire' : 'Utilisateur',
+          status: profileData.is_active ? 'Actif' : 'Inactif'
+        });
+      }
+
+      if (servicesResponse.success && servicesResponse.data) {
+        const services = servicesResponse.data as any[];
+        const totalServices = services.length;
+        const activeServices = services.filter(s => s.is_active).length;
+        const totalInteractions = services.reduce((sum, s) => sum + (s.interactions || 0), 0);
+        const averageRating = services.length > 0
+          ? (services.reduce((sum, s) => sum + (s.rating || 0), 0) / services.length).toFixed(1)
+          : '0';
+
+        setStats([
+          { label: 'Services', value: totalServices.toString() },
+          { label: 'Interactions', value: totalInteractions.toString() },
+          { label: 'Évaluations', value: averageRating },
+        ]);
+      }
+    } catch (error) {
+      console.error('Erreur chargement profil:', error);
+      Alert.alert('Erreur', 'Impossible de charger les données du profil');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleLogout = () => {
     Alert.alert(
@@ -26,20 +91,23 @@ const ProfileScreen: React.FC = () => {
     { title: 'À propos', icon: 'information-circle-outline', color: '#4CAF50' },
   ];
 
-  const stats = [
-    { label: 'Services', value: '12' },
-    { label: 'Clients', value: '89' },
-    { label: 'Évaluations', value: '4.8' },
-  ];
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={theme.colors.primary} />
+        <Text style={styles.loadingText}>Chargement du profil...</Text>
+      </View>
+    );
+  }
 
   return (
     <ScrollView style={styles.container}>
       {/* Header avec photo de profil */}
       <View style={styles.header}>
         <View style={styles.profileSection}>
-          <Avatar.Text 
-            size={80} 
-            label={user?.name?.charAt(0) || 'U'} 
+          <Avatar.Text
+            size={80}
+            label={user?.name?.charAt(0) || 'U'}
             style={styles.avatar}
           />
           <Text style={styles.userName}>{user?.name || 'Utilisateur'}</Text>
@@ -82,30 +150,30 @@ const ProfileScreen: React.FC = () => {
           <Title style={styles.cardTitle}>Informations du Compte</Title>
           <View style={styles.infoItem}>
             <Text style={styles.infoLabel}>Membre depuis</Text>
-            <Text style={styles.infoValue}>Janvier 2024</Text>
+            <Text style={styles.infoValue}>{accountInfo.memberSince}</Text>
           </View>
           <View style={styles.infoItem}>
             <Text style={styles.infoLabel}>Type de compte</Text>
-            <Text style={styles.infoValue}>Prestataire</Text>
+            <Text style={styles.infoValue}>{accountInfo.accountType}</Text>
           </View>
           <View style={styles.infoItem}>
             <Text style={styles.infoLabel}>Statut</Text>
-            <Text style={[styles.infoValue, { color: '#4CAF50' }]}>Actif</Text>
+            <Text style={[styles.infoValue, { color: accountInfo.status === 'Actif' ? '#4CAF50' : '#F44336' }]}>
+              {accountInfo.status}
+            </Text>
           </View>
         </Card.Content>
       </Card>
 
       {/* Bouton de déconnexion */}
       <View style={styles.logoutContainer}>
-        <Button
-          mode="outlined"
+        <TouchableOpacity
           onPress={handleLogout}
           style={styles.logoutButton}
-          textColor="#DC2626"
-          icon="log-out-outline"
         >
-          Se déconnecter
-        </Button>
+          <Ionicons name="log-out-outline" size={20} color="#DC2626" />
+          <Text style={{ color: "#DC2626" }}>Se déconnecter</Text>
+        </TouchableOpacity>
       </View>
     </ScrollView>
   );
@@ -115,6 +183,17 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.background,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: theme.colors.background,
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: theme.colors.text,
   },
   header: {
     backgroundColor: theme.colors.primary,
@@ -248,3 +327,6 @@ const styles = StyleSheet.create({
 });
 
 export default ProfileScreen;
+
+
+

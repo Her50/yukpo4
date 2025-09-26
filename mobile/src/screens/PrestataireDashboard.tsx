@@ -1,5 +1,7 @@
 ﻿// 📁 frontend/src/pages/PrestataireDashboard.tsx
 import React from 'react';
+import { Text } from 'react-native';
+import { View } from 'react-native';
 import AppLayout from '@/components/layout/AppLayout';
 import UrgentAlertPanel from '@/components/prestataire/UrgentAlertPanel';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -8,7 +10,7 @@ const PrestataireDashboard: React.FC = () => {
   return (
     <AppLayout>
       <View style="max-w-6xl mx-auto px-4 py-8">
-        <h1 style="text-3xl font-bold mb-6">👤 Espace Prestataire</h1>
+        <Text style="text-3xl font-bold mb-6">👤 Espace Prestataire</Text>
 
         <Tabs defaultValue="urgences" style="space-y-6">
           <TabsList>
@@ -22,11 +24,11 @@ const PrestataireDashboard: React.FC = () => {
           </TabsContent>
 
           <TabsContent value="services">
-            <p style="text-gray-600">📦 Liste de vos services à venir ici.</Text>
+            <Text style="text-gray-600">📦 Liste de vos services à venir ici.</Text>
           </TabsContent>
 
           <TabsContent value="profil">
-            <p style="text-gray-600">📝 Données de profil et informations personnelles.</Text>
+            <Text style="text-gray-600">📝 Données de profil et informations personnelles.</Text>
           </TabsContent>
         </Tabs>
       </View>
@@ -35,4 +37,8 @@ const PrestataireDashboard: React.FC = () => {
 };
 
 export default PrestataireDashboard;
+
+
+
+
 

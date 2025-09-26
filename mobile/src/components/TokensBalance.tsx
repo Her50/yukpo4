@@ -1,4 +1,8 @@
-﻿import React, { useEffect } from 'react';
+﻿import * as React from "react";
+import { useEffect } from 'react';
+import { Text } from 'react-native';
+import { View } from 'react-native';
+import { TouchableOpacity } from 'react-native';
 import { useUserContext } from '../context/UserContext';
 
 interface TokensBalanceProps {
@@ -51,7 +55,7 @@ export const TokensBalance: React.FC<TokensBalanceProps> = ({
         <Text style="text-xs text-gray-500">XAF</Text>
       </View>
       <TouchableOpacity
-        onClick={refreshTokensBalance}
+        onPress={refreshTokensBalance}
         style="text-xs text-blue-500 hover:text-blue-700 ml-1"
         title="Actualiser le solde"
       >
@@ -62,3 +66,7 @@ export const TokensBalance: React.FC<TokensBalanceProps> = ({
 };
 
 export default TokensBalance; 
+
+
+
+

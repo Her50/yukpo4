@@ -1,4 +1,8 @@
-﻿import React, { useState, useEffect } from 'react';
+﻿import * as React from "react";
+import { useState, useEffect } from 'react';
+import { Text } from 'react-native';
+import { View } from 'react-native';
+import { TouchableOpacity } from 'react-native';
 import ResponsiveContainer from '@/components/layout/ResponsiveContainer';
 
 import axios from "axios";
@@ -42,7 +46,7 @@ export default function ChatPanel() {
 
   return (
     <View style="p-6">
-      <h1 style="text-xl font-bold mb-4">Assistant IA Yukpomnang</h1>
+      <Text style="text-xl font-bold mb-4">Assistant IA Yukpomnang</Text>
       <View style="bg-gray-100 p-4 mb-2 rounded h-64 overflow-y-scroll">
         {history.map((m, i) => (
           <View key={i} style="mb-2">
@@ -60,7 +64,7 @@ export default function ChatPanel() {
         />
         <TouchableOpacity
           style=""
-          onClick={handleChat}
+          onPress={handleChat}
         >
           Envoyer
         </TouchableOpacity>
@@ -72,3 +76,7 @@ export default function ChatPanel() {
     </View>
   );
 }
+
+
+
+

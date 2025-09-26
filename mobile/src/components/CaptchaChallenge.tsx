@@ -1,11 +1,15 @@
 ﻿// @ts-check
-import React, { useEffect, useState } from "react";
+import * as React from "react";
+import { useEffect, useState } from "react";
+import { Text } from 'react-native';
+import { View } from 'react-native';
+import { TouchableOpacity } from 'react-native';
 
 interface Props {
   onSuccess: () => void;
 }
 
-const CaptchaChallenge: React.FC<Props> = ({ onSuccess }) => {
+const CaptchaChallenge: React.FC<Textrops> = ({ onSuccess }) => {
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState("");
 
@@ -25,7 +29,7 @@ const CaptchaChallenge: React.FC<Props> = ({ onSuccess }) => {
 
   return (
     <View style="p-4 border rounded">
-      <p style="mb-2">{question}</Text>
+      <Text style="mb-2">{question}</Text>
       <TextInput
         value={answer}
         onChange={(e) => setAnswer(e.target.value)}
@@ -33,7 +37,7 @@ const CaptchaChallenge: React.FC<Props> = ({ onSuccess }) => {
         placeholder="Votre réponse"
       />
       <TouchableOpacity
-        onClick={handleSubmit}
+        onPress={handleSubmit}
         style="ml-2 px-2 py-1 bg-blue-600 text-white rounded"
       >
         Valider
@@ -43,4 +47,8 @@ const CaptchaChallenge: React.FC<Props> = ({ onSuccess }) => {
 };
 
 export default CaptchaChallenge;
+
+
+
+
 

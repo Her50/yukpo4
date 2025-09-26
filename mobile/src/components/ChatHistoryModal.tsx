@@ -1,21 +1,22 @@
-import React, { useState, useEffect, useRef } from 'react';
+﻿import { Ionicons } from '@expo/vector-icons';
+import * as React from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  Modal,
-  TouchableOpacity,
-  ScrollView,
-  TextInput,
   Alert,
   KeyboardAvoidingView,
+  Modal,
   Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-import { Card, Title, Paragraph, Button, IconButton, Avatar } from 'react-native-paper';
-import { Ionicons } from '@expo/vector-icons';
+import { Avatar, IconButton, Title } from 'react-native-paper';
 import { useAuth } from '../contexts/AuthContext';
-import { notificationsApi } from '../services/api';
 import { theme } from '../theme/theme';
+import ChatModal from './ChatModal';
 
 interface ChatMessage {
   id: string;
@@ -61,11 +62,14 @@ const ChatHistoryModal: React.FC<ChatHistoryModalProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [selectedChat, setSelectedChat] = useState<ChatHistory | null>(null);
+  const [showChatModal, setShowChatModal] = useState(false);
+  const [selectedService, setSelectedService] = useState<any>(null);
+  const [selectedPrestataire, setSelectedPrestataire] = useState<any>(null);
   const [showChatMessages, setShowChatMessages] = useState(false);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [sendingMessage, setSendingMessage] = useState(false);
-  
+
   const scrollViewRef = useRef<ScrollView>(null);
 
   useEffect(() => {
@@ -86,7 +90,7 @@ const ChatHistoryModal: React.FC<ChatHistoryModalProps> = ({
       // Simuler la récupération des historiques de chat
       // En production, vous feriez un appel API ici
       // const response = await notificationsApi.getChatHistory();
-      
+
       // Données simulées pour l'instant
       const mockHistories: ChatHistory[] = [
         {
@@ -145,7 +149,7 @@ const ChatHistoryModal: React.FC<ChatHistoryModalProps> = ({
       // Simuler la récupération des messages d'un chat
       // En production, vous feriez un appel API ici
       // const response = await notificationsApi.getChatMessages(chatId);
-      
+
       // Données simulées
       const mockMessages: ChatMessage[] = [
         {
@@ -192,6 +196,35 @@ const ChatHistoryModal: React.FC<ChatHistoryModalProps> = ({
     }
   };
 
+  const handleOpenChatModal = (chat: ChatHistory) => {
+    // Créer un objet service simulé pour le ChatModal
+    const serviceData = {
+      id: chat.id,
+      titre: chat.serviceTitle || 'Service',
+      description: `Conversation avec ${chat.clientName}`,
+      user_id: chat.prestataireId,
+      data: {
+        titre_service: chat.serviceTitle || 'Service',
+        description: `Conversation avec ${chat.clientName}`,
+        nom_prestataire: chat.prestataireName
+      }
+    };
+
+    // Créer un objet prestataire simulé
+    const prestataireData = {
+      id: chat.prestataireId,
+      name: chat.prestataireName,
+      email: '',
+      avatar: chat.prestatairePhoto,
+      isOnline: true
+    };
+
+    setSelectedService(serviceData);
+    setSelectedPrestataire(prestataireData);
+    setShowChatModal(true);
+    setShowChatMessages(false); // Fermer l'interface intégrée
+  };
+
   const sendMessage = async () => {
     if (!newMessage.trim() || !selectedChat || sendingMessage) return;
 
@@ -200,7 +233,7 @@ const ChatHistoryModal: React.FC<ChatHistoryModalProps> = ({
       // Simuler l'envoi du message
       // En production, vous feriez un appel API ici
       // await notificationsApi.sendMessage(selectedChat.id, newMessage);
-      
+
       const newMsg: ChatMessage = {
         id: Date.now().toString(),
         clientId: selectedChat.clientId,
@@ -213,7 +246,7 @@ const ChatHistoryModal: React.FC<ChatHistoryModalProps> = ({
 
       setChatMessages(prev => [...prev, newMsg]);
       setNewMessage('');
-      
+
       // Scroll to bottom
       setTimeout(() => {
         scrollViewRef.current?.scrollToEnd({ animated: true });
@@ -229,8 +262,8 @@ const ChatHistoryModal: React.FC<ChatHistoryModalProps> = ({
   const filteredChatHistories = chatHistories
     .filter(chat => {
       const matchesSearch = chat.clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           chat.serviceTitle?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           chat.lastMessage.toLowerCase().includes(searchTerm.toLowerCase());
+        chat.serviceTitle?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        chat.lastMessage.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesStatus = filterStatus === 'all' || chat.status === filterStatus;
       return matchesSearch && matchesStatus;
     })
@@ -280,8 +313,8 @@ const ChatHistoryModal: React.FC<ChatHistoryModalProps> = ({
           onClose();
         }}
       >
-        <KeyboardAvoidingView 
-          style={styles.chatContainer} 
+        <KeyboardAvoidingView
+          style={styles.chatContainer}
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         >
           {/* Chat Header */}
@@ -292,11 +325,11 @@ const ChatHistoryModal: React.FC<ChatHistoryModalProps> = ({
             >
               <Ionicons name="arrow-back" size={24} color={theme.colors.text} />
             </TouchableOpacity>
-            
+
             <View style={styles.chatHeaderInfo}>
-              <Avatar.Text 
-                size={40} 
-                label={selectedChat.clientName.charAt(0)} 
+              <Avatar.Text
+                size={40}
+                label={selectedChat.clientName.charAt(0)}
                 style={styles.chatAvatar}
               />
               <View style={styles.chatHeaderText}>
@@ -304,7 +337,7 @@ const ChatHistoryModal: React.FC<ChatHistoryModalProps> = ({
                 <Text style={styles.chatServiceTitle}>{selectedChat.serviceTitle}</Text>
               </View>
             </View>
-            
+
             <TouchableOpacity
               style={styles.chatMenuButton}
               onPress={() => {
@@ -312,8 +345,8 @@ const ChatHistoryModal: React.FC<ChatHistoryModalProps> = ({
                   'Options du chat',
                   'Que souhaitez-vous faire ?',
                   [
-                    { text: 'Voir le profil', onPress: () => {} },
-                    { text: 'Marquer comme terminé', onPress: () => {} },
+                    { text: 'Voir le profil', onPress: () => { } },
+                    { text: 'Marquer comme terminé', onPress: () => { } },
                     { text: 'Annuler', style: 'cancel' }
                   ]
                 );
@@ -324,7 +357,7 @@ const ChatHistoryModal: React.FC<ChatHistoryModalProps> = ({
           </View>
 
           {/* Messages */}
-          <ScrollView 
+          <ScrollView
             ref={scrollViewRef}
             style={styles.messagesContainer}
             contentContainerStyle={styles.messagesContent}
@@ -376,10 +409,10 @@ const ChatHistoryModal: React.FC<ChatHistoryModalProps> = ({
               onPress={sendMessage}
               disabled={!newMessage.trim() || sendingMessage}
             >
-              <Ionicons 
-                name="send" 
-                size={20} 
-                color={(!newMessage.trim() || sendingMessage) ? '#9E9E9E' : 'white'} 
+              <Ionicons
+                name="send"
+                size={20}
+                color={(!newMessage.trim() || sendingMessage) ? '#9E9E9E' : 'white'}
               />
             </TouchableOpacity>
           </View>
@@ -408,7 +441,7 @@ const ChatHistoryModal: React.FC<ChatHistoryModalProps> = ({
               </View>
             )}
           </View>
-          
+
           <IconButton
             icon="close"
             size={24}
@@ -438,7 +471,7 @@ const ChatHistoryModal: React.FC<ChatHistoryModalProps> = ({
                 Toutes
               </Text>
             </TouchableOpacity>
-            
+
             {['active', 'completed', 'cancelled'].map(status => (
               <TouchableOpacity
                 key={status}
@@ -473,16 +506,15 @@ const ChatHistoryModal: React.FC<ChatHistoryModalProps> = ({
                   chat.unreadCount > 0 && styles.unreadChatCard
                 ]}
                 onPress={() => {
-                  setSelectedChat(chat);
-                  setShowChatMessages(true);
+                  handleOpenChatModal(chat);
                 }}
               >
-                <Avatar.Text 
-                  size={50} 
-                  label={chat.clientName.charAt(0)} 
+                <Avatar.Text
+                  size={50}
+                  label={chat.clientName.charAt(0)}
                   style={styles.chatAvatar}
                 />
-                
+
                 <View style={styles.chatInfo}>
                   <View style={styles.chatHeader}>
                     <Text style={[
@@ -495,18 +527,18 @@ const ChatHistoryModal: React.FC<ChatHistoryModalProps> = ({
                       {formatTime(chat.lastMessageTime)}
                     </Text>
                   </View>
-                  
+
                   <Text style={styles.chatServiceTitle}>
                     {chat.serviceTitle}
                   </Text>
-                  
+
                   <Text style={[
                     styles.chatLastMessage,
                     chat.unreadCount > 0 && styles.unreadText
                   ]}>
                     {chat.lastMessage}
                   </Text>
-                  
+
                   <View style={styles.chatFooter}>
                     <View style={[
                       styles.statusBadge,
@@ -516,7 +548,7 @@ const ChatHistoryModal: React.FC<ChatHistoryModalProps> = ({
                         {getStatusText(chat.status)}
                       </Text>
                     </View>
-                    
+
                     {chat.unreadCount > 0 && (
                       <View style={styles.unreadCountBadge}>
                         <Text style={styles.unreadCountText}>{chat.unreadCount}</Text>
@@ -529,6 +561,22 @@ const ChatHistoryModal: React.FC<ChatHistoryModalProps> = ({
           )}
         </ScrollView>
       </View>
+
+      {/* ChatModal intégré */}
+      <ChatModal
+        visible={showChatModal}
+        service={selectedService}
+        prestataire={selectedPrestataire}
+        onClose={() => {
+          setShowChatModal(false);
+          setSelectedService(null);
+          setSelectedPrestataire(null);
+        }}
+        onSendMessage={(message) => {
+          console.log('Message envoyé via ChatModal:', message);
+          // Ici vous pourriez synchroniser avec l'historique des chats
+        }}
+      />
     </Modal>
   );
 };
@@ -728,14 +776,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: theme.colors.background,
   },
-  chatHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    backgroundColor: 'white',
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
-  },
   backButton: {
     marginRight: 16,
   },
@@ -835,5 +875,9 @@ const styles = StyleSheet.create({
 });
 
 export default ChatHistoryModal;
+
+
+
+
 
 

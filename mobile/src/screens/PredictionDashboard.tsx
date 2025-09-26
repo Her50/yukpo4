@@ -1,5 +1,7 @@
 ﻿// @ts-check
 import React from 'react';
+import { Text } from 'react-native';
+import { View } from 'react-native';
 import ResponsiveContainer from '@/components/layout/ResponsiveContainer';
 import RequireAccess from '@/components/auth/RequireAccess';
 import {
@@ -27,11 +29,11 @@ const PredictionDashboard: React.FC = () => {
     <RequireAccess plan="pro">
       <ResponsiveContainer>
         <View style="pt-24 pb-32 font-sans">
-          <h1 style="text-3xl font-bold text-center mb-10">📈 Analyse prédictive Yukpomnang</h1>
+          <Text style="text-3xl font-bold text-center mb-10">📈 Analyse prédictive Yukpomnang</Text>
 
           <View style="max-w-4xl mx-auto">
             <View style="bg-gray-50 p-6 rounded-lg shadow-md mb-6">
-              <h2 style="text-2xl font-semibold text-gray-800 mb-4">📊 Tendances des demandes</h2>
+              <Text style="text-2xl font-semibold text-gray-800 mb-4">📊 Tendances des demandes</Text>
               <LineChart data={chartData} width={600} height={300}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="month" />
@@ -70,4 +72,8 @@ const PredictionDashboard: React.FC = () => {
 };
 
 export default PredictionDashboard;
+
+
+
+
 

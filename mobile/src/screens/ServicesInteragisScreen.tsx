@@ -18,7 +18,11 @@ import {
     Star,
     Video
 } from 'lucide-react';
-import React, { useEffect, useState } from 'react';
+import * as React from "react";
+import { useEffect, useState } from 'react';
+import { Text } from 'react-native';
+import { View } from 'react-native';
+import { TouchableOpacity } from 'react-native';
 
 interface InteractedService {
     id: string;
@@ -142,7 +146,7 @@ const ServicesInteragisPage: React.FC = () => {
     const getInteractionIcon = (type: string) => {
         switch (type) {
             case 'message': return <MessageCircle style="w-4 h-4" />;
-            case 'call': return <Phone style="w-4 h-4" />;
+            case 'call': return <Texthone style="w-4 h-4" />;
             case 'video': return <Video style="w-4 h-4" />;
             case 'review': return <Star style="w-4 h-4" />;
             case 'favorite': return <Heart style="w-4 h-4" />;
@@ -179,7 +183,7 @@ const ServicesInteragisPage: React.FC = () => {
             <ResponsiveContainer>
                 <View style="text-center py-12">
                     <View style="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></View>
-                    <p style="mt-4 text-gray-600">Chargement de vos services...</Text>
+                    <Text style="mt-4 text-gray-600">Chargement de vos services...</Text>
                 </View>
             </ResponsiveContainer>
         );
@@ -190,10 +194,10 @@ const ServicesInteragisPage: React.FC = () => {
             <View style="py-8">
                 {/* Header */}
                 <View style="mb-8">
-                    <h1 style="text-3xl font-bold text-gray-900 mb-2">
+                    <Text style="text-3xl font-bold text-gray-900 mb-2">
                         Mon historique
-                    </h1>
-                    <p style="text-gray-600">
+                    </Text>
+                    <Text style="text-gray-600">
                         Retrouvez tous vos échanges et interactions avec les services
                     </Text>
                 </View>
@@ -247,7 +251,7 @@ const ServicesInteragisPage: React.FC = () => {
 
                             <TouchableOpacity
                                 variant="outline"
-                                onClick={loadInteractedServices}
+                                onPress={loadInteractedServices}
                                 style="flex items-center gap-2"
                             >
                                 <Filter style="w-4 h-4" />
@@ -263,10 +267,10 @@ const ServicesInteragisPage: React.FC = () => {
                         <Card>
                             <CardContent style="text-center py-12">
                                 <MessageCircle style="w-16 h-16 mx-auto mb-4 text-gray-300" />
-                                <h3 style="text-lg font-medium text-gray-900 mb-2">
+                                <Text style="text-lg font-medium text-gray-900 mb-2">
                                     Aucun service interagi
-                                </h3>
-                                <p style="text-gray-600">
+                                </Text>
+                                <Text style="text-gray-600">
                                     Commencez à interagir avec des services pour les voir apparaître ici
                                 </Text>
                             </CardContent>
@@ -286,9 +290,9 @@ const ServicesInteragisPage: React.FC = () => {
 
                                             <View style="flex-1">
                                                 <View style="flex items-center gap-2 mb-2">
-                                                    <h3 style="text-lg font-semibold text-gray-900">
+                                                    <Text style="text-lg font-semibold text-gray-900">
                                                         {service.serviceTitle}
-                                                    </h3>
+                                                    </Text>
                                                     <Badge style={getStatusColor(service.status)}>
                                                         {service.status}
                                                     </Badge>
@@ -298,7 +302,7 @@ const ServicesInteragisPage: React.FC = () => {
                                                     </Badge>
                                                 </View>
 
-                                                <p style="text-gray-600 mb-2">
+                                                <Text style="text-gray-600 mb-2">
                                                     {service.serviceDescription}
                                                 </Text>
 
@@ -350,7 +354,7 @@ const ServicesInteragisPage: React.FC = () => {
                                             <TouchableOpacity
                                                 variant="outline"
                                                 size="sm"
-                                                onClick={() => {
+                                                onPress={() => {
                                                     // Ouvrir le chat
                                                     toast({
                                                         title: "Ouverture du chat",
@@ -365,7 +369,7 @@ const ServicesInteragisPage: React.FC = () => {
                                             <TouchableOpacity
                                                 variant="outline"
                                                 size="sm"
-                                                onClick={() => {
+                                                onPress={() => {
                                                     // Appeler
                                                     toast({
                                                         title: "Appel",
@@ -374,7 +378,7 @@ const ServicesInteragisPage: React.FC = () => {
                                                     });
                                                 }}
                                             >
-                                                <Phone style="w-4 h-4 mr-2" />
+                                                <Texthone style="w-4 h-4 mr-2" />
                                                 Appeler
                                             </TouchableOpacity>
                                         </View>
@@ -390,6 +394,12 @@ const ServicesInteragisPage: React.FC = () => {
 };
 
 export default ServicesInteragisPage;
+
+
+
+
+
+
 
 
 

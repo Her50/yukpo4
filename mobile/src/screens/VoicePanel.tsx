@@ -1,4 +1,8 @@
-﻿import React, { useState, useEffect } from 'react';
+﻿import * as React from "react";
+import { useState, useEffect } from 'react';
+import { Text } from 'react-native';
+import { View } from 'react-native';
+import { TouchableOpacity } from 'react-native';
 import ResponsiveContainer from '@/components/layout/ResponsiveContainer';
 
 import axios from "axios";
@@ -19,7 +23,7 @@ const VoicePanel: React.FC = () => {
 
   return (
     <View style="">
-      <h2 style="text-xl font-bold mb-4">🎙️ Assistant vocal IA</h2>
+      <Text style="text-xl font-bold mb-4">🎙️ Assistant vocal IA</Text>
       <View style="flex gap-2 mb-4">
         <TextInput
           value={command}
@@ -28,17 +32,21 @@ const VoicePanel: React.FC = () => {
           placeholder="Dites quelque chose..."
         />
         <TouchableOpacity
-          onClick={handleSendCommand}
+          onPress={handleSendCommand}
           style=""
         >
           ▶ Envoyer
         </TouchableOpacity>
       </View>
       {response && (
-        <p style="mt-4 bg-gray-100 p-4 rounded text-gray-800">{response}</Text>
+        <Text style="mt-4 bg-gray-100 p-4 rounded text-gray-800">{response}</Text>
       )}
     </View>
   );
 };
 
 export default VoicePanel;
+
+
+
+

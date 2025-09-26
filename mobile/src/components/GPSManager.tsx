@@ -1,4 +1,5 @@
-﻿import React, { useEffect } from 'react';
+﻿import * as React from "react";
+import { useEffect } from 'react';
 import { useAutoGPSTracking } from '../hooks/useAutoGPSTracking';
 import { useUserContext } from '../context/UserContext';
 
@@ -32,3 +33,7 @@ const GPSManager: React.FC<GPSManagerProps> = ({ children }) => {
 };
 
 export default GPSManager; 
+
+
+
+

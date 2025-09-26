@@ -1,4 +1,8 @@
-﻿import React, { useState, useEffect } from 'react';
+﻿import * as React from "react";
+import { useState, useEffect } from 'react';
+import { Text } from 'react-native';
+import { View } from 'react-native';
+import { TouchableOpacity } from 'react-native';
 import ResponsiveContainer from '@/components/layout/ResponsiveContainer';
 
 import axios from "axios";
@@ -27,7 +31,7 @@ export default function ConversationPanel() {
 
   return (
     <View style="p-4">
-      <h2 style="text-xl font-bold mb-4">💬 Chat IA Yukpomnang</h2>
+      <Text style="text-xl font-bold mb-4">💬 Chat IA Yukpomnang</Text>
       <View style="border rounded p-4 h-64 overflow-y-scroll bg-white shadow">
         {messages.map((msg, idx) => (
           <View key={idx} style={msg.role === "user" ? "text-right" : "text-left"}>
@@ -45,7 +49,7 @@ export default function ConversationPanel() {
           placeholder="Votre message..."
         />
         <TouchableOpacity
-          onClick={handleSendMessage}
+          onPress={handleSendMessage}
           style=""
         >
           Envoyer
@@ -54,3 +58,7 @@ export default function ConversationPanel() {
     </View>
   );
 }
+
+
+
+

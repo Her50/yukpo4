@@ -1,4 +1,6 @@
-﻿import React, { useState } from 'react';
+﻿import * as React from 'react';
+import { TouchableOpacity } from 'react-native';
+import { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Card, Title, Paragraph, Button, TextInput, ActivityIndicator } from 'react-native-paper';
@@ -106,16 +108,15 @@ const ContactScreen: React.FC = () => {
                 disabled={loading}
               />
 
-              <Button
-                mode="contained"
+              <TouchableOpacity
                 onPress={handleSubmit}
-                loading={loading}
                 disabled={loading}
                 style={styles.submitButton}
-                contentStyle={styles.submitButtonContent}
               >
-                {loading ? 'Envoi en cours...' : 'Envoyer le message'}
-              </Button>
+                <Text>
+                  {loading ? 'Envoi en cours...' : 'Envoyer le message'}
+                </Text>
+              </TouchableOpacity>
             </View>
           </Card.Content>
         </Card>
@@ -308,3 +309,6 @@ const styles = StyleSheet.create({
 });
 
 export default ContactScreen;
+
+
+

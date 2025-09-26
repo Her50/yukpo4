@@ -47,3 +47,18 @@ desktop.ini
 
 # Local Netlify folder
 .netlify
+
+# Mobile specific
+mobile/node_modules/
+mobile/dist/
+mobile/.expo/
+mobile/.expo-shared/
+mobile/android/
+mobile/ios/
+mobile/web-build/
+
+# Additional build artifacts
+**/dist/
+**/build/
+**/.expo/
+**/.expo-shared/

@@ -41,3 +41,4 @@ adb logcat | Select-String -Pattern "yukpomnang|ReactNative|Expo|Yukpo"
 
 Write-Host "`n✅ Visualisation des logs terminée." -ForegroundColor Green
 
+

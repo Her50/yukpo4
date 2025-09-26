@@ -1,4 +1,8 @@
-﻿import React, { useState, useEffect } from 'react';
+﻿import * as React from "react";
+import { useState, useEffect } from 'react';
+import { Text } from 'react-native';
+import { View } from 'react-native';
+import { TouchableOpacity } from 'react-native';
 import ResponsiveContainer from '@/components/layout/ResponsiveContainer';
 
 import axios from "axios";
@@ -19,7 +23,7 @@ const AmbassadorPanel: React.FC = () => {
 
   return (
     <View style="">
-      <h2 style="text-xl font-bold mb-4">Programme Ambassadeur Yukpomnang</h2>
+      <Text style="text-xl font-bold mb-4">Programme Ambassadeur Yukpomnang</Text>
       <TextInput
         value={userId}
         onChange={(e) => setUserId(e.target.value)}
@@ -27,7 +31,7 @@ const AmbassadorPanel: React.FC = () => {
         style="border p-2 w-full mb-4"
       />
       <TouchableOpacity
-        onClick={generateInviteLink}
+        onPress={generateInviteLink}
         style=""
       >
         🎁 Générer un lien d'invitation
@@ -46,3 +50,7 @@ const AmbassadorPanel: React.FC = () => {
 };
 
 export default AmbassadorPanel;
+
+
+
+

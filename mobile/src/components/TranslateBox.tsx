@@ -1,4 +1,8 @@
-﻿import React, { useState } from 'react';
+﻿import * as React from "react";
+import { useState } from 'react';
+import { Text } from 'react-native';
+import { View } from 'react-native';
+import { TouchableOpacity } from 'react-native';
 import axios from 'axios';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -49,7 +53,7 @@ const TranslateBox = () => {
           <option value="ff">🌍 Fulfulde</option>
         </select>
 
-        <TouchableOpacity onClick={handleTranslate} disabled={loading}>
+        <TouchableOpacity onPress={handleTranslate} disabled={loading}>
           {loading ? '🔄...' : 'Traduire'}
         </TouchableOpacity>
       </View>
@@ -64,4 +68,8 @@ const TranslateBox = () => {
 };
 
 export default TranslateBox;
+
+
+
+
 

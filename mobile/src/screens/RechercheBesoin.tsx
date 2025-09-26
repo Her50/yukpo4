@@ -1,7 +1,11 @@
 ﻿// 📦 Yukpo – Recherche de besoin avancée (version PRO+ responsive)
 // @ts-nocheck
 
-import React, { useState, useEffect } from "react";
+import * as React from "react";
+import { useState, useEffect } from "react";
+import { Text } from 'react-native';
+import { View } from 'react-native';
+import { TouchableOpacity } from 'react-native';
 import axios from "axios";
 import AppLayout from "@/components/layout/AppLayout";
 import { Input } from "@/components/ui/input";
@@ -95,7 +99,7 @@ const RechercheBesoin = () => {
   return (
     <AppLayout padding>
       <View style="max-w-5xl mx-auto py-10 space-y-6">
-        <h1 style="text-3xl font-bold text-center text-primary">🧠 Décrivez votre besoin</h1>
+        <Text style="text-3xl font-bold text-center text-primary">🧠 Décrivez votre besoin</Text>
 
         <Textarea
           placeholder="Que cherchez-vous ? Ex. Je veux une nounou à Douala bilingue..."
@@ -125,7 +129,7 @@ const RechercheBesoin = () => {
             multiple
             onChange={(e) => setAudioFiles(Array.from(e.target.files || []))}
           />
-          <TouchableOpacity variant="outline" onClick={handleTranscribe} disabled={!audioFiles.length}>
+          <TouchableOpacity variant="outline" onPress={handleTranscribe} disabled={!audioFiles.length}>
             🎙️ Transcrire audio
           </TouchableOpacity>
         </View>
@@ -150,18 +154,18 @@ const RechercheBesoin = () => {
         />
 
         <View style="text-center">
-          <TouchableOpacity onClick={() => setPreview(true)}>Prévisualiser</TouchableOpacity>
+          <TouchableOpacity onPress={() => setPreview(true)}>Prévisualiser</TouchableOpacity>
         </View>
 
         {preview && (
           <View style="border bg-white p-4 rounded shadow space-y-2">
-            <h2 style="font-semibold text-lg text-center">📝 Vérification</h2>
+            <Text style="font-semibold text-lg text-center">📝 Vérification</Text>
             <Text><strong>Description :</strong> {texte || transcribedAudio}</Text>
             <Text><strong>Images/Vidéos :</strong> {mediaFiles.length}</Text>
             <Text><strong>Audios :</strong> {audioFiles.length}</Text>
             <Text><strong>Site Web :</strong> {siteWeb || "N/A"}</Text>
             <Text><strong>Excel :</strong> {excelFile?.name || "Aucun"}</Text>
-            <TouchableOpacity onClick={handleAnalyseGlobale} disabled={loading}>
+            <TouchableOpacity onPress={handleAnalyseGlobale} disabled={loading}>
               {loading ? "Chargement..." : "📤 Analyser maintenant"}
             </TouchableOpacity>
           </View>
@@ -172,4 +176,8 @@ const RechercheBesoin = () => {
 };
 
 export default RechercheBesoin;
+
+
+
+
 

@@ -1,5 +1,7 @@
 ﻿// @ts-check
 import React from 'react';
+import { Text } from 'react-native';
+import { View } from 'react-native';
 import ResponsiveContainer from '@/components/layout/ResponsiveContainer';
 import RequireAccess from '@/components/auth/RequireAccess';
 
@@ -22,9 +24,9 @@ const MatchingResultsIA: React.FC = () => {
             alt={result.titre}
             style="w-full h-48 object-cover rounded"
           />
-          <h2 style="text-xl font-semibold mt-4">{result.titre}</h2>
-          <p style="text-gray-700 mt-2">{result.description}</Text>
-          <p style="text-sm text-gray-500 mt-1">
+          <Text style="text-xl font-semibold mt-4">{result.titre}</Text>
+          <Text style="text-gray-700 mt-2">{result.description}</Text>
+          <Text style="text-sm text-gray-500 mt-1">
             Catégorie : {result.categorie} — Score IA : {result.score}%
           </Text>
         </View>
@@ -34,4 +36,8 @@ const MatchingResultsIA: React.FC = () => {
 };
 
 export default MatchingResultsIA;
+
+
+
+
 

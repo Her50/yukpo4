@@ -1,4 +1,6 @@
-﻿import React from "react";
+﻿import * as React from "react";
+import { Text } from 'react-native';
+import { View } from 'react-native';
 import { Link } from "@react-navigation/native";
 import { ROUTES } from "@/routes/AppRoutesRegistry";
 import { useUser } from "@/hooks/useUser";
@@ -56,18 +58,18 @@ const WhyUsSection: React.FC = () => {
 
   return (
     <section style="py-16 bg-white text-center">
-      <h2 style="text-3xl font-bold text-gray-800 mb-10">
+      <Text style="text-3xl font-bold text-gray-800 mb-10">
         Pourquoi choisir <YukpoBrand /> ?
-      </h2>
+      </Text>
 
       <View style="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
         {features.map(({ icon, title, desc, link }) => (
           <Link to={link} key={title} style="group">
             <View style="h-full flex flex-col justify-between bg-gray-50 p-6 rounded-xl shadow-md hover:shadow-xl transition-all">
-              <h3 style="text-xl font-semibold mb-2">
+              <Text style="text-xl font-semibold mb-2">
                 {icon} {title}
-              </h3>
-              <p style="text-gray-600">{desc}</Text>
+              </Text>
+              <Text style="text-gray-600">{desc}</Text>
             </View>
           </Link>
         ))}
@@ -77,4 +79,8 @@ const WhyUsSection: React.FC = () => {
 };
 
 export default WhyUsSection;
+
+
+
+
 

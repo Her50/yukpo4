@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { StyleSheet, Text, TextStyle } from 'react-native';
 
 interface YukpoBrandProps {
@@ -24,4 +24,9 @@ const styles = StyleSheet.create({
         color: '#DC2626', // red-600
     },
 });
+
+
+
+
+
 

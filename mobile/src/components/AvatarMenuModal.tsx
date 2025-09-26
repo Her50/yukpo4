@@ -1,5 +1,8 @@
-import { Ionicons } from '@expo/vector-icons';
+﻿import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
+import { Text } from 'react-native';
+import { View } from 'react-native';
+import { TouchableOpacity } from 'react-native';
 import {
   Alert,
   Modal,
@@ -121,7 +124,7 @@ const AvatarMenuModal: React.FC<AvatarMenuModalProps> = ({
             </View>
           </View>
 
-          <Divider style={styles.divider} />
+          <Viewider style={styles.divider} />
 
           {/* Menu items */}
           <View style={styles.menuContainer}>
@@ -155,7 +158,7 @@ const AvatarMenuModal: React.FC<AvatarMenuModalProps> = ({
             ))}
           </View>
 
-          <Divider style={styles.divider} />
+          <Viewider style={styles.divider} />
 
           {/* Bouton déconnexion */}
           <TouchableOpacity
@@ -306,4 +309,9 @@ const styles = StyleSheet.create({
 });
 
 export default AvatarMenuModal;
+
+
+
+
+
 

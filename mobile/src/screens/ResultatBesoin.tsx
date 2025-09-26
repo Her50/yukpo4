@@ -14,6 +14,9 @@ import {
   MapPin
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { Text } from 'react-native';
+import { View } from 'react-native';
+import { TouchableOpacity } from 'react-native';
 import { useLocation, useNavigation } from 'react-router-dom';
 
 // Composants modulaires
@@ -386,7 +389,7 @@ export const ResultatBesoin: React.FC = () => {
       <View style="container mx-auto px-4 py-8">
         <View style="text-center">
           <View style="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></View>
-          <p style="mt-4 text-gray-600">Recherche des services en cours...</Text>
+          <Text style="mt-4 text-gray-600">Recherche des services en cours...</Text>
         </View>
       </View>
     );
@@ -399,7 +402,7 @@ export const ResultatBesoin: React.FC = () => {
         <View style="mb-6">
           <View style="flex justify-between items-center">
             <TouchableOpacity
-              onClick={() => navigation.navigate('Home')}
+              onPress={() => navigation.navigate('Home')}
               variant="ghost"
               style="text-gray-600 hover:text-gray-800"
             >
@@ -411,9 +414,9 @@ export const ResultatBesoin: React.FC = () => {
 
         {/* Header avec statistiques et géolocalisation */}
         <View style="mb-8 text-center">
-          <h1 style="text-3xl font-bold text-gray-900 mb-4">
+          <Text style="text-3xl font-bold text-gray-900 mb-4">
             Services correspondants à votre besoin
-          </h1>
+          </Text>
 
           {/* ?? NOUVEAU : Avertissement GPS si des services utilisent le GPS en temps réel */}
           {services.some(service => !service.data?.gps_fixe && service.data?.gps_fixe_coords) && (
@@ -424,7 +427,7 @@ export const ResultatBesoin: React.FC = () => {
                   ⚠️ Certains services utilisent la position GPS en temps réel du créateur
                 </Text>
               </View>
-              <p style="text-xs text-yellow-700 mt-1">
+              <Text style="text-xs text-yellow-700 mt-1">
                 Cela peut expliquer pourquoi des coordonnées du Nigeria s'affichent si le créateur est actuellement là-bas
               </Text>
             </View>
@@ -444,7 +447,7 @@ export const ResultatBesoin: React.FC = () => {
           {/* Bouton de géolocalisation */}
           <View style="flex justify-center">
             <TouchableOpacity
-              onClick={handleGeolocation}
+              onPress={handleGeolocation}
               variant="outline"
               style="bg-gradient-to-r from-blue-500 to-purple-600 text-white border-0 hover:from-blue-600 hover:to-purple-700"
             >
@@ -458,9 +461,9 @@ export const ResultatBesoin: React.FC = () => {
           <Card style="max-w-2xl mx-auto">
             <CardContent style="p-8 text-center">
               <AlertCircle style="w-16 h-16 text-red-400 mx-auto mb-4" />
-              <h3 style="text-xl font-semibold mb-2">Erreur de chargement</h3>
-              <p style="text-gray-600 mb-6">{error}</Text>
-              <TouchableOpacity onClick={() => navigation.navigate('/besoins')} style="px-6">
+              <Text style="text-xl font-semibold mb-2">Erreur de chargement</Text>
+              <Text style="text-gray-600 mb-6">{error}</Text>
+              <TouchableOpacity onPress={() => navigation.navigate('/besoins')} style="px-6">
                 Retour aux besoins
               </TouchableOpacity>
             </CardContent>
@@ -471,11 +474,11 @@ export const ResultatBesoin: React.FC = () => {
           <Card style="max-w-2xl mx-auto">
             <CardContent style="p-8 text-center">
               <AlertCircle style="w-16 h-16 text-gray-400 mx-auto mb-4" />
-              <h3 style="text-xl font-semibold mb-2">Aucun service trouvé</h3>
-              <p style="text-gray-600 mb-6">
+              <Text style="text-xl font-semibold mb-2">Aucun service trouvé</Text>
+              <Text style="text-gray-600 mb-6">
                 Aucun prestataire ne correspond à vos critères pour le moment.
               </Text>
-              <TouchableOpacity onClick={() => navigation.navigate('/besoins')} style="px-6">
+              <TouchableOpacity onPress={() => navigation.navigate('/besoins')} style="px-6">
                 Retour aux besoins
               </TouchableOpacity>
             </CardContent>
@@ -484,8 +487,8 @@ export const ResultatBesoin: React.FC = () => {
           <Card style="max-w-2xl mx-auto">
             <CardContent style="p-8 text-center">
               <View style="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-500 mx-auto mb-4"></View>
-              <h3 style="text-xl font-semibold mb-2">Chargement des informations prestataire</h3>
-              <p style="text-gray-600 mb-6">
+              <Text style="text-xl font-semibold mb-2">Chargement des informations prestataire</Text>
+              <Text style="text-gray-600 mb-6">
                 Récupération des données GPS et des informations des prestataires...
               </Text>
             </CardContent>
@@ -518,9 +521,9 @@ export const ResultatBesoin: React.FC = () => {
         {services.length > 0 && (
           <View style="mt-12 text-center">
             <View style="max-w-2xl mx-auto p-6 bg-blue-50 rounded-lg border border-blue-200">
-              <h3 style="text-lg font-semibold text-blue-800 mb-2">
+              <Text style="text-lg font-semibold text-blue-800 mb-2">
                 Comment procéder ?
-              </h3>
+              </Text>
               <View style="grid md:grid-cols-3 gap-4 text-sm text-blue-700">
                 <View style="flex items-center gap-2">
                   <View style="w-6 h-6 bg-blue-200 rounded-full flex items-center justify-center text-blue-800 font-semibold">1</View>
@@ -573,4 +576,8 @@ export const ResultatBesoin: React.FC = () => {
 };
 
 export default ResultatBesoin;
+
+
+
+
 

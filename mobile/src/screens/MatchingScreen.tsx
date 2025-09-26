@@ -1,5 +1,8 @@
 ﻿// @ts-check
-import React, { useState } from 'react';
+import * as React from "react";
+import { useState } from 'react';
+import { Text } from 'react-native';
+import { View } from 'react-native';
 import ResponsiveContainer from '@/components/layout/ResponsiveContainer';
 import RequireAccess from '@/components/auth/RequireAccess';
 
@@ -9,12 +12,12 @@ const MatchingPage: React.FC = () => {
   return (
     <ResponsiveContainer>
       <View style="font-sans">
-        <h1 style="text-3xl font-bold text-center mb-10">
+        <Text style="text-3xl font-bold text-center mb-10">
           🤝 Mise en relation intelligente
-        </h1>
+        </Text>
 
         <View>
-          <p style="text-lg font-medium">
+          <Text style="text-lg font-medium">
             Suggestions pour votre profil :
           </Text>
 
@@ -30,4 +33,8 @@ const MatchingPage: React.FC = () => {
 };
 
 export default MatchingPage;
+
+
+
+
 

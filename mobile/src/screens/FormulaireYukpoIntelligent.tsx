@@ -1,6 +1,10 @@
 ﻿// src/components/intelligence/FormulaireYukpoIntelligent.tsx
 
-import React, { useEffect, useState, useMemo, useContext } from 'react';
+import * as React from "react";
+import { useEffect, useState, useMemo, useContext } from 'react';
+import { Text } from 'react-native';
+import { View } from 'react-native';
+import { TouchableOpacity } from 'react-native';
 import { useLocation, useNavigation } from 'react-router-dom';
 import AppLayout from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/buttons';
@@ -620,7 +624,7 @@ export default function FormulaireDemandeOuService() {
       <View style="container mx-auto px-4 py-8">
         <View style="mb-6 flex justify-between items-start">
           <TouchableOpacity
-            onClick={() => navigation.navigate('Home')}
+            onPress={() => navigation.navigate('Home')}
             style="text-orange-600 hover:text-orange-800 font-medium flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-orange-50 transition-colors"
           >
             ← 🏠 Retour à l'accueil
@@ -635,9 +639,9 @@ export default function FormulaireDemandeOuService() {
           <View style="space-y-3">
             {champsRegroupes.base.length > 0 && (
               <View style="p-2 space-y-2">
-                <h3 style="font-bold text-sm text-center text-white bg-blue-500 rounded py-1 mb-1 max-w-sm mx-auto">
+                <Text style="font-bold text-sm text-center text-white bg-blue-500 rounded py-1 mb-1 max-w-sm mx-auto">
                   📝 Informations générales
-                </h3>
+                </Text>
                 
                 <View style="space-y-2">
                   {champsRegroupes.base.map((champ: ComposantFrontend, index: number) => (
@@ -655,9 +659,9 @@ export default function FormulaireDemandeOuService() {
 
             {champsRegroupes.listeProduits && (
               <View style="p-2 space-y-2">
-                <h3 style="font-bold text-sm text-center text-white bg-green-500 rounded py-1 mb-1 max-w-sm mx-auto">
+                <Text style="font-bold text-sm text-center text-white bg-green-500 rounded py-1 mb-1 max-w-sm mx-auto">
                   📦 Liste des produits
-                </h3>
+                </Text>
                 <View>
                   <DynamicField 
                     key={champsRegroupes.listeProduits.nomChamp} 
@@ -672,9 +676,9 @@ export default function FormulaireDemandeOuService() {
 
             {champsRegroupes.contact.length > 0 && (
               <View style="p-2 space-y-2">
-                <h3 style="font-bold text-sm text-center text-white bg-orange-500 rounded py-1 mb-1 max-w-sm mx-auto">
+                <Text style="font-bold text-sm text-center text-white bg-orange-500 rounded py-1 mb-1 max-w-sm mx-auto">
                   📞 Contact
-                </h3>
+                </Text>
                 <View style="space-y-2">
                   {champsRegroupes.contact.map((champ: ComposantFrontend, index: number) => (
                     <DynamicField 
@@ -692,9 +696,9 @@ export default function FormulaireDemandeOuService() {
 
             {champsRegroupes.gpsFixe && (
               <View style="p-2 space-y-2">
-                <h3 style="font-bold text-sm text-center text-white bg-purple-500 rounded py-1 mb-1 max-w-sm mx-auto">
+                <Text style="font-bold text-sm text-center text-white bg-purple-500 rounded py-1 mb-1 max-w-sm mx-auto">
                   🎯 Position GPS fixe
-                </h3>
+                </Text>
                 <View>
                   <DynamicField 
                     key={champsRegroupes.gpsFixe.nomChamp} 
@@ -711,9 +715,9 @@ export default function FormulaireDemandeOuService() {
 
             {/* Blocs fixes - toujours affichés */}
             <View style="p-2 space-y-2">
-              <h3 style="font-bold text-sm text-center text-white bg-blue-500 rounded py-1 mb-1 max-w-sm mx-auto">
+              <Text style="font-bold text-sm text-center text-white bg-blue-500 rounded py-1 mb-1 max-w-sm mx-auto">
                 📍 Localisation du service
-              </h3>
+              </Text>
               
               <View style="space-y-2">
                 <View style="bg-gray-50 rounded p-2 max-w-sm mx-auto">
@@ -724,7 +728,7 @@ export default function FormulaireDemandeOuService() {
                   <View style="relative">
                     <TouchableOpacity
                       type="button"
-                      onClick={() => mode !== 'readonly' && setShowMapModal(true)}
+                      onPress={() => mode !== 'readonly' && setShowMapModal(true)}
                       disabled={mode === 'readonly'}
                       style={`w-full flex items-center justify-between text-xs h-8 px-2 border border-gray-300 rounded transition-colors ${
                         mode === 'readonly'
@@ -769,9 +773,9 @@ export default function FormulaireDemandeOuService() {
 
             {/* Bloc Médias du service */}
             <View style="p-2 space-y-2">
-              <h3 style="font-bold text-sm text-center text-white bg-orange-500 rounded py-1 mb-1 max-w-sm mx-auto">
+              <Text style="font-bold text-sm text-center text-white bg-orange-500 rounded py-1 mb-1 max-w-sm mx-auto">
                 📁 Médias du service
-              </h3>
+              </Text>
               <View style="space-y-2">
                 <View style="max-w-sm mx-auto">
                   <MediaManager 
@@ -784,9 +788,9 @@ export default function FormulaireDemandeOuService() {
             </View>
             
             <View style="p-2 space-y-2">
-              <h3 style="font-bold text-sm text-center text-white bg-red-500 rounded py-1 mb-1 max-w-sm mx-auto">
+              <Text style="font-bold text-sm text-center text-white bg-red-500 rounded py-1 mb-1 max-w-sm mx-auto">
                 🎉 Promotion et Offres
-              </h3>
+              </Text>
               
               <View style="space-y-2">
                 <View style="max-w-sm mx-auto">
@@ -890,14 +894,14 @@ export default function FormulaireDemandeOuService() {
               <View style="flex justify-center pt-4">
                 {mode === 'readonly' ? (
                   <TouchableOpacity 
-                    onClick={() => navigation.navigate('/dashboard/mes-services')}
+                    onPress={() => navigation.navigate('/dashboard/mes-services')}
                     style="bg-gray-600 hover:bg-gray-700 text-white px-8 py-3 font-semibold"
                   >
                     🔙 Retour à mes services
                   </TouchableOpacity>
                 ) : (
                   <TouchableOpacity 
-                    onClick={handleValidationService}
+                    onPress={handleValidationService}
                     disabled={chargement}
                     style="bg-orange-600 hover:bg-orange-700 disabled:bg-gray-400 text-white px-8 py-3 font-semibold shadow-lg"
                   >
@@ -916,7 +920,7 @@ export default function FormulaireDemandeOuService() {
           </View>
         ) : (
           <View style="text-center py-8">
-            <p style="text-gray-500">Aucun composant à afficher</Text>
+            <Text style="text-gray-500">Aucun composant à afficher</Text>
           </View>
         )}
 
@@ -930,21 +934,21 @@ export default function FormulaireDemandeOuService() {
                 </View>
               </View>
               <View style="flex-1">
-                <h3 style="font-bold text-lg mb-2">🎉 Service créé avec succès !</h3>
-                <p style="text-green-100 mb-3">
+                <Text style="font-bold text-lg mb-2">🎉 Service créé avec succès !</Text>
+                <Text style="text-green-100 mb-3">
                   Votre service a été créé et est maintenant disponible.
                 </Text>
                 <View style="bg-green-600 rounded p-3 mb-4">
-                  <p style="text-sm">
+                  <Text style="text-sm">
                     <strong>Coût de création :</strong> {successData.cout} FCFA
                   </Text>
-                  <p style="text-xs text-green-200 mt-1">
+                  <Text style="text-xs text-green-200 mt-1">
                     ID du service : {successData.serviceId}
                   </Text>
                 </View>
                 <View style="flex gap-2">
                   <TouchableOpacity
-                    onClick={() => {
+                    onPress={() => {
                       setShowSuccessToast(false);
                       navigation.navigate('Home');
                     }}
@@ -953,7 +957,7 @@ export default function FormulaireDemandeOuService() {
                     🏠 Retour à l'accueil
                   </TouchableOpacity>
                   <TouchableOpacity
-                    onClick={() => {
+                    onPress={() => {
                       setShowSuccessToast(false);
                       navigation.navigate('/dashboard/mes-services');
                     }}
@@ -964,7 +968,7 @@ export default function FormulaireDemandeOuService() {
                 </View>
               </View>
               <TouchableOpacity
-                onClick={() => setShowSuccessToast(false)}
+                onPress={() => setShowSuccessToast(false)}
                 style="flex-shrink-0 text-green-200 hover:text-white transition-colors"
               >
                 ✕
@@ -976,3 +980,7 @@ export default function FormulaireDemandeOuService() {
     </AppLayout>
   );
 } 
+
+
+
+

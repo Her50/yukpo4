@@ -15,6 +15,7 @@ import {
   Share2
 } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
+import ProductPricing from './ProductPricing';
 import ServiceStats from './ServiceStats';
 
 // Fonction utilitaire pour extraire la valeur d'un champ de service
@@ -319,6 +320,28 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
               {getServiceFieldValue(service.data?.description)}
             </p>
           </div>
+
+          {/* Produits avec prix */}
+          {(() => {
+            const produitsField = service.data?.produits;
+            if (produitsField) {
+              let produits = [];
+              if (Array.isArray(produitsField)) {
+                produits = produitsField;
+              } else if (produitsField.valeur && Array.isArray(produitsField.valeur)) {
+                produits = produitsField.valeur;
+              }
+
+              if (produits.length > 0) {
+                return (
+                  <div className="mb-3">
+                    <ProductPricing products={produits} compact={true} />
+                  </div>
+                );
+              }
+            }
+            return null;
+          })()}
 
           {/* Créateur sans avatar */}
           <div className="text-center mb-2 bg-blue-50 rounded-lg p-2 border border-blue-100">

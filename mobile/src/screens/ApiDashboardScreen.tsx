@@ -1,4 +1,8 @@
-﻿import React, { useState, useEffect } from 'react';
+﻿import * as React from "react";
+import { useState, useEffect } from 'react';
+import { Text } from 'react-native';
+import { View } from 'react-native';
+import { TouchableOpacity } from 'react-native';
 import ResponsiveContainer from '@/components/layout/ResponsiveContainer';
 
 import { ROUTES } from '@/routes/AppRoutesRegistry';
@@ -44,7 +48,7 @@ const ApiDashboardPage: React.FC = () => {
 
   return (
     <View style="p-6">
-      <h1 style="text-2xl font-bold mb-4">🧠 Audit des Routes API</h1>
+      <Text style="text-2xl font-bold mb-4">🧠 Audit des Routes API</Text>
 
       <View style="mb-4 flex space-x-4">
         <TextInput
@@ -55,7 +59,7 @@ const ApiDashboardPage: React.FC = () => {
           onChange={(e) => setFilter(e.target.value)}
         />
         <TouchableOpacity
-          onClick={fetchRegistry}
+          onPress={fetchRegistry}
           style=""
           disabled={loading}
         >
@@ -113,3 +117,7 @@ const ApiDashboardPage: React.FC = () => {
 };
 
 export default ApiDashboardPage;
+
+
+
+

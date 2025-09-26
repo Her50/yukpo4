@@ -1,4 +1,5 @@
-import React, { useState, useCallback, useEffect } from 'react';
+﻿import * as React from "react";
+import { useState, useCallback, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ScrollView, Image } from 'react-native';
 import { Button, Card, Title, Paragraph } from 'react-native-paper';
 import { Ionicons } from '@expo/vector-icons';
@@ -499,6 +500,10 @@ const styles = StyleSheet.create({
 });
 
 export default ChatInputPanel;
+
+
+
+
 
 
 

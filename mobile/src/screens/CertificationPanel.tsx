@@ -1,4 +1,8 @@
-﻿import React, { useState, useEffect } from 'react';
+﻿import * as React from "react";
+import { useState, useEffect } from 'react';
+import { Text } from 'react-native';
+import { View } from 'react-native';
+import { TouchableOpacity } from 'react-native';
 import ResponsiveContainer from '@/components/layout/ResponsiveContainer';
 
 import axios from "axios";
@@ -18,7 +22,7 @@ export default function CertificationPanel() {
 
   return (
     <View style="">
-      <h2 style="text-2xl font-bold mb-4">Certification Yukpomnang Pro</h2>
+      <Text style="text-2xl font-bold mb-4">Certification Yukpomnang Pro</Text>
       <TextInput
         value={userId}
         onChange={(e) => setUserId(e.target.value)}
@@ -26,7 +30,7 @@ export default function CertificationPanel() {
         style="border p-2 w-full mb-4"
       />
       <TouchableOpacity
-        onClick={handleCertificationRequest}
+        onPress={handleCertificationRequest}
         style=""
       >
         Demander la certification
@@ -39,3 +43,7 @@ export default function CertificationPanel() {
     </View>
   );
 }
+
+
+
+

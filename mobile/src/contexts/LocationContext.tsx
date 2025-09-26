@@ -1,24 +1,16 @@
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import * as Location from 'expo-location';
-import React, { createContext, ReactNode, useContext, useEffect, useState, useCallback } from 'react';
-import { Alert, Linking, Platform } from 'react-native';
-import { locationApi } from '../services/api';
-
-interface LocationData {
-  latitude: number;
-  longitude: number;
-  city?: string;
-  country?: string;
-  address?: string;
-  accuracy?: number;
-  timestamp?: number;
-}
 
 interface LocationContextType {
-  location: LocationData | null;
-  loading: boolean;
-  error: string | null;
+  location: Location.LocationObject | null;
+  errorMsg: string | null;
+  isLoading: boolean;
   requestLocationPermission: () => Promise<boolean>;
-  getCurrentLocation: () => Promise<LocationData | null>;
+  getCurrentLocation: () => Promise<Location.LocationObject | null>;
+  watchLocation: () => Promise<Location.LocationSubscription | null>;
+  stopWatchingLocation: () => void;
+  getLocationAddress: (location: Location.LocationObject) => Promise<string | null>;
+  calculateDistance: (lat1: number, lon1: number, lat2: number, lon2: number) => number;
 }
 
 const LocationContext = createContext<LocationContextType | undefined>(undefined);
@@ -28,95 +20,132 @@ interface LocationProviderProps {
 }
 
 export const LocationProvider: React.FC<LocationProviderProps> = ({ children }) => {
-  const [location, setLocation] = useState<LocationData | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [location, setLocation] = useState<Location.LocationObject | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [locationSubscription, setLocationSubscription] = useState<Location.LocationSubscription | null>(null);
 
-  const requestLocationPermission = useCallback(async (): Promise<boolean> => {
-    setLoading(true);
+  const requestLocationPermission = async (): Promise<boolean> => {
     try {
-      let { status } = await Location.requestForegroundPermissionsAsync();
+      const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
-        setError('Permission de localisation refusée.');
-        Alert.alert(
-          'Permission de localisation',
-          'L\'application a besoin de votre localisation pour fonctionner. Veuillez l\'activer dans les paramètres.',
-          [
-            { text: 'Annuler', style: 'cancel' },
-            { text: 'Ouvrir les paramètres', onPress: () => Linking.openSettings() },
-          ]
-        );
+        setErrorMsg('Permission de localisation refusée');
         return false;
       }
-      setError(null);
       return true;
-    } catch (err: any) {
-      console.error('Erreur demande permission localisation:', err);
-      setError('Erreur lors de la demande de permission de localisation.');
+    } catch (error) {
+      setErrorMsg('Erreur lors de la demande de permission');
       return false;
-    } finally {
-      setLoading(false);
     }
-  }, []);
+  };
 
-  const getCurrentLocation = useCallback(async (): Promise<LocationData | null> => {
-    setLoading(true);
-    setError(null);
+  const getCurrentLocation = async (): Promise<Location.LocationObject | null> => {
+    try {
+      setIsLoading(true);
+      setErrorMsg(null);
+
+      const hasPermission = await requestLocationPermission();
+      if (!hasPermission) {
+        return null;
+      }
+
+      const currentLocation = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+        timeInterval: 1000,
+        distanceInterval: 1,
+      });
+
+      setLocation(currentLocation);
+      return currentLocation;
+    } catch (error) {
+      setErrorMsg('Erreur lors de la récupération de la localisation');
+      return null;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const watchLocation = async (): Promise<Location.LocationSubscription | null> => {
     try {
       const hasPermission = await requestLocationPermission();
       if (!hasPermission) {
         return null;
       }
 
-      let locationResult = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.High,
+      const subscription = await Location.watchPositionAsync(
+        {
+          accuracy: Location.Accuracy.Balanced,
+          timeInterval: 5000,
+          distanceInterval: 10,
+        },
+        (newLocation) => {
+          setLocation(newLocation);
+        }
+      );
+
+      setLocationSubscription(subscription);
+      return subscription;
+    } catch (error) {
+      setErrorMsg('Erreur lors de la surveillance de la localisation');
+      return null;
+    }
+  };
+
+  const stopWatchingLocation = () => {
+    if (locationSubscription) {
+      locationSubscription.remove();
+      setLocationSubscription(null);
+    }
+  };
+
+  const getLocationAddress = async (location: Location.LocationObject): Promise<string | null> => {
+    try {
+      const address = await Location.reverseGeocodeAsync({
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
       });
 
-      const { latitude, longitude, accuracy } = locationResult.coords;
-      let city, country, address;
-
-      try {
-        const geocode = await Location.reverseGeocodeAsync({ latitude, longitude });
-        if (geocode && geocode.length > 0) {
-          city = geocode[0].city || undefined;
-          country = geocode[0].country || undefined;
-          address = geocode[0].name || undefined;
-        }
-      } catch (geocodeError) {
-        console.warn('Erreur géocodage inverse:', geocodeError);
-        // Continuer même si le géocodage échoue
+      if (address.length > 0) {
+        const addr = address[0];
+        return `${addr.street || ''} ${addr.streetNumber || ''}, ${addr.city || ''}, ${addr.region || ''}, ${addr.country || ''}`.trim();
       }
-
-      const locationData: LocationData = {
-        latitude,
-        longitude,
-        city,
-        country,
-        address,
-        accuracy: accuracy || undefined,
-      };
-
-      setLocation(locationData);
-      return locationData;
-    } catch (err: any) {
-      console.error('Erreur récupération localisation:', err);
-      setError('Impossible de récupérer la localisation actuelle.');
       return null;
-    } finally {
-      setLoading(false);
+    } catch (error) {
+      console.error('Erreur lors du géocodage inverse:', error);
+      return null;
     }
-  }, [requestLocationPermission]);
+  };
+
+  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+    const R = 6371; // Rayon de la Terre en kilomètres
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = 
+      Math.sin(dLat/2) * Math.sin(dLat/2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+      Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+  };
 
   useEffect(() => {
     getCurrentLocation();
-  }, [getCurrentLocation]);
+    
+    return () => {
+      stopWatchingLocation();
+    };
+  }, []);
 
   const value: LocationContextType = {
     location,
-    loading,
-    error,
+    errorMsg,
+    isLoading,
     requestLocationPermission,
     getCurrentLocation,
+    watchLocation,
+    stopWatchingLocation,
+    getLocationAddress,
+    calculateDistance,
   };
 
   return (
@@ -129,7 +158,7 @@ export const LocationProvider: React.FC<LocationProviderProps> = ({ children }) 
 export const useLocation = (): LocationContextType => {
   const context = useContext(LocationContext);
   if (context === undefined) {
-    throw new Error('useLocation doit être utilisé dans un LocationProvider');
+    throw new Error('useLocation must be used within a LocationProvider');
   }
   return context;
 };

@@ -1,8 +1,8 @@
-import { Ionicons } from '@expo/vector-icons';
+﻿import Ionicons from '@expo/vector-icons/Ionicons';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
-import React from 'react';
-import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
+import * as React from 'react';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
 // Contexts
 import { useAuth } from '../contexts/AuthContext';
@@ -11,16 +11,8 @@ import { useAuth } from '../contexts/AuthContext';
 import AboutScreen from '../screens/AboutScreen';
 import ContactScreen from '../screens/ContactScreen';
 import DashboardPrestataireScreen from '../screens/DashboardPrestataireScreen';
-import DashboardScreen from '../screens/DashboardScreen';
 import FormulaireYukpoIntelligentScreen from '../screens/FormulaireYukpoIntelligentScreen';
 import HomeScreen from '../screens/HomeScreen';
-// Composant de chargement simple
-const LoadingScreen = () => (
-  <View style={styles.loadingContainer}>
-    <ActivityIndicator size="large" color={theme.colors.primary} />
-    <Text style={styles.loadingText}>Chargement...</Text>
-  </View>
-);
 import MesServicesScreen from '../screens/MesServicesScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import RechargeTokensScreen from '../screens/RechargeTokensScreen';
@@ -35,8 +27,19 @@ import LoginScreen from '../screens/auth/LoginScreen';
 import RegisterScreen from '../screens/auth/RegisterScreen';
 import CreateServiceScreen from '../screens/service/CreateServiceScreen';
 import ServiceDetailScreen from '../screens/service/ServiceDetailScreen';
+// Composant de chargement simple
+const LoadingScreen = () => (
+  <View style={styles.loadingContainer}>
+    <ActivityIndicator size="large" color={theme.colors.primary} />
+    <Text style={styles.loadingText}>Chargement...</Text>
+  </View>
+);
+
+// Components
+import QuickActionsMenu from '../components/QuickActionsMenu';
 
 // Theme
+import { logNavigation } from '../config/appConfig';
 import { theme } from '../theme/theme';
 
 const Stack = createStackNavigator();
@@ -55,67 +58,71 @@ const AuthStack = () => (
 );
 
 // Tab Navigator pour l'application principale
-const MainTabs = () => (
-  <Tab.Navigator
-    screenOptions={({ route }: any) => ({
-      tabBarIcon: ({ focused, color, size }: any) => {
-        let iconName: keyof typeof Ionicons.glyphMap;
+const MainTabs = () => {
+  const [showQuickMenu, setShowQuickMenu] = React.useState(false);
 
-        if (route.name === 'Home') {
-          iconName = focused ? 'home' : 'home-outline';
-        } else if (route.name === 'Search') {
-          iconName = focused ? 'search' : 'search-outline';
-        } else if (route.name === 'MyServices') {
-          iconName = focused ? 'list' : 'list-outline';
-        } else if (route.name === 'Dashboard') {
-          iconName = focused ? 'analytics' : 'analytics-outline';
-        } else if (route.name === 'Profile') {
-          iconName = focused ? 'person' : 'person-outline';
-        } else {
-          iconName = 'help-outline';
-        }
+  return (
+    <>
+      <Tab.Navigator
+        screenOptions={({ route }: any) => ({
+          tabBarIcon: ({ focused, color, size }: any) => {
+            let iconName: keyof typeof Ionicons.glyphMap;
 
-        return <Ionicons name={iconName} size={size} color={color} />;
-      },
-      tabBarActiveTintColor: theme.colors.primary,
-      tabBarInactiveTintColor: theme.colors.textSecondary,
-      tabBarStyle: {
-        backgroundColor: 'white',
-        borderTopColor: theme.colors.border,
-        paddingBottom: 5,
-        paddingTop: 5,
-        height: 60,
-      },
-      headerShown: false,
-    })}
-  >
-    <Tab.Screen
-      name="Home"
-      component={HomeScreen}
-      options={{ title: 'Accueil' }}
-    />
-    <Tab.Screen
-      name="Search"
-      component={ServicesScreen}
-      options={{ title: 'Recherche' }}
-    />
-    <Tab.Screen
-      name="MyServices"
-      component={MesServicesScreen}
-      options={{ title: 'Mes Services' }}
-    />
-    <Tab.Screen
-      name="Dashboard"
-      component={DashboardScreen}
-      options={{ title: 'Dashboard' }}
-    />
-    <Tab.Screen
-      name="Profile"
-      component={ProfileScreen}
-      options={{ title: 'Profil' }}
-    />
-  </Tab.Navigator>
-);
+            if (route.name === 'Home') {
+              iconName = focused ? 'home' : 'home-outline';
+            } else if (route.name === 'QuickMenu') {
+              iconName = focused ? 'menu' : 'menu-outline';
+            } else if (route.name === 'Profile') {
+              iconName = focused ? 'person' : 'person-outline';
+            } else {
+              iconName = 'help-outline';
+            }
+
+            return <Ionicons name={iconName as any} size={size} color={color} />;
+          },
+          tabBarActiveTintColor: theme.colors.primary,
+          tabBarInactiveTintColor: theme.colors.textSecondary,
+          tabBarStyle: {
+            backgroundColor: 'white',
+            borderTopColor: theme.colors.border,
+            paddingBottom: 5,
+            paddingTop: 5,
+            height: 60,
+          },
+          headerShown: false,
+        })}
+      >
+        <Tab.Screen
+          name="Home"
+          component={HomeScreen}
+          options={{ title: 'Accueil' }}
+        />
+        <Tab.Screen
+          name="QuickMenu"
+          component={() => null}
+          options={{ title: 'Menu' }}
+          listeners={{
+            tabPress: (e: { preventDefault: () => void }) => {
+              e.preventDefault();
+              setShowQuickMenu(true);
+            },
+          }}
+        />
+        <Tab.Screen
+          name="Profile"
+          component={ProfileScreen}
+          options={{ title: 'Profil' }}
+        />
+      </Tab.Navigator>
+
+      {/* Menu déroulant des actions rapides */}
+      <QuickActionsMenu
+        isVisible={showQuickMenu}
+        onClose={() => setShowQuickMenu(false)}
+      />
+    </>
+  );
+};
 
 // Stack Navigator principal
 const MainStack = () => (
@@ -181,9 +188,14 @@ const MainStack = () => (
       options={{ title: 'Historique de Consommation' }}
     />
     <Stack.Screen
-      name="DashboardPrestataire"
+      name="Dashboard"
       component={DashboardPrestataireScreen}
-      options={{ title: 'Dashboard Prestataire' }}
+      options={{ title: 'Dashboard' }}
+    />
+    <Stack.Screen
+      name="MyServices"
+      component={MesServicesScreen}
+      options={{ title: 'Mes Services' }}
     />
     <Stack.Screen
       name="ServicesInteragis"
@@ -212,24 +224,35 @@ const MainStack = () => (
 const AppNavigator = () => {
   const { user, loading } = useAuth();
 
-  console.log('[AppNavigator] État actuel:', {
+  logNavigation('État actuel', {
     user: !!user,
     loading,
     userId: user?.id,
     userEmail: user?.email,
-    userName: user?.name
+    userName: user?.name,
+    userObject: user
   });
 
+  // État pour suivre les changements d'utilisateur
+  const [userState, setUserState] = React.useState(user);
+
+  React.useEffect(() => {
+    if (user !== userState) {
+      logNavigation('Changement d\'utilisateur détecté');
+      setUserState(user);
+    }
+  }, [user, userState]);
+
   if (loading) {
-    console.log('[AppNavigator] Affichage LoadingScreen');
+    logNavigation('Affichage LoadingScreen');
     return <LoadingScreen />;
   }
 
   if (user) {
-    console.log('[AppNavigator] Utilisateur connecté, affichage MainStack');
+    logNavigation('Utilisateur connecté, affichage MainStack');
     return <MainStack />;
   } else {
-    console.log('[AppNavigator] Utilisateur non connecté, affichage AuthStack');
+    logNavigation('Utilisateur non connecté, affichage AuthStack');
     return <AuthStack />;
   }
 };
@@ -250,3 +273,7 @@ const styles = StyleSheet.create({
 });
 
 export default AppNavigator;
+
+
+
+

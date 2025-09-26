@@ -1,4 +1,6 @@
-import React, { useState, useRef, useEffect } from 'react';
+﻿import * as React from 'react';
+import { TouchableOpacity } from 'react-native';
+import { useState, useRef, useEffect } from 'react';
 import { View, StyleSheet, FlatList, KeyboardAvoidingView, Platform } from 'react-native';
 import { Text, TextInput, Button, Card, Avatar } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
@@ -128,17 +130,13 @@ const AIChatScreen: React.FC = () => {
           style={styles.textInput}
           disabled={loading}
         />
-        <Button
-          mode="contained"
+        <TouchableOpacity
           onPress={sendMessage}
           disabled={!inputText.trim() || loading}
-          loading={loading}
           style={styles.sendButton}
-          buttonColor="#FFD700"
-          textColor="#000"
         >
-          Envoyer
-        </Button>
+          <Text style={{ color: "#000" }}>Envoyer</Text>
+        </TouchableOpacity>
       </View>
     </KeyboardAvoidingView>
   );
@@ -227,6 +225,12 @@ const styles = StyleSheet.create({
 });
 
 export default AIChatScreen;
+
+
+
+
+
+
 
 
 

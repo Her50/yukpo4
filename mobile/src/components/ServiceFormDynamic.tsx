@@ -1,4 +1,6 @@
-import React, { useState } from 'react';
+﻿import * as React from "react";
+import { useState } from 'react';
+import { TouchableOpacity } from 'react-native';
 import { View, Text, StyleSheet, ScrollView, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Card, Title, TextInput, Button } from 'react-native-paper';
@@ -100,14 +102,14 @@ const ServiceFormDynamic: React.FC = () => {
             />
 
             <View style={styles.buttonContainer}>
-              <Button
+              <TouchableOpacity
                 mode="outlined"
                 onPress={() => navigation.goBack()}
                 style={styles.cancelButton}
               >
                 Annuler
-              </Button>
-              <Button
+              </TouchableOpacity>
+              <TouchableOpacity
                 mode="contained"
                 onPress={handleSubmit}
                 loading={loading}
@@ -115,7 +117,7 @@ const ServiceFormDynamic: React.FC = () => {
                 style={styles.submitButton}
               >
                 Créer le service
-              </Button>
+              </TouchableOpacity>
             </View>
           </Card.Content>
         </Card>
@@ -163,4 +165,9 @@ const styles = StyleSheet.create({
 });
 
 export default ServiceFormDynamic;
+
+
+
+
+
 

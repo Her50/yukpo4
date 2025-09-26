@@ -40,3 +40,4 @@ if ($authSuccess -and $featureSuccess) {
     Write-Host "CERTAINS TESTS ONT ECHOUE" -ForegroundColor Red
     exit 1
 }
+

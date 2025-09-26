@@ -1,4 +1,6 @@
-﻿import React, { useState, useEffect } from 'react';
+﻿import * as React from "react";
+import { useState, useEffect } from 'react';
+import { Text } from 'react-native';
 import ResponsiveContainer from '@/components/layout/ResponsiveContainer';
 import { Button } from "@/components/ui/buttons";
 
@@ -38,7 +40,7 @@ const ActivityLogViewer: React.FC = () => {
 
   return (
     <ResponsiveContainer style="py-8">
-      <h2 style="text-xl font-bold mb-4">🧾 Historique des actions admin</h2>
+      <Text style="text-xl font-bold mb-4">🧾 Historique des actions admin</Text>
 
       <TextInput
         placeholder="Filtrer par action/module"
@@ -81,4 +83,8 @@ const ActivityLogViewer: React.FC = () => {
 };
 
 export default ActivityLogViewer;
+
+
+
+
 

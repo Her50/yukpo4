@@ -1,4 +1,8 @@
-﻿import React, { useState, useEffect } from 'react';
+﻿import * as React from "react";
+import { useState, useEffect } from 'react';
+import { Text } from 'react-native';
+import { View } from 'react-native';
+import { TouchableOpacity } from 'react-native';
 import ResponsiveContainer from '@/components/layout/ResponsiveContainer';
 
 import { Button } from "@/components/ui/buttons";
@@ -35,8 +39,8 @@ const GeoSyncPanel: React.FC = () => {
 
   return (
     <View style="p-6">
-      <h2 style="text-xl font-semibold mb-4">🌍 Synchronisation Multi-Zone IA</h2>
-      <TouchableOpacity style="mb-4" onClick={fetchData}>
+      <Text style="text-xl font-semibold mb-4">🌍 Synchronisation Multi-Zone IA</Text>
+      <TouchableOpacity style="mb-4" onPress={fetchData}>
         🔄 Forcer la synchronisation
       </TouchableOpacity>
 
@@ -67,3 +71,7 @@ const GeoSyncPanel: React.FC = () => {
 };
 
 export default GeoSyncPanel;
+
+
+
+

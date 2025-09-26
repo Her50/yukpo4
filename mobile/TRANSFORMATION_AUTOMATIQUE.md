@@ -179,3 +179,4 @@ Le système de transformation automatique frontend → mobile est maintenant **o
 
 **L'application mobile Yukpo est prête pour la production !** 🎉
 
+

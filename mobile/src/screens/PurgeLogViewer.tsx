@@ -1,4 +1,8 @@
-﻿import React, { useState, useEffect } from 'react';
+﻿import * as React from "react";
+import { useState, useEffect } from 'react';
+import { Text } from 'react-native';
+import { View } from 'react-native';
+import { TouchableOpacity } from 'react-native';
 import ResponsiveContainer from '@/components/layout/ResponsiveContainer';
 import PDFModal from '@/components/ui/PDFModal';
 
@@ -10,7 +14,7 @@ interface PurgeLog {
 }
 
 const PurgeLogViewer: React.FC = () => {
-  const [logs, setLogs] = useState<PurgeLog[]>([]);
+  const [logs, setLogs] = useState<TexturgeLog[]>([]);
   const [filterDate, setFilterDate] = useState({ start: "", end: "" });
   const [filterAction, setFilterAction] = useState("");
   const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
@@ -51,12 +55,12 @@ const PurgeLogViewer: React.FC = () => {
   return (
     <View style="p-4 bg-white dark:bg-gray-900 min-h-screen text-gray-900 dark:text-gray-100">
       <View style="flex justify-between items-center mb-4 gap-4 flex-wrap">
-        <h1 style="text-2xl font-bold">Historique des purges</h1>
+        <Text style="text-2xl font-bold">Historique des purges</Text>
         <View style="flex gap-2">
-          <TouchableOpacity onClick={reloadData} style="">
+          <TouchableOpacity onPress={reloadData} style="">
             🔄 Recharger les données
           </TouchableOpacity>
-          <TouchableOpacity onClick={printPage} style="">
+          <TouchableOpacity onPress={printPage} style="">
             🖨️ Imprimer cette page
           </TouchableOpacity>
         </View>
@@ -91,10 +95,10 @@ const PurgeLogViewer: React.FC = () => {
             style="p-2 border rounded bg-white dark:bg-gray-800"
           />
         </View>
-        <TouchableOpacity onClick={downloadCSV} style="">
+        <TouchableOpacity onPress={downloadCSV} style="">
           📥 Télécharger CSV
         </TouchableOpacity>
-        <TouchableOpacity onClick={downloadPDF} style="">
+        <TouchableOpacity onPress={downloadPDF} style="">
           📄 Exporter PDF
         </TouchableOpacity>
       </View>
@@ -118,7 +122,7 @@ const PurgeLogViewer: React.FC = () => {
         </tbody>
       </table>
 
-      <PDFModal
+      <TextDFModal
         isOpen={isPdfModalOpen}
         onClose={() => setIsPdfModalOpen(false)}
         pdfUrl="/dist/reports/logs_cleared.pdf"
@@ -129,3 +133,7 @@ const PurgeLogViewer: React.FC = () => {
 };
 
 export default PurgeLogViewer;
+
+
+
+

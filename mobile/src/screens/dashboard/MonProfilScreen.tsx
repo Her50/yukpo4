@@ -1,6 +1,7 @@
-import { Ionicons } from '@expo/vector-icons';
+﻿import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import React, { useState } from 'react';
+import * as React from "react";
+import { useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Avatar, Button, Card, TextInput, Title } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -137,20 +138,20 @@ const MonProfilScreen: React.FC = () => {
 
                 {editing && (
                     <View style={styles.editActions}>
-                        <Button
+                        <TouchableOpacity
                             mode="outlined"
                             onPress={handleCancel}
                             style={styles.cancelButton}
                         >
                             Annuler
-                        </Button>
-                        <Button
+                        </TouchableOpacity>
+                        <TouchableOpacity
                             mode="contained"
                             onPress={handleSave}
                             style={styles.saveButton}
                         >
                             Sauvegarder
-                        </Button>
+                        </TouchableOpacity>
                     </View>
                 )}
 
@@ -304,4 +305,9 @@ const styles = StyleSheet.create({
 });
 
 export default MonProfilScreen;
+
+
+
+
+
 

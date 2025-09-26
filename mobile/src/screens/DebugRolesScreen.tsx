@@ -1,5 +1,8 @@
 ﻿// @ts-check
-import React, { useEffect } from 'react';
+import * as React from "react";
+import { useEffect } from 'react';
+import { Text } from 'react-native';
+import { View } from 'react-native';
 import { useNavigation } from 'react-router-dom';
 import ResponsiveContainer from '@/components/layout/ResponsiveContainer';
 import { useUser } from '@/hooks/useUser';
@@ -24,7 +27,7 @@ const DebugRolesPage: React.FC = () => {
 
   return (
     <ResponsiveContainer>
-      <h1 style="text-3xl font-bold mb-6">🛡️ Debug des rôles Yukpomnang</h1>
+      <Text style="text-3xl font-bold mb-6">🛡️ Debug des rôles Yukpomnang</Text>
 
       <View style="mb-4 text-gray-800">
         <Text>
@@ -62,4 +65,8 @@ const DebugRolesPage: React.FC = () => {
 };
 
 export default DebugRolesPage;
+
+
+
+
 

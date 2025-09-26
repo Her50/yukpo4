@@ -1,5 +1,5 @@
 ﻿// @ts-check
-import React from "react";
+import * as React from "react";
 import { Link, useLocation } from "@react-navigation/native";
 import { ROUTES } from "@/routes/AppRoutesRegistry";
 import { useUser } from "@/hooks/useUser";
@@ -72,4 +72,8 @@ const DesktopMenu: React.FC = () => {
 };
 
 export default DesktopMenu;
+
+
+
+
 

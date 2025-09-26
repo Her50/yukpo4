@@ -1,9 +1,10 @@
 ﻿// src/components/HeroBanner.tsx
-import React from "react";
 import { Link } from "@react-navigation/native";
-import { motion } // Animation React Native;
-import banner from "@/assets/banner.png";
-import { ROUTES } from "@/routes/AppRoutesRegistry";
+import * as React from "react";
+import { View } from 'react-native';
+// import { motion } from 'framer-motion'; // Animation React Native
+// import banner from "@/assets/banner.png";
+// import { ROUTES } from "@/routes/AppRoutesRegistry";
 
 const HeroBanner: React.FC = () => {
   return (
@@ -49,4 +50,8 @@ const HeroBanner: React.FC = () => {
 };
 
 export default HeroBanner;
+
+
+
+
 

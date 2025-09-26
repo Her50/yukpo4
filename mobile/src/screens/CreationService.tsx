@@ -2,7 +2,11 @@
 // ✅ UX optimale : 2 étapes, capture directe, refus contenu illicite, segmentation, accompagnement assisté, contrainte intelligente médias, partage externe, vitrine selon plan + image auto IA + nature_service persisté + backend prêt
 // @ts-nocheck
 
-import React, { useState, useEffect } from "react";
+import * as React from "react";
+import { useState, useEffect } from "react";
+import { Text } from 'react-native';
+import { View } from 'react-native';
+import { TouchableOpacity } from 'react-native';
 import AppLayout from "@/components/layout/AppLayout";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/buttons";
@@ -150,7 +154,7 @@ const CreationService = () => {
         {showForm && (
           <>
             <View style="bg-white rounded-md border p-4 space-y-4 shadow-sm mt-6">
-              <h2 style="text-lg font-semibold text-primary">🧾 Informations générales</h2>
+              <Text style="text-lg font-semibold text-primary">🧾 Informations générales</Text>
               <TextInput name="titre" value={form.titre} onChange={handleFormChange} placeholder="Titre du service" />
               <Textarea name="description" value={form.description} onChange={handleFormChange} placeholder="Description du service" />
               <TextInput name="prix" value={form.prix} onChange={handleFormChange} placeholder="Prix (FCFA)" type="number" />
@@ -160,7 +164,7 @@ const CreationService = () => {
 
             {blueprint.length > 0 && (
               <View style="bg-white rounded-md border p-4 space-y-4 shadow-sm">
-                <h2 style="text-lg font-semibold text-primary">🧩 Spécificités de votre service</h2>
+                <Text style="text-lg font-semibold text-primary">🧩 Spécificités de votre service</Text>
                 {blueprint.map((field, i) => (
                   <View key={i} style="flex items-center gap-2">
                     <TextInput
@@ -176,10 +180,10 @@ const CreationService = () => {
             )}
 
             <View style="text-center mt-6">
-              <TouchableOpacity onClick={handleValidate} disabled={loading} style="w-full">
+              <TouchableOpacity onPress={handleValidate} disabled={loading} style="w-full">
                 {loading ? "⏳ Publication en cours..." : "📤 Publier mon service Yukpo"}
               </TouchableOpacity>
-              <p style="text-xs text-gray-500 mt-2">🔗 Une fois publié, vous pourrez le partager ou générer votre vitrine pro Yukpo selon votre plan.</Text>
+              <Text style="text-xs text-gray-500 mt-2">🔗 Une fois publié, vous pourrez le partager ou générer votre vitrine pro Yukpo selon votre plan.</Text>
             </View>
           </>
         )}
@@ -189,4 +193,8 @@ const CreationService = () => {
 };
 
 export default CreationService;
+
+
+
+
 

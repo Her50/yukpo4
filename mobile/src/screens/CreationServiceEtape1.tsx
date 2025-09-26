@@ -1,7 +1,11 @@
 ﻿// 📦 Yukpo – Étape 1 de création de service (version responsive + IA)
 // @ts-nocheck
 
-import React, { useState } from "react";
+import * as React from "react";
+import { useState } from "react";
+import { Text } from 'react-native';
+import { View } from 'react-native';
+import { TouchableOpacity } from 'react-native';
 import axios from "axios";
 import { AffinerBesoinPanel } from "@/components/AffinerBesoinPanel";
 import { FormulaireBlueprint } from "@/components/FormulaireBlueprint";
@@ -30,13 +34,13 @@ export default function CreationServiceEtape1() {
         <SheetTrigger asChild>
           <TouchableOpacity
             style="absolute top-4 right-4 text-gray-600 hover:text-primary focus:outline-none"
-            onClick={() => setOpenMenu(true)}
+            onPress={() => setOpenMenu(true)}
           >
             <Menu style="w-6 h-6" />
           </TouchableOpacity>
         </SheetTrigger>
         <SheetContent side="right" style="w-64 p-4 bg-white border-l border-gray-200">
-          <h2 style="text-lg font-semibold mb-4 text-primary">⚙️ Options</h2>
+          <Text style="text-lg font-semibold mb-4 text-primary">⚙️ Options</Text>
           <ul style="space-y-2 text-sm">
             <li><TouchableOpacity variant="ghost" style="w-full">📋 Mes services</TouchableOpacity></li>
             <li><TouchableOpacity variant="ghost" style="w-full">🔧 Modifier un service</TouchableOpacity></li>
@@ -45,7 +49,7 @@ export default function CreationServiceEtape1() {
         </SheetContent>
       </Sheet>
 
-      <h1 style="text-2xl font-bold text-center text-primary mb-4">🧠 Étape 1 : Analyse de votre service</h1>
+      <Text style="text-2xl font-bold text-center text-primary mb-4">🧠 Étape 1 : Analyse de votre service</Text>
 
       <textarea
         value={texte}
@@ -54,7 +58,7 @@ export default function CreationServiceEtape1() {
         style="w-full border rounded p-3 mb-4"
       />
 
-      <TouchableOpacity style="mb-6" onClick={handleAnalyse}>
+      <TouchableOpacity style="mb-6" onPress={handleAnalyse}>
         🔍 Lancer l’analyse Yukpo
       </TouchableOpacity>
 
@@ -69,4 +73,8 @@ export default function CreationServiceEtape1() {
     </View>
   );
 }
+
+
+
+
 

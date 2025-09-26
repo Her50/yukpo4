@@ -1,4 +1,7 @@
-﻿import React, { useState } from "react";
+﻿import * as React from "react";
+import { useState } from "react";
+import { View } from 'react-native';
+import { TouchableOpacity } from 'react-native';
 import { Link, useLocation } from "@react-navigation/native";
 import { Menu, X } from "lucide-react";
 
@@ -25,7 +28,7 @@ const ResponsiveSidebar: React.FC = () => {
     <>
       <TouchableOpacity
         style="md:hidden fixed top-4 left-4 z-50 bg-white p-2 rounded-full shadow-md"
-        onClick={() => setOpen(!open)}
+        onPress={() => setOpen(!open)}
         aria-label="Ouvrir le menu admin"
       >
         {open ? <X size={24} /> : <Menu size={24} />}
@@ -46,7 +49,7 @@ const ResponsiveSidebar: React.FC = () => {
               style={`px-4 py-2 rounded hover:bg-gray-100 ${
                 isActive(link.path) ? "bg-gray-200 font-semibold" : ""
               }`}
-              onClick={() => setOpen(false)}
+              onPress={() => setOpen(false)}
             >
               {link.label}
             </Link>
@@ -58,4 +61,8 @@ const ResponsiveSidebar: React.FC = () => {
 };
 
 export default ResponsiveSidebar;
+
+
+
+
 

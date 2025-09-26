@@ -55,3 +55,4 @@ try {
 Write-Host "`n✅ Logs sauvegardés dans: $logFile" -ForegroundColor Green
 Write-Host "📧 Envoyez-moi ce fichier pour analyse" -ForegroundColor Yellow
 
+

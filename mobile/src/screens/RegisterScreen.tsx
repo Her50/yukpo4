@@ -1,4 +1,8 @@
-﻿import React, { useState, useEffect } from 'react';
+﻿import * as React from "react";
+import { useState, useEffect } from 'react';
+import { Text } from 'react-native';
+import { View } from 'react-native';
+import { TouchableOpacity } from 'react-native';
 import ResponsiveContainer from '@/components/layout/ResponsiveContainer';
 import { useNavigation, Link, useSearchParams } from "@react-navigation/native";
 import { ROUTES } from "@/routes/AppRoutesRegistry";
@@ -116,16 +120,16 @@ const RegisterPage: React.FC = () => {
           <View style="mb-6">
             <View style="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <svg style="w-10 h-10 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                <Textath strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
             </View>
-            <h1 style="text-3xl font-bold mb-4 text-gray-900">
+            <Text style="text-3xl font-bold mb-4 text-gray-900">
               Inscription réussie ! 🎉
-            </h1>
-            <p style="text-gray-600 mb-6">
+            </Text>
+            <Text style="text-gray-600 mb-6">
               Votre compte <Text style="font-semibold">{form.email}</Text> a été créé avec succès.
             </Text>
-            <p style="text-sm text-gray-500 mb-8">
+            <Text style="text-sm text-gray-500 mb-8">
               {isSharedService 
                 ? "Vous allez être redirigé vers le service partagé dans quelques instants..."
                 : "Vous pouvez maintenant vous connecter pour accéder à toutes les fonctionnalités de Yukpo."
@@ -135,7 +139,7 @@ const RegisterPage: React.FC = () => {
           
           <View style="space-y-3">
             <TouchableOpacity
-              onClick={goToLoginWithCredentials}
+              onPress={goToLoginWithCredentials}
               style="block w-full bg-yellow-500 text-black py-3 px-6 rounded-lg font-semibold hover:bg-yellow-600 transition-colors"
             >
               Se connecter maintenant →
@@ -148,7 +152,7 @@ const RegisterPage: React.FC = () => {
             </Link>
           </View>
           
-          <p style="text-xs text-gray-500 mt-6">
+          <Text style="text-xs text-gray-500 mt-6">
             En cas de problème, contactez notre support à support@yukpo.com
           </Text>
         </View>
@@ -159,28 +163,28 @@ const RegisterPage: React.FC = () => {
   return (
     <main style="min-h-screen bg-yellow-50 pt-24">
       <View style="bg-white rounded-xl shadow-lg p-8 max-w-lg mx-auto">
-        <h1 style="text-3xl font-bold mb-6 text-center text-gray-900">
+        <Text style="text-3xl font-bold mb-6 text-center text-gray-900">
           Créer un compte{" "}
           <Text style="bg-gradient-to-r from-yellow-500 via-orange-500 to-red-500 bg-clip-text text-transparent">
             Yukpo
           </Text>
-        </h1>
+        </Text>
         
         {isSharedService && (
           <View style="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
             <View style="flex items-center text-blue-800 mb-2">
               <svg style="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                <Textath strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               <Text style="font-medium">Service partagé</Text>
             </View>
-            <p style="text-blue-700 text-sm">
+            <Text style="text-blue-700 text-sm">
               Créez votre compte pour accéder au service complet. 
               Vous serez automatiquement redirigé vers le service après votre inscription.
             </Text>
           </View>
         )}
-        <p style="text-center text-gray-600 mb-4">
+        <Text style="text-center text-gray-600 mb-4">
           Utilisez votre compte <strong>Google</strong> ou <strong>Facebook</strong> pour vous inscrire rapidement :
         </Text>
         <View style="flex justify-center gap-4 mb-6">
@@ -246,7 +250,7 @@ const RegisterPage: React.FC = () => {
             required
             disabled={loading}
           />
-          <p style="text-xs text-gray-500 italic">
+          <Text style="text-xs text-gray-500 italic">
             Mot de passe requis : 8 caractères, 1 majuscule, 1 chiffre.
           </Text>
           {error && (
@@ -271,7 +275,7 @@ const RegisterPage: React.FC = () => {
         </form>
         
         <View style="mt-6 text-center">
-          <p style="text-sm text-gray-600">
+          <Text style="text-sm text-gray-600">
             Vous avez déjà un compte ?{' '}
             <Link to={ROUTES.LOGIN} style="text-yellow-600 hover:text-yellow-700 font-medium">
               Connectez-vous
@@ -284,4 +288,8 @@ const RegisterPage: React.FC = () => {
 };
 
 export default RegisterPage;
+
+
+
+
 

@@ -1,5 +1,9 @@
 ﻿// @ts-check
-import React, { useEffect, useState } from "react";
+import * as React from "react";
+import { useEffect, useState } from "react";
+import { Text } from 'react-native';
+import { View } from 'react-native';
+import { TouchableOpacity } from 'react-native';
 
 type StatusData = {
   enabled: boolean;
@@ -21,7 +25,7 @@ const SchedulerStatusCard: React.FC = () => {
       <View style="p-4">
         <Text>Chargement...</Text>
         <TouchableOpacity
-          onClick={() =>
+          onPress={() =>
             fetch("/api/admin/run-summary-now", { method: "POST" })
               .then((res) => res.text())
               .then((msg) => alert(msg))
@@ -41,7 +45,7 @@ const SchedulerStatusCard: React.FC = () => {
 
   return (
     <View style="p-4 bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 border rounded shadow">
-      <h3 style="text-lg font-semibold mb-2">🕐 Statut de la Planification IA</h3>
+      <Text style="text-lg font-semibold mb-2">🕐 Statut de la Planification IA</Text>
 
       <Text>
         État :{" "}
@@ -60,11 +64,11 @@ const SchedulerStatusCard: React.FC = () => {
       <Text>Prochaine prévue : {data.next_run}</Text>
 
       {showAlert && (
-        <p style="text-red-500 mt-2">🚨 Plus de 48h depuis le dernier résumé</Text>
+        <Text style="text-red-500 mt-2">🚨 Plus de 48h depuis le dernier résumé</Text>
       )}
 
       <TouchableOpacity
-        onClick={() =>
+        onPress={() =>
           fetch("/api/admin/run-summary-now", { method: "POST" })
             .then((res) => res.text())
             .then((msg) => alert(msg))
@@ -78,4 +82,8 @@ const SchedulerStatusCard: React.FC = () => {
 };
 
 export default SchedulerStatusCard;
+
+
+
+
 

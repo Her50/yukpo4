@@ -1,5 +1,7 @@
 ﻿// src/components/services/CardService.tsx
 import React from 'react';
+import { Text } from 'react-native';
+import { View } from 'react-native';
 import { ROUTES } from '@/routes/AppRoutesRegistry';
 
 interface CardServiceProps {
@@ -11,8 +13,8 @@ interface CardServiceProps {
 const CardService: React.FC<CardServiceProps> = ({ icon, title, description }) => (
   <View style="bg-white shadow-md rounded-lg p-5 text-center w-full max-w-xs">
     <View style="text-3xl mb-2">{icon}</View>
-    <h3 style="text-lg font-bold text-gray-800 mb-1">{title}</h3>
-    <p style="text-sm text-gray-600">{description}</Text>
+    <Text style="text-lg font-bold text-gray-800 mb-1">{title}</Text>
+    <Text style="text-sm text-gray-600">{description}</Text>
 
     {/* 🚀 CONTEXTUAL BUTTONS */}
     <View style="mt-6 flex flex-wrap gap-4 justify-center">
@@ -39,4 +41,8 @@ const CardService: React.FC<CardServiceProps> = ({ icon, title, description }) =
 );
 
 export default CardService;
+
+
+
+
 

@@ -1,4 +1,7 @@
-﻿import React, { useState, useEffect } from 'react';
+﻿import * as React from "react";
+import { useState, useEffect } from 'react';
+import { Text } from 'react-native';
+import { View } from 'react-native';
 import ResponsiveContainer from '@/components/layout/ResponsiveContainer';
 
 import { Card, CardContent } from "@/components/ui/card";
@@ -23,13 +26,13 @@ const SmartBlocksStatus: React.FC = () => {
 
   return (
     <View style="p-6">
-      <h1 style="text-2xl font-bold mb-4">📦 Suivi des Blocs IA (33–100)</h1>
+      <Text style="text-2xl font-bold mb-4">📦 Suivi des Blocs IA (33–100)</Text>
       <View style="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         {blocks.map((block) => (
           <Card key={block.bloc}>
             <CardContent style="p-4">
-              <p style="text-lg font-semibold">Bloc {block.bloc}</Text>
-              <p style="text-sm text-gray-600">{block.status}</Text>
+              <Text style="text-lg font-semibold">Bloc {block.bloc}</Text>
+              <Text style="text-sm text-gray-600">{block.status}</Text>
             </CardContent>
           </Card>
         ))}
@@ -39,3 +42,7 @@ const SmartBlocksStatus: React.FC = () => {
 };
 
 export default SmartBlocksStatus;
+
+
+
+

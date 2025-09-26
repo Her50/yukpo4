@@ -1,46 +1,88 @@
-﻿import React, { useState, useEffect } from 'react';
-import ResponsiveContainer from '@/components/layout/ResponsiveContainer';
-
-import { useTranslation } from "react-i18next";
+﻿import * as React from 'react';
+import { useState, useEffect } from 'react';
+// import ResponsiveContainer from '@/components/layout/ResponsiveContainer';
+// import { useTranslation } from "react-i18next";
 import { useNavigation } from "@react-navigation/native";
-import { motion } // Animation React Native;
-import { Button } from "@/components/ui/buttons";
-import { ArrowLeft } from "lucide-react";
-import { ROUTES } from "@/routes/AppRoutesRegistry"; // ✅ import ajouté
+// import { motion } from 'framer-motion'; // Animation React Native
+import { TouchableOpacity, Text, View, StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+// import { ROUTES } from "@/routes/AppRoutesRegistry"; // ✅ import ajouté
 
 const PageNotFound: React.FC = () => {
-  const { t } = useTranslation();
+  // const { t } = useTranslation();
   const navigate = useNavigation();
 
   return (
-    <View style="">
-      <motion.div
-        style=""
-        initial={{ opacity: 0, y: 50 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-      >
-        <motion.h1
-          style="text-6xl font-extrabold text-primary mb-4"
-          initial={{ scale: 0.8 }}
-          animate={{ scale: 1 }}
-          transition={{ delay: 0.2 }}
-        >
-          404
-        </motion.h1>
-        <p style="text-xl font-semibold text-gray-800 mb-2">
-          {t("notfound.title", "Page introuvable")}
+    <View style={styles.container}>
+      <View style={styles.content}>
+        <Text style={styles.title}>404</Text>
+        <Text style={styles.subtitle}>
+          Page introuvable
         </Text>
-        <p style="text-gray-600 mb-6">
-          {t("notfound.subtitle", "La page demandée n'existe pas ou a été déplacée.")}
+        <Text style={styles.message}>
+          La page demandée n'existe pas ou a été déplacée.
         </Text>
 
-        <TouchableOpacity onClick={() => navigation.navigate(ROUTES.HOME)} style="flex items-center gap-2">
-          <ArrowLeft size={18} /> {t("notfound.back", "Retour à l’accueil")}
+        <TouchableOpacity 
+          style={styles.button}
+          onPress={() => navigate.navigate('Home' as never)}
+        >
+          <Ionicons name="arrow-back" size={18} color="white" />
+          <Text style={styles.buttonText}>Retour à l'accueil</Text>
         </TouchableOpacity>
-      </motion.div>
+      </View>
     </View>
   );
 };
 
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f5f5f5',
+    padding: 20,
+  },
+  content: {
+    alignItems: 'center',
+  },
+  title: {
+    fontSize: 64,
+    fontWeight: 'bold',
+    color: '#007AFF',
+    marginBottom: 16,
+  },
+  subtitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  message: {
+    fontSize: 16,
+    color: '#666',
+    marginBottom: 24,
+    textAlign: 'center',
+  },
+  button: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 8,
+    gap: 8,
+  },
+  buttonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+});
+
 export default PageNotFound;
+
+
+
+

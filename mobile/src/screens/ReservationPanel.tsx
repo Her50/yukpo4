@@ -1,4 +1,8 @@
-﻿import React, { useState, useEffect } from 'react';
+﻿import * as React from "react";
+import { useState, useEffect } from 'react';
+import { Text } from 'react-native';
+import { View } from 'react-native';
+import { TouchableOpacity } from 'react-native';
 import ResponsiveContainer from '@/components/layout/ResponsiveContainer';
 
 import axios from "axios";
@@ -27,7 +31,7 @@ const ReservationPanel: React.FC = () => {
 
   return (
     <View style="p-6">
-      <h2 style="text-2xl font-bold mb-4">📅 Réservation en temps réel</h2>
+      <Text style="text-2xl font-bold mb-4">📅 Réservation en temps réel</Text>
       <TextInput
         style="border p-2 mb-2 w-full"
         placeholder="ID utilisateur"
@@ -52,13 +56,13 @@ const ReservationPanel: React.FC = () => {
         value={slot}
         onChange={(e) => setSlot(e.target.value)}
       />
-      <TouchableOpacity style="bg-blue-600 text-white p-2 rounded" onClick={handleReservation}>
+      <TouchableOpacity style="bg-blue-600 text-white p-2 rounded" onPress={handleReservation}>
         Réserver
       </TouchableOpacity>
 
       {result && (
         <View style="mt-4 text-green-700">
-          <p style="font-semibold">{result.status}</Text>
+          <Text style="font-semibold">{result.status}</Text>
           <Text>Affecté au prestataire ID : {result.assigned_to}</Text>
         </View>
       )}
@@ -67,3 +71,7 @@ const ReservationPanel: React.FC = () => {
 };
 
 export default ReservationPanel;
+
+
+
+

@@ -1,6 +1,8 @@
 ﻿// src/components/Footer.tsx
 // @ts-check
-import React from "react";
+import * as React from "react";
+import { Text } from 'react-native';
+import { View } from 'react-native';
 import { Link } from "@react-navigation/native";
 import { ROUTES } from "@/routes/AppRoutesRegistry";
 
@@ -31,17 +33,17 @@ const Footer: React.FC = () => (
         <View style="text-lg font-bold text-gray-800 dark:text-white">
           <YukpoBrand />
         </View>
-        <p style="text-sm leading-relaxed">
+        <Text style="text-sm leading-relaxed">
           L’assistant intelligent qui transforme vos besoins en solutions.
         </Text>
-        <p style="text-xs mt-1 text-gray-400">
+        <Text style="text-xs mt-1 text-gray-400">
           © {new Date().getFullYear()} — Tous droits réservés.
         </Text>
       </View>
 
       {/* Bloc 2 : Liens légaux */}
       <View style="flex flex-col gap-2">
-        <h3 style="text-md font-semibold text-gray-800 dark:text-gray-200">Liens utiles</h3>
+        <Text style="text-md font-semibold text-gray-800 dark:text-gray-200">Liens utiles</Text>
         <nav style="flex flex-col gap-1 text-sm">
           {uniqueLinks.map(({ path, label }) => (
             <Link
@@ -57,14 +59,18 @@ const Footer: React.FC = () => (
 
       {/* Bloc 3 : Contact rapide */}
       <View style="flex flex-col gap-2">
-        <h3 style="text-md font-semibold text-gray-800 dark:text-gray-200">Contact</h3>
-        <p style="text-sm">📞 +237 6 90 00 00 00</Text>
-        <p style="text-sm">📧 contact@yukpo.app</Text>
-        <p style="text-sm">💬 WhatsApp : +237 6 70 00 00 00</Text>
+        <Text style="text-md font-semibold text-gray-800 dark:text-gray-200">Contact</Text>
+        <Text style="text-sm">📞 +237 6 90 00 00 00</Text>
+        <Text style="text-sm">📧 contact@yukpo.app</Text>
+        <Text style="text-sm">💬 WhatsApp : +237 6 70 00 00 00</Text>
       </View>
     </View>
   </footer>
 );
 
 export default Footer;
+
+
+
+
 

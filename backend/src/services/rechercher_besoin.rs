@@ -59,6 +59,19 @@ async fn search_services_fallback(
                 OR s.data->>'description_service' ILIKE $1
                 OR s.data->>'category' ILIKE $1
                 OR s.category ILIKE $1
+                OR EXISTS (
+                    SELECT 1 
+                    FROM jsonb_array_elements(
+                        CASE 
+                            WHEN jsonb_typeof(s.data->'produits') = 'array' 
+                            THEN s.data->'produits'
+                            WHEN jsonb_typeof(s.data->'produits'->'valeur') = 'array'
+                            THEN s.data->'produits'->'valeur'
+                            ELSE '[]'::jsonb
+                        END
+                    ) AS product
+                    WHERE product->>'name' ILIKE $1
+                )
             )
             ORDER BY s.created_at DESC
             "#,

@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+﻿import * as React from 'react';
+import { useState } from 'react';
 import { View, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { Text, Card, Button, Chip } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
@@ -249,3 +250,6 @@ const styles = StyleSheet.create({
 });
 
 export default AIHubScreen;
+
+
+

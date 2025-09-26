@@ -1,4 +1,7 @@
 ﻿import React from 'react';
+import { Text } from 'react-native';
+import { View } from 'react-native';
+import { TouchableOpacity } from 'react-native';
 import { useNavigation } from 'react-router-dom';
 
 const TestResultatBesoin: React.FC = () => {
@@ -59,25 +62,25 @@ const TestResultatBesoin: React.FC = () => {
 
   return (
     <View style="container mx-auto px-4 py-8">
-      <h1 style="text-2xl font-bold mb-4">Test ResultatBesoin</h1>
+      <Text style="text-2xl font-bold mb-4">Test ResultatBesoin</Text>
       
       <View style="space-y-4">
         <TouchableOpacity
-          onClick={testWithData}
+          onPress={testWithData}
           style="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
         >
           Tester avec données
         </TouchableOpacity>
         
         <TouchableOpacity
-          onClick={() => navigation.navigate('/resultat-besoin')}
+          onPress={() => navigation.navigate('/resultat-besoin')}
           style="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
         >
           Tester sans données
         </TouchableOpacity>
         
         <TouchableOpacity
-          onClick={() => navigation.navigate('Home')}
+          onPress={() => navigation.navigate('Home')}
           style="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
         >
           Retour à l'accueil
@@ -88,3 +91,7 @@ const TestResultatBesoin: React.FC = () => {
 };
 
 export default TestResultatBesoin; 
+
+
+
+

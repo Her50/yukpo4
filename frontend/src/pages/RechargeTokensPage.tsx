@@ -11,6 +11,7 @@ import {
 import React, { useState } from 'react';
 import { toast } from 'react-hot-toast';
 import AddPaymentMethodModal from '../components/payment/AddPaymentMethodModal';
+import ReceiptModal from '../components/recharge/ReceiptModal';
 import SavedPaymentMethods from '../components/payment/SavedPaymentMethods';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/buttons/Button';
@@ -46,6 +47,8 @@ const RechargeTokensPage: React.FC = () => {
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<any>(null);
   const [currentStep, setCurrentStep] = useState<'amount' | 'payment' | 'confirm'>('amount');
   const [showAddPaymentModal, setShowAddPaymentModal] = useState(false);
+  const [showReceiptModal, setShowReceiptModal] = useState(false);
+  const [receiptData, setReceiptData] = useState<any>(null);
 
   // Options de recharge prédéfinies (en FCFA de base, converties selon la devise)
   const baseAmounts = [2000, 5000, 10000, 20000, 50000]; // Montants en FCFA
@@ -169,6 +172,22 @@ const RechargeTokensPage: React.FC = () => {
       }));
 
       toast.success(`Recharge de ${formatAmount(option.amount)} effectuée avec succès ! +${option.tokens} tokens ajoutés`);
+      
+      // Générer le reçu
+      const receipt = {
+        id: `RCP-${Date.now()}`,
+        amount: option.amount,
+        tokens: option.tokens,
+        bonus: option.bonus,
+        paymentMethod: selectedPaymentMethod?.name || 'Méthode de paiement',
+        transactionId: result.transaction_id || `TXN-${Date.now()}`,
+        date: new Date().toISOString(),
+        status: 'completed' as const
+      };
+      
+      setReceiptData(receipt);
+      setShowReceiptModal(true);
+      
       setCurrentStep('amount');
       setSelectedOption(null);
       setSelectedPaymentMethod(null);
@@ -230,6 +249,22 @@ const RechargeTokensPage: React.FC = () => {
       }));
 
       toast.success(`Recharge de ${formatAmount(customAmount)} effectuée avec succès ! +${totalTokens} tokens ajoutés`);
+      
+      // Générer le reçu
+      const receipt = {
+        id: `RCP-${Date.now()}`,
+        amount: customAmount,
+        tokens: customAmount,
+        bonus: bonus,
+        paymentMethod: selectedPaymentMethod?.name || 'Méthode de paiement',
+        transactionId: result.transaction_id || `TXN-${Date.now()}`,
+        date: new Date().toISOString(),
+        status: 'completed' as const
+      };
+      
+      setReceiptData(receipt);
+      setShowReceiptModal(true);
+      
       setCurrentStep('amount');
       setCustomAmount(0);
       setSelectedPaymentMethod(null);
@@ -284,11 +319,11 @@ const RechargeTokensPage: React.FC = () => {
                 <div className="flex items-center gap-2">
                   <Coins className="w-6 h-6" />
                   <span className="text-3xl font-bold">
-                    {balance?.toLocaleString() || '0'} tokens
+                    {formatAmount(balance || 0)}
                   </span>
                 </div>
                 <p className="text-blue-100 mt-1">
-                  Équivalent à {formatAmount(balance || 0)}
+                  {(balance || 0) * 10} tokens disponibles
                 </p>
               </div>
               <div className="text-right">
@@ -607,6 +642,13 @@ const RechargeTokensPage: React.FC = () => {
             // TODO: Rafraîchir quand l'API sera prête
             // window.location.reload();
           }}
+        />
+
+        {/* Modal de reçu */}
+        <ReceiptModal
+          isOpen={showReceiptModal}
+          onClose={() => setShowReceiptModal(false)}
+          receiptData={receiptData}
         />
       </div>
     </div>

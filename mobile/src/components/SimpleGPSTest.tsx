@@ -1,4 +1,8 @@
-﻿import React, { useState } from 'react';
+﻿import * as React from "react";
+import { useState } from 'react';
+import { Text } from 'react-native';
+import { View } from 'react-native';
+import { TouchableOpacity } from 'react-native';
 
 const SimpleGPSTest: React.FC = () => {
   const [location, setLocation] = useState<string>('');
@@ -34,9 +38,9 @@ const SimpleGPSTest: React.FC = () => {
 
   return (
     <View style="fixed bottom-4 right-4 bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 border border-gray-200 dark:border-gray-700 max-w-sm z-50">
-      <h3 style="text-sm font-semibold text-gray-900 dark:text-white mb-3">
+      <Text style="text-sm font-semibold text-gray-900 dark:text-white mb-3">
         📍 Test GPS Simple
-      </h3>
+      </Text>
       
       <View style="space-y-2 text-xs mb-3">
         {location && (
@@ -56,7 +60,7 @@ const SimpleGPSTest: React.FC = () => {
       </View>
       
       <TouchableOpacity
-        onClick={getLocation}
+        onPress={getLocation}
         style="w-full px-3 py-2 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 transition-colors"
       >
         Obtenir ma position
@@ -66,3 +70,7 @@ const SimpleGPSTest: React.FC = () => {
 };
 
 export default SimpleGPSTest; 
+
+
+
+

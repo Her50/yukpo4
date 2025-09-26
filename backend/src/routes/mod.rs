@@ -9,6 +9,7 @@ pub mod echange_routes;
 pub mod fournitures_routes;
 pub mod history_routes;
 pub mod payment_routes;
+pub mod webhook_routes;
 pub mod image_search_routes;
 
 // === Routes d'Optimisation IA ===

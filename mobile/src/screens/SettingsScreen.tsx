@@ -1,13 +1,16 @@
-import React, { useState } from 'react';
+﻿import { Ionicons } from '@expo/vector-icons';
+import * as React from 'react';
+import { TouchableOpacity } from 'react-native';
+import { useState } from 'react';
 import {
-  View,
-  StyleSheet,
-  ScrollView,
   Alert,
+  ScrollView,
+  StyleSheet,
+  View,
 } from 'react-native';
-import { Card, Button, Text, Switch, TextInput, Avatar } from 'react-native-paper';
+import { Avatar, Button, Card, Switch, Text, TextInput } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import ConnectivityTest from '../components/ConnectivityTest';
 import { useAuth } from '../contexts/AuthContext';
 import { theme } from '../theme/theme';
 
@@ -79,14 +82,14 @@ const SettingsScreen: React.FC = () => {
     try {
       // Simuler la sauvegarde
       await new Promise(resolve => setTimeout(resolve, 1000));
-      
+
       // Mettre à jour l'utilisateur
       updateUser({
         name: settings.name,
         email: settings.email,
         phone: settings.phone,
       });
-      
+
       Alert.alert('Succès', 'Paramètres sauvegardés avec succès');
     } catch (error) {
       Alert.alert('Erreur', 'Erreur lors de la sauvegarde');
@@ -108,20 +111,19 @@ const SettingsScreen: React.FC = () => {
     <Card style={styles.sectionCard}>
       <Card.Content>
         <Text style={styles.sectionTitle}>Profil</Text>
-        
+
         <View style={styles.avatarContainer}>
           <Avatar.Text
             size={80}
             label={getInitials(settings.name)}
             style={styles.avatar}
           />
-          <Button
-            mode="outlined"
+          <TouchableOpacity
             onPress={() => Alert.alert('Info', 'Fonctionnalité de changement de photo en cours de développement')}
             style={styles.changePhotoButton}
           >
-            Changer la photo
-          </Button>
+            <Text>Changer la photo</Text>
+          </TouchableOpacity>
         </View>
 
         <TextInput
@@ -164,7 +166,7 @@ const SettingsScreen: React.FC = () => {
     <Card style={styles.sectionCard}>
       <Card.Content>
         <Text style={styles.sectionTitle}>Notifications</Text>
-        
+
         <View style={styles.settingRow}>
           <View style={styles.settingInfo}>
             <Ionicons name="mail" size={20} color={theme.colors.primary} />
@@ -228,7 +230,7 @@ const SettingsScreen: React.FC = () => {
     <Card style={styles.sectionCard}>
       <Card.Content>
         <Text style={styles.sectionTitle}>Confidentialité</Text>
-        
+
         <View style={styles.settingRow}>
           <View style={styles.settingInfo}>
             <Ionicons name="eye" size={20} color={theme.colors.primary} />
@@ -237,8 +239,7 @@ const SettingsScreen: React.FC = () => {
               <Text style={styles.settingDescription}>Qui peut voir votre profil</Text>
             </View>
           </View>
-          <Button
-            mode="outlined"
+          <TouchableOpacity
             onPress={() => {
               const options = ['public', 'private', 'friends'];
               const currentIndex = options.indexOf(settings.profileVisibility);
@@ -247,8 +248,8 @@ const SettingsScreen: React.FC = () => {
             }}
             style={styles.visibilityButton}
           >
-            {settings.profileVisibility}
-          </Button>
+            <Text>{settings.profileVisibility}</Text>
+          </TouchableOpacity>
         </View>
 
         <View style={styles.settingRow}>
@@ -300,7 +301,7 @@ const SettingsScreen: React.FC = () => {
     <Card style={styles.sectionCard}>
       <Card.Content>
         <Text style={styles.sectionTitle}>Sécurité</Text>
-        
+
         <View style={styles.settingRow}>
           <View style={styles.settingInfo}>
             <Ionicons name="shield-checkmark" size={20} color={theme.colors.primary} />
@@ -323,8 +324,7 @@ const SettingsScreen: React.FC = () => {
               <Text style={styles.settingDescription}>Minutes avant déconnexion automatique</Text>
             </View>
           </View>
-          <Button
-            mode="outlined"
+          <TouchableOpacity
             onPress={() => {
               const options = [15, 30, 60, 120];
               const currentIndex = options.indexOf(settings.sessionTimeout);
@@ -333,8 +333,8 @@ const SettingsScreen: React.FC = () => {
             }}
             style={styles.timeoutButton}
           >
-            {settings.sessionTimeout}min
-          </Button>
+            <Text>{settings.sessionTimeout}min</Text>
+          </TouchableOpacity>
         </View>
 
         <View style={styles.settingRow}>
@@ -351,14 +351,13 @@ const SettingsScreen: React.FC = () => {
           />
         </View>
 
-        <Button
-          mode="outlined"
+        <TouchableOpacity
           onPress={() => Alert.alert('Info', 'Fonctionnalité de changement de mot de passe en cours de développement')}
           style={styles.changePasswordButton}
-          icon="key"
         >
-          Changer le mot de passe
-        </Button>
+          <Ionicons name="key" size={20} color={theme.colors.primary} />
+          <Text>Changer le mot de passe</Text>
+        </TouchableOpacity>
       </Card.Content>
     </Card>
   );
@@ -371,16 +370,16 @@ const SettingsScreen: React.FC = () => {
         {renderPrivacySection()}
         {renderSecuritySection()}
 
-        <Button
-          mode="contained"
+        {/* Test de connectivité pour diagnostiquer les problèmes */}
+        <ConnectivityTest />
+
+        <TouchableOpacity
           onPress={handleSave}
-          loading={loading}
           disabled={loading}
           style={styles.saveButton}
-          contentStyle={styles.saveButtonContent}
         >
-          Sauvegarder les paramètres
-        </Button>
+          <Text>Sauvegarder les paramètres</Text>
+        </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
   );
@@ -464,6 +463,11 @@ const styles = StyleSheet.create({
 });
 
 export default SettingsScreen;
+
+
+
+
+
 
 
 

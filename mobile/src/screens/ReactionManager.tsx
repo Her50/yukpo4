@@ -1,4 +1,8 @@
-﻿import React, { useState, useEffect } from 'react';
+﻿import * as React from "react";
+import { useState, useEffect } from 'react';
+import { Text } from 'react-native';
+import { View } from 'react-native';
+import { TouchableOpacity } from 'react-native';
 import ResponsiveContainer from '@/components/layout/ResponsiveContainer';
 
 import { Button } from "@/components/ui/buttons";
@@ -27,7 +31,7 @@ const ReactionManager: React.FC = () => {
 
   return (
     <View style="p-4">
-      <h2 style="text-xl font-bold mb-4">🚫 Utilisateurs bloqués</h2>
+      <Text style="text-xl font-bold mb-4">🚫 Utilisateurs bloqués</Text>
       <table style="w-full text-sm border">
         <thead>
           <tr style="bg-gray-100">
@@ -42,7 +46,7 @@ const ReactionManager: React.FC = () => {
               <td style="p-2">{l.user_id}</td>
               <td style="p-2">{l.reason}</td>
               <td style="p-2">
-                <TouchableOpacity onClick={() => suspendUser(l.user_id)}>
+                <TouchableOpacity onPress={() => suspendUser(l.user_id)}>
                   Suspendre
                 </TouchableOpacity>
               </td>
@@ -55,3 +59,7 @@ const ReactionManager: React.FC = () => {
 };
 
 export default ReactionManager;
+
+
+
+

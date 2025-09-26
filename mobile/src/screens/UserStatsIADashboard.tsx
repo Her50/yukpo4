@@ -1,4 +1,7 @@
-﻿import React, { useState, useEffect } from 'react';
+﻿import * as React from "react";
+import { useState, useEffect } from 'react';
+import { Text } from 'react-native';
+import { View } from 'react-native';
 import ResponsiveContainer from '@/components/layout/ResponsiveContainer';
 
 import { ROUTES } from '@/routes/AppRoutesRegistry'; // ✅ Import ajouté
@@ -31,7 +34,7 @@ function StatCard({ label, value, color }: { label: string; value: number; color
 const UserStatsIADashboard: React.FC = () => {
   return (
     <View style="">
-      <h1 style="text-3xl font-bold text-center mb-10">📊 Mon tableau Yukpomnang personnalisé</h1>
+      <Text style="text-3xl font-bold text-center mb-10">📊 Mon tableau Yukpomnang personnalisé</Text>
 
       <View style="">
         {stats.map((item, index) => (
@@ -69,3 +72,7 @@ const UserStatsIADashboard: React.FC = () => {
 };
 
 export default UserStatsIADashboard;
+
+
+
+

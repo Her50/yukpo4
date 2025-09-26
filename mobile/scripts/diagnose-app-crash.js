@@ -303,3 +303,4 @@ runDiagnostics().then(({ allOk, criticalIssues }) => {
     log('red', '❌ Erreur lors du diagnostic:', error.message);
     process.exit(1);
 });
+

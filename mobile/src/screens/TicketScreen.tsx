@@ -1,7 +1,9 @@
 ﻿// @ts-check
-import React, { useState } from 'react';
-import ResponsiveContainer from '@/components/layout/ResponsiveContainer';
 import RequireAccess from '@/components/auth/RequireAccess';
+import ResponsiveContainer from '@/components/layout/ResponsiveContainer';
+import * as React from "react";
+import { useState } from 'react';
+import { Text, TouchableOpacity, View } from 'react-native';
 import styled, { keyframes } from 'styled-components';
 
 const pulseAnimation = keyframes`
@@ -37,7 +39,7 @@ const TicketPage: React.FC = () => {
   return (
     <ResponsiveContainer>
       <View style="pt-24 font-sans">
-        <h1 style="text-4xl font-bold text-center mb-10 text-gray-800">🎫 Créer un ticket de transport</h1>
+        <Text style="text-4xl font-bold text-center mb-10 text-gray-800">🎫 Créer un ticket de transport</Text>
 
         <form onSubmit={handleSubmit} style="max-w-2xl mx-auto">
           <label style="block mb-4 font-medium text-gray-700">
@@ -108,20 +110,24 @@ const TicketPage: React.FC = () => {
           </TouchableOpacity>
         </form>
 
-        <PulseBox>
-          <h2 style="text-xl font-bold mb-2 text-gray-800">🤖 Réponse Yukpomnang :</h2>
-          <p style="text-gray-700">{iaResponse}</Text>
+        <View>
+          <Text style={{ fontSize: 20, fontWeight: 'bold', marginBottom: 8, color: '#374151' }}>🤖 Réponse Yukpomnang :</Text>
+          <Text style={{ color: '#374151' }}>{iaResponse}</Text>
 
           <RequireAccess plan="enterprise">
-            <View style="mt-4 text-red-600 font-semibold">
+            <View style={{ marginTop: 16, color: '#dc2626', fontWeight: '600' }}>
               Fonctionnalités avancées réservées aux comptes Premium
             </View>
           </RequireAccess>
-        </PulseBox>
+        </View>
       </View>
     </ResponsiveContainer>
   );
 };
 
 export default TicketPage;
+
+
+
+
 

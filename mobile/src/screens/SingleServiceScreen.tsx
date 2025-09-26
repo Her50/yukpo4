@@ -1,5 +1,7 @@
 ﻿// @ts-check
 import React from 'react';
+import { Text } from 'react-native';
+import { View } from 'react-native';
 import ResponsiveContainer from '@/components/layout/ResponsiveContainer';
 import { useParams } from "@react-navigation/native";
 import { ROUTES } from "@/routes/AppRoutesRegistry";
@@ -24,9 +26,9 @@ const SingleServicePage: React.FC = () => {
     <RequireAccess role="user" plan="pro">
       <ResponsiveContainer>
         <View style="pt-24 pb-12">
-          <h1 style="text-2xl font-bold mb-4 text-gray-800">
+          <Text style="text-2xl font-bold mb-4 text-gray-800">
             🧩 Détail du service #{parsedId}
-          </h1>
+          </Text>
 
           <VariationAlert serviceId={parsedId} />
 
@@ -61,4 +63,8 @@ const SingleServicePage: React.FC = () => {
 };
 
 export default SingleServicePage;
+
+
+
+
 

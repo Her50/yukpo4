@@ -1,5 +1,9 @@
-import { Ionicons } from '@expo/vector-icons';
-import React, { useEffect, useState } from 'react';
+﻿import { Ionicons } from '@expo/vector-icons';
+import * as React from "react";
+import { useEffect, useState } from 'react';
+import { Text } from 'react-native';
+import { View } from 'react-native';
+import { TouchableOpacity } from 'react-native';
 import {
     Alert,
     Modal,
@@ -404,7 +408,7 @@ const ServiceHistoryModal: React.FC<ServiceHistoryModalProps> = ({
 
                                     {/* Boutons d'action principaux */}
                                     <View style={styles.primaryActions}>
-                                        <Button
+                                        <TouchableOpacity
                                             mode="outlined"
                                             compact
                                             onPress={() => onOpenChat(service.serviceId, service.prestataireName)}
@@ -413,9 +417,9 @@ const ServiceHistoryModal: React.FC<ServiceHistoryModalProps> = ({
                                         >
                                             <Ionicons name="chatbubbles" size={16} color={theme.colors.primary} style={styles.buttonIcon} />
                                             Chat
-                                        </Button>
+                                        </TouchableOpacity>
 
-                                        <Button
+                                        <TouchableOpacity
                                             mode="outlined"
                                             compact
                                             onPress={() => onCall(service.serviceId, service.prestataireName)}
@@ -424,7 +428,7 @@ const ServiceHistoryModal: React.FC<ServiceHistoryModalProps> = ({
                                         >
                                             <Ionicons name="call" size={16} color="#4CAF50" style={styles.buttonIcon} />
                                             Appeler
-                                        </Button>
+                                        </TouchableOpacity>
                                     </View>
                                 </Card.Content>
                             </Card>
@@ -703,5 +707,11 @@ const styles = StyleSheet.create({
 });
 
 export default ServiceHistoryModal;
+
+
+
+
+
+
 
 

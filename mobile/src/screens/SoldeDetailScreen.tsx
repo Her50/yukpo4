@@ -1,4 +1,5 @@
-﻿import React, { useState, useEffect } from 'react';
+﻿import * as React from 'react';
+import { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
 import { Card, Title, Paragraph, Chip, Button } from 'react-native-paper';
 import { Ionicons } from '@expo/vector-icons';
@@ -166,17 +167,16 @@ const SoldeDetailScreen: React.FC = () => {
 
       {/* Bouton de recharge */}
       <View style={styles.rechargeContainer}>
-        <Button
-          mode="contained"
+        <TouchableOpacity
           onPress={() => {
             // Navigation vers la page de recharge
             console.log('Navigation vers recharge');
           }}
           style={styles.rechargeButton}
-          icon="add-circle"
         >
-          Recharger des Crédits
-        </Button>
+          <Ionicons name="add-circle" size={20} color="white" />
+          <Text>Recharger des Crédits</Text>
+        </TouchableOpacity>
       </View>
 
       {/* Statistiques */}
@@ -356,3 +356,6 @@ const styles = StyleSheet.create({
 });
 
 export default SoldeDetailScreen;
+
+
+

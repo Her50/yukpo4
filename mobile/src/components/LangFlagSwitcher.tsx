@@ -1,6 +1,7 @@
 ﻿// src/components/LangFlagSwitcher.tsx
 // @ts-check
-import React, { useEffect, useState } from "react";
+import * as React from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 const LANGUAGES = [
@@ -42,4 +43,8 @@ const LangFlagSwitcher: React.FC = () => {
 };
 
 export default LangFlagSwitcher;
+
+
+
+
 

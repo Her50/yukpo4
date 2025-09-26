@@ -1,6 +1,7 @@
-import { Ionicons } from '@expo/vector-icons';
+﻿import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import React, { useCallback, useEffect, useState } from 'react';
+import * as React from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -8,10 +9,14 @@ import {
     ScrollView,
     StyleSheet,
     Text,
+    TextInput,
     TouchableOpacity,
     View,
 } from 'react-native';
-import { Avatar, Badge, Button, Card, Paragraph, Title } from 'react-native-paper';
+import { Card, Paragraph, Title } from 'react-native-paper';
+import ChatModal from '../components/ChatModal';
+import ServiceCard from '../components/ServiceCard';
+import ServiceGalleryModal from '../components/ServiceGalleryModal';
 import { useAuth } from '../contexts/AuthContext';
 import { useLocation } from '../contexts/LocationContext';
 import { apiPost } from '../services/api';
@@ -67,6 +72,19 @@ const ResultatBesoinScreen: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
     const [prestataires, setPrestataires] = useState<Map<string, Prestataire>>(new Map());
     const [prestatairesLoaded, setPrestatairesLoaded] = useState(false);
+    const [showChatModal, setShowChatModal] = useState(false);
+    const [showGalleryModal, setShowGalleryModal] = useState(false);
+    const [selectedService, setSelectedService] = useState<Service | null>(null);
+    const [selectedPrestataire, setSelectedPrestataire] = useState<Prestataire | null>(null);
+
+    // États pour le filtre par prix
+    const [priceFilter, setPriceFilter] = useState<{
+        min: number | null;
+        max: number | null;
+        currency: string;
+    }>({ min: null, max: null, currency: 'XAF' });
+    const [sortBy, setSortBy] = useState<'relevance' | 'price_asc' | 'price_desc' | 'distance'>('relevance');
+    const [showPriceFilter, setShowPriceFilter] = useState(false);
 
     // Récupérer les résultats depuis la navigation
     const routeParams = (route.params as any) || {};
@@ -82,6 +100,89 @@ const ResultatBesoinScreen: React.FC = () => {
             Math.sin(dLon / 2) * Math.sin(dLon / 2);
         const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
         return R * c;
+    };
+
+    // Fonction pour extraire le prix d'un service
+    const getServicePrice = (service: Service): number | null => {
+        // Chercher dans les produits
+        const produitsField = service.data?.produits;
+        if (produitsField) {
+            let produits = [];
+            if (Array.isArray(produitsField)) {
+                produits = produitsField;
+            } else if (produitsField.valeur && Array.isArray(produitsField.valeur)) {
+                produits = produitsField.valeur;
+            }
+
+            if (produits.length > 0) {
+                // Retourner le prix du premier produit
+                const firstProduct = produits[0];
+                if (firstProduct.price) {
+                    return parseFloat(firstProduct.price);
+                }
+            }
+        }
+
+        // Chercher dans les champs de prix directs
+        const priceField = service.data?.prix || service.data?.price;
+        if (priceField) {
+            if (typeof priceField === 'number') return priceField;
+            if (typeof priceField === 'string') {
+                const parsed = parseFloat(priceField);
+                return isNaN(parsed) ? null : parsed;
+            }
+        }
+
+        return null;
+    };
+
+    // Fonction pour filtrer et trier les services
+    const filterAndSortServices = (servicesList: Service[]): Service[] => {
+        let filteredServices = [...servicesList];
+
+        // Appliquer le filtre par prix
+        if (priceFilter.min !== null || priceFilter.max !== null) {
+            filteredServices = filteredServices.filter(service => {
+                const price = getServicePrice(service);
+                if (price === null) return false;
+
+                if (priceFilter.min !== null && price < priceFilter.min) return false;
+                if (priceFilter.max !== null && price > priceFilter.max) return false;
+
+                return true;
+            });
+        }
+
+        // Appliquer le tri
+        filteredServices.sort((a, b) => {
+            switch (sortBy) {
+                case 'price_asc': {
+                    const priceA = getServicePrice(a) || Infinity;
+                    const priceB = getServicePrice(b) || Infinity;
+                    return priceA - priceB;
+                }
+                case 'price_desc': {
+                    const priceA = getServicePrice(a) || 0;
+                    const priceB = getServicePrice(b) || 0;
+                    return priceB - priceA;
+                }
+                case 'distance': {
+                    // Tri par distance (si disponible)
+                    const distanceA = a.distance || Infinity;
+                    const distanceB = b.distance || Infinity;
+                    return distanceA - distanceB;
+                }
+                case 'relevance':
+                default: {
+                    // Tri par pertinence (score)
+                    const scoreA = a.score || 0;
+                    const scoreB = b.score || 0;
+                    return scoreB - scoreA;
+                }
+            }
+        });
+
+        return filteredServices;
     };
 
     // Fonction pour trier les résultats par pertinence et proximité
@@ -151,12 +252,12 @@ const ResultatBesoinScreen: React.FC = () => {
                         const service = response.data as Service;
 
                         // Enrichir le service avec les données de recherche (score, etc.)
-                        const enrichedService = {
+                        const enrichedService: Service = {
                             ...service,
                             score: originalResults[index]?.score || 0,
                             semantic_score: originalResults[index]?.semantic_score || 0,
                             interaction_score: originalResults[index]?.interaction_score || 0,
-                            gps: originalResults[index]?.gps || null,
+                            gps: originalResults[index]?.gps || undefined,
                             distance: originalResults[index]?.distance,
                             proximityScore: originalResults[index]?.proximityScore
                         };
@@ -173,7 +274,7 @@ const ResultatBesoinScreen: React.FC = () => {
             });
 
             const results = await Promise.all(servicePromises);
-            const validServices = results.filter(service => service !== null);
+            const validServices = results.filter((service): service is Service => service !== null);
 
             if (validServices.length === 0) {
                 setError("Aucun service trouvé. Les services recherchés ne sont plus disponibles.");
@@ -285,13 +386,19 @@ const ResultatBesoinScreen: React.FC = () => {
             return;
         }
 
-        // TODO: Ouvrir modal de chat
-        Alert.alert("Chat", `Ouvrir le chat pour le service: ${service.titre}`);
+        const prestataire = prestataires.get(service.user_id);
+        if (prestataire) {
+            setSelectedService(service);
+            setSelectedPrestataire(prestataire);
+            setShowChatModal(true);
+        } else {
+            Alert.alert("Erreur", "Impossible de récupérer les informations du prestataire");
+        }
     };
 
     const handleGallery = (service: Service) => {
-        // TODO: Ouvrir galerie
-        Alert.alert("Galerie", `Voir la galerie du service: ${service.titre}`);
+        setSelectedService(service);
+        setShowGalleryModal(true);
     };
 
     const handleGeolocation = async () => {
@@ -374,80 +481,29 @@ const ResultatBesoinScreen: React.FC = () => {
         return String(field);
     };
 
-    // Composant ServiceCard
-    const ServiceCard = ({ service }: { service: Service }) => {
+    // Composant ServiceCard amélioré
+    const ServiceCardComponent = ({ service }: { service: Service }) => {
         const prestataire = prestataires.get(service.user_id);
         const isOnline = prestataire?.isOnline || false;
+        const lastSeen = prestataire?.lastSeen ? new Date(prestataire.lastSeen) : null;
 
         return (
-            <Card style={styles.serviceCard}>
-                <Card.Content>
-                    {/* Header avec avatar et statut */}
-                    <View style={styles.serviceHeader}>
-                        <View style={styles.avatarContainer}>
-                            <Avatar.Text
-                                size={40}
-                                label={prestataire?.name?.charAt(0) || '?'}
-                                style={[styles.avatar, isOnline && styles.avatarOnline]}
-                            />
-                            <View style={[styles.statusDot, isOnline ? styles.statusOnline : styles.statusOffline]} />
-                        </View>
-
-                        <View style={styles.headerInfo}>
-                            <Text style={styles.prestataireName}>{prestataire?.name || 'Prestataire'}</Text>
-                            <Text style={styles.statusText}>
-                                {isOnline ? 'En ligne' : 'Hors ligne'}
-                            </Text>
-                        </View>
-
-                        <View style={styles.scoreContainer}>
-                            <Badge style={styles.scoreBadge}>
-                                {Math.round((service.score || 0) * 100)}%
-                            </Badge>
-                        </View>
-                    </View>
-
-                    {/* Titre et description */}
-                    <Title style={styles.serviceTitle}>{service.titre}</Title>
-                    <Paragraph style={styles.serviceDescription} numberOfLines={3}>
-                        {service.description}
-                    </Paragraph>
-
-                    {/* Distance si disponible */}
-                    {service.distance && (
-                        <View style={styles.distanceContainer}>
-                            <Ionicons name="location" size={16} color={theme.colors.primary} />
-                            <Text style={styles.distanceText}>
-                                {service.distance < 1
-                                    ? `${Math.round(service.distance * 1000)}m`
-                                    : `${service.distance.toFixed(1)}km`
-                                }
-                            </Text>
-                        </View>
-                    )}
-
-                    {/* Actions */}
-                    <View style={styles.actionsContainer}>
-                        <Button
-                            mode="outlined"
-                            onPress={() => handleContact(service)}
-                            style={styles.actionButton}
-                            labelStyle={styles.actionButtonLabel}
-                        >
-                            Contacter
-                        </Button>
-
-                        <Button
-                            mode="contained"
-                            onPress={() => handleChat(service)}
-                            style={styles.actionButton}
-                            labelStyle={styles.actionButtonLabel}
-                        >
-                            Chat
-                        </Button>
-                    </View>
-                </Card.Content>
-            </Card>
+            <ServiceCard
+                service={service}
+                prestataire={prestataire}
+                isOnline={isOnline}
+                lastSeen={lastSeen}
+                onContact={handleContact}
+                onChat={handleChat}
+                onGallery={handleGallery}
+                onFavorite={(service) => {
+                    Alert.alert('Favoris', `Service ${service.titre} ajouté aux favoris`);
+                }}
+                onShare={(service) => {
+                    Alert.alert('Partage', `Partager le service: ${service.titre}`);
+                }}
+                showActions={true}
+            />
         );
     };
 
@@ -498,14 +554,13 @@ const ResultatBesoinScreen: React.FC = () => {
                 </View>
 
                 {/* Bouton de géolocalisation */}
-                <Button
-                    mode="outlined"
+                <TouchableOpacity
                     onPress={handleGeolocation}
                     style={styles.geoButton}
-                    icon="map"
                 >
-                    Trier par proximité
-                </Button>
+                    <Ionicons name="map" size={16} color="#007AFF" />
+                    <Text>Trier par proximité</Text>
+                </TouchableOpacity>
             </View>
 
             {/* Messages d'erreur */}
@@ -515,13 +570,12 @@ const ResultatBesoinScreen: React.FC = () => {
                         <Ionicons name="alert-circle" size={48} color="#F44336" />
                         <Title style={styles.errorTitle}>Erreur de chargement</Title>
                         <Paragraph style={styles.errorText}>{error}</Paragraph>
-                        <Button
-                            mode="contained"
+                        <TouchableOpacity
                             onPress={() => navigation.goBack()}
                             style={styles.errorButton}
                         >
-                            Retour
-                        </Button>
+                            <Text>Retour</Text>
+                        </TouchableOpacity>
                     </Card.Content>
                 </Card>
             )}
@@ -535,13 +589,12 @@ const ResultatBesoinScreen: React.FC = () => {
                         <Paragraph style={styles.emptyText}>
                             Aucun prestataire ne correspond à vos critères pour le moment.
                         </Paragraph>
-                        <Button
-                            mode="contained"
+                        <TouchableOpacity
                             onPress={() => navigation.goBack()}
                             style={styles.emptyButton}
                         >
-                            Retour aux besoins
-                        </Button>
+                            <Text>Retour aux besoins</Text>
+                        </TouchableOpacity>
                     </Card.Content>
                 </Card>
             ) : !prestatairesLoaded ? (
@@ -556,10 +609,122 @@ const ResultatBesoinScreen: React.FC = () => {
                 </Card>
             ) : (
                 <>
+                    {/* Filtres et tri */}
+                    <View style={styles.filtersContainer}>
+                        <Card style={styles.filtersCard}>
+                            <Card.Content>
+                                <View style={styles.filtersHeader}>
+                                    <Title style={styles.filtersTitle}>Filtres et tri</Title>
+                                    <Text style={styles.resultsCount}>
+                                        {(() => {
+                                            const filteredServices = filterAndSortServices(services);
+                                            return `${filteredServices.length} service${filteredServices.length > 1 ? 's' : ''}`;
+                                        })()}
+                                        {(() => {
+                                            const filteredServices = filterAndSortServices(services);
+                                            if (filteredServices.length !== services.length) {
+                                                return ` (${services.length} au total)`;
+                                            }
+                                            return '';
+                                        })()}
+                                    </Text>
+                                </View>
+
+                                <View style={styles.filtersButtons}>
+                                    <TouchableOpacity
+                                        style={styles.filterButton}
+                                        onPress={() => setShowPriceFilter(!showPriceFilter)}
+                                    >
+                                        <Ionicons name="cash" size={20} color={theme.colors.primary} />
+                                        <Text style={styles.filterButtonText}>Prix</Text>
+                                    </TouchableOpacity>
+
+                                    <View style={styles.sortContainer}>
+                                        <Text style={styles.sortLabel}>Trier par:</Text>
+                                        <View style={styles.sortButtons}>
+                                            <TouchableOpacity
+                                                style={[styles.sortButton, sortBy === 'relevance' && styles.sortButtonActive]}
+                                                onPress={() => setSortBy('relevance')}
+                                            >
+                                                <Text style={[styles.sortButtonText, sortBy === 'relevance' && styles.sortButtonTextActive]}>
+                                                    Pertinence
+                                                </Text>
+                                            </TouchableOpacity>
+                                            <TouchableOpacity
+                                                style={[styles.sortButton, sortBy === 'price_asc' && styles.sortButtonActive]}
+                                                onPress={() => setSortBy('price_asc')}
+                                            >
+                                                <Text style={[styles.sortButtonText, sortBy === 'price_asc' && styles.sortButtonTextActive]}>
+                                                    Prix ↑
+                                                </Text>
+                                            </TouchableOpacity>
+                                            <TouchableOpacity
+                                                style={[styles.sortButton, sortBy === 'price_desc' && styles.sortButtonActive]}
+                                                onPress={() => setSortBy('price_desc')}
+                                            >
+                                                <Text style={[styles.sortButtonText, sortBy === 'price_desc' && styles.sortButtonTextActive]}>
+                                                    Prix ↓
+                                                </Text>
+                                            </TouchableOpacity>
+                                        </View>
+                                    </View>
+                                </View>
+
+                                {/* Filtre par prix */}
+                                {showPriceFilter && (
+                                    <View style={styles.priceFilterContainer}>
+                                        <View style={styles.priceFilterRow}>
+                                            <View style={styles.priceInputContainer}>
+                                                <Text style={styles.priceLabel}>Prix min</Text>
+                                                <TextInput
+                                                    style={styles.priceInput}
+                                                    value={priceFilter.min?.toString() || ''}
+                                                    onChangeText={(text) => setPriceFilter(prev => ({
+                                                        ...prev,
+                                                        min: text ? parseFloat(text) : null
+                                                    }))}
+                                                    placeholder="0"
+                                                    keyboardType="numeric"
+                                                />
+                                            </View>
+                                            <View style={styles.priceInputContainer}>
+                                                <Text style={styles.priceLabel}>Prix max</Text>
+                                                <TextInput
+                                                    style={styles.priceInput}
+                                                    value={priceFilter.max?.toString() || ''}
+                                                    onChangeText={(text) => setPriceFilter(prev => ({
+                                                        ...prev,
+                                                        max: text ? parseFloat(text) : null
+                                                    }))}
+                                                    placeholder="100000"
+                                                    keyboardType="numeric"
+                                                />
+                                            </View>
+                                        </View>
+                                        <View style={styles.priceFilterActions}>
+                                            <TouchableOpacity
+                                                style={styles.priceFilterReset}
+                                                onPress={() => setPriceFilter({ min: null, max: null, currency: 'XAF' })}
+                                            >
+                                                <Text style={styles.priceFilterResetText}>Réinitialiser</Text>
+                                            </TouchableOpacity>
+                                            <TouchableOpacity
+                                                style={styles.priceFilterApply}
+                                                onPress={() => setShowPriceFilter(false)}
+                                            >
+                                                <Text style={styles.priceFilterApplyText}>Appliquer</Text>
+                                            </TouchableOpacity>
+                                        </View>
+                                    </View>
+                                )}
+                            </Card.Content>
+                        </Card>
+                    </View>
+
                     {/* Liste des services */}
                     <View style={styles.servicesContainer}>
-                        {services.map((service) => (
-                            <ServiceCard key={service.id} service={service} />
+                        {filterAndSortServices(services).map((service) => (
+                            <ServiceCardComponent key={service.id} service={service} />
                         ))}
                     </View>
 
@@ -593,6 +758,31 @@ const ResultatBesoinScreen: React.FC = () => {
                     </View>
                 </>
             )}
+
+            {/* Chat Modal */}
+            <ChatModal
+                visible={showChatModal}
+                service={selectedService}
+                prestataire={selectedPrestataire}
+                onClose={() => {
+                    setShowChatModal(false);
+                    setSelectedService(null);
+                    setSelectedPrestataire(null);
+                }}
+                onSendMessage={(message) => {
+                    console.log('Message envoyé:', message);
+                }}
+            />
+
+            {/* Gallery Modal */}
+            <ServiceGalleryModal
+                visible={showGalleryModal}
+                service={selectedService}
+                onClose={() => {
+                    setShowGalleryModal(false);
+                    setSelectedService(null);
+                }}
+            />
         </ScrollView>
     );
 };
@@ -853,8 +1043,151 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: theme.colors.primary,
     },
+    // Styles pour les filtres
+    filtersContainer: {
+        padding: 16,
+        paddingBottom: 8,
+    },
+    filtersCard: {
+        elevation: 2,
+    },
+    filtersHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 16,
+    },
+    filtersTitle: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: theme.colors.text,
+    },
+    resultsCount: {
+        fontSize: 14,
+        color: theme.colors.textSecondary,
+        fontWeight: '500',
+    },
+    filtersButtons: {
+        gap: 16,
+    },
+    filterButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        backgroundColor: '#f8f9fa',
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: '#e9ecef',
+    },
+    filterButtonText: {
+        fontSize: 14,
+        color: theme.colors.primary,
+        fontWeight: '600',
+        marginLeft: 8,
+    },
+    sortContainer: {
+        gap: 8,
+    },
+    sortLabel: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: theme.colors.text,
+    },
+    sortButtons: {
+        flexDirection: 'row',
+        gap: 8,
+    },
+    sortButton: {
+        flex: 1,
+        paddingVertical: 8,
+        paddingHorizontal: 12,
+        backgroundColor: '#f8f9fa',
+        borderRadius: 6,
+        borderWidth: 1,
+        borderColor: '#e9ecef',
+        alignItems: 'center',
+    },
+    sortButtonActive: {
+        backgroundColor: theme.colors.primary,
+        borderColor: theme.colors.primary,
+    },
+    sortButtonText: {
+        fontSize: 12,
+        color: theme.colors.text,
+        fontWeight: '500',
+    },
+    sortButtonTextActive: {
+        color: 'white',
+    },
+    priceFilterContainer: {
+        marginTop: 16,
+        paddingTop: 16,
+        borderTopWidth: 1,
+        borderTopColor: '#e9ecef',
+        gap: 16,
+    },
+    priceFilterRow: {
+        flexDirection: 'row',
+        gap: 12,
+    },
+    priceInputContainer: {
+        flex: 1,
+    },
+    priceLabel: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: theme.colors.text,
+        marginBottom: 4,
+    },
+    priceInput: {
+        borderWidth: 1,
+        borderColor: '#e9ecef',
+        borderRadius: 6,
+        paddingVertical: 8,
+        paddingHorizontal: 12,
+        fontSize: 14,
+        color: theme.colors.text,
+        backgroundColor: 'white',
+    },
+    priceFilterActions: {
+        flexDirection: 'row',
+        gap: 12,
+    },
+    priceFilterReset: {
+        flex: 1,
+        paddingVertical: 10,
+        paddingHorizontal: 16,
+        backgroundColor: '#f8f9fa',
+        borderRadius: 6,
+        borderWidth: 1,
+        borderColor: '#e9ecef',
+        alignItems: 'center',
+    },
+    priceFilterResetText: {
+        fontSize: 14,
+        color: theme.colors.text,
+        fontWeight: '500',
+    },
+    priceFilterApply: {
+        flex: 1,
+        paddingVertical: 10,
+        paddingHorizontal: 16,
+        backgroundColor: theme.colors.primary,
+        borderRadius: 6,
+        alignItems: 'center',
+    },
+    priceFilterApplyText: {
+        fontSize: 14,
+        color: 'white',
+        fontWeight: '600',
+    },
 });
 
 export default ResultatBesoinScreen;
+
+
+
+
 
 

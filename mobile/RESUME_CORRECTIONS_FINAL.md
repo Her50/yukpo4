@@ -112,3 +112,4 @@ L'application mobile devrait maintenant fonctionner correctement :
 5. **Endpoints corrects** - Utilisation des bons endpoints du backend
 
 Le problème d'authentification est maintenant **complètement résolu** ! 🚀
+

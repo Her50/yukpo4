@@ -1,4 +1,8 @@
-﻿import React, { useEffect, useState } from 'react';
+﻿import * as React from "react";
+import { useEffect, useState } from 'react';
+import { Text } from 'react-native';
+import { View } from 'react-native';
+import { TouchableOpacity } from 'react-native';
 import { gpsTrackingService } from '../services/gpsTrackingService';
 import { useUserContext } from '../context/UserContext';
 
@@ -128,9 +132,9 @@ const GPSAutoTracker: React.FC<GPSAutoTrackerProps> = ({
   return (
     <View style="fixed bottom-4 right-4 bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 border border-gray-200 dark:border-gray-700 max-w-sm">
       <View style="flex items-center justify-between mb-3">
-        <h3 style="text-sm font-semibold text-gray-900 dark:text-white">
+        <Text style="text-sm font-semibold text-gray-900 dark:text-white">
           📍 Tracking GPS
-        </h3>
+        </Text>
         <View style={`w-3 h-3 rounded-full ${isTracking ? 'bg-green-500' : 'bg-red-500'}`} />
       </View>
       
@@ -164,14 +168,14 @@ const GPSAutoTracker: React.FC<GPSAutoTrackerProps> = ({
       <View style="flex space-x-2 mt-3">
         {!isTracking ? (
           <TouchableOpacity
-            onClick={startGPSTracking}
+            onPress={startGPSTracking}
             style="px-3 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700 transition-colors"
           >
             Démarrer
           </TouchableOpacity>
         ) : (
           <TouchableOpacity
-            onClick={stopGPSTracking}
+            onPress={stopGPSTracking}
             style="px-3 py-1 bg-red-600 text-white text-xs rounded hover:bg-red-700 transition-colors"
           >
             Arrêter
@@ -179,7 +183,7 @@ const GPSAutoTracker: React.FC<GPSAutoTrackerProps> = ({
         )}
         
         <TouchableOpacity
-          onClick={getCurrentLocation}
+          onPress={getCurrentLocation}
           style="px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition-colors"
         >
           Actualiser
@@ -190,3 +194,7 @@ const GPSAutoTracker: React.FC<GPSAutoTrackerProps> = ({
 };
 
 export default GPSAutoTracker; 
+
+
+
+

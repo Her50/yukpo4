@@ -1,52 +1,120 @@
-﻿// src/pages/StartPage.tsx
-import React from 'react';
-import { useNavigation } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import AppLayout from '@/components/layout/AppLayout';
+﻿import * as React from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import { Card, Title, Paragraph, Button } from 'react-native-paper';
 
-const StartPage = () => {
-  const navigate = useNavigation();
+const StartScreen = () => {
+  const navigation = useNavigation();
 
   return (
-    <AppLayout padding>
-      <View style="min-h-screen flex flex-col items-center justify-center gap-6 bg-white dark:bg-gray-950 py-10">
-        <h1 style="text-4xl font-bold text-center text-gray-800 dark:text-white mb-4">
+    <ScrollView style={styles.container}>
+      <View style={styles.content}>
+        <Text style={styles.title}>
           🎯 Démarrer avec Yukpo
-        </h1>
-        <p style="text-lg text-center max-w-xl text-gray-600 dark:text-gray-300">
+        </Text>
+        <Text style={styles.subtitle}>
           Dites-nous ce que vous cherchez ou proposez : Yukpo vous guide.
         </Text>
-        <View style="grid gap-6 mt-8 w-full max-w-xl">
-          <Card>
-            <CardContent style="flex flex-col items-center p-6 gap-4">
-              <h2 style="text-xl font-semibold">🎯 Je suis prestataire</h2>
-              <TouchableOpacity onClick={() => navigation.navigate('/creation-smart-service')}>
-                Créer ou gérer mes services
+        
+        <View style={styles.cardsContainer}>
+          <Card style={styles.card}>
+            <Card.Content style={styles.cardContent}>
+              <Title style={styles.cardTitle}>🎯 Je suis prestataire</Title>
+              <TouchableOpacity 
+                style={styles.button}
+                onPress={() => navigation.navigate('CreateService' as never)}
+              >
+                <Text style={styles.buttonText}>Créer ou gérer mes services</Text>
               </TouchableOpacity>
-            </CardContent>
+            </Card.Content>
           </Card>
-          <Card>
-            <CardContent style="flex flex-col items-center p-6 gap-4">
-              <h2 style="text-xl font-semibold">🔍 Je cherche une solution</h2>
-              <TouchableOpacity onClick={() => navigation.navigate('/recherche-besoin')}>
-                Exprimer mon besoin
+          
+          <Card style={styles.card}>
+            <Card.Content style={styles.cardContent}>
+              <Title style={styles.cardTitle}>🔍 Je cherche une solution</Title>
+              <TouchableOpacity 
+                style={styles.button}
+                onPress={() => navigation.navigate('RechercheBesoin' as never)}
+              >
+                <Text style={styles.buttonText}>Exprimer mon besoin</Text>
               </TouchableOpacity>
-            </CardContent>
+            </Card.Content>
           </Card>
-          <Card>
-            <CardContent style="flex flex-col items-center p-6 gap-4">
-              <h2 style="text-xl font-semibold">🧠 Accès IA Yukpo</h2>
-              <TouchableOpacity onClick={() => navigation.navigate('/ia-hub')}>
-                Outils intelligents Yukpo
+          
+          <Card style={styles.card}>
+            <Card.Content style={styles.cardContent}>
+              <Title style={styles.cardTitle}>🧠 Accès IA Yukpo</Title>
+              <TouchableOpacity 
+                style={styles.button}
+                onPress={() => navigation.navigate('AIHub' as never)}
+              >
+                <Text style={styles.buttonText}>Outils intelligents Yukpo</Text>
               </TouchableOpacity>
-            </CardContent>
+            </Card.Content>
           </Card>
         </View>
       </View>
-    </AppLayout>
+    </ScrollView>
   );
 };
 
-export default StartPage;
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#f5f5f5',
+  },
+  content: {
+    padding: 20,
+    alignItems: 'center',
+  },
+  title: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    color: '#333',
+    marginBottom: 16,
+  },
+  subtitle: {
+    fontSize: 16,
+    textAlign: 'center',
+    color: '#666',
+    marginBottom: 32,
+    maxWidth: 300,
+  },
+  cardsContainer: {
+    width: '100%',
+    maxWidth: 400,
+  },
+  card: {
+    marginBottom: 16,
+    elevation: 2,
+  },
+  cardContent: {
+    alignItems: 'center',
+    padding: 20,
+  },
+  cardTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  button: {
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  buttonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+});
+
+export default StartScreen;
+
+
+
+
 

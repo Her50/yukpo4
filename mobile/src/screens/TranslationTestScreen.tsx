@@ -1,13 +1,20 @@
-﻿import React, { useState, useEffect } from 'react';
+﻿import * as React from "react";
+import { useState, useEffect } from 'react';
+import { Text } from 'react-native';
+import { View } from 'react-native';
 import ResponsiveContainer from '@/components/layout/ResponsiveContainer';
 
 
 const TranslationTestPage: React.FC = () => {
   return (
     <View style="p-4">
-      <h2>TranslationTestPage</h2>
+      <Text>TranslationTestPage</Text>
     </View>
   );
 };
 
 export default TranslationTestPage;
+
+
+
+

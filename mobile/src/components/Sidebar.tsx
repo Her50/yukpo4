@@ -1,5 +1,5 @@
 ﻿// @ts-check
-import React from "react";
+import * as React from "react";
 import { Link, useLocation } from "@react-navigation/native";
 import RequirePlan from "@/components/security/RequirePlan";
 
@@ -27,4 +27,8 @@ const Sidebar: React.FC = () => {
 };
 
 export default Sidebar;
+
+
+
+
 

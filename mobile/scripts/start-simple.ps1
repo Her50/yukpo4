@@ -39,3 +39,4 @@ if (-not (Test-Path "node_modules")) {
 Write-Host "Demarrage de l'application..." -ForegroundColor Green
 npx expo start
 
+

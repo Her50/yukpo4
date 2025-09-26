@@ -1,4 +1,8 @@
-﻿import React, { useState, useEffect } from 'react';
+﻿import * as React from "react";
+import { useState, useEffect } from 'react';
+import { Text } from 'react-native';
+import { View } from 'react-native';
+import { TouchableOpacity } from 'react-native';
 import { useParams, useNavigation, Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/buttons/Button';
@@ -222,11 +226,11 @@ export const ServiceView: React.FC = () => {
         <Card>
           <CardContent style="p-8 text-center">
             <AlertCircle style="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <h3 style="text-lg font-semibold mb-2">Service non trouvé</h3>
-            <p style="text-gray-600 mb-4">
+            <Text style="text-lg font-semibold mb-2">Service non trouvé</Text>
+            <Text style="text-gray-600 mb-4">
               Le service que vous recherchez n'existe pas ou a été supprimé.
             </Text>
-            <TouchableOpacity onClick={() => navigation.navigate('Home')}>
+            <TouchableOpacity onPress={() => navigation.navigate('Home')}>
               Retour à l'accueil
             </TouchableOpacity>
           </CardContent>
@@ -241,7 +245,7 @@ export const ServiceView: React.FC = () => {
       <View style="mb-6">
         <TouchableOpacity
           variant="ghost"
-          onClick={() => navigation.navigate(-1)}
+          onPress={() => navigation.navigate(-1)}
           style="mb-4"
         >
           <ArrowLeft style="w-4 h-4 mr-2" />
@@ -250,7 +254,7 @@ export const ServiceView: React.FC = () => {
         
         <View style="flex justify-between items-start">
           <View>
-            <h1 style="text-3xl font-bold mb-2">{service.titre}</h1>
+            <Text style="text-3xl font-bold mb-2">{service.titre}</Text>
             <View style="flex items-center gap-4 text-gray-600 mb-4">
               <View style="flex items-center gap-1">
                 <MapPin style="w-4 h-4" />
@@ -270,14 +274,14 @@ export const ServiceView: React.FC = () => {
           <View style="flex gap-2">
             <TouchableOpacity
               variant="ghost"
-              onClick={toggleFavorite}
+              onPress={toggleFavorite}
               style={service.favori ? 'text-red-500' : 'text-gray-400'}
             >
               <Heart style={`w-5 h-5 ${service.favori ? 'fill-current' : ''}`} />
             </TouchableOpacity>
             <TouchableOpacity
               variant="ghost"
-              onClick={shareService}
+              onPress={shareService}
             >
               <Share2 style="w-5 h-5" />
             </TouchableOpacity>
@@ -298,7 +302,7 @@ export const ServiceView: React.FC = () => {
               ].map((tab) => (
                 <TouchableOpacity
                   key={tab.id}
-                  onClick={() => setActiveTab(tab.id as any)}
+                  onPress={() => setActiveTab(tab.id as any)}
                   style={`flex items-center gap-2 py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
                     activeTab === tab.id
                       ? 'border-blue-500 text-blue-600'
@@ -316,10 +320,10 @@ export const ServiceView: React.FC = () => {
           <View style="min-h-64">
             {activeTab === 'description' && (
               <View style="space-y-4">
-                <p style="text-gray-700 leading-relaxed">{service.description}</Text>
+                <Text style="text-gray-700 leading-relaxed">{service.description}</Text>
                 
                 <View>
-                  <h3 style="font-semibold mb-2">Compétences</h3>
+                  <Text style="font-semibold mb-2">Compétences</Text>
                   <View style="flex flex-wrap gap-2">
                     {service.competences.map((competence, index) => (
                       <Badge key={index} variant="secondary">
@@ -330,7 +334,7 @@ export const ServiceView: React.FC = () => {
                 </View>
 
                 <View>
-                  <h3 style="font-semibold mb-2">Disponibilité</h3>
+                  <Text style="font-semibold mb-2">Disponibilité</Text>
                   <View style="flex flex-wrap gap-2">
                     {service.disponibilite.map((jour, index) => (
                       <Badge key={index} variant="outline">
@@ -362,7 +366,7 @@ export const ServiceView: React.FC = () => {
                                 {renderStars(avis.note)}
                               </View>
                             </View>
-                            <p style="text-gray-700 mb-2">{avis.commentaire}</Text>
+                            <Text style="text-gray-700 mb-2">{avis.commentaire}</Text>
                             <Text style="text-xs text-gray-500">
                               {new Date(avis.date).toLocaleDateString('fr-FR')}
                             </Text>
@@ -391,7 +395,7 @@ export const ServiceView: React.FC = () => {
                         </AvatarFallback>
                       </Avatar>
                       <View>
-                        <h3 style="text-xl font-semibold">{service.prestataire.nom}</h3>
+                        <Text style="text-xl font-semibold">{service.prestataire.nom}</Text>
                         <View style="flex items-center gap-2 mb-1">
                           {renderStars(service.prestataire.note)}
                           <Text style="text-sm text-gray-600">
@@ -411,13 +415,13 @@ export const ServiceView: React.FC = () => {
                     </View>
 
                     {service.prestataire.description && (
-                      <p style="text-gray-700 mb-4">{service.prestataire.description}</Text>
+                      <Text style="text-gray-700 mb-4">{service.prestataire.description}</Text>
                     )}
 
                     <View style="grid md:grid-cols-2 gap-4">
                       <View>
                         <h4 style="font-semibold mb-2">Expérience</h4>
-                        <p style="text-gray-600">{service.prestataire.experience} an{service.prestataire.experience > 1 ? 's' : ''}</Text>
+                        <Text style="text-gray-600">{service.prestataire.experience} an{service.prestataire.experience > 1 ? 's' : ''}</Text>
                       </View>
                       <View>
                         <h4 style="font-semibold mb-2">Compétences</h4>
@@ -446,11 +450,11 @@ export const ServiceView: React.FC = () => {
                 <View style="text-3xl font-bold text-blue-600 mb-1">
                   {service.prix} {service.devise}
                 </View>
-                <p style="text-gray-600">Prix du service</Text>
+                <Text style="text-gray-600">Prix du service</Text>
               </View>
 
               <View style="space-y-3">
-                <TouchableOpacity onClick={handleContact} style="w-full">
+                <TouchableOpacity onPress={handleContact} style="w-full">
                   <MessageCircle style="w-4 h-4 mr-2" />
                   Contacter le prestataire
                 </TouchableOpacity>
@@ -459,22 +463,22 @@ export const ServiceView: React.FC = () => {
                   <TouchableOpacity
                     variant="outline"
                     size="sm"
-                    onClick={handleContact}
+                    onPress={handleContact}
                     disabled={!service.prestataire.telephone}
                   >
-                    <Phone style="w-4 h-4" />
+                    <Texthone style="w-4 h-4" />
                   </TouchableOpacity>
                   <TouchableOpacity
                     variant="outline"
                     size="sm"
-                    onClick={handleContact}
+                    onPress={handleContact}
                   >
                     <Video style="w-4 h-4" />
                   </TouchableOpacity>
                   <TouchableOpacity
                     variant="outline"
                     size="sm"
-                    onClick={handleContact}
+                    onPress={handleContact}
                   >
                     <Mail style="w-4 h-4" />
                   </TouchableOpacity>
@@ -531,3 +535,7 @@ export const ServiceView: React.FC = () => {
     </View>
   );
 }; 
+
+
+
+

@@ -1,4 +1,8 @@
-﻿import React, { useState, useEffect } from 'react';
+﻿import * as React from "react";
+import { useState, useEffect } from 'react';
+import { Text } from 'react-native';
+import { View } from 'react-native';
+import { TouchableOpacity } from 'react-native';
 import ResponsiveContainer from '@/components/layout/ResponsiveContainer';
 
 ﻿import { toast } from "react-toastify";
@@ -42,9 +46,9 @@ const ServiceLocator: React.FC = () => {
 
   return (
     <View style="p-6">
-      <h2 style="text-xl font-bold mb-4">📍 Localiser le service</h2>
+      <Text style="text-xl font-bold mb-4">📍 Localiser le service</Text>
       <TouchableOpacity
-        onClick={handleLocate}
+        onPress={handleLocate}
         style=""
         disabled={loading}
       >
@@ -52,7 +56,7 @@ const ServiceLocator: React.FC = () => {
       </TouchableOpacity>
 
       {location && (
-        <p style="mt-4">📌 Adresse : {location.address}</Text>
+        <Text style="mt-4">📌 Adresse : {location.address}</Text>
       )}
 
       {/* 🚀 CONTEXTUAL BUTTONS */}
@@ -81,3 +85,7 @@ const ServiceLocator: React.FC = () => {
 };
 
 export default ServiceLocator;
+
+
+
+
