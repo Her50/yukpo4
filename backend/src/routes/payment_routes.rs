@@ -8,7 +8,7 @@ use axum::{
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
-use crate::services::payment_service::{PaymentRequest, PaymentService, PaymentResponse, PaymentReceipt};
+use crate::services::payment_service_temporary::{PaymentRequest, PaymentService, PaymentResponse, PaymentReceipt};
 use crate::controllers::payment_controller::{
     validate_phone_number,
 };

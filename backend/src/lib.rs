@@ -13,6 +13,7 @@ pub mod tasks;
 pub mod openapi;
 pub mod test_utils;
 pub mod websocket;
+pub mod database_setup;
 // Modules d'optimisation (temporairement comment?s pour compilation)
 // pub mod semantic_cache_pro;
 // pub mod prompt_optimizer_pro; 
@@ -88,6 +89,14 @@ async fn fournitures_axum_handler(
 }
 pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
     // Configuration CORS
+    
+    // Vérifier que les tables de paiement existent (en arrière-plan)
+    let pool = state.pg.clone();
+    tokio::spawn(async move {
+        if let Err(e) = crate::database_setup::ensure_payment_tables_exist(&pool).await {
+            eprintln!("Erreur lors de la vérification des tables de paiement: {}", e);
+        }
+    });
 
 
     
