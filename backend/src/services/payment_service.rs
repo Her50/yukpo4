@@ -300,7 +300,7 @@ impl PaymentService {
         // Mettre à jour le solde de l'utilisateur
         sqlx::query!(
             "UPDATE users SET tokens_balance = tokens_balance + $1 WHERE id = $2",
-            total_tokens,
+            total_tokens as i64,
             user_id
         )
         .execute(&self.pool)
@@ -315,9 +315,9 @@ impl PaymentService {
             VALUES ($1, $2, $3, $4, $5, $6, NOW())
             "#,
             user_id,
-            tokens,
-            bonus,
-            total_tokens,
+            tokens as i32,
+            bonus as i32,
+            total_tokens as i32,
             "recharge",
             format!("Recharge de {} XAF", amount)
         )
