@@ -8,7 +8,7 @@ use axum::{
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
-use crate::services::payment_service_temporary::{PaymentRequest, PaymentService, PaymentResponse, PaymentReceipt};
+use crate::services::payment_service::{PaymentRequest, PaymentService, PaymentResponse, PaymentReceipt, PaymentMethod, PaymentStatus};
 use crate::controllers::payment_controller::{
     validate_phone_number,
 };
@@ -77,7 +77,7 @@ pub async fn process_payment(
         user_id,
         amount: request.amount,
         currency: request.currency,
-        payment_method: serde_json::from_value::<crate::services::payment_service::PaymentMethod>(request._payment_method)
+        payment_method: serde_json::from_value::<PaymentMethod>(request._payment_method)
             .map_err(|_| StatusCode::BAD_REQUEST)?,
         description: request.description,
     };
@@ -235,8 +235,8 @@ pub async fn get_payment_stats(
             let total_transactions = history.len();
             let total_amount: f64 = history.iter().map(|p| p.amount).sum();
             let total_tokens: i32 = history.iter().map(|p| p.total_tokens).sum();
-            let successful_transactions = history.iter().filter(|p| matches!(p.status, crate::services::payment_service::PaymentStatus::Completed)).count();
-            let failed_transactions = history.iter().filter(|p| matches!(p.status, crate::services::payment_service::PaymentStatus::Failed)).count();
+            let successful_transactions = history.iter().filter(|p| matches!(p.status, PaymentStatus::Completed)).count();
+            let failed_transactions = history.iter().filter(|p| matches!(p.status, PaymentStatus::Failed)).count();
 
             let stats = serde_json::json!({
                 "success": true,

@@ -2,7 +2,6 @@
 // Ce module s'assure que toutes les tables nécessaires existent
 
 use sqlx::PgPool;
-use std::sync::Arc;
 
 pub async fn ensure_payment_tables_exist(pool: &PgPool) -> Result<(), sqlx::Error> {
     println!("Vérification de l'existence des tables de paiement...");

@@ -2,6 +2,28 @@ use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use uuid::Uuid;
 
+// Structures pour mapper les résultats des requêtes dynamiques
+#[derive(Debug, sqlx::FromRow)]
+struct PaymentRecord {
+    id: i32,
+    created_at: chrono::DateTime<chrono::Utc>,
+}
+
+#[derive(Debug, sqlx::FromRow)]
+struct PaymentHistoryRow {
+    transaction_id: String,
+    user_id: i32,
+    amount: f64, // Utiliser f64 au lieu de rust_decimal::Decimal
+    currency: String,
+    payment_method: String,
+    status: String,
+    created_at: chrono::DateTime<chrono::Utc>,
+    gateway_response: Option<serde_json::Value>,
+    tokens_added: Option<i32>,
+    bonus_tokens: Option<i32>,
+    total_tokens: Option<i32>,
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PaymentRequest {
     pub user_id: i32,
@@ -88,50 +110,50 @@ impl PaymentService {
         let transaction_id = Uuid::new_v4().to_string();
         
         // Enregistrer la transaction en base
-        let payment_record = sqlx::query!(
+        let payment_record = sqlx::query_as::<_, PaymentRecord>(
             r#"
             INSERT INTO payment_transactions 
             (transaction_id, user_id, amount, currency, payment_method, status, created_at)
             VALUES ($1, $2, $3, $4, $5, $6, NOW())
             RETURNING id, created_at
-            "#,
-            transaction_id,
-            request.user_id,
-            request.amount,
-            request.currency,
-            serde_json::to_string(&request.payment_method).unwrap(),
-            "pending"
+            "#
         )
+        .bind(&transaction_id)
+        .bind(request.user_id)
+        .bind(request.amount)
+        .bind(&request.currency)
+        .bind(serde_json::to_string(&request.payment_method).unwrap())
+        .bind("pending")
         .fetch_one(&self.pool)
         .await
         .map_err(|e| format!("Erreur base de données: {}", e))?;
 
         // Traiter selon la méthode de paiement
-        let (status, gateway_response) = match request.payment_method {
+        let (status, gateway_response) = match &request.payment_method {
             PaymentMethod::OrangeMoney { phone_number, country_code } => {
-                self.process_orange_money_payment(&transaction_id, &phone_number, &country_code, request.amount).await?
+                self.process_orange_money_payment(&transaction_id, phone_number, country_code, request.amount).await?
             },
             PaymentMethod::MTNMoney { phone_number, country_code } => {
-                self.process_mtn_money_payment(&transaction_id, &phone_number, &country_code, request.amount).await?
+                self.process_mtn_money_payment(&transaction_id, phone_number, country_code, request.amount).await?
             },
             PaymentMethod::Visa { card_number, expiry_date, cvv, cardholder_name } => {
-                self.process_visa_payment(&transaction_id, &card_number, &expiry_date, &cvv, &cardholder_name, request.amount).await?
+                self.process_visa_payment(&transaction_id, card_number, expiry_date, cvv, cardholder_name, request.amount).await?
             },
             PaymentMethod::PayPal { email } => {
-                self.process_paypal_payment(&transaction_id, &email, request.amount).await?
+                self.process_paypal_payment(&transaction_id, email, request.amount).await?
             },
             PaymentMethod::BankTransfer { account_number, bank_code, account_name } => {
-                self.process_bank_transfer(&transaction_id, &account_number, &bank_code, &account_name, request.amount).await?
+                self.process_bank_transfer(&transaction_id, account_number, bank_code, account_name, request.amount).await?
             },
         };
 
         // Mettre à jour le statut
-        sqlx::query!(
-            "UPDATE payment_transactions SET status = $1, gateway_response = $2 WHERE transaction_id = $3",
-            serde_json::to_string(&status).unwrap(),
-            gateway_response,
-            transaction_id
+        sqlx::query(
+            "UPDATE payment_transactions SET status = $1, gateway_response = $2 WHERE transaction_id = $3"
         )
+        .bind(serde_json::to_string(&status).unwrap())
+        .bind(&gateway_response)
+        .bind(&transaction_id)
         .execute(&self.pool)
         .await
         .map_err(|e| format!("Erreur mise à jour: {}", e))?;
@@ -297,30 +319,30 @@ impl PaymentService {
 
         let total_tokens = tokens + bonus;
 
-        // Mettre à jour le solde de l'utilisateur
-        sqlx::query!(
-            "UPDATE users SET tokens_balance = tokens_balance + $1 WHERE id = $2",
-            total_tokens as i64,
-            user_id
+        // Mettre à jour le solde de l'utilisateur (requête dynamique pour éviter les problèmes de compilation)
+        sqlx::query(
+            "UPDATE users SET tokens_balance = tokens_balance + $1 WHERE id = $2"
         )
+        .bind(total_tokens as i64)
+        .bind(user_id)
         .execute(&self.pool)
         .await
         .map_err(|e| format!("Erreur mise à jour solde: {}", e))?;
 
         // Enregistrer la transaction de tokens
-        sqlx::query!(
+        sqlx::query(
             r#"
             INSERT INTO token_transactions 
             (user_id, amount, bonus, total, transaction_type, description, created_at)
             VALUES ($1, $2, $3, $4, $5, $6, NOW())
-            "#,
-            user_id,
-            tokens as i32,
-            bonus as i32,
-            total_tokens as i32,
-            "recharge",
-            format!("Recharge de {} XAF", amount)
+            "#
         )
+        .bind(user_id)
+        .bind(tokens as i32)
+        .bind(bonus as i32)
+        .bind(total_tokens as i32)
+        .bind("recharge")
+        .bind(format!("Recharge de {} XAF", amount))
         .execute(&self.pool)
         .await
         .map_err(|e| format!("Erreur enregistrement transaction: {}", e))?;
@@ -330,7 +352,7 @@ impl PaymentService {
 
     /// Obtenir l'historique des paiements d'un utilisateur
     pub async fn get_payment_history(&self, user_id: i32, limit: i32, offset: i32) -> Result<Vec<PaymentReceipt>, String> {
-        let payments = sqlx::query!(
+        let payments = sqlx::query_as::<_, PaymentHistoryRow>(
             r#"
             SELECT 
                 pt.transaction_id,
@@ -349,11 +371,11 @@ impl PaymentService {
             WHERE pt.user_id = $1
             ORDER BY pt.created_at DESC
             LIMIT $2 OFFSET $3
-            "#,
-            user_id,
-            limit,
-            offset
+            "#
         )
+        .bind(user_id)
+        .bind(limit)
+        .bind(offset)
         .fetch_all(&self.pool)
         .await
         .map_err(|e| format!("Erreur récupération historique: {}", e))?;
@@ -383,7 +405,7 @@ impl PaymentService {
 
     /// Obtenir un reçu de paiement
     pub async fn get_payment_receipt(&self, transaction_id: &str) -> Result<Option<PaymentReceipt>, String> {
-        let payment = sqlx::query!(
+        let payment = sqlx::query_as::<_, PaymentHistoryRow>(
             r#"
             SELECT 
                 pt.transaction_id,
@@ -400,9 +422,9 @@ impl PaymentService {
             FROM payment_transactions pt
             LEFT JOIN token_transactions tt ON pt.transaction_id = tt.transaction_id
             WHERE pt.transaction_id = $1
-            "#,
-            transaction_id
+            "#
         )
+        .bind(transaction_id)
         .fetch_optional(&self.pool)
         .await
         .map_err(|e| format!("Erreur récupération reçu: {}", e))?;
