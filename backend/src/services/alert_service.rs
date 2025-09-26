@@ -3,7 +3,7 @@
 
 use crate::models::alert_model::Alert;
 use sqlx::PgPool;
-use chrono::Utc;
+// use chrono::Utc;
 
 pub async fn create_alert(pool: &PgPool, user_id: i32, service_id: i32, client_id: i32, alert_type: &str) -> Result<Alert, sqlx::Error> {
     let rec = sqlx::query_as!(Alert,

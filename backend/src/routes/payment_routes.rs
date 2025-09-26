@@ -6,6 +6,7 @@ use axum::{
     Router,
 };
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 
 use crate::services::payment_service::{PaymentRequest, PaymentService, PaymentResponse, PaymentReceipt};
 use crate::controllers::payment_controller::{
@@ -262,7 +263,7 @@ pub async fn get_payment_stats(
     }
 }
 
-pub fn payment_routes(state: crate::AppState) -> Router<crate::AppState> {
+pub fn payment_routes(state: Arc<crate::AppState>) -> Router<Arc<crate::AppState>> {
     Router::new()
         .route("/methods", get(get_available_payment_methods))
         .route("/validate-phone", post(validate_phone_number))

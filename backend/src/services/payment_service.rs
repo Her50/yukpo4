@@ -210,8 +210,8 @@ impl PaymentService {
         &self,
         transaction_id: &str,
         card_number: &str,
-        expiry_date: &str,
-        cvv: &str,
+        _expiry_date: &str,
+        _cvv: &str,
         cardholder_name: &str,
         amount: f64,
     ) -> Result<(PaymentStatus, Option<serde_json::Value>), String> {

@@ -208,9 +208,9 @@ async fn process_payment_webhook(
     transaction_id: &str,
     status: &str,
     amount: &i64,
-    currency: &str,
-    phone_number: &str,
-    payment_method: &str,
+    _currency: &str,
+    _phone_number: &str,
+    _payment_method: &str,
     reference: &Option<String>,
 ) -> AppResult<()> {
     log::info!("[process_payment_webhook] Traitement: {} - {} - {}", transaction_id, status, amount);
