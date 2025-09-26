@@ -5,6 +5,7 @@ use uuid::Uuid;
 // Structures pour mapper les résultats des requêtes dynamiques
 #[derive(Debug, sqlx::FromRow)]
 struct PaymentRecord {
+    #[allow(dead_code)]
     id: i32,
     created_at: chrono::DateTime<chrono::Utc>,
 }
