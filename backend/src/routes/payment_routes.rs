@@ -7,7 +7,7 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 
-// use crate::services::payment_service::{PaymentRequest, PaymentService, PaymentResponse, PaymentReceipt};
+use crate::services::payment_service::{PaymentRequest, PaymentService, PaymentResponse, PaymentReceipt};
 use crate::controllers::payment_controller::{
     validate_phone_number,
 };
@@ -16,7 +16,7 @@ use crate::controllers::payment_controller::{
 pub struct ProcessPaymentRequest {
     pub amount: f64,
     pub currency: String,
-    pub payment_method: serde_json::Value,
+    pub _payment_method: serde_json::Value,
     pub description: Option<String>,
 }
 
@@ -76,7 +76,7 @@ pub async fn process_payment(
         user_id,
         amount: request.amount,
         currency: request.currency,
-        payment_method: serde_json::from_value(request.payment_method)
+        payment_method: serde_json::from_value::<crate::services::payment_service::PaymentMethod>(request._payment_method)
             .map_err(|_| StatusCode::BAD_REQUEST)?,
         description: request.description,
     };
@@ -262,8 +262,9 @@ pub async fn get_payment_stats(
     }
 }
 
-pub fn payment_routes() -> Router {
+pub fn payment_routes(state: crate::AppState) -> Router<crate::AppState> {
     Router::new()
         .route("/methods", get(get_available_payment_methods))
         .route("/validate-phone", post(validate_phone_number))
+        .with_state(state)
 }

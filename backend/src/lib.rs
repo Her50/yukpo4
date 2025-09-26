@@ -106,7 +106,7 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
     // History routes (prot?g?es par JWT dans le module history_routes.rs)
     let history = history_routes();
     // Payment routes (prot?g?es par JWT dans le module payment_routes.rs)
-    let payments = payment_routes();
+    let payments = payment_routes(state.clone());
     // Webhook routes (public, pour recevoir les notifications des providers)
     let webhooks = webhook_routes();
     // Prestataire routes (prot?g?es par JWT)
