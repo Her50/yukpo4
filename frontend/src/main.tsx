@@ -12,7 +12,7 @@ import './utils/suppressWarnings';
 import './config/axios';
 
 // Log pour confirmer que la nouvelle version se charge
-console.log('[main] 🚀 Yukpomnang v2.1.1 - Cache bust ' + new Date().toISOString());
+console.log('[main] 🚀 Yukpomnang v2.1.2 - FORCE CACHE BUST ' + Date.now());
 console.log('[main] 🔧 API Base URL configuré:', import.meta.env.VITE_API_BASE_URL || '(URLs relatives)');
 console.log('[main] 🌐 WebSocket config: wss://yukpomnang.onrender.com');
 
