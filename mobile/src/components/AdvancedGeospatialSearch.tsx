@@ -1,8 +1,9 @@
 ﻿import * as React from "react";
 import { useState, useEffect, useRef } from 'react';
-import { Text } from 'react-native';
+import { Text, Modal, StyleSheet } from 'react-native';
 import { View } from 'react-native';
 import { TouchableOpacity } from 'react-native';
+import InteractiveMap from './InteractiveMap';
 import {
   Box,
   Card,
@@ -79,6 +80,7 @@ const AdvancedGeospatialSearch: React.FC<AdvancedGeospatialSearchProps> = ({
     params: any;
     timestamp: Date;
   }>>([]);
+  const [showMap, setShowMap] = useState(false);
 
   const mapRef = useRef<HTMLDivElement>(null);
 
@@ -139,7 +141,7 @@ const AdvancedGeospatialSearch: React.FC<AdvancedGeospatialSearchProps> = ({
   const handleSearch = () => {
     const searchId = `search_${Date.now()}`;
     const searchName = `Recherche ${searchParams.category || 'générale'} - ${searchParams.radiusKm}km`;
-    
+
     // Ajouter à l'historique
     setSearchHistory(prev => [{
       id: searchId,
@@ -200,7 +202,7 @@ const AdvancedGeospatialSearch: React.FC<AdvancedGeospatialSearchProps> = ({
             <Typography variant="subtitle2" gutterBottom>
               📍 {t('search.geospatial.location', 'Localisation')}
             </Typography>
-            
+
             <Box display="flex" gap={2} mb={2}>
               <TouchableOpacity
                 variant="outlined"
@@ -210,7 +212,16 @@ const AdvancedGeospatialSearch: React.FC<AdvancedGeospatialSearchProps> = ({
               >
                 {t('search.geospatial.use_current', 'Utiliser ma position')}
               </TouchableOpacity>
-              
+
+              <TouchableOpacity
+                variant="contained"
+                startIcon={<Map />}
+                onPress={() => setShowMap(true)}
+                style={{ backgroundColor: '#FF8C00' }}
+              >
+                🗺️ Sélectionner sur carte
+              </TouchableOpacity>
+
               <FormControlLabel
                 control={
                   <Switch
@@ -321,7 +332,7 @@ const AdvancedGeospatialSearch: React.FC<AdvancedGeospatialSearchProps> = ({
             <Typography variant="subtitle2" gutterBottom>
               🔍 {t('search.geospatial.advanced_filters', 'Filtres Avancés')}
             </Typography>
-            
+
             <Grid container spacing={2}>
               <Grid item xs={12} sm={6} md={3}>
                 <FormControlLabel
@@ -409,7 +420,7 @@ const AdvancedGeospatialSearch: React.FC<AdvancedGeospatialSearchProps> = ({
             <Typography variant="subtitle2" gutterBottom>
               📚 {t('search.geospatial.history', 'Historique des Recherches')}
             </Typography>
-            
+
             <Box display="flex" flexWrap="wrap" gap={1}>
               {searchHistory.map((searchItem) => (
                 <Chip
@@ -426,10 +437,36 @@ const AdvancedGeospatialSearch: React.FC<AdvancedGeospatialSearchProps> = ({
         )}
       </CardContent>
     </Card>
+
+    {/* Modal de carte interactive */ }
+  <Modal
+    visible={showMap}
+    animationType="slide"
+    presentationStyle="fullScreen"
+  >
+    <InteractiveMap
+      initialLocation={{
+        latitude: searchParams.latitude || 0,
+        longitude: searchParams.longitude || 0
+      }}
+      onLocationSelect={(location) => {
+        setSearchParams(prev => ({
+          ...prev,
+          latitude: location.latitude,
+          longitude: location.longitude,
+          radiusKm: location.radius
+        }));
+        setShowMap(false);
+      }}
+      onClose={() => setShowMap(false)}
+      showRadiusSelector={true}
+      initialRadius={searchParams.radiusKm}
+    />
+  </Modal>
   );
 };
 
-export default AdvancedGeospatialSearch; 
+export default AdvancedGeospatialSearch;
 
 
 

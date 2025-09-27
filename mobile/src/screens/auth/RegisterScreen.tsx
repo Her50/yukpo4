@@ -447,6 +447,12 @@ const styles = StyleSheet.create({
   registerButton: {
     marginTop: 8,
     backgroundColor: '#FF8C00', // Orange comme le frontend
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 48,
   },
   registerButtonLabel: {
     fontSize: 16,
@@ -510,6 +516,12 @@ const styles = StyleSheet.create({
   },
   successButton: {
     backgroundColor: '#FF8C00',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 48,
   },
   successButtonLabel: {
     fontSize: 16,
@@ -518,6 +530,13 @@ const styles = StyleSheet.create({
   },
   homeButton: {
     borderColor: theme.colors.border,
+    borderWidth: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 48,
   },
   homeButtonLabel: {
     fontSize: 16,

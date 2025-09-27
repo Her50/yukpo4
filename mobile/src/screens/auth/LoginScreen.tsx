@@ -330,10 +330,17 @@ const styles = StyleSheet.create({
   loginButton: {
     marginTop: 8,
     backgroundColor: '#4CAF50',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 48,
   },
   loginButtonLabel: {
     fontSize: 16,
     fontWeight: '600',
+    color: 'white',
   },
   footer: {
     flexDirection: 'row',

@@ -100,6 +100,13 @@ pub async fn cors_middleware(
                 );
             }
         }
+    } else {
+        // CORRECTION : Permettre les requêtes sans origin (applications mobiles natives)
+        // Les applications mobiles React Native n'envoient pas d'origin header
+        response.headers_mut().insert(
+            "access-control-allow-origin",
+            HeaderValue::from_static("*"),
+        );
     }
     
     // Headers CORS standards

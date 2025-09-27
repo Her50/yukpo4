@@ -8,8 +8,8 @@ import { ROUTES } from "@/routes/AppRoutesRegistry";
 import { apiGet } from "@/services/apiService";
 import { Bell, MessageCircle } from "lucide-react";
 import React, { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
 import { toast } from "react-hot-toast";
+import { Link } from "react-router-dom";
 import ServerStatusIndicator from "./ServerStatusIndicator";
 
 const HeaderController: React.FC = () => {
@@ -73,7 +73,7 @@ const HeaderController: React.FC = () => {
         retryCount = 0; // Reset retry count on success
       } catch (error) {
         console.error('[HeaderController] Erreur récupération solde:', error);
-        
+
         // En cas d'erreur, utiliser le solde du JWT si disponible
         if (user.credits !== undefined) {
           setTokensBalance(user.credits);

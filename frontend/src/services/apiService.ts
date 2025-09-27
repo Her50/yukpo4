@@ -14,7 +14,7 @@ export const apiService = async (
   const { isAuthenticated = true, headers, ...rest } = options;
 
   const defaultHeaders: HeadersInit = {
-      'Content-Type': 'application/json',
+    'Content-Type': 'application/json',
   };
 
   if (isAuthenticated) {
@@ -40,10 +40,10 @@ export const apiService = async (
   };
 
   const baseUrl = 'https://yukpomnang.onrender.com'; // Force absolute URL
-  
+
   // Debug: Log the URL being used
   console.log(`[API Service] Making request to: ${baseUrl}${endpoint}`);
-  
+
   try {
     const response = await fetch(`${baseUrl}${endpoint}`, config);
 
@@ -82,17 +82,17 @@ export const apiGet = async (endpoint: string, options: ApiServiceOptions = {}) 
 // Helper function for POST requests
 export const apiPost = async (endpoint: string, data: any, options: ApiServiceOptions = {}) => {
   return apiService(endpoint, {
-      ...options,
-      method: 'POST',
+    ...options,
+    method: 'POST',
     body: JSON.stringify(data),
-    });
+  });
 };
 
 // Helper function for PUT requests
 export const apiPut = async (endpoint: string, data: any, options: ApiServiceOptions = {}) => {
   return apiService(endpoint, {
-      ...options,
-      method: 'PUT',
+    ...options,
+    method: 'PUT',
     body: JSON.stringify(data),
   });
 };

@@ -3,8 +3,8 @@ export const ENVIRONMENT = {
     // Clé API Google Translate
     GOOGLE_TRANSLATE_API_KEY: process.env.EXPO_PUBLIC_GOOGLE_TRANSLATE_API_KEY || '',
 
-    // URL de l'API backend
-    API_URL: process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000',
+    // URL de l'API backend - CORRIGÉ pour pointer vers le backend Rust
+    API_URL: process.env.EXPO_PUBLIC_API_URL || 'https://yukpomnang.onrender.com',
 
     // Environnement (development, production, staging)
     ENVIRONMENT: process.env.EXPO_PUBLIC_ENVIRONMENT || 'development',

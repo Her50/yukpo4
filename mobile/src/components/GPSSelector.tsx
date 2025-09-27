@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { Alert, Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Button, Card, Paragraph, Title } from 'react-native-paper';
 import { theme } from '../theme/theme';
+import InteractiveMap from './InteractiveMap';
 
 interface GPSSelectorProps {
     visible: boolean;
@@ -22,6 +23,7 @@ const GPSSelector: React.FC<GPSSelectorProps> = ({
     const [location, setLocation] = useState<Location.LocationObject | null>(null);
     const [loading, setLoading] = useState(false);
     const [permissionGranted, setPermissionGranted] = useState(false);
+    const [showMap, setShowMap] = useState(false);
 
     useEffect(() => {
         if (visible) {
@@ -159,6 +161,18 @@ const GPSSelector: React.FC<GPSSelectorProps> = ({
 
                                 <Button
                                     mode="outlined"
+                                    onPress={() => setShowMap(true)}
+                                    style={styles.mapButton}
+                                    contentStyle={styles.buttonContent}
+                                >
+                                    <Ionicons name="map" size={20} color={theme.colors.primary} />
+                                    <Text style={[styles.buttonText, { color: theme.colors.primary }]}>
+                                        Sélectionner sur carte
+                                    </Text>
+                                </Button>
+
+                                <Button
+                                    mode="outlined"
                                     onPress={getCurrentLocation}
                                     disabled={loading}
                                     style={styles.refreshButton}
@@ -188,6 +202,29 @@ const GPSSelector: React.FC<GPSSelectorProps> = ({
                     )}
                 </View>
             </View>
+
+            {/* Modal de carte interactive */}
+            <Modal
+                visible={showMap}
+                animationType="slide"
+                presentationStyle="fullScreen"
+            >
+                <InteractiveMap
+                    initialLocation={currentLocation ? {
+                        latitude: currentLocation.lat,
+                        longitude: currentLocation.lng
+                    } : undefined}
+                    onLocationSelect={(location) => {
+                        onSelect({
+                            lat: location.latitude,
+                            lng: location.longitude
+                        });
+                        setShowMap(false);
+                    }}
+                    onClose={() => setShowMap(false)}
+                    showRadiusSelector={false}
+                />
+            </Modal>
         </Modal>
     );
 };
@@ -290,6 +327,9 @@ const styles = StyleSheet.create({
     },
     selectButton: {
         backgroundColor: theme.colors.primary,
+    },
+    mapButton: {
+        borderColor: theme.colors.primary,
     },
     refreshButton: {
         borderColor: theme.colors.primary,

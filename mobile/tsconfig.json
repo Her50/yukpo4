@@ -6,7 +6,13 @@
     "allowSyntheticDefaultImports": true,
     "jsx": "react-native",
     "jsxImportSource": "react",
-    "lib": ["es2017", "es2018", "es2019", "es2020", "esnext"],
+    "lib": [
+      "es2017",
+      "es2018",
+      "es2019",
+      "es2020",
+      "esnext"
+    ],
     "moduleResolution": "node",
     "noEmit": true,
     "skipLibCheck": true,
@@ -22,13 +28,9 @@
   },
   "include": [
     "**/*.ts",
-    "**/*.tsx",
-    ".expo/types/**/*.ts",
-    "expo-env.d.ts"
+    "**/*.tsx"
   ],
   "exclude": [
     "node_modules"
   ]
 }
-
-
