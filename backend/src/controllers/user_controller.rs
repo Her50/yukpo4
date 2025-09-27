@@ -280,7 +280,11 @@ pub async fn update_gps_location(
     // Vérifier que l'utilisateur a donné son consentement GPS
     let current_user = sqlx::query_as::<_, User>(
         r#"
-        SELECT * FROM users WHERE id = $1
+        SELECT id, email, password_hash, role, is_provider, tokens_balance,
+               token_price_user, token_price_provider, commission_pct,
+               preferred_lang, created_at, updated_at, gps, gps_consent,
+               nom, prenom, nom_complet, photo_profil, avatar_url
+        FROM users WHERE id = $1
         "#
     )
     .bind(user.id)
@@ -304,7 +308,8 @@ pub async fn update_gps_location(
         WHERE id = $2
         RETURNING id, email, password_hash, role, is_provider, tokens_balance,
                   token_price_user, token_price_provider, commission_pct,
-                  preferred_lang, created_at, updated_at, gps, gps_consent
+                  preferred_lang, created_at, updated_at, gps, gps_consent,
+                  nom, prenom, nom_complet, photo_profil, avatar_url
         "#
     )
     .bind(&gps_coords)
