@@ -1,9 +1,8 @@
 // src/components/tools/DevFloatingMenu.tsx
-import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import { ROUTES } from "@/routes/AppRoutesRegistry";
-import { Menu, X, Bug } from "lucide-react";
-import classNames from "classnames";
+import { Bug, X } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 const DevFloatingMenu: React.FC = () => {
   const [open, setOpen] = useState(false);
@@ -25,7 +24,7 @@ const DevFloatingMenu: React.FC = () => {
     { label: "🧭 Mon espace", path: ROUTES.ESPACE },
   ];
 
-  const isLocal = window.location.hostname === "localhost" || import.meta.env.DEV;
+  const isLocal = false; // Production uniquement
 
   useEffect(() => {
     if (isLocal) {

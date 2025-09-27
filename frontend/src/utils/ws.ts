@@ -10,7 +10,7 @@ export function initAccessWebSocket() {
 
   // Déterminer le protocole WebSocket approprié
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const host = window.location.hostname === 'localhost' ? 'localhost:3001' : 'yukpomnang.onrender.com';
+  const host = 'yukpomnang.onrender.com';
   const wsUrl = `${protocol}//${host}/ws/access`;
 
   console.log('📡 Connexion WebSocket Access à:', wsUrl);

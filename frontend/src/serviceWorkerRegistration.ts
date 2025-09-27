@@ -2,11 +2,11 @@
 
 // Si votre application nécessite un service worker (PWA)
 const isLocalhost = Boolean(
-  window.location.hostname === 'localhost'
-      || window.location.hostname === '[::1]'
-      || window.location.hostname.match(
-        /^127(\.[0-9]{1,3}){3}$/,
-      ),
+  false // Production uniquement
+  || window.location.hostname === '[::1]'
+  || window.location.hostname.match(
+    /^127(\.[0-9]{1,3}){3}$/,
+  ),
 );
 
 export function register() {
@@ -46,7 +46,7 @@ function checkValidServiceWorker(swUrl: string) {
     .then((response) => {
       if (
         response.status === 404
-          || response.headers.get('content-type')?.indexOf('javascript') === -1
+        || response.headers.get('content-type')?.indexOf('javascript') === -1
       ) {
         navigator.serviceWorker.ready.then((registration) => {
           registration.unregister();

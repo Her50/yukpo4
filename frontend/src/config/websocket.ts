@@ -2,39 +2,35 @@
 export const WEBSOCKET_CONFIG = {
   // WebSockets activés avec correction HTTPS
   enabled: true,
-  
+
   // URLs des WebSockets
   urls: {
     status: (userId: number) => {
-      // Forcer wss:// pour HTTPS et tous les domaines externes
-      const isSecure = window.location.protocol === 'https:' || window.location.hostname !== 'localhost';
-      const protocol = isSecure ? 'wss:' : 'ws:';
-      const host = window.location.hostname === 'localhost' ? 'localhost:3001' : 'yukpomnang.onrender.com';
+      // Configuration production uniquement
+      const protocol = 'wss:';
+      const host = 'yukpomnang.onrender.com';
       return `${protocol}//${host}/ws/status/${userId}`;
     },
     notifications: (userId: number) => {
-      // Forcer wss:// pour HTTPS et tous les domaines externes
-      const isSecure = window.location.protocol === 'https:' || window.location.hostname !== 'localhost';
-      const protocol = isSecure ? 'wss:' : 'ws:';
-      const host = window.location.hostname === 'localhost' ? 'localhost:3001' : 'yukpomnang.onrender.com';
+      // Configuration production uniquement
+      const protocol = 'wss:';
+      const host = 'yukpomnang.onrender.com';
       return `${protocol}//${host}/ws/notifications/${userId}`;
     },
     chat: (clientId: string) => {
-      // Forcer wss:// pour HTTPS et tous les domaines externes
-      const isSecure = window.location.protocol === 'https:' || window.location.hostname !== 'localhost';
-      const protocol = isSecure ? 'wss:' : 'ws:';
-      const host = window.location.hostname === 'localhost' ? 'localhost:3001' : 'yukpomnang.onrender.com';
+      // Configuration production uniquement
+      const protocol = 'wss:';
+      const host = 'yukpomnang.onrender.com';
       return `${protocol}//${host}/ws/chat/${clientId}`;
     },
     access: () => {
-      // Forcer wss:// pour HTTPS et tous les domaines externes
-      const isSecure = window.location.protocol === 'https:' || window.location.hostname !== 'localhost';
-      const protocol = isSecure ? 'wss:' : 'ws:';
-      const host = window.location.hostname === 'localhost' ? 'localhost:3001' : 'yukpomnang.onrender.com';
+      // Configuration production uniquement
+      const protocol = 'wss:';
+      const host = 'yukpomnang.onrender.com';
       return `${protocol}//${host}/ws/access`;
     }
   },
-  
+
   // Configuration de reconnexion optimisée
   reconnect: {
     enabled: true,
@@ -42,14 +38,14 @@ export const WEBSOCKET_CONFIG = {
     maxAttempts: 10,
     backoffMultiplier: 1.5
   },
-  
+
   // Timeouts et gestion d'erreur
   timeouts: {
     connection: 10000,
     ping: 30000,
     pong: 5000
   },
-  
+
   // Messages d'erreur personnalisés
   messages: {
     enabled: '✅ WebSockets activés - Fonctionnalités en temps réel disponibles',
@@ -69,7 +65,7 @@ export const getWebSocketUrl = (type: keyof typeof WEBSOCKET_CONFIG.urls, ...par
   if (!isWebSocketEnabled()) {
     return null;
   }
-  
+
   const urlFn = WEBSOCKET_CONFIG.urls[type];
   if (typeof urlFn === 'function') {
     return (urlFn as Function)(...params);
@@ -119,17 +115,17 @@ export const WEBSOCKET_EVENTS = {
   CHAT_MESSAGE: 'chat_message',
   CHAT_TYPING: 'chat_typing',
   CHAT_READ: 'chat_read',
-  
+
   // Événements de notification
   NOTIFICATION_NEW: 'notification_new',
   NOTIFICATION_READ: 'notification_read',
   NOTIFICATION_DELETE: 'notification_delete',
-  
+
   // Événements de statut
   USER_ONLINE: 'user_online',
   USER_OFFLINE: 'user_offline',
   USER_TYPING: 'user_typing',
-  
+
   // Événements système
   PING: 'ping',
   PONG: 'pong',
