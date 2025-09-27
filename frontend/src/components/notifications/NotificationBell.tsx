@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Bell, MessageCircle, Phone, Video, X, Check } from 'lucide-react';
-import { Button } from '@/components/ui/buttons/Button';
-import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { getWebSocketUrl } from '../../config/websocket';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/buttons/Button';
+import { Bell, Check, MessageCircle, Phone, X } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import { websocketService } from '../../services/websocketService';
 
 interface Notification {
   id: string;
@@ -67,32 +67,30 @@ const NotificationBell: React.FC<NotificationBellProps> = ({ userId }) => {
     setUnreadCount(mockNotifications.filter(n => !n.read).length);
   }, []);
 
-  // WebSocket pour les notifications en temps réel
+  // WebSocket pour les notifications en temps réel avec reconnexion automatique
   useEffect(() => {
-    const wsUrl = getWebSocketUrl('notifications', userId);
-    if (!wsUrl) return;
-    const ws = new WebSocket(wsUrl);
-    wsRef.current = ws;
+    if (!userId) return;
 
-    ws.onopen = () => {
-      console.log('WebSocket notifications connecté');
-    };
-
-    ws.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
+    const connectionId = websocketService.connect({
+      type: 'notifications',
+      userId,
+      onMessage: (data) => {
         handleNewNotification(data);
-      } catch (error) {
-        console.error('Erreur parsing notification:', error);
-      }
-    };
-
-    ws.onclose = () => {
-      console.log('WebSocket notifications déconnecté');
-    };
+      },
+      onOpen: () => {
+        console.log('WebSocket notifications connecté');
+      },
+      onClose: () => {
+        console.log('WebSocket notifications déconnecté');
+      },
+      onError: (error) => {
+        console.error('Erreur WebSocket notifications:', error);
+      },
+      autoReconnect: true
+    });
 
     return () => {
-      ws.close();
+      websocketService.disconnect(connectionId);
     };
   }, [userId]);
 
@@ -237,9 +235,8 @@ const NotificationBell: React.FC<NotificationBellProps> = ({ userId }) => {
                 {notifications.map((notification) => (
                   <div
                     key={notification.id}
-                    className={`p-4 hover:bg-gray-50 transition-colors ${
-                      !notification.read ? 'bg-blue-50' : ''
-                    }`}
+                    className={`p-4 hover:bg-gray-50 transition-colors ${!notification.read ? 'bg-blue-50' : ''
+                      }`}
                   >
                     <div className="flex items-start gap-3">
                       <Avatar className="w-8 h-8 flex-shrink-0">
@@ -247,14 +244,14 @@ const NotificationBell: React.FC<NotificationBellProps> = ({ userId }) => {
                           {notification.sender.name.charAt(0).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
-                      
+
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
                           <span className="font-medium text-sm text-gray-900">
                             {notification.sender.name}
                           </span>
-                          <Badge 
-                            variant="secondary" 
+                          <Badge
+                            variant="secondary"
                             className={`text-xs ${getNotificationColor(notification.type)}`}
                           >
                             {getNotificationIcon(notification.type)}
@@ -264,22 +261,22 @@ const NotificationBell: React.FC<NotificationBellProps> = ({ userId }) => {
                             {notification.type === 'call' && 'Appel'}
                           </Badge>
                         </div>
-                        
+
                         <p className="text-sm text-gray-700 mb-1">
                           {notification.content}
                         </p>
-                        
+
                         {notification.serviceTitle && (
                           <p className="text-xs text-gray-500 mb-2">
                             Service: {notification.serviceTitle}
                           </p>
                         )}
-                        
+
                         <div className="flex items-center justify-between">
                           <span className="text-xs text-gray-500">
                             {formatTime(notification.timestamp)}
                           </span>
-                          
+
                           <div className="flex items-center gap-2">
                             {!notification.read && (
                               <Button
@@ -292,7 +289,7 @@ const NotificationBell: React.FC<NotificationBellProps> = ({ userId }) => {
                                 Marquer comme lu
                               </Button>
                             )}
-                            
+
                             <Button
                               variant="ghost"
                               size="sm"

@@ -15,27 +15,35 @@ class GPSTrackingService {
   private lastUpdateTime = 0;
   private readonly UPDATE_INTERVAL = 5 * 60 * 1000; // 5 minutes
   private readonly MIN_ACCURACY = 100; // 100 mètres
+  private userHasInteracted = false;
+  private watchId: number | null = null;
 
   /**
-   * Démarrer le suivi GPS automatique
+   * Marquer qu'une interaction utilisateur a eu lieu
+   */
+  markUserInteraction(): void {
+    this.userHasInteracted = true;
+    console.log('👤 Interaction utilisateur détectée, GPS autorisé');
+  }
+
+  /**
+   * Démarrer le suivi GPS automatique (seulement après interaction utilisateur)
    */
   startTracking(): void {
     if (this.isTracking) return;
     
+    // Vérifier si l'utilisateur a interagi
+    if (!this.userHasInteracted) {
+      console.log('⚠️ GPS tracking non démarré: aucune interaction utilisateur détectée');
+      return;
+    }
+    
     this.isTracking = true;
     console.log('🚀 Démarrage du suivi GPS automatique');
     
-    // Première mise à jour immédiate
-    this.updateLocation();
-    
-    // Mise à jour périodique
-    this.trackingInterval = setInterval(() => {
-      this.updateLocation();
-    }, this.UPDATE_INTERVAL);
-    
-    // Écouter les changements de position
+    // Écouter les changements de position avec watchPosition (plus efficace)
     if ('geolocation' in navigator) {
-      navigator.geolocation.watchPosition(
+      this.watchId = navigator.geolocation.watchPosition(
         (position) => {
           const now = Date.now();
           // Mettre à jour seulement si assez de temps s'est écoulé
@@ -48,8 +56,8 @@ class GPSTrackingService {
         },
         {
           enableHighAccuracy: true,
-          timeout: 30000, // Augmenté de 10s à 30s
-          maximumAge: 60000 // 1 minute
+          timeout: 30000,
+          maximumAge: 60000 // 1 minute de cache
         }
       );
     }
@@ -67,6 +75,11 @@ class GPSTrackingService {
     if (this.trackingInterval) {
       clearInterval(this.trackingInterval);
       this.trackingInterval = null;
+    }
+    
+    if (this.watchId !== null) {
+      navigator.geolocation.clearWatch(this.watchId);
+      this.watchId = null;
     }
   }
 
@@ -221,10 +234,15 @@ export const useGPSTracking = () => {
     return gpsTrackingService.isActive();
   };
 
+  const markUserInteraction = () => {
+    gpsTrackingService.markUserInteraction();
+  };
+
   return {
     startTracking,
     stopTracking,
     getCurrentLocation,
-    isTracking
+    isTracking,
+    markUserInteraction
   };
 }; 

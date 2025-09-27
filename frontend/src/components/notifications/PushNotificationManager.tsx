@@ -1,7 +1,7 @@
-import React, { useEffect, useState, useRef } from 'react';
 import { useToast } from '@/components/ui/use-toast';
-import { Bell, X, Settings, Volume2, VolumeX } from 'lucide-react';
-import { getWebSocketUrl } from '../../config/websocket';
+import { Bell, X } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import { websocketService } from '../../services/websocketService';
 
 interface PushNotification {
   id: string;
@@ -36,7 +36,7 @@ export const PushNotificationManager: React.FC<PushNotificationManagerProps> = (
   useEffect(() => {
     if ('Notification' in window) {
       setPermission(Notification.permission);
-      
+
       if (Notification.permission === 'default') {
         Notification.requestPermission().then(perm => {
           setPermission(perm);
@@ -48,38 +48,34 @@ export const PushNotificationManager: React.FC<PushNotificationManagerProps> = (
     }
   }, []);
 
-  // WebSocket pour les notifications push en temps réel
+  // WebSocket pour les notifications push en temps réel avec reconnexion automatique
   useEffect(() => {
-    if (wsConnected && isEnabled) {
-      const wsUrl = getWebSocketUrl('notifications', userId);
-      if (!wsUrl) return;
-      const ws = new WebSocket(wsUrl);
-      wsRef.current = ws;
-
-      ws.onopen = () => {
-        console.log('🔔 WebSocket notifications push connecté');
-        // Demander les notifications non lues
-        ws.send(JSON.stringify({
-          message_type: 'get_unread_notifications',
-          user_id: userId
-        }));
-      };
-
-      ws.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
+    if (wsConnected && isEnabled && userId) {
+      const connectionId = websocketService.connect({
+        type: 'notifications',
+        userId,
+        onMessage: (data) => {
           handlePushNotification(data);
-        } catch (error) {
-          console.error('Erreur parsing notification push:', error);
-        }
-      };
-
-      ws.onclose = () => {
-        console.log('🔔 WebSocket notifications push déconnecté');
-      };
+        },
+        onOpen: () => {
+          console.log('🔔 WebSocket notifications push connecté');
+          // Demander les notifications non lues
+          websocketService.send(connectionId, {
+            message_type: 'get_unread_notifications',
+            user_id: userId
+          });
+        },
+        onClose: () => {
+          console.log('🔔 WebSocket notifications push déconnecté');
+        },
+        onError: (error) => {
+          console.error('Erreur WebSocket notifications push:', error);
+        },
+        autoReconnect: true
+      });
 
       return () => {
-        ws.close();
+        websocketService.disconnect(connectionId);
       };
     }
   }, [wsConnected, isEnabled, userId]);
@@ -191,7 +187,7 @@ export const PushNotificationManager: React.FC<PushNotificationManagerProps> = (
         ) : (
           <Bell className="w-5 h-5 text-gray-400" />
         )}
-        
+
         {/* Badge de notifications non lues */}
         {unreadCount > 0 && (
           <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
@@ -226,11 +222,10 @@ export const PushNotificationManager: React.FC<PushNotificationManagerProps> = (
             <div className="space-y-3">
               <button
                 onClick={toggleNotifications}
-                className={`w-full p-2 rounded text-sm font-medium transition-colors ${
-                  isEnabled
-                    ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
+                className={`w-full p-2 rounded text-sm font-medium transition-colors ${isEnabled
+                  ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
               >
                 {isEnabled ? 'Désactiver' : 'Activer'} les notifications
               </button>
@@ -255,9 +250,8 @@ export const PushNotificationManager: React.FC<PushNotificationManagerProps> = (
                   {notifications.slice(0, 5).map(notification => (
                     <div
                       key={notification.id}
-                      className={`p-2 rounded text-sm ${
-                        notification.read ? 'bg-gray-50' : 'bg-blue-50'
-                      }`}
+                      className={`p-2 rounded text-sm ${notification.read ? 'bg-gray-50' : 'bg-blue-50'
+                        }`}
                     >
                       <div className="flex items-start justify-between">
                         <div className="flex-1">

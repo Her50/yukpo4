@@ -83,6 +83,10 @@ class LanguageDetectionService {
     private currentLanguage: string = 'fr';
     private detectionHistory: LanguageDetectionResult[] = [];
     private userBehaviorData: UserLanguageBehavior[] = [];
+    
+    // Throttling pour les logs d'usage
+    private lastUsageLogTime: number = 0;
+    private readonly USAGE_LOG_COOLDOWN = 10000; // 10 secondes entre les logs d'usage
 
     public static getInstance(): LanguageDetectionService {
         if (!LanguageDetectionService.instance) {
@@ -446,7 +450,12 @@ class LanguageDetectionService {
         // Sauvegarder les données
         this.saveUserBehaviorData();
 
-        console.log(`📊 [LanguageDetection] Usage enregistré: ${language} dans le contexte ${context}`);
+        // Throttling des logs pour éviter le spam
+        const now = Date.now();
+        if (now - this.lastUsageLogTime > this.USAGE_LOG_COOLDOWN) {
+            console.log(`📊 [LanguageDetection] Usage enregistré: ${language} dans le contexte ${context}`);
+            this.lastUsageLogTime = now;
+        }
     }
 
     /**

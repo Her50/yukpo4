@@ -35,23 +35,40 @@ export const apiService = async (
       ...defaultHeaders,
       ...headers,
     },
+    // Ajouter un timeout pour éviter les requêtes qui traînent
+    signal: AbortSignal.timeout(30000), // 30 secondes timeout
   };
 
   const baseUrl = import.meta.env.VITE_API_BASE_URL || 'https://yukpomnang.onrender.com';
-  const response = await fetch(`${baseUrl}${endpoint}`, config);
+  
+  try {
+    const response = await fetch(`${baseUrl}${endpoint}`, config);
 
-  if (!response.ok) {
-    // Handle specific error codes, e.g., 401 for unauthorized
-    if (response.status === 401 && isAuthenticated) {
-      console.error("Unauthorized access. Token might be invalid or expired.");
-      // Optionally, trigger a logout or redirect to login page
+    if (!response.ok) {
+      // Handle specific error codes, e.g., 401 for unauthorized
+      if (response.status === 401 && isAuthenticated) {
+        console.error("Unauthorized access. Token might be invalid or expired.");
+        // Optionally, trigger a logout or redirect to login page
+      }
+      // You might want to parse the error response body here
+      const errorBody = await response.json().catch(() => ({ message: 'Unknown error' }));
+      throw new Error(errorBody.message || `API error: ${response.statusText}`);
     }
-    // You might want to parse the error response body here
-    const errorBody = await response.json().catch(() => ({ message: 'Unknown error' }));
-    throw new Error(errorBody.message || `API error: ${response.statusText}`);
-  }
 
-  return response;
+    return response;
+  } catch (error) {
+    // Améliorer la gestion des erreurs de réseau
+    if (error instanceof TypeError && error.message === 'Failed to fetch') {
+      console.error(`[API Service] Erreur de connectivité réseau pour ${endpoint}:`, error);
+      throw new Error(`Impossible de se connecter au serveur. Vérifiez votre connexion internet.`);
+    } else if (error instanceof DOMException && error.name === 'AbortError') {
+      console.error(`[API Service] Timeout pour ${endpoint}`);
+      throw new Error(`La requête a expiré. Veuillez réessayer.`);
+    } else {
+      console.error(`[API Service] Erreur pour ${endpoint}:`, error);
+      throw error;
+    }
+  }
 };
 
 // Helper function for GET requests

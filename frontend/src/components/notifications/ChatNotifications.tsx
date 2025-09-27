@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Bell, MessageCircle, X } from 'lucide-react';
-import { toast } from 'react-hot-toast';
 import { Button } from '@/components/ui/buttons';
-import { getWebSocketUrl } from '../../config/websocket';
+import { Bell, MessageCircle, X } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import { toast } from 'react-hot-toast';
+import { websocketService } from '../../services/websocketService';
 
 interface ChatNotification {
   id: string;
@@ -37,7 +37,7 @@ const ChatNotifications: React.FC<ChatNotificationsProps> = ({ userId }) => {
             'Authorization': `Bearer ${localStorage.getItem('token')}`
           }
         });
-        
+
         if (response.ok) {
           const realNotifications = await response.json();
           setNotifications(realNotifications);
@@ -58,32 +58,30 @@ const ChatNotifications: React.FC<ChatNotificationsProps> = ({ userId }) => {
     loadRealNotifications();
   }, [userId]);
 
-  // WebSocket pour les notifications en temps réel
+  // WebSocket pour les notifications en temps réel avec reconnexion automatique
   useEffect(() => {
-    const wsUrl = getWebSocketUrl('notifications', userId);
-    if (!wsUrl) return;
-    const ws = new WebSocket(wsUrl);
-    wsRef.current = ws;
+    if (!userId) return;
 
-    ws.onopen = () => {
-      console.log('WebSocket notifications connecté');
-    };
-
-    ws.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
+    const connectionId = websocketService.connect({
+      type: 'notifications',
+      userId,
+      onMessage: (data) => {
         handleNewNotification(data);
-      } catch (error) {
-        console.error('Erreur parsing notification:', error);
-      }
-    };
-
-    ws.onclose = () => {
-      console.log('WebSocket notifications déconnecté');
-    };
+      },
+      onOpen: () => {
+        console.log('WebSocket notifications connecté');
+      },
+      onClose: () => {
+        console.log('WebSocket notifications déconnecté');
+      },
+      onError: (error) => {
+        console.error('Erreur WebSocket notifications:', error);
+      },
+      autoReconnect: true
+    });
 
     return () => {
-      ws.close();
+      websocketService.disconnect(connectionId);
     };
   }, [userId]);
 
@@ -221,9 +219,8 @@ const ChatNotifications: React.FC<ChatNotificationsProps> = ({ userId }) => {
               notifications.map((notification) => (
                 <div
                   key={notification.id}
-                  className={`p-4 border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors ${
-                    !notification.read ? 'bg-blue-50 dark:bg-blue-900/20' : ''
-                  }`}
+                  className={`p-4 border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors ${!notification.read ? 'bg-blue-50 dark:bg-blue-900/20' : ''
+                    }`}
                   onClick={() => markAsRead(notification.id)}
                 >
                   <div className="flex items-start space-x-3">
@@ -240,7 +237,7 @@ const ChatNotifications: React.FC<ChatNotificationsProps> = ({ userId }) => {
                         </div>
                       )}
                     </div>
-                    
+
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
                         <p className="text-sm font-medium text-gray-900 dark:text-white">
@@ -263,14 +260,14 @@ const ChatNotifications: React.FC<ChatNotificationsProps> = ({ userId }) => {
                           </Button>
                         </div>
                       </div>
-                      
+
                       <div className="flex items-center space-x-2 mt-1">
                         {getNotificationIcon(notification.type)}
                         <p className="text-sm text-gray-600 dark:text-gray-300 truncate">
                           {notification.content}
                         </p>
                       </div>
-                      
+
                       {!notification.read && (
                         <div className="mt-2">
                           <div className="w-2 h-2 bg-blue-500 rounded-full"></div>

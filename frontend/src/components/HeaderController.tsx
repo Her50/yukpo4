@@ -40,10 +40,14 @@ const HeaderController: React.FC = () => {
     }
   }, [user?.id]);
 
-  // Récupérer le solde depuis l'API
+  // Récupérer le solde depuis l'API avec gestion d'erreur améliorée
   useEffect(() => {
-    const fetchBalance = async () => {
-      if (!user?.id) {
+    let retryCount = 0;
+    const maxRetries = 3;
+    let isComponentMounted = true;
+
+    const fetchBalance = async (isRetry: boolean = false) => {
+      if (!user?.id || !isComponentMounted) {
         setTokensBalance(null);
         return;
       }
@@ -64,14 +68,32 @@ const HeaderController: React.FC = () => {
         localStorage.setItem('tokens_balance', data.tokens_balance.toString());
         // Déclencher un CustomEvent pour notifier useUser
         window.dispatchEvent(new CustomEvent('tokens_updated'));
+        retryCount = 0; // Reset retry count on success
       } catch (error) {
         console.error('[HeaderController] Erreur récupération solde:', error);
+        
         // En cas d'erreur, utiliser le solde du JWT si disponible
         if (user.credits !== undefined) {
           setTokensBalance(user.credits);
         }
+
+        // Retry logic avec backoff exponentiel
+        if (retryCount < maxRetries && isComponentMounted) {
+          retryCount++;
+          const delay = Math.min(1000 * Math.pow(2, retryCount), 10000); // Max 10s
+          console.log(`[HeaderController] Retry ${retryCount}/${maxRetries} dans ${delay}ms`);
+          setTimeout(() => {
+            if (isComponentMounted) {
+              fetchBalance(true);
+            }
+          }, delay);
+        } else if (retryCount >= maxRetries) {
+          console.warn('[HeaderController] Arrêt des tentatives de récupération du solde après', maxRetries, 'échecs');
+        }
       } finally {
-        setBalanceLoading(false);
+        if (isComponentMounted) {
+          setBalanceLoading(false);
+        }
       }
     };
 
@@ -81,14 +103,17 @@ const HeaderController: React.FC = () => {
       setHasFetchedBalance(true);
     }
 
-    // Rafraîchir toutes les 60 secondes seulement si l'utilisateur est connecté
+    // Rafraîchir toutes les 60 secondes seulement si l'utilisateur est connecté et pas d'erreur récente
     const interval = setInterval(() => {
-      if (user?.id && !balanceLoading) {
+      if (user?.id && !balanceLoading && retryCount < maxRetries) {
         fetchBalance();
       }
     }, 60000);
 
-    return () => clearInterval(interval);
+    return () => {
+      isComponentMounted = false;
+      clearInterval(interval);
+    };
   }, [user?.id]); // Utiliser seulement user.id au lieu de tout l'objet user
 
   // Écouter les changements de solde depuis les headers de réponse
