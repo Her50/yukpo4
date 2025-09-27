@@ -9,6 +9,8 @@ import { apiGet } from "@/services/apiService";
 import { Bell, MessageCircle } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { toast } from "react-hot-toast";
+import ServerStatusIndicator from "./ServerStatusIndicator";
 
 const HeaderController: React.FC = () => {
   const { user, logout } = useUser();
@@ -89,6 +91,11 @@ const HeaderController: React.FC = () => {
           }, delay);
         } else if (retryCount >= maxRetries) {
           console.warn('[HeaderController] Arrêt des tentatives de récupération du solde après', maxRetries, 'échecs');
+          // Afficher une notification à l'utilisateur
+          toast.error('Serveur temporairement inaccessible. Utilisation du solde local.', {
+            duration: 5000,
+            id: 'backend-unavailable'
+          });
         }
       } finally {
         if (isComponentMounted) {
@@ -255,6 +262,11 @@ const HeaderController: React.FC = () => {
                 >
                   💰 {formatBalance()}
                 </Link>
+              </div>
+
+              {/* ✅ Indicateur de statut du serveur */}
+              <div className="hidden md:block mr-2">
+                <ServerStatusIndicator />
               </div>
 
               {/* ✅ Icônes de notifications et chats en haut à droite */}
