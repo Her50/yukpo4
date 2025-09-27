@@ -40,3 +40,4 @@ foreach ($file in $necessaryFiles) {
 Write-Host "Restauration terminée!"
 Write-Host "Fichiers restaurés: $restoredCount"
 Write-Host "Fichiers non trouvés: $notFoundCount"
+

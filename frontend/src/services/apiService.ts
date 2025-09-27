@@ -39,7 +39,7 @@ export const apiService = async (
     signal: AbortSignal.timeout(30000), // 30 secondes timeout
   };
 
-  const baseUrl = 'https://yukpomnang.onrender.com'; // Force absolute URL
+  const baseUrl = import.meta.env.VITE_APP_API_URL || 'http://127.0.0.1:3001';
 
   // Debug: Log the URL being used
   console.log(`[API Service] Making request to: ${baseUrl}${endpoint}`);
