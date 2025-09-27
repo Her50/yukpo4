@@ -61,6 +61,8 @@ const apiCall = async <T>(
   };
 
   try {
+    // Debug: Log the URL being used
+    console.log(`[Mobile API] Making request to: ${API_BASE_URL}${endpoint}`);
     const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
 
     // Vérifier si le token a été mis à jour
@@ -347,17 +349,17 @@ export const userApi = {
 // ===== LOCALISATION =====
 
 export const locationApi = {
-  // Mettre à jour la position GPS
+  // Mettre à jour la position GPS - CORRIGÉ pour correspondre au backend
   updateLocation: async (latitude: number, longitude: number) => {
-    return apiCall('/api/user/location', {
-      method: 'POST',
+    return apiCall('/api/user/me/gps_location', {
+      method: 'PATCH',
       body: JSON.stringify({ latitude, longitude }),
     });
   },
 
-  // Obtenir la position GPS
+  // Obtenir la position GPS - CORRIGÉ pour correspondre au backend
   getLocation: async () => {
-    return apiCall('/api/user/location');
+    return apiCall('/api/user/me/gps_location');
   },
 };
 
@@ -440,6 +442,7 @@ export default {
   aiService,
   serviceService,
 };
+
 
 
 
