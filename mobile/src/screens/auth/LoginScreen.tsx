@@ -16,6 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../contexts/AuthContext';
 import { theme } from '../../theme/theme';
+import LogViewer from '../../components/LogViewer';
 // TODO: Ajouter les packages OAuth pour React Native
 // import * as WebBrowser from 'expo-web-browser';
 // import * as Google from 'expo-auth-session/providers/google';
@@ -31,6 +32,7 @@ const LoginScreen: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [showLogoutMessage, setShowLogoutMessage] = useState(false);
   const [formLoading, setFormLoading] = useState(false);
+  const [showDebug, setShowDebug] = useState(false);
 
   // TODO: Configuration OAuth (à implémenter quand les packages seront disponibles)
   // const [googleRequest, googleResponse, googlePromptAsync] = Google.useAuthRequest({...});
@@ -206,13 +208,31 @@ const LoginScreen: React.FC = () => {
           </TouchableOpacity>
         </View>
 
+        {/* Bouton de debug */}
+        <TouchableOpacity 
+          style={styles.debugButton}
+          onPress={() => setShowDebug(!showDebug)}
+        >
+          <Ionicons name="bug" size={16} color="#FF8C00" />
+          <Text style={styles.debugButtonText}>
+            {showDebug ? 'Masquer' : 'Afficher'} Debug
+          </Text>
+        </TouchableOpacity>
+
+        {/* LogViewer pour debug */}
+        {showDebug && (
+          <View style={styles.debugContainer}>
+            <LogViewer />
+          </View>
+        )}
+
         {/* Informations de support */}
         <View style={styles.supportContainer}>
           <Text style={styles.supportText}>
             En cas de problème, contactez notre support à support@yukpo.com
           </Text>
-      </View>
-    </ScrollView>
+        </View>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 };
@@ -368,9 +388,32 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontStyle: 'italic',
   },
+  debugButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    backgroundColor: '#FFF3E0',
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#FF8C00',
+    marginBottom: 15,
+  },
+  debugButtonText: {
+    marginLeft: 6,
+    color: '#FF8C00',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  debugContainer: {
+    marginBottom: 15,
+    maxHeight: 300,
+  },
 });
 
 export default LoginScreen;
+
 
 
 
