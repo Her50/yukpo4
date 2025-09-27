@@ -16,7 +16,8 @@ export const useServerStatus = () => {
     const checkServerStatus = useCallback(async () => {
         try {
             // Utiliser l'endpoint de santé qui ne nécessite pas d'authentification
-            const baseUrl = import.meta.env.VITE_API_BASE_URL || 'https://yukpomnang.onrender.com';
+            const baseUrl = 'https://yukpomnang.onrender.com';
+            console.log(`[ServerStatus] Checking health at: ${baseUrl}/healthz`);
             const response = await fetch(`${baseUrl}/healthz`, {
                 method: 'GET',
                 headers: {
