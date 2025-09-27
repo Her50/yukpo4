@@ -16,12 +16,15 @@ export const useServerStatus = () => {
     const checkServerStatus = useCallback(async () => {
         try {
             // Utiliser l'endpoint de santé qui ne nécessite pas d'authentification
-            const response = await fetch('/healthz', {
+            const baseUrl = import.meta.env.VITE_API_BASE_URL || 'https://yukpomnang.onrender.com';
+            const response = await fetch(`${baseUrl}/healthz`, {
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                signal: AbortSignal.timeout(5000) // 5 secondes timeout
+                signal: AbortSignal.timeout(10000), // 10 secondes timeout
+                mode: 'cors', // Forcer le mode CORS
+                credentials: 'omit' // Ne pas envoyer de cookies
             });
 
             if (response.ok) {

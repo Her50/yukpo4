@@ -25,6 +25,7 @@ use axum::{
     Json,
     extract::State,
 };
+use chrono;
 use tracing_subscriber::{EnvFilter, fmt, layer::SubscriberExt, util::SubscriberInitExt};
 use crate::state::AppState;
 use crate::middlewares::cors_middleware;
@@ -48,8 +49,12 @@ use crate::routes::echange_routes;
 use crate::routers::router_yukpo::router_yukpo;
 use crate::websocket::websocket_handler::create_websocket_router;
 // use crate::routes::fournitures_routes;
-async fn healthz() -> &'static str {
-    "OK"
+async fn healthz() -> Json<serde_json::Value> {
+    Json(serde_json::json!({
+        "status": "ok",
+        "timestamp": chrono::Utc::now().to_rfc3339(),
+        "service": "yukpomnang-backend"
+    }))
 }
 pub fn init_logging() {
     let log_format = std::env::var("LOG_FORMAT").unwrap_or_else(|_| "plain".to_string());
