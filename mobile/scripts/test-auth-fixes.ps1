@@ -95,3 +95,4 @@ Write-Host "4. Vérifier que le menu déroulant fonctionne" -ForegroundColor Whi
 
 Write-Host "`n✨ Corrections terminées!" -ForegroundColor Green
 
+

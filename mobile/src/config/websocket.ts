@@ -150,3 +150,4 @@ export const WEBSOCKET_EVENTS = {
 } as const;
 
 export type WebSocketEventType = typeof WEBSOCKET_EVENTS[keyof typeof WEBSOCKET_EVENTS];
+

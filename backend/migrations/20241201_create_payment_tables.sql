@@ -100,3 +100,4 @@ GROUP BY payment_method->>'type';
 -- (1, 'test_txn_1', 5000, 250, 5250, 'recharge', 'Recharge de 5000 XAF'),
 -- (1, 'test_txn_2', 10000, 2000, 12000, 'recharge', 'Recharge de 10000 XAF');
 
+

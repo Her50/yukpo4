@@ -210,3 +210,4 @@ Pour toute question ou problème, consultez :
 - La documentation de l'API Google Translate
 - Les tests unitaires du service de traduction
 
+

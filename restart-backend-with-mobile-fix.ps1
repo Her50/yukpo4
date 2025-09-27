@@ -56,3 +56,4 @@ Write-Host "1. Tester la connexion depuis l'application mobile" -ForegroundColor
 Write-Host "2. Tester l'inscription depuis l'application mobile" -ForegroundColor White
 Write-Host "3. Vérifier que les boutons sont bien positionnés" -ForegroundColor White
 Write-Host "4. Vérifier que la navigation fonctionne après authentification" -ForegroundColor White
+

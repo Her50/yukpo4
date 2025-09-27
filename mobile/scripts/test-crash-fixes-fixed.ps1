@@ -145,3 +145,4 @@ Write-Host "• Test de connectivite: Ouvrir Parametres > Test de Connectivite"
 Write-Host "`n🎉 Corrections des plantages Android terminees!" -ForegroundColor Green
 Write-Host "L'application devrait maintenant etre plus stable et ne plus planter." -ForegroundColor Green
 
+

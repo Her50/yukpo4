@@ -47,3 +47,4 @@ $envContent | Out-File -FilePath ".env" -Encoding UTF8
 
 Write-Host "Fichier .env corrige avec succes!" -ForegroundColor Green
 Write-Host "URLs API vides pour utiliser les valeurs par defaut" -ForegroundColor Yellow
+

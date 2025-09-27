@@ -50,3 +50,4 @@ const TranslatedPage: React.FC<TranslatedPageProps> = ({
 
 export default TranslatedPage;
 
+

@@ -90,3 +90,4 @@ foreach ($file in $allTsxFiles) {
 Write-Host "`n🎉 Corrections terminées!" -ForegroundColor Green
 Write-Host "Vous pouvez maintenant tester la compilation avec: npx expo start" -ForegroundColor Yellow
 
+

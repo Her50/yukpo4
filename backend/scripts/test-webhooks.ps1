@@ -128,3 +128,4 @@ Write-Host "`n🎉 Tous les tests sont terminés !" -ForegroundColor Green
 Write-Host "`nNote: Pour tester les webhooks avec authentification JWT, vous devez d'abord vous connecter et obtenir un token." -ForegroundColor Yellow
 Write-Host "Utilisez: " -NoNewline -ForegroundColor Yellow
 Write-Host "Invoke-RestMethod -Uri '$ApiBaseUrl/auth/login' -Method POST -Headers @{'Content-Type'='application/json'} -Body '{\"email\":\"your_email\",\"password\":\"your_password\"}'" -ForegroundColor Cyan
+
