@@ -15,6 +15,8 @@ export const apiService = async (
 
   const defaultHeaders: HeadersInit = {
     'Content-Type': 'application/json',
+    'Accept': 'application/json',
+    'Origin': window.location.origin,
   };
 
   if (isAuthenticated) {

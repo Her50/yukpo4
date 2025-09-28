@@ -113,9 +113,10 @@ pub async fn cors_middleware(
     } else {
         // CORRECTION : Permettre les requêtes sans origin (applications mobiles natives)
         // Les applications mobiles React Native/Expo n'envoient pas d'origin header
+        // Utiliser l'origin du frontend Netlify par défaut
         response.headers_mut().insert(
             "access-control-allow-origin",
-            HeaderValue::from_static("*"),
+            HeaderValue::from_static("https://yukpomnang-app.netlify.app"),
         );
     }
     
@@ -148,7 +149,7 @@ pub async fn cors_preflight_handler() -> Response {
     
     response.headers_mut().insert(
         "access-control-allow-origin",
-        HeaderValue::from_static("*"),
+        HeaderValue::from_static("https://yukpomnang-app.netlify.app"),
     );
     
     response.headers_mut().insert(
