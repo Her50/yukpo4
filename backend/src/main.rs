@@ -45,7 +45,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Cr?er un client Redis avec gestion d'erreur
     let redis_client = match RedisClient::open(redis_url) {
         Ok(client) => {
-            println!("? Connexion Redis ?tablie");
+            println!("✅ Connexion Redis établie - Backend v2.1.4");
             client
         }
         Err(e) => {
