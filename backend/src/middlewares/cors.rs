@@ -23,6 +23,7 @@ pub async fn cors_middleware(
             // 🚀 Plateformes de déploiement spécialisées
             "https://yukpomnang.vercel.app".to_string(),
             "https://yukpomnang.netlify.app".to_string(),
+            "https://yukpomnang-app.netlify.app".to_string(),
             "https://yukpomnang.pages.dev".to_string(), // Cloudflare Pages
             "https://yukpomnang.railway.app".to_string(),
             "https://yukpomnang.up.railway.app".to_string(),

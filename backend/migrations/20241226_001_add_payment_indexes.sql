@@ -33,3 +33,4 @@ COMMENT ON INDEX idx_payment_attempts_status_created IS 'Index composite pour le
 COMMENT ON INDEX idx_payment_attempts_created_at_status IS 'Index pour les requêtes par période et statut';
 COMMENT ON INDEX idx_payment_attempts_user_amount IS 'Index pour les requêtes utilisateur/montant';
 
+

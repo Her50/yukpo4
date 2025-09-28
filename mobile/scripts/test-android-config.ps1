@@ -110,3 +110,4 @@ Write-Host "5. Testez la connexion réseau sur l'appareil"
 Write-Host "`n🚀 Configuration Android vérifiée!" -ForegroundColor Green
 
 
+

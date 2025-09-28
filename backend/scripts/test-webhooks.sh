@@ -118,3 +118,4 @@ echo -e "\n${GREEN}🎉 Tous les tests sont terminés !${NC}"
 echo -e "\n${YELLOW}Note:${NC} Pour tester les webhooks avec authentification JWT, vous devez d'abord vous connecter et obtenir un token."
 echo -e "Utilisez: ${YELLOW}curl -X POST $API_BASE_URL/auth/login -H 'Content-Type: application/json' -d '{\"email\":\"your_email\",\"password\":\"your_password\"}'${NC}"
 
+

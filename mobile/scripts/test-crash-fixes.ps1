@@ -143,3 +143,4 @@ Write-Host "`n🎉 Corrections des plantages Android terminées!" -ForegroundCol
 Write-Host "L'application devrait maintenant être plus stable et ne plus planter." -ForegroundColor Green
 
 
+

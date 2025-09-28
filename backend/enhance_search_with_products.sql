@@ -218,3 +218,4 @@ SELECT * FROM search_services_gps_final('réparation', '4.0483,9.7043', 10, 5);
 SELECT '=== FIN DES TESTS ===' as test_name;
 
 
+

@@ -93,3 +93,4 @@ Write-Host "Nettoyage terminé!"
 Write-Host "Fichiers déplacés: $movedCount"
 Write-Host "Fichiers conservés: $keptCount"
 
+

@@ -128,3 +128,4 @@ Write-Host "• Interface cohérente avec le frontend" -ForegroundColor White
 Write-Host "`n✨ Vérification terminée!" -ForegroundColor Green
 
 
+

@@ -69,3 +69,4 @@ Write-Host "`n🎉 Corrections terminées!" -ForegroundColor Green
 Write-Host "Vous pouvez maintenant tester la compilation avec: npx tsc --jsx react-native --noEmit --skipLibCheck" -ForegroundColor Yellow
 
 
+

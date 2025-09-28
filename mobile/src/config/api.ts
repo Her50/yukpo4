@@ -7,3 +7,4 @@ export const API_BASE_URL = config.API_BASE_URL;
 // Export de la configuration complète
 export { config };
 
+

@@ -40,3 +40,4 @@ Write-Host "1. Redémarrer l'application mobile" -ForegroundColor White
 Write-Host "2. Tester la connexion et l'inscription" -ForegroundColor White
 Write-Host "3. Vérifier que les boutons sont bien positionnés" -ForegroundColor White
 
+
