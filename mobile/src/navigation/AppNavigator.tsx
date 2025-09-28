@@ -27,7 +27,6 @@ import LoginScreen from '../screens/auth/LoginScreen';
 import RegisterScreen from '../screens/auth/RegisterScreen';
 import CreateServiceScreen from '../screens/service/CreateServiceScreen';
 import ServiceDetailScreen from '../screens/service/ServiceDetailScreen';
-import ConnectivityTestScreen from '../components/ConnectivityTestScreen';
 // Composant de chargement simple
 const LoadingScreen = () => (
   <View style={styles.loadingContainer}>
@@ -157,11 +156,6 @@ const MainStack = () => (
       name="Settings"
       component={SettingsScreen}
       options={{ title: 'Paramètres' }}
-    />
-    <Stack.Screen
-      name="ConnectivityTest"
-      component={ConnectivityTestScreen}
-      options={{ title: 'Test Connectivité' }}
     />
     <Stack.Screen
       name="About"

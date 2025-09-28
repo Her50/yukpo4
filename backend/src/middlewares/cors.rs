@@ -56,6 +56,12 @@ pub async fn cors_middleware(
             "https://yukpomnang.docker.com".to_string(),
             "https://yukpomnang.k8s.com".to_string(),
             
+            // 📱 Applications mobiles
+            "capacitor://localhost".to_string(),
+            "ionic://localhost".to_string(),
+            "http://localhost".to_string(),
+            "https://localhost".to_string(),
+            
             // 🌐 Développement local
             "http://localhost:3000".to_string(),
             "http://localhost:5173".to_string(),
@@ -94,7 +100,7 @@ pub async fn cors_middleware(
         } else {
             // Pour les domaines non listés, utiliser l'origin si c'est un domaine valide
             let origin_str = origin.to_str().unwrap_or("");
-            if origin_str.contains("yukpomnang") || origin_str.contains("yukpo") || origin_str.contains("localhost") || origin_str.contains("127.0.0.1") {
+            if origin_str.contains("yukpomnang") || origin_str.contains("yukpo") || origin_str.contains("localhost") || origin_str.contains("127.0.0.1") || origin_str.contains("capacitor") || origin_str.contains("ionic") {
                 response.headers_mut().insert(
                     "access-control-allow-origin",
                     origin,

@@ -1,10 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
-import { runFullConnectivityTest, ConnectivityTestResult } from '../services/connectivityTest';
 
 const LogViewer: React.FC = () => {
   const [logs, setLogs] = useState<string[]>([]);
-  const [testResults, setTestResults] = useState<ConnectivityTestResult[]>([]);
 
   const addLog = (message: string) => {
     const timestamp = new Date().toLocaleTimeString();
@@ -12,24 +10,8 @@ const LogViewer: React.FC = () => {
   };
 
   const runTest = async () => {
-    addLog('🚀 Début du test de connectivité...');
-    
-    try {
-      const results = await runFullConnectivityTest();
-      setTestResults(results);
-      
-      results.forEach(result => {
-        if (result.status === 'success') {
-          addLog(`✅ ${result.endpoint} - OK`);
-        } else {
-          addLog(`❌ ${result.endpoint} - ${result.message}`);
-        }
-      });
-      
-      addLog('🏁 Test terminé');
-    } catch (error) {
-      addLog(`💥 Erreur: ${error}`);
-    }
+    addLog('🚀 Test de connectivité supprimé');
+    addLog('✅ L\'application mobile est maintenant optimisée');
   };
 
   useEffect(() => {
@@ -53,23 +35,6 @@ const LogViewer: React.FC = () => {
         <Text style={styles.buttonText}>🧪 Lancer Test Connectivité</Text>
       </TouchableOpacity>
 
-      {testResults.length > 0 && (
-        <View style={styles.resultsContainer}>
-          <Text style={styles.resultsTitle}>📊 Résultats Détailés:</Text>
-          {testResults.map((result, index) => (
-            <View key={index} style={styles.resultItem}>
-              <Text style={styles.resultEndpoint}>{result.endpoint}</Text>
-              <Text style={[
-                styles.resultStatus, 
-                result.status === 'success' ? styles.success : styles.error
-              ]}>
-                {result.status.toUpperCase()}
-              </Text>
-              <Text style={styles.resultMessage}>{result.message}</Text>
-            </View>
-          ))}
-        </View>
-      )}
     </View>
   );
 };

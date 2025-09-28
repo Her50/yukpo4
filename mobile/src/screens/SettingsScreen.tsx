@@ -10,7 +10,6 @@ import {
 } from 'react-native';
 import { Avatar, Button, Card, Switch, Text, TextInput } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import ConnectivityTest from '../components/ConnectivityTest';
 import { useAuth } from '../contexts/AuthContext';
 import { theme } from '../theme/theme';
 
@@ -371,7 +370,6 @@ const SettingsScreen: React.FC = () => {
         {renderSecuritySection()}
 
         {/* Test de connectivité pour diagnostiquer les problèmes */}
-        <ConnectivityTest />
 
         <TouchableOpacity
           onPress={handleSave}
@@ -463,6 +461,7 @@ const styles = StyleSheet.create({
 });
 
 export default SettingsScreen;
+
 
 
 
