@@ -136,7 +136,9 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
     let websocket = create_websocket_router();
     
     let app = Router::new()
+        .route("/", get(|| async { "Yukpomnang Backend API - Service actif" }))
         .route("/healthz", get(healthz))
+        .route("/api/health", get(|| async { "API Backend Yukpomnang - Opérationnel" }))
         .merge(auth)
         .merge(users)
         .merge(services)
