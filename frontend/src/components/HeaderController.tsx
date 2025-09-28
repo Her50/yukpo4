@@ -10,7 +10,7 @@ import { Bell, MessageCircle } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import { toast } from "react-hot-toast";
 import { Link } from "react-router-dom";
-import ServerStatusIndicator from "./ServerStatusIndicator";
+// import ServerStatusIndicator from "./ServerStatusIndicator"; // Supprimé - plus nécessaire
 
 const HeaderController: React.FC = () => {
   const { user, logout } = useUser();
@@ -264,10 +264,7 @@ const HeaderController: React.FC = () => {
                 </Link>
               </div>
 
-              {/* ✅ Indicateur de statut du serveur */}
-              <div className="hidden md:block mr-2">
-                <ServerStatusIndicator />
-              </div>
+              {/* ✅ Indicateur de statut du serveur - SUPPRIMÉ car tout fonctionne */}
 
               {/* ✅ Icônes de notifications et chats en haut à droite */}
               <div className="flex items-center gap-2 mr-2">
