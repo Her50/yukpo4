@@ -34,3 +34,4 @@ COMMENT ON INDEX idx_payment_attempts_created_at_status IS 'Index pour les requÃ
 COMMENT ON INDEX idx_payment_attempts_user_amount IS 'Index pour les requÃªtes utilisateur/montant';
 
 
+

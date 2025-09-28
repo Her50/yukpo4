@@ -1,0 +1,57 @@
+[33m30cada3[m Add mobile app with authentication fixes
+[33m6f71faf[m Fix: Réorganiser l'ordre des liens dans le menu avatar - Mettre 'Recharger tokens' en premier - Placer 'Paramètres' avant 'Déconnexion' - Améliorer l'expérience utilisateur
+[33m1e7f2e2[m Update: Synchronisation des fichiers backend et frontend - Mise à jour des contrôleurs d'authentification - Synchronisation des composants frontend
+[33me449920[m Fix: Corriger le nom du lien et la cohérence du solde - Changer 'Historisation consommation' en 'Historique de consommation' - Unifier la logique de récupération du solde entre HeaderController et SoldeDetailPage - Utiliser la même clé localStorage 'tokens_balance' dans les deux composants
+[33med8df5f[m Fix: Corrections finales - Redirections et affichage solde
+[33mbe12e3a[m Fix: Corrections finales - SoldeDetailPage et moyens de paiement
+[33ma0098d3[m Fix: Corrections majeures - Recharge tokens, Historisation, Notifications, Mes services
+[33mb72faef[m Fix: Corrections page Recharge tokens et lien Historisation consommation
+[33mcc4ee2c[m 🔧 Fix: Corrections page Mes services et améliorations page Recharge
+[33me7e885c[m 🔧 Fix: Corrections profondes des erreurs JavaScript et API
+[33ma53a095[m Fix: Correction du warning unused variable sig
+[33m194bfaa[m Fix: Correction des erreurs de compilation backend et frontend
+[33m43674a9[m Fix: Correction des erreurs de compilation backend et amélioration du système de traduction
+[33m5ec03fd[m Fix: Amélioration du système de traduction et correction des paramètres utilisateur
+[33m1058c19[m fix: correct backend compilation errors - use username instead of name field, fix as_f64() type handling
+[33mbc4b637[m feat: implement advanced security features - signed URLs, reCAPTCHA, field masking for shared services; fix notification toast, remove bottom buttons, improve recharge UX, auto-translation, dynamic user settings
+[33m0cd4c1d[m fix: suppress undefined chat toast; remove bottom history buttons; stop mock data in IntegratedChatManager; improve Recharge flow (inline payment methods); i18n auto-translate; secure public shared service route (/api/services/shared/:id) with limited fields and headers; update ExternalServiceShare to use shared route; preload user data in settings
+[33m48557ce[m feat: Améliorations majeures de l'interface utilisateur
+[33md164f1b[m fix: Correction configuration Netlify pour déploiement correct
+[33m972db19[m feat: Amélioration page recharge tokens avec gestion multi-devises
+[33m78aee4d[m feat: Ajout section activité récente dans homepage
+[33mb082885[m feat: Amélioration recherche + partage services + config Google Translate
+[33m5033a8d[m feat: Amélioration du processus de recherche - Suppression des limites de résultats et optimisation GPS
+[33mcd5988f[m Fix: Dashboard prestataire, notifications dynamiques, boutons cote a cote, recharge tokens
+[33m544166e[m Fix: Coût réactivation 1000 FCFA, page recharge tokens, notifications, corrections backend
+[33m791694a[m Add: Notification history system with service deactivation alerts
+[33mbd623f9[m Add: Chat history, interacted services page, mobile fixes
+[33me2c29d4[m Fix: Corrections backend UTF-8, responsivité mobile, notifications d'appel vidéo et envoi d'avis
+[33m487548f[m fix: Correction des erreurs Render - WebSocket, JWT et timeouts
+[33m4abacdb[m feat: Configuration complète avec solde initial 1M tokens et corrections GPS
+[33me6925fb[m fix(router): remove unused import get_last_service_for_user
+[33mb174950[m Fix: Correction erreur 400 /api/services/last - Ajout route manquante dans router_yukpo
+[33m6079233[m 🔒 Fix: Correction Mixed Content WebSocket pour HTTPS/Netlify
+[33mbe5e0a0[m CRITICAL FIX: Add JWT token to registration response - solves frontend auth error
+[33m74871de[m Final fix: axios configuration + live browser testing
+[33meff138d[m Fix: Complete Netlify proxy configuration - all API endpoints working
+[33m760e33d[m Complete multi-platform deployment: Netlify public access + all platforms verified
+[33m20f1728[m Production ready: https://yukpo.vercel.app with proper rewrites and CORS
+[33mec4e85a[m Complete deployment setup: Vercel live, Docker configured, all platforms ready
+[33m0287e93[m Add deployment scripts and API test tools
+[33m0b0df64[m Fix deployment configuration: clean heavy files, configure Vercel properly, add connection test
+[33m15ebe37[m feat: Add complete SPA routing configuration
+[33m3907647[m Fix: Ajout vercel.json pour routage SPA dans frontend/
+[33md77be76[m fix: Remove large ZIP files and optimize .gitignore
+[33m62f284b[m fix: Optimize .gitignore to exclude heavy files
+[33mc5d40fa[m feat: Deploy to Vercel with env vars
+[33m9fbb37d[m feat: Deploy to Vercel with production environment configuration
+[33mdb2ce05[m feat: Configure Vercel deployment with SPA routing and authentication fixes
+[33m2f2c58b[m Fix: Ajout vercel.json pour routage SPA dans frontend/
+[33m2d48157[m Fix: Configuration finale avec vercel.json propre
+[33m78b1ba8[m Fix: Configuration définitive VITE_API_BASE_URL et vercel.json
+[33mde98cca[m Fix: Configuration définitive VITE_API_BASE_URL pour production
+[33m83b3601[m Fix: Correction route de santé backend /healthz
+[33m5cd13c2[m Fix: Configuration routage SPA et backend Render opérationnel
+[33mc78b032[m fix: Optimiser la configuration Vite pour réduire les warnings de build
+[33m3874bc6[m fix: Ajouter la configuration Vercel pour le routage SPA et corriger l'erreur 404 sur /register
+[33m6e3e1d2[m fix: Optimiser la configuration Vite pour réduire les warnings de build

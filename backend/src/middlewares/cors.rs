@@ -93,30 +93,38 @@ pub async fn cors_middleware(
         allow_credentials: true,
     };
     
-    // Ajouter les headers CORS
+    // Ajouter les headers CORS - CONFIGURATION PERMISSIVE POUR RÉSOUDRE LE PROBLÈME
     if let Some(origin) = origin {
-        if config.allowed_origins.contains(&origin.to_str().unwrap_or("").to_string()) {
+        let origin_str = origin.to_str().unwrap_or("");
+        // Configuration permissive : accepter tous les domaines yukpomnang et localhost
+        if config.allowed_origins.contains(&origin_str.to_string()) || 
+           origin_str.contains("yukpomnang") || 
+           origin_str.contains("yukpo") || 
+           origin_str.contains("localhost") || 
+           origin_str.contains("127.0.0.1") || 
+           origin_str.contains("capacitor") || 
+           origin_str.contains("ionic") ||
+           origin_str.contains("netlify") ||
+           origin_str.contains("vercel") ||
+           origin_str.contains("render") {
             response.headers_mut().insert(
                 "access-control-allow-origin",
                 origin,
             );
         } else {
-            // Pour les domaines non listés, utiliser l'origin si c'est un domaine valide
-            let origin_str = origin.to_str().unwrap_or("");
-            if origin_str.contains("yukpomnang") || origin_str.contains("yukpo") || origin_str.contains("localhost") || origin_str.contains("127.0.0.1") || origin_str.contains("capacitor") || origin_str.contains("ionic") {
-                response.headers_mut().insert(
-                    "access-control-allow-origin",
-                    origin,
-                );
-            }
+            // Fallback : utiliser l'origin par défaut
+            response.headers_mut().insert(
+                "access-control-allow-origin",
+                HeaderValue::from_static("https://yukpomnang.onrender.com"),
+            );
         }
     } else {
         // CORRECTION : Permettre les requêtes sans origin (applications mobiles natives)
         // Les applications mobiles React Native/Expo n'envoient pas d'origin header
-        // Utiliser l'origin du frontend Netlify par défaut
+        // Utiliser l'origin du frontend par défaut - CORRECTION POUR RENDER
         response.headers_mut().insert(
             "access-control-allow-origin",
-            HeaderValue::from_static("https://yukpomnang-app.netlify.app"),
+            HeaderValue::from_static("https://yukpomnang.onrender.com"),
         );
     }
     
@@ -149,7 +157,7 @@ pub async fn cors_preflight_handler() -> Response {
     
     response.headers_mut().insert(
         "access-control-allow-origin",
-        HeaderValue::from_static("https://yukpomnang-app.netlify.app"),
+        HeaderValue::from_static("https://yukpomnang.onrender.com"),
     );
     
     response.headers_mut().insert(

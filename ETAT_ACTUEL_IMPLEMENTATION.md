@@ -177,3 +177,4 @@ curl -X POST http://localhost:8080/api/payments/validate-phone \
 **🎉 Conclusion** : L'implémentation est **95% terminée**. Il ne reste que la configuration de la base de données et l'exécution des migrations pour que tout soit opérationnel.
 
 
+

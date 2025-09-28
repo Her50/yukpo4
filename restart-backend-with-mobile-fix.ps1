@@ -58,3 +58,5 @@ Write-Host "3. Vérifier que les boutons sont bien positionnés" -ForegroundColo
 Write-Host "4. Vérifier que la navigation fonctionne après authentification" -ForegroundColor White
 
 
+
+

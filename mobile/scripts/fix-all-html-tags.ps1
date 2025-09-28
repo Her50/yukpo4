@@ -70,3 +70,5 @@ Write-Host "Vous pouvez maintenant tester la compilation avec: npx tsc --jsx rea
 
 
 
+
+

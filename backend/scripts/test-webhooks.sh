@@ -119,3 +119,4 @@ echo -e "\n${YELLOW}Note:${NC} Pour tester les webhooks avec authentification JW
 echo -e "Utilisez: ${YELLOW}curl -X POST $API_BASE_URL/auth/login -H 'Content-Type: application/json' -d '{\"email\":\"your_email\",\"password\":\"your_password\"}'${NC}"
 
 
+
