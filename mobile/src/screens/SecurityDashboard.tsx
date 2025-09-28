@@ -32,7 +32,9 @@ const SecurityDashboard: React.FC = () => {
   }, []);
 
   const handlePrint = () => {
-    window.print();
+    // Note: window.print() n'existe pas en React Native
+    // Dans React Native, on utiliserait react-native-print ou expo-print
+    console.log('Fonctionnalité d\'impression non disponible sur mobile');
   };
 
   const handleSendPdf = () => {

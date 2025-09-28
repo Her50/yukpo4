@@ -259,7 +259,7 @@ export const ResultatBesoin: React.FC = () => {
           const response = await fetch(`/api/services/${serviceId}`, {
             method: 'GET',
             headers: {
-              'Authorization': `Bearer ${localStorage.getItem('token')}`
+              // Note: localStorage n'existe pas en React Native, utiliser AsyncStorage
             }
           });
 

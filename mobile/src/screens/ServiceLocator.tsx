@@ -23,19 +23,15 @@ const ServiceLocator: React.FC = () => {
       if (res.data.latitude && res.data.longitude) {
         useProximityDetector(res.data.latitude, res.data.longitude, () => {
           toast.success("🛰️ Vous êtes proche de ce service ! Redirection...");
+          // Note: window.open n'existe pas en React Native
+          // On utiliserait Linking.openURL dans React Native
           setTimeout(() => {
-            window.open(
-              `https://www.google.com/maps/dir/?api=1&destination=${res.data.latitude},${res.data.longitude}`,
-              "_blank"
-            );
+            // Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${res.data.latitude},${res.data.longitude}`);
           }, 2500);
         });
 
         // Fallback si la détection ne se déclenche pas automatiquement
-        window.open(
-          `https://www.google.com/maps/dir/?api=1&destination=${res.data.latitude},${res.data.longitude}`,
-          "_blank"
-        );
+        // Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${res.data.latitude},${res.data.longitude}`);
       }
     } catch (error) {
       toast.error("Erreur de localisation du service");

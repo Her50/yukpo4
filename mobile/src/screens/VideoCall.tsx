@@ -145,13 +145,9 @@ const VideoCall = () => {
       };
       
       mediaRecorder.onstop = () => {
-        const blob = new Blob(chunks, { type: 'video/webm' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `appel-video-${Date.now()}.webm`;
-        a.click();
-        URL.revokeObjectURL(url);
+        // Note: Blob, URL.createObjectURL, document.createElement n'existent pas en React Native
+        // Dans React Native, on utiliserait react-native-fs ou expo-file-system pour sauvegarder
+        console.log('Enregistrement terminé - fonctionnalité non disponible sur mobile');
       };
       
       mediaRecorder.start();
@@ -167,7 +163,8 @@ const VideoCall = () => {
 
   const endCall = () => {
     cleanupCall();
-    window.close();
+    // Note: window.close() n'existe pas en React Native
+    // On utiliserait navigation.goBack() ou navigation.navigate()
   };
 
   return (

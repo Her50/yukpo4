@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/buttons/Button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
 import { useUser } from '@/hooks/useUser';
+import { servicesApi } from '@/services/api';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
     Clock,
     Eye,
@@ -62,14 +64,10 @@ const ServicesInteragisPage: React.FC = () => {
     const loadInteractedServices = async () => {
         setLoading(true);
         try {
-            const response = await fetch('/api/services/interacted', {
-                headers: {
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`
-                }
-            });
+            const response = await servicesApi.getInteractedServices();
 
-            if (response.ok) {
-                const data = await response.json();
+            if (response.success) {
+                const data = response.data;
                 const servicesData = data.services || [];
                 setServices(servicesData);
 
@@ -79,8 +77,8 @@ const ServicesInteragisPage: React.FC = () => {
                 setAvailableCategories(categories);
                 setAvailableTypes(types);
             } else {
-                // Charger depuis localStorage si l'API échoue
-                const savedServices = localStorage.getItem('interactedServices');
+                // Charger depuis AsyncStorage si l'API échoue
+                const savedServices = await AsyncStorage.getItem('interactedServices');
                 if (savedServices) {
                     try {
                         const parsedServices = JSON.parse(savedServices);
@@ -104,8 +102,8 @@ const ServicesInteragisPage: React.FC = () => {
             }
         } catch (error) {
             console.error('Erreur chargement services interagis:', error);
-            // Fallback: charger depuis localStorage
-            const savedServices = localStorage.getItem('interactedServices');
+            // Fallback: charger depuis AsyncStorage
+            const savedServices = await AsyncStorage.getItem('interactedServices');
             if (savedServices) {
                 try {
                     const parsedServices = JSON.parse(savedServices);

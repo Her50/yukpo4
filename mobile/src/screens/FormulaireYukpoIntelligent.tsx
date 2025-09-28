@@ -8,7 +8,7 @@ import { TouchableOpacity } from 'react-native';
 import { useLocation, useNavigation } from 'react-router-dom';
 import AppLayout from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/buttons';
-import { toast } from 'react-hot-toast';
+// import { toast } from 'react-hot-toast'; // Removed - not available in React Native
 import { dispatchChampsFormulaireIA, ComposantFrontend } from '@/utils/form_constraint_dispatcher';
 import DynamicField from '@/components/intelligence/DynamicFields';
 import { appelerMoteurIA, creerService } from '@/lib/yukpoaclient';

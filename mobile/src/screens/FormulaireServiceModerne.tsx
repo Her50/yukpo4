@@ -12,7 +12,7 @@ import { useLocation, useNavigation } from 'react-router-dom';
 import { showServiceCreationErrorToast, showSimpleServiceCreationToast } from '@/utils/toastUtils';
 import { Badge, Card, Grid, Group, SimpleGrid, Skeleton, Stack, Stepper, TextInput, Title } from '@mantine/core';
 import { useForm } from '@mantine/form';
-import { toast } from 'react-hot-toast';
+// import { toast } from 'react-hot-toast'; // Removed - not available in React Native
 
 const FormulaireServiceModerne: React.FC = () => {
   const location = useLocation();
@@ -43,8 +43,8 @@ const FormulaireServiceModerne: React.FC = () => {
     try {
       await creerService({ intention: suggestion.intention || 'creation_service', data: values });
 
-      // Déclencher l'événement service_created pour notifier MesServices
-      window.dispatchEvent(new CustomEvent('service_created'));
+      // Note: window.dispatchEvent et CustomEvent n'existent pas en React Native
+      // Dans React Native, on utiliserait un système d'événements ou context
 
       showSimpleServiceCreationToast();
       navigation.navigate(ROUTES.MES_SERVICES);

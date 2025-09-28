@@ -3,6 +3,7 @@
 import * as React from "react";
 import { useEffect, useState } from "react";
 import { Text, TouchableOpacity, View } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 // import { motion, AnimatePresence } from 'framer-motion'; // Animation React Native
 // import DynamicField from "@/components/intelligence/DynamicFields";
 // import { Button } from "@/components/ui/buttons";
@@ -32,12 +33,20 @@ const GroupeForm: React.FC<GroupeFormProps> = ({ groupe, onNext }) => {
   const [champs, setChamps] = useState<ComposantFrontend[]>([]);
 
   useEffect(() => {
-    const tampon = localStorage.getItem("tampon_groupe_local");
-    if (tampon) {
-      const parsed = JSON.parse(tampon);
-      const existants = parsed[groupe.groupe_actuel] || {};
-      setValeurs(existants);
-    }
+    const loadTampon = async () => {
+      try {
+        const tampon = await AsyncStorage.getItem("tampon_groupe_local");
+        if (tampon) {
+          const parsed = JSON.parse(tampon);
+          const existants = parsed[groupe.groupe_actuel] || {};
+          setValeurs(existants);
+        }
+      } catch (error) {
+        console.error('Erreur chargement tampon:', error);
+      }
+    };
+    
+    loadTampon();
 
     // ✅ Ajout de contexte_demande fictif pour satisfaire le type ProfilIA
     const contenuAvecContexte = {
@@ -67,14 +76,18 @@ const GroupeForm: React.FC<GroupeFormProps> = ({ groupe, onNext }) => {
     setChamps(dynamic);
   }, [groupe.groupe_actuel]);
 
-  const handleChange = (champNom: string, valeur: any) => {
+  const handleChange = async (champNom: string, valeur: any) => {
     setValeurs((prev) => ({ ...prev, [champNom]: valeur }));
     setErreurs((prev) => ({ ...prev, [champNom]: "" }));
 
-    const tamponStr = localStorage.getItem("tampon_groupe_local");
-    const tampon = tamponStr ? JSON.parse(tamponStr) : {};
-    tampon[groupe.groupe_actuel] = { ...tampon[groupe.groupe_actuel], [champNom]: valeur };
-    localStorage.setItem("tampon_groupe_local", JSON.stringify(tampon));
+    try {
+      const tamponStr = await AsyncStorage.getItem("tampon_groupe_local");
+      const tampon = tamponStr ? JSON.parse(tamponStr) : {};
+      tampon[groupe.groupe_actuel] = { ...tampon[groupe.groupe_actuel], [champNom]: valeur };
+      await AsyncStorage.setItem("tampon_groupe_local", JSON.stringify(tampon));
+    } catch (error) {
+      console.error('Erreur sauvegarde tampon:', error);
+    }
   };
 
   const validerChamp = (champ: ComposantFrontend, valeur: any): string | null => {

@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/buttons/Button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
 import { useUser } from '@/hooks/useUser';
+import { servicesApi } from '@/services/api';
 import {
   Clock,
   MapPin,
@@ -56,14 +57,10 @@ const InteractedServicesPage: React.FC = () => {
   const loadInteractedServices = async () => {
     setLoading(true);
     try {
-      const response = await fetch('/api/services/interacted', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      const response = await servicesApi.getInteractedServices();
 
-      if (response.ok) {
-        const data = await response.json();
+      if (response.success) {
+        const data = response.data;
         setServices(data.services || []);
       } else {
         // Si pas de services interagis, afficher une liste vide

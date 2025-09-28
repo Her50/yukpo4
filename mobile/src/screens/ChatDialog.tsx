@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import * as React from "react";
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { toast } from 'react-hot-toast';
+// import { toast } from 'react-hot-toast'; // Removed - not available in React Native
 import { Text, TouchableOpacity, View } from 'react-native';
 import { useLocation, useNavigation, useParams } from 'react-router-dom';
 import { getWebSocketUrl } from '../config/websocket';

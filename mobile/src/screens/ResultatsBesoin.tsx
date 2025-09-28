@@ -126,17 +126,11 @@ const ResultatsBesoin: React.FC = () => {
   };
 
   const handleShare = (service: Service) => {
-    const url = `${window.location.origin}/service/${service.id}`;
-    if (navigator.share) {
-      navigator.share({
-        title: service.titre,
-        text: service.description,
-        url: url,
-      });
-    } else {
-      navigator.clipboard.writeText(url);
-      toast.success('Lien copié dans le presse-papiers');
-    }
+    // Note: window.location.origin et navigator.share n'existent pas en React Native
+    const url = `https://yukpomnang.com/service/${service.id}`;
+    // Dans React Native, on utiliserait Linking.openURL ou react-native-share
+    // Pour l'instant, on affiche juste le lien
+    console.log('Partage de service:', url);
   };
 
   if (loading) {

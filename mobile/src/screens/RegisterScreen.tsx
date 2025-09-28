@@ -1,295 +1,330 @@
-﻿import * as React from "react";
-import { useState, useEffect } from 'react';
-import { Text } from 'react-native';
-import { View } from 'react-native';
-import { TouchableOpacity } from 'react-native';
-import ResponsiveContainer from '@/components/layout/ResponsiveContainer';
-import { useNavigation, Link, useSearchParams } from "@react-navigation/native";
-import { ROUTES } from "@/routes/AppRoutesRegistry";
-import OAuthButton from "@/components/auth/OAuthButton";
-import { useUser } from '@/hooks/useUser';
-import toast from 'react-hot-toast';
+﻿import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useNavigation } from '@react-navigation/native';
+import React, { useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { APP_CONFIG } from '../config/appConfig';
+import { authApi } from '../services/api';
 
-const RegisterPage: React.FC = () => {
-  const navigate = useNavigation();
-  const [searchParams] = useSearchParams();
-  const { login } = useUser();
+const RegisterScreen: React.FC = () => {
+  const navigation = useNavigation();
   const [form, setForm] = useState({
     nom: "",
     prenom: "",
+    name: "",
     email: "",
     password: "",
     confirmPassword: "",
+    lang: "fr",
   });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [registrationSuccess, setRegistrationSuccess] = useState(false);
-  
-  // Gestion de la redirection après inscription
-  const redirectUrl = searchParams.get('redirect');
-  const source = searchParams.get('source');
-  const isSharedService = source === 'shared_service';
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+  const handleChange = (field: string, value: string) => {
+    setForm({ ...form, [field]: value });
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async () => {
     setError("");
     setLoading(true);
+
+    // Validation du mot de passe
     const passwordRegex = /^(?=.*[A-Z])(?=.*\d).{8,}$/;
     if (!passwordRegex.test(form.password)) {
       setError("Mot de passe trop faible : 8 caractères, 1 majuscule, 1 chiffre minimum.");
       setLoading(false);
       return;
     }
+
     if (form.password !== form.confirmPassword) {
       setError("Les mots de passe ne correspondent pas.");
       setLoading(false);
       return;
     }
+
+    if (!form.email || !form.password || !form.nom) {
+      setError("Veuillez remplir tous les champs obligatoires.");
+      setLoading(false);
+      return;
+    }
+
+    console.log('[RegisterScreen] Tentative d\'inscription pour:', form.email);
+
     try {
-      const res = await fetch(`/auth/register`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          nom: form.nom,
-          prenom: form.prenom,
-          name: form.nom || form.prenom || `${form.nom} ${form.prenom}`.trim(),
-          email: form.email,
-          password: form.password,
-          lang: 'fr',
-        }),
-      });
-      
-      if (res.ok) {
-        const data = await res.json();
-        // Inscription réussie
-        setRegistrationSuccess(true);
-        toast.success('Compte créé avec succès ! 🎉');
-        
-        // Si un token est retourné, connecter automatiquement l'utilisateur
-        if (data.token) {
-          localStorage.setItem('token', data.token);
-          localStorage.setItem('tokens_balance', data.tokens_balance.toString());
-          window.dispatchEvent(new CustomEvent('tokens_updated'));
-          login(data.token);
-          
-          // Redirection intelligente selon la source
-          if (isSharedService && redirectUrl) {
-            // Rediriger vers le service partagé
-            toast.success('Compte créé ! Redirection vers le service...');
-            navigation.navigate(decodeURIComponent(redirectUrl));
-          } else {
-            // Redirection normale vers l'accueil
-            navigation.navigate(ROUTES.HOME);
-          }
-          window.location.reload();
+      const userData = {
+        nom: form.nom,
+        prenom: form.prenom || form.nom,
+        name: form.name || form.nom,
+        email: form.email,
+        password: form.password,
+        phone: "",
+        lang: form.lang,
+      };
+
+      console.log('[RegisterScreen] Données d\'inscription:', { ...userData, password: '***' });
+
+      const response = await authApi.register(userData);
+
+      console.log('[RegisterScreen] Réponse API:', response);
+
+      if (response.success && response.data?.token) {
+        console.log('[RegisterScreen] Inscription réussie, token reçu');
+
+        // Sauvegarder le token
+        await AsyncStorage.setItem('auth_token', response.data.token);
+
+        // Sauvegarder le solde de tokens
+        if (response.data.tokens_balance !== undefined) {
+          await AsyncStorage.setItem('tokens_balance', response.data.tokens_balance.toString());
+          console.log('[RegisterScreen] Solde initial sauvegardé:', response.data.tokens_balance);
         }
-        
+
+        Alert.alert(
+          'Inscription réussie',
+          'Votre compte a été créé avec succès !',
+          [
+            {
+              text: 'OK',
+              onPress: () => {
+                // Redirection vers l'accueil
+                navigation.navigate('Home' as never);
+              }
+            }
+          ]
+        );
+
       } else {
-        const err = await res.json();
-        setError(err.message || "Erreur d'inscription");
-        toast.error(err.message || "Erreur d'inscription");
+        console.error('[RegisterScreen] Erreur d\'inscription:', response.error);
+        setError(response.error || 'Erreur lors de l\'inscription');
       }
-    } catch (err) {
-      setError("Échec de la connexion au serveur.");
-      toast.error("Échec de la connexion au serveur.");
+    } catch (error: any) {
+      console.error('[RegisterScreen] Erreur lors de l\'inscription:', error);
+      setError('Erreur de connexion au serveur. Vérifiez votre connexion internet.');
     } finally {
       setLoading(false);
     }
   };
 
-  // Fonction pour naviguer vers la page de connexion avec les données pré-remplies
-  const goToLoginWithCredentials = () => {
-    navigation.navigate(ROUTES.LOGIN, { 
-      state: { 
-        fromRegistration: true, 
-        email: form.email,
-        message: 'Veuillez vous connecter avec vos identifiants.'
-      } 
-    });
+  const handleLogin = () => {
+    navigation.navigate('Login' as never);
   };
 
-  // Affichage du message de succès après inscription
-  if (registrationSuccess) {
-    return (
-      <main style="min-h-screen bg-yellow-50 pt-24">
-        <View style="bg-white rounded-xl shadow-lg p-8 max-w-lg mx-auto text-center">
-          <View style="mb-6">
-            <View style="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg style="w-10 h-10 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <Textath strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-            </View>
-            <Text style="text-3xl font-bold mb-4 text-gray-900">
-              Inscription réussie ! 🎉
-            </Text>
-            <Text style="text-gray-600 mb-6">
-              Votre compte <Text style="font-semibold">{form.email}</Text> a été créé avec succès.
-            </Text>
-            <Text style="text-sm text-gray-500 mb-8">
-              {isSharedService 
-                ? "Vous allez être redirigé vers le service partagé dans quelques instants..."
-                : "Vous pouvez maintenant vous connecter pour accéder à toutes les fonctionnalités de Yukpo."
-              }
-            </Text>
-          </View>
-          
-          <View style="space-y-3">
-            <TouchableOpacity
-              onPress={goToLoginWithCredentials}
-              style="block w-full bg-yellow-500 text-black py-3 px-6 rounded-lg font-semibold hover:bg-yellow-600 transition-colors"
-            >
-              Se connecter maintenant →
-            </TouchableOpacity>
-            <Link
-              to={ROUTES.HOME}
-              style="block w-full bg-gray-100 text-gray-700 py-3 px-6 rounded-lg font-medium hover:bg-gray-200 transition-colors"
-            >
-              Retour à l'accueil
-            </Link>
-          </View>
-          
-          <Text style="text-xs text-gray-500 mt-6">
-            En cas de problème, contactez notre support à support@yukpo.com
-          </Text>
-        </View>
-      </main>
-    );
-  }
-
   return (
-    <main style="min-h-screen bg-yellow-50 pt-24">
-      <View style="bg-white rounded-xl shadow-lg p-8 max-w-lg mx-auto">
-        <Text style="text-3xl font-bold mb-6 text-center text-gray-900">
-          Créer un compte{" "}
-          <Text style="bg-gradient-to-r from-yellow-500 via-orange-500 to-red-500 bg-clip-text text-transparent">
-            Yukpo
-          </Text>
-        </Text>
-        
-        {isSharedService && (
-          <View style="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-            <View style="flex items-center text-blue-800 mb-2">
-              <svg style="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <Textath strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <Text style="font-medium">Service partagé</Text>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
+      <ScrollView contentContainerStyle={styles.scrollContainer}>
+        <View style={styles.content}>
+          <Text style={styles.title}>Créer un compte</Text>
+          <Text style={styles.subtitle}>Rejoignez la communauté Yukpo</Text>
+
+          {/* Formulaire d'inscription */}
+          <View style={styles.formContainer}>
+            <View style={styles.inputContainer}>
+              <Text style={styles.inputLabel}>Nom *</Text>
+              <TextInput
+                style={styles.input}
+                value={form.nom}
+                onChangeText={(value) => handleChange('nom', value)}
+                placeholder="Votre nom"
+                autoCapitalize="words"
+              />
             </View>
-            <Text style="text-blue-700 text-sm">
-              Créez votre compte pour accéder au service complet. 
-              Vous serez automatiquement redirigé vers le service après votre inscription.
+
+            <View style={styles.inputContainer}>
+              <Text style={styles.inputLabel}>Prénom</Text>
+              <TextInput
+                style={styles.input}
+                value={form.prenom}
+                onChangeText={(value) => handleChange('prenom', value)}
+                placeholder="Votre prénom"
+                autoCapitalize="words"
+              />
+            </View>
+
+            <View style={styles.inputContainer}>
+              <Text style={styles.inputLabel}>Email *</Text>
+              <TextInput
+                style={styles.input}
+                value={form.email}
+                onChangeText={(value) => handleChange('email', value)}
+                placeholder="votre@email.com"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+            </View>
+
+            <View style={styles.inputContainer}>
+              <Text style={styles.inputLabel}>Mot de passe *</Text>
+              <TextInput
+                style={styles.input}
+                value={form.password}
+                onChangeText={(value) => handleChange('password', value)}
+                placeholder="Votre mot de passe"
+                secureTextEntry
+              />
+              <Text style={styles.passwordHint}>
+                8 caractères minimum, 1 majuscule, 1 chiffre
+              </Text>
+            </View>
+
+            <View style={styles.inputContainer}>
+              <Text style={styles.inputLabel}>Confirmer le mot de passe *</Text>
+              <TextInput
+                style={styles.input}
+                value={form.confirmPassword}
+                onChangeText={(value) => handleChange('confirmPassword', value)}
+                placeholder="Confirmez votre mot de passe"
+                secureTextEntry
+              />
+            </View>
+
+            {error ? (
+              <Text style={styles.errorText}>{error}</Text>
+            ) : null}
+
+            <TouchableOpacity
+              style={[styles.registerButton, loading && styles.registerButtonDisabled]}
+              onPress={handleSubmit}
+              disabled={loading}
+            >
+              {loading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.registerButtonText}>Créer mon compte</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+
+          <TouchableOpacity onPress={handleLogin} style={styles.loginLink}>
+            <Text style={styles.loginText}>
+              Déjà un compte ? <Text style={styles.loginLinkText}>Se connecter</Text>
             </Text>
-          </View>
-        )}
-        <Text style="text-center text-gray-600 mb-4">
-          Utilisez votre compte <strong>Google</strong> ou <strong>Facebook</strong> pour vous inscrire rapidement :
-        </Text>
-        <View style="flex justify-center gap-4 mb-6">
-          <OAuthButton provider="google" />
-          <OAuthButton provider="facebook" />
-        </View>
-        <View style="relative mb-6">
-          <View style="absolute inset-0 flex items-center">
-            <View style="w-full border-t border-gray-300"></View>
-          </View>
-          <View style="relative flex justify-center text-sm">
-            <Text style="px-2 bg-white text-gray-500">ou créez un compte manuellement</Text>
-          </View>
-        </View>
-        <form onSubmit={handleSubmit} style="space-y-4">
-          <TextInput
-            type="text"
-            name="nom"
-            placeholder="Nom de famille"
-            value={form.nom}
-            onChange={handleChange}
-            style="w-full border px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
-            required
-            disabled={loading}
-          />
-          <TextInput
-            type="text"
-            name="prenom"
-            placeholder="Prénom"
-            value={form.prenom}
-            onChange={handleChange}
-            style="w-full border px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
-            required
-            disabled={loading}
-          />
-          <TextInput
-            type="email"
-            name="email"
-            placeholder="Adresse email"
-            value={form.email}
-            onChange={handleChange}
-            style="w-full border px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
-            required
-            disabled={loading}
-          />
-          <TextInput
-            type="password"
-            name="password"
-            placeholder="Mot de passe"
-            value={form.password}
-            onChange={handleChange}
-            style="w-full border px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
-            required
-            disabled={loading}
-          />
-          <TextInput
-            type="password"
-            name="confirmPassword"
-            placeholder="Confirmer le mot de passe"
-            value={form.confirmPassword}
-            onChange={handleChange}
-            style="w-full border px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
-            required
-            disabled={loading}
-          />
-          <Text style="text-xs text-gray-500 italic">
-            Mot de passe requis : 8 caractères, 1 majuscule, 1 chiffre.
-          </Text>
-          {error && (
-            <View style="bg-red-50 border border-red-200 text-red-600 text-sm p-3 rounded-lg text-center">
-              {error}
-            </View>
-          )}
-          <TouchableOpacity
-            type="submit"
-            style="w-full bg-yellow-500 text-black py-3 rounded-lg font-semibold hover:bg-yellow-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
-            disabled={loading}
-          >
-            {loading ? (
-              <>
-                <Text style="animate-spin rounded-full h-5 w-5 border-b-2 border-black mr-2"></Text>
-                Création du compte...
-              </>
-            ) : (
-              'Créer mon compte'
-            )}
           </TouchableOpacity>
-        </form>
-        
-        <View style="mt-6 text-center">
-          <Text style="text-sm text-gray-600">
-            Vous avez déjà un compte ?{' '}
-            <Link to={ROUTES.LOGIN} style="text-yellow-600 hover:text-yellow-700 font-medium">
-              Connectez-vous
-            </Link>
-          </Text>
+
+          {/* Debug info */}
+          <View style={styles.debugContainer}>
+            <Text style={styles.debugText}>Debug Info:</Text>
+            <Text style={styles.debugText}>API URL: {APP_CONFIG.API_BASE_URL}</Text>
+          </View>
         </View>
-      </View>
-    </main>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 };
 
-export default RegisterPage;
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
+  scrollContainer: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    padding: 20,
+  },
+  content: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: 10,
+    color: '#333',
+  },
+  subtitle: {
+    fontSize: 16,
+    textAlign: 'center',
+    marginBottom: 30,
+    color: '#666',
+  },
+  formContainer: {
+    backgroundColor: '#f8f9fa',
+    borderRadius: 15,
+    padding: 20,
+    marginBottom: 20,
+  },
+  inputContainer: {
+    marginBottom: 15,
+  },
+  inputLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 8,
+    color: '#333',
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 10,
+    paddingHorizontal: 15,
+    paddingVertical: 12,
+    fontSize: 16,
+    backgroundColor: '#fff',
+  },
+  passwordHint: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 4,
+  },
+  errorText: {
+    color: '#e74c3c',
+    textAlign: 'center',
+    marginBottom: 15,
+    fontSize: 14,
+  },
+  registerButton: {
+    backgroundColor: '#27ae60',
+    paddingVertical: 15,
+    borderRadius: 10,
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  registerButtonDisabled: {
+    opacity: 0.6,
+  },
+  registerButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  loginLink: {
+    alignItems: 'center',
+    marginBottom: 30,
+  },
+  loginText: {
+    fontSize: 14,
+    color: '#666',
+  },
+  loginLinkText: {
+    color: '#27ae60',
+    fontWeight: '600',
+  },
+  debugContainer: {
+    backgroundColor: '#f0f0f0',
+    padding: 10,
+    borderRadius: 5,
+    marginTop: 20,
+  },
+  debugText: {
+    fontSize: 12,
+    color: '#666',
+    fontFamily: 'monospace',
+  },
+});
 
-
-
-
-
+export default RegisterScreen;

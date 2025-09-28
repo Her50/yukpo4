@@ -16,7 +16,7 @@ import { Menu, CheckCircle } from "lucide-react";
 import { useUser } from "@/hooks/useUser";
 import { useNavigation, useLocation } from "@react-navigation/native";
 import axios from "axios";
-import toast from "react-hot-toast";
+// import toast from "react-hot-toast"; // Removed - not available in React Native
 import AffinerBesoinPanel from "@/pages/AffinerBesoinPanel";
 
 const CreationService = () => {
