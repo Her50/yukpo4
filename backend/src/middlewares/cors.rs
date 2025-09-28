@@ -93,46 +93,31 @@ pub async fn cors_middleware(
         allow_credentials: true,
     };
     
-    // Ajouter les headers CORS - CONFIGURATION PERMISSIVE POUR RÉSOUDRE LE PROBLÈME
+    // Configuration CORS ultra-permissive pour résoudre tous les problèmes
     if let Some(origin) = origin {
         let origin_str = origin.to_str().unwrap_or("");
-        // Configuration permissive : accepter tous les domaines yukpomnang et localhost
-        if config.allowed_origins.contains(&origin_str.to_string()) || 
-           origin_str.contains("yukpomnang") || 
-           origin_str.contains("yukpo") || 
-           origin_str.contains("localhost") || 
-           origin_str.contains("127.0.0.1") || 
-           origin_str.contains("capacitor") || 
-           origin_str.contains("ionic") ||
-           origin_str.contains("netlify") ||
-           origin_str.contains("vercel") ||
-           origin_str.contains("render") {
-            response.headers_mut().insert(
-                "access-control-allow-origin",
-                origin,
-            );
-        } else {
-            // Fallback : utiliser l'origin par défaut
-            response.headers_mut().insert(
-                "access-control-allow-origin",
-                HeaderValue::from_static("https://yukpomnang.onrender.com"),
-            );
-        }
+        println!("[CORS DEBUG] Origin reçu: {}", origin_str);
+        
+        // Accepter TOUS les origins pour le moment (temporaire pour debug)
+        response.headers_mut().insert(
+            "access-control-allow-origin",
+            origin,
+        );
     } else {
         // CORRECTION : Permettre les requêtes sans origin (applications mobiles natives)
         // Les applications mobiles React Native/Expo n'envoient pas d'origin header
-        // Utiliser l'origin du frontend par défaut - CORRECTION POUR RENDER
+        println!("[CORS DEBUG] Aucun origin header - utilisation de wildcard");
         response.headers_mut().insert(
             "access-control-allow-origin",
-            HeaderValue::from_static("https://yukpomnang.onrender.com"),
+            HeaderValue::from_static("*"),
         );
     }
     
-    // Headers CORS standards
-    response.headers_mut().insert(
-        "access-control-allow-credentials",
-        HeaderValue::from_static("true"),
-    );
+    // Headers CORS standards - Note: allow_credentials ne peut pas être true avec origin *
+    // response.headers_mut().insert(
+    //     "access-control-allow-credentials",
+    //     HeaderValue::from_static("true"),
+    // );
     
     response.headers_mut().insert(
         "access-control-allow-methods",
@@ -155,9 +140,10 @@ pub async fn cors_middleware(
 pub async fn cors_preflight_handler() -> Response {
     let mut response = Response::new(axum::body::Body::empty());
     
+    // Configuration ultra-permissive pour le preflight
     response.headers_mut().insert(
         "access-control-allow-origin",
-        HeaderValue::from_static("https://yukpomnang.onrender.com"),
+        HeaderValue::from_static("*"),
     );
     
     response.headers_mut().insert(
