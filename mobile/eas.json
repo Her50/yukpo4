@@ -16,6 +16,12 @@
         },
         "preview": {
             "distribution": "internal",
+            "env": {
+                "EXPO_PUBLIC_API_URL": "https://yukpomnang.onrender.com",
+                "EXPO_PUBLIC_ENVIRONMENT": "production",
+                "EXPO_PUBLIC_GOOGLE_MAPS_API_KEY": "AIzaSyDFfWEq1Umm06SNTbR-cRhRQ5Sq_taEAWQ",
+                "EXPO_PUBLIC_GOOGLE_TRANSLATE_API_KEY": "AIzaSyDFfWEq1Umm06SNTbR-cRhRQ5Sq_taEAWQ"
+            },
             "ios": {
                 "resourceClass": "m-medium",
                 "simulator": true
@@ -27,6 +33,12 @@
             }
         },
         "production": {
+            "env": {
+                "EXPO_PUBLIC_API_URL": "https://yukpomnang.onrender.com",
+                "EXPO_PUBLIC_ENVIRONMENT": "production",
+                "EXPO_PUBLIC_GOOGLE_MAPS_API_KEY": "AIzaSyDFfWEq1Umm06SNTbR-cRhRQ5Sq_taEAWQ",
+                "EXPO_PUBLIC_GOOGLE_TRANSLATE_API_KEY": "AIzaSyDFfWEq1Umm06SNTbR-cRhRQ5Sq_taEAWQ"
+            },
             "ios": {
                 "resourceClass": "m-medium"
             },
