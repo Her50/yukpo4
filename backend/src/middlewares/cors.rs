@@ -61,6 +61,9 @@ pub async fn cors_middleware(
             "ionic://localhost".to_string(),
             "http://localhost".to_string(),
             "https://localhost".to_string(),
+            // Applications mobiles en production (pas d'origin header)
+            "null".to_string(),
+            "".to_string(),
             
             // 🌐 Développement local
             "http://localhost:3000".to_string(),
@@ -109,7 +112,7 @@ pub async fn cors_middleware(
         }
     } else {
         // CORRECTION : Permettre les requêtes sans origin (applications mobiles natives)
-        // Les applications mobiles React Native n'envoient pas d'origin header
+        // Les applications mobiles React Native/Expo n'envoient pas d'origin header
         response.headers_mut().insert(
             "access-control-allow-origin",
             HeaderValue::from_static("*"),
