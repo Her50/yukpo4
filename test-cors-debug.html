@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test CORS Debug Yukpomnang</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+
+        .success {
+            background-color: #d4edda;
+            border-color: #c3e6cb;
+        }
+
+        .error {
+            background-color: #f8d7da;
+            border-color: #f5c6cb;
+        }
+
+        .loading {
+            background-color: #d1ecf1;
+            border-color: #bee5eb;
+        }
+
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        .result {
+            margin-top: 10px;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 3px;
+        }
+
+        pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .debug-info {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>🔧 Test CORS Debug Yukpomnang</h1>
+
+    <div class="debug-info">
+        <h3>📋 Informations de Debug</h3>
+        <p><strong>URL actuelle:</strong> <span id="currentUrl"></span></p>
+        <p><strong>Origin:</strong> <span id="currentOrigin"></span></p>
+        <p><strong>User Agent:</strong> <span id="userAgent"></span></p>
+        <p><strong>Backend URL:</strong> <span id="backendUrl"></span></p>
+    </div>
+
+    <div class="test-section">
+        <h3>🌐 Test de Connectivité de Base (Mode Debug)</h3>
+        <button onclick="testBasicConnectionDebug()">Tester avec debug détaillé</button>
+        <div id="basicResult" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>🔍 Test OPTIONS (Preflight)</h3>
+        <button onclick="testPreflight()">Tester preflight CORS</button>
+        <div id="preflightResult" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>📊 Test avec différents headers</h3>
+        <button onclick="testWithHeaders()">Tester avec headers personnalisés</button>
+        <div id="headersResult" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>🧪 Test Fetch vs XMLHttpRequest</h3>
+        <button onclick="testBothMethods()">Comparer fetch et XMLHttpRequest</button>
+        <div id="compareResult" class="result"></div>
+    </div>
+
+    <script>
+        const BACKEND_URL = 'https://yukpomnang.onrender.com';
+
+        // Afficher les informations de debug
+        document.getElementById('currentUrl').textContent = window.location.href;
+        document.getElementById('currentOrigin').textContent = window.location.origin;
+        document.getElementById('userAgent').textContent = navigator.userAgent;
+        document.getElementById('backendUrl').textContent = BACKEND_URL;
+
+        async function testBasicConnectionDebug() {
+            const resultDiv = document.getElementById('basicResult');
+            resultDiv.innerHTML = '<div class="loading">🔄 Test détaillé en cours...</div>';
+
+            let debugInfo = `=== DEBUG INFO ===\n`;
+            debugInfo += `URL: ${window.location.href}\n`;
+            debugInfo += `Origin: ${window.location.origin}\n`;
+            debugInfo += `Backend: ${BACKEND_URL}\n`;
+            debugInfo += `User Agent: ${navigator.userAgent}\n\n`;
+
+            try {
+                console.log('[DEBUG] Début du test fetch...');
+
+                const response = await fetch(`${BACKEND_URL}/`, {
+                    method: 'GET',
+                    mode: 'cors',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Origin': window.location.origin
+                    }
+                });
+
+                debugInfo += `=== RESPONSE INFO ===\n`;
+                debugInfo += `Status: ${response.status}\n`;
+                debugInfo += `Status Text: ${response.statusText}\n`;
+                debugInfo += `OK: ${response.ok}\n`;
+                debugInfo += `Type: ${response.type}\n`;
+                debugInfo += `URL: ${response.url}\n\n`;
+
+                debugInfo += `=== HEADERS ===\n`;
+                for (let [key, value] of response.headers.entries()) {
+                    debugInfo += `${key}: ${value}\n`;
+                }
+                debugInfo += `\n`;
+
+                if (response.ok) {
+                    const data = await response.text();
+                    debugInfo += `=== CONTENT ===\n${data}\n`;
+                    resultDiv.innerHTML = `<div class="success">✅ SUCCESS!<br><pre>${debugInfo}</pre></div>`;
+                } else {
+                    debugInfo += `=== ERROR ===\nStatus: ${response.status} ${response.statusText}\n`;
+                    resultDiv.innerHTML = `<div class="error">❌ HTTP Error<br><pre>${debugInfo}</pre></div>`;
+                }
+            } catch (error) {
+                debugInfo += `=== FETCH ERROR ===\n`;
+                debugInfo += `Name: ${error.name}\n`;
+                debugInfo += `Message: ${error.message}\n`;
+                debugInfo += `Stack: ${error.stack}\n`;
+
+                console.error('[DEBUG] Fetch error:', error);
+                resultDiv.innerHTML = `<div class="error">❌ Fetch Error<br><pre>${debugInfo}</pre></div>`;
+            }
+        }
+
+        async function testPreflight() {
+            const resultDiv = document.getElementById('preflightResult');
+            resultDiv.innerHTML = '<div class="loading">🔄 Test preflight en cours...</div>';
+
+            try {
+                const response = await fetch(`${BACKEND_URL}/`, {
+                    method: 'OPTIONS',
+                    mode: 'cors',
+                    headers: {
+                        'Access-Control-Request-Method': 'GET',
+                        'Access-Control-Request-Headers': 'Content-Type, Authorization',
+                        'Origin': window.location.origin
+                    }
+                });
+
+                let info = `Status: ${response.status}\n`;
+                info += `Headers:\n`;
+                for (let [key, value] of response.headers.entries()) {
+                    info += `  ${key}: ${value}\n`;
+                }
+
+                resultDiv.innerHTML = `<div class="success">✅ Preflight OK<br><pre>${info}</pre></div>`;
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">❌ Preflight Error: ${error.message}</div>`;
+            }
+        }
+
+        async function testWithHeaders() {
+            const resultDiv = document.getElementById('headersResult');
+            resultDiv.innerHTML = '<div class="loading">🔄 Test avec headers...</div>';
+
+            const testConfigs = [
+                { name: "Sans headers", headers: {} },
+                { name: "Avec Content-Type", headers: { 'Content-Type': 'application/json' } },
+                { name: "Avec Origin", headers: { 'Origin': window.location.origin } },
+                { name: "Avec Authorization", headers: { 'Authorization': 'Bearer test' } }
+            ];
+
+            let results = '';
+
+            for (const config of testConfigs) {
+                try {
+                    const response = await fetch(`${BACKEND_URL}/`, {
+                        method: 'GET',
+                        mode: 'cors',
+                        headers: config.headers
+                    });
+
+                    results += `✅ ${config.name}: ${response.status}\n`;
+                } catch (error) {
+                    results += `❌ ${config.name}: ${error.message}\n`;
+                }
+            }
+
+            resultDiv.innerHTML = `<div class="success">Résultats:<br><pre>${results}</pre></div>`;
+        }
+
+        function testBothMethods() {
+            const resultDiv = document.getElementById('compareResult');
+            resultDiv.innerHTML = '<div class="loading">🔄 Comparaison en cours...</div>';
+
+            let results = '';
+
+            // Test Fetch
+            fetch(`${BACKEND_URL}/`, { method: 'GET', mode: 'cors' })
+                .then(response => {
+                    results += `✅ Fetch: ${response.status}\n`;
+
+                    // Test XMLHttpRequest
+                    const xhr = new XMLHttpRequest();
+                    xhr.open('GET', `${BACKEND_URL}/`);
+                    xhr.onload = () => {
+                        results += `✅ XMLHttpRequest: ${xhr.status}\n`;
+                        resultDiv.innerHTML = `<div class="success">Comparaison:<br><pre>${results}</pre></div>`;
+                    };
+                    xhr.onerror = () => {
+                        results += `❌ XMLHttpRequest: Error\n`;
+                        resultDiv.innerHTML = `<div class="error">Comparaison:<br><pre>${results}</pre></div>`;
+                    };
+                    xhr.send();
+                })
+                .catch(error => {
+                    results += `❌ Fetch: ${error.message}\n`;
+                    resultDiv.innerHTML = `<div class="error">Comparaison:<br><pre>${results}</pre></div>`;
+                });
+        }
+
+        // Test automatique au chargement
+        window.onload = function () {
+            console.log('🧪 Page de test CORS debug chargée');
+            console.log('🔗 Backend URL:', BACKEND_URL);
+            console.log('📍 Current Origin:', window.location.origin);
+        };
+    </script>
+</body>
+
+</html>

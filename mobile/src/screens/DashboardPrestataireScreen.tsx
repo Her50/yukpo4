@@ -1,4 +1,4 @@
-﻿import { Ionicons } from '@expo/vector-icons';
+﻿import Ionicons from '@expo/vector-icons/Ionicons';
 import * as React from 'react';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -564,6 +564,7 @@ const styles = StyleSheet.create({
 });
 
 export default DashboardPrestataireScreen;
+
 
 
 

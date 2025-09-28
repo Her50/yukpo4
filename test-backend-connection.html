@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Connexion Backend Yukpomnang</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+
+        .success {
+            background-color: #d4edda;
+            border-color: #c3e6cb;
+        }
+
+        .error {
+            background-color: #f8d7da;
+            border-color: #f5c6cb;
+        }
+
+        .loading {
+            background-color: #d1ecf1;
+            border-color: #bee5eb;
+        }
+
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        .result {
+            margin-top: 10px;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 3px;
+        }
+
+        pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>🔧 Test Connexion Backend Yukpomnang</h1>
+
+    <div class="test-section">
+        <h3>🌐 Test de Connectivité de Base</h3>
+        <button onclick="testBasicConnection()">Tester la connexion de base</button>
+        <div id="basicResult" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>🔐 Test d'Authentification</h3>
+        <button onclick="testAuth()">Tester l'authentification</button>
+        <div id="authResult" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>📊 Test API Balance</h3>
+        <button onclick="testBalance()">Tester l'API balance</button>
+        <div id="balanceResult" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>🔍 Test CORS</h3>
+        <button onclick="testCORS()">Tester CORS</button>
+        <div id="corsResult" class="result"></div>
+    </div>
+
+    <script>
+        const BACKEND_URL = 'https://yukpomnang.onrender.com';
+
+        async function testBasicConnection() {
+            const resultDiv = document.getElementById('basicResult');
+            resultDiv.innerHTML = '<div class="loading">🔄 Test en cours...</div>';
+
+            try {
+                // Test d'abord la route racine
+                const rootResponse = await fetch(`${BACKEND_URL}/`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+
+                if (rootResponse.ok) {
+                    const rootData = await rootResponse.text();
+                    resultDiv.innerHTML = `<div class="success">✅ Route racine accessible!<br><pre>${rootData}</pre></div>`;
+                } else {
+                    // Si la route racine échoue, tester /api/health
+                    const healthResponse = await fetch(`${BACKEND_URL}/api/health`, {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        }
+                    });
+
+                    if (healthResponse.ok) {
+                        const healthData = await healthResponse.text();
+                        resultDiv.innerHTML = `<div class="success">✅ API Health accessible!<br><pre>${healthData}</pre></div>`;
+                    } else {
+                        resultDiv.innerHTML = `<div class="error">❌ Erreur HTTP: ${healthResponse.status} ${healthResponse.statusText}</div>`;
+                    }
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">❌ Erreur de connexion: ${error.message}<br><small>Le backend est peut-être en cours de redéploiement...</small></div>`;
+            }
+        }
+
+        async function testAuth() {
+            const resultDiv = document.getElementById('authResult');
+            resultDiv.innerHTML = '<div class="loading">🔄 Test d\'authentification en cours...</div>';
+
+            try {
+                const response = await fetch(`${BACKEND_URL}/api/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        email: 'test@example.com',
+                        password: 'testpassword'
+                    })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    resultDiv.innerHTML = `<div class="success">✅ Authentification accessible<br><pre>${JSON.stringify(data, null, 2)}</pre></div>`;
+                } else {
+                    const errorText = await response.text();
+                    resultDiv.innerHTML = `<div class="success">✅ Endpoint accessible (erreur attendue)<br><pre>Status: ${response.status}<br>${errorText}</pre></div>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">❌ Erreur: ${error.message}</div>`;
+            }
+        }
+
+        async function testBalance() {
+            const resultDiv = document.getElementById('balanceResult');
+            resultDiv.innerHTML = '<div class="loading">🔄 Test API balance en cours...</div>';
+
+            try {
+                const response = await fetch(`${BACKEND_URL}/api/users/balance`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer invalid_token_for_test'
+                    }
+                });
+
+                if (response.status === 401) {
+                    resultDiv.innerHTML = `<div class="success">✅ API balance accessible (401 attendu sans token valide)<br><pre>Status: ${response.status}</pre></div>`;
+                } else {
+                    const data = await response.text();
+                    resultDiv.innerHTML = `<div class="success">✅ API balance accessible<br><pre>Status: ${response.status}<br>${data}</pre></div>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">❌ Erreur CORS ou réseau: ${error.message}</div>`;
+            }
+        }
+
+        async function testCORS() {
+            const resultDiv = document.getElementById('corsResult');
+            resultDiv.innerHTML = '<div class="loading">🔄 Test CORS en cours...</div>';
+
+            try {
+                // Test d'une requête OPTIONS (preflight)
+                const response = await fetch(`${BACKEND_URL}/api/users/balance`, {
+                    method: 'OPTIONS',
+                    headers: {
+                        'Access-Control-Request-Method': 'GET',
+                        'Access-Control-Request-Headers': 'Content-Type, Authorization'
+                    }
+                });
+
+                const corsHeaders = {
+                    'Access-Control-Allow-Origin': response.headers.get('Access-Control-Allow-Origin'),
+                    'Access-Control-Allow-Methods': response.headers.get('Access-Control-Allow-Methods'),
+                    'Access-Control-Allow-Headers': response.headers.get('Access-Control-Allow-Headers')
+                };
+
+                resultDiv.innerHTML = `<div class="success">✅ CORS configuré<br><pre>${JSON.stringify(corsHeaders, null, 2)}</pre></div>`;
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">❌ Erreur CORS: ${error.message}</div>`;
+            }
+        }
+
+        // Test automatique au chargement
+        window.onload = function () {
+            console.log('🧪 Page de test chargée');
+            console.log('🔗 Backend URL:', BACKEND_URL);
+        };
+    </script>
+</body>
+
+</html>

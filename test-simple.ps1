@@ -1,20 +1,20 @@
-$backend = "https://yukpomnang.onrender.com"
-Write-Host "Test API Yukpomnang" -ForegroundColor Cyan
-Write-Host "Backend: $backend" -ForegroundColor Yellow
+# Test simple de connectivité backend
+Write-Host "Test de connectivité backend Yukpomnang" -ForegroundColor Yellow
 
-# Test Health
-Write-Host "`nTest Health Check..." -ForegroundColor Green
-$response = Invoke-WebRequest -Uri "$backend/healthz" -Method GET
-Write-Host "Health: $($response.StatusCode) - $($response.Content)" -ForegroundColor Green
+$backendUrl = "https://yukpomnang.onrender.com"
 
-# Test Login
-Write-Host "`nTest Login..." -ForegroundColor Green
-$body = @{email="test@example.com"; password="test123"} | ConvertTo-Json
-$response = Invoke-WebRequest -Uri "$backend/auth/login" -Method POST -Body $body -ContentType "application/json"
-$token = ($response.Content | ConvertFrom-Json).token
-Write-Host "Login OK - Token: $($token.Substring(0,30))..." -ForegroundColor Green
-
-# Test CORS
-Write-Host "`nCORS Headers:" -ForegroundColor Green
-Write-Host "Allow-Origin: $($response.Headers['access-control-allow-origin'])" -ForegroundColor Gray
-Write-Host "Allow-Methods: $($response.Headers['access-control-allow-methods'])" -ForegroundColor Gray
+try {
+    Write-Host "Test de la route racine..." -ForegroundColor Cyan
+    $response = Invoke-WebRequest -Uri "$backendUrl/" -Method GET -TimeoutSec 15
+    Write-Host "SUCCESS: Backend accessible! Status: $($response.StatusCode)" -ForegroundColor Green
+    Write-Host "Reponse: $($response.Content)" -ForegroundColor Gray
+    
+    Write-Host "`nTest de l'API health..." -ForegroundColor Cyan
+    $healthResponse = Invoke-WebRequest -Uri "$backendUrl/api/health" -Method GET -TimeoutSec 10
+    Write-Host "SUCCESS: API Health accessible! Status: $($healthResponse.StatusCode)" -ForegroundColor Green
+    Write-Host "Reponse: $($healthResponse.Content)" -ForegroundColor Gray
+    
+} catch {
+    Write-Host "ERREUR: $($_.Exception.Message)" -ForegroundColor Red
+    Write-Host "Le backend est peut-etre en cours de deploiement..." -ForegroundColor Yellow
+}
