@@ -1,199 +1,287 @@
-﻿import OAuthButton from "@/components/auth/OAuthButton";
-import { API_BASE_URL } from "@/config/api";
-import { useUser } from "@/hooks/useUser";
-import { ROUTES } from "@/routes/AppRoutesRegistry";
-import * as React from "react";
-import { useEffect, useRef, useState } from "react";
-import { Text } from 'react-native';
-import { View } from 'react-native';
-import { TouchableOpacity } from 'react-native';
-import { toast } from "react-hot-toast";
-import { Link, useLocation, useNavigation, useSearchParams } from "@react-navigation/native";
+﻿import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  Alert,
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+} from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useNavigation } from '@react-navigation/native';
+import { authApi } from '../services/api';
+import { APP_CONFIG } from '../config/appConfig';
 
-const LoginPage: React.FC = () => {
-  const location = useLocation();
-  const navigate = useNavigation();
-  const [searchParams] = useSearchParams();
-  const { login } = useUser();
-  const [showLogoutMessage, setShowLogoutMessage] = useState(false);
+const LoginScreen: React.FC = () => {
+  const navigation = useNavigation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const passwordInputRef = useRef<HTMLInputElement>(null);
 
-  // Gestion de la redirection après connexion
-  const redirectUrl = searchParams.get('redirect');
-  const source = searchParams.get('source');
-  const isSharedService = source === 'shared_service';
+  console.log('[LoginScreen] Configuration API:', APP_CONFIG.API_BASE_URL);
 
-  useEffect(() => {
-    if (location.state?.loggedOut) {
-      setShowLogoutMessage(true);
-      window.history.replaceState({}, document.title);
-    }
-  }, [location.state]);
-
-  useEffect(() => {
-    if (location.state?.fromRegistration) {
-      if (location.state.email) {
-        setEmail(location.state.email);
-        setTimeout(() => {
-          passwordInputRef.current?.focus();
-        }, 100);
-      }
-      if (location.state.message) {
-        toast.success(location.state.message);
-      }
-      window.history.replaceState({}, document.title);
-    }
-  }, [location]);
-
-  const handleLogin = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
+  const handleLogin = async () => {
     setError(null);
     setLoading(true);
 
-    console.log('[LoginPage] Tentative de connexion pour:', email);
+    console.log('[LoginScreen] Tentative de connexion pour:', email);
 
     try {
-      const loginData = { email, password };
-      console.log('[LoginPage] Donnes de connexion:', { email, password: '***' });
+      const response = await authApi.login(email, password);
+      
+      console.log('[LoginScreen] Réponse API:', response);
 
-      // CORRECTION: Utiliser l'API_BASE_URL au lieu d'une URL relative
-      const res = await fetch(`${API_BASE_URL}/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(loginData)
-      });
-
-      console.log('[LoginPage] Rponse du serveur:', res.status, res.statusText);
-
-      if (res.ok) {
-        const data = await res.json();
-        console.log('[LoginPage] Donnes reues:', { token: !!data.token, tokens_balance: data.tokens_balance });
-
-        if (data.token) {
-          console.log('[LoginPage] Token reu, connexion...');
-
-          if (data.tokens_balance !== undefined) {
-            localStorage.setItem('tokens_balance', data.tokens_balance.toString());
-            window.dispatchEvent(new CustomEvent('tokens_updated'));
-            console.log('[LoginPage] Solde initial sauvegard:', data.tokens_balance);
-          }
-
-          login(data.token);
-          
-          // Redirection intelligente selon la source
-          if (isSharedService && redirectUrl) {
-            // Rediriger vers le service partagé
-            toast.success('Connexion réussie ! Redirection vers le service...');
-            navigation.navigate(decodeURIComponent(redirectUrl));
-          } else {
-            // Redirection normale vers l'accueil
-            navigation.navigate(ROUTES.HOME);
-          }
-          window.location.reload();
-        } else {
-          console.error('[LoginPage] Pas de token dans la rponse');
-          setError('Rponse inattendue du serveur: pas de token.');
+      if (response.success && response.data?.token) {
+        console.log('[LoginScreen] Connexion réussie, token reçu');
+        
+        // Sauvegarder le token
+        await AsyncStorage.setItem('auth_token', response.data.token);
+        
+        // Sauvegarder le solde de tokens
+        if (response.data.tokens_balance !== undefined) {
+          await AsyncStorage.setItem('tokens_balance', response.data.tokens_balance.toString());
+          console.log('[LoginScreen] Solde sauvegardé:', response.data.tokens_balance);
         }
+
+        // Redirection vers l'accueil
+        navigation.navigate('Home' as never);
+        
       } else {
-        const errorText = await res.text();
-        console.error('[LoginPage] Erreur serveur:', res.status, errorText);
-
-        let errorMessage = 'Erreur de connexion';
-        try {
-          const errorData = JSON.parse(errorText);
-          errorMessage = errorData.message || errorData.error || errorMessage;
-        } catch {
-          errorMessage = `${errorMessage}: ${errorText}`;
-        }
-
-        setError(errorMessage);
+        console.error('[LoginScreen] Erreur de connexion:', response.error);
+        setError(response.error || 'Erreur de connexion');
       }
-    } catch (err) {
-      console.error('[LoginPage] Erreur rseau:', err);
-      setError('Erreur rseau ou serveur inaccessible.');
+    } catch (error: any) {
+      console.error('[LoginScreen] Erreur lors de la connexion:', error);
+      setError('Erreur de connexion au serveur. Vérifiez votre connexion internet.');
     } finally {
       setLoading(false);
     }
   };
 
-  return (
-    <main style="min-h-screen pt-28 bg-gradient-to-br from-yellow-50 via-white to-red-50 dark:from-gray-900 dark:via-gray-950 dark:to-gray-900">
-      <View style="max-w-md mx-auto bg-white dark:bg-gray-900 shadow-xl rounded-xl p-8">
-        {showLogoutMessage && (
-          <View style="mb-4 bg-green-100 text-green-800 px-4 py-2 rounded shadow text-center">
-            ? Vous tes bien dconnect.
-          </View>
-        )}
-        {error && (
-          <View style="mb-4 bg-red-100 text-red-800 px-4 py-2 rounded shadow text-center">
-            ? {error}
-          </View>
-        )}
-        <Text style="text-3xl font-bold text-center mb-4">
-          Connexion {" "}
-          <Text style="bg-gradient-to-r from-yellow-500 via-orange-500 to-red-500 bg-clip-text text-transparent">
-            Yukpo
-          </Text>
-        </Text>
-        <Text style="text-center text-gray-600 dark:text-gray-300 mb-6">
-          Connectez-vous avec votre compte <strong>Google</strong> ou <strong>Facebook</strong>
-        </Text>
-        <View style="flex flex-col sm:flex-row justify-center gap-4 mb-6">
-          <OAuthButton provider="google" />
-          <OAuthButton provider="facebook" />
-        </View>
-        <Text style="text-center text-sm text-gray-500 dark:text-gray-400 mb-4">
-          ou utilisez vos identifiants :
-        </Text>
-        <form style="flex flex-col gap-4 mt-2" onSubmit={handleLogin}>
-          <TextInput
-            type="email"
-            placeholder="Adresse email"
-            style="p-3 rounded-md border border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-primary"
-            required
-            value={email}
-            onChange={e => setEmail(e.target.value)}
-            autoComplete="username"
-            disabled={loading}
-          />
-          <TextInput
-            type="password"
-            placeholder="Mot de passe"
-            style="p-3 rounded-md border border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-primary"
-            required
-            value={password}
-            onChange={e => setPassword(e.target.value)}
-            autoComplete="current-password"
-            disabled={loading}
-            ref={passwordInputRef}
-          />
-          <TouchableOpacity
-            type="submit"
-            style="bg-green-600 hover:bg-green-700 text-white py-2 rounded-md transition font-semibold disabled:opacity-50"
-            disabled={loading}
-          >
-            {loading ? 'Connexion...' : 'Se connecter'}
-          </TouchableOpacity>
-        </form>
+  const handleRegister = () => {
+    navigation.navigate('Register' as never);
+  };
 
-        <Text style="text-center text-sm mt-6 text-gray-700 dark:text-gray-300">
-          Pas encore inscrit ?{" "}
-          <Link to={ROUTES.REGISTER} style="text-primary underline font-medium">
-            Crer un compte
-          </Link>
-        </Text>
-      </View>
-    </main>
+  return (
+    <KeyboardAvoidingView 
+      style={styles.container} 
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
+      <ScrollView contentContainerStyle={styles.scrollContainer}>
+        <View style={styles.content}>
+          <Text style={styles.title}>Connexion Yukpo</Text>
+          
+          <Text style={styles.subtitle}>
+            Connectez-vous avec votre compte Google ou Facebook
+          </Text>
+
+          {/* Boutons OAuth */}
+          <TouchableOpacity style={[styles.oauthButton, styles.googleButton]}>
+            <Text style={styles.oauthButtonText}>Continuer avec Google</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={[styles.oauthButton, styles.facebookButton]}>
+            <Text style={styles.oauthButtonText}>Continuer avec Facebook</Text>
+          </TouchableOpacity>
+
+          <View style={styles.separator}>
+            <View style={styles.separatorLine} />
+            <Text style={styles.separatorText}>ou utilisez vos identifiants :</Text>
+            <View style={styles.separatorLine} />
+          </View>
+
+          {/* Formulaire de connexion */}
+          <View style={styles.formContainer}>
+            <View style={styles.inputContainer}>
+              <Text style={styles.inputLabel}>Adresse email</Text>
+              <TextInput
+                style={styles.input}
+                value={email}
+                onChangeText={setEmail}
+                placeholder="Votre email"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+            </View>
+
+            <View style={styles.inputContainer}>
+              <Text style={styles.inputLabel}>Mot de passe</Text>
+              <TextInput
+                style={styles.input}
+                value={password}
+                onChangeText={setPassword}
+                placeholder="Votre mot de passe"
+                secureTextEntry
+              />
+            </View>
+
+            {error && (
+              <Text style={styles.errorText}>{error}</Text>
+            )}
+
+            <TouchableOpacity 
+              style={[styles.loginButton, loading && styles.loginButtonDisabled]} 
+              onPress={handleLogin}
+              disabled={loading}
+            >
+              {loading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.loginButtonText}>Se connecter</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+
+          <TouchableOpacity onPress={handleRegister} style={styles.registerLink}>
+            <Text style={styles.registerText}>
+              Pas encore inscrit ? <Text style={styles.registerLinkText}>Créer un compte</Text>
+            </Text>
+          </TouchableOpacity>
+
+          {/* Debug info */}
+          <View style={styles.debugContainer}>
+            <Text style={styles.debugText}>Debug Info:</Text>
+            <Text style={styles.debugText}>API URL: {APP_CONFIG.API_BASE_URL}</Text>
+          </View>
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 };
 
-export default LoginPage;
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
+  scrollContainer: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    padding: 20,
+  },
+  content: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: 10,
+    color: '#333',
+  },
+  subtitle: {
+    fontSize: 16,
+    textAlign: 'center',
+    marginBottom: 30,
+    color: '#666',
+  },
+  oauthButton: {
+    paddingVertical: 15,
+    paddingHorizontal: 20,
+    borderRadius: 10,
+    marginBottom: 15,
+    alignItems: 'center',
+  },
+  googleButton: {
+    backgroundColor: '#db4437',
+  },
+  facebookButton: {
+    backgroundColor: '#3b5998',
+  },
+  oauthButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  separator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 20,
+  },
+  separatorLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#ddd',
+  },
+  separatorText: {
+    marginHorizontal: 15,
+    color: '#666',
+    fontSize: 14,
+  },
+  formContainer: {
+    backgroundColor: '#f8f9fa',
+    borderRadius: 15,
+    padding: 20,
+    marginBottom: 20,
+  },
+  inputContainer: {
+    marginBottom: 15,
+  },
+  inputLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 8,
+    color: '#333',
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 10,
+    paddingHorizontal: 15,
+    paddingVertical: 12,
+    fontSize: 16,
+    backgroundColor: '#fff',
+  },
+  errorText: {
+    color: '#e74c3c',
+    textAlign: 'center',
+    marginBottom: 15,
+    fontSize: 14,
+  },
+  loginButton: {
+    backgroundColor: '#27ae60',
+    paddingVertical: 15,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  loginButtonDisabled: {
+    opacity: 0.6,
+  },
+  loginButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  registerLink: {
+    alignItems: 'center',
+    marginBottom: 30,
+  },
+  registerText: {
+    fontSize: 14,
+    color: '#666',
+  },
+  registerLinkText: {
+    color: '#27ae60',
+    fontWeight: '600',
+  },
+  debugContainer: {
+    backgroundColor: '#f0f0f0',
+    padding: 10,
+    borderRadius: 5,
+    marginTop: 20,
+  },
+  debugText: {
+    fontSize: 12,
+    color: '#666',
+    fontFamily: 'monospace',
+  },
+});
 
-
-
-
-
+export default LoginScreen;

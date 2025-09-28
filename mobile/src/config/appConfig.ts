@@ -2,6 +2,9 @@
 // Pour résoudre les problèmes de navigation et d'authentification
 
 export const APP_CONFIG = {
+  // Configuration API
+  API_BASE_URL: process.env.EXPO_PUBLIC_API_URL || 'https://yukpomnang.onrender.com',
+  
   // Timeouts et délais
   AUTH_TIMEOUT: 10000, // 10 secondes pour l'authentification
   API_TIMEOUT: 15000,  // 15 secondes pour les appels API
