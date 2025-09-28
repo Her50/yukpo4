@@ -41,7 +41,9 @@ export const apiService = async (
     signal: AbortSignal.timeout(30000), // 30 secondes timeout
   };
 
-  const baseUrl = import.meta.env.VITE_APP_API_URL || 'https://yukpomnang.onrender.com';
+  // Utiliser le proxy Netlify en production, ou l'URL directe en développement
+  const baseUrl = import.meta.env.VITE_APP_API_URL || 
+    (window.location.hostname.includes('netlify.app') ? '' : 'https://yukpomnang.onrender.com');
 
   // Debug: Log the URL being used
   console.log(`[API Service] Making request to: ${baseUrl}${endpoint}`);

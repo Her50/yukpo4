@@ -1,5 +1,7 @@
 // Configuration API pour Vite avec gestion d'erreur
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://yukpomnang.onrender.com';
+// Utiliser le proxy Netlify en production, ou l'URL directe en développement
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 
+  (typeof window !== 'undefined' && window.location.hostname.includes('netlify.app') ? '' : 'https://yukpomnang.onrender.com');
 
 // Configuration de fallback pour le d�veloppement
 const FALLBACK_API_URL = 'https://jsonplaceholder.typicode.com';
