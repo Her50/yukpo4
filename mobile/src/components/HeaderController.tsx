@@ -1,14 +1,12 @@
-﻿import { useNotificationCounts } from '@/hooks/useNotificationCounts';
-import { useUser } from '@/hooks/useUser';
-import { userApi } from '@/services/api';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+﻿import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 import React, { useEffect, useState } from 'react';
 import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useAuth } from '../contexts/AuthContext';
+import { userApi } from '../services/api';
 
 const HeaderController: React.FC = () => {
-  const { user, logout } = useUser();
-  const { notifications, conversations, loading: countsLoading, refreshCounts } = useNotificationCounts();
+  const { user, logout } = useAuth();
   const navigation = useNavigation();
   const [tokensBalance, setTokensBalance] = useState<number | null>(null);
   const [balanceLoading, setBalanceLoading] = useState(false);
@@ -16,7 +14,7 @@ const HeaderController: React.FC = () => {
 
   // Debug logs
   useEffect(() => {
-    console.log('[HeaderController] user from useUser:', user);
+    console.log('[HeaderController] user from useAuth:', user);
     console.log('[HeaderController] user.credits:', user?.credits);
 
     // Réinitialiser hasFetchedBalance quand l'utilisateur change
@@ -60,11 +58,12 @@ const HeaderController: React.FC = () => {
         console.log('[HeaderController] Récupération solde pour user:', user.id);
         const response = await userApi.getTokensBalance();
 
-        if (response.success && response.data?.tokens_balance !== undefined) {
-          console.log('[HeaderController] Solde récupéré:', response.data.tokens_balance);
-          setTokensBalance(response.data.tokens_balance);
+        if (response.success && response.data && typeof response.data === 'object' && 'tokens_balance' in response.data) {
+          const balance = (response.data as any).tokens_balance;
+          console.log('[HeaderController] Solde récupéré:', balance);
+          setTokensBalance(balance);
           // Sauvegarder dans AsyncStorage pour affichage immédiat
-          await AsyncStorage.setItem('tokens_balance', response.data.tokens_balance.toString());
+          await AsyncStorage.setItem('tokens_balance', balance.toString());
         }
       } catch (error) {
         console.error('[HeaderController] Erreur récupération solde:', error);
@@ -76,19 +75,6 @@ const HeaderController: React.FC = () => {
 
     fetchBalance();
   }, [user?.id, hasFetchedBalance, balanceLoading]);
-
-  // Écouter les mises à jour de solde
-  useEffect(() => {
-    const handleBalanceUpdate = (balance: number) => {
-      console.log('[HeaderController] Mise à jour solde depuis header:', balance);
-      setTokensBalance(balance);
-      AsyncStorage.setItem('tokens_balance', balance.toString());
-    };
-
-    // Note: Dans React Native, on ne peut pas utiliser CustomEvent
-    // On utilisera plutôt un système de callback ou context
-    // Pour l'instant, on se contente de la logique existante
-  }, []);
 
   const handleLogout = async () => {
     Alert.alert(
@@ -117,12 +103,12 @@ const HeaderController: React.FC = () => {
 
   const handleNotificationsPress = () => {
     // Navigation vers l'historique des notifications
-    navigation.navigate('NotificationHistory' as never);
+    console.log('[HeaderController] Navigation vers notifications');
   };
 
   const handleChatHistoryPress = () => {
     // Navigation vers l'historique des chats
-    navigation.navigate('ChatHistory' as never);
+    console.log('[HeaderController] Navigation vers chat history');
   };
 
   const handleProfilePress = () => {
@@ -130,12 +116,7 @@ const HeaderController: React.FC = () => {
   };
 
   // Fallback : solde du JWT ou AsyncStorage
-  const fallbackBalance = user?.credits ??
-    (() => {
-      // Cette logique sera gérée par useEffect
-      return tokensBalance || 0;
-    })();
-
+  const fallbackBalance = user?.credits || tokensBalance || 0;
   const displayBalance = tokensBalance !== null ? tokensBalance : fallbackBalance;
 
   if (!user) {
@@ -164,11 +145,6 @@ const HeaderController: React.FC = () => {
             onPress={handleNotificationsPress}
           >
             <Text style={styles.icon}>🔔</Text>
-            {notifications > 0 && (
-              <View style={styles.badge}>
-                <Text style={styles.badgeText}>{notifications}</Text>
-              </View>
-            )}
           </TouchableOpacity>
 
           {/* Messages */}
@@ -177,11 +153,6 @@ const HeaderController: React.FC = () => {
             onPress={handleChatHistoryPress}
           >
             <Text style={styles.icon}>💬</Text>
-            {conversations > 0 && (
-              <View style={styles.badge}>
-                <Text style={styles.badgeText}>{conversations}</Text>
-              </View>
-            )}
           </TouchableOpacity>
 
           {/* Menu profil */}
@@ -252,22 +223,6 @@ const styles = StyleSheet.create({
   },
   icon: {
     fontSize: 20,
-  },
-  badge: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    backgroundColor: '#e74c3c',
-    borderRadius: 10,
-    minWidth: 20,
-    height: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  badgeText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: 'bold',
   },
   profileButton: {
     width: 36,
