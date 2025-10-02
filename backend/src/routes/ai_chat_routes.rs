@@ -50,8 +50,8 @@ pub struct AnalyzeResponse {
 
 /// Chat IA avec OpenAI
 pub async fn chat_ai(
-    Json(payload): Json<ChatRequest>,
     State(_state): State<Arc<AppState>>,
+    Json(payload): Json<ChatRequest>,
 ) -> Result<ResponseJson<ChatResponse>, StatusCode> {
     let api_key = match std::env::var("OPENAI_API_KEY") {
         Ok(key) => key,
@@ -142,8 +142,8 @@ pub async fn chat_ai(
 
 /// Génère des recommandations personnalisées
 pub async fn get_recommendations(
-    Json(_payload): Json<RecommendationsRequest>,
     State(_state): State<Arc<AppState>>,
+    Json(_payload): Json<RecommendationsRequest>,
 ) -> Result<ResponseJson<RecommendationsResponse>, StatusCode> {
     // Pour l'instant, retourner des recommandations basiques
     // TODO: Intégrer avec votre système de recommandations existant
@@ -158,8 +158,8 @@ pub async fn get_recommendations(
 
 /// Analyse le sentiment et extrait les mots-clés d'un texte
 pub async fn analyze_text(
-    Json(payload): Json<AnalyzeRequest>,
     State(_state): State<Arc<AppState>>,
+    Json(payload): Json<AnalyzeRequest>,
 ) -> Result<ResponseJson<AnalyzeResponse>, StatusCode> {
     // Analyse basique du sentiment
     let sentiment = if payload.text.to_lowercase().contains("merci") || 
