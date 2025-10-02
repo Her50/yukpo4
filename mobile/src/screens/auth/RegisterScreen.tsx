@@ -1,6 +1,6 @@
 // Migration vers Lucide React Native pour un design moderne
 import { useNavigation } from '@react-navigation/native';
-import { AlertCircle, CheckCircle, Mail } from 'phosphor-react-native';
+import { CheckCircle, Envelope, WarningCircle } from 'phosphor-react-native';
 import * as React from 'react';
 import { useState } from 'react';
 import {
@@ -173,7 +173,7 @@ const RegisterScreen: React.FC = () => {
         onPress={onPress}
         disabled={formLoading || loading}
       >
-        <Mail size={20} color="white" />
+        <Envelope size={20} color="white" />
         <Text style={styles.oauthButtonText}>Continuer avec {label}</Text>
       </TouchableOpacity>
     );
@@ -186,9 +186,9 @@ const RegisterScreen: React.FC = () => {
         <ScrollView contentContainerStyle={styles.scrollContent}>
           <Card style={styles.successCard}>
             <Card.Content style={styles.successContent}>
-                  <View style={styles.successIcon}>
-                    <CheckCircle size={48} color="#4CAF50" />
-                  </View>
+              <View style={styles.successIcon}>
+                <CheckCircle size={48} color="#4CAF50" />
+              </View>
 
               <Title style={styles.successTitle}>
                 Inscription réussie ! 🎉
@@ -270,15 +270,15 @@ const RegisterScreen: React.FC = () => {
           <View style={styles.dividerLine} />
         </View>
 
-            {/* Messages d'erreur */}
-            {error && (
-              <Card style={styles.errorCard}>
-                <Card.Content style={styles.errorContent}>
-                  <AlertCircle size={24} color="#F44336" />
-                  <Text style={styles.errorText}>{error}</Text>
-                </Card.Content>
-              </Card>
-            )}
+        {/* Messages d'erreur */}
+        {error && (
+          <Card style={styles.errorCard}>
+            <Card.Content style={styles.errorContent}>
+              <WarningCircle size={24} color="#F44336" />
+              <Text style={styles.errorText}>{error}</Text>
+            </Card.Content>
+          </Card>
+        )}
 
         {/* Formulaire d'inscription */}
         <Card style={styles.formCard}>
