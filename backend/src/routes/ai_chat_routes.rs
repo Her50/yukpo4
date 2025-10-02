@@ -1,6 +1,7 @@
 use std::sync::Arc;
 use axum::{
     extract::{Json, State},
+    http::StatusCode,
     response::Json as ResponseJson,
     routing::post,
     Router,
@@ -51,15 +52,15 @@ pub struct AnalyzeResponse {
 pub async fn chat_ai(
     Json(payload): Json<ChatRequest>,
     State(_state): State<Arc<AppState>>,
-) -> ResponseJson<ChatResponse> {
+) -> Result<ResponseJson<ChatResponse>, StatusCode> {
     let api_key = match std::env::var("OPENAI_API_KEY") {
         Ok(key) => key,
         Err(_) => {
-            return ResponseJson(ChatResponse {
+            return Ok(ResponseJson(ChatResponse {
                 message: "Erreur de configuration API".to_string(),
                 suggestions: vec![],
                 confidence: 0.0,
-            });
+            }));
         }
     };
     
@@ -93,30 +94,30 @@ pub async fn chat_ai(
     {
         Ok(resp) => resp,
         Err(_) => {
-            return ResponseJson(ChatResponse {
+            return Ok(ResponseJson(ChatResponse {
                 message: "Erreur de connexion à l'API".to_string(),
                 suggestions: vec![],
                 confidence: 0.0,
-            });
+            }));
         }
     };
     
     if !response.status().is_success() {
-        return ResponseJson(ChatResponse {
+        return Ok(ResponseJson(ChatResponse {
             message: "Erreur de l'API OpenAI".to_string(),
             suggestions: vec![],
             confidence: 0.0,
-        });
+        }));
     }
     
     let openai_response: serde_json::Value = match response.json().await {
         Ok(data) => data,
         Err(_) => {
-            return ResponseJson(ChatResponse {
+            return Ok(ResponseJson(ChatResponse {
                 message: "Erreur de parsing de la réponse".to_string(),
                 suggestions: vec![],
                 confidence: 0.0,
-            });
+            }));
         }
     };
     
@@ -132,18 +133,18 @@ pub async fn chat_ai(
         "Aide".to_string(),
     ];
     
-    ResponseJson(ChatResponse {
+    Ok(ResponseJson(ChatResponse {
         message,
         suggestions,
         confidence: 0.8,
-    })
+    }))
 }
 
 /// Génère des recommandations personnalisées
 pub async fn get_recommendations(
     Json(_payload): Json<RecommendationsRequest>,
     State(_state): State<Arc<AppState>>,
-) -> ResponseJson<RecommendationsResponse> {
+) -> Result<ResponseJson<RecommendationsResponse>, StatusCode> {
     // Pour l'instant, retourner des recommandations basiques
     // TODO: Intégrer avec votre système de recommandations existant
     let recommendations = vec![
@@ -152,14 +153,14 @@ pub async fn get_recommendations(
         "Service utile : Pharmacie à proximité".to_string(),
     ];
     
-    ResponseJson(RecommendationsResponse { recommendations })
+    Ok(ResponseJson(RecommendationsResponse { recommendations }))
 }
 
 /// Analyse le sentiment et extrait les mots-clés d'un texte
 pub async fn analyze_text(
     Json(payload): Json<AnalyzeRequest>,
     State(_state): State<Arc<AppState>>,
-) -> ResponseJson<AnalyzeResponse> {
+) -> Result<ResponseJson<AnalyzeResponse>, StatusCode> {
     // Analyse basique du sentiment
     let sentiment = if payload.text.to_lowercase().contains("merci") || 
                        payload.text.to_lowercase().contains("parfait") ||
@@ -181,10 +182,10 @@ pub async fn analyze_text(
         .take(5)
         .collect();
     
-    ResponseJson(AnalyzeResponse {
+    Ok(ResponseJson(AnalyzeResponse {
         sentiment: sentiment.to_string(),
         keywords,
-    })
+    }))
 }
 
 pub fn ai_chat_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
