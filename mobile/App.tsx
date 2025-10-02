@@ -1,7 +1,7 @@
 import { NavigationContainer } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import React from 'react';
-import { ActivityIndicator, StyleSheet, Text, View, ScrollView, TouchableOpacity, Alert, TextInput } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { PaperProvider } from 'react-native-paper';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -16,7 +16,7 @@ import { theme } from './src/theme/theme';
 // BLOC 2 : Navigation
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
-import { Brain, House, MapPin, User, ChatCircle, Plus, MagnifyingGlass, Bell } from 'phosphor-react-native';
+import { Bell, Brain, ChatCircle, House, MagnifyingGlass, MapPin, Plus, User } from 'phosphor-react-native';
 
 // BLOC 3 : Hooks et Services
 import { useAIServices } from './src/hooks/useAIServices';
@@ -197,7 +197,7 @@ const AIScreen = () => {
     const { askAI, loading, error } = useAIServices();
     const [question, setQuestion] = React.useState('');
     const [response, setResponse] = React.useState<string | null>(null);
-    const [chatHistory, setChatHistory] = React.useState<Array<{type: 'user' | 'ai', message: string}>>([]);
+    const [chatHistory, setChatHistory] = React.useState<Array<{ type: 'user' | 'ai', message: string }>>([]);
 
     const handleAskAI = async () => {
         if (question.trim()) {
@@ -251,7 +251,7 @@ const AIScreen = () => {
                         onChangeText={setQuestion}
                     />
                 </View>
-                <TouchableOpacity 
+                <TouchableOpacity
                     style={[styles.sendButton, loading && styles.sendButtonDisabled]}
                     onPress={handleAskAI}
                     disabled={loading || !question.trim()}
