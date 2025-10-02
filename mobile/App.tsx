@@ -9,7 +9,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 // BLOC 1 : Contexts de base
 import ErrorBoundary from './src/components/ErrorBoundary';
 import { GlobalIAStatsProvider } from './src/components/intelligence/GlobalIAStats';
-import { AuthProvider, useAuth } from './src/contexts/AuthContext-simple';
+import { AuthProvider, useAuth } from './src/contexts/AuthContext';
 import { LocationProvider } from './src/contexts/LocationContext';
 import { theme } from './src/theme/theme';
 
