@@ -10,4 +10,33 @@ src/screens/YukpoIaHub.tsx
 src/components/AdvancedGeospatialSearch.tsx
 src/screens/ServiceView.tsx
 
+# Fichiers de documentation et scripts à ignorer
+*.md
+*.ps1
+*.sh
+*.js
+*.html
+*.txt
+App-*.tsx
+App.*.tsx
+debug-*
+test-*
+setup-*
+fix-*
+lancer-*
+start-*
+deploy-*
+diagnose-*
+build-*
+*.backup.*
+
+# Dossiers à ignorer
+dist/
+scripts/
+android/
+
+# Fichiers de configuration de développement
+.env
+env.example
+response.txt
 
