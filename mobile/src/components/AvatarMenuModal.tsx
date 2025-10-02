@@ -1,5 +1,5 @@
 ﻿// Migration vers Lucide React Native pour un design moderne
-import { ChevronRight, LogOut, X } from 'phosphor-react-native';
+import { CaretRight, LogOut, X } from 'phosphor-react-native';
 import React from 'react';
 import {
   Alert,
@@ -132,7 +132,7 @@ const AvatarMenuModal: React.FC<AvatarMenuModalProps> = ({
                 <View style={styles.menuItemContent}>
                   <View style={styles.menuItemLeft}>
                     <View style={[styles.iconContainer, { backgroundColor: `${item.color}20` }]}>
-                      <ChevronRight
+                      <CaretRight
                         size={16}
                         color={item.color}
                       />
@@ -142,7 +142,7 @@ const AvatarMenuModal: React.FC<AvatarMenuModalProps> = ({
                       <Text style={styles.menuItemSubtitle}>{item.subtitle}</Text>
                     </View>
                   </View>
-                  <ChevronRight
+                  <CaretRight
                     size={20}
                     color={theme.colors.textSecondary}
                   />

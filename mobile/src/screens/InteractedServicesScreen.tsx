@@ -9,7 +9,7 @@ import { servicesApi } from '@/services/api';
 import {
   Clock,
   MapPin,
-  MessageCircle,
+  ChatCircle,
   Phone,
   Search,
   Star,
@@ -112,11 +112,11 @@ const InteractedServicesPage: React.FC = () => {
 
   const getInteractionIcon = (type: string) => {
     switch (type) {
-      case 'message': return <MessageCircle style="w-4 h-4" />;
+      case 'message': return <ChatCircle style="w-4 h-4" />;
       case 'call': return <Texthone style="w-4 h-4" />;
       case 'video': return <Video style="w-4 h-4" />;
       case 'review': return <Star style="w-4 h-4" />;
-      default: return <MessageCircle style="w-4 h-4" />;
+      default: return <ChatCircle style="w-4 h-4" />;
     }
   };
 
@@ -201,7 +201,7 @@ const InteractedServicesPage: React.FC = () => {
           {filteredServices.length === 0 ? (
             <Card>
               <CardContent style="text-center py-12">
-                <MessageCircle style="w-16 h-16 mx-auto mb-4 text-gray-300" />
+                <ChatCircle style="w-16 h-16 mx-auto mb-4 text-gray-300" />
                 <Text style="text-lg font-medium text-gray-900 mb-2">
                   Aucun service interagi
                 </Text>
@@ -294,7 +294,7 @@ const InteractedServicesPage: React.FC = () => {
                           });
                         }}
                       >
-                        <MessageCircle style="w-4 h-4 mr-2" />
+                        <ChatCircle style="w-4 h-4 mr-2" />
                         Chat
                       </TouchableOpacity>
                       <TouchableOpacity

@@ -4,7 +4,7 @@ import { View } from 'react-native';
 import { TouchableOpacity } from 'react-native';
 import { Button } from '@/components/ui/buttons/Button';
 import { useToast } from '@/components/ui/use-toast';
-import { Copy, Facebook, Share2, X, MessageCircle, Twitter, Mail, Link } from 'lucide-react';
+import { Copy, Facebook, Share2, X, ChatCircle, Twitter, Mail, Link } from 'lucide-react';
 
 interface ShareServiceModalProps {
   open: boolean;
@@ -146,7 +146,7 @@ const ShareServiceModal: React.FC<ShareServiceModalProps> = ({ open, onClose, se
                 style="w-full bg-green-500 hover:bg-green-600 text-white transition-colors"
                 onPress={() => handleShare('whatsapp')}
               >
-                <MessageCircle style="h-4 w-4 mr-2" />
+                <ChatCircle style="h-4 w-4 mr-2" />
                 WhatsApp
               </TouchableOpacity>
               

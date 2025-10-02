@@ -1,5 +1,5 @@
 ﻿// Migration vers Lucide React Native pour un design moderne
-import { AlertTriangle, BarChart3, Bell, Clock, Eye, Key, Mail, MapPin, Megaphone, MessageCircle, Radio, Shield } from 'phosphor-react-native';
+import { AlertTriangle, BarChart3, Bell, Clock, Eye, Key, Mail, MapPin, Megaphone, ChatCircle, Radio, Shield } from 'phosphor-react-native';
 import * as React from 'react';
 import { useState } from 'react';
 import {
@@ -195,7 +195,7 @@ const SettingsScreen: React.FC = () => {
 
         <View style={styles.settingRow}>
           <View style={styles.settingInfo}>
-            <MessageCircle size={20} color={theme.colors.primary} />
+            <ChatCircle size={20} color={theme.colors.primary} />
             <View style={styles.settingText}>
               <Text style={styles.settingLabel}>Notifications SMS</Text>
               <Text style={styles.settingDescription}>Recevoir des notifications par SMS</Text>

@@ -1,6 +1,6 @@
 ﻿// Migration vers Lucide React Native pour un design moderne
 import { useNavigation } from '@react-navigation/native';
-import { BarChart3, Bell, Briefcase, Camera, Clock, Document, Heart, Home, MessageCircle, Plus, Search, Settings, Share, Star, User, X } from 'phosphor-react-native';
+import { BarChart3, Bell, Briefcase, Camera, Clock, Document, Heart, Home, ChatCircle, Plus, Search, Settings, Share, Star, User, X } from 'phosphor-react-native';
 import * as React from 'react';
 import { Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { theme } from '../theme/theme';
@@ -17,7 +17,7 @@ const getActionIcon = (iconName: string, size: number, color: string) => {
         'search': <Search size={size} color={color} />,
         'settings': <Settings size={size} color={color} />,
         'person': <User size={size} color={color} />,
-        'chatbubbles': <MessageCircle size={size} color={color} />,
+        'chatbubbles': <ChatCircle size={size} color={color} />,
         'camera': <Camera size={size} color={color} />,
         'document': <Document size={size} color={color} />,
         'share': <Share size={size} color={color} />,

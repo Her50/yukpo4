@@ -1,6 +1,6 @@
 // Migration vers Lucide React Native pour un design moderne
 import { useNavigation } from '@react-navigation/native';
-import { ChevronRight, Eye, Heart, Images, MapPin, MessageCircle, Phone, Play, Share } from 'phosphor-react-native';
+import { CaretRight, Eye, Heart, Images, MapPin, ChatCircle, Phone, Play, Share } from 'phosphor-react-native';
 import * as React from 'react';
 import { useState } from 'react';
 import { Alert, Dimensions, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -327,7 +327,7 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
                                 <Text style={styles.mediaGalleryTitle}>Galerie</Text>
                                 <TouchableOpacity onPress={handleGallery} style={styles.seeAllButton}>
                                     <Text style={styles.seeAllText}>Voir tout</Text>
-                                    <ChevronRight size={14} color={theme.colors.primary} />
+                                    <CaretRight size={14} color={theme.colors.primary} />
                                 </TouchableOpacity>
                             </View>
 
@@ -396,7 +396,7 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
                             style={styles.primaryButton}
                             onPress={handleChat}
                         >
-                            <MessageCircle size={20} color="white" />
+                            <ChatCircle size={20} color="white" />
                             <Text style={styles.primaryButtonText}>Démarrer une conversation</Text>
                         </TouchableOpacity>
 
@@ -425,7 +425,7 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
                                 <Heart
                                     size={16}
                                     color={isFavorited ? "#F44336" : theme.colors.primary}
-                                    fill={isFavorited ? "#F44336" : "transparent"}
+                                    weight={isFavorited ? "fill" : "regular"}
                                 />
                                 <Text style={[styles.secondaryButtonText, isFavorited && styles.favoritedText]}>
                                     Favoris

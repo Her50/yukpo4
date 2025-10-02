@@ -9,7 +9,7 @@ import {
   BarChart3,
   Clock,
   Eye,
-  MessageCircle,
+  ChatCircle,
   RefreshCw,
   Star,
   Target,
@@ -369,7 +369,7 @@ const DashboardPrestataire: React.FC = () => {
                 {dashboardData.recentActivity.map((activity, index) => (
                   <View key={index} style="flex items-center gap-4 p-4 border border-gray-200 rounded-lg">
                     <View style="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                      <MessageCircle style="w-5 h-5 text-blue-600" />
+                      <ChatCircle style="w-5 h-5 text-blue-600" />
                     </View>
                     <View style="flex-1">
                       <Text style="font-medium text-gray-900">{activity.description}</Text>

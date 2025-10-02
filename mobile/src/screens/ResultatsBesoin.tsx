@@ -18,7 +18,7 @@ import {
   MapPin, 
   Star, 
   DollarSign,
-  MessageCircle,
+  ChatCircle,
   Phone,
   Share2
 } from 'lucide-react';
@@ -306,7 +306,7 @@ const ResultatsBesoin: React.FC = () => {
                         handleContact(service.prestataire.id, 'message');
                       }}
                     >
-                      <MessageCircle style="h-4 w-4" />
+                      <ChatCircle style="h-4 w-4" />
                     </TouchableOpacity>
                     <TouchableOpacity
                       size="sm"
