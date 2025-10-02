@@ -52,7 +52,7 @@ pub async fn get_nearby_services(
         r#"
         SELECT 
             s.id::text as id,
-            COALESCE(s.titre, s.offre, 'Service') as name,
+            COALESCE(s.offre, 'Service') as name,
             COALESCE(s.description, 'Service disponible') as description,
             COALESCE(s.categorie, 'Général') as category,
             ROUND(
