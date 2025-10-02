@@ -6,13 +6,10 @@ import { TextInput, Button, Card, Title, Paragraph } from 'react-native-paper';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../contexts/AuthContext';
-import { useLocation } from '../contexts/LocationContext';
-import { theme } from '../theme/theme';
 
 const RechercheBesoinScreen: React.FC = () => {
   const navigation = useNavigation();
   const { user } = useAuth();
-  const { location } = useLocation();
   const [searchText, setSearchText] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -67,14 +64,12 @@ const RechercheBesoinScreen: React.FC = () => {
             placeholder="Ex: J'ai besoin d'un plombier pour réparer ma douche..."
           />
 
-          {location && (
-            <View style={styles.locationInfo}>
-              <Ionicons name="location" size={16} color={theme.colors.primary} />
-              <Text style={styles.locationText}>
-                Recherche près de votre position
-              </Text>
-            </View>
-          )}
+          <View style={styles.locationInfo}>
+            <Ionicons name="location" size={16} color="#FFD700" />
+            <Text style={styles.locationText}>
+              Recherche dans votre région
+            </Text>
+          </View>
 
           <TouchableOpacity
             onPress={handleSearch}
@@ -171,6 +166,9 @@ const styles = StyleSheet.create({
 });
 
 export default RechercheBesoinScreen;
+
+
+
 
 
 

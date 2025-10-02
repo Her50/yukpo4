@@ -1,8 +1,9 @@
-import { Ionicons } from '@expo/vector-icons';
+// Migration vers Lucide React Native pour un design moderne
 import { useNavigation } from '@react-navigation/native';
+import { ChevronRight, Eye, Heart, Images, MapPin, MessageCircle, Phone, Play, Share } from 'lucide-react-native';
 import * as React from 'react';
 import { useState } from 'react';
-import { Alert, Dimensions, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Dimensions, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Avatar, Card, Chip, Paragraph, Title } from 'react-native-paper';
 import { useAuth } from '../contexts/AuthContext';
 import { theme } from '../theme/theme';
@@ -290,7 +291,7 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
                 {/* Localisation GPS complète */}
                 <View style={styles.locationContainer}>
                     <View style={styles.locationHeader}>
-                        <Ionicons name="location" size={16} color={theme.colors.primary} />
+                        <MapPin size={16} color={theme.colors.primary} />
                         <Text style={styles.locationTitle}>Localisation</Text>
                     </View>
                     <View style={styles.locationContent}>
@@ -322,11 +323,11 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
                     getServiceFieldValue(service.data?.videos) !== 'Non spécifié') && (
                         <View style={styles.mediaGalleryContainer}>
                             <View style={styles.mediaGalleryHeader}>
-                                <Ionicons name="images" size={16} color={theme.colors.primary} />
+                                <Images size={16} color={theme.colors.primary} />
                                 <Text style={styles.mediaGalleryTitle}>Galerie</Text>
                                 <TouchableOpacity onPress={handleGallery} style={styles.seeAllButton}>
                                     <Text style={styles.seeAllText}>Voir tout</Text>
-                                    <Ionicons name="chevron-forward" size={14} color={theme.colors.primary} />
+                                    <ChevronRight size={14} color={theme.colors.primary} />
                                 </TouchableOpacity>
                             </View>
 
@@ -340,8 +341,8 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
                                 {getServiceFieldValue(service.data?.images_realisations) !== 'Non spécifié' &&
                                     (() => {
                                         const images = getServiceFieldValue(service.data?.images_realisations);
-                                        const imageArray = Array.isArray(images) ? images : [images];
-                                        return imageArray.slice(0, 10).map((image, index) => (
+                                        const imageArray = Array.isArray(images) ? images : (images ? [images] : []);
+                                        return (imageArray as string[]).slice(0, 10).map((image: string, index: number) => (
                                             <TouchableOpacity
                                                 key={`img-${index}`}
                                                 style={styles.mediaThumbnail}
@@ -365,8 +366,8 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
                                 {getServiceFieldValue(service.data?.videos) !== 'Non spécifié' &&
                                     (() => {
                                         const videos = getServiceFieldValue(service.data?.videos);
-                                        const videoArray = Array.isArray(videos) ? videos : [videos];
-                                        return videoArray.slice(0, 2).map((video, index) => (
+                                        const videoArray = Array.isArray(videos) ? videos : (videos ? [videos] : []);
+                                        return (videoArray as string[]).slice(0, 2).map((video: string, index: number) => (
                                             <TouchableOpacity
                                                 key={`vid-${index}`}
                                                 style={styles.mediaThumbnail}
@@ -378,7 +379,7 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
                                                     resizeMode="cover"
                                                 />
                                                 <View style={styles.videoPlayOverlay}>
-                                                    <Ionicons name="play-circle" size={24} color="rgba(255, 255, 255, 0.9)" />
+                                                    <Play size={24} color="rgba(255, 255, 255, 0.9)" />
                                                 </View>
                                             </TouchableOpacity>
                                         ));
@@ -395,7 +396,7 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
                             style={styles.primaryButton}
                             onPress={handleChat}
                         >
-                            <Ionicons name="chatbubbles" size={20} color="white" />
+                            <MessageCircle size={20} color="white" />
                             <Text style={styles.primaryButtonText}>Démarrer une conversation</Text>
                         </TouchableOpacity>
 
@@ -405,7 +406,7 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
                                 style={styles.secondaryButton}
                                 onPress={handleContact}
                             >
-                                <Ionicons name="call" size={16} color={theme.colors.primary} />
+                                <Phone size={16} color={theme.colors.primary} />
                                 <Text style={styles.secondaryButtonText}>Contacter</Text>
                             </TouchableOpacity>
 
@@ -413,7 +414,7 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
                                 style={styles.secondaryButton}
                                 onPress={handleGallery}
                             >
-                                <Ionicons name="eye" size={16} color={theme.colors.primary} />
+                                <Eye size={16} color={theme.colors.primary} />
                                 <Text style={styles.secondaryButtonText}>Galerie</Text>
                             </TouchableOpacity>
 
@@ -421,10 +422,10 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
                                 style={styles.secondaryButton}
                                 onPress={handleFavorite}
                             >
-                                <Ionicons
-                                    name={isFavorited ? "heart" : "heart-outline"}
+                                <Heart
                                     size={16}
                                     color={isFavorited ? "#F44336" : theme.colors.primary}
+                                    fill={isFavorited ? "#F44336" : "transparent"}
                                 />
                                 <Text style={[styles.secondaryButtonText, isFavorited && styles.favoritedText]}>
                                     Favoris
@@ -435,7 +436,7 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
                                 style={styles.secondaryButton}
                                 onPress={handleShare}
                             >
-                                <Ionicons name="share" size={16} color={theme.colors.primary} />
+                                <Share size={16} color={theme.colors.primary} />
                                 <Text style={styles.secondaryButtonText}>Partager</Text>
                             </TouchableOpacity>
                         </View>
@@ -581,6 +582,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         marginBottom: 4,
     },
+    // Styles pour les icônes Lucide (ajustements d'espacement)
     locationTitle: {
         marginLeft: 4,
         fontSize: 12,

@@ -1,4 +1,4 @@
-import { Ionicons } from '@expo/vector-icons';
+// Remplacement des Ionicons par des emojis pour éviter les crashes
 import * as Location from 'expo-location';
 import * as React from 'react';
 import { useEffect, useState } from 'react';
@@ -101,7 +101,7 @@ const GPSSelector: React.FC<GPSSelectorProps> = ({
             <View style={styles.container}>
                 <View style={styles.header}>
                     <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-                        <Ionicons name="close" size={24} color={theme.colors.text} />
+                        <Text style={styles.closeIcon}>❌</Text>
                     </TouchableOpacity>
                     <Title style={styles.title}>Sélectionner une position</Title>
                 </View>
@@ -110,7 +110,7 @@ const GPSSelector: React.FC<GPSSelectorProps> = ({
                     <Card style={styles.card}>
                         <Card.Content>
                             <View style={styles.iconContainer}>
-                                <Ionicons name="location" size={48} color={theme.colors.primary} />
+                                <Text style={styles.locationIcon}>📍</Text>
                             </View>
 
                             <Title style={styles.cardTitle}>Position GPS</Title>
@@ -125,14 +125,14 @@ const GPSSelector: React.FC<GPSSelectorProps> = ({
                             ) : location ? (
                                 <View style={styles.locationInfo}>
                                     <View style={styles.coordinatesContainer}>
-                                        <Ionicons name="map" size={20} color={theme.colors.primary} />
+                                        <Text style={styles.mapIcon}>🗺️</Text>
                                         <Text style={styles.coordinatesText}>
                                             {formatCoordinates(location.coords.latitude, location.coords.longitude)}
                                         </Text>
                                     </View>
 
                                     <View style={styles.accuracyContainer}>
-                                        <Ionicons name="checkmark-circle" size={16} color="#4CAF50" />
+                                        <Text style={styles.checkIcon}>✅</Text>
                                         <Text style={styles.accuracyText}>
                                             Précision: {Math.round(location.coords.accuracy)}m
                                         </Text>
@@ -140,7 +140,7 @@ const GPSSelector: React.FC<GPSSelectorProps> = ({
                                 </View>
                             ) : (
                                 <View style={styles.noLocationContainer}>
-                                    <Ionicons name="location-outline" size={32} color="#9E9E9E" />
+                                    <Text style={styles.noLocationIcon}>📍</Text>
                                     <Text style={styles.noLocationText}>
                                         Position non disponible
                                     </Text>
@@ -155,7 +155,7 @@ const GPSSelector: React.FC<GPSSelectorProps> = ({
                                     style={styles.selectButton}
                                     contentStyle={styles.buttonContent}
                                 >
-                                    <Ionicons name="checkmark" size={20} color="white" />
+                                    <Text style={styles.buttonIcon}>✅</Text>
                                     <Text style={styles.buttonText}>Utiliser cette position</Text>
                                 </Button>
 
@@ -165,7 +165,7 @@ const GPSSelector: React.FC<GPSSelectorProps> = ({
                                     style={styles.mapButton}
                                     contentStyle={styles.buttonContent}
                                 >
-                                    <Ionicons name="map" size={20} color={theme.colors.primary} />
+                                    <Text style={styles.buttonIconOutlined}>🗺️</Text>
                                     <Text style={[styles.buttonText, { color: theme.colors.primary }]}>
                                         Sélectionner sur carte
                                     </Text>
@@ -178,7 +178,7 @@ const GPSSelector: React.FC<GPSSelectorProps> = ({
                                     style={styles.refreshButton}
                                     contentStyle={styles.buttonContent}
                                 >
-                                    <Ionicons name="refresh" size={20} color={theme.colors.primary} />
+                                    <Text style={styles.buttonIconOutlined}>🔄</Text>
                                     <Text style={[styles.buttonText, { color: theme.colors.primary }]}>
                                         Actualiser
                                     </Text>
@@ -192,7 +192,7 @@ const GPSSelector: React.FC<GPSSelectorProps> = ({
                             <Card.Content>
                                 <Title style={styles.currentTitle}>Position actuelle</Title>
                                 <View style={styles.coordinatesContainer}>
-                                    <Ionicons name="pin" size={16} color={theme.colors.primary} />
+                                    <Text style={styles.pinIcon}>📌</Text>
                                     <Text style={styles.coordinatesText}>
                                         {formatCoordinates(currentLocation.lat, currentLocation.lng)}
                                     </Text>
@@ -245,6 +245,39 @@ const styles = StyleSheet.create({
     },
     closeButton: {
         padding: 8,
+    },
+    closeIcon: {
+        fontSize: 24,
+    },
+    locationIcon: {
+        fontSize: 48,
+        textAlign: 'center',
+    },
+    mapIcon: {
+        fontSize: 20,
+        marginRight: 8,
+    },
+    checkIcon: {
+        fontSize: 16,
+        marginRight: 8,
+    },
+    noLocationIcon: {
+        fontSize: 32,
+        textAlign: 'center',
+        opacity: 0.5,
+    },
+    buttonIcon: {
+        fontSize: 20,
+        marginRight: 8,
+        color: 'white',
+    },
+    buttonIconOutlined: {
+        fontSize: 20,
+        marginRight: 8,
+    },
+    pinIcon: {
+        fontSize: 16,
+        marginRight: 8,
     },
     title: {
         fontSize: 18,

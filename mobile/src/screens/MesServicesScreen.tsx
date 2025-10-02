@@ -1,6 +1,7 @@
-﻿import { Ionicons } from '@expo/vector-icons';
+﻿// Migration vers Lucide React Native pour un design moderne
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
+import { Briefcase, Calendar, Edit, Eye, Plus, Share } from 'lucide-react-native';
 import * as React from 'react';
 import { useEffect, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -98,14 +99,14 @@ const MesServicesScreen: React.FC = () => {
             style={styles.addButton}
             onPress={() => navigation.navigate('CreateService' as never)}
           >
-            <Ionicons name="add" size={24} color="white" />
+            <Plus size={24} color="white" />
             <Text style={styles.addButtonText}>Nouveau</Text>
           </TouchableOpacity>
         </View>
 
         {services.length === 0 ? (
           <View style={styles.emptyContainer}>
-            <Ionicons name="briefcase-outline" size={64} color="#9E9E9E" />
+            <Briefcase size={64} color="#9E9E9E" />
             <Text style={styles.emptyTitle}>Aucun service</Text>
             <Text style={styles.emptyText}>
               Vous n'avez pas encore créé de service. Créez votre premier service pour commencer.
@@ -169,7 +170,7 @@ const MesServicesScreen: React.FC = () => {
                     Alert.alert('Modifier', `Modifier le service: ${service.title}`);
                   }}
                 >
-                  <Ionicons name="create-outline" size={16} color="white" />
+                  <Edit size={16} color="white" />
                   <Text style={styles.actionButtonText}>Modifier</Text>
                 </TouchableOpacity>
 
@@ -179,7 +180,7 @@ const MesServicesScreen: React.FC = () => {
                     Alert.alert('Voir', `Voir le service: ${service.title}`);
                   }}
                 >
-                  <Ionicons name="eye-outline" size={16} color="white" />
+                  <Eye size={16} color="white" />
                   <Text style={styles.actionButtonText}>Voir</Text>
                 </TouchableOpacity>
 
@@ -189,7 +190,7 @@ const MesServicesScreen: React.FC = () => {
                     Alert.alert('Partager', `Partager le service: ${service.title}`);
                   }}
                 >
-                  <Ionicons name="share-outline" size={16} color="white" />
+                  <Share size={16} color="white" />
                   <Text style={styles.actionButtonText}>Partager</Text>
                 </TouchableOpacity>
 
@@ -213,11 +214,11 @@ const MesServicesScreen: React.FC = () => {
                     );
                   }}
                 >
-                  <Ionicons
-                    name={service.status === 'active' ? 'pause-outline' : 'play-outline'}
-                    size={16}
-                    color="white"
-                  />
+                  {service.status === 'active' ? (
+                    <Calendar size={16} color="white" />
+                  ) : (
+                    <Calendar size={16} color="white" />
+                  )}
                   <Text style={styles.actionButtonText}>
                     {service.status === 'active' ? 'Désactiver' : 'Activer'}
                   </Text>

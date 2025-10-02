@@ -1,5 +1,6 @@
-﻿import Ionicons from '@expo/vector-icons/Ionicons';
+// Migration vers Lucide React Native pour un design moderne
 import { useNavigation } from '@react-navigation/native';
+import { AlertCircle, CheckCircle, Mail } from 'lucide-react-native';
 import * as React from 'react';
 import { useState } from 'react';
 import {
@@ -132,7 +133,24 @@ const RegisterScreen: React.FC = () => {
       }
     } catch (error: any) {
       console.error('[RegisterScreen] Erreur inscription:', error);
-      setError(error.message || 'Erreur lors de l\'inscription');
+
+      // Détection des erreurs spécifiques
+      let errorMessage = error.message || 'Erreur lors de l\'inscription';
+
+      // Email déjà utilisé (409 Conflict)
+      if (error.message?.includes('409') || error.message?.includes('deja utilise') || error.message?.includes('already exists')) {
+        errorMessage = '❌ Cet email est déjà utilisé. Essayez de vous connecter ou utilisez un autre email.';
+      }
+      // Erreur de validation (400 Bad Request)
+      else if (error.message?.includes('400') || error.message?.includes('validation')) {
+        errorMessage = '❌ Données invalides. Vérifiez vos informations.';
+      }
+      // Erreur réseau
+      else if (error.message?.includes('network') || error.message?.includes('fetch')) {
+        errorMessage = '❌ Problème de connexion. Vérifiez votre internet.';
+      }
+
+      setError(errorMessage);
     } finally {
       setFormLoading(false);
     }
@@ -143,11 +161,10 @@ const RegisterScreen: React.FC = () => {
     navigation.navigate('Login' as never);
   };
 
-  // Composant OAuth Button
+  // Composant OAuth Button avec Lucide
   const OAuthButton = ({ provider, onPress }: { provider: 'google' | 'facebook'; onPress: () => void }) => {
     const isGoogle = provider === 'google';
     const bgColor = isGoogle ? '#DB4437' : '#4267B2';
-    const iconName = isGoogle ? 'logo-google' : 'logo-facebook';
     const label = isGoogle ? 'Google' : 'Facebook';
 
     return (
@@ -156,7 +173,7 @@ const RegisterScreen: React.FC = () => {
         onPress={onPress}
         disabled={formLoading || loading}
       >
-        <Ionicons name={iconName as any} size={20} color="white" />
+        <Mail size={20} color="white" />
         <Text style={styles.oauthButtonText}>Continuer avec {label}</Text>
       </TouchableOpacity>
     );
@@ -169,9 +186,9 @@ const RegisterScreen: React.FC = () => {
         <ScrollView contentContainerStyle={styles.scrollContent}>
           <Card style={styles.successCard}>
             <Card.Content style={styles.successContent}>
-              <View style={styles.successIcon}>
-                <Ionicons name="checkmark-circle" size={48} color="#4CAF50" />
-              </View>
+                  <View style={styles.successIcon}>
+                    <CheckCircle size={48} color="#4CAF50" />
+                  </View>
 
               <Title style={styles.successTitle}>
                 Inscription réussie ! 🎉
@@ -253,15 +270,15 @@ const RegisterScreen: React.FC = () => {
           <View style={styles.dividerLine} />
         </View>
 
-        {/* Messages d'erreur */}
-        {error && (
-          <Card style={styles.errorCard}>
-            <Card.Content style={styles.errorContent}>
-              <Ionicons name="alert-circle" size={24} color="#F44336" />
-              <Text style={styles.errorText}>{error}</Text>
-            </Card.Content>
-          </Card>
-        )}
+            {/* Messages d'erreur */}
+            {error && (
+              <Card style={styles.errorCard}>
+                <Card.Content style={styles.errorContent}>
+                  <AlertCircle size={24} color="#F44336" />
+                  <Text style={styles.errorText}>{error}</Text>
+                </Card.Content>
+              </Card>
+            )}
 
         {/* Formulaire d'inscription */}
         <Card style={styles.formCard}>
@@ -486,6 +503,17 @@ const styles = StyleSheet.create({
   },
   successIcon: {
     marginBottom: 16,
+  },
+  successIconText: {
+    fontSize: 48,
+    textAlign: 'center',
+  },
+  oauthIcon: {
+    fontSize: 20,
+  },
+  errorIconText: {
+    fontSize: 24,
+    marginRight: 8,
   },
   successTitle: {
     fontSize: 24,

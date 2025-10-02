@@ -1,5 +1,6 @@
-﻿import { Ionicons } from '@expo/vector-icons';
+﻿// Migration vers Lucide React Native pour un design moderne
 import { useNavigation } from '@react-navigation/native';
+import { BarChart3, Bell, Briefcase, Camera, Clock, Document, Heart, Home, MessageCircle, Plus, Search, Settings, Share, Star, User, X } from 'lucide-react-native';
 import * as React from 'react';
 import { Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { theme } from '../theme/theme';
@@ -8,6 +9,29 @@ interface QuickActionsMenuProps {
     isVisible: boolean;
     onClose: () => void;
 }
+
+// Fonction pour mapper les icônes vers Lucide
+const getActionIcon = (iconName: string, size: number, color: string) => {
+    const iconMap: { [key: string]: any } = {
+        'add': <Plus size={size} color={color} />,
+        'search': <Search size={size} color={color} />,
+        'settings': <Settings size={size} color={color} />,
+        'person': <User size={size} color={color} />,
+        'chatbubbles': <MessageCircle size={size} color={color} />,
+        'camera': <Camera size={size} color={color} />,
+        'document': <Document size={size} color={color} />,
+        'share': <Share size={size} color={color} />,
+        'heart': <Heart size={size} color={color} />,
+        'star': <Star size={size} color={color} />,
+        'notifications': <Bell size={size} color={color} />,
+        'home': <Home size={size} color={color} />,
+        'briefcase': <Briefcase size={size} color={color} />,
+        'time': <Clock size={size} color={color} />,
+        'analytics': <BarChart3 size={size} color={color} />,
+    };
+
+    return iconMap[iconName] || <Plus size={size} color={color} />;
+};
 
 const QuickActionsMenu: React.FC<QuickActionsMenuProps> = ({ isVisible, onClose }) => {
     const navigation = useNavigation();
@@ -76,7 +100,7 @@ const QuickActionsMenu: React.FC<QuickActionsMenuProps> = ({ isVisible, onClose 
                     <View style={styles.menuHeader}>
                         <Text style={styles.menuTitle}>Actions rapides</Text>
                         <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-                            <Ionicons name="close" size={24} color={theme.colors.text} />
+                            <X size={24} color={theme.colors.text} />
                         </TouchableOpacity>
                     </View>
 
@@ -88,7 +112,7 @@ const QuickActionsMenu: React.FC<QuickActionsMenuProps> = ({ isVisible, onClose 
                                 onPress={action.onPress}
                             >
                                 <View style={styles.actionIcon}>
-                                    <Ionicons name={action.icon as any} size={24} color={theme.colors.primary} />
+                                    {getActionIcon(action.icon, 24, theme.colors.primary)}
                                 </View>
                                 <Text style={styles.actionText}>{action.title}</Text>
                             </TouchableOpacity>

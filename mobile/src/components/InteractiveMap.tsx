@@ -1,7 +1,6 @@
 import * as Location from 'expo-location';
-import React, { useEffect, useRef, useState } from 'react';
-import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import MapView, { Circle, LatLng, Marker, Region } from 'react-native-maps';
+import React, { useEffect, useState } from 'react';
+import { Alert, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator } from 'react-native';
 
 interface InteractiveMapProps {
     initialLocation?: { latitude: number; longitude: number };
@@ -18,12 +17,11 @@ const InteractiveMap: React.FC<InteractiveMapProps> = ({
     showRadiusSelector = true,
     initialRadius = 50
 }) => {
-    const mapRef = useRef<MapView>(null);
-    const [selectedLocation, setSelectedLocation] = useState<LatLng | null>(
+    const [selectedLocation, setSelectedLocation] = useState<{ latitude: number; longitude: number } | null>(
         initialLocation ? { latitude: initialLocation.latitude, longitude: initialLocation.longitude } : null
     );
     const [radius, setRadius] = useState(initialRadius);
-    const [currentLocation, setCurrentLocation] = useState<LatLng | null>(null);
+    const [currentLocation, setCurrentLocation] = useState<{ latitude: number; longitude: number } | null>(null);
     const [loading, setLoading] = useState(false);
 
     // Obtenir la position actuelle
@@ -46,28 +44,13 @@ const InteractiveMap: React.FC<InteractiveMapProps> = ({
             };
 
             setCurrentLocation(newLocation);
-
-            // Centrer la carte sur la position actuelle
-            if (mapRef.current) {
-                mapRef.current.animateToRegion({
-                    latitude: newLocation.latitude,
-                    longitude: newLocation.longitude,
-                    latitudeDelta: 0.01,
-                    longitudeDelta: 0.01,
-                });
-            }
+            setSelectedLocation(newLocation);
         } catch (error) {
             console.error('Erreur GPS:', error);
             Alert.alert('Erreur', 'Impossible d\'obtenir votre position actuelle');
         } finally {
             setLoading(false);
         }
-    };
-
-    // Gérer le tap sur la carte
-    const handleMapPress = (event: any) => {
-        const { latitude, longitude } = event.nativeEvent.coordinate;
-        setSelectedLocation({ latitude, longitude });
     };
 
     // Confirmer la sélection
@@ -84,50 +67,6 @@ const InteractiveMap: React.FC<InteractiveMapProps> = ({
         }
     };
 
-    // Utiliser la position actuelle
-    const handleUseCurrentLocation = () => {
-        if (currentLocation) {
-            setSelectedLocation(currentLocation);
-            if (mapRef.current) {
-                mapRef.current.animateToRegion({
-                    latitude: currentLocation.latitude,
-                    longitude: currentLocation.longitude,
-                    latitudeDelta: 0.01,
-                    longitudeDelta: 0.01,
-                });
-            }
-        }
-    };
-
-    // Région initiale de la carte
-    const getInitialRegion = (): Region => {
-        if (selectedLocation) {
-            return {
-                latitude: selectedLocation.latitude,
-                longitude: selectedLocation.longitude,
-                latitudeDelta: 0.01,
-                longitudeDelta: 0.01,
-            };
-        }
-
-        if (currentLocation) {
-            return {
-                latitude: currentLocation.latitude,
-                longitude: currentLocation.longitude,
-                latitudeDelta: 0.01,
-                longitudeDelta: 0.01,
-            };
-        }
-
-        // Position par défaut (Yaoundé, Cameroun)
-        return {
-            latitude: 3.8480,
-            longitude: 11.5021,
-            latitudeDelta: 0.1,
-            longitudeDelta: 0.1,
-        };
-    };
-
     // Obtenir la position actuelle au chargement
     useEffect(() => {
         getCurrentLocation();
@@ -135,54 +74,37 @@ const InteractiveMap: React.FC<InteractiveMapProps> = ({
 
     return (
         <View style={styles.container}>
-            <MapView
-                ref={mapRef}
-                style={styles.map}
-                initialRegion={getInitialRegion()}
-                onPress={handleMapPress}
-                showsUserLocation={true}
-                showsMyLocationButton={false}
-                showsCompass={true}
-                showsScale={true}
-                mapType="standard"
-            >
-                {/* Marqueur de position sélectionnée */}
-                {selectedLocation && (
-                    <Marker
-                        coordinate={selectedLocation}
-                        title="Position sélectionnée"
-                        description="Appuyez pour confirmer"
-                        pinColor="red"
-                    />
+            {/* Affichage simplifié de la position */}
+            <View style={styles.locationDisplay}>
+                <Text style={styles.title}>📍 Sélection de la position</Text>
+                
+                {loading && (
+                    <View style={styles.loadingContainer}>
+                        <ActivityIndicator size="large" color="#FF8C00" />
+                        <Text style={styles.loadingText}>Obtention de votre position...</Text>
+                    </View>
                 )}
 
-                {/* Cercle de rayon si sélectionné */}
-                {selectedLocation && showRadiusSelector && (
-                    <Circle
-                        center={selectedLocation}
-                        radius={radius * 1000} // Convertir km en mètres
-                        strokeColor="rgba(255, 0, 0, 0.5)"
-                        fillColor="rgba(255, 0, 0, 0.1)"
-                        strokeWidth={2}
-                    />
+                {selectedLocation && !loading && (
+                    <View style={styles.locationInfo}>
+                        <Text style={styles.locationLabel}>Position sélectionnée :</Text>
+                        <Text style={styles.locationCoords}>
+                            Latitude: {selectedLocation.latitude.toFixed(6)}
+                        </Text>
+                        <Text style={styles.locationCoords}>
+                            Longitude: {selectedLocation.longitude.toFixed(6)}
+                        </Text>
+                        {showRadiusSelector && (
+                            <Text style={styles.radiusInfo}>Rayon: {radius} km</Text>
+                        )}
+                    </View>
                 )}
-            </MapView>
 
-            {/* Contrôles en haut */}
-            <View style={styles.topControls}>
-                <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-                    <Text style={styles.closeButtonText}>✕</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                    style={styles.currentLocationButton}
-                    onPress={getCurrentLocation}
-                    disabled={loading}
-                >
-                    <Text style={styles.currentLocationButtonText}>
-                        {loading ? '⏳' : '📍'}
+                {!selectedLocation && !loading && (
+                    <Text style={styles.helpText}>
+                        Appuyez sur le bouton ci-dessous pour obtenir votre position actuelle
                     </Text>
-                </TouchableOpacity>
+                )}
             </View>
 
             {/* Contrôles en bas */}
@@ -213,23 +135,28 @@ const InteractiveMap: React.FC<InteractiveMapProps> = ({
                 )}
 
                 <View style={styles.actionButtons}>
-                    {currentLocation && (
-                        <TouchableOpacity
-                            style={styles.useCurrentButton}
-                            onPress={handleUseCurrentLocation}
-                        >
-                            <Text style={styles.useCurrentButtonText}>📍 Ma position</Text>
-                        </TouchableOpacity>
-                    )}
+                    <TouchableOpacity
+                        style={styles.useCurrentButton}
+                        onPress={getCurrentLocation}
+                        disabled={loading}
+                    >
+                        <Text style={styles.useCurrentButtonText}>
+                            {loading ? '⏳ Chargement...' : '📍 Actualiser position'}
+                        </Text>
+                    </TouchableOpacity>
 
                     <TouchableOpacity
-                        style={styles.confirmButton}
+                        style={[styles.confirmButton, !selectedLocation && styles.confirmButtonDisabled]}
                         onPress={handleConfirmSelection}
                         disabled={!selectedLocation}
                     >
                         <Text style={styles.confirmButtonText}>✓ Confirmer</Text>
                     </TouchableOpacity>
                 </View>
+                
+                <TouchableOpacity style={styles.closeButton} onPress={onClose}>
+                    <Text style={styles.closeButtonText}>Annuler</Text>
+                </TouchableOpacity>
             </View>
         </View>
     );
@@ -238,41 +165,73 @@ const InteractiveMap: React.FC<InteractiveMapProps> = ({
 const styles = StyleSheet.create({
     container: {
         flex: 1,
+        backgroundColor: '#f5f5f5',
     },
-    map: {
+    locationDisplay: {
         flex: 1,
+        padding: 20,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
-    topControls: {
-        position: 'absolute',
-        top: 50,
-        right: 20,
-        flexDirection: 'row',
-        gap: 10,
+    title: {
+        fontSize: 24,
+        fontWeight: 'bold',
+        marginBottom: 30,
+        color: '#333',
+    },
+    loadingContainer: {
+        alignItems: 'center',
+        gap: 15,
+    },
+    loadingText: {
+        fontSize: 16,
+        color: '#666',
+    },
+    locationInfo: {
+        backgroundColor: 'white',
+        padding: 20,
+        borderRadius: 12,
+        width: '100%',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 3,
+    },
+    locationLabel: {
+        fontSize: 18,
+        fontWeight: '600',
+        marginBottom: 10,
+        color: '#333',
+    },
+    locationCoords: {
+        fontSize: 16,
+        color: '#666',
+        marginVertical: 4,
+    },
+    radiusInfo: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#FF8C00',
+        marginTop: 10,
+    },
+    helpText: {
+        fontSize: 16,
+        color: '#666',
+        textAlign: 'center',
+        paddingHorizontal: 20,
     },
     closeButton: {
-        backgroundColor: 'rgba(0, 0, 0, 0.7)',
-        borderRadius: 20,
-        width: 40,
-        height: 40,
-        justifyContent: 'center',
+        backgroundColor: '#f0f0f0',
+        paddingVertical: 14,
+        borderRadius: 8,
         alignItems: 'center',
+        marginTop: 10,
     },
     closeButtonText: {
-        color: 'white',
-        fontSize: 18,
-        fontWeight: 'bold',
-    },
-    currentLocationButton: {
-        backgroundColor: 'rgba(0, 0, 0, 0.7)',
-        borderRadius: 20,
-        width: 40,
-        height: 40,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    currentLocationButtonText: {
-        color: 'white',
-        fontSize: 18,
+        color: '#666',
+        fontSize: 16,
+        fontWeight: '600',
     },
     bottomControls: {
         position: 'absolute',
@@ -337,13 +296,16 @@ const styles = StyleSheet.create({
     confirmButton: {
         flex: 1,
         backgroundColor: '#FF8C00',
-        paddingVertical: 12,
+        paddingVertical: 14,
         borderRadius: 8,
         alignItems: 'center',
     },
+    confirmButtonDisabled: {
+        backgroundColor: '#ccc',
+    },
     confirmButtonText: {
         color: 'white',
-        fontSize: 14,
+        fontSize: 16,
         fontWeight: '600',
     },
 });

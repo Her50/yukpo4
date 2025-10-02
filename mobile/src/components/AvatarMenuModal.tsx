@@ -1,17 +1,12 @@
-﻿import { Ionicons } from '@expo/vector-icons';
+﻿// Migration vers Lucide React Native pour un design moderne
+import { ChevronRight, LogOut, X } from 'lucide-react-native';
 import React from 'react';
-import { Text } from 'react-native';
-import { View } from 'react-native';
-import { TouchableOpacity } from 'react-native';
 import {
   Alert,
   Modal,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+  StyleSheet, Text, TouchableOpacity, View
 } from 'react-native';
-import { Avatar, Divider } from 'react-native-paper';
+import { Avatar } from 'react-native-paper';
 import { useAuth } from '../contexts/AuthContext';
 import { theme } from '../theme/theme';
 
@@ -137,8 +132,7 @@ const AvatarMenuModal: React.FC<AvatarMenuModalProps> = ({
                 <View style={styles.menuItemContent}>
                   <View style={styles.menuItemLeft}>
                     <View style={[styles.iconContainer, { backgroundColor: `${item.color}20` }]}>
-                      <Ionicons
-                        name="chevron-forward"
+                      <ChevronRight
                         size={16}
                         color={item.color}
                       />
@@ -148,8 +142,7 @@ const AvatarMenuModal: React.FC<AvatarMenuModalProps> = ({
                       <Text style={styles.menuItemSubtitle}>{item.subtitle}</Text>
                     </View>
                   </View>
-                  <Ionicons
-                    name="chevron-forward"
+                  <ChevronRight
                     size={20}
                     color={theme.colors.textSecondary}
                   />
@@ -166,7 +159,7 @@ const AvatarMenuModal: React.FC<AvatarMenuModalProps> = ({
             onPress={handleLogout}
           >
             <View style={styles.logoutContent}>
-              <Ionicons name="log-out-outline" size={24} color="#F44336" />
+              <LogOut size={24} color="#F44336" />
               <Text style={styles.logoutText}>🚪 Déconnexion</Text>
             </View>
           </TouchableOpacity>
@@ -176,7 +169,7 @@ const AvatarMenuModal: React.FC<AvatarMenuModalProps> = ({
             style={styles.closeButton}
             onPress={onClose}
           >
-            <Ionicons name="close" size={24} color={theme.colors.textSecondary} />
+            <X size={24} color={theme.colors.textSecondary} />
           </TouchableOpacity>
         </TouchableOpacity>
       </TouchableOpacity>

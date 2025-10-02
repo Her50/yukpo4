@@ -1,4 +1,4 @@
-﻿import { Ionicons } from '@expo/vector-icons';
+﻿// Remplacement des Ionicons par des emojis pour éviter les crashes
 import * as React from 'react';
 import { useEffect, useState } from 'react';
 import {
@@ -141,6 +141,16 @@ const NotificationHistoryModal: React.FC<NotificationHistoryModalProps> = ({
     }
   };
 
+  const getTypeIconEmoji = (type: string) => {
+    switch (type) {
+      case 'success': return '✅';
+      case 'warning': return '⚠️';
+      case 'error': return '❌';
+      case 'info': return 'ℹ️';
+      default: return '🔔';
+    }
+  };
+
   const getTypeColor = (type: string) => {
     switch (type) {
       case 'success': return '#4CAF50';
@@ -188,11 +198,7 @@ const NotificationHistoryModal: React.FC<NotificationHistoryModalProps> = ({
               onPress={markAllAsRead}
               disabled={unreadCount === 0}
             >
-              <Ionicons
-                name="checkmark-circle"
-                size={20}
-                color={unreadCount === 0 ? '#9E9E9E' : theme.colors.primary}
-              />
+              <Text style={styles.checkIcon}>✅</Text>
               <Text style={[
                 styles.markAllText,
                 { color: unreadCount === 0 ? '#9E9E9E' : theme.colors.primary }
@@ -213,7 +219,7 @@ const NotificationHistoryModal: React.FC<NotificationHistoryModalProps> = ({
         {/* Filtres */}
         <View style={styles.filtersContainer}>
           <View style={styles.searchContainer}>
-            <Ionicons name="search" size={20} color={theme.colors.primary} style={styles.searchIcon} />
+            <Text style={styles.searchIcon}>🔍</Text>
             <TextInput
               style={styles.searchInput}
               placeholder="Rechercher..."
@@ -248,11 +254,9 @@ const NotificationHistoryModal: React.FC<NotificationHistoryModalProps> = ({
               style={[styles.filterChip, !showRead && styles.filterChipActive]}
               onPress={() => setShowRead(!showRead)}
             >
-              <Ionicons
-                name={showRead ? "eye-off" : "eye"}
-                size={16}
-                color={!showRead ? 'white' : theme.colors.primary}
-              />
+              <Text style={styles.filterIcon}>
+                {showRead ? "🙈" : "👁️"}
+              </Text>
               <Text style={[styles.filterChipText, !showRead && styles.filterChipTextActive]}>
                 {showRead ? 'Masquer lues' : 'Afficher lues'}
               </Text>
@@ -268,7 +272,7 @@ const NotificationHistoryModal: React.FC<NotificationHistoryModalProps> = ({
             </View>
           ) : filteredNotifications.length === 0 ? (
             <View style={styles.emptyContainer}>
-              <Ionicons name="notifications-outline" size={48} color="#9E9E9E" />
+              <Text style={styles.emptyIcon}>🔔</Text>
               <Text style={styles.emptyText}>Aucune notification trouvée</Text>
             </View>
           ) : (
@@ -283,11 +287,9 @@ const NotificationHistoryModal: React.FC<NotificationHistoryModalProps> = ({
                 <Card.Content>
                   <View style={styles.notificationHeader}>
                     <View style={styles.notificationLeft}>
-                      <Ionicons
-                        name={getTypeIcon(notification.type)}
-                        size={24}
-                        color={getTypeColor(notification.type)}
-                      />
+                      <Text style={styles.typeIcon}>
+                        {getTypeIconEmoji(notification.type)}
+                      </Text>
 
                       <View style={styles.notificationInfo}>
                         <View style={styles.notificationTitleRow}>
@@ -342,7 +344,7 @@ const NotificationHistoryModal: React.FC<NotificationHistoryModalProps> = ({
                           style={styles.actionButton}
                           onPress={() => markAsRead(notification.id)}
                         >
-                          <Ionicons name="checkmark-circle" size={16} color={theme.colors.primary} />
+                          <Text style={styles.actionIcon}>✅</Text>
                           <Text style={styles.actionButtonText}>Marquer lu</Text>
                         </TouchableOpacity>
                       )}
@@ -351,7 +353,7 @@ const NotificationHistoryModal: React.FC<NotificationHistoryModalProps> = ({
                         style={styles.actionButton}
                         onPress={() => deleteNotification(notification.id)}
                       >
-                        <Ionicons name="trash" size={16} color="#F44336" />
+                        <Text style={styles.deleteIcon}>🗑️</Text>
                         <Text style={[styles.actionButtonText, { color: '#F44336' }]}>Supprimer</Text>
                       </TouchableOpacity>
                     </View>
@@ -420,7 +422,34 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   searchIcon: {
+    fontSize: 20,
     marginRight: 8,
+  },
+  checkIcon: {
+    fontSize: 20,
+    marginRight: 8,
+  },
+  filterIcon: {
+    fontSize: 16,
+    marginRight: 4,
+  },
+  emptyIcon: {
+    fontSize: 48,
+    textAlign: 'center',
+    opacity: 0.5,
+    marginBottom: 16,
+  },
+  typeIcon: {
+    fontSize: 24,
+    marginRight: 12,
+  },
+  actionIcon: {
+    fontSize: 16,
+    marginRight: 4,
+  },
+  deleteIcon: {
+    fontSize: 16,
+    marginRight: 4,
   },
   searchInput: {
     flex: 1,

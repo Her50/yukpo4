@@ -1,0 +1,471 @@
+// Remplacement des Ionicons par des emojis pour éviter les crashes
+import { Audio } from 'expo-av';
+import * as DocumentPicker from 'expo-document-picker';
+import * as ImagePicker from 'expo-image-picker';
+import React, { useState } from 'react';
+import {
+    Alert,
+    Image,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
+} from 'react-native';
+
+interface ChatInputMobileProps {
+    onSubmit: (input: any) => void;
+    loading: boolean;
+    placeholder?: string;
+    gpsData?: { lat: number; lng: number } | null;
+    onGPSPress?: () => void;
+}
+
+const ChatInputMobile: React.FC<ChatInputMobileProps> = ({
+    onSubmit,
+    loading,
+    placeholder = 'Décrivez votre besoin ou service...',
+    gpsData,
+    onGPSPress
+}) => {
+    const [text, setText] = useState('');
+    const [images, setImages] = useState<string[]>([]);
+    const [audioUri, setAudioUri] = useState<string | null>(null);
+    const [documents, setDocuments] = useState<any[]>([]);
+    const [isRecording, setIsRecording] = useState(false);
+
+    // Demander les permissions
+    const requestPermissions = async () => {
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== 'granted') {
+            Alert.alert('Permission requise', 'Nous avons besoin de la permission pour accéder à vos photos');
+            return false;
+        }
+        return true;
+    };
+
+    // Prendre une photo
+    const takePhoto = async () => {
+        const { status } = await ImagePicker.requestCameraPermissionsAsync();
+        if (status !== 'granted') {
+            Alert.alert('Permission requise', 'Nous avons besoin de la permission pour utiliser la caméra');
+            return;
+        }
+
+        const result = await ImagePicker.launchCameraAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            allowsEditing: true,
+            quality: 0.8,
+            base64: true,
+        });
+
+        if (!result.canceled && result.assets[0].base64) {
+            setImages([...images, `data:image/jpeg;base64,${result.assets[0].base64}`]);
+        }
+    };
+
+    // Choisir une image
+    const pickImage = async () => {
+        const hasPermission = await requestPermissions();
+        if (!hasPermission) return;
+
+        const result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            allowsMultipleSelection: true,
+            quality: 0.8,
+            base64: true,
+        });
+
+        if (!result.canceled) {
+            const newImages = result.assets
+                .filter(asset => asset.base64)
+                .map(asset => `data:image/jpeg;base64,${asset.base64}`);
+            setImages([...images, ...newImages]);
+        }
+    };
+
+    // Choisir un document
+    const pickDocument = async () => {
+        try {
+            const result = await DocumentPicker.getDocumentAsync({
+                type: '*/*',
+                copyToCacheDirectory: true,
+            });
+
+            if (!result.canceled) {
+                setDocuments([...documents, result.assets[0]]);
+            }
+        } catch (error) {
+            console.error('Erreur lors de la sélection du document:', error);
+        }
+    };
+
+    // État de l'enregistrement
+    const [recording, setRecording] = useState<Audio.Recording | null>(null);
+
+    // Enregistrer audio
+    const startRecording = async () => {
+        try {
+            console.log('[ChatInput] Demande permission audio...');
+            const permission = await Audio.requestPermissionsAsync();
+
+            if (permission.status !== 'granted') {
+                Alert.alert('Permission requise', 'Nous avons besoin de la permission pour enregistrer l\'audio');
+                return;
+            }
+
+            await Audio.setAudioModeAsync({
+                allowsRecordingIOS: true,
+                playsInSilentModeIOS: true,
+            });
+
+            console.log('[ChatInput] Démarrage enregistrement...');
+            const { recording } = await Audio.Recording.createAsync(
+                Audio.RecordingOptionsPresets.HIGH_QUALITY
+            );
+
+            setRecording(recording);
+            setIsRecording(true);
+            console.log('[ChatInput] Enregistrement démarré');
+        } catch (error) {
+            console.error('[ChatInput] Erreur enregistrement:', error);
+            Alert.alert('Erreur', 'Impossible de démarrer l\'enregistrement');
+        }
+    };
+
+    const stopRecording = async () => {
+        if (!recording) return;
+
+        try {
+            console.log('[ChatInput] Arrêt enregistrement...');
+            setIsRecording(false);
+            await recording.stopAndUnloadAsync();
+            await Audio.setAudioModeAsync({
+                allowsRecordingIOS: false,
+            });
+
+            const uri = recording.getURI();
+            console.log('[ChatInput] Audio enregistré:', uri);
+
+            // Convertir en base64
+            if (uri) {
+                // Pour l'instant, sauvegarder l'URI (conversion base64 à faire côté backend)
+                setAudioUri(uri);
+                Alert.alert('✅ Audio enregistré', 'Votre audio a été enregistré avec succès');
+            }
+
+            setRecording(null);
+        } catch (error) {
+            console.error('[ChatInput] Erreur arrêt:', error);
+        }
+    };
+
+    const toggleRecording = () => {
+        if (isRecording) {
+            stopRecording();
+        } else {
+            startRecording();
+        }
+    };
+
+    // Supprimer une image
+    const removeImage = (index: number) => {
+        setImages(images.filter((_, i) => i !== index));
+    };
+
+    // Supprimer un document
+    const removeDocument = (index: number) => {
+        setDocuments(documents.filter((_, i) => i !== index));
+    };
+
+    // Soumettre
+    const handleSubmit = () => {
+        if (!text.trim() && images.length === 0 && documents.length === 0) {
+            Alert.alert('Erreur', 'Veuillez saisir du texte ou ajouter des médias');
+            return;
+        }
+
+        const input = {
+            text: text.trim(),
+            base64_image: images.length > 0 ? images[0] : undefined,
+            images: images.length > 1 ? images.slice(1) : undefined,
+            audio_base64: audioUri,
+            doc_base64: documents.length > 0 ? documents[0] : undefined,
+            files: documents.slice(1),
+            gps_mobile: gpsData ? `${gpsData.lat},${gpsData.lng}` : undefined,
+            gps_zone: gpsData ? [gpsData] : undefined,
+            gps_fixe: gpsData ? `${gpsData.lat},${gpsData.lng}` : undefined,
+            gps_fixe_coords: gpsData ? JSON.stringify([gpsData]) : undefined,
+        };
+
+        console.log('[ChatInputMobile] Soumission:', input);
+        onSubmit(input);
+    };
+
+    return (
+        <View style={styles.container}>
+            {/* Zone de texte principale */}
+            <View style={styles.inputContainer}>
+                <TextInput
+                    style={styles.textInput}
+                    placeholder={placeholder}
+                    placeholderTextColor="#999"
+                    value={text}
+                    onChangeText={setText}
+                    multiline
+                    numberOfLines={4}
+                    textAlignVertical="top"
+                />
+            </View>
+
+            {/* Aperçu des images */}
+            {images.length > 0 && (
+                <ScrollView horizontal style={styles.previewContainer} showsHorizontalScrollIndicator={false}>
+                    {images.map((uri, index) => (
+                        <View key={index} style={styles.imagePreview}>
+                            <Image source={{ uri }} style={styles.previewImage} />
+                            <TouchableOpacity
+                                style={styles.removeButton}
+                                onPress={() => removeImage(index)}
+                            >
+                                <Text style={styles.closeIcon}>❌</Text>
+                            </TouchableOpacity>
+                        </View>
+                    ))}
+                </ScrollView>
+            )}
+
+            {/* Aperçu des documents */}
+            {documents.length > 0 && (
+                <View style={styles.documentsContainer}>
+                    {documents.map((doc, index) => (
+                        <View key={index} style={styles.documentItem}>
+                            <Text style={styles.documentIcon}>📄</Text>
+                            <Text style={styles.documentName} numberOfLines={1}>
+                                {doc.name}
+                            </Text>
+                            <TouchableOpacity onPress={() => removeDocument(index)}>
+                                <Text style={styles.closeIconSmall}>❌</Text>
+                            </TouchableOpacity>
+                        </View>
+                    ))}
+                </View>
+            )}
+
+            {/* Boutons d'action pour médias */}
+            <View style={styles.actionsContainer}>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                    {/* GPS */}
+                    <TouchableOpacity
+                        style={[styles.actionButton, gpsData && styles.actionButtonActive]}
+                        onPress={onGPSPress}
+                    >
+                        <Text style={[styles.gpsIcon, gpsData && styles.gpsIconActive]}>
+                            {gpsData ? '📍' : '📍'}
+                        </Text>
+                        <Text style={[styles.actionButtonText, gpsData && styles.actionButtonTextActive]}>
+                            GPS
+                        </Text>
+                    </TouchableOpacity>
+
+                    {/* Photo */}
+                    <TouchableOpacity style={styles.actionButton} onPress={takePhoto} disabled={loading}>
+                        <Text style={styles.actionIcon}>📷</Text>
+                        <Text style={styles.actionButtonText}>Photo</Text>
+                    </TouchableOpacity>
+
+                    {/* Image */}
+                    <TouchableOpacity style={styles.actionButton} onPress={pickImage} disabled={loading}>
+                        <Text style={styles.actionIcon}>🖼️</Text>
+                        <Text style={styles.actionButtonText}>Image</Text>
+                    </TouchableOpacity>
+
+                    {/* Audio */}
+                    <TouchableOpacity
+                        style={[styles.actionButton, isRecording && styles.actionButtonRecording]}
+                        onPress={toggleRecording}
+                        disabled={loading}
+                    >
+                        <Text style={[styles.actionIcon, isRecording && styles.actionIconRecording]}>
+                            {isRecording ? "⏹️" : "🎤"}
+                        </Text>
+                        <Text style={[styles.actionButtonText, isRecording && styles.actionButtonTextRecording]}>
+                            {isRecording ? 'Arrêter' : (audioUri ? '✓ Audio' : 'Audio')}
+                        </Text>
+                    </TouchableOpacity>
+
+                    {/* Document */}
+                    <TouchableOpacity style={styles.actionButton} onPress={pickDocument} disabled={loading}>
+                        <Text style={styles.actionIcon}>📄</Text>
+                        <Text style={styles.actionButtonText}>Fichier</Text>
+                    </TouchableOpacity>
+                </ScrollView>
+            </View>
+
+            {/* Bouton d'envoi */}
+            <TouchableOpacity
+                style={[styles.submitButton, loading && styles.submitButtonDisabled]}
+                onPress={handleSubmit}
+                disabled={loading || (!text.trim() && images.length === 0)}
+            >
+                {loading ? (
+                    <Text style={styles.submitButtonText}>Traitement...</Text>
+                ) : (
+                    <>
+                        <Text style={styles.sendIcon}>📤</Text>
+                        <Text style={styles.submitButtonText}>Envoyer</Text>
+                    </>
+                )}
+            </TouchableOpacity>
+        </View>
+    );
+};
+
+const styles = StyleSheet.create({
+    container: {
+        backgroundColor: '#FFF',
+        borderRadius: 16,
+        padding: 16,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+        elevation: 3,
+    },
+    inputContainer: {
+        marginBottom: 12,
+    },
+    textInput: {
+        fontSize: 16,
+        color: '#1A1A1A',
+        minHeight: 100,
+        textAlignVertical: 'top',
+        padding: 12,
+        backgroundColor: '#F8F9FA',
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#E0E0E0',
+    },
+    actionsContainer: {
+        marginBottom: 12,
+    },
+    actionButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 10,
+        paddingHorizontal: 16,
+        backgroundColor: '#F3F4F6',
+        borderRadius: 12,
+        marginRight: 8,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        gap: 6,
+    },
+    actionButtonActive: {
+        backgroundColor: '#6366F1',
+        borderColor: '#6366F1',
+    },
+    actionButtonRecording: {
+        backgroundColor: '#FEE2E2',
+        borderColor: '#EF4444',
+    },
+    actionButtonText: {
+        fontSize: 13,
+        color: '#6B7280',
+        fontWeight: '600',
+    },
+    actionButtonTextActive: {
+        color: '#FFF',
+    },
+    actionButtonTextRecording: {
+        color: '#EF4444',
+    },
+    previewContainer: {
+        marginBottom: 12,
+    },
+    imagePreview: {
+        position: 'relative',
+        marginRight: 12,
+    },
+    previewImage: {
+        width: 80,
+        height: 80,
+        borderRadius: 12,
+    },
+    removeButton: {
+        position: 'absolute',
+        top: -8,
+        right: -8,
+    },
+    closeIcon: {
+        fontSize: 24,
+    },
+    closeIconSmall: {
+        fontSize: 20,
+    },
+    documentIcon: {
+        fontSize: 20,
+        marginRight: 8,
+    },
+    gpsIcon: {
+        fontSize: 20,
+    },
+    gpsIconActive: {
+        color: '#4CAF50',
+    },
+    actionIcon: {
+        fontSize: 20,
+        marginRight: 4,
+    },
+    actionIconRecording: {
+        color: '#EF4444',
+    },
+    sendIcon: {
+        fontSize: 20,
+        marginRight: 4,
+    },
+    documentsContainer: {
+        marginBottom: 12,
+    },
+    documentItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#FFF9E6',
+        padding: 12,
+        borderRadius: 12,
+        marginBottom: 8,
+        gap: 8,
+    },
+    documentName: {
+        flex: 1,
+        fontSize: 14,
+        color: '#1A1A1A',
+    },
+    submitButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#6366F1',
+        paddingVertical: 16,
+        borderRadius: 12,
+        gap: 8,
+        elevation: 4,
+        shadowColor: '#6366F1',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+    },
+    submitButtonDisabled: {
+        backgroundColor: '#9CA3AF',
+        elevation: 0,
+    },
+    submitButtonText: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        color: '#FFF',
+    },
+});
+
+export default ChatInputMobile;
+

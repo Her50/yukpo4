@@ -1,7 +1,8 @@
-import { Ionicons } from '@expo/vector-icons';
+// Migration vers Lucide React Native pour un design moderne
+import { Download, Image, Images, Play, Share, Video, X } from 'lucide-react-native';
 import * as React from 'react';
 import { useState } from 'react';
-import { Alert, Dimensions, Image, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Dimensions, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Badge, Card, Paragraph, Title } from 'react-native-paper';
 import { theme } from '../theme/theme';
 
@@ -113,7 +114,7 @@ const ServiceGalleryModal: React.FC<ServiceGalleryModalProps> = ({
                 {/* Header */}
                 <View style={styles.header}>
                     <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-                        <Ionicons name="close" size={24} color={theme.colors.text} />
+                        <X size={24} color={theme.colors.text} />
                     </TouchableOpacity>
 
                     <View style={styles.headerInfo}>
@@ -123,10 +124,10 @@ const ServiceGalleryModal: React.FC<ServiceGalleryModalProps> = ({
 
                     <View style={styles.headerActions}>
                         <TouchableOpacity onPress={handleShare} style={styles.actionButton}>
-                            <Ionicons name="share" size={20} color={theme.colors.primary} />
+                            <Share size={20} color={theme.colors.primary} />
                         </TouchableOpacity>
                         <TouchableOpacity onPress={handleDownload} style={styles.actionButton}>
-                            <Ionicons name="download" size={20} color={theme.colors.primary} />
+                            <Download size={20} color={theme.colors.primary} />
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -140,13 +141,13 @@ const ServiceGalleryModal: React.FC<ServiceGalleryModalProps> = ({
                         <View style={styles.mediaTypeContainer}>
                             {images.length > 0 && (
                                 <Badge style={styles.mediaTypeBadge}>
-                                    <Ionicons name="image" size={12} color="white" />
+                                    <Image size={12} color="white" />
                                     <Text style={styles.mediaTypeText}> {images.length}</Text>
                                 </Badge>
                             )}
                             {videos.length > 0 && (
                                 <Badge style={styles.mediaTypeBadge}>
-                                    <Ionicons name="videocam" size={12} color="white" />
+                                    <Video size={12} color="white" />
                                     <Text style={styles.mediaTypeText}> {videos.length}</Text>
                                 </Badge>
                             )}
@@ -157,7 +158,7 @@ const ServiceGalleryModal: React.FC<ServiceGalleryModalProps> = ({
                 {/* Main content */}
                 {!hasMedia ? (
                     <View style={styles.emptyContainer}>
-                        <Ionicons name="images-outline" size={64} color="#9E9E9E" />
+                        <Images size={64} color="#9E9E9E" />
                         <Title style={styles.emptyTitle}>Aucun média disponible</Title>
                         <Paragraph style={styles.emptyText}>
                             Ce service ne contient pas d'images ou de vidéos pour le moment.
@@ -184,7 +185,7 @@ const ServiceGalleryModal: React.FC<ServiceGalleryModalProps> = ({
                                     />
                                     {selectedImageIndex >= images.length && (
                                         <View style={styles.videoOverlay}>
-                                            <Ionicons name="play-circle" size={48} color="rgba(255, 255, 255, 0.8)" />
+                                            <Play size={48} color="rgba(255, 255, 255, 0.8)" />
                                         </View>
                                     )}
                                 </TouchableOpacity>
@@ -215,7 +216,7 @@ const ServiceGalleryModal: React.FC<ServiceGalleryModalProps> = ({
                                         />
                                         {index >= images.length && (
                                             <View style={styles.thumbnailVideoIcon}>
-                                                <Ionicons name="videocam" size={16} color="white" />
+                                                <Video size={16} color="white" />
                                             </View>
                                         )}
                                     </TouchableOpacity>
@@ -233,11 +234,11 @@ const ServiceGalleryModal: React.FC<ServiceGalleryModalProps> = ({
 
                                 <View style={styles.mediaStats}>
                                     <View style={styles.statItem}>
-                                        <Ionicons name="image" size={16} color={theme.colors.primary} />
+                                        <Image size={16} color={theme.colors.primary} />
                                         <Text style={styles.statText}>{images.length} image{images.length > 1 ? 's' : ''}</Text>
                                     </View>
                                     <View style={styles.statItem}>
-                                        <Ionicons name="videocam" size={16} color={theme.colors.primary} />
+                                        <Video size={16} color={theme.colors.primary} />
                                         <Text style={styles.statText}>{videos.length} vidéo{videos.length > 1 ? 's' : ''}</Text>
                                     </View>
                                 </View>
@@ -427,6 +428,13 @@ const styles = StyleSheet.create({
 });
 
 export default ServiceGalleryModal;
+
+
+
+
+
+
+
 
 
 

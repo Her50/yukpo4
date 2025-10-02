@@ -1,4 +1,5 @@
-import { Ionicons } from '@expo/vector-icons';
+// Migration vers Lucide React Native pour un design moderne
+import { Check, CheckCheck, MoreVertical, Send, X } from 'lucide-react-native';
 import * as React from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
@@ -128,11 +129,11 @@ const ChatModal: React.FC<ChatModalProps> = ({
     const getStatusIcon = (status: string) => {
         switch (status) {
             case 'sent':
-                return <Ionicons name="checkmark" size={12} color="#9E9E9E" />;
+                return <Check size={12} color="#9E9E9E" />;
             case 'delivered':
-                return <Ionicons name="checkmark-done" size={12} color="#9E9E9E" />;
+                return <CheckCheck size={12} color="#9E9E9E" />;
             case 'read':
-                return <Ionicons name="checkmark-done" size={12} color="#4CAF50" />;
+                return <CheckCheck size={12} color="#4CAF50" />;
             default:
                 return null;
         }
@@ -151,7 +152,7 @@ const ChatModal: React.FC<ChatModalProps> = ({
                 {/* Header */}
                 <View style={styles.header}>
                     <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-                        <Ionicons name="close" size={24} color={theme.colors.text} />
+                        <X size={24} color={theme.colors.text} />
                     </TouchableOpacity>
 
                     <View style={styles.headerInfo}>
@@ -172,7 +173,7 @@ const ChatModal: React.FC<ChatModalProps> = ({
                     </View>
 
                     <TouchableOpacity style={styles.moreButton}>
-                        <Ionicons name="ellipsis-vertical" size={20} color={theme.colors.text} />
+                        <MoreVertical size={20} color={theme.colors.text} />
                     </TouchableOpacity>
                 </View>
 
@@ -254,7 +255,7 @@ const ChatModal: React.FC<ChatModalProps> = ({
                             style={[styles.sendButton, !newMessage.trim() && styles.sendButtonDisabled]}
                             disabled={!newMessage.trim()}
                         >
-                            <Ionicons name="send" size={20} color="white" />
+                            <Send size={20} color="white" />
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -439,6 +440,13 @@ const styles = StyleSheet.create({
 });
 
 export default ChatModal;
+
+
+
+
+
+
+
 
 
 

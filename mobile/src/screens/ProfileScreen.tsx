@@ -1,14 +1,16 @@
-﻿import { Ionicons } from '@expo/vector-icons';
+﻿// Remplacement des Ionicons par des emojis pour éviter les crashes
+import { useNavigation } from '@react-navigation/native';
 import * as React from 'react';
 import { useEffect, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { ActivityIndicator, Avatar, Button, Card, Title } from 'react-native-paper';
+import { ActivityIndicator, Avatar, Card, Title } from 'react-native-paper';
 import { useAuth } from '../contexts/AuthContext';
 import { servicesApi, userApi } from '../services/api';
 import { theme } from '../theme/theme';
 
 const ProfileScreen: React.FC = () => {
   const { user, logout } = useAuth();
+  const navigation = useNavigation();
   const [stats, setStats] = useState([
     { label: 'Services', value: '0' },
     { label: 'Clients', value: '0' },
@@ -84,11 +86,59 @@ const ProfileScreen: React.FC = () => {
     );
   };
 
+  const getActionIcon = (iconName: string) => {
+    const iconMap: { [key: string]: string } = {
+      'wallet': '💰',
+      'person-outline': '👤',
+      'settings-outline': '⚙️',
+      'help-circle-outline': '❓',
+      'information-circle-outline': 'ℹ️',
+      'shield-checkmark-outline': '🛡️',
+      'star-outline': '⭐',
+      'time-outline': '⏰',
+      'card-outline': '💳',
+      'notifications-outline': '🔔',
+      'chatbubbles-outline': '💬',
+      'analytics-outline': '📊',
+      'document-outline': '📄',
+      'camera-outline': '📷',
+      'location-outline': '📍',
+    };
+    return iconMap[iconName] || '📱';
+  };
+
   const profileActions = [
-    { title: 'Modifier le Profil', icon: 'person-outline', color: theme.colors.primary },
-    { title: 'Paramètres', icon: 'settings-outline', color: '#757575' },
-    { title: 'Support', icon: 'help-circle-outline', color: '#2196F3' },
-    { title: 'À propos', icon: 'information-circle-outline', color: '#4CAF50' },
+    {
+      title: 'Recharger Tokens',
+      icon: 'wallet',
+      color: '#EC4899',
+      route: 'RechargeTokens',
+      description: 'Ajouter des tokens à votre compte'
+    },
+    {
+      title: 'Modifier le Profil',
+      icon: 'person-outline',
+      color: theme.colors.primary,
+      route: null
+    },
+    {
+      title: 'Paramètres',
+      icon: 'settings-outline',
+      color: '#757575',
+      route: 'Settings'
+    },
+    {
+      title: 'Support',
+      icon: 'help-circle-outline',
+      color: '#2196F3',
+      route: 'Contact'
+    },
+    {
+      title: 'À propos',
+      icon: 'information-circle-outline',
+      color: '#4CAF50',
+      route: 'About'
+    },
   ];
 
   if (loading) {
@@ -113,7 +163,7 @@ const ProfileScreen: React.FC = () => {
           <Text style={styles.userName}>{user?.name || 'Utilisateur'}</Text>
           <Text style={styles.userEmail}>{user?.email || 'email@example.com'}</Text>
           <View style={styles.verificationBadge}>
-            <Ionicons name="checkmark-circle" size={16} color="#4CAF50" />
+            <Text style={styles.verificationIcon}>✅</Text>
             <Text style={styles.verificationText}>Compte vérifié</Text>
           </View>
         </View>
@@ -132,14 +182,31 @@ const ProfileScreen: React.FC = () => {
       {/* Actions du profil */}
       <View style={styles.actionsContainer}>
         {profileActions.map((action, index) => (
-          <TouchableOpacity key={index} style={styles.actionItem}>
+          <TouchableOpacity
+            key={index}
+            style={styles.actionItem}
+            onPress={() => {
+              if (action.route) {
+                (navigation as any).navigate(action.route);
+              } else if (action.title === 'Modifier le Profil') {
+                Alert.alert('Profil', 'Fonctionnalité en cours de développement');
+              }
+            }}
+          >
             <View style={styles.actionLeft}>
               <View style={[styles.actionIcon, { backgroundColor: action.color + '20' }]}>
-                <Ionicons name={action.icon as any} size={20} color={action.color} />
+                <Text style={[styles.actionIconText, { color: action.color }]}>
+                  {getActionIcon(action.icon)}
+                </Text>
               </View>
-              <Text style={styles.actionTitle}>{action.title}</Text>
+              <View>
+                <Text style={styles.actionTitle}>{action.title}</Text>
+                {action.description && (
+                  <Text style={styles.actionDescription}>{action.description}</Text>
+                )}
+              </View>
             </View>
-            <Ionicons name="chevron-forward" size={20} color={theme.colors.textSecondary} />
+            <Text style={styles.chevronIcon}>▶</Text>
           </TouchableOpacity>
         ))}
       </View>
@@ -171,7 +238,7 @@ const ProfileScreen: React.FC = () => {
           onPress={handleLogout}
           style={styles.logoutButton}
         >
-          <Ionicons name="log-out-outline" size={20} color="#DC2626" />
+          <Text style={styles.logoutIcon}>🚪</Text>
           <Text style={{ color: "#DC2626" }}>Se déconnecter</Text>
         </TouchableOpacity>
       </View>
@@ -226,6 +293,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 20,
+  },
+  verificationIcon: {
+    fontSize: 16,
+    marginRight: 4,
+  },
+  actionIconText: {
+    fontSize: 20,
+  },
+  chevronIcon: {
+    fontSize: 20,
+    color: theme.colors.textSecondary,
+  },
+  logoutIcon: {
+    fontSize: 20,
+    marginRight: 8,
   },
   verificationText: {
     color: 'white',
@@ -290,6 +372,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: theme.colors.text,
     fontWeight: '500',
+  },
+  actionDescription: {
+    fontSize: 12,
+    color: theme.colors.textSecondary,
+    marginTop: 2,
   },
   infoCard: {
     margin: 20,

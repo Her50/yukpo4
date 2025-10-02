@@ -1,22 +1,25 @@
-﻿import * as React from 'react';
-import { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  Alert,
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-} from 'react-native';
-import { TextInput, Button, Card, Title, Paragraph } from 'react-native-paper';
-import { Ionicons } from '@expo/vector-icons';
+// Écran de connexion ultra-moderne avec gradients et glassmorphism
 import { useNavigation } from '@react-navigation/native';
+import { CheckCircle, Envelope, Lock, WarningCircle } from 'phosphor-react-native';
+import * as React from 'react';
+import { useState } from 'react';
+import {
+    Alert,
+    Dimensions,
+    KeyboardAvoidingView,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
+} from 'react-native';
+import LinearGradient from 'react-native-linear-gradient';
+import { Card, Paragraph, TextInput, Title } from 'react-native-paper';
 import { useAuth } from '../../contexts/AuthContext';
-import { theme } from '../../theme/theme';
-import LogViewer from '../../components/LogViewer';
+import { modernColors, modernStyles, modernTheme } from '../../theme/modernTheme';
+
+const { width, height } = Dimensions.get('window');
 // TODO: Ajouter les packages OAuth pour React Native
 // import * as WebBrowser from 'expo-web-browser';
 // import * as Google from 'expo-auth-session/providers/google';
@@ -25,14 +28,13 @@ import LogViewer from '../../components/LogViewer';
 const LoginScreen: React.FC = () => {
   const navigation = useNavigation();
   const { login, loading } = useAuth();
-  
+
   // États du formulaire
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [showLogoutMessage, setShowLogoutMessage] = useState(false);
   const [formLoading, setFormLoading] = useState(false);
-  const [showDebug, setShowDebug] = useState(false);
 
   // TODO: Configuration OAuth (à implémenter quand les packages seront disponibles)
   // const [googleRequest, googleResponse, googlePromptAsync] = Google.useAuthRequest({...});
@@ -69,50 +71,70 @@ const LoginScreen: React.FC = () => {
 
   // Connexion classique
   const handleLogin = async () => {
+    console.log('[LoginScreen] handleLogin appelé');
+
     if (!email || !password) {
+      console.log('[LoginScreen] Champs manquants');
       setError('Veuillez remplir tous les champs');
       return;
     }
 
+    console.log('[LoginScreen] Champs remplis, démarrage connexion');
     setError(null);
     setFormLoading(true);
 
     try {
+      console.log('[LoginScreen] Tentative de connexion pour:', email);
+      console.log('[LoginScreen] Appel de login()...');
       await login(email, password);
       console.log('[LoginScreen] Connexion réussie, utilisateur défini dans AuthContext');
       // La navigation est gérée automatiquement par AppNavigator basé sur l'état user
     } catch (error: any) {
+      console.error('[LoginScreen] Erreur de connexion:', error);
+      console.error('[LoginScreen] Type d\'erreur:', typeof error);
+      console.error('[LoginScreen] Message d\'erreur:', error.message);
       setError(error.message || 'Erreur de connexion');
     } finally {
+      console.log('[LoginScreen] Fin de handleLogin, setFormLoading(false)');
       setFormLoading(false);
     }
   };
 
-  // Composant OAuth Button
-  const OAuthButton = ({ provider, onPress }: { provider: 'google' | 'facebook'; onPress: () => void }) => {
-    const isGoogle = provider === 'google';
-    const bgColor = isGoogle ? '#DB4437' : '#4267B2';
-    const iconName = isGoogle ? 'logo-google' : 'logo-facebook';
-    const label = isGoogle ? 'Google' : 'Facebook';
+      // Composant OAuth Button ultra-moderne avec gradients
+      const OAuthButton = ({ provider, onPress }: { provider: 'google' | 'facebook'; onPress: () => void }) => {
+        const isGoogle = provider === 'google';
+        const gradientColors = isGoogle ? ['#DB4437', '#EA4335'] : ['#4267B2', '#365899'];
+        const label = isGoogle ? 'Google' : 'Facebook';
 
-    return (
-      <TouchableOpacity
-        style={[styles.oauthButton, { backgroundColor: bgColor }]}
-        onPress={onPress}
-        disabled={formLoading || loading}
-      >
-        <Ionicons name={iconName} size={20} color="white" />
-        <Text style={styles.oauthButtonText}>Continuer avec {label}</Text>
-      </TouchableOpacity>
-    );
-  };
+        return (
+          <TouchableOpacity
+            onPress={onPress}
+            disabled={formLoading || loading}
+            style={styles.oauthButtonContainer}
+          >
+            <LinearGradient
+              colors={gradientColors}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.oauthButton}
+            >
+              <Envelope size={20} color="white" weight="bold" />
+              <Text style={styles.oauthButtonText}>Continuer avec {label}</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+        );
+      };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    <LinearGradient
+      colors={modernColors.primaryGradient}
+      style={styles.gradientContainer}
     >
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <KeyboardAvoidingView
+        style={styles.container}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+        <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
           <Title style={styles.title}>
             Connexion{' '}
@@ -125,24 +147,28 @@ const LoginScreen: React.FC = () => {
           </Paragraph>
         </View>
 
-        {/* Messages d'état */}
-        {showLogoutMessage && (
-          <Card style={styles.successCard}>
-            <Card.Content style={styles.successContent}>
-              <Ionicons name="checkmark-circle" size={24} color="#4CAF50" />
-              <Text style={styles.successText}>Vous êtes bien déconnecté.</Text>
-            </Card.Content>
-          </Card>
-        )}
+            {/* Messages d'état avec glassmorphism */}
+            {showLogoutMessage && (
+              <View style={styles.glassCard}>
+                <Card style={styles.successCard}>
+                  <Card.Content style={styles.successContent}>
+                    <CheckCircle size={24} color={modernColors.success} weight="fill" />
+                    <Text style={styles.successText}>Vous êtes bien déconnecté.</Text>
+                  </Card.Content>
+                </Card>
+              </View>
+            )}
 
-        {error && (
-          <Card style={styles.errorCard}>
-            <Card.Content style={styles.errorContent}>
-              <Ionicons name="alert-circle" size={24} color="#F44336" />
-              <Text style={styles.errorText}>{error}</Text>
-            </Card.Content>
-          </Card>
-        )}
+            {error && (
+              <View style={styles.glassCard}>
+                <Card style={styles.errorCard}>
+                  <Card.Content style={styles.errorContent}>
+                    <WarningCircle size={24} color={modernColors.error} weight="fill" />
+                    <Text style={styles.errorText}>{error}</Text>
+                  </Card.Content>
+                </Card>
+              </View>
+            )}
 
         {/* Boutons OAuth */}
         <View style={styles.oauthContainer}>
@@ -165,37 +191,46 @@ const LoginScreen: React.FC = () => {
         {/* Formulaire de connexion */}
         <Card style={styles.formCard}>
           <Card.Content>
-            <TextInput
-              label="Adresse email"
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoComplete="email"
-              disabled={formLoading || loading}
-              style={styles.input}
-              left={<TextInput.Icon icon="email" />}
-            />
-            
-            <TextInput
-              label="Mot de passe"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-              autoComplete="password"
-              disabled={formLoading || loading}
-              style={styles.input}
-              left={<TextInput.Icon icon="lock" />}
-            />
-            
+                <TextInput
+                  label="Adresse email"
+                  value={email}
+                  onChangeText={setEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoComplete="email"
+                  disabled={formLoading || loading}
+                  style={styles.modernInput}
+                  theme={modernTheme}
+                  left={<TextInput.Icon icon={() => <Envelope size={20} color={modernColors.primary} weight="bold" />} />}
+                />
+
+                <TextInput
+                  label="Mot de passe"
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry
+                  autoComplete="password"
+                  disabled={formLoading || loading}
+                  style={styles.modernInput}
+                  theme={modernTheme}
+                  left={<TextInput.Icon icon={() => <Lock size={20} color={modernColors.primary} weight="bold" />} />}
+                />
+
             <TouchableOpacity
               onPress={handleLogin}
               disabled={formLoading || loading}
-              style={styles.loginButton}
+              style={styles.loginButtonContainer}
             >
-              <Text style={styles.loginButtonLabel}>
-                {formLoading || loading ? 'Connexion...' : 'Se connecter'}
-              </Text>
+              <LinearGradient
+                colors={modernColors.secondaryGradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.loginButton}
+              >
+                <Text style={styles.loginButtonLabel}>
+                  {formLoading || loading ? 'Connexion...' : 'Se connecter'}
+                </Text>
+              </LinearGradient>
             </TouchableOpacity>
           </Card.Content>
         </Card>
@@ -208,23 +243,6 @@ const LoginScreen: React.FC = () => {
           </TouchableOpacity>
         </View>
 
-        {/* Bouton de debug */}
-        <TouchableOpacity 
-          style={styles.debugButton}
-          onPress={() => setShowDebug(!showDebug)}
-        >
-          <Ionicons name="bug" size={16} color="#FF8C00" />
-          <Text style={styles.debugButtonText}>
-            {showDebug ? 'Masquer' : 'Afficher'} Debug
-          </Text>
-        </TouchableOpacity>
-
-        {/* LogViewer pour debug */}
-        {showDebug && (
-          <View style={styles.debugContainer}>
-            <LogViewer />
-          </View>
-        )}
 
         {/* Informations de support */}
         <View style={styles.supportContainer}>
@@ -232,49 +250,89 @@ const LoginScreen: React.FC = () => {
             En cas de problème, contactez notre support à support@yukpo.com
           </Text>
         </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </LinearGradient>
   );
 };
 
 const styles = StyleSheet.create({
+  gradientContainer: {
+    flex: 1,
+  },
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background,
   },
   scrollContent: {
     flexGrow: 1,
-    padding: 20,
+    padding: modernStyles.spacing.lg,
     justifyContent: 'center',
   },
   header: {
     alignItems: 'center',
-    marginBottom: 30,
+    marginBottom: modernStyles.spacing.xl,
   },
   title: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: 'bold',
     textAlign: 'center',
-    marginBottom: 10,
-    color: theme.colors.text,
+    marginBottom: modernStyles.spacing.md,
+    color: 'white',
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
   },
   yukpoText: {
-    color: '#FF8C00',
+    color: '#FFD700',
   },
   subtitle: {
     textAlign: 'center',
-    color: theme.colors.textSecondary,
+    color: 'rgba(255, 255, 255, 0.9)',
     fontSize: 16,
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+  },
+  glassCard: {
+    ...modernStyles.glass,
+    borderRadius: modernStyles.borderRadius.large,
+    marginBottom: modernStyles.spacing.md,
+  },
+  modernInput: {
+    marginBottom: modernStyles.spacing.md,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderRadius: modernStyles.borderRadius.medium,
+  },
+  oauthButtonContainer: {
+    flex: 1,
+    marginHorizontal: modernStyles.spacing.xs,
+  },
+  oauthButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: modernStyles.spacing.md,
+    paddingHorizontal: modernStyles.spacing.lg,
+    borderRadius: modernStyles.borderRadius.medium,
+    gap: modernStyles.spacing.sm,
+  },
+  loginButtonContainer: {
+    marginTop: modernStyles.spacing.sm,
+  },
+  loginButton: {
+    paddingVertical: modernStyles.spacing.md,
+    paddingHorizontal: modernStyles.spacing.xl,
+    borderRadius: modernStyles.borderRadius.medium,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 48,
   },
   bold: {
     fontWeight: 'bold',
-    color: theme.colors.text,
+    color: 'white',
   },
   successCard: {
-    marginBottom: 16,
-    backgroundColor: '#E8F5E8',
-    borderColor: '#4CAF50',
-    borderWidth: 1,
+    backgroundColor: 'transparent',
   },
   successContent: {
     flexDirection: 'row',
@@ -283,14 +341,11 @@ const styles = StyleSheet.create({
   },
   successText: {
     marginLeft: 8,
-    color: '#4CAF50',
+    color: modernColors.success,
     fontWeight: '500',
   },
   errorCard: {
-    marginBottom: 16,
-    backgroundColor: '#FFEBEE',
-    borderColor: '#F44336',
-    borderWidth: 1,
+    backgroundColor: 'transparent',
   },
   errorContent: {
     flexDirection: 'row',
@@ -299,24 +354,14 @@ const styles = StyleSheet.create({
   },
   errorText: {
     marginLeft: 8,
-    color: '#F44336',
+    color: modernColors.error,
     fontWeight: '500',
   },
   oauthContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 20,
-    gap: 10,
-  },
-  oauthButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    gap: 8,
+    marginBottom: modernStyles.spacing.lg,
+    gap: modernStyles.spacing.sm,
   },
   oauthButtonText: {
     color: 'white',
@@ -326,36 +371,24 @@ const styles = StyleSheet.create({
   divider: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: 20,
+    marginVertical: modernStyles.spacing.lg,
   },
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: theme.colors.border,
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
   },
   dividerText: {
-    marginHorizontal: 16,
-    color: theme.colors.textSecondary,
+    marginHorizontal: modernStyles.spacing.md,
+    color: 'rgba(255, 255, 255, 0.8)',
     fontSize: 14,
-    backgroundColor: theme.colors.background,
-    paddingHorizontal: 8,
+    backgroundColor: 'transparent',
+    paddingHorizontal: modernStyles.spacing.sm,
   },
   formCard: {
-    marginBottom: 20,
-  },
-  input: {
-    marginBottom: 16,
-    backgroundColor: theme.colors.surface,
-  },
-  loginButton: {
-    marginTop: 8,
-    backgroundColor: '#4CAF50',
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 48,
+    marginBottom: modernStyles.spacing.lg,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: modernStyles.borderRadius.large,
   },
   loginButtonLabel: {
     fontSize: 16,
@@ -366,49 +399,27 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: modernStyles.spacing.lg,
   },
   footerText: {
-    color: theme.colors.textSecondary,
+    color: 'rgba(255, 255, 255, 0.8)',
     fontSize: 14,
   },
   footerLink: {
-    color: theme.colors.primary,
+    color: '#FFD700',
     fontSize: 14,
     fontWeight: '600',
     textDecorationLine: 'underline',
   },
   supportContainer: {
     alignItems: 'center',
-    marginTop: 20,
+    marginTop: modernStyles.spacing.lg,
   },
   supportText: {
     fontSize: 12,
-    color: theme.colors.textSecondary,
+    color: 'rgba(255, 255, 255, 0.7)',
     textAlign: 'center',
     fontStyle: 'italic',
-  },
-  debugButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    backgroundColor: '#FFF3E0',
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: '#FF8C00',
-    marginBottom: 15,
-  },
-  debugButtonText: {
-    marginLeft: 6,
-    color: '#FF8C00',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  debugContainer: {
-    marginBottom: 15,
-    maxHeight: 300,
   },
 });
 

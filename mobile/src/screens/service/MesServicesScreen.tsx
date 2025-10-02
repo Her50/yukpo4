@@ -3,9 +3,10 @@ import { useNavigation } from '@react-navigation/native';
 import * as React from "react";
 import { useEffect, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { ActivityIndicator, Button, Card, Paragraph, Title } from 'react-native-paper';
+import { ActivityIndicator, Card, Paragraph, Title } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../contexts/AuthContext';
+import { servicesApi } from '../../services/api';
 import { theme } from '../../theme/theme';
 
 interface Service {
@@ -31,31 +32,38 @@ const MesServicesScreen: React.FC = () => {
     const loadServices = async () => {
         try {
             setLoading(true);
-            // Simuler le chargement des services
-            const mockServices: Service[] = [
-                {
-                    id: '1',
-                    title: 'Réparation plomberie',
-                    description: 'Service de réparation de plomberie à domicile',
-                    status: 'active',
-                    createdAt: '2024-01-15',
-                    views: 45,
-                    interactions: 12
-                },
-                {
-                    id: '2',
-                    title: 'Cours de mathématiques',
-                    description: 'Cours particuliers de mathématiques niveau lycée',
-                    status: 'active',
-                    createdAt: '2024-01-10',
-                    views: 23,
-                    interactions: 8
-                }
-            ];
-            setServices(mockServices);
-        } catch (error) {
-            console.error('Erreur chargement services:', error);
-            Alert.alert('Erreur', 'Impossible de charger vos services');
+            console.log('[MesServices] Chargement des services...');
+
+            // Charger les vraies données depuis l'API
+            const response = await servicesApi.getUserServices();
+
+            console.log('[MesServices] Réponse API:', response);
+
+            if (response.success && response.data) {
+                const servicesData = Array.isArray(response.data) ? response.data : [];
+
+                // Convertir au format Service
+                const formattedServices: Service[] = servicesData.map((service: any) => ({
+                    id: service.id?.toString() || '',
+                    title: service.titre || service.title || 'Sans titre',
+                    description: service.description || '',
+                    status: service.is_active ? 'active' : 'inactive',
+                    createdAt: service.created_at || new Date().toISOString(),
+                    views: service.views || 0,
+                    interactions: service.interactions || 0,
+                }));
+
+                console.log('[MesServices] Services formatés:', formattedServices.length);
+                setServices(formattedServices);
+            } else {
+                console.warn('[MesServices] Aucun service trouvé');
+                setServices([]);
+            }
+        } catch (error: any) {
+            console.error('[MesServices] Erreur chargement services:', error);
+            console.error('[MesServices] Détails:', error.message);
+            setServices([]);
+            // Ne pas afficher d'alerte pour ne pas bloquer l'utilisateur
         } finally {
             setLoading(false);
         }

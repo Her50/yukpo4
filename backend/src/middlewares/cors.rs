@@ -93,31 +93,45 @@ pub async fn cors_middleware(
         allow_credentials: true,
     };
     
-    // Configuration CORS ultra-permissive pour résoudre tous les problèmes
+    // Configuration CORS corrigée pour les applications mobiles
     if let Some(origin) = origin {
         let origin_str = origin.to_str().unwrap_or("");
         println!("[CORS DEBUG] Origin reçu: {}", origin_str);
         
-        // Accepter TOUS les origins pour le moment (temporaire pour debug)
-        response.headers_mut().insert(
-            "access-control-allow-origin",
-            origin,
-        );
+        // Vérifier si l'origin est dans la liste autorisée
+        if config.allowed_origins.contains(&origin_str.to_string()) || 
+           origin_str.starts_with("http://localhost") || 
+           origin_str.starts_with("https://localhost") ||
+           origin_str == "capacitor://localhost" ||
+           origin_str == "ionic://localhost" {
+            response.headers_mut().insert(
+                "access-control-allow-origin",
+                origin,
+            );
+            response.headers_mut().insert(
+                "access-control-allow-credentials",
+                HeaderValue::from_static("true"),
+            );
+        } else {
+            // Origin non autorisé, utiliser wildcard sans credentials
+            response.headers_mut().insert(
+                "access-control-allow-origin",
+                HeaderValue::from_static("*"),
+            );
+        }
     } else {
-        // CORRECTION : Permettre les requêtes sans origin (applications mobiles natives)
-        // Les applications mobiles React Native/Expo n'envoient pas d'origin header
-        println!("[CORS DEBUG] Aucun origin header - utilisation de wildcard");
+        // CORRECTION : Pour les applications mobiles sans origin header
+        // Utiliser une origine spécifique au lieu de wildcard
+        println!("[CORS DEBUG] Aucun origin header - application mobile détectée");
         response.headers_mut().insert(
             "access-control-allow-origin",
-            HeaderValue::from_static("*"),
+            HeaderValue::from_static("https://yukpomnang.onrender.com"),
+        );
+        response.headers_mut().insert(
+            "access-control-allow-credentials",
+            HeaderValue::from_static("true"),
         );
     }
-    
-    // Headers CORS standards - Note: allow_credentials ne peut pas être true avec origin *
-    // response.headers_mut().insert(
-    //     "access-control-allow-credentials",
-    //     HeaderValue::from_static("true"),
-    // );
     
     response.headers_mut().insert(
         "access-control-allow-methods",

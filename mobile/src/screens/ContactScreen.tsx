@@ -1,11 +1,11 @@
 ﻿import * as React from 'react';
-import { TouchableOpacity } from 'react-native';
 import { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Alert } from 'react-native';
+import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Card, Paragraph, TextInput, Title } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Card, Title, Paragraph, Button, TextInput, ActivityIndicator } from 'react-native-paper';
-import { Ionicons } from '@expo/vector-icons';
+// Migration vers Lucide React Native pour un design moderne
 import { useNavigation } from '@react-navigation/native';
+import { Clock, Mail, MapPin, Phone } from 'lucide-react-native';
 import { theme } from '../theme/theme';
 
 interface ContactForm {
@@ -16,10 +16,10 @@ interface ContactForm {
 
 const ContactScreen: React.FC = () => {
   const navigation = useNavigation();
-  const [form, setForm] = useState<ContactForm>({ 
-    nom: '', 
-    email: '', 
-    message: '' 
+  const [form, setForm] = useState<ContactForm>({
+    nom: '',
+    email: '',
+    message: ''
   });
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -35,14 +35,14 @@ const ContactScreen: React.FC = () => {
     }
 
     try {
-    setLoading(true);
-      
+      setLoading(true);
+
       // Simuler l'envoi du formulaire
       await new Promise(resolve => setTimeout(resolve, 2000));
-      
-    setSuccess(true);
+
+      setSuccess(true);
       setForm({ nom: '', email: '', message: '' });
-      
+
       Alert.alert(
         'Message envoyé',
         'Votre message a été envoyé avec succès. Nous vous répondrons dans les plus brefs délais.',
@@ -57,7 +57,7 @@ const ContactScreen: React.FC = () => {
       console.error('Erreur envoi message:', error);
       Alert.alert('Erreur', 'Impossible d\'envoyer le message. Veuillez réessayer.');
     } finally {
-    setLoading(false);
+      setLoading(false);
     }
   };
 
@@ -68,9 +68,9 @@ const ContactScreen: React.FC = () => {
         <View style={styles.header}>
           <Title style={styles.title}>📬 Contactez-nous</Title>
           <Paragraph style={styles.subtitle}>
-              Une question ? Une collaboration ? Écrivez-nous simplement ici.
+            Une question ? Une collaboration ? Écrivez-nous simplement ici.
           </Paragraph>
-          </View>
+        </View>
 
         {/* Formulaire de contact */}
         <Card style={styles.formCard}>
@@ -98,7 +98,7 @@ const ContactScreen: React.FC = () => {
 
               <TextInput
                 label="Votre message *"
-              value={form.message}
+                value={form.message}
                 onChangeText={(text) => handleChange('message', text)}
                 style={styles.messageInput}
                 mode="outlined"
@@ -125,9 +125,9 @@ const ContactScreen: React.FC = () => {
         <Card style={styles.infoCard}>
           <Card.Content>
             <Title style={styles.infoTitle}>Autres moyens de contact</Title>
-            
+
             <View style={styles.contactItem}>
-              <Ionicons name="mail" size={24} color={theme.colors.primary} />
+              <Mail size={24} color={theme.colors.primary} />
               <View style={styles.contactInfo}>
                 <Text style={styles.contactLabel}>Email</Text>
                 <Text style={styles.contactValue}>contact@yukpomnang.com</Text>
@@ -135,7 +135,7 @@ const ContactScreen: React.FC = () => {
             </View>
 
             <View style={styles.contactItem}>
-              <Ionicons name="phone" size={24} color={theme.colors.primary} />
+              <Phone size={24} color={theme.colors.primary} />
               <View style={styles.contactInfo}>
                 <Text style={styles.contactLabel}>Téléphone</Text>
                 <Text style={styles.contactValue}>+237 6XX XXX XXX</Text>
@@ -143,7 +143,7 @@ const ContactScreen: React.FC = () => {
             </View>
 
             <View style={styles.contactItem}>
-              <Ionicons name="location" size={24} color={theme.colors.primary} />
+              <MapPin size={24} color={theme.colors.primary} />
               <View style={styles.contactInfo}>
                 <Text style={styles.contactLabel}>Adresse</Text>
                 <Text style={styles.contactValue}>
@@ -153,7 +153,7 @@ const ContactScreen: React.FC = () => {
             </View>
 
             <View style={styles.contactItem}>
-              <Ionicons name="time" size={24} color={theme.colors.primary} />
+              <Clock size={24} color={theme.colors.primary} />
               <View style={styles.contactInfo}>
                 <Text style={styles.contactLabel}>Horaires</Text>
                 <Text style={styles.contactValue}>
@@ -168,7 +168,7 @@ const ContactScreen: React.FC = () => {
         <Card style={styles.faqCard}>
           <Card.Content>
             <Title style={styles.faqTitle}>Questions fréquentes</Title>
-            
+
             <View style={styles.faqItem}>
               <Text style={styles.faqQuestion}>
                 Comment puis-je créer un service sur Yukpo ?

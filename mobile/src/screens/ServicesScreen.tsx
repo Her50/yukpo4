@@ -1,8 +1,9 @@
-﻿import { Ionicons } from '@expo/vector-icons';
+﻿// Migration vers Lucide React Native pour un design moderne
+import { DollarSign, MapPin, Plus, Star, User } from 'lucide-react-native';
 import * as React from 'react';
 import { useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { Button, Card, Paragraph, Searchbar, Title } from 'react-native-paper';
+import { Card, Paragraph, Searchbar, Title } from 'react-native-paper';
 import { theme } from '../theme/theme';
 
 const ServicesScreen: React.FC = () => {
@@ -19,8 +20,8 @@ const ServicesScreen: React.FC = () => {
   ];
 
   const services = [
-        {
-          id: 1,
+    {
+      id: 1,
       title: 'Plomberie Express',
       category: 'home',
       description: 'Réparation rapide de fuites et installations',
@@ -28,9 +29,9 @@ const ServicesScreen: React.FC = () => {
       rating: 4.8,
       provider: 'Jean Dupont',
       location: 'Paris 15e',
-        },
-        {
-          id: 2,
+    },
+    {
+      id: 2,
       title: 'Cours de Mathématiques',
       category: 'education',
       description: 'Soutien scolaire niveau collège et lycée',
@@ -98,8 +99,7 @@ const ServicesScreen: React.FC = () => {
               ]}
               onPress={() => setSelectedCategory(category.id)}
             >
-              <Ionicons
-                name={category.icon as any}
+              <Star
                 size={20}
                 color={selectedCategory === category.id ? 'white' : theme.colors.primary}
               />
@@ -128,13 +128,13 @@ const ServicesScreen: React.FC = () => {
           <Text style={styles.statNumber}>24h</Text>
           <Text style={styles.statLabel}>Disponibilité</Text>
         </View>
-          </View>
+      </View>
 
       {/* Liste des services */}
       <View style={styles.servicesContainer}>
         <Text style={styles.sectionTitle}>
           {filteredServices.length} service{filteredServices.length > 1 ? 's' : ''} trouvé{filteredServices.length > 1 ? 's' : ''}
-            </Text>
+        </Text>
 
         {filteredServices.map((service) => (
           <Card key={service.id} style={styles.serviceCard}>
@@ -147,25 +147,25 @@ const ServicesScreen: React.FC = () => {
                   </Paragraph>
                 </View>
                 <View style={styles.serviceRating}>
-                  <Ionicons name="star" size={16} color="#FFD700" />
+                  <Star size={16} color="#FFD700" fill="#FFD700" />
                   <Text style={styles.ratingText}>{service.rating}</Text>
                 </View>
               </View>
 
               <View style={styles.serviceDetails}>
                 <View style={styles.serviceDetail}>
-                  <Ionicons name="person-outline" size={16} color={theme.colors.textSecondary} />
+                  <User size={16} color={theme.colors.textSecondary} />
                   <Text style={styles.detailText}>{service.provider}</Text>
                 </View>
                 <View style={styles.serviceDetail}>
-                  <Ionicons name="location-outline" size={16} color={theme.colors.textSecondary} />
+                  <MapPin size={16} color={theme.colors.textSecondary} />
                   <Text style={styles.detailText}>{service.location}</Text>
                 </View>
                 <View style={styles.serviceDetail}>
-                  <Ionicons name="cash-outline" size={16} color={theme.colors.primary} />
+                  <DollarSign size={16} color={theme.colors.primary} />
                   <Text style={[styles.detailText, styles.priceText]}>{service.price}</Text>
-          </View>
-        </View>
+                </View>
+              </View>
 
               <View style={styles.serviceActions}>
                 <TouchableOpacity
@@ -186,17 +186,17 @@ const ServicesScreen: React.FC = () => {
                 >
                   <Text>Contacter</Text>
                 </TouchableOpacity>
-                </View>
+              </View>
             </Card.Content>
           </Card>
         ))}
-        </View>
+      </View>
 
       {/* Call to action */}
       <View style={styles.ctaContainer}>
         <Card style={styles.ctaCard}>
           <Card.Content style={styles.ctaContent}>
-            <Ionicons name="add-circle" size={48} color={theme.colors.primary} />
+            <Plus size={48} color={theme.colors.primary} />
             <Title style={styles.ctaTitle}>Vous proposez un service ?</Title>
             <Paragraph style={styles.ctaDescription}>
               Rejoignez notre plateforme et commencez à proposer vos services dès aujourd'hui.
@@ -212,7 +212,7 @@ const ServicesScreen: React.FC = () => {
             </TouchableOpacity>
           </Card.Content>
         </Card>
-        </View>
+      </View>
     </ScrollView>
   );
 };

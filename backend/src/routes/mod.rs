@@ -11,6 +11,9 @@ pub mod history_routes;
 pub mod payment_routes;
 pub mod webhook_routes;
 pub mod image_search_routes;
+pub mod weather_routes;
+pub mod nearby_services_routes;
+pub mod ai_chat_routes;
 
 // === Routes d'Optimisation IA ===
 // pub mod ia_routes_optimized; // Temporairement d?sactiv?

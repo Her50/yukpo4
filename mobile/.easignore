@@ -1,0 +1,13 @@
+# Fichiers web incompatibles avec React Native à ignorer pendant le build
+src/screens/VideoCall.tsx
+src/screens/VideoIntelligenceScreen.tsx
+src/screens/VitrineGenerator.tsx
+src/screens/VoicePanel.tsx
+src/screens/YukAIGateway.tsx
+src/screens/YukpoIaHub.tsx
+
+# Composants utilisant Material-UI ou Tailwind (web only)
+src/components/AdvancedGeospatialSearch.tsx
+src/screens/ServiceView.tsx
+
+

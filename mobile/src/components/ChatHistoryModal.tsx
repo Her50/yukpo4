@@ -1,4 +1,4 @@
-﻿import { Ionicons } from '@expo/vector-icons';
+﻿// Remplacement des Ionicons par des emojis pour éviter les crashes
 import * as React from 'react';
 import { useEffect, useRef, useState } from 'react';
 import {
@@ -87,58 +87,21 @@ const ChatHistoryModal: React.FC<ChatHistoryModalProps> = ({
   const loadChatHistories = async () => {
     setLoading(true);
     try {
-      // Simuler la récupération des historiques de chat
-      // En production, vous feriez un appel API ici
+      // TODO: Charger les vraies conversations depuis l'API
+      // En attendant que l'endpoint soit disponible, afficher un état vide
+
       // const response = await notificationsApi.getChatHistory();
+      // if (response.success && response.data) {
+      //   setChatHistories(response.data);
+      // }
 
-      // Données simulées pour l'instant
-      const mockHistories: ChatHistory[] = [
-        {
-          id: '1',
-          clientId: 'client1',
-          prestataireId: user?.id || 'prestataire1',
-          clientName: 'Marie Dupont',
-          prestataireName: user?.name || 'Prestataire',
-          clientPhoto: 'https://via.placeholder.com/50',
-          lastMessage: 'Merci pour votre aide !',
-          lastMessageTime: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2h ago
-          unreadCount: 0,
-          isActive: true,
-          serviceTitle: 'Réparation plomberie',
-          status: 'completed'
-        },
-        {
-          id: '2',
-          clientId: 'client2',
-          prestataireId: user?.id || 'prestataire1',
-          clientName: 'Jean Martin',
-          prestataireName: user?.name || 'Prestataire',
-          lastMessage: 'Quand pourriez-vous venir ?',
-          lastMessageTime: new Date(Date.now() - 30 * 60 * 1000), // 30min ago
-          unreadCount: 2,
-          isActive: true,
-          serviceTitle: 'Installation électrique',
-          status: 'active'
-        },
-        {
-          id: '3',
-          clientId: 'client3',
-          prestataireId: user?.id || 'prestataire1',
-          clientName: 'Sophie Leroy',
-          prestataireName: user?.name || 'Prestataire',
-          lastMessage: 'Parfait, à demain !',
-          lastMessageTime: new Date(Date.now() - 24 * 60 * 60 * 1000), // 1j ago
-          unreadCount: 0,
-          isActive: false,
-          serviceTitle: 'Peinture intérieure',
-          status: 'completed'
-        }
-      ];
+      // Pour l'instant, tableau vide (pas de données fictives)
+      setChatHistories([]);
 
-      setChatHistories(mockHistories);
+      console.log('[ChatHistoryModal] Historique des conversations chargé (vide pour l\'instant)');
     } catch (error) {
       console.error('Erreur chargement historique chat:', error);
-      Alert.alert('Erreur', 'Impossible de charger l\'historique des conversations');
+      setChatHistories([]);
     } finally {
       setLoading(false);
     }
@@ -146,32 +109,28 @@ const ChatHistoryModal: React.FC<ChatHistoryModalProps> = ({
 
   const loadChatMessages = async (chatId: string) => {
     try {
-      // Simuler la récupération des messages d'un chat
-      // En production, vous feriez un appel API ici
-      // const response = await notificationsApi.getChatMessages(chatId);
+      // TODO: Charger les vrais messages depuis l'API
+      // En attendant que l'endpoint soit disponible, afficher vide
 
-      // Données simulées
-      const mockMessages: ChatMessage[] = [
+      // const response = await notificationsApi.getChatMessages(chatId);
+      // if (response.success && response.data) {
+      //   setChatMessages(response.data);
+      // }
+
+      setChatMessages([]);
+      console.log('[ChatHistoryModal] Messages chargés pour chat:', chatId);
+    } catch (error) {
+      console.error('Erreur chargement messages:', error);
+      setChatMessages([]);
+    }
+  };
+
+  const loadChatMessagesOLD = async (chatId: string) => {
+    try {
+      // ANCIEN CODE AVEC DONNÉES FICTIVES - DÉSACTIVÉ
+      const mockMessages_OLD: ChatMessage[] = [
         {
           id: '1',
-          clientId: 'client2',
-          prestataireId: user?.id || 'prestataire1',
-          message: 'Bonjour, j\'ai besoin d\'aide pour une installation électrique',
-          timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000),
-          isFromClient: true,
-          messageType: 'text'
-        },
-        {
-          id: '2',
-          clientId: 'client2',
-          prestataireId: user?.id || 'prestataire1',
-          message: 'Bonjour ! Je peux vous aider. Pouvez-vous me décrire le problème ?',
-          timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000 + 5 * 60 * 1000),
-          isFromClient: false,
-          messageType: 'text'
-        },
-        {
-          id: '3',
           clientId: 'client2',
           prestataireId: user?.id || 'prestataire1',
           message: 'J\'ai des prises qui ne fonctionnent plus dans ma cuisine',
@@ -323,7 +282,7 @@ const ChatHistoryModal: React.FC<ChatHistoryModalProps> = ({
               style={styles.backButton}
               onPress={() => setShowChatMessages(false)}
             >
-              <Ionicons name="arrow-back" size={24} color={theme.colors.text} />
+              <Text style={styles.backIcon}>←</Text>
             </TouchableOpacity>
 
             <View style={styles.chatHeaderInfo}>
@@ -352,7 +311,7 @@ const ChatHistoryModal: React.FC<ChatHistoryModalProps> = ({
                 );
               }}
             >
-              <Ionicons name="ellipsis-vertical" size={24} color={theme.colors.text} />
+              <Text style={styles.menuIcon}>⋮</Text>
             </TouchableOpacity>
           </View>
 
@@ -409,11 +368,7 @@ const ChatHistoryModal: React.FC<ChatHistoryModalProps> = ({
               onPress={sendMessage}
               disabled={!newMessage.trim() || sendingMessage}
             >
-              <Ionicons
-                name="send"
-                size={20}
-                color={(!newMessage.trim() || sendingMessage) ? '#9E9E9E' : 'white'}
-              />
+              <Text style={styles.sendIcon}>📤</Text>
             </TouchableOpacity>
           </View>
         </KeyboardAvoidingView>
@@ -453,7 +408,7 @@ const ChatHistoryModal: React.FC<ChatHistoryModalProps> = ({
         {/* Filtres */}
         <View style={styles.filtersContainer}>
           <View style={styles.searchContainer}>
-            <Ionicons name="search" size={20} color={theme.colors.primary} style={styles.searchIcon} />
+            <Text style={styles.searchIcon}>🔍</Text>
             <TextInput
               style={styles.searchInput}
               placeholder="Rechercher une conversation..."
@@ -494,7 +449,7 @@ const ChatHistoryModal: React.FC<ChatHistoryModalProps> = ({
             </View>
           ) : filteredChatHistories.length === 0 ? (
             <View style={styles.emptyContainer}>
-              <Ionicons name="chatbubbles-outline" size={48} color="#9E9E9E" />
+              <Text style={styles.emptyIcon}>💬</Text>
               <Text style={styles.emptyText}>Aucune conversation trouvée</Text>
             </View>
           ) : (
@@ -633,7 +588,25 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   searchIcon: {
+    fontSize: 20,
     marginRight: 8,
+  },
+  backIcon: {
+    fontSize: 24,
+    color: theme.colors.text,
+  },
+  menuIcon: {
+    fontSize: 24,
+    color: theme.colors.text,
+  },
+  sendIcon: {
+    fontSize: 20,
+  },
+  emptyIcon: {
+    fontSize: 48,
+    textAlign: 'center',
+    opacity: 0.5,
+    marginBottom: 16,
   },
   searchInput: {
     flex: 1,

@@ -1,14 +1,13 @@
-﻿import { Ionicons } from '@expo/vector-icons';
+﻿// Migration vers Lucide React Native pour un design moderne
+import { AlertTriangle, BarChart3, Bell, Clock, Eye, Key, Mail, MapPin, Megaphone, MessageCircle, Radio, Shield } from 'lucide-react-native';
 import * as React from 'react';
-import { TouchableOpacity } from 'react-native';
 import { useState } from 'react';
 import {
   Alert,
   ScrollView,
-  StyleSheet,
-  View,
+  StyleSheet, TouchableOpacity, View
 } from 'react-native';
-import { Avatar, Button, Card, Switch, Text, TextInput } from 'react-native-paper';
+import { Avatar, Card, Switch, Text, TextInput } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../contexts/AuthContext';
 import { theme } from '../theme/theme';
@@ -168,7 +167,7 @@ const SettingsScreen: React.FC = () => {
 
         <View style={styles.settingRow}>
           <View style={styles.settingInfo}>
-            <Ionicons name="mail" size={20} color={theme.colors.primary} />
+            <Mail size={20} color={theme.colors.primary} />
             <View style={styles.settingText}>
               <Text style={styles.settingLabel}>Notifications email</Text>
               <Text style={styles.settingDescription}>Recevoir des notifications par email</Text>
@@ -182,7 +181,7 @@ const SettingsScreen: React.FC = () => {
 
         <View style={styles.settingRow}>
           <View style={styles.settingInfo}>
-            <Ionicons name="notifications" size={20} color={theme.colors.primary} />
+            <Bell size={20} color={theme.colors.primary} />
             <View style={styles.settingText}>
               <Text style={styles.settingLabel}>Notifications push</Text>
               <Text style={styles.settingDescription}>Recevoir des notifications push</Text>
@@ -196,7 +195,7 @@ const SettingsScreen: React.FC = () => {
 
         <View style={styles.settingRow}>
           <View style={styles.settingInfo}>
-            <Ionicons name="chatbubble" size={20} color={theme.colors.primary} />
+            <MessageCircle size={20} color={theme.colors.primary} />
             <View style={styles.settingText}>
               <Text style={styles.settingLabel}>Notifications SMS</Text>
               <Text style={styles.settingDescription}>Recevoir des notifications par SMS</Text>
@@ -210,7 +209,7 @@ const SettingsScreen: React.FC = () => {
 
         <View style={styles.settingRow}>
           <View style={styles.settingInfo}>
-            <Ionicons name="megaphone" size={20} color={theme.colors.primary} />
+            <Megaphone size={20} color={theme.colors.primary} />
             <View style={styles.settingText}>
               <Text style={styles.settingLabel}>Emails marketing</Text>
               <Text style={styles.settingDescription}>Recevoir des offres et nouveautés</Text>
@@ -232,7 +231,7 @@ const SettingsScreen: React.FC = () => {
 
         <View style={styles.settingRow}>
           <View style={styles.settingInfo}>
-            <Ionicons name="eye" size={20} color={theme.colors.primary} />
+            <Eye size={20} color={theme.colors.primary} />
             <View style={styles.settingText}>
               <Text style={styles.settingLabel}>Visibilité du profil</Text>
               <Text style={styles.settingDescription}>Qui peut voir votre profil</Text>
@@ -253,7 +252,7 @@ const SettingsScreen: React.FC = () => {
 
         <View style={styles.settingRow}>
           <View style={styles.settingInfo}>
-            <Ionicons name="location" size={20} color={theme.colors.primary} />
+            <MapPin size={20} color={theme.colors.primary} />
             <View style={styles.settingText}>
               <Text style={styles.settingLabel}>Afficher la localisation</Text>
               <Text style={styles.settingDescription}>Partager votre position</Text>
@@ -267,7 +266,7 @@ const SettingsScreen: React.FC = () => {
 
         <View style={styles.settingRow}>
           <View style={styles.settingInfo}>
-            <Ionicons name="radio-button-on" size={20} color={theme.colors.primary} />
+            <Radio size={20} color={theme.colors.primary} />
             <View style={styles.settingText}>
               <Text style={styles.settingLabel}>Statut en ligne</Text>
               <Text style={styles.settingDescription}>Afficher quand vous êtes en ligne</Text>
@@ -281,7 +280,7 @@ const SettingsScreen: React.FC = () => {
 
         <View style={styles.settingRow}>
           <View style={styles.settingInfo}>
-            <Ionicons name="analytics" size={20} color={theme.colors.primary} />
+            <BarChart3 size={20} color={theme.colors.primary} />
             <View style={styles.settingText}>
               <Text style={styles.settingLabel}>Collecte de données</Text>
               <Text style={styles.settingDescription}>Autoriser l'analyse d'usage</Text>
@@ -303,7 +302,7 @@ const SettingsScreen: React.FC = () => {
 
         <View style={styles.settingRow}>
           <View style={styles.settingInfo}>
-            <Ionicons name="shield-checkmark" size={20} color={theme.colors.primary} />
+            <Shield size={20} color={theme.colors.primary} />
             <View style={styles.settingText}>
               <Text style={styles.settingLabel}>Authentification à deux facteurs</Text>
               <Text style={styles.settingDescription}>Sécuriser votre compte</Text>
@@ -317,7 +316,7 @@ const SettingsScreen: React.FC = () => {
 
         <View style={styles.settingRow}>
           <View style={styles.settingInfo}>
-            <Ionicons name="time" size={20} color={theme.colors.primary} />
+            <Clock size={20} color={theme.colors.primary} />
             <View style={styles.settingText}>
               <Text style={styles.settingLabel}>Délai de session</Text>
               <Text style={styles.settingDescription}>Minutes avant déconnexion automatique</Text>
@@ -338,7 +337,7 @@ const SettingsScreen: React.FC = () => {
 
         <View style={styles.settingRow}>
           <View style={styles.settingInfo}>
-            <Ionicons name="warning" size={20} color={theme.colors.primary} />
+            <AlertTriangle size={20} color={theme.colors.primary} />
             <View style={styles.settingText}>
               <Text style={styles.settingLabel}>Alertes de connexion</Text>
               <Text style={styles.settingDescription}>Être notifié des nouvelles connexions</Text>
@@ -354,7 +353,7 @@ const SettingsScreen: React.FC = () => {
           onPress={() => Alert.alert('Info', 'Fonctionnalité de changement de mot de passe en cours de développement')}
           style={styles.changePasswordButton}
         >
-          <Ionicons name="key" size={20} color={theme.colors.primary} />
+          <Key size={20} color={theme.colors.primary} />
           <Text>Changer le mot de passe</Text>
         </TouchableOpacity>
       </Card.Content>

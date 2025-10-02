@@ -1,49 +1,50 @@
-﻿import Ionicons from '@expo/vector-icons/Ionicons';
+// Navigation ultra-moderne avec Phosphor Icons et gradients
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
-import * as React from 'react';
+import { Briefcase, ChartBar, Clock, House, User } from 'phosphor-react-native';
+import React from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { modernColors, modernStyles } from '../theme/modernTheme';
 
 // Contexts
 import { useAuth } from '../contexts/AuthContext';
 
 // Screens
-import AboutScreen from '../screens/AboutScreen';
-import ContactScreen from '../screens/ContactScreen';
 import DashboardPrestataireScreen from '../screens/DashboardPrestataireScreen';
-import FormulaireYukpoIntelligentScreen from '../screens/FormulaireYukpoIntelligentScreen';
-import HomeScreen from '../screens/HomeScreen';
-import MesServicesScreen from '../screens/MesServicesScreen';
+import ModernHomeScreen from '../screens/ModernHomeScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import RechargeTokensScreen from '../screens/RechargeTokensScreen';
-import RechercheBesoinScreen from '../screens/RechercheBesoinScreen';
-import ResultatBesoinScreen from '../screens/ResultatBesoinScreen';
-import ServicesScreen from '../screens/ServicesScreen';
-import SettingsScreen from '../screens/SettingsScreen';
-import SoldeDetailScreen from '../screens/SoldeDetailScreen';
+import MyServicesScreen from '../screens/service/MyServicesScreen';
+
+// Autres écrans (pour la navigation secondaire)
+import AboutScreen from '../screens/AboutScreen';
 import AIChatScreen from '../screens/ai/AIChatScreen';
 import AIHubScreen from '../screens/ai/AIHubScreen';
-import LoginScreen from '../screens/auth/LoginScreen';
-import RegisterScreen from '../screens/auth/RegisterScreen';
+import ContactScreen from '../screens/ContactScreen';
+import FormulaireYukpoIntelligentScreen from '../screens/FormulaireYukpoIntelligentScreen';
+import RechercheBesoinScreen from '../screens/RechercheBesoinScreen';
+import ResultatBesoinScreen from '../screens/ResultatBesoinScreen';
 import CreateServiceScreen from '../screens/service/CreateServiceScreen';
 import ServiceDetailScreen from '../screens/service/ServiceDetailScreen';
-// Composant de chargement simple
-const LoadingScreen = () => (
-  <View style={styles.loadingContainer}>
-    <ActivityIndicator size="large" color="#007AFF" />
-    <Text style={styles.loadingText}>Chargement...</Text>
-  </View>
-);
+import SettingsScreen from '../screens/SettingsScreen';
+import SoldeDetailScreen from '../screens/SoldeDetailScreen';
 
-// Components
-import QuickActionsMenu from '../components/QuickActionsMenu';
+// Auth screens
+import LoginScreen from '../screens/auth/LoginScreen';
+import RegisterScreen from '../screens/auth/RegisterScreen';
 
 // Theme
-import { logNavigation } from '../config/appConfig';
-import { theme } from '../theme/theme';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
+
+// Composant de chargement
+const LoadingScreen = () => (
+  <View style={styles.loadingContainer}>
+    <ActivityIndicator size="large" color="#6366F1" />
+    <Text style={styles.loadingText}>Chargement...</Text>
+  </View>
+);
 
 // Stack Navigator pour l'authentification
 const AuthStack = () => (
@@ -57,84 +58,119 @@ const AuthStack = () => (
   </Stack.Navigator>
 );
 
-// Tab Navigator pour l'application principale
+// Tab Navigator moderne avec 5 onglets
 const MainTabs = () => {
-  const [showQuickMenu, setShowQuickMenu] = React.useState(false);
-
   return (
-    <>
-      <Tab.Navigator
-        screenOptions={({ route }: any) => ({
-          tabBarIcon: ({ focused, color, size }: any) => {
-            let iconName: keyof typeof Ionicons.glyphMap;
+    <Tab.Navigator
+      screenOptions={({ route }: any) => ({
+        tabBarIcon: ({ focused, color, size }: any) => {
+          // Icônes Phosphor ultra-modernes avec poids dynamique
+          const iconProps = {
+            size: size,
+            color: color,
+            weight: (focused ? 'fill' : 'regular') as any,
+            style: { marginBottom: focused ? 2 : 0 }
+          };
 
-            if (route.name === 'Home') {
-              iconName = focused ? 'home' : 'home-outline';
-            } else if (route.name === 'QuickMenu') {
-              iconName = focused ? 'menu' : 'menu-outline';
-            } else if (route.name === 'Profile') {
-              iconName = focused ? 'person' : 'person-outline';
-            } else {
-              iconName = 'help-outline';
-            }
-
-            return <Ionicons name={iconName as any} size={size} color={color} />;
-          },
-          tabBarActiveTintColor: theme.colors.primary,
-          tabBarInactiveTintColor: theme.colors.textSecondary,
-          tabBarStyle: {
-            backgroundColor: 'white',
-            borderTopColor: theme.colors.border,
-            paddingBottom: 5,
-            paddingTop: 5,
-            height: 60,
-          },
-          headerShown: false,
-        })}
-      >
-        <Tab.Screen
-          name="Home"
-          component={HomeScreen}
-          options={{ title: 'Accueil' }}
-        />
-        <Tab.Screen
-          name="QuickMenu"
-          component={() => null}
-          options={{ title: 'Menu' }}
-          listeners={{
-            tabPress: (e: { preventDefault: () => void }) => {
-              e.preventDefault();
-              setShowQuickMenu(true);
-            },
-          }}
-        />
-        <Tab.Screen
-          name="Profile"
-          component={ProfileScreen}
-          options={{ title: 'Profil' }}
-        />
-      </Tab.Navigator>
-
-      {/* Menu déroulant des actions rapides */}
-      <QuickActionsMenu
-        isVisible={showQuickMenu}
-        onClose={() => setShowQuickMenu(false)}
+          switch (route.name) {
+            case 'Home':
+              return <House {...iconProps} />;
+            case 'MyServices':
+              return <Briefcase {...iconProps} />;
+            case 'History':
+              return <Clock {...iconProps} />;
+            case 'Dashboard':
+              return <ChartBar {...iconProps} />;
+            case 'Account':
+              return <User {...iconProps} />;
+            default:
+              return <House {...iconProps} />;
+          }
+        },
+        tabBarActiveTintColor: modernColors.primary,
+        tabBarInactiveTintColor: modernColors.textTertiary,
+        tabBarStyle: {
+          backgroundColor: modernColors.surface,
+          borderTopWidth: 0,
+          paddingBottom: 8,
+          paddingTop: 8,
+          height: 70,
+          ...modernStyles.shadowMedium,
+          borderRadius: modernStyles.borderRadius.large,
+          marginHorizontal: modernStyles.spacing.md,
+          marginBottom: modernStyles.spacing.md,
+          position: 'absolute',
+        },
+        tabBarLabelStyle: {
+          fontSize: 11,
+          fontWeight: '600',
+          marginBottom: 4,
+        },
+        headerShown: false,
+      })}
+    >
+      <Tab.Screen
+        name="Home"
+        component={ModernHomeScreen}
+        options={{
+          title: 'Accueil',
+          tabBarLabel: 'Accueil'
+        }}
       />
-    </>
+      <Tab.Screen
+        name="MyServices"
+        component={MyServicesScreen}
+        options={{
+          title: 'Mes Services',
+          tabBarLabel: 'Mes Services'
+        }}
+      />
+      <Tab.Screen
+        name="History"
+        component={SoldeDetailScreen}
+        options={{
+          title: 'Mon Historique',
+          tabBarLabel: 'Historique'
+        }}
+      />
+      <Tab.Screen
+        name="Dashboard"
+        component={DashboardPrestataireScreen}
+        options={{
+          title: 'Dashboard',
+          tabBarLabel: 'Dashboard'
+        }}
+      />
+      <Tab.Screen
+        name="Account"
+        component={ProfileScreen}
+        options={{
+          title: 'Mon Compte',
+          tabBarLabel: 'Compte'
+        }}
+      />
+    </Tab.Navigator>
   );
 };
 
-// Stack Navigator principal
+// Stack Navigator principal avec toutes les routes
 const MainStack = () => (
   <Stack.Navigator
     screenOptions={{
       headerStyle: {
-        backgroundColor: theme.colors.primary,
+        backgroundColor: '#6366F1',
+        elevation: 4,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 4,
       },
-      headerTintColor: 'white',
+      headerTintColor: '#FFF',
       headerTitleStyle: {
         fontWeight: 'bold',
+        fontSize: 18,
       },
+      headerBackTitleVisible: false,
     }}
   >
     <Stack.Screen
@@ -142,20 +178,65 @@ const MainStack = () => (
       component={MainTabs}
       options={{ headerShown: false }}
     />
+
+    {/* Création de service */}
     <Stack.Screen
       name="CreateService"
       component={CreateServiceScreen}
       options={{ title: 'Créer un Service' }}
     />
     <Stack.Screen
+      name="FormulaireYukpoIntelligent"
+      component={FormulaireYukpoIntelligentScreen}
+      options={{ title: 'Formulaire Intelligent' }}
+    />
+
+    {/* Détails et recherche */}
+    <Stack.Screen
       name="ServiceDetail"
       component={ServiceDetailScreen}
       options={{ title: 'Détails du Service' }}
     />
     <Stack.Screen
+      name="RechercheBesoin"
+      component={RechercheBesoinScreen}
+      options={{ title: 'Recherche' }}
+    />
+    <Stack.Screen
+      name="ResultatBesoin"
+      component={ResultatBesoinScreen}
+      options={{ title: 'Résultats' }}
+    />
+
+    {/* IA */}
+    <Stack.Screen
+      name="AIChat"
+      component={AIChatScreen}
+      options={{ title: 'Chat IA' }}
+    />
+    <Stack.Screen
+      name="AIHub"
+      component={AIHubScreen}
+      options={{ title: 'Hub IA' }}
+    />
+
+    {/* Recharge - Accessible depuis Compte */}
+    <Stack.Screen
+      name="RechargeTokens"
+      component={RechargeTokensScreen}
+      options={{ title: 'Recharger Tokens' }}
+    />
+
+    {/* Paramètres et informations */}
+    <Stack.Screen
       name="Settings"
       component={SettingsScreen}
       options={{ title: 'Paramètres' }}
+    />
+    <Stack.Screen
+      name="SoldeDetail"
+      component={SoldeDetailScreen}
+      options={{ title: 'Historique' }}
     />
     <Stack.Screen
       name="About"
@@ -167,113 +248,52 @@ const MainStack = () => (
       component={ContactScreen}
       options={{ title: 'Contact' }}
     />
-    <Stack.Screen
-      name="AIChat"
-      component={AIChatScreen}
-      options={{ title: 'Chat IA' }}
-    />
-    <Stack.Screen
-      name="AIHub"
-      component={AIHubScreen}
-      options={{ title: 'Hub IA' }}
-    />
-    <Stack.Screen
-      name="RechargeTokens"
-      component={RechargeTokensScreen}
-      options={{ title: 'Recharger Tokens' }}
-    />
-    <Stack.Screen
-      name="SoldeDetail"
-      component={SoldeDetailScreen}
-      options={{ title: 'Historique de Consommation' }}
-    />
-    <Stack.Screen
-      name="Dashboard"
-      component={DashboardPrestataireScreen}
-      options={{ title: 'Dashboard' }}
-    />
-    <Stack.Screen
-      name="MyServices"
-      component={MesServicesScreen}
-      options={{ title: 'Mes Services' }}
-    />
-    <Stack.Screen
-      name="ServicesInteragis"
-      component={ServicesScreen}
-      options={{ title: 'Historique Interactions' }}
-    />
-    <Stack.Screen
-      name="FormulaireYukpoIntelligent"
-      component={FormulaireYukpoIntelligentScreen}
-      options={{ title: 'Formulaire Intelligent' }}
-    />
-    <Stack.Screen
-      name="RechercheBesoin"
-      component={RechercheBesoinScreen}
-      options={{ title: 'Recherche de Besoin' }}
-    />
-    <Stack.Screen
-      name="ResultatBesoin"
-      component={ResultatBesoinScreen}
-      options={{ title: 'Résultats de Recherche' }}
-    />
   </Stack.Navigator>
 );
 
 // Navigateur principal de l'application
 const AppNavigator = () => {
   const { user, loading } = useAuth();
+  const [navigationKey, setNavigationKey] = React.useState(0);
 
-  logNavigation('État actuel', {
-    user: !!user,
-    loading,
-    userId: user?.id,
-    userEmail: user?.email,
-    userName: user?.name,
-    userObject: user
-  });
+  // Debug minimal en développement
+  if (process.env.NODE_ENV === 'development') {
+    console.log('[AppNavigator] user:', !!user, 'loading:', loading);
+  }
 
-  // État pour suivre les changements d'utilisateur
-  const [userState, setUserState] = React.useState(user);
-
+  // Détecter les changements d'utilisateur
   React.useEffect(() => {
-    if (user !== userState) {
-      logNavigation('Changement d\'utilisateur détecté');
-      setUserState(user);
+    if (user) {
+      setNavigationKey(prev => prev + 1);
     }
-  }, [user, userState]);
+  }, [user]);
 
   if (loading) {
-    logNavigation('Affichage LoadingScreen');
     return <LoadingScreen />;
   }
 
   if (user) {
-    logNavigation('Utilisateur connecté, affichage MainStack');
-    return <MainStack />;
+    return <MainStack key={`main-${navigationKey}`} />;
   } else {
-    logNavigation('Utilisateur non connecté, affichage AuthStack');
-    return <AuthStack />;
+    return <AuthStack key={`auth-${navigationKey}`} />;
   }
 };
 
-// Styles pour le composant de chargement
+// Styles
 const styles = StyleSheet.create({
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'white',
+    backgroundColor: '#F8F9FA',
   },
   loadingText: {
     marginTop: 16,
     fontSize: 16,
-    color: theme.colors.text,
+    color: '#666',
+    fontWeight: '600',
   },
 });
 
 export default AppNavigator;
-
-
-
 

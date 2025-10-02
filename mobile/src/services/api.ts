@@ -1,12 +1,32 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// Configuration de base
-import { config } from '../config/environment';
+// Configuration de base - Import sécurisé
+let config: any;
+try {
+  config = require('../config/environment').config;
+} catch (error) {
+  console.warn('[API] Configuration non disponible, utilisation des valeurs par défaut');
+  config = {
+    API_BASE_URL: 'https://yukpomnang.onrender.com'
+  };
+}
 
-// Gestionnaire d'erreurs
-import { errorHandler } from './errorHandler';
+// Gestionnaire d'erreurs - Import sécurisé
+let errorHandler: any;
+try {
+  errorHandler = require('./errorHandler').errorHandler;
+} catch (error) {
+  console.warn('[API] ErrorHandler non disponible, utilisation du fallback');
+  errorHandler = {
+    handleApiError: (error: any, context?: string) => ({
+      message: error?.message || 'Une erreur inattendue s\'est produite',
+      status: 500,
+      code: 'UNKNOWN_ERROR'
+    })
+  };
+}
 
-const API_BASE_URL = config.API_BASE_URL;
+const API_BASE_URL = config.API_BASE_URL || 'https://yukpomnang.onrender.com';
 
 // Types pour les réponses API
 interface ApiResponse<T = any> {
@@ -54,6 +74,8 @@ const apiCall = async <T>(
   const config: RequestInit = {
     headers: {
       'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      'User-Agent': 'Yukpomnang-Mobile/1.0.0',
       ...(token && { Authorization: `Bearer ${token}` }),
       ...options.headers,
     },
@@ -63,7 +85,18 @@ const apiCall = async <T>(
   try {
     // Debug: Log the URL being used
     console.log(`[Mobile API] Making request to: ${API_BASE_URL}${endpoint}`);
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
+    console.log(`[Mobile API] Request headers:`, config.headers);
+
+    // Ajouter un timeout pour éviter les requêtes qui traînent
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 secondes
+
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      ...config,
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
 
     // Vérifier si le token a été mis à jour
     const newToken = response.headers.get('x-new-jwt');
@@ -80,8 +113,20 @@ const apiCall = async <T>(
     let data;
     try {
       data = await response.json();
-    } catch {
-      data = null;
+    } catch (jsonError) {
+      console.error(`[Mobile API] Erreur parsing JSON pour ${endpoint}:`, jsonError);
+      console.error(`[Mobile API] Response status: ${response.status}`);
+      console.error(`[Mobile API] Response headers:`, Object.fromEntries(response.headers.entries()));
+
+      // Essayer de récupérer le texte brut
+      try {
+        const textData = await response.text();
+        console.error(`[Mobile API] Response text:`, textData);
+        data = { error: 'Invalid JSON response', raw: textData };
+      } catch (textError) {
+        console.error(`[Mobile API] Impossible de lire la réponse:`, textError);
+        data = { error: 'Unable to read response' };
+      }
     }
 
     if (!response.ok) {
@@ -97,16 +142,24 @@ const apiCall = async <T>(
       data: data,
     };
   } catch (error: any) {
+    console.error(`[Mobile API] Erreur pour ${endpoint}:`, error);
+
     // Gérer les erreurs de timeout
     if (error.name === 'AbortError') {
-      const timeoutError = errorHandler.handleApiError({
-        code: 'TIMEOUT',
-        message: 'Request timeout'
-      }, 'API Call');
-
+      console.error(`[Mobile API] Timeout pour ${endpoint}`);
       return {
         success: false,
-        error: timeoutError.message,
+        error: 'La requête a expiré. Vérifiez votre connexion internet.',
+        data: null,
+      };
+    }
+
+    // Gérer les erreurs de réseau
+    if (error.message === 'Failed to fetch' || error.message.includes('NetworkError')) {
+      console.error(`[Mobile API] Erreur réseau pour ${endpoint}`);
+      return {
+        success: false,
+        error: 'Impossible de se connecter au serveur. Vérifiez votre connexion internet.',
         data: null,
       };
     }
@@ -115,7 +168,7 @@ const apiCall = async <T>(
     const apiError = errorHandler.handleApiError(error, 'API Call');
     return {
       success: false,
-      error: apiError.message,
+      error: apiError.message || 'Une erreur inattendue s\'est produite',
       data: null,
     };
   }
@@ -208,9 +261,9 @@ export const servicesApi = {
     });
   },
 
-  // Obtenir les services de l'utilisateur
+  // Obtenir les services de l'utilisateur (prestataire)
   getUserServices: async () => {
-    return apiCall('/api/services/user');
+    return apiCall('/api/prestataire/services');
   },
 
   // Obtenir un service par ID
@@ -326,7 +379,7 @@ export const userApi = {
   },
 
   // Obtenir le dashboard prestataire
-  getDashboardPrestataire: async (period: string = 'month') => {
+  getDashboardPrestataire: async (period: string = '30d') => {
     return apiCall(`/api/dashboard/prestataire?period=${period}`);
   },
 

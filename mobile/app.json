@@ -1,12 +1,18 @@
 {
     "expo": {
         "name": "Yukpo",
-        "slug": "yukpomnang-mobile",
+        "slug": "yukpomnang-mobile-new",
         "version": "1.0.0",
         "orientation": "portrait",
         "userInterfaceStyle": "automatic",
+        "icon": "./assets/icon.png",
+        "splash": {
+            "image": "./assets/splash.png",
+            "resizeMode": "contain",
+            "backgroundColor": "#ffffff"
+        },
         "assetBundlePatterns": [
-            "**/*"
+            "assets/**/*"
         ],
         "ios": {
             "supportsTablet": true,
@@ -15,7 +21,11 @@
         },
         "android": {
             "package": "com.hernandezlele.yukpomnangmobile",
-            "versionCode": 2,
+            "versionCode": 1,
+            "adaptiveIcon": {
+                "foregroundImage": "./assets/adaptive-icon.png",
+                "backgroundColor": "#ffffff"
+            },
             "permissions": [
                 "ACCESS_FINE_LOCATION",
                 "ACCESS_COARSE_LOCATION",
@@ -26,9 +36,7 @@
                 "INTERNET",
                 "ACCESS_NETWORK_STATE",
                 "ACCESS_WIFI_STATE"
-            ],
-            "usesCleartextTraffic": true,
-            "networkSecurityConfig": "@xml/network_security_config"
+            ]
         },
         "web": {
             "bundler": "metro"
@@ -36,11 +44,18 @@
         "plugins": [
             "expo-location",
             "expo-image-picker",
+            "expo-document-picker",
+            [
+                "expo-av",
+                {
+                    "microphonePermission": "Autoriser Yukpomnang à accéder au microphone pour enregistrer des messages audio."
+                }
+            ],
             "expo-font"
         ],
         "extra": {
             "eas": {
-                "projectId": "944bbf0d-5541-4e56-ba75-87ffc4c5e51f"
+                "projectId": "a5407780-d5ad-45fa-8b72-a673d3828b93"
             }
         },
         "owner": "hernandezlele",

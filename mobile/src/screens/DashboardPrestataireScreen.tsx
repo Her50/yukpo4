@@ -1,4 +1,4 @@
-﻿import Ionicons from '@expo/vector-icons/Ionicons';
+﻿// Remplacement des Ionicons par des emojis pour éviter les crashes
 import * as React from 'react';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -172,7 +172,7 @@ const DashboardPrestataireScreen: React.FC = () => {
   if (!dashboardData) {
     return (
       <View style={styles.errorContainer}>
-        <Ionicons name="alert-circle" size={48} color={theme.colors.error} />
+        <Text style={styles.errorIcon}>⚠️</Text>
         <Text style={styles.errorText}>Aucune donnée disponible</Text>
         <TouchableOpacity style={styles.retryButton} onPress={loadDashboardData}>
           <Text style={styles.retryButtonText}>Réessayer</Text>
@@ -214,7 +214,7 @@ const DashboardPrestataireScreen: React.FC = () => {
         <Card style={styles.statCard}>
           <Card.Content style={styles.statContent}>
             <View style={styles.statIcon}>
-              <Ionicons name="list" size={24} color={theme.colors.primary} />
+              <Text style={styles.statIconText}>📋</Text>
             </View>
             <Text style={styles.statNumber}>{dashboardData.totalServices}</Text>
             <Text style={styles.statLabel}>Services totaux</Text>
@@ -224,7 +224,7 @@ const DashboardPrestataireScreen: React.FC = () => {
         <Card style={styles.statCard}>
           <Card.Content style={styles.statContent}>
             <View style={styles.statIcon}>
-              <Ionicons name="checkmark-circle" size={24} color={theme.colors.success} />
+              <Text style={styles.statIconText}>✅</Text>
             </View>
             <Text style={styles.statNumber}>{dashboardData.activeServices}</Text>
             <Text style={styles.statLabel}>Services actifs</Text>
@@ -234,7 +234,7 @@ const DashboardPrestataireScreen: React.FC = () => {
         <Card style={styles.statCard}>
           <Card.Content style={styles.statContent}>
             <View style={styles.statIcon}>
-              <Ionicons name="eye" size={24} color={theme.colors.accent} />
+              <Text style={styles.statIconText}>👁️</Text>
             </View>
             <Text style={styles.statNumber}>{formatNumber(dashboardData.totalViews)}</Text>
             <Text style={styles.statLabel}>Vues totales</Text>
@@ -244,7 +244,7 @@ const DashboardPrestataireScreen: React.FC = () => {
         <Card style={styles.statCard}>
           <Card.Content style={styles.statContent}>
             <View style={styles.statIcon}>
-              <Ionicons name="chatbubbles" size={24} color={theme.colors.secondary} />
+              <Text style={styles.statIconText}>💬</Text>
             </View>
             <Text style={styles.statNumber}>{formatNumber(dashboardData.totalInteractions)}</Text>
             <Text style={styles.statLabel}>Interactions</Text>
@@ -254,7 +254,7 @@ const DashboardPrestataireScreen: React.FC = () => {
         <Card style={styles.statCard}>
           <Card.Content style={styles.statContent}>
             <View style={styles.statIcon}>
-              <Ionicons name="star" size={24} color={theme.colors.warning} />
+              <Text style={styles.statIconText}>⭐</Text>
             </View>
             <Text style={styles.statNumber}>{dashboardData.averageRating.toFixed(1)}</Text>
             <Text style={styles.statLabel}>Note moyenne</Text>
@@ -264,7 +264,7 @@ const DashboardPrestataireScreen: React.FC = () => {
         <Card style={styles.statCard}>
           <Card.Content style={styles.statContent}>
             <View style={styles.statIcon}>
-              <Ionicons name="wallet" size={24} color={theme.colors.success} />
+              <Text style={styles.statIconText}>💰</Text>
             </View>
             <Text style={styles.statNumber}>{formatCurrency(dashboardData.budgetConsumed)}</Text>
             <Text style={styles.statLabel}>Budget utilisé</Text>
@@ -291,19 +291,19 @@ const DashboardPrestataireScreen: React.FC = () => {
 
               <View style={styles.serviceStats}>
                 <View style={styles.serviceStat}>
-                  <Ionicons name="eye" size={16} color={theme.colors.textSecondary} />
+                  <Text style={styles.serviceStatIcon}>👁️</Text>
                   <Text style={styles.serviceStatText}>{formatNumber(service.views)}</Text>
                 </View>
                 <View style={styles.serviceStat}>
-                  <Ionicons name="chatbubble" size={16} color={theme.colors.textSecondary} />
+                  <Text style={styles.serviceStatIcon}>💬</Text>
                   <Text style={styles.serviceStatText}>{service.messages}</Text>
                 </View>
                 <View style={styles.serviceStat}>
-                  <Ionicons name="call" size={16} color={theme.colors.textSecondary} />
+                  <Text style={styles.serviceStatIcon}>📞</Text>
                   <Text style={styles.serviceStatText}>{service.calls}</Text>
                 </View>
                 <View style={styles.serviceStat}>
-                  <Ionicons name="star" size={16} color={theme.colors.warning} />
+                  <Text style={[styles.serviceStatIcon, { color: theme.colors.warning }]}>⭐</Text>
                   <Text style={styles.serviceStatText}>{service.rating}</Text>
                 </View>
               </View>
@@ -320,15 +320,12 @@ const DashboardPrestataireScreen: React.FC = () => {
           {dashboardData.recentActivity.map((activity, index) => (
             <View key={index} style={styles.activityItem}>
               <View style={styles.activityIcon}>
-                <Ionicons
-                  name={
-                    activity.type === 'view' ? 'eye' :
-                      activity.type === 'message' ? 'chatbubble' :
-                        activity.type === 'call' ? 'call' : 'notifications'
-                  }
-                  size={20}
-                  color={theme.colors.primary}
-                />
+                <Text style={styles.activityIconText}>
+                  {activity.type === 'view' ? '👁️' :
+                    activity.type === 'message' ? '💬' :
+                      activity.type === 'call' ? '📞' :
+                        '🔔'}
+                </Text>
               </View>
               <View style={styles.activityContent}>
                 <Text style={styles.activityText}>
@@ -349,17 +346,17 @@ const DashboardPrestataireScreen: React.FC = () => {
           <Title style={styles.sectionTitle}>⚡ Actions rapides</Title>
 
           <TouchableOpacity style={styles.actionButton}>
-            <Ionicons name="refresh" size={20} color={theme.colors.primary} />
+            <Text style={styles.actionIcon}>🔄</Text>
             <Text style={styles.actionButtonText}>Actualiser les données</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.actionButton}>
-            <Ionicons name="create" size={20} color={theme.colors.primary} />
+            <Text style={styles.actionIcon}>➕</Text>
             <Text style={styles.actionButtonText}>Créer un nouveau service</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.actionButton}>
-            <Ionicons name="analytics" size={20} color={theme.colors.primary} />
+            <Text style={styles.actionIcon}>📊</Text>
             <Text style={styles.actionButtonText}>Voir les statistiques détaillées</Text>
           </TouchableOpacity>
         </Card.Content>
@@ -390,6 +387,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: theme.colors.background,
     padding: 20,
+  },
+  errorIcon: {
+    fontSize: 48,
+    marginBottom: 16,
+  },
+  statIconText: {
+    fontSize: 24,
+  },
+  serviceStatIcon: {
+    fontSize: 16,
+    marginRight: 4,
+  },
+  activityIconText: {
+    fontSize: 20,
+  },
+  actionIcon: {
+    fontSize: 20,
+    marginRight: 8,
   },
   errorText: {
     fontSize: 16,

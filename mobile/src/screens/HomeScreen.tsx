@@ -1,375 +1,302 @@
-﻿import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import * as React from 'react';
 import { useState } from 'react';
-import { Alert, Dimensions, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { Card, Paragraph, Title } from 'react-native-paper';
+import { Alert, Dimensions, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useAuth } from '../contexts/AuthContext';
-// import { useGlobalIAStats } from '../components/intelligence/GlobalIAStats';
 import ChatHistoryModal from '../components/ChatHistoryModal';
+import ChatInputMobile from '../components/ChatInputMobile';
 import GPSSelector from '../components/GPSSelector';
-import LanguageSelector from '../components/LanguageSelector';
+import GPSSelectorMobile from '../components/GPSSelectorMobile';
 import NotificationHistoryModal from '../components/NotificationHistoryModal';
-import TranslatedText from '../components/TranslatedText';
-import { theme } from '../theme/theme';
+import YukpoLogo from '../components/YukpoLogo';
+import { useAuth } from '../contexts/AuthContext';
+
+const { width } = Dimensions.get('window');
 
 const HomeScreen: React.FC = () => {
     const navigation = useNavigation();
     const { user } = useAuth();
-    // const { stats, updateStats } = useGlobalIAStats();
-    const [stats, setStats] = useState({ totalRequests: 0, lastActivity: null as Date | null });
     const [loading, setLoading] = useState(false);
-    const [inputText, setInputText] = useState('');
     const [isCreateService, setIsCreateService] = useState(false);
+    const [showGPSModal, setShowGPSModal] = useState(false);
+    const [showGPSMobileModal, setShowGPSMobileModal] = useState(false);
+    const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: number } | null>(null);
     const [showCreateServiceAlert, setShowCreateServiceAlert] = useState(false);
+    const [pendingInput, setPendingInput] = useState<any>(null);
     const [showNotificationModal, setShowNotificationModal] = useState(false);
     const [showChatModal, setShowChatModal] = useState(false);
-    const [showGPSModal, setShowGPSModal] = useState(false);
-    const [showLanguageModal, setShowLanguageModal] = useState(false);
-    const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: number } | null>(null);
-    const [currentGPS, setCurrentGPS] = useState<string | null>(null);
 
-    const { width, height } = Dimensions.get('window');
-
-    // Détection automatique GPS au chargement (comme dans le frontend)
+    // Détection GPS automatique au chargement
     React.useEffect(() => {
         if (typeof navigator !== 'undefined' && (navigator as any).geolocation) {
             (navigator as any).geolocation.getCurrentPosition(
-                (position: any) => {
-                    const coords = `${position.coords.latitude},${position.coords.longitude}`;
-                    setCurrentGPS(coords);
-                    console.log('[HomeScreen] Position GPS automatique:', coords);
+                (position) => {
+                    const coords = {
+                        lat: position.coords.latitude,
+                        lng: position.coords.longitude
+                    };
+                    setSelectedLocation(coords);
+                    console.log('[HomeScreen] GPS automatique:', coords);
                 },
-                (error: any) => {
-                    console.warn('[HomeScreen] Impossible d\'obtenir la position GPS:', error);
+                (error) => {
+                    console.warn('[HomeScreen] GPS non disponible:', error);
                 },
                 {
                     enableHighAccuracy: true,
                     timeout: 10000,
-                    maximumAge: 300000 // 5 minutes de cache
+                    maximumAge: 60000
                 }
             );
         }
     }, []);
 
-    const handleSubmit = async () => {
-        if (!inputText.trim()) {
-            Alert.alert('Erreur', 'Veuillez saisir une description');
-            return;
-        }
-
+    // Fonction de recherche directe (comme frontend - route: /resultat-besoin)
+    const handleSearch = async (input: any) => {
         try {
             setLoading(true);
-            setStats({
-                totalRequests: stats.totalRequests + 1,
-                lastActivity: new Date(),
+            console.log('[HomeScreen] Recherche avec:', input);
+
+            // Rediriger vers ResultatBesoin (comme frontend /resultat-besoin)
+            (navigation as any).navigate('ResultatBesoin', {
+                searchInput: input,
+                type: 'recherche_besoin',
+                results: [],
+                suggestion: input
             });
-
-            if (isCreateService) {
-                setShowCreateServiceAlert(true);
-                setLoading(false);
-                return;
-            }
-
-            // Par défaut : RECHERCHE DIRECTE
-            await handleSearch();
-
-        } catch (err: any) {
-            console.error('❌ Erreur Yukpo:', err);
-            Alert.alert('Erreur', 'Une erreur est survenue lors du traitement');
+        } catch (error) {
+            console.error('Erreur recherche:', error);
+            Alert.alert('Erreur', 'Impossible d\'effectuer la recherche');
         } finally {
             setLoading(false);
         }
     };
 
-    const handleSearch = async () => {
+    // Fonction de création de service (comme frontend)
+    const handleCreateService = async (input: any) => {
         try {
-            // Simuler l'appel API de recherche
-            await new Promise(resolve => setTimeout(resolve, 2000));
+            setLoading(true);
+            console.log('[HomeScreen] Création service avec:', input);
 
-            // Rediriger vers les résultats de recherche
-            (navigation as any).navigate('ResultatBesoin', {
-                searchQuery: inputText,
-                type: 'recherche_besoin',
-                gpsData: selectedLocation ? {
-                    gps_fixe: `${selectedLocation.lat},${selectedLocation.lng}`,
-                    gps_fixe_coords: JSON.stringify([selectedLocation])
-                } : undefined
-            });
-        } catch (err: any) {
-            console.error('Erreur lors de la recherche:', err);
-            Alert.alert('Erreur', 'Impossible d\'effectuer la recherche');
-        }
-    };
-
-    const handleCreateService = async () => {
-        try {
-            // Simuler l'appel API de création de service
-            await new Promise(resolve => setTimeout(resolve, 2000));
-
-            // Rediriger vers le formulaire de création
+            // Rediriger vers FormulaireYukpoIntelligent avec les données
             (navigation as any).navigate('FormulaireYukpoIntelligent', {
-                inputText: inputText,
+                suggestion: {
+                    intention: 'creation_service',
+                    data: input
+                },
                 type: 'creation_service',
-                gpsData: selectedLocation ? {
-                    gps_fixe: `${selectedLocation.lat},${selectedLocation.lng}`,
-                    gps_fixe_coords: JSON.stringify([selectedLocation])
-                } : undefined
+                mediaData: {
+                    base64_image: input.base64_image,
+                    audio_base64: input.audio_base64,
+                    doc_base64: input.doc_base64,
+                },
+                gpsData: {
+                    gps_mobile: input.gps_mobile,
+                    gps_zone: input.gps_zone,
+                    gps_fixe: input.gps_fixe,
+                    gps_fixe_coords: input.gps_fixe_coords
+                }
             });
         } catch (error) {
-            console.error('Erreur lors de la création:', error);
+            console.error('Erreur création:', error);
             Alert.alert('Erreur', 'Impossible de créer le service');
+        } finally {
+            setLoading(false);
         }
     };
 
+    // Gestion de la soumission (comme frontend)
+    const handleSubmit = async (input: any) => {
+        if (isCreateService) {
+            // Demander confirmation pour création
+            setPendingInput(input);
+            setShowCreateServiceAlert(true);
+            return;
+        }
+
+        // Par défaut: recherche directe
+        await handleSearch(input);
+    };
+
+    // Confirmation création
     const confirmCreateService = () => {
-        setLoading(true);
-        handleCreateService();
-        setShowCreateServiceAlert(false);
+        if (pendingInput) {
+            handleCreateService(pendingInput);
+            setShowCreateServiceAlert(false);
+            setPendingInput(null);
+        }
     };
 
+    // Annulation → faire recherche à la place
     const cancelCreateService = () => {
-        handleSearch();
-        setShowCreateServiceAlert(false);
+        if (pendingInput) {
+            handleSearch(pendingInput);
+            setShowCreateServiceAlert(false);
+            setPendingInput(null);
+        }
     };
-
-    const YukpoBrand = () => (
-        <Text style={styles.brandText}>Yukpomnang</Text>
-    );
 
     return (
         <SafeAreaView style={styles.container}>
-            <ScrollView contentContainerStyle={styles.scrollContent}>
-                {/* Header avec notifications et chat */}
+            <ScrollView
+                contentContainerStyle={styles.scrollContent}
+                showsVerticalScrollIndicator={false}
+            >
+                {/* Header moderne */}
                 <View style={styles.header}>
-                    <View style={styles.headerLeft}>
-                        <Title style={styles.welcomeText}>
-                            <TranslatedText text={`Bonjour ${user?.name || 'Utilisateur'} 👋`} />
-                        </Title>
-                    </View>
-                    <View style={styles.headerRight}>
+                    <View style={styles.headerContent}>
+                        <View>
+                            <Text style={styles.greetingText}>Bonjour 👋</Text>
+                            <Text style={styles.userName}>{user?.name || 'Utilisateur'}</Text>
+                            <View style={styles.balanceContainer}>
+                                <Text style={styles.walletIcon}>💰</Text>
+                                <Text style={styles.balanceText}>{user?.credits?.toLocaleString() || 0} tokens</Text>
+                            </View>
+                        </View>
                         <TouchableOpacity
                             style={styles.headerButton}
                             onPress={() => setShowNotificationModal(true)}
                         >
-                            <Ionicons name="notifications" size={24} color={theme.colors.primary} />
+                            <Text style={styles.notificationIcon}>🔔</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
                             style={styles.headerButton}
                             onPress={() => setShowChatModal(true)}
                         >
-                            <Ionicons name="chatbubbles" size={24} color={theme.colors.primary} />
+                            <Text style={styles.chatIcon}>💬</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
 
-                {/* Contenu principal */}
-                <View style={styles.mainContent}>
-                    {/* Titre et description */}
-                    <View style={styles.titleSection}>
-                        <Title style={styles.title}>
-                            <YukpoBrand />
-                        </Title>
-                        <Paragraph style={styles.subtitle}>
-                            <TranslatedText text="Créez ou trouvez un service en un instant.{'\n'}Une description, une image, un audio ou un fichier suffit." />
-                        </Paragraph>
+                {/* Titre principal */}
+                <View style={styles.titleContainer}>
+                    <View style={styles.brandContainer}>
+                        <YukpoLogo size={50} />
+                        <Text style={styles.brandTitle}>
+                            <Text style={styles.brandYuk}>Yukpo</Text>
+                            <Text style={styles.brandMnang}>mnang</Text>
+                        </Text>
                     </View>
+                    <Text style={styles.subtitle}>
+                        Créez ou trouvez un service en un instant.{'\n'}
+                        Une description, une image, un audio ou un fichier suffit.
+                    </Text>
+                </View>
 
-                    {/* Case à cocher pour création de service */}
-                    <View style={styles.checkboxSection}>
-                        <TouchableOpacity
-                            style={styles.checkboxContainer}
-                            onPress={() => setIsCreateService(!isCreateService)}
-                        >
-                            <View style={[styles.checkbox, isCreateService && styles.checkboxChecked]}>
-                                {isCreateService && <Ionicons name="checkmark" size={16} color="white" />}
-                            </View>
-                            <Text style={styles.checkboxLabel}>
-                                <TranslatedText text="Je souhaite créer un service/prestation" />
+                {/* Sélecteur de mode */}
+                <View style={styles.modeSelector}>
+                    <TouchableOpacity
+                        style={[styles.modeButton, !isCreateService && styles.modeButtonActive]}
+                        onPress={() => setIsCreateService(false)}
+                    >
+                        <Text style={[styles.tabIcon, { color: !isCreateService ? '#FFF' : '#666' }]}>🔍</Text>
+                        <Text style={[
+                            styles.modeButtonText,
+                            !isCreateService && styles.modeButtonTextActive
+                        ]}>
+                            Rechercher
+                        </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        style={[styles.modeButton, isCreateService && styles.modeButtonActive]}
+                        onPress={() => setIsCreateService(true)}
+                    >
+                        <Text style={[styles.tabIcon, { color: isCreateService ? '#FFF' : '#666' }]}>➕</Text>
+                        <Text style={[
+                            styles.modeButtonText,
+                            isCreateService && styles.modeButtonTextActive
+                        ]}>
+                            Créer un service
+                        </Text>
+                    </TouchableOpacity>
+                </View>
+
+                {/* ChatInput avec support multimédia */}
+                <ChatInputMobile
+                    onSubmit={handleSubmit}
+                    loading={loading}
+                    placeholder={isCreateService
+                        ? "Décrivez le service que vous proposez..."
+                        : "Décrivez ce que vous recherchez..."}
+                    gpsData={selectedLocation}
+                    onGPSPress={() => setShowGPSMobileModal(true)}
+                />
+
+                {/* Section Comment ça marche */}
+                <View style={styles.howItWorksSection}>
+                    <Text style={styles.sectionTitle}>Comment ça marche ?</Text>
+
+                    <View style={styles.stepCard}>
+                        <View style={styles.stepNumber}>
+                            <Text style={styles.stepNumberText}>1</Text>
+                        </View>
+                        <View style={styles.stepContent}>
+                            <Text style={styles.stepTitle}>Décrivez votre besoin</Text>
+                            <Text style={styles.stepDescription}>
+                                Texte, photo, audio ou fichier
                             </Text>
-                        </TouchableOpacity>
+                        </View>
                     </View>
 
-                    {/* Zone de saisie */}
-                    <Card style={styles.inputCard}>
-                        <Card.Content>
-                            <TextInput
-                                style={styles.textInput}
-                                placeholder="Décrivez votre besoin ou service..."
-                                value={inputText}
-                                onChangeText={setInputText}
-                                multiline
-                                numberOfLines={4}
-                                textAlignVertical="top"
-                            />
-
-                            {/* Sélection GPS */}
-                            <View style={styles.gpsContainer}>
-                                <TouchableOpacity
-                                    style={styles.gpsButton}
-                                    onPress={() => setShowGPSModal(true)}
-                                >
-                                    <Ionicons
-                                        name={selectedLocation ? "location" : "location-outline"}
-                                        size={20}
-                                        color={selectedLocation ? theme.colors.primary : theme.colors.textSecondary}
-                                    />
-                                    <Text style={[
-                                        styles.gpsButtonText,
-                                        selectedLocation && styles.gpsButtonTextActive
-                                    ]}>
-                                        {selectedLocation ? 'Position sélectionnée' : 'Sélectionner une position'}
-                                    </Text>
-                                </TouchableOpacity>
-
-                                {selectedLocation && (
-                                    <View style={styles.locationInfo}>
-                                        <Text style={styles.locationText}>
-                                            📍 {selectedLocation.lat.toFixed(6)}, {selectedLocation.lng.toFixed(6)}
-                                        </Text>
-                                        <TouchableOpacity
-                                            onPress={() => setSelectedLocation(null)}
-                                            style={styles.clearLocationButton}
-                                        >
-                                            <Ionicons name="close-circle" size={16} color="#F44336" />
-                                        </TouchableOpacity>
-                                    </View>
-                                )}
-                            </View>
-                        </Card.Content>
-                    </Card>
-
-                    {/* Bouton d'envoi moderne et responsive */}
-                    <View style={[styles.submitContainer, { width: width - 32 }]}>
-                        <TouchableOpacity
-                            onPress={handleSubmit}
-                            disabled={loading || !inputText.trim()}
-                            style={[styles.submitButton, { width: width - 64 }]}
-                        >
-                            <Text style={styles.submitButtonLabel}>
-                                {loading ? 'Traitement...' : (isCreateService ? 'Créer un service' : 'Rechercher')}
+                    <View style={styles.stepCard}>
+                        <View style={styles.stepNumber}>
+                            <Text style={styles.stepNumberText}>2</Text>
+                        </View>
+                        <View style={styles.stepContent}>
+                            <Text style={styles.stepTitle}>L'IA analyse</Text>
+                            <Text style={styles.stepDescription}>
+                                Résultats personnalisés instantanés
                             </Text>
-                        </TouchableOpacity>
-                    </View>
-
-                    {/* Indicateurs visuels */}
-                    <View style={styles.featuresSection}>
-                        <View style={styles.featureItem}>
-                            <Text style={styles.featureIcon}>🎯</Text>
-                            <Text style={styles.featureText}>Détection intelligente</Text>
-                        </View>
-                        <View style={styles.featureItem}>
-                            <Text style={styles.featureIcon}>⚡</Text>
-                            <Text style={styles.featureText}>Traitement rapide</Text>
-                        </View>
-                        <View style={styles.featureItem}>
-                            <Text style={styles.featureIcon}>🔐</Text>
-                            <Text style={styles.featureText}>100% sécurisé</Text>
                         </View>
                     </View>
 
+                    <View style={styles.stepCard}>
+                        <View style={styles.stepNumber}>
+                            <Text style={styles.stepNumberText}>3</Text>
+                        </View>
+                        <View style={styles.stepContent}>
+                            <Text style={styles.stepTitle}>Connectez-vous</Text>
+                            <Text style={styles.stepDescription}>
+                                Contact direct avec les prestataires
+                            </Text>
+                        </View>
+                    </View>
                 </View>
             </ScrollView>
 
-            {/* Alerte de confirmation pour création de service */}
+            {/* Modal de confirmation création */}
             {showCreateServiceAlert && (
                 <View style={styles.alertOverlay}>
                     <View style={styles.alertContainer}>
-                        <Title style={styles.alertTitle}>
+                        <Text style={styles.alertTitle}>
                             Confirmation de création de service
-                        </Title>
-                        <Paragraph style={styles.alertText}>
+                        </Text>
+                        <Text style={styles.alertText}>
                             Êtes-vous sûr de vouloir créer un service/prestation sur la plateforme ?
-                        </Paragraph>
+                        </Text>
                         <View style={styles.alertButtons}>
                             <TouchableOpacity
                                 onPress={cancelCreateService}
                                 disabled={loading}
-                                style={styles.alertButton}
+                                style={[styles.alertButton, styles.alertButtonSecondary]}
                             >
-                                <Text>Non, rechercher</Text>
+                                <Text style={styles.alertButtonTextSecondary}>Non, rechercher</Text>
                             </TouchableOpacity>
                             <TouchableOpacity
                                 onPress={confirmCreateService}
                                 disabled={loading}
                                 style={[styles.alertButton, styles.alertButtonPrimary]}
                             >
-                                <Text>Oui, créer un service</Text>
+                                <Text style={styles.alertButtonText}>
+                                    {loading ? 'Ouverture...' : 'Oui, créer'}
+                                </Text>
                             </TouchableOpacity>
                         </View>
                     </View>
                 </View>
             )}
 
-            {/* Menu d'accès rapide */}
-            <View style={styles.quickAccessSection}>
-                <Card style={styles.quickAccessCard}>
-                    <Card.Content>
-                        <View style={styles.quickAccessHeader}>
-                            <Title style={styles.quickAccessTitle}>
-                                <TranslatedText text="Accès rapide" />
-                            </Title>
-                        </View>
-                        <View style={styles.quickAccessButtons}>
-                            <TouchableOpacity
-                                style={styles.quickAccessButton}
-                                onPress={() => (navigation as any).navigate('MesServices')}
-                            >
-                                <Ionicons name="briefcase" size={20} color={theme.colors.primary} />
-                                <Text style={styles.quickAccessButtonText}>
-                                    <TranslatedText text="Mes Services" />
-                                </Text>
-                            </TouchableOpacity>
-
-                            <TouchableOpacity
-                                style={styles.quickAccessButton}
-                                onPress={() => (navigation as any).navigate('Historique')}
-                            >
-                                <Ionicons name="time" size={20} color={theme.colors.primary} />
-                                <Text style={styles.quickAccessButtonText}>
-                                    <TranslatedText text="Mon Historique" />
-                                </Text>
-                            </TouchableOpacity>
-
-                            <TouchableOpacity
-                                style={styles.quickAccessButton}
-                                onPress={() => (navigation as any).navigate('RechargeTokens')}
-                            >
-                                <Ionicons name="card" size={20} color={theme.colors.primary} />
-                                <Text style={styles.quickAccessButtonText}>
-                                    <TranslatedText text="Recharger Tokens" />
-                                </Text>
-                            </TouchableOpacity>
-
-                            <TouchableOpacity
-                                style={styles.quickAccessButton}
-                                onPress={() => setShowLanguageModal(true)}
-                            >
-                                <Ionicons name="language" size={20} color={theme.colors.primary} />
-                                <Text style={styles.quickAccessButtonText}>
-                                    <TranslatedText text="Langue" />
-                                </Text>
-                            </TouchableOpacity>
-                        </View>
-                    </Card.Content>
-                </Card>
-            </View>
-
-            {/* Modales */}
-            <NotificationHistoryModal
-                isOpen={showNotificationModal}
-                onClose={() => setShowNotificationModal(false)}
-            />
-            <ChatHistoryModal
-                isOpen={showChatModal}
-                onClose={() => setShowChatModal(false)}
-                onOpenChat={(chatId: string) => {
-                    console.log('Ouvrir chat:', chatId);
-                    setShowChatModal(false);
-                }}
-            />
-
+            {/* Modal GPS */}
             <GPSSelector
                 visible={showGPSModal}
                 onClose={() => setShowGPSModal(false)}
@@ -380,11 +307,33 @@ const HomeScreen: React.FC = () => {
                 currentLocation={selectedLocation}
             />
 
-            <LanguageSelector
-                visible={showLanguageModal}
-                onClose={() => setShowLanguageModal(false)}
-                onLanguageChange={(languageCode) => {
-                    console.log('Langue changée:', languageCode);
+            {/* Modal GPS Mobile */}
+            <GPSSelectorMobile
+                visible={showGPSMobileModal}
+                onClose={() => setShowGPSMobileModal(false)}
+                onLocationSelect={(location) => {
+                    setSelectedLocation({ lat: location.latitude, lng: location.longitude });
+                    setShowGPSMobileModal(false);
+                }}
+                currentLocation={selectedLocation ? {
+                    latitude: selectedLocation.lat,
+                    longitude: selectedLocation.lng
+                } : null}
+            />
+
+            {/* Modal Notifications */}
+            <NotificationHistoryModal
+                isOpen={showNotificationModal}
+                onClose={() => setShowNotificationModal(false)}
+            />
+
+            {/* Modal Chat/Conversations */}
+            <ChatHistoryModal
+                isOpen={showChatModal}
+                onClose={() => setShowChatModal(false)}
+                onOpenChat={(chatId: string) => {
+                    console.log('Ouvrir chat:', chatId);
+                    setShowChatModal(false);
                 }}
             />
         </SafeAreaView>
@@ -394,173 +343,187 @@ const HomeScreen: React.FC = () => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: theme.colors.background,
+        backgroundColor: '#F8F9FA',
     },
     scrollContent: {
-        flexGrow: 1,
-        padding: 16,
+        paddingBottom: 32,
     },
     header: {
+        backgroundColor: '#FFF',
+        paddingHorizontal: 20,
+        paddingVertical: 20,
+        borderBottomLeftRadius: 24,
+        borderBottomRightRadius: 24,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+        elevation: 4,
+        marginBottom: 24,
+    },
+    headerContent: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: 24,
     },
-    headerLeft: {
-        flex: 1,
+    greetingText: {
+        fontSize: 14,
+        color: '#666',
+        marginBottom: 4,
     },
-    welcomeText: {
-        fontSize: 18,
-        fontWeight: '600',
-        color: theme.colors.text,
+    userName: {
+        fontSize: 24,
+        fontWeight: 'bold',
+        color: '#1A1A1A',
+        marginBottom: 8,
     },
-    headerRight: {
+    balanceContainer: {
         flexDirection: 'row',
-        gap: 12,
+        alignItems: 'center',
+        backgroundColor: '#EEF2FF',
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 20,
+        alignSelf: 'flex-start',
+    },
+    balanceText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#6366F1',
+        marginLeft: 6,
+    },
+    walletIcon: {
+        fontSize: 16,
+    },
+    notificationIcon: {
+        fontSize: 24,
+    },
+    chatIcon: {
+        fontSize: 24,
+    },
+    tabIcon: {
+        fontSize: 20,
+        marginRight: 8,
     },
     headerButton: {
-        padding: 8,
-        borderRadius: 8,
-        backgroundColor: theme.colors.surface,
-    },
-    mainContent: {
-        flex: 1,
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        backgroundColor: '#EEF2FF',
+        justifyContent: 'center',
         alignItems: 'center',
     },
-    titleSection: {
+    titleContainer: {
         alignItems: 'center',
-        marginBottom: 32,
+        paddingHorizontal: 20,
+        marginBottom: 24,
     },
-    title: {
-        fontSize: 32,
-        fontWeight: 'bold',
-        color: theme.colors.text,
-        textAlign: 'center',
-        marginBottom: 16,
+    brandContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 12,
     },
-    brandText: {
-        fontSize: 32,
+    brandTitle: {
+        fontSize: 42,
         fontWeight: 'bold',
-        color: theme.colors.primary,
+        marginLeft: 12,
+    },
+    brandYuk: {
+        color: '#6366F1',
+        fontWeight: 'bold',
+    },
+    brandMnang: {
+        color: '#1A1A1A',
+        fontWeight: '600',
     },
     subtitle: {
         fontSize: 16,
-        color: theme.colors.textSecondary,
+        color: '#666',
         textAlign: 'center',
         lineHeight: 24,
     },
-    checkboxSection: {
-        marginBottom: 24,
-    },
-    checkboxContainer: {
+    modeSelector: {
         flexDirection: 'row',
-        alignItems: 'center',
-    },
-    checkbox: {
-        width: 20,
-        height: 20,
-        borderWidth: 2,
-        borderColor: theme.colors.primary,
-        borderRadius: 4,
-        marginRight: 12,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    checkboxChecked: {
-        backgroundColor: theme.colors.primary,
-    },
-    checkboxLabel: {
-        fontSize: 14,
-        color: theme.colors.text,
-    },
-    inputCard: {
-        width: '100%',
+        marginHorizontal: 20,
         marginBottom: 24,
+        backgroundColor: '#FFF',
+        borderRadius: 16,
+        padding: 4,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
         elevation: 2,
     },
-    textInput: {
-        fontSize: 16,
-        color: theme.colors.text,
-        minHeight: 100,
-        textAlignVertical: 'top',
-        marginBottom: 12,
-    },
-    gpsContainer: {
-        marginTop: 8,
-    },
-    gpsButton: {
+    modeButton: {
+        flex: 1,
         flexDirection: 'row',
         alignItems: 'center',
+        justifyContent: 'center',
         paddingVertical: 12,
-        paddingHorizontal: 16,
-        backgroundColor: '#f8f9fa',
-        borderRadius: 8,
-        borderWidth: 1,
-        borderColor: '#e9ecef',
+        borderRadius: 12,
+        gap: 8,
     },
-    gpsButtonText: {
-        marginLeft: 8,
+    modeButtonActive: {
+        backgroundColor: '#6366F1',
+    },
+    modeButtonText: {
         fontSize: 14,
-        color: theme.colors.textSecondary,
-    },
-    gpsButtonTextActive: {
-        color: theme.colors.primary,
         fontWeight: '600',
+        color: '#666',
     },
-    locationInfo: {
+    modeButtonTextActive: {
+        color: '#FFF',
+    },
+    howItWorksSection: {
+        marginHorizontal: 20,
+        marginTop: 32,
+    },
+    sectionTitle: {
+        fontSize: 22,
+        fontWeight: 'bold',
+        color: '#1A1A1A',
+        marginBottom: 20,
+    },
+    stepCard: {
         flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        marginTop: 8,
-        paddingVertical: 8,
-        paddingHorizontal: 12,
-        backgroundColor: '#e8f5e8',
-        borderRadius: 6,
-        borderLeftWidth: 3,
-        borderLeftColor: theme.colors.primary,
+        backgroundColor: '#FFF',
+        padding: 16,
+        borderRadius: 16,
+        marginBottom: 16,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 4,
+        elevation: 2,
     },
-    locationText: {
-        fontSize: 12,
-        color: theme.colors.text,
-        fontFamily: 'monospace',
+    stepNumber: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: '#6366F1',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 16,
+    },
+    stepNumberText: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: '#FFF',
+    },
+    stepContent: {
         flex: 1,
     },
-    clearLocationButton: {
-        padding: 4,
-    },
-    submitContainer: {
-        alignItems: 'center',
-        marginBottom: 32,
-    },
-    submitButton: {
-        backgroundColor: theme.colors.primary,
-        borderRadius: 12,
-        elevation: 4,
-    },
-    submitButtonContent: {
-        paddingVertical: 12,
-    },
-    submitButtonLabel: {
+    stepTitle: {
         fontSize: 16,
-        fontWeight: '600',
+        fontWeight: 'bold',
+        color: '#1A1A1A',
+        marginBottom: 6,
     },
-    featuresSection: {
-        flexDirection: 'row',
-        justifyContent: 'space-around',
-        width: '100%',
-        marginBottom: 32,
-    },
-    featureItem: {
-        alignItems: 'center',
-    },
-    featureIcon: {
-        fontSize: 24,
-        marginBottom: 8,
-    },
-    featureText: {
-        fontSize: 12,
-        color: theme.colors.textSecondary,
-        textAlign: 'center',
+    stepDescription: {
+        fontSize: 14,
+        color: '#666',
+        lineHeight: 20,
     },
     alertOverlay: {
         position: 'absolute',
@@ -574,8 +537,8 @@ const styles = StyleSheet.create({
         padding: 20,
     },
     alertContainer: {
-        backgroundColor: theme.colors.surface,
-        borderRadius: 12,
+        backgroundColor: '#FFF',
+        borderRadius: 16,
         padding: 24,
         width: '100%',
         maxWidth: 400,
@@ -583,13 +546,13 @@ const styles = StyleSheet.create({
     alertTitle: {
         fontSize: 18,
         fontWeight: 'bold',
-        color: theme.colors.text,
+        color: '#1A1A1A',
         marginBottom: 16,
         textAlign: 'center',
     },
     alertText: {
         fontSize: 16,
-        color: theme.colors.textSecondary,
+        color: '#666',
         marginBottom: 24,
         textAlign: 'center',
         lineHeight: 22,
@@ -600,61 +563,29 @@ const styles = StyleSheet.create({
     },
     alertButton: {
         flex: 1,
+        paddingVertical: 14,
+        borderRadius: 12,
+        alignItems: 'center',
     },
     alertButtonPrimary: {
-        backgroundColor: theme.colors.primary,
+        backgroundColor: '#6366F1',
     },
-    quickAccessSection: {
-        marginTop: 24,
-        marginBottom: 16,
+    alertButtonSecondary: {
+        backgroundColor: '#F0F0F0',
     },
-    quickAccessCard: {
-        elevation: 2,
-    },
-    quickAccessHeader: {
-        marginBottom: 16,
-    },
-    quickAccessTitle: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        color: theme.colors.text,
-        textAlign: 'center',
-    },
-    quickAccessButtons: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 12,
-    },
-    quickAccessButton: {
-        flex: 1,
-        minWidth: '45%',
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingVertical: 12,
-        paddingHorizontal: 16,
-        backgroundColor: '#f8f9fa',
-        borderRadius: 8,
-        borderWidth: 1,
-        borderColor: '#e9ecef',
-    },
-    quickAccessButtonText: {
-        fontSize: 14,
-        color: theme.colors.primary,
+    alertButtonText: {
+        fontSize: 15,
         fontWeight: '600',
-        marginLeft: 8,
+        color: '#FFF',
+    },
+    alertButtonTextSecondary: {
+        fontSize: 15,
+        fontWeight: '600',
+        color: '#666',
     },
 });
 
 export default HomeScreen;
-
-
-
-
-
-
-
-
 
 
 

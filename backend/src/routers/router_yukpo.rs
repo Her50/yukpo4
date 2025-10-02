@@ -18,6 +18,11 @@ use crate::{
         service_controller::{get_services_for_prestataire, toggle_service_status, modifier_service, supprimer_service, get_service_by_id},
         intelligent_service_controller::{process_services_intelligently, get_services_pending_processing, reactivate_service_intelligent},
     },
+    routes::{
+        weather_routes::weather_routes,
+        nearby_services_routes::nearby_services_routes,
+        ai_chat_routes::ai_chat_routes,
+    },
     core::types::{AppResult, AppError},
     services::creer_service,
     state::AppState,
@@ -133,8 +138,14 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .layer(axum::middleware::from_fn(hide_headers::hide_headers))
         .layer(axum::middleware::from_fn(request_size_limit::request_size_limit));
     
+    // Routes publiques pour les APIs mobiles
+    let mobile_routes = Router::<Arc<AppState>>::new()
+        .merge(weather_routes(state.clone()))
+        .merge(nearby_services_routes(state.clone()))
+        .merge(ai_chat_routes(state.clone()));
+    
     // Combinaison des routes
-    public_routes.merge(protected_routes).with_state(state)
+    public_routes.merge(protected_routes).merge(mobile_routes).with_state(state)
 }
 
 /// ?? Handler pour la recherche directe (sans détection d'intention)
