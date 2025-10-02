@@ -1,7 +1,7 @@
 import { NavigationContainer } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import React from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, View, ScrollView, TouchableOpacity, Alert, TextInput } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { PaperProvider } from 'react-native-paper';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -16,7 +16,7 @@ import { theme } from './src/theme/theme';
 // BLOC 2 : Navigation
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
-import { Brain, House, MapPin, User } from 'phosphor-react-native';
+import { Brain, House, MapPin, User, ChatCircle, Plus, MagnifyingGlass, Bell } from 'phosphor-react-native';
 
 // BLOC 3 : Hooks et Services
 import { useAIServices } from './src/hooks/useAIServices';
@@ -24,156 +24,318 @@ import { useLocation } from './src/hooks/useLocation';
 import { useNearbyServices } from './src/hooks/useNearbyServices';
 import { useWeather } from './src/hooks/useWeather';
 
-// Écrans principaux
+// Écran d'accueil moderne et complet
 const HomeScreen = () => {
-    const { location, isLoading: locationLoading } = useLocation();
-    const { weather, loading: weatherLoading } = useWeather(
+    const { location, isLoading: locationLoading, errorMsg: locationError } = useLocation();
+    const { weather, loading: weatherLoading, error: weatherError } = useWeather(
         location?.coords.latitude,
         location?.coords.longitude
     );
-    const { services, loading: servicesLoading } = useNearbyServices(
+    const { services, loading: servicesLoading, error: servicesError } = useNearbyServices(
         location?.coords.latitude,
         location?.coords.longitude
     );
 
     return (
-        <View style={styles.screenContainer}>
-            <Text style={styles.screenTitle}>🏠 Accueil Yukpomnang</Text>
-
-            <View style={styles.infoCard}>
-                <Text style={styles.cardTitle}>📍 Localisation</Text>
-                {locationLoading ? (
-                    <Text style={styles.loadingText}>Chargement de la position...</Text>
-                ) : location ? (
-                    <Text style={styles.infoText}>
-                        Lat: {location.coords.latitude.toFixed(4)},
-                        Lng: {location.coords.longitude.toFixed(4)}
-                    </Text>
-                ) : (
-                    <Text style={styles.errorText}>Position non disponible</Text>
-                )}
+        <ScrollView style={styles.screenContainer} showsVerticalScrollIndicator={false}>
+            {/* Header avec recherche */}
+            <View style={styles.header}>
+                <Text style={styles.headerTitle}>Yukpomnang</Text>
+                <TouchableOpacity style={styles.searchButton}>
+                    <MagnifyingGlass size={24} color="#6366F1" />
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.notificationButton}>
+                    <Bell size={24} color="#6366F1" />
+                </TouchableOpacity>
             </View>
 
-            <View style={styles.infoCard}>
-                <Text style={styles.cardTitle}>🌤️ Météo</Text>
-                {weatherLoading ? (
-                    <Text style={styles.loadingText}>Chargement de la météo...</Text>
-                ) : weather ? (
-                    <Text style={styles.infoText}>
-                        {weather.temperature}°C - {weather.description}
-                    </Text>
-                ) : (
-                    <Text style={styles.errorText}>Météo non disponible</Text>
-                )}
+            {/* Localisation et météo */}
+            <View style={styles.locationWeatherCard}>
+                <View style={styles.locationSection}>
+                    <Text style={styles.locationTitle}>📍 Ma position</Text>
+                    {locationLoading ? (
+                        <Text style={styles.loadingText}>Détection de votre position...</Text>
+                    ) : location ? (
+                        <Text style={styles.locationText}>
+                            {location.coords.latitude.toFixed(4)}, {location.coords.longitude.toFixed(4)}
+                        </Text>
+                    ) : (
+                        <Text style={styles.errorText}>
+                            {locationError || 'Position non disponible'}
+                        </Text>
+                    )}
+                </View>
+
+                <View style={styles.weatherSection}>
+                    <Text style={styles.weatherTitle}>🌤️ Météo</Text>
+                    {weatherLoading ? (
+                        <ActivityIndicator size="small" color="#6366F1" />
+                    ) : weather ? (
+                        <View style={styles.weatherInfo}>
+                            <Text style={styles.weatherTemp}>{weather.temperature}°C</Text>
+                            <Text style={styles.weatherDesc}>{weather.description}</Text>
+                            <Text style={styles.weatherDetails}>
+                                💧 {weather.humidity}% • 💨 {weather.windSpeed} km/h
+                            </Text>
+                        </View>
+                    ) : (
+                        <Text style={styles.errorText}>
+                            {weatherError || 'Météo non disponible'}
+                        </Text>
+                    )}
+                </View>
             </View>
 
-            <View style={styles.infoCard}>
-                <Text style={styles.cardTitle}>🏪 Services à proximité</Text>
+            {/* Services à proximité */}
+            <View style={styles.section}>
+                <View style={styles.sectionHeader}>
+                    <Text style={styles.sectionTitle}>🏪 Services à proximité</Text>
+                    <TouchableOpacity style={styles.seeAllButton}>
+                        <Text style={styles.seeAllText}>Voir tout</Text>
+                    </TouchableOpacity>
+                </View>
+
                 {servicesLoading ? (
-                    <Text style={styles.loadingText}>Chargement des services...</Text>
+                    <View style={styles.loadingContainer}>
+                        <ActivityIndicator size="large" color="#6366F1" />
+                        <Text style={styles.loadingText}>Recherche de services...</Text>
+                    </View>
                 ) : services.length > 0 ? (
-                    <Text style={styles.infoText}>
-                        {services.length} service(s) trouvé(s)
-                    </Text>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.servicesScroll}>
+                        {services.slice(0, 5).map((service) => (
+                            <TouchableOpacity key={service.id} style={styles.serviceCard}>
+                                <Text style={styles.serviceName}>{service.name}</Text>
+                                <Text style={styles.serviceDescription}>{service.description}</Text>
+                                <View style={styles.serviceFooter}>
+                                    <Text style={styles.serviceDistance}>📍 {service.distance}m</Text>
+                                    <Text style={styles.serviceRating}>⭐ {service.rating}/5</Text>
+                                </View>
+                            </TouchableOpacity>
+                        ))}
+                    </ScrollView>
                 ) : (
-                    <Text style={styles.errorText}>Aucun service trouvé</Text>
+                    <View style={styles.noServicesContainer}>
+                        <Text style={styles.noServicesText}>
+                            {servicesError || 'Aucun service trouvé à proximité'}
+                        </Text>
+                    </View>
                 )}
             </View>
-        </View>
+
+            {/* Actions rapides */}
+            <View style={styles.section}>
+                <Text style={styles.sectionTitle}>⚡ Actions rapides</Text>
+                <View style={styles.quickActions}>
+                    <TouchableOpacity style={styles.actionButton}>
+                        <Plus size={24} color="#fff" />
+                        <Text style={styles.actionText}>Créer un service</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.actionButton}>
+                        <MagnifyingGlass size={24} color="#fff" />
+                        <Text style={styles.actionText}>Rechercher</Text>
+                    </TouchableOpacity>
+                </View>
+            </View>
+        </ScrollView>
     );
 };
 
+// Écran des services avec liste complète
 const ServicesScreen = () => {
     const { location } = useLocation();
-    const { services, loading } = useNearbyServices(
+    const { services, loading, error } = useNearbyServices(
         location?.coords.latitude,
         location?.coords.longitude
     );
 
     return (
         <View style={styles.screenContainer}>
-            <Text style={styles.screenTitle}>🏪 Services</Text>
+            <View style={styles.header}>
+                <Text style={styles.headerTitle}>Services</Text>
+                <TouchableOpacity style={styles.filterButton}>
+                    <Text style={styles.filterText}>Filtrer</Text>
+                </TouchableOpacity>
+            </View>
 
             {loading ? (
-                <ActivityIndicator size="large" color="#6366F1" />
+                <View style={styles.loadingContainer}>
+                    <ActivityIndicator size="large" color="#6366F1" />
+                    <Text style={styles.loadingText}>Chargement des services...</Text>
+                </View>
             ) : (
-                <View style={styles.servicesList}>
+                <ScrollView style={styles.servicesList}>
                     {services.map((service) => (
-                        <View key={service.id} style={styles.serviceCard}>
-                            <Text style={styles.serviceName}>{service.name}</Text>
-                            <Text style={styles.serviceDescription}>{service.description}</Text>
-                            <Text style={styles.serviceDistance}>
-                                📍 {service.distance}m - ⭐ {service.rating}/5
-                            </Text>
-                        </View>
+                        <TouchableOpacity key={service.id} style={styles.serviceListItem}>
+                            <View style={styles.serviceListContent}>
+                                <Text style={styles.serviceListName}>{service.name}</Text>
+                                <Text style={styles.serviceListDescription}>{service.description}</Text>
+                                <View style={styles.serviceListFooter}>
+                                    <Text style={styles.serviceListCategory}>{service.category}</Text>
+                                    <Text style={styles.serviceListDistance}>📍 {service.distance}m</Text>
+                                    <Text style={styles.serviceListRating}>⭐ {service.rating}/5</Text>
+                                </View>
+                                {service.address && (
+                                    <Text style={styles.serviceListAddress}>📍 {service.address}</Text>
+                                )}
+                            </View>
+                        </TouchableOpacity>
                     ))}
+                </ScrollView>
+            )}
+
+            {error && (
+                <View style={styles.errorContainer}>
+                    <Text style={styles.errorText}>{error}</Text>
                 </View>
             )}
         </View>
     );
 };
 
+// Écran IA avec chat fonctionnel
 const AIScreen = () => {
     const { askAI, loading, error } = useAIServices();
     const [question, setQuestion] = React.useState('');
     const [response, setResponse] = React.useState<string | null>(null);
+    const [chatHistory, setChatHistory] = React.useState<Array<{type: 'user' | 'ai', message: string}>>([]);
 
     const handleAskAI = async () => {
         if (question.trim()) {
-            const aiResponse = await askAI(question);
+            const userMessage = question.trim();
+            setChatHistory(prev => [...prev, { type: 'user', message: userMessage }]);
+            setQuestion('');
+
+            const aiResponse = await askAI(userMessage);
             if (aiResponse) {
                 setResponse(aiResponse.message);
+                setChatHistory(prev => [...prev, { type: 'ai', message: aiResponse.message }]);
             }
         }
     };
 
     return (
         <View style={styles.screenContainer}>
-            <Text style={styles.screenTitle}>🤖 IA Yukpomnang</Text>
+            <View style={styles.header}>
+                <Text style={styles.headerTitle}>🤖 Assistant IA</Text>
+            </View>
 
-            <View style={styles.aiCard}>
-                <Text style={styles.cardTitle}>Posez votre question :</Text>
-                <Text style={styles.infoText}>
-                    L'IA est prête à vous aider ! (Simulation)
-                </Text>
-                {response && (
-                    <View style={styles.responseCard}>
-                        <Text style={styles.responseText}>{response}</Text>
+            {/* Historique du chat */}
+            <ScrollView style={styles.chatContainer}>
+                {chatHistory.map((msg, index) => (
+                    <View key={index} style={[
+                        styles.chatMessage,
+                        msg.type === 'user' ? styles.userMessage : styles.aiMessage
+                    ]}>
+                        <Text style={[
+                            styles.chatText,
+                            msg.type === 'user' ? styles.userText : styles.aiText
+                        ]}>
+                            {msg.message}
+                        </Text>
+                    </View>
+                ))}
+                {loading && (
+                    <View style={styles.aiMessage}>
+                        <Text style={styles.aiText}>L'IA réfléchit...</Text>
                     </View>
                 )}
+            </ScrollView>
+
+            {/* Zone de saisie */}
+            <View style={styles.chatInputContainer}>
+                <View style={styles.chatInput}>
+                    <TextInput
+                        style={styles.chatInputText}
+                        placeholder="Posez votre question..."
+                        value={question}
+                        onChangeText={setQuestion}
+                    />
+                </View>
+                <TouchableOpacity 
+                    style={[styles.sendButton, loading && styles.sendButtonDisabled]}
+                    onPress={handleAskAI}
+                    disabled={loading || !question.trim()}
+                >
+                    <ChatCircle size={24} color="#fff" />
+                </TouchableOpacity>
             </View>
+
+            {error && (
+                <View style={styles.errorContainer}>
+                    <Text style={styles.errorText}>{error}</Text>
+                </View>
+            )}
         </View>
     );
 };
 
+// Écran de profil utilisateur
 const ProfileScreen = () => {
     const { user } = useAuth();
 
     return (
-        <View style={styles.screenContainer}>
-            <Text style={styles.screenTitle}>👤 Mon Profil</Text>
+        <ScrollView style={styles.screenContainer}>
+            <View style={styles.header}>
+                <Text style={styles.headerTitle}>Mon Profil</Text>
+            </View>
 
-            <View style={styles.infoCard}>
-                <Text style={styles.cardTitle}>Utilisateur</Text>
-                <Text style={styles.infoText}>
-                    {user ? `Connecté en tant que ${user.email}` : 'Non connecté'}
+            {/* Informations utilisateur */}
+            <View style={styles.profileCard}>
+                <View style={styles.profileAvatar}>
+                    <User size={48} color="#6366F1" />
+                </View>
+                <Text style={styles.profileName}>
+                    {user ? user.email : 'Utilisateur'}
+                </Text>
+                <Text style={styles.profileStatus}>
+                    {user ? 'Connecté' : 'Non connecté'}
                 </Text>
             </View>
-        </View>
+
+            {/* Menu du profil */}
+            <View style={styles.section}>
+                <TouchableOpacity style={styles.menuItem}>
+                    <Text style={styles.menuText}>📝 Mes services</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.menuItem}>
+                    <Text style={styles.menuText}>⭐ Mes avis</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.menuItem}>
+                    <Text style={styles.menuText}>🔔 Notifications</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.menuItem}>
+                    <Text style={styles.menuText}>⚙️ Paramètres</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.menuItem}>
+                    <Text style={styles.menuText}>❓ Aide</Text>
+                </TouchableOpacity>
+            </View>
+        </ScrollView>
     );
 };
 
+// Écrans d'authentification
 const LoginScreen = () => (
     <View style={styles.screenContainer}>
-        <Text style={styles.screenTitle}>🔐 Connexion</Text>
-        <Text style={styles.infoText}>Écran de connexion (simulation)</Text>
+        <View style={styles.authContainer}>
+            <Text style={styles.authTitle}>🔐 Connexion</Text>
+            <Text style={styles.authSubtitle}>Connectez-vous à votre compte Yukpomnang</Text>
+            <TouchableOpacity style={styles.authButton}>
+                <Text style={styles.authButtonText}>Se connecter</Text>
+            </TouchableOpacity>
+        </View>
     </View>
 );
 
 const RegisterScreen = () => (
     <View style={styles.screenContainer}>
-        <Text style={styles.screenTitle}>📝 Inscription</Text>
-        <Text style={styles.infoText}>Écran d'inscription (simulation)</Text>
+        <View style={styles.authContainer}>
+            <Text style={styles.authTitle}>📝 Inscription</Text>
+            <Text style={styles.authSubtitle}>Créez votre compte Yukpomnang</Text>
+            <TouchableOpacity style={styles.authButton}>
+                <Text style={styles.authButtonText}>S'inscrire</Text>
+            </TouchableOpacity>
+        </View>
     </View>
 );
 
@@ -322,7 +484,7 @@ const AppNavigator = () => {
 };
 
 export default function App() {
-    console.log('[App] 🚀 Yukpomnang - Application complète restaurée');
+    console.log('[App] 🚀 Yukpomnang - Application complète de production');
 
     return (
         <ErrorBoundary>
@@ -350,52 +512,170 @@ const styles = StyleSheet.create({
     screenContainer: {
         flex: 1,
         backgroundColor: '#f8f9fa',
-        padding: 20,
-        paddingTop: 60,
+        paddingTop: 50,
     },
-    screenTitle: {
-        fontSize: 28,
-        fontWeight: 'bold',
-        color: '#0F52BA',
-        textAlign: 'center',
-        marginBottom: 30,
-    },
-    infoCard: {
+    header: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingHorizontal: 20,
+        paddingVertical: 15,
         backgroundColor: '#fff',
-        borderRadius: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: '#e5e7eb',
+    },
+    headerTitle: {
+        fontSize: 24,
+        fontWeight: 'bold',
+        color: '#1f2937',
+    },
+    searchButton: {
+        padding: 8,
+    },
+    notificationButton: {
+        padding: 8,
+    },
+    locationWeatherCard: {
+        backgroundColor: '#fff',
+        margin: 20,
+        borderRadius: 16,
         padding: 20,
-        marginBottom: 16,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
-        shadowRadius: 4,
-        elevation: 3,
+        shadowRadius: 8,
+        elevation: 4,
     },
-    cardTitle: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        color: '#333',
+    locationSection: {
+        marginBottom: 15,
+    },
+    locationTitle: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#374151',
+        marginBottom: 5,
+    },
+    locationText: {
+        fontSize: 14,
+        color: '#6b7280',
+    },
+    weatherSection: {
+        borderTopWidth: 1,
+        borderTopColor: '#e5e7eb',
+        paddingTop: 15,
+    },
+    weatherTitle: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#374151',
         marginBottom: 10,
     },
-    infoText: {
-        fontSize: 16,
-        color: '#666',
-        lineHeight: 24,
+    weatherInfo: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
     },
-    loadingText: {
-        fontSize: 16,
-        color: '#999',
-        fontStyle: 'italic',
+    weatherTemp: {
+        fontSize: 24,
+        fontWeight: 'bold',
+        color: '#1f2937',
     },
-    errorText: {
+    weatherDesc: {
+        fontSize: 14,
+        color: '#6b7280',
+        textTransform: 'capitalize',
+    },
+    weatherDetails: {
+        fontSize: 12,
+        color: '#9ca3af',
+    },
+    section: {
+        marginHorizontal: 20,
+        marginBottom: 20,
+    },
+    sectionHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 15,
+    },
+    sectionTitle: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        color: '#1f2937',
+    },
+    seeAllButton: {
+        padding: 5,
+    },
+    seeAllText: {
+        fontSize: 14,
+        color: '#6366F1',
+        fontWeight: '600',
+    },
+    servicesScroll: {
+        marginHorizontal: -20,
+        paddingHorizontal: 20,
+    },
+    serviceCard: {
+        backgroundColor: '#fff',
+        borderRadius: 12,
+        padding: 16,
+        marginRight: 12,
+        width: 200,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 2,
+    },
+    serviceName: {
         fontSize: 16,
-        color: '#e74c3c',
-        fontStyle: 'italic',
+        fontWeight: 'bold',
+        color: '#1f2937',
+        marginBottom: 5,
+    },
+    serviceDescription: {
+        fontSize: 12,
+        color: '#6b7280',
+        marginBottom: 10,
+    },
+    serviceFooter: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    serviceDistance: {
+        fontSize: 11,
+        color: '#9ca3af',
+    },
+    serviceRating: {
+        fontSize: 11,
+        color: '#9ca3af',
+    },
+    quickActions: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+    },
+    actionButton: {
+        backgroundColor: '#6366F1',
+        borderRadius: 12,
+        padding: 16,
+        flex: 1,
+        marginHorizontal: 5,
+        alignItems: 'center',
+        flexDirection: 'row',
+        justifyContent: 'center',
+    },
+    actionText: {
+        color: '#fff',
+        fontSize: 14,
+        fontWeight: '600',
+        marginLeft: 8,
     },
     servicesList: {
         flex: 1,
     },
-    serviceCard: {
+    serviceListItem: {
         backgroundColor: '#fff',
         borderRadius: 12,
         padding: 16,
@@ -403,53 +683,226 @@ const styles = StyleSheet.create({
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.1,
-        shadowRadius: 2,
+        shadowRadius: 4,
         elevation: 2,
     },
-    serviceName: {
+    serviceListContent: {
+        flex: 1,
+    },
+    serviceListName: {
         fontSize: 18,
         fontWeight: 'bold',
-        color: '#333',
-        marginBottom: 8,
+        color: '#1f2937',
+        marginBottom: 5,
     },
-    serviceDescription: {
+    serviceListDescription: {
         fontSize: 14,
-        color: '#666',
-        marginBottom: 8,
+        color: '#6b7280',
+        marginBottom: 10,
     },
-    serviceDistance: {
+    serviceListFooter: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 5,
+    },
+    serviceListCategory: {
         fontSize: 12,
-        color: '#999',
+        color: '#6366F1',
+        backgroundColor: '#e0e7ff',
+        paddingHorizontal: 8,
+        paddingVertical: 2,
+        borderRadius: 4,
     },
-    aiCard: {
-        backgroundColor: '#fff',
-        borderRadius: 12,
+    serviceListDistance: {
+        fontSize: 12,
+        color: '#9ca3af',
+    },
+    serviceListRating: {
+        fontSize: 12,
+        color: '#9ca3af',
+    },
+    serviceListAddress: {
+        fontSize: 12,
+        color: '#9ca3af',
+        fontStyle: 'italic',
+    },
+    chatContainer: {
+        flex: 1,
         padding: 20,
-        marginBottom: 16,
+    },
+    chatMessage: {
+        marginBottom: 15,
+        maxWidth: '80%',
+    },
+    userMessage: {
+        alignSelf: 'flex-end',
+        backgroundColor: '#6366F1',
+        borderRadius: 16,
+        padding: 12,
+    },
+    aiMessage: {
+        alignSelf: 'flex-start',
+        backgroundColor: '#f3f4f6',
+        borderRadius: 16,
+        padding: 12,
+    },
+    chatText: {
+        fontSize: 16,
+        lineHeight: 22,
+    },
+    userText: {
+        color: '#fff',
+    },
+    aiText: {
+        color: '#1f2937',
+    },
+    chatInputContainer: {
+        flexDirection: 'row',
+        padding: 20,
+        backgroundColor: '#fff',
+        borderTopWidth: 1,
+        borderTopColor: '#e5e7eb',
+    },
+    chatInput: {
+        flex: 1,
+        backgroundColor: '#f3f4f6',
+        borderRadius: 20,
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        marginRight: 10,
+    },
+    chatInputText: {
+        fontSize: 16,
+        color: '#1f2937',
+    },
+    sendButton: {
+        backgroundColor: '#6366F1',
+        borderRadius: 20,
+        padding: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    sendButtonDisabled: {
+        backgroundColor: '#9ca3af',
+    },
+    profileCard: {
+        backgroundColor: '#fff',
+        borderRadius: 16,
+        padding: 24,
+        alignItems: 'center',
+        margin: 20,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
-        shadowRadius: 4,
-        elevation: 3,
+        shadowRadius: 8,
+        elevation: 4,
     },
-    responseCard: {
-        backgroundColor: '#f0f8ff',
-        borderRadius: 8,
+    profileAvatar: {
+        width: 80,
+        height: 80,
+        borderRadius: 40,
+        backgroundColor: '#e0e7ff',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 16,
+    },
+    profileName: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        color: '#1f2937',
+        marginBottom: 5,
+    },
+    profileStatus: {
+        fontSize: 14,
+        color: '#6b7280',
+    },
+    menuItem: {
+        backgroundColor: '#fff',
+        borderRadius: 12,
         padding: 16,
-        marginTop: 16,
-        borderLeftWidth: 4,
-        borderLeftColor: '#6366F1',
+        marginBottom: 8,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 2,
     },
-    responseText: {
+    menuText: {
         fontSize: 16,
-        color: '#333',
-        lineHeight: 24,
+        color: '#1f2937',
+    },
+    authContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 20,
+    },
+    authTitle: {
+        fontSize: 28,
+        fontWeight: 'bold',
+        color: '#1f2937',
+        marginBottom: 10,
+    },
+    authSubtitle: {
+        fontSize: 16,
+        color: '#6b7280',
+        textAlign: 'center',
+        marginBottom: 30,
+    },
+    authButton: {
+        backgroundColor: '#6366F1',
+        borderRadius: 12,
+        padding: 16,
+        width: '100%',
+        alignItems: 'center',
+    },
+    authButtonText: {
+        color: '#fff',
+        fontSize: 16,
+        fontWeight: '600',
+    },
+    filterButton: {
+        padding: 8,
+    },
+    filterText: {
+        fontSize: 14,
+        color: '#6366F1',
+        fontWeight: '600',
     },
     loadingContainer: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: '#f8f9fa',
         padding: 20,
+    },
+    loadingText: {
+        marginTop: 16,
+        fontSize: 16,
+        color: '#6b7280',
+        textAlign: 'center',
+    },
+    errorContainer: {
+        backgroundColor: '#fef2f2',
+        borderRadius: 8,
+        padding: 16,
+        margin: 20,
+        borderLeftWidth: 4,
+        borderLeftColor: '#ef4444',
+    },
+    errorText: {
+        fontSize: 14,
+        color: '#dc2626',
+    },
+    noServicesContainer: {
+        backgroundColor: '#f9fafb',
+        borderRadius: 12,
+        padding: 20,
+        alignItems: 'center',
+    },
+    noServicesText: {
+        fontSize: 14,
+        color: '#6b7280',
+        textAlign: 'center',
     },
 });
