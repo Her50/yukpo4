@@ -1,7 +1,7 @@
 // Navigation ultra-moderne avec Phosphor Icons et gradients
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
-import { Briefcase, ChartBar, Clock, House, User } from 'phosphor-react-native';
+import { Bell, Brain, Briefcase, ChartBar, Clock, House, MagnifyingGlass, Plus, User } from 'phosphor-react-native';
 import React from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { modernColors, modernStyles } from '../theme/modernTheme';
@@ -15,6 +15,8 @@ import ModernHomeScreen from '../screens/ModernHomeScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import RechargeTokensScreen from '../screens/RechargeTokensScreen';
 import MyServicesScreen from '../screens/service/MyServicesScreen';
+import ServicesScreen from '../screens/ServicesScreen';
+import RechercheBesoinScreen from '../screens/RechercheBesoinScreen';
 
 // Autres écrans (pour la navigation secondaire)
 import AboutScreen from '../screens/AboutScreen';
@@ -22,7 +24,6 @@ import AIChatScreen from '../screens/ai/AIChatScreen';
 import AIHubScreen from '../screens/ai/AIHubScreen';
 import ContactScreen from '../screens/ContactScreen';
 import FormulaireYukpoIntelligentScreen from '../screens/FormulaireYukpoIntelligentScreen';
-import RechercheBesoinScreen from '../screens/RechercheBesoinScreen';
 import ResultatBesoinScreen from '../screens/ResultatBesoinScreen';
 import CreateServiceScreen from '../screens/service/CreateServiceScreen';
 import ServiceDetailScreen from '../screens/service/ServiceDetailScreen';
@@ -75,12 +76,16 @@ const MainTabs = () => {
           switch (route.name) {
             case 'Home':
               return <House {...iconProps} />;
-            case 'MyServices':
+            case 'Services':
               return <Briefcase {...iconProps} />;
-            case 'History':
-              return <Clock {...iconProps} />;
-            case 'Dashboard':
-              return <ChartBar {...iconProps} />;
+            case 'Search':
+              return <MagnifyingGlass {...iconProps} />;
+            case 'Create':
+              return <Plus {...iconProps} />;
+            case 'AI':
+              return <Brain {...iconProps} />;
+            case 'Finance':
+              return <Bell {...iconProps} />;
             case 'Account':
               return <User {...iconProps} />;
             default:
@@ -118,27 +123,43 @@ const MainTabs = () => {
         }}
       />
       <Tab.Screen
-        name="MyServices"
-        component={MyServicesScreen}
+        name="Services"
+        component={ServicesScreen}
         options={{
-          title: 'Mes Services',
-          tabBarLabel: 'Mes Services'
+          title: 'Services',
+          tabBarLabel: 'Services'
         }}
       />
       <Tab.Screen
-        name="History"
-        component={SoldeDetailScreen}
+        name="Search"
+        component={RechercheBesoinScreen}
         options={{
-          title: 'Mon Historique',
-          tabBarLabel: 'Historique'
+          title: 'Recherche',
+          tabBarLabel: 'Recherche'
         }}
       />
       <Tab.Screen
-        name="Dashboard"
-        component={DashboardPrestataireScreen}
+        name="Create"
+        component={CreateServiceScreen}
         options={{
-          title: 'Dashboard',
-          tabBarLabel: 'Dashboard'
+          title: 'Créer',
+          tabBarLabel: 'Créer'
+        }}
+      />
+      <Tab.Screen
+        name="AI"
+        component={AIChatScreen}
+        options={{
+          title: 'IA Yukpo',
+          tabBarLabel: 'IA Yukpo'
+        }}
+      />
+      <Tab.Screen
+        name="Finance"
+        component={RechargeTokensScreen}
+        options={{
+          title: 'Finance',
+          tabBarLabel: 'Finance'
         }}
       />
       <Tab.Screen
@@ -251,12 +272,32 @@ const MainStack = () => (
   </Stack.Navigator>
 );
 
-// Navigateur principal de l'application - DÉSACTIVÉ
-// La navigation principale est maintenant dans App.tsx
+// Navigateur principal de l'application - VERSION ULTRA-MODERNE
 const AppNavigator = () => {
-  // Cette navigation est maintenant gérée par App.tsx
-  // Gardé pour compatibilité avec les imports existants
-  return null;
+  const { user, loading } = useAuth();
+  const [navigationKey, setNavigationKey] = React.useState(0);
+
+  // Debug minimal en développement
+  if (process.env.NODE_ENV === 'development') {
+    console.log('[AppNavigator] user:', !!user, 'loading:', loading);
+  }
+
+  // Détecter les changements d'utilisateur
+  React.useEffect(() => {
+    if (user) {
+      setNavigationKey(prev => prev + 1);
+    }
+  }, [user]);
+
+  if (loading) {
+    return <LoadingScreen />;
+  }
+
+  if (user) {
+    return <MainStack key={`main-${navigationKey}`} />;
+  } else {
+    return <AuthStack key={`auth-${navigationKey}`} />;
+  }
 };
 
 // Styles
