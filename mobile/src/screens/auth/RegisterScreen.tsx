@@ -1,6 +1,6 @@
 // Migration vers Lucide React Native pour un design moderne
 import { useNavigation } from '@react-navigation/native';
-import { AlertCircle, CheckCircle, Mail } from 'lucide-react-native';
+import { AlertCircle, CheckCircle, Mail } from 'phosphor-react-native';
 import * as React from 'react';
 import { useState } from 'react';
 import {

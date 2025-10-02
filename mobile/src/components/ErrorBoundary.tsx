@@ -1,7 +1,7 @@
 import React, { Component, ReactNode } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-// Migration vers Lucide React Native pour un design moderne
-import { AlertTriangle, Bug, RotateCcw } from 'lucide-react-native';
+// Migration vers Phosphor React Native pour un design moderne
+import { Warning, Bug, ArrowClockwise } from 'phosphor-react-native';
 
 interface Props {
     children: ReactNode;
@@ -40,7 +40,7 @@ class ErrorBoundary extends Component<Props, State> {
             return (
                 <View style={styles.container}>
           <View style={styles.errorCard}>
-                <AlertTriangle size={48} color="#DC2626" />
+                <Warning size={48} color="#DC2626" />
             
             <Text style={styles.errorTitle}>Oups ! Une erreur s'est produite</Text>
             
@@ -61,7 +61,7 @@ class ErrorBoundary extends Component<Props, State> {
                 style={styles.retryButton}
                 onPress={this.handleRetry}
                                 >
-                    <RotateCcw size={20} color="#FFF" />
+                    <ArrowClockwise size={20} color="#FFF" />
                 <Text style={styles.retryButtonText}>Redémarrer</Text>
                                 </TouchableOpacity>
 

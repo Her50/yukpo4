@@ -1,7 +1,7 @@
 ﻿// Migration vers Lucide React Native pour un design moderne
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
-import { Briefcase, Calendar, Edit, Eye, Plus, Share } from 'lucide-react-native';
+import { Briefcase, Calendar, Edit, Eye, Plus, Share } from 'phosphor-react-native';
 import * as React from 'react';
 import { useEffect, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';

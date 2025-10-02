@@ -1,5 +1,5 @@
 ﻿// Migration vers Lucide React Native pour un design moderne
-import { AlertTriangle, BarChart3, Bell, Clock, Eye, Key, Mail, MapPin, Megaphone, MessageCircle, Radio, Shield } from 'lucide-react-native';
+import { AlertTriangle, BarChart3, Bell, Clock, Eye, Key, Mail, MapPin, Megaphone, MessageCircle, Radio, Shield } from 'phosphor-react-native';
 import * as React from 'react';
 import { useState } from 'react';
 import {

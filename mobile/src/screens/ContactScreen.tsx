@@ -5,7 +5,7 @@ import { Card, Paragraph, TextInput, Title } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 // Migration vers Lucide React Native pour un design moderne
 import { useNavigation } from '@react-navigation/native';
-import { Clock, Mail, MapPin, Phone } from 'lucide-react-native';
+import { Clock, Mail, MapPin, Phone } from 'phosphor-react-native';
 import { theme } from '../theme/theme';
 
 interface ContactForm {

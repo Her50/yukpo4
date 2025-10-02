@@ -1,5 +1,5 @@
 ﻿// Migration vers Lucide React Native pour un design moderne
-import { ChevronRight, LogOut, X } from 'lucide-react-native';
+import { ChevronRight, LogOut, X } from 'phosphor-react-native';
 import React from 'react';
 import {
   Alert,

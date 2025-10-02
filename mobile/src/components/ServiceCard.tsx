@@ -1,6 +1,6 @@
 // Migration vers Lucide React Native pour un design moderne
 import { useNavigation } from '@react-navigation/native';
-import { ChevronRight, Eye, Heart, Images, MapPin, MessageCircle, Phone, Play, Share } from 'lucide-react-native';
+import { ChevronRight, Eye, Heart, Images, MapPin, MessageCircle, Phone, Play, Share } from 'phosphor-react-native';
 import * as React from 'react';
 import { useState } from 'react';
 import { Alert, Dimensions, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';

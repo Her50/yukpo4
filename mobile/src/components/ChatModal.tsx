@@ -1,5 +1,5 @@
 // Migration vers Lucide React Native pour un design moderne
-import { Check, CheckCheck, MoreVertical, Send, X } from 'lucide-react-native';
+import { Check, CheckCheck, MoreVertical, Send, X } from 'phosphor-react-native';
 import * as React from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
