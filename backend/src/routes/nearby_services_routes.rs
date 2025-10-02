@@ -58,30 +58,31 @@ pub async fn get_nearby_services(
             ROUND(
                 ST_Distance(
                     ST_GeogFromText('POINT(' || $2 || ' ' || $1 || ')'),
-                    ST_GeogFromText('POINT(' || s.gps->>'longitude' || ' ' || s.gps->>'latitude' || ')')
+                    ST_GeogFromText('POINT(' || SPLIT_PART(s.gps, ',', 2) || ' ' || SPLIT_PART(s.gps, ',', 1) || ')')
                 )
             )::int as distance,
             0.0 as rating,
             '€' as price,
-            (s.gps->>'latitude')::float as latitude,
-            (s.gps->>'longitude')::float as longitude,
+            CAST(SPLIT_PART(s.gps, ',', 1) AS FLOAT) as latitude,
+            CAST(SPLIT_PART(s.gps, ',', 2) AS FLOAT) as longitude,
             COALESCE(s.data->'adresse'->>'valeur', 'Adresse non disponible') as address,
             s.data->'telephone'->>'valeur' as phone,
             s.data->'site_web'->>'valeur' as website
         FROM services s
         WHERE 
-            s.gps->>'latitude' IS NOT NULL 
-            AND s.gps->>'longitude' IS NOT NULL
+            s.gps IS NOT NULL 
+            AND s.gps != ''
+            AND s.gps ~ '^-?\d+\.?\d*,-?\d+\.?\d*$'
             AND ST_DWithin(
                 ST_GeogFromText('POINT(' || $2 || ' ' || $1 || ')'),
-                ST_GeogFromText('POINT(' || s.gps->>'longitude' || ' ' || s.gps->>'latitude' || ')'),
+                ST_GeogFromText('POINT(' || SPLIT_PART(s.gps, ',', 2) || ' ' || SPLIT_PART(s.gps, ',', 1) || ')'),
                 $3
             )
             AND s.is_active = true
         ORDER BY 
             ST_Distance(
                 ST_GeogFromText('POINT(' || $2 || ' ' || $1 || ')'),
-                ST_GeogFromText('POINT(' || s.gps->>'longitude' || ' ' || s.gps->>'latitude' || ')')
+                ST_GeogFromText('POINT(' || SPLIT_PART(s.gps, ',', 2) || ' ' || SPLIT_PART(s.gps, ',', 1) || ')')
             )
         LIMIT $4
         "#,
