@@ -1,13 +1,11 @@
 use std::sync::Arc;
 use axum::{
     extract::{Query, State},
-    http::StatusCode,
     response::Json,
     routing::get,
     Router,
 };
 use serde::{Deserialize, Serialize};
-use sqlx::PgPool;
 
 use crate::state::AppState;
 
@@ -44,12 +42,12 @@ pub struct NearbyService {
 pub async fn get_nearby_services(
     Query(params): Query<NearbyServicesParams>,
     State(state): State<Arc<AppState>>,
-) -> Result<Json<NearbyServicesResponse>, StatusCode> {
+) -> Json<NearbyServicesResponse> {
     let radius = params.radius.unwrap_or(5000); // 5km par défaut
     let limit = params.limit.unwrap_or(20); // 20 services par défaut
     
     // Utiliser la fonction PostgreSQL existante pour la recherche GPS
-    let services = sqlx::query_as!(
+    let services = match sqlx::query_as!(
         NearbyService,
         r#"
         SELECT 
@@ -92,11 +90,16 @@ pub async fn get_nearby_services(
         radius as i64,
         limit as i64
     )
-    .fetch_all(&state.pg_pool)
+    .fetch_all(&state.pg)
     .await
-    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    {
+        Ok(services) => services,
+        Err(_) => {
+            return Json(NearbyServicesResponse { services: vec![] });
+        }
+    };
     
-    Ok(Json(NearbyServicesResponse { services }))
+    Json(NearbyServicesResponse { services })
 }
 
 pub fn nearby_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {

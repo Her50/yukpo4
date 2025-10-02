@@ -1,6 +1,5 @@
 use axum::{
     extract::{Path, Query, State},
-    http::StatusCode,
     response::Json,
     routing::{get, post},
     Router,
@@ -53,49 +52,59 @@ pub async fn process_payment(
     State(payment_service): State<PaymentService>,
     user_id: i32, // Extrait du middleware d'authentification
     Json(request): Json<ProcessPaymentRequest>,
-) -> Result<Json<ProcessPaymentResponse>, StatusCode> {
+) -> Json<ProcessPaymentResponse> {
     // Valider le montant
     if request.amount <= 0.0 {
-        return Ok(Json(ProcessPaymentResponse {
+        return Json(ProcessPaymentResponse {
             success: false,
             data: None,
             error: Some("Le montant doit être supérieur à 0".to_string()),
-        }));
+        });
     }
 
     // Valider la devise
     if !["XAF", "USD", "EUR", "GBP"].contains(&request.currency.as_str()) {
-        return Ok(Json(ProcessPaymentResponse {
+        return Json(ProcessPaymentResponse {
             success: false,
             data: None,
             error: Some("Devise non supportée".to_string()),
-        }));
+        });
     }
 
     // Créer la requête de paiement
+    let payment_method = match serde_json::from_value::<PaymentMethod>(request._payment_method) {
+        Ok(method) => method,
+        Err(_) => {
+            return Json(ProcessPaymentResponse {
+                success: false,
+                data: None,
+                error: Some("Méthode de paiement invalide".to_string()),
+            });
+        }
+    };
+
     let payment_request = PaymentRequest {
         user_id,
         amount: request.amount,
         currency: request.currency,
-        payment_method: serde_json::from_value::<PaymentMethod>(request._payment_method)
-            .map_err(|_| StatusCode::BAD_REQUEST)?,
+        payment_method,
         description: request.description,
     };
 
     // Traiter le paiement
     match payment_service.process_payment(payment_request).await {
-        Ok(response) => Ok(Json(ProcessPaymentResponse {
+        Ok(response) => Json(ProcessPaymentResponse {
             success: true,
             data: Some(response),
             error: None,
-        })),
+        }),
         Err(error) => {
             eprintln!("Erreur traitement paiement: {}", error);
-            Ok(Json(ProcessPaymentResponse {
+            Json(ProcessPaymentResponse {
                 success: false,
                 data: None,
                 error: Some("Erreur lors du traitement du paiement".to_string()),
-            }))
+            })
         }
     }
 }
@@ -105,23 +114,23 @@ pub async fn get_payment_history(
     State(payment_service): State<PaymentService>,
     user_id: i32, // Extrait du middleware d'authentification
     Query(params): Query<PaymentHistoryQuery>,
-) -> Result<Json<PaymentHistoryResponse>, StatusCode> {
+) -> Json<PaymentHistoryResponse> {
     let limit = params.limit.unwrap_or(20).min(100); // Limite max de 100
     let offset = params.offset.unwrap_or(0);
 
     match payment_service.get_payment_history(user_id, limit, offset).await {
-        Ok(history) => Ok(Json(PaymentHistoryResponse {
+        Ok(history) => Json(PaymentHistoryResponse {
             success: true,
             data: Some(history),
             error: None,
-        })),
+        }),
         Err(error) => {
             eprintln!("Erreur récupération historique: {}", error);
-            Ok(Json(PaymentHistoryResponse {
+            Json(PaymentHistoryResponse {
                 success: false,
                 data: None,
                 error: Some("Erreur lors de la récupération de l'historique".to_string()),
-            }))
+            })
         }
     }
 }
@@ -131,42 +140,42 @@ pub async fn get_payment_receipt(
     State(payment_service): State<PaymentService>,
     user_id: i32, // Extrait du middleware d'authentification
     Path(transaction_id): Path<String>,
-) -> Result<Json<PaymentReceiptResponse>, StatusCode> {
+) -> Json<PaymentReceiptResponse> {
     match payment_service.get_payment_receipt(&transaction_id).await {
         Ok(Some(receipt)) => {
             // Vérifier que le reçu appartient à l'utilisateur
             if receipt.user_id != user_id {
-                return Ok(Json(PaymentReceiptResponse {
+                return Json(PaymentReceiptResponse {
                     success: false,
                     data: None,
                     error: Some("Accès non autorisé à ce reçu".to_string()),
-                }));
+                });
             }
 
-            Ok(Json(PaymentReceiptResponse {
+            Json(PaymentReceiptResponse {
                 success: true,
                 data: Some(receipt),
                 error: None,
-            }))
+            })
         }
-        Ok(None) => Ok(Json(PaymentReceiptResponse {
+        Ok(None) => Json(PaymentReceiptResponse {
             success: false,
             data: None,
             error: Some("Reçu non trouvé".to_string()),
-        })),
+        }),
         Err(error) => {
             eprintln!("Erreur récupération reçu: {}", error);
-            Ok(Json(PaymentReceiptResponse {
+            Json(PaymentReceiptResponse {
                 success: false,
                 data: None,
                 error: Some("Erreur lors de la récupération du reçu".to_string()),
-            }))
+            })
         }
     }
 }
 
 /// Obtenir les méthodes de paiement disponibles
-pub async fn get_available_payment_methods() -> Result<Json<serde_json::Value>, StatusCode> {
+pub async fn get_available_payment_methods() -> Json<serde_json::Value> {
     let methods = serde_json::json!({
         "success": true,
         "data": {
@@ -221,14 +230,14 @@ pub async fn get_available_payment_methods() -> Result<Json<serde_json::Value>, 
         }
     });
 
-    Ok(Json(methods))
+    Json(methods)
 }
 
 /// Obtenir les statistiques de paiement d'un utilisateur
 pub async fn get_payment_stats(
     State(payment_service): State<PaymentService>,
     user_id: i32, // Extrait du middleware d'authentification
-) -> Result<Json<serde_json::Value>, StatusCode> {
+) -> Json<serde_json::Value> {
     // Récupérer l'historique complet pour calculer les stats
     match payment_service.get_payment_history(user_id, 1000, 0).await {
         Ok(history) => {
@@ -251,14 +260,14 @@ pub async fn get_payment_stats(
                 }
             });
 
-            Ok(Json(stats))
+            Json(stats)
         }
         Err(error) => {
             eprintln!("Erreur récupération stats: {}", error);
-            Ok(Json(serde_json::json!({
+            Json(serde_json::json!({
                 "success": false,
                 "error": "Erreur lors de la récupération des statistiques"
-            })))
+            }))
         }
     }
 }

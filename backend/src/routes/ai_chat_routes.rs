@@ -1,7 +1,6 @@
 use std::sync::Arc;
 use axum::{
     extract::{Json, State},
-    http::StatusCode,
     response::Json as ResponseJson,
     routing::post,
     Router,
@@ -52,9 +51,17 @@ pub struct AnalyzeResponse {
 pub async fn chat_ai(
     Json(payload): Json<ChatRequest>,
     State(_state): State<Arc<AppState>>,
-) -> Result<ResponseJson<ChatResponse>, StatusCode> {
-    let api_key = std::env::var("OPENAI_API_KEY")
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+) -> ResponseJson<ChatResponse> {
+    let api_key = match std::env::var("OPENAI_API_KEY") {
+        Ok(key) => key,
+        Err(_) => {
+            return ResponseJson(ChatResponse {
+                message: "Erreur de configuration API".to_string(),
+                suggestions: vec![],
+                confidence: 0.0,
+            });
+        }
+    };
     
     let client = Client::new();
     
@@ -76,23 +83,42 @@ pub async fn chat_ai(
         "temperature": 0.7
     });
     
-    let response = client
+    let response = match client
         .post("https://api.openai.com/v1/chat/completions")
         .header("Authorization", format!("Bearer {}", api_key))
         .header("Content-Type", "application/json")
         .json(&request_body)
         .send()
         .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    {
+        Ok(resp) => resp,
+        Err(_) => {
+            return ResponseJson(ChatResponse {
+                message: "Erreur de connexion à l'API".to_string(),
+                suggestions: vec![],
+                confidence: 0.0,
+            });
+        }
+    };
     
     if !response.status().is_success() {
-        return Err(StatusCode::INTERNAL_SERVER_ERROR);
+        return ResponseJson(ChatResponse {
+            message: "Erreur de l'API OpenAI".to_string(),
+            suggestions: vec![],
+            confidence: 0.0,
+        });
     }
     
-    let openai_response: serde_json::Value = response
-        .json()
-        .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    let openai_response: serde_json::Value = match response.json().await {
+        Ok(data) => data,
+        Err(_) => {
+            return ResponseJson(ChatResponse {
+                message: "Erreur de parsing de la réponse".to_string(),
+                suggestions: vec![],
+                confidence: 0.0,
+            });
+        }
+    };
     
     let message = openai_response["choices"][0]["message"]["content"]
         .as_str()
@@ -106,18 +132,18 @@ pub async fn chat_ai(
         "Aide".to_string(),
     ];
     
-    Ok(ResponseJson(ChatResponse {
+    ResponseJson(ChatResponse {
         message,
         suggestions,
         confidence: 0.8,
-    }))
+    })
 }
 
 /// Génère des recommandations personnalisées
 pub async fn get_recommendations(
-    Json(payload): Json<RecommendationsRequest>,
+    Json(_payload): Json<RecommendationsRequest>,
     State(_state): State<Arc<AppState>>,
-) -> Result<ResponseJson<RecommendationsResponse>, StatusCode> {
+) -> ResponseJson<RecommendationsResponse> {
     // Pour l'instant, retourner des recommandations basiques
     // TODO: Intégrer avec votre système de recommandations existant
     let recommendations = vec![
@@ -126,14 +152,14 @@ pub async fn get_recommendations(
         "Service utile : Pharmacie à proximité".to_string(),
     ];
     
-    Ok(ResponseJson(RecommendationsResponse { recommendations }))
+    ResponseJson(RecommendationsResponse { recommendations })
 }
 
 /// Analyse le sentiment et extrait les mots-clés d'un texte
 pub async fn analyze_text(
     Json(payload): Json<AnalyzeRequest>,
     State(_state): State<Arc<AppState>>,
-) -> Result<ResponseJson<AnalyzeResponse>, StatusCode> {
+) -> ResponseJson<AnalyzeResponse> {
     // Analyse basique du sentiment
     let sentiment = if payload.text.to_lowercase().contains("merci") || 
                        payload.text.to_lowercase().contains("parfait") ||
@@ -155,10 +181,10 @@ pub async fn analyze_text(
         .take(5)
         .collect();
     
-    Ok(ResponseJson(AnalyzeResponse {
+    ResponseJson(AnalyzeResponse {
         sentiment: sentiment.to_string(),
         keywords,
-    }))
+    })
 }
 
 pub fn ai_chat_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {

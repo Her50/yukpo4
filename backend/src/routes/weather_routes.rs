@@ -1,7 +1,6 @@
 use std::sync::Arc;
 use axum::{
     extract::{Query, State},
-    http::StatusCode,
     response::Json,
     routing::get,
     Router,
@@ -19,7 +18,7 @@ pub struct WeatherParams {
     pub lang: Option<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct WeatherResponse {
     pub main: WeatherMain,
     pub weather: Vec<WeatherInfo>,
@@ -28,25 +27,25 @@ pub struct WeatherResponse {
     pub sys: WeatherSys,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct WeatherMain {
     pub temp: f64,
     pub humidity: i32,
     pub pressure: i32,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct WeatherInfo {
     pub description: String,
     pub icon: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct WeatherWind {
     pub speed: f64,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct WeatherSys {
     pub country: String,
 }
@@ -55,9 +54,28 @@ pub struct WeatherSys {
 pub async fn get_weather(
     Query(params): Query<WeatherParams>,
     State(_state): State<Arc<AppState>>,
-) -> Result<Json<WeatherResponse>, StatusCode> {
-    let api_key = std::env::var("OPENWEATHER_API_KEY")
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+) -> Json<WeatherResponse> {
+    let api_key = match std::env::var("OPENWEATHER_API_KEY") {
+        Ok(key) => key,
+        Err(_) => {
+            return Json(WeatherResponse {
+                main: WeatherMain {
+                    temp: 0.0,
+                    humidity: 0,
+                    pressure: 0,
+                },
+                weather: vec![WeatherInfo {
+                    description: "API key manquante".to_string(),
+                    icon: "01d".to_string(),
+                }],
+                wind: WeatherWind { speed: 0.0 },
+                name: "Erreur".to_string(),
+                sys: WeatherSys {
+                    country: "XX".to_string(),
+                },
+            });
+        }
+    };
     
     let units = params.units.unwrap_or_else(|| "metric".to_string());
     let lang = params.lang.unwrap_or_else(|| "fr".to_string());
@@ -68,22 +86,70 @@ pub async fn get_weather(
     );
     
     let client = Client::new();
-    let response = client
-        .get(&url)
-        .send()
-        .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    let response = match client.get(&url).send().await {
+        Ok(resp) => resp,
+        Err(_) => {
+            return Json(WeatherResponse {
+                main: WeatherMain {
+                    temp: 0.0,
+                    humidity: 0,
+                    pressure: 0,
+                },
+                weather: vec![WeatherInfo {
+                    description: "Erreur de connexion".to_string(),
+                    icon: "01d".to_string(),
+                }],
+                wind: WeatherWind { speed: 0.0 },
+                name: "Erreur".to_string(),
+                sys: WeatherSys {
+                    country: "XX".to_string(),
+                },
+            });
+        }
+    };
     
     if !response.status().is_success() {
-        return Err(StatusCode::INTERNAL_SERVER_ERROR);
+        return Json(WeatherResponse {
+            main: WeatherMain {
+                temp: 0.0,
+                humidity: 0,
+                pressure: 0,
+            },
+            weather: vec![WeatherInfo {
+                description: "Erreur API météo".to_string(),
+                icon: "01d".to_string(),
+            }],
+            wind: WeatherWind { speed: 0.0 },
+            name: "Erreur".to_string(),
+            sys: WeatherSys {
+                country: "XX".to_string(),
+            },
+        });
     }
     
-    let weather_data: WeatherResponse = response
-        .json()
-        .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    let weather_data: WeatherResponse = match response.json().await {
+        Ok(data) => data,
+        Err(_) => {
+            return Json(WeatherResponse {
+                main: WeatherMain {
+                    temp: 0.0,
+                    humidity: 0,
+                    pressure: 0,
+                },
+                weather: vec![WeatherInfo {
+                    description: "Erreur de parsing".to_string(),
+                    icon: "01d".to_string(),
+                }],
+                wind: WeatherWind { speed: 0.0 },
+                name: "Erreur".to_string(),
+                sys: WeatherSys {
+                    country: "XX".to_string(),
+                },
+            });
+        }
+    };
     
-    Ok(Json(weather_data))
+    Json(weather_data)
 }
 
 pub fn weather_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
