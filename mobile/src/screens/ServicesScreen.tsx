@@ -1,5 +1,5 @@
-﻿// Migration vers Lucide React Native pour un design moderne
-import { DollarSign, MapPin, Plus, Star, User } from 'lucide-react-native';
+﻿// Migration vers Phosphor React Native pour un design moderne
+import { CurrencyDollar, MapPin, Plus, Star, User } from 'phosphor-react-native';
 import * as React from 'react';
 import { useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -162,7 +162,7 @@ const ServicesScreen: React.FC = () => {
                   <Text style={styles.detailText}>{service.location}</Text>
                 </View>
                 <View style={styles.serviceDetail}>
-                  <DollarSign size={16} color={theme.colors.primary} />
+                  <CurrencyDollar size={16} color={theme.colors.primary} />
                   <Text style={[styles.detailText, styles.priceText]}>{service.price}</Text>
                 </View>
               </View>

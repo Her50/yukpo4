@@ -1,7 +1,7 @@
 // Navigation ultra-moderne avec Phosphor Icons et gradients
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
-import { Bell, Brain, Briefcase, ChartBar, Clock, House, MagnifyingGlass, Plus, User } from 'phosphor-react-native';
+import { Bell, Brain, Briefcase, House, MagnifyingGlass, Plus, User } from 'phosphor-react-native';
 import React from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { modernColors, modernStyles } from '../theme/modernTheme';
@@ -10,13 +10,11 @@ import { modernColors, modernStyles } from '../theme/modernTheme';
 import { useAuth } from '../contexts/AuthContext';
 
 // Screens
-import DashboardPrestataireScreen from '../screens/DashboardPrestataireScreen';
 import ModernHomeScreen from '../screens/ModernHomeScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import RechargeTokensScreen from '../screens/RechargeTokensScreen';
-import MyServicesScreen from '../screens/service/MyServicesScreen';
-import ServicesScreen from '../screens/ServicesScreen';
 import RechercheBesoinScreen from '../screens/RechercheBesoinScreen';
+import ServicesScreen from '../screens/ServicesScreen';
 
 // Autres écrans (pour la navigation secondaire)
 import AboutScreen from '../screens/AboutScreen';
@@ -200,28 +198,18 @@ const MainStack = () => (
       options={{ headerShown: false }}
     />
 
-    {/* Création de service */}
-    <Stack.Screen
-      name="CreateService"
-      component={CreateServiceScreen}
-      options={{ title: 'Créer un Service' }}
-    />
+    {/* Création de service - Éviter les conflits avec les onglets */}
     <Stack.Screen
       name="FormulaireYukpoIntelligent"
       component={FormulaireYukpoIntelligentScreen}
       options={{ title: 'Formulaire Intelligent' }}
     />
 
-    {/* Détails et recherche */}
+    {/* Détails et recherche - Éviter les conflits avec les onglets */}
     <Stack.Screen
       name="ServiceDetail"
       component={ServiceDetailScreen}
       options={{ title: 'Détails du Service' }}
-    />
-    <Stack.Screen
-      name="RechercheBesoin"
-      component={RechercheBesoinScreen}
-      options={{ title: 'Recherche' }}
     />
     <Stack.Screen
       name="ResultatBesoin"
@@ -274,8 +262,11 @@ const MainStack = () => (
 
 // Navigateur principal de l'application - VERSION ULTRA-MODERNE
 const AppNavigator = () => {
-  const { user, loading } = useAuth();
   const [navigationKey, setNavigationKey] = React.useState(0);
+  const [hasError, setHasError] = React.useState(false);
+
+  // Gestion d'erreur robuste
+  const { user, loading } = useAuth();
 
   // Debug minimal en développement
   if (process.env.NODE_ENV === 'development') {
@@ -284,19 +275,42 @@ const AppNavigator = () => {
 
   // Détecter les changements d'utilisateur
   React.useEffect(() => {
-    if (user) {
-      setNavigationKey(prev => prev + 1);
+    try {
+      if (user) {
+        setNavigationKey(prev => prev + 1);
+      }
+    } catch (error) {
+      console.error('[AppNavigator] Erreur détection utilisateur:', error);
+      setHasError(true);
     }
   }, [user]);
+
+  // Gestion d'erreur
+  if (hasError) {
+    return (
+      <View style={styles.loadingContainer}>
+        <Text style={styles.loadingText}>Erreur de navigation</Text>
+      </View>
+    );
+  }
 
   if (loading) {
     return <LoadingScreen />;
   }
 
-  if (user) {
-    return <MainStack key={`main-${navigationKey}`} />;
-  } else {
-    return <AuthStack key={`auth-${navigationKey}`} />;
+  try {
+    if (user) {
+      return <MainStack key={`main-${navigationKey}`} />;
+    } else {
+      return <AuthStack key={`auth-${navigationKey}`} />;
+    }
+  } catch (error) {
+    console.error('[AppNavigator] Erreur navigation:', error);
+    return (
+      <View style={styles.loadingContainer}>
+        <Text style={styles.loadingText}>Erreur de navigation</Text>
+      </View>
+    );
   }
 };
 
