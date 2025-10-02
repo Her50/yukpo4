@@ -46,12 +46,11 @@ pub async fn get_nearby_services(
     let radius = params.radius.unwrap_or(5000); // 5km par défaut
     let limit = params.limit.unwrap_or(20); // 20 services par défaut
     
-    // Utiliser la fonction PostgreSQL existante pour la recherche GPS
-    let services = match sqlx::query_as!(
-        NearbyService,
+    // Requête simplifiée pour éviter les problèmes de types
+    let services = match sqlx::query!(
         r#"
         SELECT 
-            s.id::text as id,
+            s.id,
             COALESCE(s.data->'titre_service'->>'valeur', s.data->'titre'->>'valeur', 'Service') as name,
             COALESCE(s.data->'description'->>'valeur', 'Service disponible') as description,
             COALESCE(s.data->'category'->>'valeur', s.category, 'Général') as category,
@@ -61,10 +60,8 @@ pub async fn get_nearby_services(
                     ST_GeogFromText('POINT(' || SPLIT_PART(s.gps, ',', 2) || ' ' || SPLIT_PART(s.gps, ',', 1) || ')')
                 )
             )::int as distance,
-            0.0 as rating,
-            '€' as price,
-            CAST(SPLIT_PART(s.gps, ',', 1) AS FLOAT) as latitude,
-            CAST(SPLIT_PART(s.gps, ',', 2) AS FLOAT) as longitude,
+            COALESCE(CAST(SPLIT_PART(s.gps, ',', 1) AS FLOAT), 0.0) as latitude,
+            COALESCE(CAST(SPLIT_PART(s.gps, ',', 2) AS FLOAT), 0.0) as longitude,
             COALESCE(s.data->'adresse'->>'valeur', 'Adresse non disponible') as address,
             s.data->'telephone'->>'valeur' as phone,
             s.data->'site_web'->>'valeur' as website
@@ -86,15 +83,30 @@ pub async fn get_nearby_services(
             )
         LIMIT $4
         "#,
-        params.latitude,
-        params.longitude,
+        params.latitude.to_string(),
+        params.longitude.to_string(),
         radius as i64,
         limit as i64
     )
     .fetch_all(&state.pg)
     .await
     {
-        Ok(services) => services,
+        Ok(rows) => {
+            rows.into_iter().map(|row| NearbyService {
+                id: row.id.to_string(),
+                name: row.name.unwrap_or_else(|| "Service".to_string()),
+                description: row.description.unwrap_or_else(|| "Service disponible".to_string()),
+                category: row.category.unwrap_or_else(|| "Général".to_string()),
+                distance: row.distance.unwrap_or(0),
+                rating: 0.0,
+                price: "€".to_string(),
+                latitude: row.latitude.unwrap_or(0.0),
+                longitude: row.longitude.unwrap_or(0.0),
+                address: row.address.unwrap_or_else(|| "Adresse non disponible".to_string()),
+                phone: row.phone,
+                website: row.website,
+            }).collect()
+        },
         Err(_) => {
             return Json(NearbyServicesResponse { services: vec![] });
         }
