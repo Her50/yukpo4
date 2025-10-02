@@ -192,7 +192,7 @@ const ServicesScreen = () => {
     );
 };
 
-// Écran IA avec chat fonctionnel
+// Écran IA Yukpo avec chat fonctionnel
 const AIScreen = () => {
     const { askAI, loading, error } = useAIServices();
     const [question, setQuestion] = React.useState('');
@@ -216,7 +216,7 @@ const AIScreen = () => {
     return (
         <View style={styles.screenContainer}>
             <View style={styles.header}>
-                <Text style={styles.headerTitle}>🤖 Assistant IA</Text>
+                <Text style={styles.headerTitle}>🤖 IA Yukpo</Text>
             </View>
 
             {/* Historique du chat */}
@@ -269,9 +269,115 @@ const AIScreen = () => {
     );
 };
 
+// Écran de création de services
+const CreateServiceScreen = () => {
+    const [serviceName, setServiceName] = React.useState('');
+    const [serviceDescription, setServiceDescription] = React.useState('');
+    const [serviceCategory, setServiceCategory] = React.useState('');
+
+    return (
+        <ScrollView style={styles.screenContainer}>
+            <View style={styles.header}>
+                <Text style={styles.headerTitle}>Créer un Service</Text>
+            </View>
+
+            <View style={styles.formCard}>
+                <TextInput
+                    style={styles.input}
+                    placeholder="Nom du service"
+                    value={serviceName}
+                    onChangeText={setServiceName}
+                />
+                <TextInput
+                    style={[styles.input, styles.textArea]}
+                    placeholder="Description du service"
+                    value={serviceDescription}
+                    onChangeText={setServiceDescription}
+                    multiline
+                    numberOfLines={4}
+                />
+                <TextInput
+                    style={styles.input}
+                    placeholder="Catégorie"
+                    value={serviceCategory}
+                    onChangeText={setServiceCategory}
+                />
+                <TouchableOpacity style={styles.createButton}>
+                    <Text style={styles.createButtonText}>Créer le service</Text>
+                </TouchableOpacity>
+            </View>
+        </ScrollView>
+    );
+};
+
+// Écran de recherche avancée
+const SearchScreen = () => {
+    const [searchQuery, setSearchQuery] = React.useState('');
+    const [searchResults, setSearchResults] = React.useState([]);
+
+    return (
+        <View style={styles.screenContainer}>
+            <View style={styles.header}>
+                <Text style={styles.headerTitle}>Recherche</Text>
+            </View>
+
+            <View style={styles.searchContainer}>
+                <TextInput
+                    style={styles.searchInput}
+                    placeholder="Que recherchez-vous ?"
+                    value={searchQuery}
+                    onChangeText={setSearchQuery}
+                />
+                <TouchableOpacity style={styles.searchButton}>
+                    <MagnifyingGlass size={24} color="#fff" />
+                </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.resultsContainer}>
+                <Text style={styles.resultsText}>Résultats de recherche...</Text>
+            </ScrollView>
+        </View>
+    );
+};
+
+// Écran de gestion financière
+const FinanceScreen = () => {
+    const { user } = useAuth();
+
+    return (
+        <ScrollView style={styles.screenContainer}>
+            <View style={styles.header}>
+                <Text style={styles.headerTitle}>Finance</Text>
+            </View>
+
+            {/* Solde des tokens */}
+            <View style={styles.balanceCard}>
+                <Text style={styles.balanceTitle}>Solde des Tokens</Text>
+                <Text style={styles.balanceAmount}>{user?.credits || 0} tokens</Text>
+                <TouchableOpacity style={styles.rechargeButton}>
+                    <Text style={styles.rechargeButtonText}>Recharger</Text>
+                </TouchableOpacity>
+            </View>
+
+            {/* Historique des transactions */}
+            <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Historique</Text>
+                <View style={styles.transactionItem}>
+                    <Text style={styles.transactionText}>Achat de tokens</Text>
+                    <Text style={styles.transactionAmount}>+100 tokens</Text>
+                </View>
+                <View style={styles.transactionItem}>
+                    <Text style={styles.transactionText}>Utilisation IA</Text>
+                    <Text style={styles.transactionAmount}>-5 tokens</Text>
+                </View>
+            </View>
+        </ScrollView>
+    );
+};
+
 // Écran de profil utilisateur
 const ProfileScreen = () => {
-    const { user } = useAuth();
+    const { user, logout } = useAuth();
 
     return (
         <ScrollView style={styles.screenContainer}>
@@ -306,8 +412,8 @@ const ProfileScreen = () => {
                 <TouchableOpacity style={styles.menuItem}>
                     <Text style={styles.menuText}>⚙️ Paramètres</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.menuItem}>
-                    <Text style={styles.menuText}>❓ Aide</Text>
+                <TouchableOpacity style={styles.menuItem} onPress={logout}>
+                    <Text style={styles.menuText}>🚪 Déconnexion</Text>
                 </TouchableOpacity>
             </View>
         </ScrollView>
@@ -358,7 +464,7 @@ const AuthStack = () => (
     </Stack.Navigator>
 );
 
-// Tab Navigator principal
+// Tab Navigator principal - VERSION PRODUCTION
 const MainTabs = () => {
     return (
         <Tab.Navigator
@@ -375,8 +481,14 @@ const MainTabs = () => {
                             return <House {...iconProps} />;
                         case 'Services':
                             return <MapPin {...iconProps} />;
+                        case 'Search':
+                            return <MagnifyingGlass {...iconProps} />;
+                        case 'Create':
+                            return <Plus {...iconProps} />;
                         case 'AI':
                             return <Brain {...iconProps} />;
+                        case 'Finance':
+                            return <Bell {...iconProps} />;
                         case 'Profile':
                             return <User {...iconProps} />;
                         default:
@@ -397,7 +509,7 @@ const MainTabs = () => {
                     position: 'absolute',
                 },
                 tabBarLabelStyle: {
-                    fontSize: 11,
+                    fontSize: 10,
                     fontWeight: '600',
                     marginBottom: 4,
                 },
@@ -421,11 +533,35 @@ const MainTabs = () => {
                 }}
             />
             <Tab.Screen
+                name="Search"
+                component={SearchScreen}
+                options={{
+                    title: 'Recherche',
+                    tabBarLabel: 'Recherche'
+                }}
+            />
+            <Tab.Screen
+                name="Create"
+                component={CreateServiceScreen}
+                options={{
+                    title: 'Créer',
+                    tabBarLabel: 'Créer'
+                }}
+            />
+            <Tab.Screen
                 name="AI"
                 component={AIScreen}
                 options={{
-                    title: 'IA',
-                    tabBarLabel: 'IA'
+                    title: 'IA Yukpo',
+                    tabBarLabel: 'IA Yukpo'
+                }}
+            />
+            <Tab.Screen
+                name="Finance"
+                component={FinanceScreen}
+                options={{
+                    title: 'Finance',
+                    tabBarLabel: 'Finance'
                 }}
             />
             <Tab.Screen
@@ -528,9 +664,6 @@ const styles = StyleSheet.create({
         fontSize: 24,
         fontWeight: 'bold',
         color: '#1f2937',
-    },
-    searchButton: {
-        padding: 8,
     },
     notificationButton: {
         padding: 8,
@@ -904,5 +1037,134 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: '#6b7280',
         textAlign: 'center',
+    },
+    // Styles pour les nouveaux écrans
+    formCard: {
+        backgroundColor: '#fff',
+        margin: 20,
+        borderRadius: 16,
+        padding: 20,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+        elevation: 4,
+    },
+    input: {
+        backgroundColor: '#f3f4f6',
+        borderRadius: 12,
+        padding: 16,
+        marginBottom: 16,
+        fontSize: 16,
+        color: '#1f2937',
+        borderWidth: 1,
+        borderColor: '#e5e7eb',
+    },
+    textArea: {
+        height: 100,
+        textAlignVertical: 'top',
+    },
+    createButton: {
+        backgroundColor: '#6366F1',
+        borderRadius: 12,
+        padding: 16,
+        alignItems: 'center',
+        marginTop: 8,
+    },
+    createButtonText: {
+        color: '#fff',
+        fontSize: 16,
+        fontWeight: '600',
+    },
+    searchContainer: {
+        flexDirection: 'row',
+        padding: 20,
+        backgroundColor: '#fff',
+        borderBottomWidth: 1,
+        borderBottomColor: '#e5e7eb',
+    },
+    searchInput: {
+        flex: 1,
+        backgroundColor: '#f3f4f6',
+        borderRadius: 12,
+        padding: 16,
+        fontSize: 16,
+        color: '#1f2937',
+        marginRight: 12,
+    },
+    searchButton: {
+        backgroundColor: '#6366F1',
+        borderRadius: 12,
+        padding: 16,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    resultsContainer: {
+        flex: 1,
+        padding: 20,
+    },
+    resultsText: {
+        fontSize: 16,
+        color: '#6b7280',
+        textAlign: 'center',
+        marginTop: 50,
+    },
+    balanceCard: {
+        backgroundColor: '#fff',
+        margin: 20,
+        borderRadius: 16,
+        padding: 24,
+        alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+        elevation: 4,
+    },
+    balanceTitle: {
+        fontSize: 18,
+        fontWeight: '600',
+        color: '#374151',
+        marginBottom: 8,
+    },
+    balanceAmount: {
+        fontSize: 32,
+        fontWeight: 'bold',
+        color: '#6366F1',
+        marginBottom: 20,
+    },
+    rechargeButton: {
+        backgroundColor: '#10b981',
+        borderRadius: 12,
+        paddingHorizontal: 24,
+        paddingVertical: 12,
+    },
+    rechargeButtonText: {
+        color: '#fff',
+        fontSize: 16,
+        fontWeight: '600',
+    },
+    transactionItem: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        backgroundColor: '#fff',
+        borderRadius: 12,
+        padding: 16,
+        marginBottom: 8,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 2,
+    },
+    transactionText: {
+        fontSize: 16,
+        color: '#1f2937',
+    },
+    transactionAmount: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#10b981',
     },
 });

@@ -251,32 +251,12 @@ const MainStack = () => (
   </Stack.Navigator>
 );
 
-// Navigateur principal de l'application
+// Navigateur principal de l'application - DÉSACTIVÉ
+// La navigation principale est maintenant dans App.tsx
 const AppNavigator = () => {
-  const { user, loading } = useAuth();
-  const [navigationKey, setNavigationKey] = React.useState(0);
-
-  // Debug minimal en développement
-  if (process.env.NODE_ENV === 'development') {
-    console.log('[AppNavigator] user:', !!user, 'loading:', loading);
-  }
-
-  // Détecter les changements d'utilisateur
-  React.useEffect(() => {
-    if (user) {
-      setNavigationKey(prev => prev + 1);
-    }
-  }, [user]);
-
-  if (loading) {
-    return <LoadingScreen />;
-  }
-
-  if (user) {
-    return <MainStack key={`main-${navigationKey}`} />;
-  } else {
-    return <AuthStack key={`auth-${navigationKey}`} />;
-  }
+  // Cette navigation est maintenant gérée par App.tsx
+  // Gardé pour compatibilité avec les imports existants
+  return null;
 };
 
 // Styles
