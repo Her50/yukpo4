@@ -52,36 +52,36 @@ pub async fn get_nearby_services(
         r#"
         SELECT 
             s.id::text as id,
-            COALESCE(s.offre, 'Service') as name,
-            COALESCE(s.description, 'Service disponible') as description,
-            COALESCE(s.categorie, 'Général') as category,
+            COALESCE(s.data->'titre_service'->>'valeur', s.data->'titre'->>'valeur', 'Service') as name,
+            COALESCE(s.data->'description'->>'valeur', 'Service disponible') as description,
+            COALESCE(s.data->'category'->>'valeur', s.category, 'Général') as category,
             ROUND(
                 ST_Distance(
                     ST_GeogFromText('POINT(' || $2 || ' ' || $1 || ')'),
-                    ST_GeogFromText('POINT(' || s.longitude || ' ' || s.latitude || ')')
+                    ST_GeogFromText('POINT(' || s.gps->>'longitude' || ' ' || s.gps->>'latitude' || ')')
                 )
             )::int as distance,
-            COALESCE(s.rating, 0.0) as rating,
-            COALESCE(s.prix, '€') as price,
-            s.latitude,
-            s.longitude,
-            COALESCE(s.adresse, 'Adresse non disponible') as address,
-            s.telephone as phone,
-            s.site_web as website
+            0.0 as rating,
+            '€' as price,
+            (s.gps->>'latitude')::float as latitude,
+            (s.gps->>'longitude')::float as longitude,
+            COALESCE(s.data->'adresse'->>'valeur', 'Adresse non disponible') as address,
+            s.data->'telephone'->>'valeur' as phone,
+            s.data->'site_web'->>'valeur' as website
         FROM services s
         WHERE 
-            s.latitude IS NOT NULL 
-            AND s.longitude IS NOT NULL
+            s.gps->>'latitude' IS NOT NULL 
+            AND s.gps->>'longitude' IS NOT NULL
             AND ST_DWithin(
                 ST_GeogFromText('POINT(' || $2 || ' ' || $1 || ')'),
-                ST_GeogFromText('POINT(' || s.longitude || ' ' || s.latitude || ')'),
+                ST_GeogFromText('POINT(' || s.gps->>'longitude' || ' ' || s.gps->>'latitude' || ')'),
                 $3
             )
-            AND s.actif = true
+            AND s.is_active = true
         ORDER BY 
             ST_Distance(
                 ST_GeogFromText('POINT(' || $2 || ' ' || $1 || ')'),
-                ST_GeogFromText('POINT(' || s.longitude || ' ' || s.latitude || ')')
+                ST_GeogFromText('POINT(' || s.gps->>'longitude' || ' ' || s.gps->>'latitude' || ')')
             )
         LIMIT $4
         "#,
