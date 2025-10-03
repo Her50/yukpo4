@@ -10,7 +10,7 @@ import { modernColors, modernStyles } from '../theme/modernTheme';
 import { useAuth } from '../contexts/AuthContext';
 
 // Screens
-import ModernHomeScreen from '../screens/ModernHomeScreen';
+import HomeScreen from '../screens/HomeScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import RechargeTokensScreen from '../screens/RechargeTokensScreen';
 import RechercheBesoinScreen from '../screens/RechercheBesoinScreen';
@@ -20,9 +20,7 @@ import ServicesScreen from '../screens/ServicesScreen';
 import AboutScreen from '../screens/AboutScreen';
 import AIChatScreen from '../screens/ai/AIChatScreen';
 import AIHubScreen from '../screens/ai/AIHubScreen';
-import BlogScreen from '../screens/BlogScreen';
 import ContactScreen from '../screens/ContactScreen';
-import DebugScreen from '../screens/DebugScreen';
 import FormulaireYukpoIntelligentScreen from '../screens/FormulaireYukpoIntelligentScreen';
 import ResultatBesoinScreen from '../screens/ResultatBesoinScreen';
 import CreateServiceScreen from '../screens/service/CreateServiceScreen';
@@ -116,7 +114,7 @@ const MainTabs = () => {
     >
       <Tab.Screen
         name="Home"
-        component={ModernHomeScreen}
+        component={HomeScreen}
         options={{
           title: 'Accueil',
           tabBarLabel: 'Accueil'
@@ -262,57 +260,18 @@ const MainStack = () => (
   </Stack.Navigator>
 );
 
-// Navigateur principal de l'application - VERSION ULTRA-MODERNE
+// Navigateur principal de l'application - VERSION SIMPLIFIÉE
 const AppNavigator = () => {
-  const [navigationKey, setNavigationKey] = React.useState(0);
-  const [hasError, setHasError] = React.useState(false);
-
-  // Gestion d'erreur robuste
   const { user, loading } = useAuth();
-
-  // Debug minimal en développement
-  if (false) { // FORCÉ EN MODE PRODUCTION
-    console.log('[AppNavigator] user:', !!user, 'loading:', loading);
-  }
-
-  // Détecter les changements d'utilisateur
-  React.useEffect(() => {
-    try {
-      if (user) {
-        setNavigationKey(prev => prev + 1);
-      }
-    } catch (error) {
-      console.error('[AppNavigator] Erreur détection utilisateur:', error);
-      setHasError(true);
-    }
-  }, [user]);
-
-  // Gestion d'erreur
-  if (hasError) {
-    return (
-      <View style={styles.loadingContainer}>
-        <Text style={styles.loadingText}>Erreur de navigation</Text>
-      </View>
-    );
-  }
 
   if (loading) {
     return <LoadingScreen />;
   }
 
-  try {
-    if (user) {
-      return <MainStack key={`main-${navigationKey}`} />;
-    } else {
-      return <AuthStack key={`auth-${navigationKey}`} />;
-    }
-  } catch (error) {
-    console.error('[AppNavigator] Erreur navigation:', error);
-    return (
-      <View style={styles.loadingContainer}>
-        <Text style={styles.loadingText}>Erreur de navigation</Text>
-      </View>
-    );
+  if (user) {
+    return <MainStack />;
+  } else {
+    return <AuthStack />;
   }
 };
 

@@ -1,21 +1,6 @@
-// Écran d'accueil ultra-moderne avec animations et glassmorphism
-import LinearGradient from 'react-native-linear-gradient';
+// Écran d'accueil moderne et stable
+import React from 'react';
 import {
-  Bell,
-  Clock,
-  Heart,
-  House,
-  MagnifyingGlass,
-  MapPin,
-  Plus,
-  Star,
-  TrendUp,
-  Users
-} from 'phosphor-react-native';
-import React, { useEffect, useRef } from 'react';
-import {
-  Animated,
-  Dimensions,
   ScrollView,
   StyleSheet,
   Text,
@@ -24,197 +9,129 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
-import ModernCard from '../components/ModernCard';
-import { modernColors, modernStyles } from '../theme/modernTheme';
-
-const { width } = Dimensions.get('window');
 
 const ModernHomeScreen: React.FC = () => {
   const navigation = useNavigation();
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(50)).current;
-  const scaleAnim = useRef(new Animated.Value(0.9)).current;
 
-  useEffect(() => {
-    // Animation d'entrée fluide
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 800,
-        useNativeDriver: true,
-      }),
-      Animated.timing(slideAnim, {
-        toValue: 0,
-        duration: 600,
-        useNativeDriver: true,
-      }),
-      Animated.spring(scaleAnim, {
-        toValue: 1,
-        tension: 50,
-        friction: 8,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, []);
-
-  const QuickAction = ({ icon: Icon, title, onPress, gradient }: any) => (
+  const QuickAction = ({ emoji, title, onPress }: any) => (
     <TouchableOpacity onPress={onPress} style={styles.quickActionContainer}>
-      <LinearGradient
-        colors={gradient}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.quickAction}
-      >
-        <Icon size={24} color="white" weight="bold" />
-      </LinearGradient>
+      <View style={styles.quickAction}>
+        <Text style={styles.quickActionEmoji}>{emoji}</Text>
+      </View>
       <Text style={styles.quickActionText}>{title}</Text>
     </TouchableOpacity>
   );
 
-  const StatCard = ({ icon: Icon, title, value, color, trend }: any) => (
-    <ModernCard variant="glass" style={styles.statCard}>
+  const StatCard = ({ emoji, title, value }: any) => (
+    <View style={styles.statCard}>
       <View style={styles.statHeader}>
-        <Icon size={20} color={color} weight="bold" />
+        <Text style={styles.statEmoji}>{emoji}</Text>
         <Text style={styles.statTitle}>{title}</Text>
       </View>
-      <Text style={[styles.statValue, { color }]}>{value}</Text>
-      {trend && (
-        <View style={styles.trendContainer}>
-          <TrendUp size={12} color={modernColors.success} weight="bold" />
-          <Text style={styles.trendText}>{trend}</Text>
-        </View>
-      )}
-    </ModernCard>
+      <Text style={styles.statValue}>{value}</Text>
+    </View>
   );
 
   return (
-    <LinearGradient
-      colors={modernColors.primaryGradient}
-      style={styles.gradientContainer}
-    >
-      <SafeAreaView style={styles.container}>
-        <Animated.View
-          style={[
-            styles.content,
-            {
-              opacity: fadeAnim,
-              transform: [
-                { translateY: slideAnim },
-                { scale: scaleAnim },
-              ],
-            },
-          ]}
-        >
-          {/* Header moderne */}
-          <View style={styles.header}>
-            <View style={styles.headerLeft}>
-              <Text style={styles.greeting}>Bonjour ! 👋</Text>
-              <Text style={styles.userName}>Prêt à découvrir ?</Text>
-            </View>
-            <View style={styles.headerRight}>
-              <TouchableOpacity style={styles.iconButton}>
-                <Bell size={24} color="white" weight="bold" />
-                <View style={styles.notificationBadge} />
-              </TouchableOpacity>
+    <SafeAreaView style={styles.container}>
+      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+        {/* Header moderne */}
+        <View style={styles.header}>
+          <View style={styles.headerLeft}>
+            <Text style={styles.greeting}>Bonjour ! 👋</Text>
+            <Text style={styles.userName}>Prêt à découvrir ?</Text>
+          </View>
+          <View style={styles.headerRight}>
+            <TouchableOpacity style={styles.iconButton}>
+              <Text style={styles.notificationIcon}>🔔</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Barre de recherche moderne - CLIQUABLE */}
+        <TouchableOpacity onPress={() => (navigation as any).navigate('Search')}>
+          <View style={styles.searchCard}>
+            <View style={styles.searchContainer}>
+              <Text style={styles.searchIcon}>🔍</Text>
+              <Text style={styles.searchPlaceholder}>Rechercher un service...</Text>
             </View>
           </View>
+        </TouchableOpacity>
 
-          {/* Barre de recherche moderne - CLIQUABLE */}
-          <TouchableOpacity onPress={() => (navigation as any).navigate('Search')}>
-            <ModernCard variant="glass" style={styles.searchCard}>
-              <View style={styles.searchContainer}>
-                <MagnifyingGlass size={20} color="white" weight="bold" />
-                <Text style={styles.searchPlaceholder}>Rechercher un service...</Text>
+        {/* Actions rapides */}
+        <View style={styles.quickActionsContainer}>
+          <Text style={styles.sectionTitle}>Actions rapides</Text>
+          <View style={styles.quickActions}>
+            <QuickAction
+              emoji="➕"
+              title="Créer"
+              onPress={() => (navigation as any).navigate('Create')}
+            />
+            <QuickAction
+              emoji="🔍"
+              title="Rechercher"
+              onPress={() => (navigation as any).navigate('Search')}
+            />
+            <QuickAction
+              emoji="❤️"
+              title="Favoris"
+              onPress={() => (navigation as any).navigate('Services')}
+            />
+            <QuickAction
+              emoji="📍"
+              title="Proche"
+              onPress={() => (navigation as any).navigate('Search')}
+            />
+          </View>
+        </View>
+
+        {/* Statistiques */}
+        <View style={styles.statsContainer}>
+          <Text style={styles.sectionTitle}>Vos statistiques</Text>
+          <View style={styles.statsGrid}>
+            <StatCard
+              emoji="👥"
+              title="Services"
+              value="12"
+            />
+            <StatCard
+              emoji="⭐"
+              title="Évaluations"
+              value="4.8"
+            />
+            <StatCard
+              emoji="⏰"
+              title="Temps moyen"
+              value="2h"
+            />
+          </View>
+        </View>
+
+        {/* Services récents */}
+        <View style={styles.recentContainer}>
+          <Text style={styles.sectionTitle}>Services récents</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            {[1, 2, 3].map((item) => (
+              <View key={item} style={styles.serviceCard}>
+                <View style={styles.serviceHeader}>
+                  <View style={styles.serviceIcon}>
+                    <Text style={styles.serviceEmoji}>🏠</Text>
+                  </View>
+                  <Text style={styles.serviceTitle}>Service {item}</Text>
+                </View>
+                <Text style={styles.serviceDescription}>
+                  Description du service avec détails...
+                </Text>
+                <View style={styles.serviceFooter}>
+                  <Text style={styles.servicePrice}>25€</Text>
+                  <Text style={styles.serviceRating}>⭐ 4.8</Text>
+                </View>
               </View>
-            </ModernCard>
-          </TouchableOpacity>
-
-          {/* Actions rapides */}
-          <View style={styles.quickActionsContainer}>
-            <Text style={styles.sectionTitle}>Actions rapides</Text>
-            <View style={styles.quickActions}>
-              <QuickAction
-                icon={Plus}
-                title="Créer"
-                gradient={modernColors.secondaryGradient}
-                onPress={() => (navigation as any).navigate('Create')}
-              />
-              <QuickAction
-                icon={MagnifyingGlass}
-                title="Rechercher"
-                gradient={modernColors.successGradient}
-                onPress={() => (navigation as any).navigate('Search')}
-              />
-              <QuickAction
-                icon={Heart}
-                title="Favoris"
-                gradient={modernColors.warningGradient}
-                onPress={() => (navigation as any).navigate('Services')}
-              />
-              <QuickAction
-                icon={MapPin}
-                title="Proche"
-                gradient={['#667eea', '#764ba2']}
-                onPress={() => (navigation as any).navigate('Search')}
-              />
-            </View>
-          </View>
-
-          {/* Statistiques */}
-          <View style={styles.statsContainer}>
-            <Text style={styles.sectionTitle}>Vos statistiques</Text>
-            <View style={styles.statsGrid}>
-              <StatCard
-                icon={Users}
-                title="Services"
-                value="12"
-                color={modernColors.primary}
-                trend="+2 cette semaine"
-              />
-              <StatCard
-                icon={Star}
-                title="Évaluations"
-                value="4.8"
-                color={modernColors.warning}
-                trend="+0.2"
-              />
-              <StatCard
-                icon={Clock}
-                title="Temps moyen"
-                value="2h"
-                color={modernColors.success}
-                trend="-15min"
-              />
-            </View>
-          </View>
-
-          {/* Services récents */}
-          <View style={styles.recentContainer}>
-            <Text style={styles.sectionTitle}>Services récents</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              {[1, 2, 3].map((item) => (
-                <ModernCard key={item} variant="glass" style={styles.serviceCard}>
-                  <View style={styles.serviceHeader}>
-                    <View style={styles.serviceIcon}>
-                      <House size={20} color={modernColors.primary} weight="bold" />
-                    </View>
-                    <Text style={styles.serviceTitle}>Service {item}</Text>
-                  </View>
-                  <Text style={styles.serviceDescription}>
-                    Description du service avec détails...
-                  </Text>
-                  <View style={styles.serviceFooter}>
-                    <Text style={styles.servicePrice}>25€</Text>
-                    <Star size={16} color={modernColors.warning} weight="fill" />
-                    <Text style={styles.serviceRating}>4.8</Text>
-                  </View>
-                </ModernCard>
-              ))}
-            </ScrollView>
-          </View>
-        </Animated.View>
-      </SafeAreaView>
-    </LinearGradient>
+            ))}
+          </ScrollView>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 };
 

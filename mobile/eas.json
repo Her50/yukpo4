@@ -5,14 +5,19 @@
     },
     "build": {
         "development": {
-            "developmentClient": true,
+            "developmentClient": false,
             "distribution": "internal",
+            "env": {
+                "EXPO_PUBLIC_API_URL": "https://yukpomnang.onrender.com",
+                "EXPO_PUBLIC_ENVIRONMENT": "production",
+                "NODE_ENV": "production"
+            },
             "ios": {
                 "resourceClass": "m-medium"
             },
             "android": {
                 "buildType": "apk",
-                "gradleCommand": ":app:assembleDebug"
+                "gradleCommand": ":app:assembleRelease"
             }
         },
         "preview": {
@@ -52,20 +57,25 @@
             }
         },
         "simple": {
+            "developmentClient": false,
             "distribution": "internal",
             "env": {
                 "EXPO_PUBLIC_API_URL": "https://yukpomnang.onrender.com",
+                "EXPO_PUBLIC_API_BASE_URL": "https://yukpomnang.onrender.com",
                 "EXPO_PUBLIC_ENVIRONMENT": "production",
+                "EXPO_PUBLIC_DEV_MODE": "false",
+                "EXPO_PUBLIC_DEBUG_TRANSLATION": "false",
+                "EXPO_PUBLIC_ENABLE_LOGS": "false",
                 "NODE_ENV": "production"
             },
             "android": {
                 "buildType": "apk",
-                "gradleCommand": ":app:assembleDebug",
+                "gradleCommand": ":app:assembleRelease",
                 "credentialsSource": "remote",
                 "image": "latest",
                 "withoutCredentials": false,
                 "env": {
-                    "EXPO_USE_HERMES": "false",
+                    "EXPO_USE_HERMES": "true",
                     "NODE_ENV": "production"
                 }
             }
@@ -162,6 +172,39 @@
             },
             "android": {
                 "buildType": "app-bundle"
+            }
+        },
+        "final": {
+            "developmentClient": false,
+            "distribution": "internal",
+            "env": {
+                "EXPO_PUBLIC_API_URL": "https://yukpomnang.onrender.com",
+                "EXPO_PUBLIC_ENVIRONMENT": "production",
+                "NODE_ENV": "production"
+            },
+            "android": {
+                "buildType": "apk",
+                "gradleCommand": ":app:assembleRelease",
+                "credentialsSource": "remote",
+                "image": "latest",
+                "withoutCredentials": false
+            }
+        },
+        "standalone": {
+            "developmentClient": false,
+            "distribution": "internal",
+            "env": {
+                "EXPO_PUBLIC_API_URL": "https://yukpomnang.onrender.com",
+                "EXPO_PUBLIC_ENVIRONMENT": "production",
+                "NODE_ENV": "production",
+                "EXPO_USE_HERMES": "true"
+            },
+            "android": {
+                "buildType": "apk",
+                "gradleCommand": ":app:assembleRelease",
+                "credentialsSource": "remote",
+                "image": "latest",
+                "withoutCredentials": false
             }
         }
     },
