@@ -34,11 +34,15 @@ const HomeScreenNew: React.FC = () => {
 
     // Vérifier que l'utilisateur est bien connecté
     useEffect(() => {
-        if (!user) {
-            console.warn('[HomeScreenNew] Aucun utilisateur connecté, redirection vers login');
-            // navigation.navigate('Login' as never);
-        } else {
-            console.log('[HomeScreenNew] Utilisateur connecté:', user.email);
+        try {
+            if (!user) {
+                console.warn('[HomeScreenNew] Aucun utilisateur connecté, redirection vers login');
+                // navigation.navigate('Login' as never);
+            } else {
+                console.log('[HomeScreenNew] Utilisateur connecté:', user.email);
+            }
+        } catch (error) {
+            console.error('[HomeScreenNew] Erreur dans useEffect user:', error);
         }
     }, [user]);
 
@@ -115,6 +119,30 @@ const HomeScreenNew: React.FC = () => {
             <SafeAreaView style={styles.container}>
                 <View style={styles.loadingContainer}>
                     <Text style={styles.loadingText}>Chargement de votre profil...</Text>
+                </View>
+            </SafeAreaView>
+        );
+    }
+
+    // Protection supplémentaire contre les erreurs
+    try {
+        // Vérifier que les propriétés essentielles existent
+        if (!user.email || !user.id) {
+            console.warn('[HomeScreenNew] Données utilisateur incomplètes:', user);
+            return (
+                <SafeAreaView style={styles.container}>
+                    <View style={styles.loadingContainer}>
+                        <Text style={styles.loadingText}>Initialisation du profil...</Text>
+                    </View>
+                </SafeAreaView>
+            );
+        }
+    } catch (error) {
+        console.error('[HomeScreenNew] Erreur lors de la vérification utilisateur:', error);
+        return (
+            <SafeAreaView style={styles.container}>
+                <View style={styles.loadingContainer}>
+                    <Text style={styles.loadingText}>Erreur de chargement...</Text>
                 </View>
             </SafeAreaView>
         );

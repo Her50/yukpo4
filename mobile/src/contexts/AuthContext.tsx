@@ -190,7 +190,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const logout = async () => {
     try {
-      await AsyncStorage.removeItem('auth_token');
+      await AsyncStorage.removeItem('token');
       setUser(null);
     } catch (error) {
       // Même en cas d'erreur, déconnecter l'utilisateur
@@ -204,8 +204,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const refreshUser = async () => {
     try {
-      await checkAuthStatus();
+      const token = await AsyncStorage.getItem('token');
+      if (token) {
+        // Décoder le token pour récupérer les infos utilisateur
+        const decoded = jwtDecode<DecodedToken>(token);
+        if (decoded.exp * 1000 > Date.now()) {
+          // Mettre à jour seulement les infos manquantes
+          setUser(prev => prev ? {
+            ...prev,
+            id: String(decoded.sub),
+            email: decoded.email,
+            role: decoded.role,
+            name: decoded.name || prev.name,
+            credits: decoded.tokens_balance ?? prev.credits
+          } : null);
+        }
+      }
     } catch (error) {
+      console.error('[AuthContext] Erreur lors du refresh:', error);
       // En cas d'erreur, ne rien faire
     }
   };
