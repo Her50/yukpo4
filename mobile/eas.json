@@ -55,10 +55,21 @@
             "distribution": "internal",
             "env": {
                 "EXPO_PUBLIC_API_URL": "https://yukpomnang.onrender.com",
-                "EXPO_PUBLIC_ENVIRONMENT": "development",
-                "EXPO_PUBLIC_GOOGLE_MAPS_API_KEY": "AIzaSyDFfWEq1Umm06SNTbR-cRhRQ5Sq_taEAWQ",
-                "EXPO_PUBLIC_GOOGLE_TRANSLATE_API_KEY": "AIzaSyDFfWEq1Umm06SNTbR-cRhRQ5Sq_taEAWQ"
+                "EXPO_PUBLIC_ENVIRONMENT": "development"
             },
+            "android": {
+                "buildType": "apk",
+                "gradleCommand": ":app:assembleDebug",
+                "credentialsSource": "remote",
+                "image": "latest",
+                "withoutCredentials": false,
+                "env": {
+                    "EXPO_USE_HERMES": "false"
+                }
+            }
+        },
+        "minimal": {
+            "distribution": "internal",
             "android": {
                 "buildType": "apk",
                 "gradleCommand": ":app:assembleDebug",

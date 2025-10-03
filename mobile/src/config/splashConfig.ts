@@ -27,3 +27,4 @@ export const splashConfig = {
 };
 
 export default splashConfig;
+

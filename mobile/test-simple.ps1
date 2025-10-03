@@ -20,3 +20,4 @@ Write-Host "Dependances OK" -ForegroundColor Green
 # Demarrer l'application
 Write-Host "Demarrage de l'application..." -ForegroundColor Green
 npm start
+

@@ -6,7 +6,7 @@ import AppLayout from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/buttons';
 import MapModal from '@/components/ui/MapModal';
 import { useUser } from '@/hooks/useUser';
-import { appelerMoteurIA, creerService } from '@/lib/yukpoaclient';
+import { appelerMoteurIA, creerService, modifierService } from '@/lib/yukpoaclient';
 import { ComposantFrontend, dispatchChampsFormulaireIA } from '@/utils/form_constraint_dispatcher';
 import { showServiceCreationErrorToast } from '@/utils/toastUtils';
 import axios from 'axios';
@@ -332,13 +332,29 @@ export default function FormulaireDemandeOuService() {
           console.log('[FormulaireYukpoIntelligent] Produits ajoutés aux données de service:', products);
         }
 
-        // 🔧 ÉTAPE 5 : Appeler l'endpoint de création avec les données de service correctes
+        // 🔧 ÉTAPE 5 : Appeler l'endpoint approprié selon le mode
+        console.log('[FormulaireYukpoIntelligent] Mode:', mode, 'ServiceId:', serviceId);
         console.log('[FormulaireYukpoIntelligent] Transmission tokens IA externe au backend:', tokensIAExterne);
-        result = await creerService(serviceData, tokensIAExterne);
-        console.log('[FormulaireYukpoIntelligent] Service créé avec succès:', result);
+
+        if (mode === 'edit' && serviceId) {
+          // MODE MODIFICATION : Utiliser l'endpoint de mise à jour
+          result = await modifierService(serviceId, serviceData, tokensIAExterne);
+          console.log('[FormulaireYukpoIntelligent] Service modifié avec succès:', result);
+        } else {
+          // MODE CRÉATION : Utiliser l'endpoint de création
+          result = await creerService(serviceData, tokensIAExterne);
+          console.log('[FormulaireYukpoIntelligent] Service créé avec succès:', result);
+        }
       }
 
-      window.dispatchEvent(new CustomEvent('service_created'));
+      // Dispatcher l'événement approprié selon le mode
+      if (mode === 'edit' && serviceId) {
+        window.dispatchEvent(new CustomEvent('service_updated'));
+        console.log('[FormulaireYukpoIntelligent] Événement service_updated dispatché');
+      } else {
+        window.dispatchEvent(new CustomEvent('service_created'));
+        console.log('[FormulaireYukpoIntelligent] Événement service_created dispatché');
+      }
       localStorage.setItem('force_refresh_services', Date.now().toString());
 
       // 💰 CORRECTION : Utiliser le coût réel calculé précédemment
@@ -390,8 +406,8 @@ export default function FormulaireDemandeOuService() {
       // Stocker les données de succès pour le toast
       console.log('[FormulaireYukpoIntelligent] Coût final pour le toast:', coutFactureXAF, 'FCFA');
       setSuccessData({
-        serviceId: result.data?.id || 'nouveau',
-        cout: coutFactureXAF
+        serviceId: result.data?.id || serviceId || 'nouveau',
+        cout: mode === 'edit' ? 0 : coutFactureXAF // Pas de frais pour modification
       });
       setShowSuccessToast(true);
 
@@ -734,8 +750,8 @@ export default function FormulaireDemandeOuService() {
                       onClick={() => mode !== 'readonly' && setShowMapModal(true)}
                       disabled={mode === 'readonly'}
                       className={`w-full flex items-center justify-between text-xs h-8 px-2 border border-gray-300 rounded transition-colors ${mode === 'readonly'
-                          ? 'bg-gray-50 cursor-not-allowed text-gray-600'
-                          : 'bg-white hover:bg-gray-50 focus:ring-1 focus:ring-green-400 focus:border-green-400'
+                        ? 'bg-gray-50 cursor-not-allowed text-gray-600'
+                        : 'bg-white hover:bg-gray-50 focus:ring-1 focus:ring-green-400 focus:border-green-400'
                         }`}
                     >
                       <span className="flex items-center gap-2">
@@ -952,14 +968,25 @@ export default function FormulaireDemandeOuService() {
                 </div>
               </div>
               <div className="flex-1">
-                <h3 className="font-bold text-lg mb-2">🎉 Service créé avec succès !</h3>
+                <h3 className="font-bold text-lg mb-2">
+                  {mode === 'edit' ? '✏️ Service modifié avec succès !' : '🎉 Service créé avec succès !'}
+                </h3>
                 <p className="text-green-100 mb-3">
-                  Votre service a été créé et est maintenant disponible.
+                  {mode === 'edit'
+                    ? 'Votre service a été mis à jour avec les nouvelles informations.'
+                    : 'Votre service a été créé et est maintenant disponible.'
+                  }
                 </p>
                 <div className="bg-green-600 rounded p-3 mb-4">
-                  <p className="text-sm">
-                    <strong>Coût de création :</strong> {successData.cout} FCFA
-                  </p>
+                  {mode === 'edit' ? (
+                    <p className="text-sm">
+                      <strong>✅ Modification gratuite</strong> - Aucun frais pour la mise à jour
+                    </p>
+                  ) : (
+                    <p className="text-sm">
+                      <strong>Coût de création :</strong> {successData.cout} FCFA
+                    </p>
+                  )}
                   <p className="text-xs text-green-200 mt-1">
                     ID du service : {successData.serviceId}
                   </p>

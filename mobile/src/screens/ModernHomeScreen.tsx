@@ -23,12 +23,14 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
 import ModernCard from '../components/ModernCard';
 import { modernColors, modernStyles } from '../theme/modernTheme';
 
 const { width } = Dimensions.get('window');
 
 const ModernHomeScreen: React.FC = () => {
+  const navigation = useNavigation();
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(50)).current;
   const scaleAnim = useRef(new Animated.Value(0.9)).current;
@@ -117,13 +119,15 @@ const ModernHomeScreen: React.FC = () => {
             </View>
           </View>
 
-          {/* Barre de recherche moderne */}
-          <ModernCard variant="glass" style={styles.searchCard}>
-            <View style={styles.searchContainer}>
-              <MagnifyingGlass size={20} color="white" weight="bold" />
-              <Text style={styles.searchPlaceholder}>Rechercher un service...</Text>
-            </View>
-          </ModernCard>
+          {/* Barre de recherche moderne - CLIQUABLE */}
+          <TouchableOpacity onPress={() => (navigation as any).navigate('Search')}>
+            <ModernCard variant="glass" style={styles.searchCard}>
+              <View style={styles.searchContainer}>
+                <MagnifyingGlass size={20} color="white" weight="bold" />
+                <Text style={styles.searchPlaceholder}>Rechercher un service...</Text>
+              </View>
+            </ModernCard>
+          </TouchableOpacity>
 
           {/* Actions rapides */}
           <View style={styles.quickActionsContainer}>
@@ -133,25 +137,25 @@ const ModernHomeScreen: React.FC = () => {
                 icon={Plus}
                 title="Créer"
                 gradient={modernColors.secondaryGradient}
-                onPress={() => { }}
+                onPress={() => (navigation as any).navigate('Create')}
               />
               <QuickAction
                 icon={MagnifyingGlass}
                 title="Rechercher"
                 gradient={modernColors.successGradient}
-                onPress={() => { }}
+                onPress={() => (navigation as any).navigate('Search')}
               />
               <QuickAction
                 icon={Heart}
                 title="Favoris"
                 gradient={modernColors.warningGradient}
-                onPress={() => { }}
+                onPress={() => (navigation as any).navigate('Services')}
               />
               <QuickAction
                 icon={MapPin}
                 title="Proche"
                 gradient={['#667eea', '#764ba2']}
-                onPress={() => { }}
+                onPress={() => (navigation as any).navigate('Search')}
               />
             </View>
           </View>

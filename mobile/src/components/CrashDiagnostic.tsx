@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { Card, Button, Chip } from 'react-native-paper';
 import { Bug, CheckCircle, XCircle, Warning, Info } from 'phosphor-react-native';
-import * as Clipboard from 'expo-clipboard';
+// import * as Clipboard from 'expo-clipboard';
 
 interface DiagnosticResult {
   name: string;
@@ -188,7 +188,8 @@ const CrashDiagnostic: React.FC<CrashDiagnosticProps> = ({ visible, onClose }) =
         `${d.status.toUpperCase()}: ${d.name} - ${d.message}${d.details ? '\n' + d.details : ''}`
       ).join('\n\n');
       
-      await Clipboard.setStringAsync(diagnosticText);
+      // await Clipboard.setStringAsync(diagnosticText);
+      Alert.alert('Diagnostic copié', 'Le diagnostic a été préparé pour le partage');
       Alert.alert('Succès', 'Diagnostic copié dans le presse-papiers !');
     } catch (error) {
       Alert.alert('Erreur', 'Impossible de copier le diagnostic');

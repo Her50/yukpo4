@@ -177,3 +177,4 @@ app.route("/weather", get(weather::get_weather))
    .route("/ai/recommendations", post(ai::get_recommendations))
    .route("/ai/analyze", post(ai::analyze_text));
 ```
+

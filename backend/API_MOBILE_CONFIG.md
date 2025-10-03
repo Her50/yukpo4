@@ -56,3 +56,4 @@ cargo run
 ```
 
 Les nouvelles routes sont maintenant intégrées dans votre backend !
+

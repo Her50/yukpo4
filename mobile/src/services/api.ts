@@ -308,8 +308,16 @@ export const iaApi = {
     });
   },
 
-  // Créer un service avec l'IA
+  // Créer un service avec l'IA (vectorisation)
   createServiceWithIA: async (serviceData: any) => {
+    return apiCall('/api/services/vectorize', {
+      method: 'POST',
+      body: JSON.stringify(serviceData),
+    });
+  },
+
+  // Créer un service avec l'IA (génération de formulaire)
+  generateServiceForm: async (serviceData: any) => {
     return apiCall('/api/ia/creation-service', {
       method: 'POST',
       body: JSON.stringify(serviceData),
@@ -321,6 +329,14 @@ export const iaApi = {
     return apiCall('/api/ia/suggestions', {
       method: 'POST',
       body: JSON.stringify({ prompt }),
+    });
+  },
+
+  // Créer un brouillon de service
+  createServiceDraft: async (donnees: any) => {
+    return apiCall('/api/services/draft', {
+      method: 'POST',
+      body: JSON.stringify(donnees),
     });
   },
 

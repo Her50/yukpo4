@@ -160,7 +160,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         type: type
       };
 
-      const response = await apiPost('/api/ia/creation-service', input);
+      const response = await apiPost('/api/services/vectorize', input);
       const { composants: newComposants } = (response.data as any);
 
       setComposants(newComposants || []);

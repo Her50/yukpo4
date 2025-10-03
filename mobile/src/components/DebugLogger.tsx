@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert, Share } from 'react-native';
-import { Card, Button, IconButton } from 'react-native-paper';
-import { Copy, Trash, Share as ShareIcon, Bug } from 'phosphor-react-native';
 import * as Clipboard from 'expo-clipboard';
+import Constants from 'expo-constants';
+import { Copy, Share as ShareIcon, Trash } from 'phosphor-react-native';
+import React, { useEffect, useState } from 'react';
+import { Alert, Platform, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
+import { Button, Card, IconButton } from 'react-native-paper';
 
 interface LogEntry {
   timestamp: string;
@@ -29,10 +30,10 @@ const DebugLogger: React.FC<DebugLoggerProps> = ({ visible, onClose }) => {
     const originalError = console.error;
 
     const addLog = (level: LogEntry['level'], ...args: any[]) => {
-      const message = args.map(arg => 
+      const message = args.map(arg =>
         typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
       ).join(' ');
-      
+
       const newLog: LogEntry = {
         timestamp: new Date().toISOString(),
         level,
@@ -75,23 +76,70 @@ const DebugLogger: React.FC<DebugLoggerProps> = ({ visible, onClose }) => {
 
   const copyAllLogs = async () => {
     try {
-      const logText = logs.map(log => 
-        `[${log.timestamp}] ${log.level}: ${log.message}${log.data ? '\n' + JSON.stringify(log.data, null, 2) : ''}`
-      ).join('\n\n');
-      
-      await Clipboard.setStringAsync(logText);
-      Alert.alert('Succès', 'Tous les logs ont été copiés dans le presse-papiers !');
+      // Générer un rapport complet avec métadonnées système
+      const timestamp = new Date().toISOString();
+      const reportHeader = `
+=== RAPPORT DE DEBUG YUKPOMNANG ===
+Généré le: ${timestamp}
+Version: 1.0.0 - Build EAS Preview
+Plateforme: ${Platform.OS} ${Platform.Version}
+Bundle ID: ${Constants.expoConfig?.bundleIdentifier || 'N/A'}
+Environment: ${process.env.EXPO_PUBLIC_ENVIRONMENT || 'development'}
+API URL: ${process.env.EXPO_PUBLIC_API_URL || 'Non définie'}
+WebSocket: ${process.env.EXPO_PUBLIC_WEBSOCKET_ENABLED || 'Non défini'}
+
+=== LOGS DE L'APPLICATION ===
+`;
+
+      const logText = logs.map(log =>
+        `[${log.timestamp}] ${log.level}: ${log.message}${log.data ? '\n  Data: ' + JSON.stringify(log.data, null, 2) : ''}`
+      ).join('\n');
+
+      const fullReport = reportHeader + logText + '\n\n=== FIN DU RAPPORT ===';
+
+      // Copier dans le presse-papiers
+      await Clipboard.setStringAsync(fullReport);
+
+      // Proposer aussi de partager directement
+      Alert.alert(
+        '📋 Rapport copié !',
+        `Rapport complet copié dans le presse-papiers !\n\nContenu:\n• ${logs.length} logs capturés\n• Métadonnées système\n• Timestamp: ${timestamp}\n\nVoulez-vous aussi le partager ?`,
+        [
+          { text: 'Non, merci', style: 'cancel' },
+          {
+            text: 'Partager',
+            onPress: () => shareFullReport(fullReport)
+          }
+        ]
+      );
+
     } catch (error) {
-      Alert.alert('Erreur', 'Impossible de copier les logs');
+      console.error('[DebugLogger] Erreur copie:', error);
+      Alert.alert('❌ Erreur', 'Impossible de copier le rapport de debug');
+    }
+  };
+
+  const shareFullReport = async (report: string) => {
+    try {
+      const shareOptions = {
+        title: '🐛 Rapport de Debug Yukpomnang',
+        message: report,
+        url: undefined,
+      };
+
+      await Share.share(shareOptions);
+    } catch (error) {
+      console.error('[DebugLogger] Erreur partage:', error);
+      Alert.alert('⚠️ Partage échoué', 'Le rapport est dans votre presse-papiers, mais le partage a échoué.');
     }
   };
 
   const shareLogs = async () => {
     try {
-      const logText = logs.map(log => 
+      const logText = logs.map(log =>
         `[${log.timestamp}] ${log.level}: ${log.message}${log.data ? '\n' + JSON.stringify(log.data, null, 2) : ''}`
       ).join('\n\n');
-      
+
       await Share.share({
         message: `Logs Yukpomnang - ${new Date().toISOString()}\n\n${logText}`,
         title: 'Logs de débogage Yukpomnang'
@@ -155,9 +203,9 @@ const DebugLogger: React.FC<DebugLoggerProps> = ({ visible, onClose }) => {
             </View>
           )}
         />
-        
+
         <Card.Content style={styles.content}>
-          <ScrollView 
+          <ScrollView
             style={styles.logsContainer}
             showsVerticalScrollIndicator={true}
             onContentSizeChange={() => {
@@ -190,7 +238,7 @@ const DebugLogger: React.FC<DebugLoggerProps> = ({ visible, onClose }) => {
             )}
           </ScrollView>
         </Card.Content>
-        
+
         <Card.Actions style={styles.actions}>
           <Button
             mode="outlined"
