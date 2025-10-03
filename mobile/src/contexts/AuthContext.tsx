@@ -51,7 +51,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [forceRender, setForceRender] = useState(0);
 
   // Debug minimal
-  if (process.env.NODE_ENV === 'development') {
+  if (false) { // FORCÉ EN MODE PRODUCTION
     console.log('[AuthContext] État:', { user: !!user, loading });
   }
 

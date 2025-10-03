@@ -23,25 +23,22 @@ export const appConfig = {
   }
 };
 
-// Fonction de log sécurisée
+// Fonction de log sécurisée - MODE PRODUCTION FORCÉ
 export const logGeneral = (message: string, data?: any) => {
-  if (__DEV__) {
-    console.log(`[AppConfig] ${message}`, data);
-  }
+  // Toujours logger en production pour diagnostiquer
+  console.log(`[AppConfig] ${message}`, data);
 };
 
-// Fonction de log d'erreur
+// Fonction de log d'erreur - MODE PRODUCTION FORCÉ
 export const logError = (message: string, error?: any) => {
-  if (__DEV__) {
-    console.error(`[AppConfig] ${message}`, error);
-  }
+  // Toujours logger les erreurs en production
+  console.error(`[AppConfig] ${message}`, error);
 };
 
-// Fonction de log de debug
+// Fonction de log de debug - MODE PRODUCTION FORCÉ
 export const logDebug = (message: string, data?: any) => {
-  if (__DEV__) {
-    console.debug(`[AppConfig] ${message}`, data);
-  }
+  // Logger en production pour diagnostiquer
+  console.debug(`[AppConfig] ${message}`, data);
 };
 
 export default appConfig;

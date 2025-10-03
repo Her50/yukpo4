@@ -6,8 +6,8 @@ export const ENVIRONMENT = {
     // URL de l'API backend - CORRIGÉ pour pointer vers le backend Rust
     API_URL: process.env.EXPO_PUBLIC_API_URL || 'https://yukpomnang.onrender.com',
 
-    // Environnement (development, production, staging)
-    ENVIRONMENT: process.env.EXPO_PUBLIC_ENVIRONMENT || 'development',
+    // Environnement (development, production, staging) - FORCÉ EN PRODUCTION
+    ENVIRONMENT: process.env.EXPO_PUBLIC_ENVIRONMENT || 'production',
 
     // Configuration de traduction
     TRANSLATION: {

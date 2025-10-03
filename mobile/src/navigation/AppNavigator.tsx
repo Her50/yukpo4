@@ -271,7 +271,7 @@ const AppNavigator = () => {
   const { user, loading } = useAuth();
 
   // Debug minimal en développement
-  if (process.env.NODE_ENV === 'development') {
+  if (false) { // FORCÉ EN MODE PRODUCTION
     console.log('[AppNavigator] user:', !!user, 'loading:', loading);
   }
 

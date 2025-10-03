@@ -55,7 +55,8 @@
             "distribution": "internal",
             "env": {
                 "EXPO_PUBLIC_API_URL": "https://yukpomnang.onrender.com",
-                "EXPO_PUBLIC_ENVIRONMENT": "development"
+                "EXPO_PUBLIC_ENVIRONMENT": "production",
+                "NODE_ENV": "production"
             },
             "android": {
                 "buildType": "apk",
@@ -64,7 +65,8 @@
                 "image": "latest",
                 "withoutCredentials": false,
                 "env": {
-                    "EXPO_USE_HERMES": "false"
+                    "EXPO_USE_HERMES": "false",
+                    "NODE_ENV": "production"
                 }
             }
         },

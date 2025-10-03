@@ -48,7 +48,7 @@ class ErrorBoundary extends Component<Props, State> {
                             L'application a rencontré une erreur inattendue. Veuillez redémarrer l'application ou contacter le support si le problème persiste.
                         </Text>
 
-                        {__DEV__ && this.state.error && (
+                        {true && this.state.error && ( // TOUJOURS AFFICHER EN PRODUCTION
                             <View style={styles.debugInfo}>
                                 <Text style={styles.debugTitle}>Debug Info:</Text>
                                 <Text style={styles.debugText}>{this.state.error.message}</Text>
