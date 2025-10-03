@@ -67,7 +67,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const checkAuthStatus = async () => {
     try {
       setLoading(true);
-      const token = await AsyncStorage.getItem('auth_token');
+      const token = await AsyncStorage.getItem('token');
 
       if (token) {
         const decoded = jwtDecode<DecodedToken>(token);
@@ -87,7 +87,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           setUser(userData);
         } else {
           // Token expiré, nettoyer
-          await AsyncStorage.removeItem('auth_token');
+          await AsyncStorage.removeItem('token');
           setUser(null);
         }
       } else {
@@ -95,7 +95,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
     } catch (error) {
       // En cas d'erreur, déconnecter l'utilisateur
-      await AsyncStorage.removeItem('auth_token');
+      await AsyncStorage.removeItem('token');
       setUser(null);
     } finally {
       setLoading(false);
@@ -106,22 +106,37 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       setLoading(true);
       const response = await authApi.login(email, password);
-      
+
       if (response.success && response.data) {
-        const { user: userData, token } = response.data;
-        
+        const { token, tokens_balance } = response.data;
+
         // Sauvegarder le token
-        await AsyncStorage.setItem('auth_token', token);
-        
-        // Mettre à jour l'utilisateur
-        setUser({
-          ...userData,
+        await AsyncStorage.setItem('token', token);
+
+        // Créer un objet utilisateur basique avec les données disponibles
+        const userData: User = {
+          id: 'temp-id', // Sera mis à jour lors du refresh
+          email: email,
+          name: email.split('@')[0], // Nom basé sur l'email
+          role: 'user', // Rôle par défaut
+          credits: tokens_balance || 0,
+          phone: '',
+          photo: '',
           token: token
-        });
+        };
+
+        // Mettre à jour l'utilisateur
+        setUser(userData);
+
+        // Rafraîchir les données utilisateur complètes
+        await refreshUser();
+
+        console.log('[AuthContext] Connexion réussie:', userData);
       } else {
         throw new Error(response.message || 'Échec de la connexion');
       }
     } catch (error) {
+      console.error('[AuthContext] Erreur de connexion:', error);
       throw error;
     } finally {
       setLoading(false);
@@ -137,19 +152,31 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       setLoading(true);
       const response = await authApi.register(userData);
-      
+
       if (response.success && response.data) {
-        const { user: newUser, token } = response.data;
-        
+        const { token, tokens_balance } = response.data;
+
         // Sauvegarder le token
-        await AsyncStorage.setItem('auth_token', token);
-        
-        // Mettre à jour l'utilisateur
-        setUser({
-          ...newUser,
+        await AsyncStorage.setItem('token', token);
+
+        // Créer un objet utilisateur basique avec les données disponibles
+        const newUser: User = {
+          id: 'temp-id', // Sera mis à jour lors du refresh
+          email: userData.email,
+          name: userData.name,
+          role: 'user', // Rôle par défaut
+          credits: tokens_balance || 0,
+          phone: userData.phone || '',
+          photo: '',
           token: token
-        });
-        
+        };
+
+        // Mettre à jour l'utilisateur
+        setUser(newUser);
+
+        // Rafraîchir les données utilisateur complètes
+        await refreshUser();
+
         return { success: true, data: newUser };
       } else {
         return { success: false, data: null };

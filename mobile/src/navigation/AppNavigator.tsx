@@ -10,23 +10,15 @@ import { modernColors, modernStyles } from '../theme/modernTheme';
 import { useAuth } from '../contexts/AuthContext';
 
 // Screens
-import HomeScreen from '../screens/HomeScreen';
+import HomeScreenNew from '../screens/HomeScreenNew';
 import ProfileScreen from '../screens/ProfileScreen';
 import RechargeTokensScreen from '../screens/RechargeTokensScreen';
-import RechercheBesoinScreen from '../screens/RechercheBesoinScreen';
+import DashboardScreen from '../screens/DashboardScreen';
 import ServicesScreen from '../screens/ServicesScreen';
 
 // Autres écrans (pour la navigation secondaire)
-import AboutScreen from '../screens/AboutScreen';
-import AIChatScreen from '../screens/ai/AIChatScreen';
-import AIHubScreen from '../screens/ai/AIHubScreen';
-import ContactScreen from '../screens/ContactScreen';
-import FormulaireYukpoIntelligentScreen from '../screens/FormulaireYukpoIntelligentScreen';
-import ResultatBesoinScreen from '../screens/ResultatBesoinScreen';
-import CreateServiceScreen from '../screens/service/CreateServiceScreen';
-import ServiceDetailScreen from '../screens/service/ServiceDetailScreen';
-import SettingsScreen from '../screens/SettingsScreen';
 import SoldeDetailScreen from '../screens/SoldeDetailScreen';
+import SettingsScreen from '../screens/SettingsScreen';
 
 // Auth screens
 import LoginScreen from '../screens/auth/LoginScreen';
@@ -74,17 +66,15 @@ const MainTabs = () => {
           switch (route.name) {
             case 'Home':
               return <House {...iconProps} />;
-            case 'Services':
+            case 'MesServices':
               return <Briefcase {...iconProps} />;
-            case 'Search':
-              return <MagnifyingGlass {...iconProps} />;
-            case 'Create':
-              return <Plus {...iconProps} />;
-            case 'AI':
-              return <Brain {...iconProps} />;
-            case 'Finance':
+            case 'Dashboard':
               return <Bell {...iconProps} />;
-            case 'Account':
+            case 'Historique':
+              return <MagnifyingGlass {...iconProps} />;
+            case 'RechargeTokens':
+              return <Plus {...iconProps} />;
+            case 'MonCompte':
               return <User {...iconProps} />;
             default:
               return <House {...iconProps} />;
@@ -95,9 +85,9 @@ const MainTabs = () => {
         tabBarStyle: {
           backgroundColor: modernColors.surface,
           borderTopWidth: 0,
-          paddingBottom: 8,
-          paddingTop: 8,
-          height: 70,
+          paddingBottom: 12,
+          paddingTop: 12,
+          height: 85,
           ...modernStyles.shadowMedium,
           borderRadius: modernStyles.borderRadius.large,
           marginHorizontal: modernStyles.spacing.md,
@@ -105,63 +95,56 @@ const MainTabs = () => {
           position: 'absolute',
         },
         tabBarLabelStyle: {
-          fontSize: 11,
+          fontSize: 10,
           fontWeight: '600',
-          marginBottom: 4,
+          marginBottom: 2,
+          marginTop: 2,
         },
         headerShown: false,
       })}
     >
       <Tab.Screen
         name="Home"
-        component={HomeScreen}
+        component={HomeScreenNew}
         options={{
           title: 'Accueil',
           tabBarLabel: 'Accueil'
         }}
       />
       <Tab.Screen
-        name="Services"
+        name="MesServices"
         component={ServicesScreen}
         options={{
-          title: 'Services',
+          title: 'Mes Services',
           tabBarLabel: 'Services'
         }}
       />
       <Tab.Screen
-        name="Search"
-        component={RechercheBesoinScreen}
+        name="Dashboard"
+        component={DashboardScreen}
         options={{
-          title: 'Recherche',
-          tabBarLabel: 'Recherche'
+          title: 'Dashboard',
+          tabBarLabel: 'Stats'
         }}
       />
       <Tab.Screen
-        name="Create"
-        component={CreateServiceScreen}
+        name="Historique"
+        component={SoldeDetailScreen}
         options={{
-          title: 'Créer',
-          tabBarLabel: 'Créer'
+          title: 'Historique',
+          tabBarLabel: 'Historique'
         }}
       />
       <Tab.Screen
-        name="AI"
-        component={AIChatScreen}
-        options={{
-          title: 'IA Yukpo',
-          tabBarLabel: 'IA Yukpo'
-        }}
-      />
-      <Tab.Screen
-        name="Finance"
+        name="RechargeTokens"
         component={RechargeTokensScreen}
         options={{
-          title: 'Finance',
-          tabBarLabel: 'Finance'
+          title: 'Recharge Tokens',
+          tabBarLabel: 'Recharge'
         }}
       />
       <Tab.Screen
-        name="Account"
+        name="MonCompte"
         component={ProfileScreen}
         options={{
           title: 'Mon Compte',
@@ -198,64 +181,11 @@ const MainStack = () => (
       options={{ headerShown: false }}
     />
 
-    {/* Création de service - Éviter les conflits avec les onglets */}
-    <Stack.Screen
-      name="FormulaireYukpoIntelligent"
-      component={FormulaireYukpoIntelligentScreen}
-      options={{ title: 'Formulaire Intelligent' }}
-    />
-
-    {/* Détails et recherche - Éviter les conflits avec les onglets */}
-    <Stack.Screen
-      name="ServiceDetail"
-      component={ServiceDetailScreen}
-      options={{ title: 'Détails du Service' }}
-    />
-    <Stack.Screen
-      name="ResultatBesoin"
-      component={ResultatBesoinScreen}
-      options={{ title: 'Résultats' }}
-    />
-
-    {/* IA */}
-    <Stack.Screen
-      name="AIChat"
-      component={AIChatScreen}
-      options={{ title: 'Chat IA' }}
-    />
-    <Stack.Screen
-      name="AIHub"
-      component={AIHubScreen}
-      options={{ title: 'Hub IA' }}
-    />
-
-    {/* Recharge - Accessible depuis Compte */}
-    <Stack.Screen
-      name="RechargeTokens"
-      component={RechargeTokensScreen}
-      options={{ title: 'Recharger Tokens' }}
-    />
-
-    {/* Paramètres et informations */}
+    {/* Paramètres - Accessible depuis Mon Compte */}
     <Stack.Screen
       name="Settings"
       component={SettingsScreen}
       options={{ title: 'Paramètres' }}
-    />
-    <Stack.Screen
-      name="SoldeDetail"
-      component={SoldeDetailScreen}
-      options={{ title: 'Historique' }}
-    />
-    <Stack.Screen
-      name="About"
-      component={AboutScreen}
-      options={{ title: 'À propos' }}
-    />
-    <Stack.Screen
-      name="Contact"
-      component={ContactScreen}
-      options={{ title: 'Contact' }}
     />
   </Stack.Navigator>
 );

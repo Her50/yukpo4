@@ -1,14 +1,20 @@
 ﻿// Migration vers Phosphor React Native pour un design moderne
 import { CurrencyDollar, MapPin, Plus, Star, User } from 'phosphor-react-native';
 import * as React from 'react';
-import { useState } from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { Card, Paragraph, Searchbar, Title } from 'react-native-paper';
+import { useState, useEffect } from 'react';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View, Alert, RefreshControl } from 'react-native';
+import { Card, Paragraph, Searchbar, Title, ActivityIndicator } from 'react-native-paper';
 import { theme } from '../theme/theme';
+import { useAuth } from '../contexts/AuthContext';
+import { servicesApi } from '../services/api';
 
 const ServicesScreen: React.FC = () => {
+  const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [services, setServices] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   const categories = [
     { id: 'all', name: 'Tous', icon: 'grid-outline' },
@@ -19,48 +25,46 @@ const ServicesScreen: React.FC = () => {
     { id: 'business', name: 'Business', icon: 'briefcase-outline' },
   ];
 
-  const services = [
-    {
-      id: 1,
-      title: 'Plomberie Express',
-      category: 'home',
-      description: 'Réparation rapide de fuites et installations',
-      price: 'À partir de 25€',
-      rating: 4.8,
-      provider: 'Jean Dupont',
-      location: 'Paris 15e',
-    },
-    {
-      id: 2,
-      title: 'Cours de Mathématiques',
-      category: 'education',
-      description: 'Soutien scolaire niveau collège et lycée',
-      price: 'À partir de 20€/h',
-      rating: 4.9,
-      provider: 'Marie Martin',
-      location: 'Lyon',
-    },
-    {
-      id: 3,
-      title: 'Développement Web',
-      category: 'tech',
-      description: 'Création de sites web et applications',
-      price: 'À partir de 50€/h',
-      rating: 4.7,
-      provider: 'Pierre Durand',
-      location: 'Marseille',
-    },
-    {
-      id: 4,
-      title: 'Ménage à domicile',
-      category: 'home',
-      description: 'Service de ménage complet et régulier',
-      price: 'À partir de 15€/h',
-      rating: 4.6,
-      provider: 'Sophie Leroy',
-      location: 'Toulouse',
-    },
-  ];
+  // Charger les services de l'utilisateur (comme le frontend)
+  useEffect(() => {
+    if (user?.id) {
+      loadUserServices();
+    }
+  }, [user?.id]);
+
+  const loadUserServices = async () => {
+    try {
+      setLoading(true);
+      console.log('[ServicesScreen] Chargement des services utilisateur...');
+      
+      const response = await servicesApi.getUserServices();
+      
+      if (response.success && response.data) {
+        // Trier les services du plus récent au plus ancien (comme le frontend)
+        const servicesTries = response.data.sort((a: any, b: any) => {
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        });
+        
+        console.log('[ServicesScreen] Services chargés:', servicesTries.length);
+        setServices(servicesTries);
+      } else {
+        console.log('[ServicesScreen] Aucun service trouvé');
+        setServices([]);
+      }
+    } catch (error) {
+      console.error('[ServicesScreen] Erreur lors du chargement des services:', error);
+      Alert.alert('Erreur', 'Impossible de charger vos services');
+      setServices([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadUserServices();
+    setRefreshing(false);
+  };
 
   const filteredServices = services.filter(service => {
     const matchesSearch = service.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
