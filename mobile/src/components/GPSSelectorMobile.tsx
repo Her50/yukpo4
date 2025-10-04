@@ -1,8 +1,11 @@
 import * as Location from 'expo-location';
 import React, { useEffect, useState } from 'react';
-import { Alert, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View, Dimensions, Platform } from 'react-native';
 import { TextInput } from 'react-native-paper';
+import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import { theme } from '../theme/theme';
+
+const { width, height } = Dimensions.get('window');
 
 interface LocationData {
   latitude: number;
@@ -29,6 +32,14 @@ const GPSSelectorMobile: React.FC<GPSSelectorMobileProps> = ({
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [permissionGranted, setPermissionGranted] = useState(false);
+  const [showMap, setShowMap] = useState(false);
+  const [selectedLocation, setSelectedLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [mapRegion, setMapRegion] = useState({
+    latitude: currentLocation?.latitude || 4.0483, // Douala par défaut
+    longitude: currentLocation?.longitude || 9.7043,
+    latitudeDelta: 0.0922,
+    longitudeDelta: 0.0421,
+  });
 
   useEffect(() => {
     checkLocationPermission();
@@ -36,34 +47,120 @@ const GPSSelectorMobile: React.FC<GPSSelectorMobileProps> = ({
 
   const checkLocationPermission = async () => {
     try {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      setPermissionGranted(status === 'granted');
+      const { status } = await Location.getForegroundPermissionsAsync();
+      if (status === 'granted') {
+        setPermissionGranted(true);
+      } else {
+        const { status: newStatus } = await Location.requestForegroundPermissionsAsync();
+        setPermissionGranted(newStatus === 'granted');
+      }
     } catch (error) {
-      console.error('Erreur permission GPS:', error);
+      console.error('Erreur vérification permission:', error);
     }
   };
 
   const getCurrentLocation = async () => {
     if (!permissionGranted) {
-      Alert.alert(
-        'Permission requise',
-        'Veuillez autoriser l\'accès à la localisation pour utiliser cette fonctionnalité.',
-        [
-          { text: 'Annuler', style: 'cancel' },
-          { text: 'Paramètres', onPress: () => Location.requestForegroundPermissionsAsync() }
-        ]
-      );
+      Alert.alert('Permission requise', 'Veuillez autoriser l\'accès à votre position');
       return;
     }
 
     try {
       setLoading(true);
       const location = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.High
+        accuracy: Location.Accuracy.Balanced
       });
 
       const { latitude, longitude } = location.coords;
 
+      // Géocodage inverse pour obtenir l'adresse
+      const reverseGeocode = await Location.reverseGeocodeAsync({
+        latitude,
+        longitude
+      });
+
+      const addressData = reverseGeocode[0];
+      const address = addressData ?
+        `${addressData.street || ''} ${addressData.streetNumber || ''}, ${addressData.city || ''}, ${addressData.region || ''}`.trim() :
+        'Position actuelle';
+
+      const locationData: LocationData = {
+        latitude,
+        longitude,
+        address,
+        city: addressData?.city,
+        region: addressData?.region
+      };
+
+      onLocationSelect(locationData);
+      onClose();
+    } catch (error) {
+      console.error('Erreur géolocalisation:', error);
+      Alert.alert('Erreur', 'Impossible d\'obtenir votre position');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const searchLocation = async (query: string) => {
+    if (query.length < 3) {
+      setSuggestions([]);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const results = await Location.geocodeAsync(query, { useGoogleMaps: true });
+      
+      const formattedResults = await Promise.all(
+        results.slice(0, 5).map(async (result) => {
+          const reverseGeocode = await Location.reverseGeocodeAsync({
+            latitude: result.latitude,
+            longitude: result.longitude
+          });
+
+          const addressData = reverseGeocode[0];
+          const fullAddress = addressData ?
+            `${addressData.street || ''} ${addressData.streetNumber || ''}, ${addressData.city || ''}, ${addressData.region || ''}`.trim() :
+            `${result.latitude.toFixed(4)}, ${result.longitude.toFixed(4)}`;
+
+          return {
+            latitude: result.latitude,
+            longitude: result.longitude,
+            address: fullAddress,
+            city: addressData?.city,
+            region: addressData?.region
+          };
+        })
+      );
+
+      setSuggestions(formattedResults);
+    } catch (error) {
+      console.error('Erreur recherche:', error);
+      setSuggestions([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const selectLocation = (suggestion: any) => {
+    const locationData: LocationData = {
+      latitude: suggestion.latitude,
+      longitude: suggestion.longitude,
+      address: suggestion.address,
+      city: suggestion.city
+    };
+
+    onLocationSelect(locationData);
+    onClose();
+  };
+
+  // Gestion de la sélection sur la carte
+  const handleMapPress = async (event: any) => {
+    const { latitude, longitude } = event.nativeEvent.coordinate;
+    setSelectedLocation({ latitude, longitude });
+    
+    try {
       // Géocodage inverse pour obtenir l'adresse
       const reverseGeocode = await Location.reverseGeocodeAsync({
         latitude,
@@ -86,104 +183,43 @@ const GPSSelectorMobile: React.FC<GPSSelectorMobileProps> = ({
       onLocationSelect(locationData);
       onClose();
     } catch (error) {
-      console.error('Erreur localisation:', error);
-      Alert.alert('Erreur', 'Impossible d\'obtenir votre position actuelle');
-    } finally {
-      setLoading(false);
+      console.error('Erreur géocodage inverse:', error);
+      // Utiliser les coordonnées même sans adresse
+      const locationData: LocationData = {
+        latitude,
+        longitude,
+        address: `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`
+      };
+      onLocationSelect(locationData);
+      onClose();
     }
   };
 
-  const searchLocation = async (query: string) => {
-    if (query.length < 2) {
-      setSuggestions([]);
-      return;
-    }
-
-    try {
-      setLoading(true);
-
-      // Utiliser l'API de géocodage d'Expo pour obtenir des résultats détaillés
-      const results = await Location.geocodeAsync(query);
-
-      const formattedSuggestions = results.map((result, index) => {
-        // Essayer d'obtenir plus d'informations via géocodage inverse
-        return {
-          id: index,
-          latitude: result.latitude,
-          longitude: result.longitude,
-          address: `${result.latitude.toFixed(4)}, ${result.longitude.toFixed(4)}`,
-          city: 'Recherche en cours...'
-        };
+  // Mettre à jour la région de la carte quand la position actuelle change
+  useEffect(() => {
+    if (currentLocation) {
+      setMapRegion({
+        latitude: currentLocation.latitude,
+        longitude: currentLocation.longitude,
+        latitudeDelta: 0.0922,
+        longitudeDelta: 0.0421,
       });
-
-      setSuggestions(formattedSuggestions);
-
-      // Enrichir les suggestions avec des informations détaillées
-      const enrichedSuggestions = await Promise.all(
-        formattedSuggestions.map(async (suggestion, index) => {
-          try {
-            const reverseGeocode = await Location.reverseGeocodeAsync({
-              latitude: suggestion.latitude,
-              longitude: suggestion.longitude
-            });
-
-            const addressData = reverseGeocode[0];
-            if (addressData) {
-              const address = [
-                addressData.street,
-                addressData.streetNumber,
-                addressData.city,
-                addressData.region,
-                addressData.country
-              ].filter(Boolean).join(', ');
-
-              return {
-                ...suggestion,
-                address: address || suggestion.address,
-                city: addressData.city || 'Ville inconnue',
-                region: addressData.region || '',
-                country: addressData.country || ''
-              };
-            }
-          } catch (error) {
-            console.log('Erreur géocodage inverse:', error);
-          }
-          return suggestion;
-        })
-      );
-
-      setSuggestions(enrichedSuggestions);
-    } catch (error) {
-      console.error('Erreur recherche:', error);
-      setSuggestions([]);
-    } finally {
-      setLoading(false);
     }
-  };
-
-  const selectLocation = (suggestion: any) => {
-    const locationData: LocationData = {
-      latitude: suggestion.latitude,
-      longitude: suggestion.longitude,
-      address: suggestion.address,
-      city: suggestion.city
-    };
-
-    onLocationSelect(locationData);
-    onClose();
-  };
+  }, [currentLocation]);
 
   // Suggestions de recherche populaires (dynamiques)
   const getPopularSuggestions = () => {
     return [
       'Douala, Cameroun',
       'Yaoundé, Cameroun',
-      'Garoua, Cameroun',
-      'Bamenda, Cameroun',
       'Bafoussam, Cameroun',
-      'Kribi, Cameroun',
-      'Limbe, Cameroun',
-      'Nkongsamba, Cameroun'
+      'Bamenda, Cameroun',
+      'Garoua, Cameroun',
+      'Maroua, Cameroun',
+      'Ngaoundéré, Cameroun',
+      'Bertoua, Cameroun',
+      'Ebolowa, Cameroun',
+      'Kribi, Cameroun'
     ];
   };
 
@@ -201,23 +237,67 @@ const GPSSelectorMobile: React.FC<GPSSelectorMobileProps> = ({
             <Text style={styles.closeIcon}>✕</Text>
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Sélectionner une zone</Text>
-          <View style={styles.placeholder} />
+          <TouchableOpacity 
+            onPress={() => setShowMap(!showMap)} 
+            style={styles.mapToggleButton}
+          >
+            <Text style={styles.mapToggleText}>{showMap ? '📋' : '🗺️'}</Text>
+          </TouchableOpacity>
         </View>
 
-        {/* Recherche */}
-        <View style={styles.searchContainer}>
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Rechercher une ville ou une adresse..."
-            value={searchText}
-            onChangeText={(text) => {
-              setSearchText(text);
-              searchLocation(text);
-            }}
-            left={<TextInput.Icon icon="magnify" />}
-            right={loading ? <TextInput.Icon icon="loading" /> : null}
-          />
-        </View>
+        {/* Carte interactive */}
+        {showMap ? (
+          <View style={styles.mapContainer}>
+            <Text style={styles.mapInstructions}>
+              🎯 Appuyez sur la carte pour sélectionner un lieu précis
+            </Text>
+            <MapView
+              provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
+              style={styles.map}
+              region={mapRegion}
+              onPress={handleMapPress}
+              showsUserLocation={true}
+              showsMyLocationButton={true}
+              showsCompass={true}
+              showsScale={true}
+              mapType="standard"
+            >
+              {selectedLocation && (
+                <Marker
+                  coordinate={selectedLocation}
+                  title="Lieu sélectionné"
+                  description="Appuyez pour confirmer"
+                />
+              )}
+              {currentLocation && (
+                <Marker
+                  coordinate={{
+                    latitude: currentLocation.latitude,
+                    longitude: currentLocation.longitude
+                  }}
+                  title="Ma position"
+                  description="Position actuelle"
+                  pinColor="blue"
+                />
+              )}
+            </MapView>
+          </View>
+        ) : (
+          <>
+            {/* Recherche */}
+            <View style={styles.searchContainer}>
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Rechercher une ville ou une adresse..."
+                value={searchText}
+                onChangeText={(text) => {
+                  setSearchText(text);
+                  searchLocation(text);
+                }}
+                left={<TextInput.Icon icon="magnify" />}
+                right={loading ? <TextInput.Icon icon="loading" /> : null}
+              />
+            </View>
 
         {/* Position actuelle */}
         <View style={styles.section}>
@@ -228,76 +308,55 @@ const GPSSelectorMobile: React.FC<GPSSelectorMobileProps> = ({
             disabled={loading}
           >
             <Text style={styles.locationIcon}>📍</Text>
-            <Text style={styles.currentLocationText}>
-              {loading ? 'Localisation en cours...' : 'Utiliser ma position actuelle'}
-            </Text>
-          </TouchableOpacity>
-
-          {currentLocation && (
-            <View style={styles.currentLocationInfo}>
-              <Text style={styles.checkIcon}>✓</Text>
-              <Text style={styles.currentLocationAddress}>
-                {currentLocation.address || `${currentLocation.latitude.toFixed(4)}, ${currentLocation.longitude.toFixed(4)}`}
+            <View style={styles.locationInfo}>
+              <Text style={styles.locationTitle}>Utiliser ma position actuelle</Text>
+              <Text style={styles.locationSubtitle}>
+                {currentLocation?.address || 'Appuyez pour détecter votre position'}
               </Text>
             </View>
-          )}
+            {loading && <Text style={styles.loadingText}>Chargement...</Text>}
+          </TouchableOpacity>
         </View>
 
-        {/* Suggestions populaires */}
-        {searchText.length === 0 && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Recherches populaires</Text>
-            <View style={styles.popularSuggestionsContainer}>
-              {getPopularSuggestions().map((suggestion, index) => (
-                <TouchableOpacity
-                  key={index}
-                  style={styles.popularSuggestionButton}
-                  onPress={() => {
-                    setSearchText(suggestion);
-                    searchLocation(suggestion);
-                  }}
-                >
-                  <Text style={styles.popularSuggestionText}>{suggestion}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-        )}
-
         {/* Suggestions de recherche */}
-        {(suggestions.length > 0 || loading) && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>
-              {loading ? 'Recherche en cours...' : 'Résultats de recherche'}
-            </Text>
-            {loading && suggestions.length === 0 ? (
-              <View style={styles.loadingContainer}>
-                <Text style={styles.loadingText}>🔍 Recherche de lieux...</Text>
-              </View>
-            ) : (
-              <ScrollView style={styles.suggestionsContainer}>
-                {suggestions.map((suggestion) => (
-                  <TouchableOpacity
-                    key={suggestion.id}
-                    style={styles.suggestionItem}
-                    onPress={() => selectLocation(suggestion)}
-                  >
-                    <Text style={styles.suggestionIcon}>📍</Text>
-                    <View style={styles.suggestionInfo}>
-                      <Text style={styles.suggestionAddress}>{suggestion.address}</Text>
-                      {suggestion.city && suggestion.city !== 'Recherche en cours...' && (
-                        <Text style={styles.suggestionCity}>
-                          {suggestion.city}
-                          {suggestion.region && `, ${suggestion.region}`}
-                          {suggestion.country && `, ${suggestion.country}`}
-                        </Text>
-                      )}
-                    </View>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            )}
-          </View>
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>
+            {searchText ? 'Résultats de recherche' : 'Suggestions populaires'}
+          </Text>
+          {searchText && suggestions.length === 0 && !loading && (
+            <Text style={styles.noResults}>Aucun résultat trouvé</Text>
+          )}
+          <ScrollView style={styles.suggestionsList} showsVerticalScrollIndicator={false}>
+            {(searchText ? suggestions : getPopularSuggestions().map((name) => ({
+              address: name,
+              city: name.split(',')[0]
+            }))).map((suggestion, index) => (
+              <TouchableOpacity
+                key={index}
+                style={styles.suggestionItem}
+                onPress={() => {
+                  if (searchText) {
+                    selectLocation(suggestion);
+                  } else {
+                    setSearchText(suggestion.address);
+                    searchLocation(suggestion.address);
+                  }
+                }}
+              >
+                <Text style={styles.suggestionIcon}>📍</Text>
+                <View style={styles.suggestionInfo}>
+                  <Text style={styles.suggestionTitle}>
+                    {suggestion.city || suggestion.address}
+                  </Text>
+                  {suggestion.address && suggestion.city && (
+                    <Text style={styles.suggestionSubtitle}>{suggestion.address}</Text>
+                  )}
+                </View>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+        </>
         )}
       </View>
     </Modal>
@@ -321,9 +380,8 @@ const styles = StyleSheet.create({
     padding: 8,
   },
   closeIcon: {
-    fontSize: 20,
+    fontSize: 24,
     color: theme.colors.text,
-    fontWeight: 'bold',
   },
   headerTitle: {
     fontSize: 18,
@@ -333,6 +391,39 @@ const styles = StyleSheet.create({
   placeholder: {
     width: 40,
   },
+  mapToggleButton: {
+    padding: 8,
+  },
+  mapToggleText: {
+    fontSize: 20,
+    color: theme.colors.text,
+  },
+  mapContainer: {
+    flex: 1,
+    margin: 16,
+    borderRadius: 12,
+    overflow: 'hidden',
+    backgroundColor: 'white',
+  },
+  mapInstructions: {
+    position: 'absolute',
+    top: 10,
+    left: 10,
+    right: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    padding: 8,
+    borderRadius: 8,
+    textAlign: 'center',
+    fontSize: 14,
+    fontWeight: '600',
+    color: theme.colors.text,
+    zIndex: 1,
+  },
+  map: {
+    flex: 1,
+    width: '100%',
+    height: '100%',
+  },
   searchContainer: {
     padding: 16,
   },
@@ -340,8 +431,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
   },
   section: {
-    paddingHorizontal: 16,
-    marginBottom: 20,
+    padding: 16,
   },
   sectionTitle: {
     fontSize: 16,
@@ -352,71 +442,46 @@ const styles = StyleSheet.create({
   currentLocationButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'white',
     padding: 16,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#FFD700',
+    backgroundColor: 'white',
+    borderRadius: 12,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   locationIcon: {
-    fontSize: 20,
-    marginRight: 8,
+    fontSize: 24,
+    marginRight: 12,
   },
-  currentLocationText: {
-    fontSize: 16,
-    color: theme.colors.text,
-    fontWeight: '500',
-  },
-  currentLocationInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 8,
-    padding: 12,
-    backgroundColor: '#E8F5E8',
-    borderRadius: 8,
-  },
-  checkIcon: {
-    fontSize: 16,
-    color: '#4CAF50',
-    marginRight: 8,
-  },
-  currentLocationAddress: {
-    fontSize: 14,
-    color: '#4CAF50',
+  locationInfo: {
     flex: 1,
   },
-  popularSuggestionsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginTop: 8,
-  },
-  popularSuggestionButton: {
-    backgroundColor: 'white',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    marginRight: 8,
-    marginBottom: 8,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-  },
-  popularSuggestionText: {
-    fontSize: 14,
-    color: theme.colors.text,
+  locationTitle: {
+    fontSize: 16,
     fontWeight: '500',
+    color: theme.colors.text,
   },
-  suggestionsContainer: {
-    maxHeight: 200,
+  locationSubtitle: {
+    fontSize: 14,
+    color: theme.colors.textSecondary,
+    marginTop: 2,
+  },
+  loadingText: {
+    fontSize: 12,
+    color: theme.colors.primary,
+  },
+  suggestionsList: {
+    flex: 1,
   },
   suggestionItem: {
     flexDirection: 'row',
     alignItems: 'center',
+    padding: 12,
     backgroundColor: 'white',
-    padding: 16,
-    marginBottom: 8,
     borderRadius: 8,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
+    marginBottom: 8,
   },
   suggestionIcon: {
     fontSize: 20,
@@ -425,24 +490,50 @@ const styles = StyleSheet.create({
   suggestionInfo: {
     flex: 1,
   },
-  suggestionAddress: {
+  suggestionTitle: {
     fontSize: 16,
-    color: theme.colors.text,
     fontWeight: '500',
+    color: theme.colors.text,
   },
-  suggestionCity: {
+  suggestionSubtitle: {
     fontSize: 14,
     color: theme.colors.textSecondary,
     marginTop: 2,
   },
-  loadingContainer: {
-    padding: 20,
-    alignItems: 'center',
-  },
-  loadingText: {
-    fontSize: 16,
+  noResults: {
+    textAlign: 'center',
     color: theme.colors.textSecondary,
-    fontStyle: 'italic',
+    marginTop: 20,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  errorText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#EF4444',
+    textAlign: 'center',
+    marginBottom: 10,
+  },
+  errorSubtext: {
+    fontSize: 14,
+    color: '#6B7280',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  retryButton: {
+    backgroundColor: theme.colors.primary,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
 

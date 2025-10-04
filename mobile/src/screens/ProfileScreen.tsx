@@ -86,6 +86,19 @@ const ProfileScreen: React.FC = () => {
     );
   };
 
+  const handleActionPress = (action: any) => {
+    try {
+      if (action.route) {
+        navigation.navigate(action.route as never);
+      } else {
+        Alert.alert('Information', 'Cette fonctionnalité sera bientôt disponible');
+      }
+    } catch (error) {
+      console.error('Erreur navigation:', error);
+      Alert.alert('Erreur', 'Impossible d\'accéder à cette section');
+    }
+  };
+
   const getActionIcon = (iconName: string) => {
     const iconMap: { [key: string]: string } = {
       'wallet': '💰',

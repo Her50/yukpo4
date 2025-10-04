@@ -75,6 +75,18 @@ const SettingsScreen: React.FC = () => {
     loginAlerts: true,
   });
 
+  // Vérification de l'initialisation
+  React.useEffect(() => {
+    if (user) {
+      setSettings(prev => ({
+        ...prev,
+        name: user.name || '',
+        email: user.email || '',
+        phone: user.phone || '',
+      }));
+    }
+  }, [user]);
+
   const handleSave = async () => {
     setLoading(true);
     try {
@@ -366,26 +378,50 @@ const SettingsScreen: React.FC = () => {
     </View>
   );
 
-  return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        {renderProfileSection()}
-        {renderNotificationsSection()}
-        {renderPrivacySection()}
-        {renderSecuritySection()}
+  // Gestion d'erreur pour éviter les crashes
+  try {
+    return (
+      <SafeAreaView style={styles.container}>
+        <ScrollView contentContainerStyle={styles.scrollContent}>
+          {user ? (
+            <>
+              {renderProfileSection()}
+              {renderNotificationsSection()}
+              {renderPrivacySection()}
+              {renderSecuritySection()}
 
-        {/* Test de connectivité pour diagnostiquer les problèmes */}
-
-        <TouchableOpacity
-          onPress={handleSave}
-          disabled={loading}
-          style={styles.saveButton}
-        >
-          <Text style={styles.saveButtonText}>Sauvegarder les paramètres</Text>
-        </TouchableOpacity>
-      </ScrollView>
-    </SafeAreaView>
-  );
+              <TouchableOpacity
+                onPress={handleSave}
+                disabled={loading}
+                style={styles.saveButton}
+              >
+                <Text style={styles.saveButtonText}>
+                  {loading ? 'Sauvegarde...' : 'Sauvegarder les paramètres'}
+                </Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <View style={styles.errorContainer}>
+              <Text style={styles.errorText}>Erreur de chargement des paramètres</Text>
+              <TouchableOpacity onPress={() => setLoading(false)} style={styles.retryButton}>
+                <Text style={styles.retryButtonText}>Réessayer</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </ScrollView>
+      </SafeAreaView>
+    );
+  } catch (error) {
+    console.error('Erreur dans SettingsScreen:', error);
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>Erreur d'affichage des paramètres</Text>
+          <Text style={styles.errorSubtext}>Veuillez réessayer plus tard</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 };
 
 const styles = StyleSheet.create({
@@ -513,6 +549,36 @@ const styles = StyleSheet.create({
   },
   saveButtonContent: {
     paddingVertical: 8,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  errorText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#EF4444',
+    textAlign: 'center',
+    marginBottom: 10,
+  },
+  errorSubtext: {
+    fontSize: 14,
+    color: '#6B7280',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  retryButton: {
+    backgroundColor: theme.colors.primary,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
 

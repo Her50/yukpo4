@@ -2,41 +2,54 @@
   "extends": "expo/tsconfig.base",
   "compilerOptions": {
     "strict": false,
-    "esModuleInterop": true,
-    "allowSyntheticDefaultImports": true,
     "jsx": "react-native",
-    "jsxImportSource": "react",
     "lib": [
-      "es2017",
-      "es2018",
-      "es2019",
-      "es2020",
-      "esnext"
+      "es2022"
     ],
     "moduleResolution": "node",
-    "noEmit": true,
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
     "skipLibCheck": true,
     "resolveJsonModule": true,
-    "allowJs": true,
-    "isolatedModules": true,
-    "noFallthroughCasesInSwitch": false,
-    "noImplicitReturns": false,
-    "noUnusedLocals": false,
-    "noUnusedParameters": false,
-    "target": "esnext",
-    "module": "esnext"
+    "noImplicitAny": false,
+    "strictNullChecks": false,
+    "baseUrl": ".",
+    "typeRoots": [
+      "./node_modules/@types",
+      "./src/types"
+    ],
+    "paths": {
+      "@components/*": [
+        "src/components/*"
+      ],
+      "@screens/*": [
+        "src/screens/*"
+      ],
+      "@services/*": [
+        "src/services/*"
+      ],
+      "@contexts/*": [
+        "src/contexts/*"
+      ],
+      "@utils/*": [
+        "src/utils/*"
+      ],
+      "@theme/*": [
+        "src/theme/*"
+      ]
+    }
   },
   "include": [
-    "**/*.ts",
-    "**/*.tsx"
+    "src/**/*",
+    "*.ts",
+    "*.tsx",
+    "App.tsx"
   ],
   "exclude": [
     "node_modules",
-    "src/screens/VideoCall.tsx",
-    "src/screens/VideoIntelligenceScreen.tsx",
-    "src/screens/VitrineGenerator.tsx",
-    "src/screens/VoicePanel.tsx",
-    "src/screens/YukAIGateway.tsx",
-    "src/screens/YukpoIaHub.tsx"
+    "babel.config.js",
+    "metro.config.js",
+    "**/*.spec.ts",
+    "**/*.test.ts"
   ]
 }

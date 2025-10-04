@@ -1,34 +1,38 @@
 import { NavigationContainer } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import React from 'react';
-import { StyleSheet } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { PaperProvider } from 'react-native-paper';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
-// Contexts
-import { AuthProvider } from './src/contexts/AuthContext';
-
-// Navigation
-import AppNavigator from './src/navigation/AppNavigator';
-
-// Components
+// BLOC 1 : Contexts de base
 import ErrorBoundary from './src/components/ErrorBoundary';
-
-// Theme
+import { GlobalIAStatsProvider } from './src/components/intelligence/GlobalIAStats';
+import { AuthProvider } from './src/contexts/AuthContext';
+import { LocationProvider } from './src/contexts/LocationContext';
 import { theme } from './src/theme/theme';
 
+// BLOC 2 : Navigation moderne
+import AppNavigator from './src/navigation/AppNavigator';
+
 export default function App() {
+    console.log('[App] 🚀 Yukpomnang - Application complète de production avec navigation moderne');
+    console.log('[App] 📱 Version: 1.0.0 - Production Ready');
+
     return (
         <ErrorBoundary>
-            <GestureHandlerRootView style={styles.container}>
+            <GestureHandlerRootView style={{ flex: 1 }}>
                 <SafeAreaProvider>
                     <PaperProvider theme={theme}>
                         <AuthProvider>
-                            <NavigationContainer>
-                                <StatusBar style="auto" />
-                                <AppNavigator />
-                            </NavigationContainer>
+                            <LocationProvider>
+                                <GlobalIAStatsProvider>
+                                    <NavigationContainer>
+                                        <StatusBar style="auto" />
+                                        <AppNavigator />
+                                    </NavigationContainer>
+                                </GlobalIAStatsProvider>
+                            </LocationProvider>
                         </AuthProvider>
                     </PaperProvider>
                 </SafeAreaProvider>
@@ -37,8 +41,3 @@ export default function App() {
     );
 }
 
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-    },
-});

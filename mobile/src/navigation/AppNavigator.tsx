@@ -1,7 +1,7 @@
 // Navigation ultra-moderne avec Phosphor Icons et gradients
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
-import { Bell, Briefcase, House, MagnifyingGlass, Plus, User, ChartBar, ClockCounterClockwise } from 'phosphor-react-native';
+import { Briefcase, ChartBar, ClockCounterClockwise, House, User } from 'phosphor-react-native';
 import React from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { modernColors, modernStyles } from '../theme/modernTheme';
@@ -10,15 +10,17 @@ import { modernColors, modernStyles } from '../theme/modernTheme';
 import { useAuth } from '../contexts/AuthContext';
 
 // Screens
+import ContactScreen from '../screens/ContactScreen';
 import DashboardScreen from '../screens/DashboardScreen';
 import HomeScreen from '../screens/HomeScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import RechargeTokensScreen from '../screens/RechargeTokensScreen';
-import ServicesScreen from '../screens/ServicesScreen';
 import ServicesListScreen from '../screens/ServicesListScreen';
-import ContactScreen from '../screens/ContactScreen';
+import ServicesScreen from '../screens/ServicesScreen';
 
 // Autres écrans (pour la navigation secondaire)
+import FormulaireYukpoIntelligentScreen from '../screens/FormulaireYukpoIntelligentScreen';
+import ResultatBesoinScreen from '../screens/ResultatBesoinScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import SoldeDetailScreen from '../screens/SoldeDetailScreen';
 
@@ -211,6 +213,16 @@ const MainStack = () => (
       name="RechargeTokens"
       component={RechargeTokensScreen}
       options={{ title: 'Recharger Tokens' }}
+    />
+    <Stack.Screen
+      name="ResultatBesoin"
+      component={ResultatBesoinScreen}
+      options={{ title: 'Résultats de recherche' }}
+    />
+    <Stack.Screen
+      name="FormulaireYukpoIntelligent"
+      component={FormulaireYukpoIntelligentScreen}
+      options={{ title: 'Création de service' }}
     />
   </Stack.Navigator>
 );
