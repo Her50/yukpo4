@@ -9,6 +9,7 @@ import GPSSelectorMobile from '../components/GPSSelectorMobile';
 import NotificationHistoryModal from '../components/NotificationHistoryModal';
 import { SafeNativeView } from '../components/SafeNativeView';
 import { useAuth } from '../contexts/AuthContext';
+import { servicesApi, iaApi } from '../services/api';
 
 const { width } = Dimensions.get('window');
 
@@ -49,55 +50,107 @@ const HomeScreen: React.FC = () => {
         }
     }, []);
 
-    // Fonction de recherche directe (comme frontend - route: /resultat-besoin)
+    // Fonction de recherche directe (comme frontend - appel API puis navigation)
     const handleSearch = async (input: any) => {
         try {
             setLoading(true);
             console.log('[HomeScreen] Recherche avec:', input);
 
-            // Rediriger vers ResultatBesoin (comme frontend /resultat-besoin)
-            (navigation as any).navigate('ResultatBesoin', {
-                searchInput: input,
-                type: 'recherche_besoin',
-                results: [],
-                suggestion: input
-            });
+            // Préparer la requête comme le frontend
+            const searchRequest = {
+                texte: input.texte || input.description || '',
+                base64_image: input.base64_image || [],
+                audio_base64: input.audio_base64 || [],
+                video_base64: input.video_base64 || [],
+                doc_base64: input.doc_base64 || [],
+                excel_base64: input.excel_base64 || [],
+                pdf_base64: input.pdf_base64 || [],
+                gps_mobile: input.gps_mobile || selectedLocation,
+                gps_zone: input.gps_zone,
+                gps_fixe: input.gps_fixe,
+                gps_fixe_coords: input.gps_fixe_coords
+            };
+
+            // Appel direct à l'API de recherche (comme frontend)
+            const response = await servicesApi.searchDirect(searchRequest);
+
+            if (response.success && response.data) {
+                const result = response.data as any;
+                const results = result?.resultats?.resultats || result?.resultats || [];
+
+                // Rediriger vers ResultatBesoin avec les résultats
+                (navigation as any).navigate('ResultatBesoin', {
+                    results: results,
+                    type: 'recherche_besoin',
+                    suggestion: result
+                });
+            } else {
+                Alert.alert('Aucun résultat', 'Aucun service trouvé pour votre recherche');
+            }
         } catch (error) {
             console.error('Erreur recherche:', error);
-            Alert.alert('Erreur', 'Impossible d\'effectuer la recherche');
+            Alert.alert('Erreur', 'Impossible d\'effectuer la recherche. Vérifiez votre connexion.');
         } finally {
             setLoading(false);
         }
     };
 
-    // Fonction de création de service (comme frontend)
+    // Fonction de création de service (comme frontend - génération de suggestions)
     const handleCreateService = async (input: any) => {
         try {
             setLoading(true);
             console.log('[HomeScreen] Création service avec:', input);
 
-            // Rediriger vers FormulaireYukpoIntelligent avec les données
-            (navigation as any).navigate('FormulaireYukpoIntelligent', {
-                suggestion: {
-                    intention: 'creation_service',
-                    data: input
-                },
-                type: 'creation_service',
-                mediaData: {
-                    base64_image: input.base64_image,
-                    audio_base64: input.audio_base64,
-                    doc_base64: input.doc_base64,
-                },
-                gpsData: {
-                    gps_mobile: input.gps_mobile,
+            // Préparer la requête comme le frontend
+            const serviceRequest = {
+                texte: input.texte || input.description || '',
+                base64_image: input.base64_image || [],
+                audio_base64: input.audio_base64 || [],
+                video_base64: input.video_base64 || [],
+                doc_base64: input.doc_base64 || [],
+                excel_base64: input.excel_base64 || [],
+                pdf_base64: input.pdf_base64 || []
+            };
+
+            // Appeler l'IA pour générer des suggestions (comme frontend)
+            const response = await iaApi.generateServiceForm(serviceRequest);
+
+            if (response.success && response.data) {
+                const result = response.data as any;
+
+                // Extraire les médias de la réponse
+                const mediaData = {
+                    base64_image: result.service_data?.base64_image || input.base64_image,
+                    audio_base64: result.service_data?.audio_base64 || input.audio_base64,
+                    video_base64: result.service_data?.video_base64 || input.video_base64,
+                    doc_base64: result.service_data?.doc_base64 || input.doc_base64
+                };
+
+                // Extraire les données GPS
+                const gpsData = {
+                    gps_mobile: input.gps_mobile || selectedLocation,
                     gps_zone: input.gps_zone,
                     gps_fixe: input.gps_fixe,
                     gps_fixe_coords: input.gps_fixe_coords
-                }
-            });
+                };
+
+                // Rediriger vers FormulaireYukpoIntelligent avec les suggestions
+                (navigation as any).navigate('FormulaireYukpoIntelligent', {
+                    suggestion: {
+                        ...result,
+                        intention: 'creation_service',
+                        data: result.suggestions || result.data || result
+                    },
+                    type: 'creation_service',
+                    mediaData: mediaData,
+                    gpsData: gpsData
+                });
+            } else {
+                Alert.alert('Erreur', 'Impossible de générer les suggestions de service');
+            }
         } catch (error) {
             console.error('Erreur création:', error);
-            Alert.alert('Erreur', 'Impossible de créer le service');
+            Alert.alert('Erreur', 'Impossible de générer les suggestions. Vérifiez votre connexion.');
         } finally {
             setLoading(false);
         }
