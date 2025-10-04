@@ -5,9 +5,9 @@ import { useState } from 'react';
 import {
   Alert,
   ScrollView,
-  StyleSheet, TouchableOpacity, View
+  StyleSheet, TouchableOpacity, View, Text, TextInput, Switch
 } from 'react-native';
-import { Avatar, Card, Switch, Text, TextInput } from 'react-native-paper';
+// Remplacement des composants react-native-paper par des composants natifs
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../contexts/AuthContext';
 import { theme } from '../theme/theme';
@@ -106,63 +106,69 @@ const SettingsScreen: React.FC = () => {
   };
 
   const renderProfileSection = () => (
-    <Card style={styles.sectionCard}>
-      <Card.Content>
+    <View style={styles.sectionCard}>
+      <View style={styles.sectionContent}>
         <Text style={styles.sectionTitle}>Profil</Text>
 
         <View style={styles.avatarContainer}>
-          <Avatar.Text
-            size={80}
-            label={getInitials(settings.name)}
-            style={styles.avatar}
-          />
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>{getInitials(settings.name)}</Text>
+          </View>
           <TouchableOpacity
             onPress={() => Alert.alert('Info', 'Fonctionnalité de changement de photo en cours de développement')}
             style={styles.changePhotoButton}
           >
-            <Text>Changer la photo</Text>
+            <Text style={styles.changePhotoText}>Changer la photo</Text>
           </TouchableOpacity>
         </View>
 
-        <TextInput
-          label="Nom complet"
-          value={settings.name}
-          onChangeText={(text) => setSettings(prev => ({ ...prev, name: text }))}
-          style={styles.input}
-        />
+        <View style={styles.inputContainer}>
+          <Text style={styles.inputLabel}>Nom complet</Text>
+          <TextInput
+            value={settings.name}
+            onChangeText={(text) => setSettings(prev => ({ ...prev, name: text }))}
+            style={styles.input}
+          />
+        </View>
 
-        <TextInput
-          label="Email"
-          value={settings.email}
-          onChangeText={(text) => setSettings(prev => ({ ...prev, email: text }))}
-          keyboardType="email-address"
-          autoCapitalize="none"
-          style={styles.input}
-        />
+        <View style={styles.inputContainer}>
+          <Text style={styles.inputLabel}>Email</Text>
+          <TextInput
+            value={settings.email}
+            onChangeText={(text) => setSettings(prev => ({ ...prev, email: text }))}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            style={styles.input}
+          />
+        </View>
 
-        <TextInput
-          label="Téléphone"
-          value={settings.phone}
-          onChangeText={(text) => setSettings(prev => ({ ...prev, phone: text }))}
-          keyboardType="phone-pad"
-          style={styles.input}
-        />
+        <View style={styles.inputContainer}>
+          <Text style={styles.inputLabel}>Téléphone</Text>
+          <TextInput
+            value={settings.phone}
+            onChangeText={(text) => setSettings(prev => ({ ...prev, phone: text }))}
+            keyboardType="phone-pad"
+            style={styles.input}
+          />
+        </View>
 
-        <TextInput
-          label="Bio (optionnel)"
-          value={settings.bio}
-          onChangeText={(text) => setSettings(prev => ({ ...prev, bio: text }))}
-          multiline
-          numberOfLines={3}
-          style={styles.input}
-        />
-      </Card.Content>
-    </Card>
+        <View style={styles.inputContainer}>
+          <Text style={styles.inputLabel}>Bio (optionnel)</Text>
+          <TextInput
+            value={settings.bio}
+            onChangeText={(text) => setSettings(prev => ({ ...prev, bio: text }))}
+            multiline
+            numberOfLines={3}
+            style={styles.input}
+          />
+        </View>
+      </View>
+    </View>
   );
 
   const renderNotificationsSection = () => (
-    <Card style={styles.sectionCard}>
-      <Card.Content>
+    <View style={styles.sectionCard}>
+      <View style={styles.sectionContent}>
         <Text style={styles.sectionTitle}>Notifications</Text>
 
         <View style={styles.settingRow}>
@@ -220,13 +226,13 @@ const SettingsScreen: React.FC = () => {
             onValueChange={(value) => setSettings(prev => ({ ...prev, marketingEmails: value }))}
           />
         </View>
-      </Card.Content>
-    </Card>
+      </View>
+    </View>
   );
 
   const renderPrivacySection = () => (
-    <Card style={styles.sectionCard}>
-      <Card.Content>
+    <View style={styles.sectionCard}>
+      <View style={styles.sectionContent}>
         <Text style={styles.sectionTitle}>Confidentialité</Text>
 
         <View style={styles.settingRow}>
@@ -291,13 +297,13 @@ const SettingsScreen: React.FC = () => {
             onValueChange={(value) => setSettings(prev => ({ ...prev, allowDataCollection: value }))}
           />
         </View>
-      </Card.Content>
-    </Card>
+      </View>
+    </View>
   );
 
   const renderSecuritySection = () => (
-    <Card style={styles.sectionCard}>
-      <Card.Content>
+    <View style={styles.sectionCard}>
+      <View style={styles.sectionContent}>
         <Text style={styles.sectionTitle}>Sécurité</Text>
 
         <View style={styles.settingRow}>
@@ -356,8 +362,8 @@ const SettingsScreen: React.FC = () => {
           <Key size={20} color={theme.colors.primary} />
           <Text>Changer le mot de passe</Text>
         </TouchableOpacity>
-      </Card.Content>
-    </Card>
+      </View>
+    </View>
   );
 
   return (
@@ -375,7 +381,7 @@ const SettingsScreen: React.FC = () => {
           disabled={loading}
           style={styles.saveButton}
         >
-          <Text>Sauvegarder les paramètres</Text>
+          <Text style={styles.saveButtonText}>Sauvegarder les paramètres</Text>
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
@@ -389,10 +395,21 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 16,
+    paddingBottom: 120,
   },
   sectionCard: {
+    backgroundColor: 'white',
     marginBottom: 16,
+    marginHorizontal: 16,
+    borderRadius: 12,
     elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+  },
+  sectionContent: {
+    padding: 16,
   },
   sectionTitle: {
     fontSize: 18,
@@ -405,14 +422,44 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   avatar: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
     backgroundColor: theme.colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
     marginBottom: 12,
+  },
+  avatarText: {
+    color: 'white',
+    fontSize: 24,
+    fontWeight: 'bold',
   },
   changePhotoButton: {
     marginBottom: 16,
   },
-  input: {
+  changePhotoText: {
+    color: theme.colors.primary,
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  inputContainer: {
     marginBottom: 16,
+  },
+  inputLabel: {
+    fontSize: 14,
+    color: theme.colors.textSecondary,
+    marginBottom: 8,
+    fontWeight: '500',
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    color: theme.colors.text,
+    backgroundColor: 'white',
   },
   settingRow: {
     flexDirection: 'row',
@@ -451,8 +498,18 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
   saveButton: {
+    backgroundColor: theme.colors.primary,
     marginTop: 24,
     marginBottom: 32,
+    marginHorizontal: 16,
+    paddingVertical: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  saveButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
   },
   saveButtonContent: {
     paddingVertical: 8,

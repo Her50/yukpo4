@@ -2,8 +2,8 @@
 import { CurrencyDollar, MapPin, Plus, Star, User } from 'phosphor-react-native';
 import * as React from 'react';
 import { useEffect, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator } from 'react-native';
-import { Card, Paragraph, Searchbar, Title } from 'react-native-paper';
+import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator, TextInput } from 'react-native';
+// Remplacement des composants react-native-paper par des composants natifs
 import { servicesApi } from '../services/api';
 import { theme } from '../theme/theme';
 
@@ -47,10 +47,18 @@ const ServicesScreen: React.FC = () => {
     { id: 'business', name: 'Business', icon: 'briefcase-outline' },
   ];
 
+  // Helper pour extraire la valeur d'un champ qui peut être un objet {valeur, type_donnee, origine_champs}
+  const extractValue = (field: any): string => {
+    if (!field) return '';
+    if (typeof field === 'string') return field;
+    if (typeof field === 'object' && field.valeur) return String(field.valeur);
+    return '';
+  };
+
   const filteredServices = services.filter(service => {
-    const serviceTitle = service.data?.title || service.nom || '';
-    const serviceDescription = service.data?.description || service.description || '';
-    const serviceCategory = service.data?.category || service.categorie || '';
+    const serviceTitle = extractValue(service.data?.title) || extractValue(service.nom) || '';
+    const serviceDescription = extractValue(service.data?.description) || extractValue(service.description) || '';
+    const serviceCategory = extractValue(service.data?.category) || extractValue(service.categorie) || '';
     
     const matchesSearch = serviceTitle.toLowerCase().includes(searchQuery.toLowerCase()) ||
       serviceDescription.toLowerCase().includes(searchQuery.toLowerCase());
@@ -68,7 +76,7 @@ const ServicesScreen: React.FC = () => {
   }
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 120 }}>
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.title}>Mes Services</Text>
@@ -77,12 +85,15 @@ const ServicesScreen: React.FC = () => {
 
       {/* Barre de recherche */}
       <View style={styles.searchContainer}>
-        <Searchbar
-          placeholder="Rechercher un service..."
-          onChangeText={setSearchQuery}
-          value={searchQuery}
-          style={styles.searchBar}
-        />
+        <View style={styles.searchBar}>
+          <TextInput
+            placeholder="Rechercher un service..."
+            placeholderTextColor="#999"
+            onChangeText={setSearchQuery}
+            value={searchQuery}
+            style={styles.searchInput}
+          />
+        </View>
       </View>
 
       {/* Catégories */}
@@ -152,21 +163,21 @@ const ServicesScreen: React.FC = () => {
           </View>
         ) : (
           filteredServices.map((service) => {
-            const serviceTitle = service.data?.title || service.nom || 'Service sans titre';
-            const serviceDescription = service.data?.description || service.description || '';
-            const servicePrice = service.data?.price || service.price || 'Prix sur demande';
-            const serviceLocation = service.data?.location || service.gps_zone || 'Non spécifié';
-            const serviceRating = service.rating || 0;
+            const serviceTitle = extractValue(service.data?.title) || extractValue(service.nom) || 'Service sans titre';
+            const serviceDescription = extractValue(service.data?.description) || extractValue(service.description) || '';
+            const servicePrice = extractValue(service.data?.price) || extractValue(service.price) || 'Prix sur demande';
+            const serviceLocation = extractValue(service.data?.location) || extractValue(service.gps_zone) || 'Non spécifié';
+            const serviceRating = typeof service.rating === 'number' ? service.rating : 0;
 
             return (
-              <Card key={service.id} style={styles.serviceCard}>
-                <Card.Content>
+              <View key={service.id} style={styles.serviceCard}>
+                <View style={styles.serviceContent}>
                   <View style={styles.serviceHeader}>
                     <View style={styles.serviceInfo}>
-                      <Title style={styles.serviceTitle}>{serviceTitle}</Title>
-                      <Paragraph style={styles.serviceDescription}>
+                      <Text style={styles.serviceTitle}>{serviceTitle}</Text>
+                      <Text style={styles.serviceDescription}>
                         {serviceDescription}
-                      </Paragraph>
+                      </Text>
                     </View>
                     {serviceRating > 0 && (
                       <View style={styles.serviceRating}>
@@ -205,8 +216,8 @@ const ServicesScreen: React.FC = () => {
                       <Text style={styles.editButtonText}>Modifier</Text>
                     </TouchableOpacity>
                   </View>
-                </Card.Content>
-              </Card>
+                </View>
+              </View>
             );
           })
         )}
@@ -214,13 +225,13 @@ const ServicesScreen: React.FC = () => {
 
       {/* Call to action */}
       <View style={styles.ctaContainer}>
-        <Card style={styles.ctaCard}>
-          <Card.Content style={styles.ctaContent}>
+        <View style={styles.ctaCard}>
+          <View style={styles.ctaContent}>
             <Plus size={48} color={theme.colors.primary} />
-            <Title style={styles.ctaTitle}>Vous proposez un service ?</Title>
-            <Paragraph style={styles.ctaDescription}>
+            <Text style={styles.ctaTitle}>Vous proposez un service ?</Text>
+            <Text style={styles.ctaDescription}>
               Rejoignez notre plateforme et commencez à proposer vos services dès aujourd'hui.
-            </Paragraph>
+            </Text>
             <TouchableOpacity
               onPress={() => {
                 // Navigation vers la création de service
@@ -228,10 +239,10 @@ const ServicesScreen: React.FC = () => {
               }}
               style={styles.ctaButton}
             >
-              <Text>Créer un service</Text>
+              <Text style={styles.ctaButtonText}>Créer un service</Text>
             </TouchableOpacity>
-          </Card.Content>
-        </Card>
+          </View>
+        </View>
       </View>
     </ScrollView>
   );
@@ -262,7 +273,18 @@ const styles = StyleSheet.create({
     paddingTop: 15,
   },
   searchBar: {
+    backgroundColor: 'white',
+    borderRadius: 8,
     elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+  },
+  searchInput: {
+    padding: 12,
+    fontSize: 16,
+    color: theme.colors.text,
   },
   categoriesContainer: {
     paddingHorizontal: 20,
@@ -326,8 +348,18 @@ const styles = StyleSheet.create({
     marginBottom: 15,
   },
   serviceCard: {
+    backgroundColor: 'white',
     marginBottom: 15,
+    marginHorizontal: 20,
+    borderRadius: 12,
     elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+  },
+  serviceContent: {
+    padding: 16,
   },
   serviceHeader: {
     flexDirection: 'row',
@@ -398,7 +430,13 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   ctaCard: {
+    backgroundColor: 'white',
+    borderRadius: 12,
     elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   ctaContent: {
     alignItems: 'center',
@@ -420,7 +458,16 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   ctaButton: {
+    backgroundColor: theme.colors.primary,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
     borderRadius: 8,
+    marginTop: 16,
+  },
+  ctaButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
   },
   loadingContainer: {
     flex: 1,

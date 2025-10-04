@@ -148,11 +148,10 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = ({
             const uri = recording.getURI();
             console.log('[ChatInput] Audio enregistré:', uri);
 
-            // Convertir en base64
+            // Sauvegarder l'URI audio
             if (uri) {
-                // Pour l'instant, sauvegarder l'URI (conversion base64 à faire côté backend)
                 setAudioUri(uri);
-                Alert.alert('✅ Audio enregistré', 'Votre audio a été enregistré avec succès');
+                console.log('✅ Audio enregistré avec succès');
             }
 
             setRecording(null);
@@ -187,12 +186,14 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = ({
         }
 
         const input = {
-            text: text.trim(),
-            base64_image: images.length > 0 ? images[0] : undefined,
-            images: images.length > 1 ? images.slice(1) : undefined,
-            audio_base64: audioUri,
-            doc_base64: documents.length > 0 ? documents[0] : undefined,
-            files: documents.slice(1),
+            texte: text.trim(),  // IMPORTANT: "texte" pas "text" (comme le frontend)
+            text: text.trim(),   // Garder les deux pour compatibilité
+            base64_image: images || [],
+            audio_base64: audioUri ? [audioUri] : [],
+            video_base64: [],
+            doc_base64: documents.map(d => d.uri) || [],
+            excel_base64: [],
+            pdf_base64: [],
             gps_mobile: gpsData ? `${gpsData.lat},${gpsData.lng}` : undefined,
             gps_zone: gpsData ? [gpsData] : undefined,
             gps_fixe: gpsData ? `${gpsData.lat},${gpsData.lng}` : undefined,
@@ -201,24 +202,16 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = ({
 
         console.log('[ChatInputMobile] Soumission:', input);
         onSubmit(input);
+        
+        // Réinitialiser les champs après soumission
+        setText('');
+        setImages([]);
+        setDocuments([]);
+        setAudioUri(null);
     };
 
     return (
         <View style={styles.container}>
-            {/* Zone de texte principale */}
-            <View style={styles.inputContainer}>
-                <TextInput
-                    style={styles.textInput}
-                    placeholder={placeholder}
-                    placeholderTextColor="#999"
-                    value={text}
-                    onChangeText={setText}
-                    multiline
-                    numberOfLines={4}
-                    textAlignVertical="top"
-                />
-            </View>
-
             {/* Aperçu des images */}
             {images.length > 0 && (
                 <ScrollView horizontal style={styles.previewContainer} showsHorizontalScrollIndicator={false}>
@@ -253,8 +246,21 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = ({
                 </View>
             )}
 
-            {/* Boutons d'action pour médias - tous visibles sans scroll */}
-            <View style={styles.actionsContainer}>
+            {/* Zone de texte principale avec boutons intégrés en bas */}
+            <View style={styles.inputContainer}>
+                <TextInput
+                    style={styles.textInput}
+                    placeholder={placeholder}
+                    placeholderTextColor="#999"
+                    value={text}
+                    onChangeText={setText}
+                    multiline
+                    numberOfLines={3}
+                    textAlignVertical="top"
+                />
+                
+                {/* Boutons d'action intégrés en bas de la zone de texte */}
+                <View style={styles.actionsContainer}>
                 {/* Audio - EN PREMIER */}
                 <TouchableOpacity
                     style={[styles.actionButton, isRecording && styles.actionButtonRecording]}
@@ -297,23 +303,17 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = ({
                     <Text style={styles.actionIcon}>📄</Text>
                     <Text style={styles.actionButtonText}>Fichier</Text>
                 </TouchableOpacity>
+                
+                {/* Bouton d'envoi intégré */}
+                <TouchableOpacity
+                    style={[styles.sendButtonCompact, loading && styles.sendButtonDisabled]}
+                    onPress={handleSubmit}
+                    disabled={loading || (!text.trim() && images.length === 0)}
+                >
+                    <Text style={styles.sendIcon}>📤</Text>
+                </TouchableOpacity>
+                </View>
             </View>
-
-            {/* Bouton d'envoi */}
-            <TouchableOpacity
-                style={[styles.submitButton, loading && styles.submitButtonDisabled]}
-                onPress={handleSubmit}
-                disabled={loading || (!text.trim() && images.length === 0)}
-            >
-                {loading ? (
-                    <Text style={styles.submitButtonText}>Traitement...</Text>
-                ) : (
-                    <>
-                        <Text style={styles.sendIcon}>📤</Text>
-                        <Text style={styles.submitButtonText}>Envoyer</Text>
-                    </>
-                )}
-            </TouchableOpacity>
         </View>
     );
 };
@@ -323,6 +323,8 @@ const styles = StyleSheet.create({
         backgroundColor: '#FFF',
         borderRadius: 16,
         padding: 16,
+        marginHorizontal: 16,
+        marginBottom: 16,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
@@ -330,35 +332,35 @@ const styles = StyleSheet.create({
         elevation: 3,
     },
     inputContainer: {
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#E0E0E0',
+        backgroundColor: '#F8F9FA',
         marginBottom: 12,
     },
     textInput: {
         fontSize: 16,
         color: '#1A1A1A',
-        minHeight: 100,
+        minHeight: 90,
+        maxHeight: 150,
         textAlignVertical: 'top',
         padding: 12,
-        backgroundColor: '#F8F9FA',
-        borderRadius: 12,
-        borderWidth: 1,
-        borderColor: '#E0E0E0',
+        paddingBottom: 4,
     },
     actionsContainer: {
         flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 8,
-        marginBottom: 12,
+        justifyContent: 'space-around',
+        alignItems: 'center',
+        paddingVertical: 8,
+        paddingHorizontal: 8,
+        borderTopWidth: 1,
+        borderTopColor: '#E5E7EB',
     },
     actionButton: {
-        flexDirection: 'row',
+        flexDirection: 'column',
         alignItems: 'center',
-        paddingVertical: 10,
-        paddingHorizontal: 14,
-        backgroundColor: '#F3F4F6',
-        borderRadius: 12,
-        borderWidth: 1,
-        borderColor: '#E5E7EB',
-        gap: 6,
+        paddingVertical: 6,
+        paddingHorizontal: 8,
     },
     actionButtonActive: {
         backgroundColor: '#6366F1',
@@ -462,6 +464,18 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: 'bold',
         color: '#FFF',
+    },
+    sendButtonCompact: {
+        backgroundColor: '#6366F1',
+        padding: 10,
+        borderRadius: 8,
+        justifyContent: 'center',
+        alignItems: 'center',
+        minWidth: 50,
+    },
+    sendButtonDisabled: {
+        backgroundColor: '#9CA3AF',
+        opacity: 0.5,
     },
 });
 

@@ -11,7 +11,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { Badge, Card, IconButton, Title } from 'react-native-paper';
+import { Badge, Card, Title } from 'react-native-paper';
 import { useAuth } from '../contexts/AuthContext';
 import { notificationsApi } from '../services/api';
 import { theme } from '../theme/theme';
@@ -207,12 +207,9 @@ const NotificationHistoryModal: React.FC<NotificationHistoryModalProps> = ({
               </Text>
             </TouchableOpacity>
 
-            <IconButton
-              icon="close"
-              size={24}
-              onPress={onClose}
-              iconColor={theme.colors.text}
-            />
+            <TouchableOpacity onPress={onClose} style={styles.closeIconButton}>
+              <Text style={styles.closeIconText}>✕</Text>
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -593,6 +590,14 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: theme.colors.text,
     marginLeft: 4,
+  },
+  closeIconButton: {
+    padding: 8,
+  },
+  closeIconText: {
+    fontSize: 24,
+    color: theme.colors.text,
+    fontWeight: 'bold',
   },
 });
 

@@ -1,4 +1,3 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 import * as React from 'react';
 import { useState } from 'react';
@@ -10,14 +9,23 @@ import GPSSelectorMobile from '../components/GPSSelectorMobile';
 import NotificationHistoryModal from '../components/NotificationHistoryModal';
 import { SafeNativeView } from '../components/SafeNativeView';
 import { useAuth } from '../contexts/AuthContext';
-
-const API_BASE_URL = 'https://yukpomnang.onrender.com';
+import { genererSuggestionsService, rechercherServices } from '../services/yukpoclient';
 
 const { width } = Dimensions.get('window');
 
 const HomeScreen: React.FC = () => {
     const navigation = useNavigation();
     const { user } = useAuth();
+
+    // Debug pour vérifier les données utilisateur
+    React.useEffect(() => {
+        console.log('[HomeScreen] Utilisateur chargé:', {
+            name: user?.name,
+            email: user?.email,
+            credits: user?.credits,
+            role: user?.role
+        });
+    }, [user]);
     const [loading, setLoading] = useState(false);
     const [isCreateService, setIsCreateService] = useState(false);
     const [showGPSModal, setShowGPSModal] = useState(false);
@@ -52,30 +60,14 @@ const HomeScreen: React.FC = () => {
         }
     }, []);
 
-    // Fonction de recherche directe (exactement comme frontend)
+    // Fonction de recherche directe (utilise yukpoclient comme frontend)
     const handleSearch = async (input: any) => {
         try {
             setLoading(true);
             console.log('[HomeScreen] Recherche avec:', input);
 
-            const token = await AsyncStorage.getItem('auth_token');
-
-            // Appel direct à l'API de recherche (comme frontend)
-            const response = await fetch(`${API_BASE_URL}/api/search/direct`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify(input)
-            });
-
-            if (!response.ok) {
-                throw new Error(`Erreur HTTP: ${response.status}`);
-            }
-
-            const result = await response.json();
-            console.log('[HomeScreen] Résultat recherche:', result);
+            // Utiliser yukpoclient (comme le frontend)
+            const result = await rechercherServices(input);
 
             // Rediriger vers ResultatBesoin avec les résultats
             const results = result?.resultats?.resultats || result?.resultats || [];
@@ -84,46 +76,29 @@ const HomeScreen: React.FC = () => {
                 type: 'recherche_besoin',
                 suggestion: result
             });
-        } catch (error) {
+        } catch (error: any) {
             console.error('Erreur recherche:', error);
-            Alert.alert('Erreur', 'Impossible d\'effectuer la recherche. Vérifiez votre connexion.');
+            Alert.alert('Erreur', error.message || 'Impossible d\'effectuer la recherche. Vérifiez votre connexion.');
         } finally {
             setLoading(false);
         }
     };
 
-    // Fonction de création de service (exactement comme frontend)
+    // Fonction de création de service (utilise yukpoclient comme frontend)
     const handleCreateService = async (input: any) => {
         try {
             setLoading(true);
             console.log('[HomeScreen] Création service avec:', input);
 
-            const token = await AsyncStorage.getItem('auth_token');
-
-            // Appel direct à l'API IA (comme frontend)
-            const response = await fetch(`${API_BASE_URL}/api/ia/creation-service`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify(input)
-            });
-
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.message || `Erreur IA: ${response.status}`);
-            }
-
-            const result = await response.json();
-            console.log('[HomeScreen] Résultat création:', result);
+            // Utiliser yukpoclient (comme le frontend)
+            const result = await genererSuggestionsService(input);
 
             // Extraire les médias de la réponse
             const mediaData = {
-                base64_image: result.service_data?.base64_image || input.base64_image,
-                audio_base64: result.service_data?.audio_base64 || input.audio_base64,
-                video_base64: result.service_data?.video_base64 || input.video_base64,
-                doc_base64: result.service_data?.doc_base64 || input.doc_base64
+                base64_image: result.data.service_data?.base64_image || input.base64_image,
+                audio_base64: result.data.service_data?.audio_base64 || input.audio_base64,
+                video_base64: result.data.service_data?.video_base64 || input.video_base64,
+                doc_base64: result.data.service_data?.doc_base64 || input.doc_base64
             };
 
             // Extraire les données GPS
@@ -134,12 +109,12 @@ const HomeScreen: React.FC = () => {
                 gps_fixe_coords: input.gps_fixe_coords
             };
 
-            // Rediriger vers FormulaireYukpoIntelligent avec les suggestions
+            // Rediriger vers FormulaireYukpoIntelligent avec les suggestions (comme frontend)
             (navigation as any).navigate('FormulaireYukpoIntelligent', {
                 suggestion: {
-                    ...result,
+                    ...result.data,
                     intention: 'creation_service',
-                    data: result.suggestions || result.data || result
+                    data: result.data.suggestions || result.data.data || result.data
                 },
                 type: 'creation_service',
                 mediaData: mediaData,
@@ -186,77 +161,103 @@ const HomeScreen: React.FC = () => {
 
     return (
         <SafeNativeView style={styles.container}>
+            {/* Arrière-plan moderne avec dégradé */}
+            <View style={styles.backgroundGradient} />
+
             <ScrollView
                 contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={false}
             >
-                {/* Header moderne */}
+                {/* Header moderne avec dégradé */}
                 <View style={styles.header}>
                     <View style={styles.headerContent}>
-                        <View>
-                            <Text style={styles.greetingText}>Bonjour 👋</Text>
+                        <View style={styles.userInfo}>
+                            <Text style={styles.greetingText}>
+                                Bonjour {user?.name ? user.name.split(' ')[0] : '👋'}
+                            </Text>
                             <Text style={styles.userName}>{user?.name || 'Utilisateur'}</Text>
-                            <View style={styles.balanceContainer}>
-                                <Text style={styles.walletIcon}>💰</Text>
-                                <Text style={styles.balanceText}>{user?.credits?.toLocaleString() || 0} tokens</Text>
-                            </View>
+                            <TouchableOpacity
+                                style={styles.balanceContainer}
+                                onPress={() => (navigation as any).navigate('Historique')}
+                            >
+                                <View style={styles.balanceIcon}>
+                                    <Text style={styles.walletIcon}>💰</Text>
+                                </View>
+                                <Text style={styles.balanceText}>
+                                    {user?.credits ? (user.credits / 10).toLocaleString('fr-FR') : 0} FCFA
+                                </Text>
+                                <Text style={styles.balanceHint}>👆 Voir l'historique</Text>
+                            </TouchableOpacity>
                         </View>
-                        <TouchableOpacity
-                            style={styles.headerButton}
-                            onPress={() => setShowNotificationModal(true)}
-                        >
-                            <Text style={styles.notificationIcon}>🔔</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                            style={styles.headerButton}
-                            onPress={() => setShowChatModal(true)}
-                        >
-                            <Text style={styles.chatIcon}>💬</Text>
-                        </TouchableOpacity>
+                        <View style={styles.headerActions}>
+                            <TouchableOpacity
+                                style={styles.headerButton}
+                                onPress={() => setShowNotificationModal(true)}
+                            >
+                                <Text style={styles.notificationIcon}>🔔</Text>
+                                <View style={styles.notificationBadge} />
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={styles.headerButton}
+                                onPress={() => setShowChatModal(true)}
+                            >
+                                <Text style={styles.chatIcon}>💬</Text>
+                            </TouchableOpacity>
+                        </View>
                     </View>
                 </View>
 
-                {/* Titre principal */}
+                {/* Titre principal avec design moderne */}
                 <View style={styles.titleContainer}>
-                    <Text style={styles.brandTitle}>
-                        <Text style={styles.brandYuk}>Yuk</Text>
-                        <Text style={styles.brandPo}>po</Text>
-                    </Text>
-                    <Text style={styles.subtitle}>
-                        Créez ou trouvez un service en un instant.{'\n'}
-                        <Text style={styles.subtitleSecondary}>
-                            Une description, une image, un audio ou un fichier suffit.
+                    <View style={styles.brandContainer}>
+                        <Text style={styles.brandTitle}>
+                            <Text style={styles.brandYuk}>Yuk</Text>
+                            <Text style={styles.brandPo}>po</Text>
                         </Text>
-                    </Text>
+                        <View style={styles.brandSubtitle}>
+                            <Text style={styles.subtitle}>
+                                Créez ou trouvez un service en un instant
+                            </Text>
+                            <Text style={styles.subtitleSecondary}>
+                                Une description, une image, un audio ou un fichier suffit
+                            </Text>
+                        </View>
+                    </View>
                 </View>
 
-                {/* Sélecteur de mode */}
+                {/* Sélecteur de mode moderne */}
                 <View style={styles.modeSelector}>
-                    <TouchableOpacity
-                        style={[styles.modeButton, !isCreateService && styles.modeButtonActive]}
-                        onPress={() => setIsCreateService(false)}
-                    >
-                        <Text style={[styles.tabIcon, { color: !isCreateService ? '#FFF' : '#666' }]}>🔍</Text>
-                        <Text style={[
-                            styles.modeButtonText,
-                            !isCreateService && styles.modeButtonTextActive
-                        ]}>
-                            Rechercher
-                        </Text>
-                    </TouchableOpacity>
+                    <View style={styles.modeSelectorContainer}>
+                        <TouchableOpacity
+                            style={[styles.modeButton, !isCreateService && styles.modeButtonActive]}
+                            onPress={() => setIsCreateService(false)}
+                        >
+                            <View style={styles.modeButtonContent}>
+                                <Text style={[styles.tabIcon, { color: !isCreateService ? '#FFF' : '#6366F1' }]}>🔍</Text>
+                                <Text style={[
+                                    styles.modeButtonText,
+                                    !isCreateService && styles.modeButtonTextActive
+                                ]}>
+                                    Rechercher
+                                </Text>
+                            </View>
+                        </TouchableOpacity>
 
-                    <TouchableOpacity
-                        style={[styles.modeButton, isCreateService && styles.modeButtonActive]}
-                        onPress={() => setIsCreateService(true)}
-                    >
-                        <Text style={[styles.tabIcon, { color: isCreateService ? '#FFF' : '#666' }]}>➕</Text>
-                        <Text style={[
-                            styles.modeButtonText,
-                            isCreateService && styles.modeButtonTextActive
-                        ]}>
-                            Créer un service
-                        </Text>
-                    </TouchableOpacity>
+                        <TouchableOpacity
+                            style={[styles.modeButton, isCreateService && styles.modeButtonActive]}
+                            onPress={() => setIsCreateService(true)}
+                        >
+                            <View style={styles.modeButtonContent}>
+                                <Text style={[styles.tabIcon, { color: isCreateService ? '#FFF' : '#6366F1' }]}>➕</Text>
+                                <Text style={[
+                                    styles.modeButtonText,
+                                    isCreateService && styles.modeButtonTextActive
+                                ]}>
+                                    Créer un service
+                                </Text>
+                            </View>
+                        </TouchableOpacity>
+                    </View>
                 </View>
 
                 {/* ChatInput avec support multimédia */}
@@ -351,80 +352,109 @@ const HomeScreen: React.FC = () => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F8F9FA',
+        backgroundColor: '#F8FAFC',
+    },
+    backgroundGradient: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        height: 300,
+        backgroundColor: '#6366F1',
+        borderBottomLeftRadius: 32,
+        borderBottomRightRadius: 32,
     },
     scrollContent: {
-        paddingBottom: 32,
+        paddingBottom: 120,
     },
     header: {
-        backgroundColor: '#FFF',
         paddingHorizontal: 20,
-        paddingVertical: 20,
-        borderBottomLeftRadius: 24,
-        borderBottomRightRadius: 24,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 8,
-        elevation: 4,
-        marginBottom: 24,
+        paddingTop: 20,
+        paddingBottom: 30,
+        marginBottom: 20,
     },
     headerContent: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        alignItems: 'center',
+        alignItems: 'flex-start',
+    },
+    userInfo: {
+        flex: 1,
+    },
+    headerActions: {
+        flexDirection: 'row',
+        gap: 12,
     },
     greetingText: {
-        fontSize: 14,
-        color: '#666',
+        fontSize: 16,
+        color: 'rgba(255, 255, 255, 0.9)',
         marginBottom: 4,
+        fontWeight: '500',
     },
     userName: {
-        fontSize: 24,
+        fontSize: 28,
         fontWeight: 'bold',
-        color: '#1A1A1A',
-        marginBottom: 8,
+        color: '#FFFFFF',
+        marginBottom: 12,
     },
     balanceContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#EEF2FF',
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 20,
+        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+        paddingHorizontal: 16,
+        paddingVertical: 10,
+        borderRadius: 25,
         alignSelf: 'flex-start',
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.3)',
+    },
+    balanceIcon: {
+        marginRight: 8,
     },
     balanceText: {
-        fontSize: 14,
+        fontSize: 16,
         fontWeight: '600',
-        color: '#6366F1',
-        marginLeft: 6,
+        color: '#FFFFFF',
+        marginRight: 8,
+    },
+    balanceHint: {
+        fontSize: 12,
+        color: 'rgba(255, 255, 255, 0.8)',
+        fontStyle: 'italic',
     },
     walletIcon: {
-        fontSize: 16,
-    },
-    notificationIcon: {
-        fontSize: 24,
-    },
-    chatIcon: {
-        fontSize: 24,
-    },
-    tabIcon: {
-        fontSize: 20,
-        marginRight: 8,
+        fontSize: 18,
     },
     headerButton: {
         width: 48,
         height: 48,
         borderRadius: 24,
-        backgroundColor: '#EEF2FF',
+        backgroundColor: 'rgba(255, 255, 255, 0.2)',
         justifyContent: 'center',
         alignItems: 'center',
+        position: 'relative',
+    },
+    notificationIcon: {
+        fontSize: 22,
+    },
+    chatIcon: {
+        fontSize: 22,
+    },
+    notificationBadge: {
+        position: 'absolute',
+        top: 8,
+        right: 8,
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+        backgroundColor: '#EF4444',
     },
     titleContainer: {
-        alignItems: 'center',
         paddingHorizontal: 20,
-        marginBottom: 24,
+        marginBottom: 32,
+    },
+    brandContainer: {
+        alignItems: 'center',
     },
     brandTitle: {
         fontSize: 48,
@@ -434,56 +464,72 @@ const styles = StyleSheet.create({
     },
     brandYuk: {
         color: '#FFC107',
-        fontWeight: 'bold',
     },
     brandPo: {
         color: '#EF4444',
-        fontWeight: 'bold',
+    },
+    brandSubtitle: {
+        alignItems: 'center',
     },
     subtitle: {
         fontSize: 18,
         color: '#374151',
         textAlign: 'center',
-        lineHeight: 28,
-        fontWeight: '500',
+        marginBottom: 8,
+        fontWeight: '600',
     },
     subtitleSecondary: {
         fontSize: 16,
         color: '#6B7280',
-        fontWeight: '400',
+        textAlign: 'center',
+        lineHeight: 24,
     },
     modeSelector: {
-        flexDirection: 'row',
-        marginHorizontal: 20,
+        paddingHorizontal: 20,
         marginBottom: 24,
-        backgroundColor: '#FFF',
+    },
+    modeSelectorContainer: {
+        backgroundColor: '#FFFFFF',
         borderRadius: 16,
-        padding: 4,
+        padding: 6,
+        flexDirection: 'row',
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
+        shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.1,
-        shadowRadius: 4,
-        elevation: 2,
+        shadowRadius: 12,
+        elevation: 6,
     },
     modeButton: {
         flex: 1,
-        flexDirection: 'row',
+        paddingVertical: 16,
+        paddingHorizontal: 20,
+        borderRadius: 12,
         alignItems: 'center',
         justifyContent: 'center',
-        paddingVertical: 12,
-        borderRadius: 12,
-        gap: 8,
     },
     modeButtonActive: {
         backgroundColor: '#6366F1',
+        shadowColor: '#6366F1',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 4,
+    },
+    modeButtonContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    tabIcon: {
+        fontSize: 20,
+        marginRight: 8,
     },
     modeButtonText: {
-        fontSize: 14,
+        fontSize: 16,
         fontWeight: '600',
-        color: '#666',
+        color: '#6B7280',
     },
     modeButtonTextActive: {
-        color: '#FFF',
+        color: '#FFFFFF',
     },
     alertOverlay: {
         position: 'absolute',

@@ -3,7 +3,7 @@ import { useNavigation } from '@react-navigation/native';
 import * as React from 'react';
 import { useEffect, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { ActivityIndicator, Avatar, Card, Title } from 'react-native-paper';
+import { ActivityIndicator } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 import { servicesApi, userApi } from '../services/api';
 import { theme } from '../theme/theme';
@@ -123,13 +123,6 @@ const ProfileScreen: React.FC = () => {
       description: 'Ajouter des tokens à votre compte'
     },
     {
-      title: 'Catalogue Services',
-      icon: 'document-outline',
-      color: '#8B5CF6',
-      route: 'Services',
-      description: 'Découvrir tous les services'
-    },
-    {
       title: 'Paramètres',
       icon: 'settings-outline',
       color: '#757575',
@@ -155,15 +148,13 @@ const ProfileScreen: React.FC = () => {
   }
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 120 }}>
       {/* Header avec photo de profil */}
       <View style={styles.header}>
         <View style={styles.profileSection}>
-          <Avatar.Text
-            size={80}
-            label={user?.name?.charAt(0) || 'U'}
-            style={styles.avatar}
-          />
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>{user?.name?.charAt(0) || 'U'}</Text>
+          </View>
           <Text style={styles.userName}>{user?.name || 'Utilisateur'}</Text>
           <Text style={styles.userEmail}>{user?.email || 'email@example.com'}</Text>
           <View style={styles.verificationBadge}>
@@ -216,9 +207,9 @@ const ProfileScreen: React.FC = () => {
       </View>
 
       {/* Informations du compte */}
-      <Card style={styles.infoCard}>
-        <Card.Content>
-          <Title style={styles.cardTitle}>Informations du Compte</Title>
+      <View style={styles.infoCard}>
+        <View style={styles.infoCardContent}>
+          <Text style={styles.cardTitle}>Informations du Compte</Text>
           <View style={styles.infoItem}>
             <Text style={styles.infoLabel}>Membre depuis</Text>
             <Text style={styles.infoValue}>{accountInfo.memberSince}</Text>
@@ -233,8 +224,8 @@ const ProfileScreen: React.FC = () => {
               {accountInfo.status}
             </Text>
           </View>
-        </Card.Content>
-      </Card>
+        </View>
+      </View>
 
       {/* Bouton de déconnexion */}
       <View style={styles.logoutContainer}>
@@ -276,8 +267,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   avatar: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
     backgroundColor: 'white',
+    justifyContent: 'center',
+    alignItems: 'center',
     marginBottom: 15,
+  },
+  avatarText: {
+    color: theme.colors.primary,
+    fontSize: 32,
+    fontWeight: 'bold',
   },
   userName: {
     fontSize: 24,
@@ -383,9 +384,18 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   infoCard: {
+    backgroundColor: 'white',
     margin: 20,
     marginTop: 0,
+    borderRadius: 12,
     elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+  },
+  infoCardContent: {
+    padding: 16,
   },
   cardTitle: {
     fontSize: 18,

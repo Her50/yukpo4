@@ -73,8 +73,17 @@ const RechargeTokensScreen: React.FC = () => {
   // Méthodes de paiement disponibles
   const paymentMethods: PaymentMethod[] = [
     {
-      id: 'mobile_money',
-      name: 'Mobile Money',
+      id: 'mtn_money',
+      name: 'MTN Mobile Money',
+      type: 'mobile',
+      processingTime: 'Instantané',
+      fees: 0,
+      available: true,
+      icon: 'phone-portrait',
+    },
+    {
+      id: 'orange_money',
+      name: 'Orange Money',
       type: 'mobile',
       processingTime: 'Instantané',
       fees: 0,
@@ -90,16 +99,9 @@ const RechargeTokensScreen: React.FC = () => {
       available: true,
       icon: 'card',
     },
-    {
-      id: 'credit_card',
-      name: 'Carte de crédit',
-      type: 'card',
-      processingTime: 'Instantané',
-      fees: 2.5,
-      available: true,
-      icon: 'card',
-    },
   ];
+
+  const [phoneNumber, setPhoneNumber] = useState('');
 
   const handleRecharge = async () => {
     if (!selectedOption && !customAmount) {
@@ -130,7 +132,7 @@ const RechargeTokensScreen: React.FC = () => {
           amount_xaf: amount,
           payment_method: selectedPaymentMethod,
           currency: 'XAF',
-          phone_number: selectedPaymentMethod === 'mobile_money' ? user?.phone : null
+          phone_number: (selectedPaymentMethod === 'mtn_money' || selectedPaymentMethod === 'orange_money') ? phoneNumber : null
         })
       });
 
@@ -320,6 +322,27 @@ const RechargeTokensScreen: React.FC = () => {
         ))}
       </View>
 
+      {/* Champ numéro de téléphone pour Mobile Money */}
+      {(selectedPaymentMethod === 'mtn_money' || selectedPaymentMethod === 'orange_money') && (
+        <Card style={styles.phoneCard}>
+          <Card.Content>
+            <Text style={styles.phoneLabel}>📱 Numéro de téléphone</Text>
+            <TextInput
+              style={styles.phoneInput}
+              placeholder="Exemple: 699999999"
+              placeholderTextColor="#999"
+              value={phoneNumber}
+              onChangeText={setPhoneNumber}
+              keyboardType="phone-pad"
+              maxLength={9}
+            />
+            <Text style={styles.phoneHint}>
+              {selectedPaymentMethod === 'mtn_money' ? '📞 MTN : 67X XXX XXX ou 65X XXX XXX' : '📞 Orange : 69X XXX XXX'}
+            </Text>
+          </Card.Content>
+        </Card>
+      )}
+
       <View style={styles.navigationButtons}>
         <TouchableOpacity
           onPress={() => setCurrentStep('amount')}
@@ -329,10 +352,10 @@ const RechargeTokensScreen: React.FC = () => {
         </TouchableOpacity>
         <TouchableOpacity
           onPress={() => setCurrentStep('confirm')}
-          disabled={!selectedPaymentMethod}
+          disabled={!selectedPaymentMethod || ((selectedPaymentMethod === 'mtn_money' || selectedPaymentMethod === 'orange_money') && !phoneNumber)}
           style={[
             styles.nextButton,
-            !selectedPaymentMethod && styles.nextButtonDisabled
+            (!selectedPaymentMethod || ((selectedPaymentMethod === 'mtn_money' || selectedPaymentMethod === 'orange_money') && !phoneNumber)) && styles.nextButtonDisabled
           ]}
         >
           <Text style={styles.nextButtonText}>Continuer →</Text>
@@ -451,6 +474,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 16,
+    paddingBottom: 120,
   },
   header: {
     marginBottom: 24,
@@ -692,6 +716,32 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 16,
     fontWeight: '600',
+  },
+  phoneCard: {
+    marginVertical: 16,
+    elevation: 2,
+  },
+  phoneLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1A1A1A',
+    marginBottom: 12,
+  },
+  phoneInput: {
+    backgroundColor: '#F8F9FA',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    fontSize: 16,
+    color: '#1A1A1A',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    marginBottom: 8,
+  },
+  phoneHint: {
+    fontSize: 12,
+    color: '#6B7280',
+    fontStyle: 'italic',
   },
 });
 
