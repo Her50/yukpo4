@@ -45,7 +45,7 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = ({
         return true;
     };
 
-    // Prendre une photo
+    // Prendre une photo avec validation
     const takePhoto = async () => {
         const { status } = await ImagePicker.requestCameraPermissionsAsync();
         if (status !== 'granted') {
@@ -53,15 +53,40 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = ({
             return;
         }
 
-        const result = await ImagePicker.launchCameraAsync({
-            mediaTypes: ImagePicker.MediaTypeOptions.Images,
-            allowsEditing: true,
-            quality: 0.8,
-            base64: true,
-        });
+        try {
+            const result = await ImagePicker.launchCameraAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                allowsEditing: true,
+                quality: 0.8,
+                base64: true,
+            });
 
-        if (!result.canceled && result.assets[0].base64) {
-            setImages([...images, `data:image/jpeg;base64,${result.assets[0].base64}`]);
+            if (!result.canceled && result.assets[0].base64) {
+                const imageBase64 = `data:image/jpeg;base64,${result.assets[0].base64}`;
+                
+                // Demander confirmation à l'utilisateur
+                Alert.alert(
+                    'Confirmer la photo',
+                    'Voulez-vous utiliser cette photo ?',
+                    [
+                        {
+                            text: 'Reprendre',
+                            style: 'cancel',
+                            onPress: () => takePhoto() // Relancer la prise de photo
+                        },
+                        {
+                            text: 'Utiliser',
+                            onPress: () => {
+                                setImages([...images, imageBase64]);
+                                console.log('[ChatInputMobile] Photo confirmée');
+                            }
+                        }
+                    ]
+                );
+            }
+        } catch (error) {
+            console.error('Erreur prise de photo:', error);
+            Alert.alert('Erreur', 'Impossible de prendre la photo');
         }
     };
 
@@ -304,13 +329,16 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = ({
                     <Text style={styles.actionButtonText}>Fichier</Text>
                 </TouchableOpacity>
                 
-                {/* Bouton d'envoi intégré */}
+                {/* Bouton d'envoi principal - MIS EN VALEUR */}
                 <TouchableOpacity
-                    style={[styles.sendButtonCompact, loading && styles.sendButtonDisabled]}
+                    style={[styles.submitButton, loading && styles.sendButtonDisabled]}
                     onPress={handleSubmit}
                     disabled={loading || (!text.trim() && images.length === 0)}
                 >
-                    <Text style={styles.sendIcon}>📤</Text>
+                    <Text style={styles.sendIcon}>🚀</Text>
+                    <Text style={styles.submitButtonText}>
+                        {loading ? 'Envoi...' : 'Envoyer'}
+                    </Text>
                 </TouchableOpacity>
                 </View>
             </View>
@@ -446,15 +474,18 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: '#6366F1',
-        paddingVertical: 16,
-        borderRadius: 12,
+        backgroundColor: '#06B6D4',
+        paddingVertical: 14,
+        paddingHorizontal: 24,
+        borderRadius: 16,
+        marginTop: 8,
         gap: 8,
-        elevation: 4,
-        shadowColor: '#6366F1',
+        shadowColor: '#06B6D4',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.3,
         shadowRadius: 8,
+        elevation: 6,
+        minWidth: 120,
     },
     submitButtonDisabled: {
         backgroundColor: '#9CA3AF',
@@ -462,7 +493,7 @@ const styles = StyleSheet.create({
     },
     submitButtonText: {
         fontSize: 16,
-        fontWeight: 'bold',
+        fontWeight: '700',
         color: '#FFF',
     },
     sendButtonCompact: {

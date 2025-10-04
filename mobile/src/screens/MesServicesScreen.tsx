@@ -115,7 +115,8 @@ const MesServicesScreen: React.FC = () => {
               onPress={() => navigation.navigate('CreateService' as never)}
               style={styles.createButton}
             >
-              <Text>Créer un service</Text>
+              <Plus size={20} color="white" />
+              <Text style={styles.createButtonText}>Créer un service</Text>
             </TouchableOpacity>
           </View>
         ) : (
@@ -214,15 +215,29 @@ const MesServicesScreen: React.FC = () => {
                     );
                   }}
                 >
-                  {service.status === 'active' ? (
-                    <Calendar size={16} color="white" />
-                  ) : (
-                    <Calendar size={16} color="white" />
-                  )}
+                  <Calendar size={16} color="white" />
                   <Text style={styles.actionButtonText}>
                     {service.status === 'active' ? 'Désactiver' : 'Activer'}
                   </Text>
                 </TouchableOpacity>
+              </View>
+
+              {/* Statistiques du service */}
+              <View style={styles.serviceStats}>
+                <View style={styles.statItem}>
+                  <Eye size={16} color="#3B82F6" />
+                  <Text style={styles.statText}>{service.views || 0} vues</Text>
+                </View>
+                <View style={styles.statItem}>
+                  <Briefcase size={16} color="#10B981" />
+                  <Text style={styles.statText}>{service.interactions || 0} interactions</Text>
+                </View>
+                <View style={styles.statItem}>
+                  <Calendar size={16} color={getStatusColor(service.status)} />
+                  <Text style={[styles.statText, { color: getStatusColor(service.status) }]}>
+                    {getStatusText(service.status)}
+                  </Text>
+                </View>
               </View>
             </View>
           ))
@@ -295,7 +310,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   createButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: theme.colors.primary,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 8,
+    gap: 8,
+  },
+  createButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
   },
   serviceContainer: {
     marginBottom: 16,
@@ -387,13 +413,14 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: theme.colors.textSecondary,
   },
-  serviceActions: {
+  serviceStats: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-  },
-  actionButton: {
-    flex: 1,
-    marginHorizontal: 4,
+    marginTop: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 8,
   },
 });
 

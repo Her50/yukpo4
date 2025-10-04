@@ -1,7 +1,7 @@
 // Navigation ultra-moderne avec Phosphor Icons et gradients
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
-import { Bell, Briefcase, House, MagnifyingGlass, Plus, User } from 'phosphor-react-native';
+import { Bell, Briefcase, House, MagnifyingGlass, Plus, User, ChartBar, ClockCounterClockwise } from 'phosphor-react-native';
 import React from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { modernColors, modernStyles } from '../theme/modernTheme';
@@ -89,9 +89,9 @@ const MainTabs = () => {
             case 'MesServices':
               return <Briefcase {...iconProps} />;
             case 'Dashboard':
-              return <Bell {...iconProps} />;
+              return <ChartBar {...iconProps} />;
             case 'Historique':
-              return <MagnifyingGlass {...iconProps} />;
+              return <ClockCounterClockwise {...iconProps} />;
             case 'MonCompte':
               return <User {...iconProps} />;
             default:

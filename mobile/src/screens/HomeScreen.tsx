@@ -175,7 +175,6 @@ const HomeScreen: React.FC = () => {
                             <Text style={styles.greetingText}>
                                 Bonjour {user?.name ? user.name.split(' ')[0] : '👋'}
                             </Text>
-                            <Text style={styles.userName}>{user?.name || 'Utilisateur'}</Text>
                             <TouchableOpacity
                                 style={styles.balanceContainer}
                                 onPress={() => (navigation as any).navigate('Historique')}
@@ -217,9 +216,6 @@ const HomeScreen: React.FC = () => {
                         <View style={styles.brandSubtitle}>
                             <Text style={styles.subtitle}>
                                 Créez ou trouvez un service en un instant
-                            </Text>
-                            <Text style={styles.subtitleSecondary}>
-                                Une description, une image, un audio ou un fichier suffit
                             </Text>
                         </View>
                     </View>
@@ -451,15 +447,15 @@ const styles = StyleSheet.create({
     },
     titleContainer: {
         paddingHorizontal: 20,
-        marginBottom: 32,
+        marginBottom: 24,
     },
     brandContainer: {
         alignItems: 'center',
     },
     brandTitle: {
-        fontSize: 48,
+        fontSize: 40,
         fontWeight: 'bold',
-        marginBottom: 16,
+        marginBottom: 12,
         textAlign: 'center',
     },
     brandYuk: {
@@ -472,21 +468,14 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     subtitle: {
-        fontSize: 18,
+        fontSize: 16,
         color: '#374151',
         textAlign: 'center',
-        marginBottom: 8,
-        fontWeight: '600',
-    },
-    subtitleSecondary: {
-        fontSize: 16,
-        color: '#6B7280',
-        textAlign: 'center',
-        lineHeight: 24,
+        fontWeight: '500',
     },
     modeSelector: {
         paddingHorizontal: 20,
-        marginBottom: 24,
+        marginBottom: 20,
     },
     modeSelectorContainer: {
         backgroundColor: '#FFFFFF',
@@ -501,8 +490,8 @@ const styles = StyleSheet.create({
     },
     modeButton: {
         flex: 1,
-        paddingVertical: 16,
-        paddingHorizontal: 20,
+        paddingVertical: 12,
+        paddingHorizontal: 16,
         borderRadius: 12,
         alignItems: 'center',
         justifyContent: 'center',
@@ -524,7 +513,7 @@ const styles = StyleSheet.create({
         marginRight: 8,
     },
     modeButtonText: {
-        fontSize: 16,
+        fontSize: 14,
         fontWeight: '600',
         color: '#6B7280',
     },

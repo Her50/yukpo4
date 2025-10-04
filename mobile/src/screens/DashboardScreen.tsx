@@ -10,13 +10,14 @@ import { theme } from '../theme/theme';
 const DashboardScreen: React.FC = () => {
   const { user } = useAuth();
   const [stats, setStats] = useState([
-    { title: 'Services Actifs', value: '0', icon: 'briefcase', color: '#4CAF50' },
-    { title: 'Interactions', value: '0', icon: 'people', color: '#2196F3' },
-    { title: 'Vues Total', value: '0', icon: 'eye', color: '#FF9800' },
-    { title: 'Évaluations', value: '0/5', icon: 'star', color: '#9C27B0' },
+    { title: 'Services Actifs', value: '0', icon: 'briefcase', color: '#4CAF50', subtitle: 'sur 0 total' },
+    { title: 'Interactions', value: '0', icon: 'people', color: '#2196F3', subtitle: 'Messages + Appels' },
+    { title: 'Vues Total', value: '0', icon: 'eye', color: '#FF9800', subtitle: '+12% ce mois' },
+    { title: 'Budget Consommé', value: '0 FCFA', icon: 'flash', color: '#FF6B35', subtitle: 'Restant: 0 FCFA' },
   ]);
   const [loading, setLoading] = useState(true);
   const [recentActivity, setRecentActivity] = useState<any[]>([]);
+  const [topServices, setTopServices] = useState<any[]>([]);
 
   useEffect(() => {
     if (user?.id) {
@@ -35,10 +36,10 @@ const DashboardScreen: React.FC = () => {
         const data = response.data as any;
 
         setStats([
-          { title: 'Services Actifs', value: (data.activeServices || 0).toString(), icon: 'briefcase', color: '#10B981' },
-          { title: 'Vues Total', value: (data.totalViews || 0).toString(), icon: 'eye', color: '#3B82F6' },
-          { title: 'Interactions', value: (data.totalInteractions || 0).toString(), icon: 'people', color: '#F59E0B' },
-          { title: 'Évaluations', value: `${(data.averageRating || 0).toFixed(1)}/5`, icon: 'star', color: '#8B5CF6' },
+          { title: 'Services Actifs', value: (data.activeServices || 0).toString(), icon: 'briefcase', color: '#10B981', subtitle: `sur ${data.totalServices || 0} total` },
+          { title: 'Vues Total', value: (data.totalViews || 0).toLocaleString('fr-FR'), icon: 'eye', color: '#3B82F6', subtitle: '+12% ce mois' },
+          { title: 'Interactions', value: (data.totalInteractions || 0).toLocaleString('fr-FR'), icon: 'people', color: '#F59E0B', subtitle: 'Messages + Appels' },
+          { title: 'Budget Consommé', value: `${((data.budgetConsumed || 0) / 10).toLocaleString('fr-FR')} FCFA`, icon: 'flash', color: '#FF6B35', subtitle: `Restant: ${((data.budgetRemaining || 0) / 10).toLocaleString('fr-FR')} FCFA` },
         ]);
 
         // Activité récente
@@ -50,6 +51,11 @@ const DashboardScreen: React.FC = () => {
             icon: activity.type === 'view' ? 'eye' : activity.type === 'message' ? 'chatbubbles' : 'checkmark-circle',
             color: activity.type === 'view' ? '#3B82F6' : activity.type === 'message' ? '#10B981' : '#F59E0B'
           })));
+        }
+
+        // Services les plus performants
+        if (data.topPerformingServices && data.topPerformingServices.length > 0) {
+          setTopServices(data.topPerformingServices.slice(0, 5));
         }
       } else {
         // Fallback: charger depuis l'API des services
@@ -65,11 +71,24 @@ const DashboardScreen: React.FC = () => {
             : '0';
 
           setStats([
-            { title: 'Services Actifs', value: activeServices.toString(), icon: 'briefcase', color: '#10B981' },
-            { title: 'Vues Total', value: totalViews.toString(), icon: 'eye', color: '#3B82F6' },
-            { title: 'Interactions', value: totalInteractions.toString(), icon: 'people', color: '#F59E0B' },
-            { title: 'Évaluations', value: `${averageRating}/5`, icon: 'star', color: '#8B5CF6' },
+            { title: 'Services Actifs', value: activeServices.toString(), icon: 'briefcase', color: '#10B981', subtitle: `sur ${services.length} total` },
+            { title: 'Vues Total', value: totalViews.toLocaleString('fr-FR'), icon: 'eye', color: '#3B82F6', subtitle: '+12% ce mois' },
+            { title: 'Interactions', value: totalInteractions.toLocaleString('fr-FR'), icon: 'people', color: '#F59E0B', subtitle: 'Messages + Appels' },
+            { title: 'Budget Consommé', value: `${((budgetData.consumed || 0) / 10).toLocaleString('fr-FR')} FCFA`, icon: 'flash', color: '#FF6B35', subtitle: `Restant: ${((budgetData.remaining || 0) / 10).toLocaleString('fr-FR')} FCFA` },
           ]);
+
+          // Services les plus performants
+          const sortedServices = services
+            .sort((a: any, b: any) => (b.interactions || 0) - (a.interactions || 0))
+            .slice(0, 5)
+            .map((s: any) => ({
+              id: s.id,
+              title: s.data?.title || 'Service sans titre',
+              views: s.views || 0,
+              interactions: s.interactions || 0,
+              category: s.data?.category || 'Non spécifié'
+            }));
+          setTopServices(sortedServices);
         }
       }
     } catch (error) {
@@ -92,12 +111,6 @@ const DashboardScreen: React.FC = () => {
     return `Il y a ${days}j`;
   };
 
-  const quickActions = [
-    { title: 'Créer un Service', icon: 'add-circle', color: theme.colors.primary },
-    { title: 'Voir Mes Services', icon: 'list', color: '#4CAF50' },
-    { title: 'Messages', icon: 'chatbubbles', color: '#2196F3' },
-    { title: 'Paramètres', icon: 'settings', color: '#757575' },
-  ];
 
   if (loading) {
     return (
@@ -126,25 +139,42 @@ const DashboardScreen: React.FC = () => {
               <View style={styles.statTextContainer}>
                 <Text style={styles.statValue}>{stat.value}</Text>
                 <Text style={styles.statTitle}>{stat.title}</Text>
+                {stat.subtitle && <Text style={styles.statSubtitle}>{stat.subtitle}</Text>}
               </View>
             </Card.Content>
           </Card>
         ))}
       </View>
 
-      {/* Actions Rapides */}
-      <View style={styles.actionsContainer}>
-        <Text style={styles.sectionTitle}>Actions Rapides</Text>
-        <View style={styles.actionsGrid}>
-          {quickActions.map((action, index) => (
-            <TouchableOpacity key={index} style={styles.actionCard}>
-              <View style={[styles.actionIconContainer, { backgroundColor: action.color + '20' }]}>
-                <Ionicons name={action.icon as any} size={24} color={action.color} />
+      {/* Services les Plus Performants */}
+      <View style={styles.topServicesContainer}>
+        <Text style={styles.sectionTitle}>Services les Plus Performants</Text>
+        <Card style={styles.topServicesCard}>
+          <Card.Content>
+            {topServices.length === 0 ? (
+              <View style={styles.emptyServices}>
+                <Ionicons name="briefcase" size={48} color="#9CA3AF" />
+                <Text style={styles.emptyServicesText}>Aucun service pour le moment</Text>
               </View>
-              <Text style={styles.actionTitle}>{action.title}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+            ) : (
+              topServices.map((service, index) => (
+                <View key={service.id} style={styles.topServiceItem}>
+                  <View style={styles.topServiceRank}>
+                    <Text style={styles.topServiceRankText}>{index + 1}</Text>
+                  </View>
+                  <View style={styles.topServiceInfo}>
+                    <Text style={styles.topServiceTitle}>{service.title}</Text>
+                    <Text style={styles.topServiceCategory}>{service.category}</Text>
+                  </View>
+                  <View style={styles.topServiceStats}>
+                    <Text style={styles.topServiceViews}>{service.views.toLocaleString('fr-FR')} vues</Text>
+                    <Text style={styles.topServiceInteractions}>{service.interactions} interactions</Text>
+                  </View>
+                </View>
+              ))
+            )}
+          </Card.Content>
+        </Card>
       </View>
 
       {/* Activité Récente */}
@@ -237,8 +267,11 @@ const styles = StyleSheet.create({
     color: theme.colors.textSecondary,
     marginTop: 2,
   },
-  actionsContainer: {
-    padding: 20,
+  statSubtitle: {
+    fontSize: 12,
+    color: theme.colors.textSecondary,
+    marginTop: 1,
+    opacity: 0.8,
   },
   sectionTitle: {
     fontSize: 20,
@@ -246,32 +279,69 @@ const styles = StyleSheet.create({
     color: theme.colors.text,
     marginBottom: 15,
   },
-  actionsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 15,
-  },
-  actionCard: {
-    width: '47%',
-    backgroundColor: 'white',
-    borderRadius: 12,
+  topServicesContainer: {
     padding: 20,
-    alignItems: 'center',
+    paddingTop: 0,
+  },
+  topServicesCard: {
     elevation: 2,
   },
-  actionIconContainer: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+  emptyServices: {
+    alignItems: 'center',
+    paddingVertical: 32,
+  },
+  emptyServicesText: {
+    fontSize: 16,
+    color: theme.colors.textSecondary,
+    marginTop: 16,
+  },
+  topServiceItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+  },
+  topServiceRank: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: theme.colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 10,
+    marginRight: 12,
   },
-  actionTitle: {
+  topServiceRankText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  topServiceInfo: {
+    flex: 1,
+    marginRight: 12,
+  },
+  topServiceTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: theme.colors.text,
+    marginBottom: 2,
+  },
+  topServiceCategory: {
+    fontSize: 12,
+    color: theme.colors.textSecondary,
+  },
+  topServiceStats: {
+    alignItems: 'flex-end',
+  },
+  topServiceViews: {
     fontSize: 14,
     fontWeight: '600',
     color: theme.colors.text,
-    textAlign: 'center',
+    marginBottom: 2,
+  },
+  topServiceInteractions: {
+    fontSize: 12,
+    color: theme.colors.textSecondary,
   },
   recentActivity: {
     padding: 20,
