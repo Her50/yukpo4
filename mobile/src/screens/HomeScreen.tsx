@@ -233,7 +233,7 @@ const HomeScreen: React.FC = () => {
                             onPress={() => setIsCreateService(false)}
                         >
                             <View style={styles.modeButtonContent}>
-                                <Text style={[styles.tabIcon, { color: !isCreateService ? '#FFF' : '#8B5CF6' }]}>🔍</Text>
+                                <Text style={[styles.tabIcon, { color: !isCreateService ? '#FFF' : '#06B6D4' }]}>🔍</Text>
                                 <Text style={[
                                     styles.modeButtonText,
                                     !isCreateService && styles.modeButtonTextActive
@@ -248,7 +248,7 @@ const HomeScreen: React.FC = () => {
                             onPress={() => setIsCreateService(true)}
                         >
                             <View style={styles.modeButtonContent}>
-                                <Text style={[styles.tabIcon, { color: isCreateService ? '#FFF' : '#8B5CF6' }]}>➕</Text>
+                                <Text style={[styles.tabIcon, { color: isCreateService ? '#FFF' : '#06B6D4' }]}>➕</Text>
                                 <Text style={[
                                     styles.modeButtonText,
                                     isCreateService && styles.modeButtonTextActive
@@ -360,7 +360,7 @@ const styles = StyleSheet.create({
         left: 0,
         right: 0,
         height: 300,
-        backgroundColor: '#8B5CF6', // Violet moderne
+        backgroundColor: '#06B6D4', // Teal/Cyan moderne - très tendance 2024
         borderBottomLeftRadius: 32,
         borderBottomRightRadius: 32,
     },
@@ -508,8 +508,8 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     modeButtonActive: {
-        backgroundColor: '#8B5CF6',
-        shadowColor: '#8B5CF6',
+        backgroundColor: '#06B6D4',
+        shadowColor: '#06B6D4',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.3,
         shadowRadius: 8,
