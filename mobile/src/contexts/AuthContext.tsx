@@ -48,13 +48,20 @@ interface AuthProviderProps {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [forceRender, setForceRender] = useState(0);
 
-  // Vérifier l'authentification au démarrage
+  // Debug minimal
+  if (false) { // FORCÉ EN MODE PRODUCTION
+    console.log('[AuthContext] État:', { user: !!user, loading });
+  }
+
+  // Vérifier l'authentification au démarrage avec gestion d'erreur
   useEffect(() => {
     const initializeAuth = async () => {
       try {
         await checkAuthStatus();
       } catch (error) {
+        console.error('[AuthContext] Erreur lors de l\'initialisation:', error);
         // En cas d'erreur, continuer sans authentification
         setUser(null);
         setLoading(false);
@@ -67,79 +74,95 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const checkAuthStatus = async () => {
     try {
       setLoading(true);
-      const token = await AsyncStorage.getItem('token');
+      const token = await AsyncStorage.getItem('auth_token');
+      console.log('[AuthContext] Token trouvé au démarrage:', !!token);
 
       if (token) {
         const decoded = jwtDecode<DecodedToken>(token);
+        console.log('[AuthContext] Token décodé:', decoded);
 
         if (decoded.exp * 1000 > Date.now()) {
           const userData: User = {
             id: String(decoded.sub),
             email: decoded.email,
             role: decoded.role,
-            name: decoded.name || 'Utilisateur',
+            name: decoded.name || '',
             credits: decoded.tokens_balance ?? 0,
             phone: '',
             photo: '',
             token: token
           };
 
+          console.log('[AuthContext] Utilisateur connecté depuis JWT:', userData);
           setUser(userData);
         } else {
-          // Token expiré, nettoyer
-          await AsyncStorage.removeItem('token');
+          console.log('[AuthContext] Token expiré, déconnexion...');
+          await AsyncStorage.removeItem('auth_token');
           setUser(null);
         }
       } else {
+        console.log('[AuthContext] Aucun token trouvé');
         setUser(null);
       }
     } catch (error) {
-      // En cas d'erreur, déconnecter l'utilisateur
-      await AsyncStorage.removeItem('token');
+      console.error('[AuthContext] Erreur vérification auth:', error);
+      await AsyncStorage.removeItem('auth_token');
       setUser(null);
     } finally {
       setLoading(false);
+      console.log('[AuthContext] Vérification auth terminée, loading = false');
     }
   };
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string): Promise<void> => {
     try {
       setLoading(true);
+      console.log('[AuthContext] Tentative de connexion pour:', email);
+
       const response = await authApi.login(email, password);
+      console.log('[AuthContext] Réponse login complète:', response);
 
-      if (response.success && response.data) {
-        const { token, tokens_balance } = response.data;
+      if (response.success && response.data?.token) {
+        console.log('[AuthContext] Token reçu, décodage JWT...');
+        const decoded = jwtDecode<DecodedToken>(response.data.token);
+        console.log('[AuthContext] Token décodé:', decoded);
 
-        // Sauvegarder le token
-        await AsyncStorage.setItem('token', token);
+        if (decoded.exp * 1000 > Date.now()) {
+          // Sauvegarder le token
+          await AsyncStorage.setItem('auth_token', response.data.token);
+          console.log('[AuthContext] Token sauvegardé dans AsyncStorage');
 
-        // Créer un objet utilisateur basique avec les données disponibles
-        const userData: User = {
-          id: 'temp-id', // Sera mis à jour lors du refresh
-          email: email,
-          name: email.split('@')[0], // Nom basé sur l'email
-          role: 'user', // Rôle par défaut
-          credits: tokens_balance || 0,
-          phone: '',
-          photo: '',
-          token: token
-        };
+          const userData: User = {
+            id: String(decoded.sub),
+            email: decoded.email,
+            role: decoded.role,
+            name: decoded.name || decoded.email.split('@')[0] || 'Utilisateur',
+            credits: decoded.tokens_balance ?? 0,
+            phone: '',
+            photo: '',
+            token: response.data.token
+          };
 
-        // Mettre à jour l'utilisateur
-        setUser(userData);
-
-        // Rafraîchir les données utilisateur complètes
-        await refreshUser();
-
-        console.log('[AuthContext] Connexion réussie:', userData);
+          console.log('[AuthContext] Utilisateur créé depuis JWT:', userData);
+          setUser(userData);
+          setForceRender(prev => prev + 1);
+          console.log('[AuthContext] ✅ setUser() appelé avec:', userData);
+          console.log('[AuthContext] ✅ forceRender incrémenté pour forcer le re-render');
+        } else {
+          console.log('[AuthContext] Token expiré');
+          throw new Error('Token expiré');
+        }
       } else {
-        throw new Error(response.message || 'Échec de la connexion');
+        console.log('[AuthContext] Échec de la connexion:', response);
+        throw new Error(response.error || 'Token non reçu lors de la connexion');
       }
     } catch (error) {
-      console.error('[AuthContext] Erreur de connexion:', error);
+      console.error('[AuthContext] Erreur connexion:', error);
+      setUser(null);
       throw error;
     } finally {
       setLoading(false);
+      console.log('[AuthContext] Connexion terminée, loading = false');
     }
   };
 
@@ -151,38 +174,55 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }) => {
     try {
       setLoading(true);
+      console.log('[AuthContext] Tentative d\'inscription pour:', userData.email);
+
       const response = await authApi.register(userData);
+      console.log('[AuthContext] Réponse inscription:', response);
 
-      if (response.success && response.data) {
-        const { token, tokens_balance } = response.data;
+      if (response.success) {
+        if (response.data?.token) {
+          console.log('[AuthContext] Token reçu lors de l\'inscription, décodage JWT...');
+          const decoded = jwtDecode<DecodedToken>(response.data.token);
+          console.log('[AuthContext] Token décodé:', decoded);
 
-        // Sauvegarder le token
-        await AsyncStorage.setItem('token', token);
+          if (decoded.exp * 1000 > Date.now()) {
+            await AsyncStorage.setItem('auth_token', response.data.token);
 
-        // Créer un objet utilisateur basique avec les données disponibles
-        const newUser: User = {
-          id: 'temp-id', // Sera mis à jour lors du refresh
-          email: userData.email,
-          name: userData.name,
-          role: 'user', // Rôle par défaut
-          credits: tokens_balance || 0,
-          phone: userData.phone || '',
-          photo: '',
-          token: token
-        };
+            const newUserData: User = {
+              id: String(decoded.sub),
+              email: decoded.email,
+              role: decoded.role,
+              name: decoded.name || userData.name,
+              credits: decoded.tokens_balance ?? 0,
+              phone: userData.phone || '',
+              photo: '',
+              token: response.data.token
+            };
 
-        // Mettre à jour l'utilisateur
-        setUser(newUser);
-
-        // Rafraîchir les données utilisateur complètes
-        await refreshUser();
-
-        return { success: true, data: newUser };
+            setUser(newUserData);
+            console.log('[AuthContext] Inscription réussie avec token direct:', newUserData);
+            return { success: true, data: newUserData };
+          } else {
+            throw new Error('Token expiré');
+          }
+        } else {
+          // Sinon, connecter automatiquement avec les identifiants
+          await login(userData.email, userData.password);
+          return { success: true, data: user };
+        }
       } else {
-        return { success: false, data: null };
+        throw new Error(response.error || 'Erreur lors de l\'inscription');
       }
-    } catch (error) {
-      return { success: false, data: null };
+    } catch (error: any) {
+      console.error('[AuthContext] Erreur inscription:', error);
+      setUser(null);
+
+      // Améliorer le message d'erreur pour le 409 Conflict
+      if (error?.message?.includes('409') || error?.response?.status === 409) {
+        throw new Error('Cet email est déjà utilisé');
+      }
+
+      throw error;
     } finally {
       setLoading(false);
     }
@@ -190,11 +230,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const logout = async () => {
     try {
-      await AsyncStorage.removeItem('token');
+      await authApi.logout();
+      await AsyncStorage.removeItem('auth_token');
       setUser(null);
+      console.log('[AuthContext] Déconnexion réussie');
     } catch (error) {
-      // Même en cas d'erreur, déconnecter l'utilisateur
-      setUser(null);
+      console.error('[AuthContext] Erreur déconnexion:', error);
     }
   };
 
@@ -204,25 +245,32 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const refreshUser = async () => {
     try {
-      const token = await AsyncStorage.getItem('token');
+      const token = await AsyncStorage.getItem('auth_token');
       if (token) {
-        // Décoder le token pour récupérer les infos utilisateur
         const decoded = jwtDecode<DecodedToken>(token);
+
         if (decoded.exp * 1000 > Date.now()) {
-          // Mettre à jour seulement les infos manquantes
-          setUser(prev => prev ? {
-            ...prev,
+          const userData: User = {
             id: String(decoded.sub),
             email: decoded.email,
             role: decoded.role,
-            name: decoded.name || prev.name,
-            credits: decoded.tokens_balance ?? prev.credits
-          } : null);
+            name: decoded.name || '',
+            credits: decoded.tokens_balance ?? 0,
+            phone: '',
+            photo: '',
+            token: token
+          };
+
+          setUser(userData);
+          console.log('[AuthContext] Utilisateur actualisé depuis JWT:', userData);
+        } else {
+          console.log('[AuthContext] Token expiré lors de l\'actualisation');
+          await AsyncStorage.removeItem('auth_token');
+          setUser(null);
         }
       }
     } catch (error) {
-      console.error('[AuthContext] Erreur lors du refresh:', error);
-      // En cas d'erreur, ne rien faire
+      console.error('[AuthContext] Erreur actualisation utilisateur:', error);
     }
   };
 
@@ -233,7 +281,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     register,
     logout,
     updateUser,
-    refreshUser
+    refreshUser,
   };
 
   return (
@@ -246,7 +294,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error('useAuth doit être utilisé dans un AuthProvider');
   }
   return context;
 };

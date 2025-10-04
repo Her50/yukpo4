@@ -1,0 +1,20 @@
+[33md30ea64[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmaster[m[33m, [m[1;31morigin/master[m[33m)[m Fix: Améliorer la robustesse contre les crashes après connexion
+[33m02a90cc[m Fix: Corriger les erreurs AuthContext et crash après connexion
+[33me4849a9[m Fix: Corriger le crash après connexion et les dépendances manquantes
+[33m9cd8e7b[m fix: correction crash mobile - mode production forcé - suppression références localhost - correction variables d'environnement - logs toujours activés pour diagnostic
+[33m994a342[m feat: compilation mobile réussie et améliorations diverses - Build EAS Android réussi avec profil simple - Corrections GPS et géolocalisation - Améliorations UI/UX frontend et mobile - Optimisations API et services - Mise à jour configurations EAS
+[33mdec4ae2[m FIX: Suppression des composants debug et optimisation pour build EAS
+[33m5e0db99[m FEATURE: Système de debug complet avec logs et diagnostic de crash
+[33mfb7dd4a[m FIX: Correction des erreurs Phosphor icons - ChevronRight->CaretRight, MessageCircle->ChatCircle, fill->weight
+[33medbf8d8[m CRITICAL FIX: Correction du crash - Remplacement de lucide-react-native par phosphor-react-native dans tous les fichiers
+[33m3c9dca6[m Fix: Correction du crash - Gestion d'erreur robuste, imports Phosphor corrigés, navigation sécurisée
+[33m444484a[m Fix: Navigation moderne - AppNavigator.tsx avec 7 onglets, App.tsx simplifié, toutes erreurs corrigées
+[33m3671587[m Production Ready: App mobile complète avec 7 onglets, IA Yukpo, et navigation unifiée
+[33mce2fb74[m Fix: Remplacer AuthContext-simple par AuthContext complet pour activer la vraie authentification API
+[33m62db0a3[m Correction finale des erreurs de trait Handler - Ajout de Result<ResponseJson<T>, StatusCode> aux handlers Axum
+[33m8fbd133[m Correction finale des erreurs de trait Handler - Ajout de Result<ResponseJson<T>, StatusCode> aux handlers Axum
+[33mfe34a36[m Mise à jour complète de l'application Yukpomnang - Améliorations GPS, interface mobile moderne, corrections backend et nouvelles fonctionnalités
+[33m298a402[m fix: Correction du HeaderController pour résoudre les problèmes de navigation
+[33mdfa7afb[m Fix all 29 mobile files: Remove web code, replace with React Native equivalents
+[33m0e047ae[m Fix mobile app: Remove web code, fix LoginScreen for React Native, add API config
+[33m83fa7c1[m Fix mobile app network configuration and environment variables

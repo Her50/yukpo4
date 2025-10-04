@@ -1,37 +1,147 @@
 import { useNavigation } from '@react-navigation/native';
-import React from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import * as React from 'react';
+import { useState } from 'react';
+import { Alert, Dimensions, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import ChatHistoryModal from '../components/ChatHistoryModal';
+import ChatInputMobile from '../components/ChatInputMobile';
+import GPSSelector from '../components/GPSSelector';
+import GPSSelectorMobile from '../components/GPSSelectorMobile';
+import NotificationHistoryModal from '../components/NotificationHistoryModal';
+import { SafeNativeView } from '../components/SafeNativeView';
+import YukpoLogo from '../components/YukpoLogo';
 import { useAuth } from '../contexts/AuthContext';
+
+const { width } = Dimensions.get('window');
 
 const HomeScreen: React.FC = () => {
     const navigation = useNavigation();
     const { user } = useAuth();
+    const [loading, setLoading] = useState(false);
+    const [isCreateService, setIsCreateService] = useState(false);
+    const [showGPSModal, setShowGPSModal] = useState(false);
+    const [showGPSMobileModal, setShowGPSMobileModal] = useState(false);
+    const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: number } | null>(null);
+    const [showCreateServiceAlert, setShowCreateServiceAlert] = useState(false);
+    const [pendingInput, setPendingInput] = useState<any>(null);
+    const [showNotificationModal, setShowNotificationModal] = useState(false);
+    const [showChatModal, setShowChatModal] = useState(false);
 
-    // Fonctions de navigation simples
-    const handleSearch = () => {
-        (navigation as any).navigate('Search');
+    // Détection GPS automatique au chargement
+    React.useEffect(() => {
+        if (typeof navigator !== 'undefined' && (navigator as any).geolocation) {
+            (navigator as any).geolocation.getCurrentPosition(
+                (position) => {
+                    const coords = {
+                        lat: position.coords.latitude,
+                        lng: position.coords.longitude
+                    };
+                    setSelectedLocation(coords);
+                    console.log('[HomeScreen] GPS automatique:', coords);
+                },
+                (error) => {
+                    console.warn('[HomeScreen] GPS non disponible:', error);
+                },
+                {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 60000
+                }
+            );
+        }
+    }, []);
+
+    // Fonction de recherche directe (comme frontend - route: /resultat-besoin)
+    const handleSearch = async (input: any) => {
+        try {
+            setLoading(true);
+            console.log('[HomeScreen] Recherche avec:', input);
+
+            // Rediriger vers ResultatBesoin (comme frontend /resultat-besoin)
+            (navigation as any).navigate('ResultatBesoin', {
+                searchInput: input,
+                type: 'recherche_besoin',
+                results: [],
+                suggestion: input
+            });
+        } catch (error) {
+            console.error('Erreur recherche:', error);
+            Alert.alert('Erreur', 'Impossible d\'effectuer la recherche');
+        } finally {
+            setLoading(false);
+        }
     };
 
-    const handleCreateService = () => {
-        (navigation as any).navigate('Create');
+    // Fonction de création de service (comme frontend)
+    const handleCreateService = async (input: any) => {
+        try {
+            setLoading(true);
+            console.log('[HomeScreen] Création service avec:', input);
+
+            // Rediriger vers FormulaireYukpoIntelligent avec les données
+            (navigation as any).navigate('FormulaireYukpoIntelligent', {
+                suggestion: {
+                    intention: 'creation_service',
+                    data: input
+                },
+                type: 'creation_service',
+                mediaData: {
+                    base64_image: input.base64_image,
+                    audio_base64: input.audio_base64,
+                    doc_base64: input.doc_base64,
+                },
+                gpsData: {
+                    gps_mobile: input.gps_mobile,
+                    gps_zone: input.gps_zone,
+                    gps_fixe: input.gps_fixe,
+                    gps_fixe_coords: input.gps_fixe_coords
+                }
+            });
+        } catch (error) {
+            console.error('Erreur création:', error);
+            Alert.alert('Erreur', 'Impossible de créer le service');
+        } finally {
+            setLoading(false);
+        }
     };
 
-    const handleServices = () => {
-        (navigation as any).navigate('Services');
+    // Gestion de la soumission (comme frontend)
+    const handleSubmit = async (input: any) => {
+        if (isCreateService) {
+            // Demander confirmation pour création
+            setPendingInput(input);
+            setShowCreateServiceAlert(true);
+            return;
+        }
+
+        // Par défaut: recherche directe
+        await handleSearch(input);
     };
 
-    const handleProfile = () => {
-        (navigation as any).navigate('Account');
+    // Confirmation création
+    const confirmCreateService = () => {
+        if (pendingInput) {
+            handleCreateService(pendingInput);
+            setShowCreateServiceAlert(false);
+            setPendingInput(null);
+        }
+    };
+
+    // Annulation → faire recherche à la place
+    const cancelCreateService = () => {
+        if (pendingInput) {
+            handleSearch(pendingInput);
+            setShowCreateServiceAlert(false);
+            setPendingInput(null);
+        }
     };
 
     return (
-        <SafeAreaView style={styles.container}>
+        <SafeNativeView style={styles.container}>
             <ScrollView
                 contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={false}
             >
-                {/* Header avec informations utilisateur */}
+                {/* Header moderne */}
                 <View style={styles.header}>
                     <View style={styles.headerContent}>
                         <View>
@@ -42,21 +152,25 @@ const HomeScreen: React.FC = () => {
                                 <Text style={styles.balanceText}>{user?.credits?.toLocaleString() || 0} tokens</Text>
                             </View>
                         </View>
-                        <View style={styles.headerButtons}>
-                            <TouchableOpacity style={styles.headerButton}>
-                                <Text style={styles.notificationIcon}>🔔</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity style={styles.headerButton}>
-                                <Text style={styles.chatIcon}>💬</Text>
-                            </TouchableOpacity>
-                        </View>
+                        <TouchableOpacity
+                            style={styles.headerButton}
+                            onPress={() => setShowNotificationModal(true)}
+                        >
+                            <Text style={styles.notificationIcon}>🔔</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={styles.headerButton}
+                            onPress={() => setShowChatModal(true)}
+                        >
+                            <Text style={styles.chatIcon}>💬</Text>
+                        </TouchableOpacity>
                     </View>
                 </View>
 
                 {/* Titre principal */}
                 <View style={styles.titleContainer}>
                     <View style={styles.brandContainer}>
-                        <Text style={styles.brandEmoji}>🏠</Text>
+                        <YukpoLogo size={50} />
                         <Text style={styles.brandTitle}>
                             <Text style={styles.brandYuk}>Yukpo</Text>
                             <Text style={styles.brandMnang}>mnang</Text>
@@ -68,25 +182,45 @@ const HomeScreen: React.FC = () => {
                     </Text>
                 </View>
 
-                {/* Actions principales */}
-                <View style={styles.actionGrid}>
-                    <TouchableOpacity style={styles.actionButton} onPress={handleSearch}>
-                        <Text style={styles.actionEmoji}>🔍</Text>
-                        <Text style={styles.actionText}>Rechercher un service</Text>
+                {/* Sélecteur de mode */}
+                <View style={styles.modeSelector}>
+                    <TouchableOpacity
+                        style={[styles.modeButton, !isCreateService && styles.modeButtonActive]}
+                        onPress={() => setIsCreateService(false)}
+                    >
+                        <Text style={[styles.tabIcon, { color: !isCreateService ? '#FFF' : '#666' }]}>🔍</Text>
+                        <Text style={[
+                            styles.modeButtonText,
+                            !isCreateService && styles.modeButtonTextActive
+                        ]}>
+                            Rechercher
+                        </Text>
                     </TouchableOpacity>
-                    <TouchableOpacity style={styles.actionButton} onPress={handleCreateService}>
-                        <Text style={styles.actionEmoji}>➕</Text>
-                        <Text style={styles.actionText}>Créer un service</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.actionButton} onPress={handleServices}>
-                        <Text style={styles.actionEmoji}>📋</Text>
-                        <Text style={styles.actionText}>Mes services</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.actionButton} onPress={handleProfile}>
-                        <Text style={styles.actionEmoji}>👤</Text>
-                        <Text style={styles.actionText}>Mon profil</Text>
+
+                    <TouchableOpacity
+                        style={[styles.modeButton, isCreateService && styles.modeButtonActive]}
+                        onPress={() => setIsCreateService(true)}
+                    >
+                        <Text style={[styles.tabIcon, { color: isCreateService ? '#FFF' : '#666' }]}>➕</Text>
+                        <Text style={[
+                            styles.modeButtonText,
+                            isCreateService && styles.modeButtonTextActive
+                        ]}>
+                            Créer un service
+                        </Text>
                     </TouchableOpacity>
                 </View>
+
+                {/* ChatInput avec support multimédia */}
+                <ChatInputMobile
+                    onSubmit={handleSubmit}
+                    loading={loading}
+                    placeholder={isCreateService
+                        ? "Décrivez le service que vous proposez..."
+                        : "Décrivez ce que vous recherchez..."}
+                    gpsData={selectedLocation}
+                    onGPSPress={() => setShowGPSMobileModal(true)}
+                />
 
                 {/* Section Comment ça marche */}
                 <View style={styles.howItWorksSection}>
@@ -128,17 +262,81 @@ const HomeScreen: React.FC = () => {
                         </View>
                     </View>
                 </View>
-
-                {/* Section informations */}
-                <View style={styles.infoSection}>
-                    <Text style={styles.infoTitle}>À propos de Yukpomnang</Text>
-                    <Text style={styles.infoText}>
-                        Yukpomnang est votre plateforme de services ultra-moderne.
-                        Trouvez ou proposez des services en toute simplicité, grâce à notre IA intelligente.
-                    </Text>
-                </View>
             </ScrollView>
-        </SafeAreaView>
+
+            {/* Modal de confirmation création */}
+            {showCreateServiceAlert && (
+                <View style={styles.alertOverlay}>
+                    <View style={styles.alertContainer}>
+                        <Text style={styles.alertTitle}>
+                            Confirmation de création de service
+                        </Text>
+                        <Text style={styles.alertText}>
+                            Êtes-vous sûr de vouloir créer un service/prestation sur la plateforme ?
+                        </Text>
+                        <View style={styles.alertButtons}>
+                            <TouchableOpacity
+                                onPress={cancelCreateService}
+                                disabled={loading}
+                                style={[styles.alertButton, styles.alertButtonSecondary]}
+                            >
+                                <Text style={styles.alertButtonTextSecondary}>Non, rechercher</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                onPress={confirmCreateService}
+                                disabled={loading}
+                                style={[styles.alertButton, styles.alertButtonPrimary]}
+                            >
+                                <Text style={styles.alertButtonText}>
+                                    {loading ? 'Ouverture...' : 'Oui, créer'}
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            )}
+
+            {/* Modal GPS */}
+            <GPSSelector
+                visible={showGPSModal}
+                onClose={() => setShowGPSModal(false)}
+                onSelect={(coordinates) => {
+                    setSelectedLocation(coordinates);
+                    setShowGPSModal(false);
+                }}
+                currentLocation={selectedLocation}
+            />
+
+            {/* Modal GPS Mobile */}
+            <GPSSelectorMobile
+                visible={showGPSMobileModal}
+                onClose={() => setShowGPSMobileModal(false)}
+                onLocationSelect={(location) => {
+                    setSelectedLocation({ lat: location.latitude, lng: location.longitude });
+                    setShowGPSMobileModal(false);
+                }}
+                currentLocation={selectedLocation ? {
+                    latitude: selectedLocation.lat,
+                    longitude: selectedLocation.lng
+                } : null}
+            />
+
+            {/* Modal Notifications */}
+            <NotificationHistoryModal
+                isOpen={showNotificationModal}
+                onClose={() => setShowNotificationModal(false)}
+            />
+
+            {/* Modal Chat/Conversations */}
+            <ChatHistoryModal
+                isOpen={showChatModal}
+                onClose={() => setShowChatModal(false)}
+                onOpenChat={(chatId: string) => {
+                    console.log('Ouvrir chat:', chatId);
+                    setShowChatModal(false);
+                }}
+            />
+        </SafeNativeView>
     );
 };
 
@@ -197,9 +395,15 @@ const styles = StyleSheet.create({
     walletIcon: {
         fontSize: 16,
     },
-    headerButtons: {
-        flexDirection: 'row',
-        gap: 12,
+    notificationIcon: {
+        fontSize: 24,
+    },
+    chatIcon: {
+        fontSize: 24,
+    },
+    tabIcon: {
+        fontSize: 20,
+        marginRight: 8,
     },
     headerButton: {
         width: 48,
@@ -208,12 +412,6 @@ const styles = StyleSheet.create({
         backgroundColor: '#EEF2FF',
         justifyContent: 'center',
         alignItems: 'center',
-    },
-    notificationIcon: {
-        fontSize: 24,
-    },
-    chatIcon: {
-        fontSize: 24,
     },
     titleContainer: {
         alignItems: 'center',
@@ -225,13 +423,10 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         marginBottom: 12,
     },
-    brandEmoji: {
-        fontSize: 50,
-        marginRight: 12,
-    },
     brandTitle: {
         fontSize: 42,
         fontWeight: 'bold',
+        marginLeft: 12,
     },
     brandYuk: {
         color: '#6366F1',
@@ -247,40 +442,42 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         lineHeight: 24,
     },
-    actionGrid: {
+    modeSelector: {
         flexDirection: 'row',
-        flexWrap: 'wrap',
-        justifyContent: 'space-between',
         marginHorizontal: 20,
-        marginBottom: 32,
-        gap: 16,
+        marginBottom: 24,
+        backgroundColor: '#FFF',
+        borderRadius: 16,
+        padding: 4,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 2,
     },
-    actionButton: {
-        backgroundColor: '#FFFFFF',
-        borderRadius: 20,
-        padding: 24,
+    modeButton: {
+        flex: 1,
+        flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        width: '48%',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.1,
-        shadowRadius: 8,
-        elevation: 5,
+        paddingVertical: 12,
+        borderRadius: 12,
+        gap: 8,
     },
-    actionEmoji: {
-        fontSize: 40,
-        marginBottom: 12,
+    modeButtonActive: {
+        backgroundColor: '#6366F1',
     },
-    actionText: {
-        fontSize: 16,
+    modeButtonText: {
+        fontSize: 14,
         fontWeight: '600',
-        color: '#333',
-        textAlign: 'center',
+        color: '#666',
+    },
+    modeButtonTextActive: {
+        color: '#FFF',
     },
     howItWorksSection: {
         marginHorizontal: 20,
-        marginBottom: 32,
+        marginTop: 32,
     },
     sectionTitle: {
         fontSize: 22,
@@ -328,24 +525,68 @@ const styles = StyleSheet.create({
         color: '#666',
         lineHeight: 20,
     },
-    infoSection: {
-        backgroundColor: '#E8F0FE',
-        borderRadius: 20,
+    alertOverlay: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 20,
+    },
+    alertContainer: {
+        backgroundColor: '#FFF',
+        borderRadius: 16,
         padding: 24,
-        marginHorizontal: 20,
-        marginBottom: 20,
+        width: '100%',
+        maxWidth: 400,
     },
-    infoTitle: {
-        fontSize: 20,
+    alertTitle: {
+        fontSize: 18,
         fontWeight: 'bold',
-        color: '#3B82F6',
-        marginBottom: 12,
+        color: '#1A1A1A',
+        marginBottom: 16,
+        textAlign: 'center',
     },
-    infoText: {
+    alertText: {
         fontSize: 16,
-        color: '#555',
-        lineHeight: 24,
+        color: '#666',
+        marginBottom: 24,
+        textAlign: 'center',
+        lineHeight: 22,
+    },
+    alertButtons: {
+        flexDirection: 'row',
+        gap: 12,
+    },
+    alertButton: {
+        flex: 1,
+        paddingVertical: 14,
+        borderRadius: 12,
+        alignItems: 'center',
+    },
+    alertButtonPrimary: {
+        backgroundColor: '#6366F1',
+    },
+    alertButtonSecondary: {
+        backgroundColor: '#F0F0F0',
+    },
+    alertButtonText: {
+        fontSize: 15,
+        fontWeight: '600',
+        color: '#FFF',
+    },
+    alertButtonTextSecondary: {
+        fontSize: 15,
+        fontWeight: '600',
+        color: '#666',
     },
 });
 
 export default HomeScreen;
+
+
+
+

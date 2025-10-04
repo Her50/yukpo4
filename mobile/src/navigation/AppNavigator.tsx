@@ -1,7 +1,7 @@
 // Navigation ultra-moderne avec Phosphor Icons et gradients
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
-import { Bell, Brain, Briefcase, House, MagnifyingGlass, Plus, User } from 'phosphor-react-native';
+import { Bell, Briefcase, House, MagnifyingGlass, Plus, User } from 'phosphor-react-native';
 import React from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { modernColors, modernStyles } from '../theme/modernTheme';
@@ -10,15 +10,15 @@ import { modernColors, modernStyles } from '../theme/modernTheme';
 import { useAuth } from '../contexts/AuthContext';
 
 // Screens
-import HomeScreenNew from '../screens/HomeScreenNew';
+import DashboardScreen from '../screens/DashboardScreen';
+import HomeScreen from '../screens/HomeScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import RechargeTokensScreen from '../screens/RechargeTokensScreen';
-import DashboardScreen from '../screens/DashboardScreen';
 import ServicesScreen from '../screens/ServicesScreen';
 
 // Autres écrans (pour la navigation secondaire)
-import SoldeDetailScreen from '../screens/SoldeDetailScreen';
 import SettingsScreen from '../screens/SettingsScreen';
+import SoldeDetailScreen from '../screens/SoldeDetailScreen';
 
 // Auth screens
 import LoginScreen from '../screens/auth/LoginScreen';
@@ -30,12 +30,30 @@ const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
 
 // Composant de chargement
-const LoadingScreen = () => (
-  <View style={styles.loadingContainer}>
-    <ActivityIndicator size="large" color="#6366F1" />
-    <Text style={styles.loadingText}>Chargement...</Text>
-  </View>
-);
+const LoadingScreen = () => {
+  const [dots, setDots] = React.useState('');
+
+  React.useEffect(() => {
+    console.log('[LoadingScreen] LoadingScreen affiché');
+
+    const interval = setInterval(() => {
+      setDots(prev => prev.length >= 3 ? '' : prev + '.');
+    }, 500);
+
+    return () => {
+      console.log('[LoadingScreen] LoadingScreen démonté');
+      clearInterval(interval);
+    };
+  }, []);
+
+  return (
+    <View style={styles.loadingContainer}>
+      <ActivityIndicator size="large" color="#6366F1" />
+      <Text style={styles.loadingText}>Chargement{dots}</Text>
+      <Text style={styles.loadingSubtext}>Connexion en cours...</Text>
+    </View>
+  );
+};
 
 // Stack Navigator pour l'authentification
 const AuthStack = () => (
@@ -105,7 +123,7 @@ const MainTabs = () => {
     >
       <Tab.Screen
         name="Home"
-        component={HomeScreenNew}
+        component={HomeScreen}
         options={{
           title: 'Accueil',
           tabBarLabel: 'Accueil'
@@ -190,19 +208,38 @@ const MainStack = () => (
   </Stack.Navigator>
 );
 
-// Navigateur principal de l'application - VERSION SIMPLIFIÉE
+// Navigateur principal de l'application - VERSION ROBUSTE
 const AppNavigator = () => {
   const { user, loading } = useAuth();
 
+  // Log détaillé avec le logger centralisé
+  console.log('[AppNavigator] Render - État actuel', {
+    loading,
+    userConnected: !!user,
+    userId: user?.id,
+    userEmail: user?.email,
+    userRole: user?.role,
+    userCredits: user?.credits
+  });
+
+  // Afficher l'écran de chargement pendant l'initialisation
   if (loading) {
+    console.log('[AppNavigator] ⏳ LOADING = TRUE → Affichage LoadingScreen');
     return <LoadingScreen />;
   }
 
-  if (user) {
+  // Si l'utilisateur est connecté, afficher l'application principale
+  if (user && user.id) {
+    console.log('[AppNavigator] ✅ USER DÉFINI → Navigation vers MainStack', {
+      email: user.email,
+      id: user.id
+    });
     return <MainStack />;
-  } else {
-    return <AuthStack />;
   }
+
+  // Sinon, afficher l'écran de connexion
+  console.log('[AppNavigator] 🔐 USER = NULL → Affichage AuthStack');
+  return <AuthStack />;
 };
 
 // Styles
@@ -215,9 +252,15 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     marginTop: 16,
-    fontSize: 16,
-    color: '#666',
+    fontSize: 18,
+    color: '#333',
     fontWeight: '600',
+  },
+  loadingSubtext: {
+    marginTop: 8,
+    fontSize: 14,
+    color: '#999',
+    fontStyle: 'italic',
   },
 });
 

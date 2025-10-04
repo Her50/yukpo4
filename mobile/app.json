@@ -5,6 +5,7 @@
         "version": "1.0.0",
         "orientation": "portrait",
         "userInterfaceStyle": "automatic",
+        "icon": "./assets/icon.png",
         "splash": {
             "image": "./assets/splash.png",
             "resizeMode": "contain",
@@ -21,6 +22,10 @@
         "android": {
             "package": "com.hernandezlele.yukpomnangmobile",
             "versionCode": 1,
+            "adaptiveIcon": {
+                "foregroundImage": "./assets/adaptive-icon.png",
+                "backgroundColor": "#ffffff"
+            },
             "permissions": [
                 "ACCESS_FINE_LOCATION",
                 "ACCESS_COARSE_LOCATION",
@@ -35,9 +40,6 @@
         },
         "web": {
             "bundler": "metro"
-        },
-        "packagerOpts": {
-            "config": "metro.config.js"
         },
         "plugins": [
             "expo-location",
@@ -58,12 +60,6 @@
         },
         "owner": "hernandezlele",
         "scheme": "yukpomnang",
-        "privacy": "public",
-        "updates": {
-            "enabled": false
-        },
-        "runtimeVersion": {
-            "policy": "sdkVersion"
-        }
+        "privacy": "public"
     }
 }

@@ -1,137 +1,207 @@
-// Écran d'accueil moderne et stable
-import React from 'react';
+// Écran d'accueil ultra-moderne avec animations et glassmorphism
+import React, { useEffect, useRef } from 'react';
 import {
+  Animated,
+  Dimensions,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import { SafeIcon } from '../components/SafeIcon';
+import { NativeCard, NativeGradient } from '../components/NativeDesign';
+import { SafeNativeView } from '../components/SafeNativeView';
+import ModernCard from '../components/ModernCard';
+import { modernColors, modernStyles } from '../theme/modernTheme';
+
+const { width } = Dimensions.get('window');
 
 const ModernHomeScreen: React.FC = () => {
   const navigation = useNavigation();
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(50)).current;
+  const scaleAnim = useRef(new Animated.Value(0.9)).current;
 
-  const QuickAction = ({ emoji, title, onPress }: any) => (
+  useEffect(() => {
+    // Animation d'entrée fluide
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 800,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        tension: 50,
+        friction: 8,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
+
+  const QuickAction = ({ iconName, title, onPress, gradient }: any) => (
     <TouchableOpacity onPress={onPress} style={styles.quickActionContainer}>
-      <View style={styles.quickAction}>
-        <Text style={styles.quickActionEmoji}>{emoji}</Text>
-      </View>
+      <NativeGradient
+        colors={gradient}
+        style={styles.quickAction}
+      >
+        <SafeIcon name={iconName} size={24} color="white" />
+      </NativeGradient>
       <Text style={styles.quickActionText}>{title}</Text>
     </TouchableOpacity>
   );
 
-  const StatCard = ({ emoji, title, value }: any) => (
-    <View style={styles.statCard}>
+  const StatCard = ({ iconName, title, value, color, trend }: any) => (
+    <ModernCard variant="glass" style={styles.statCard}>
       <View style={styles.statHeader}>
-        <Text style={styles.statEmoji}>{emoji}</Text>
+        <SafeIcon name={iconName} size={20} color={color} />
         <Text style={styles.statTitle}>{title}</Text>
       </View>
-      <Text style={styles.statValue}>{value}</Text>
-    </View>
+      <Text style={[styles.statValue, { color }]}>{value}</Text>
+      {trend && (
+        <View style={styles.trendContainer}>
+          <SafeIcon name="up" size={12} color={modernColors.success} />
+          <Text style={styles.trendText}>{trend}</Text>
+        </View>
+      )}
+    </ModernCard>
   );
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {/* Header moderne */}
-        <View style={styles.header}>
-          <View style={styles.headerLeft}>
-            <Text style={styles.greeting}>Bonjour ! 👋</Text>
-            <Text style={styles.userName}>Prêt à découvrir ?</Text>
-          </View>
-          <View style={styles.headerRight}>
-            <TouchableOpacity style={styles.iconButton}>
-              <Text style={styles.notificationIcon}>🔔</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Barre de recherche moderne - CLIQUABLE */}
-        <TouchableOpacity onPress={() => (navigation as any).navigate('Search')}>
-          <View style={styles.searchCard}>
-            <View style={styles.searchContainer}>
-              <Text style={styles.searchIcon}>🔍</Text>
-              <Text style={styles.searchPlaceholder}>Rechercher un service...</Text>
+    <NativeGradient
+      colors={modernColors.primaryGradient}
+      style={styles.gradientContainer}
+    >
+      <SafeNativeView style={styles.container}>
+        <Animated.View
+          style={[
+            styles.content,
+            {
+              opacity: fadeAnim,
+              transform: [
+                { translateY: slideAnim },
+                { scale: scaleAnim },
+              ],
+            },
+          ]}
+        >
+          {/* Header moderne */}
+          <View style={styles.header}>
+            <View style={styles.headerLeft}>
+              <Text style={styles.greeting}>Bonjour ! 👋</Text>
+              <Text style={styles.userName}>Prêt à découvrir ?</Text>
+            </View>
+            <View style={styles.headerRight}>
+              <TouchableOpacity style={styles.iconButton}>
+                <SafeIcon name="bell" size={24} color="white" />
+                <View style={styles.notificationBadge} />
+              </TouchableOpacity>
             </View>
           </View>
-        </TouchableOpacity>
 
-        {/* Actions rapides */}
-        <View style={styles.quickActionsContainer}>
-          <Text style={styles.sectionTitle}>Actions rapides</Text>
-          <View style={styles.quickActions}>
-            <QuickAction
-              emoji="➕"
-              title="Créer"
-              onPress={() => (navigation as any).navigate('Create')}
-            />
-            <QuickAction
-              emoji="🔍"
-              title="Rechercher"
-              onPress={() => (navigation as any).navigate('Search')}
-            />
-            <QuickAction
-              emoji="❤️"
-              title="Favoris"
-              onPress={() => (navigation as any).navigate('Services')}
-            />
-            <QuickAction
-              emoji="📍"
-              title="Proche"
-              onPress={() => (navigation as any).navigate('Search')}
-            />
-          </View>
-        </View>
-
-        {/* Statistiques */}
-        <View style={styles.statsContainer}>
-          <Text style={styles.sectionTitle}>Vos statistiques</Text>
-          <View style={styles.statsGrid}>
-            <StatCard
-              emoji="👥"
-              title="Services"
-              value="12"
-            />
-            <StatCard
-              emoji="⭐"
-              title="Évaluations"
-              value="4.8"
-            />
-            <StatCard
-              emoji="⏰"
-              title="Temps moyen"
-              value="2h"
-            />
-          </View>
-        </View>
-
-        {/* Services récents */}
-        <View style={styles.recentContainer}>
-          <Text style={styles.sectionTitle}>Services récents</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            {[1, 2, 3].map((item) => (
-              <View key={item} style={styles.serviceCard}>
-                <View style={styles.serviceHeader}>
-                  <View style={styles.serviceIcon}>
-                    <Text style={styles.serviceEmoji}>🏠</Text>
-                  </View>
-                  <Text style={styles.serviceTitle}>Service {item}</Text>
-                </View>
-                <Text style={styles.serviceDescription}>
-                  Description du service avec détails...
-                </Text>
-                <View style={styles.serviceFooter}>
-                  <Text style={styles.servicePrice}>25€</Text>
-                  <Text style={styles.serviceRating}>⭐ 4.8</Text>
-                </View>
+          {/* Barre de recherche moderne - CLIQUABLE */}
+          <TouchableOpacity onPress={() => (navigation as any).navigate('Search')}>
+            <ModernCard variant="glass" style={styles.searchCard}>
+              <View style={styles.searchContainer}>
+                <SafeIcon name="search" size={20} color="white" />
+                <Text style={styles.searchPlaceholder}>Rechercher un service...</Text>
               </View>
-            ))}
-          </ScrollView>
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+            </ModernCard>
+          </TouchableOpacity>
+
+          {/* Actions rapides */}
+          <View style={styles.quickActionsContainer}>
+            <Text style={styles.sectionTitle}>Actions rapides</Text>
+            <View style={styles.quickActions}>
+              <QuickAction
+                iconName="plus"
+                title="Créer"
+                gradient={modernColors.secondaryGradient}
+                onPress={() => (navigation as any).navigate('Create')}
+              />
+              <QuickAction
+                iconName="search"
+                title="Rechercher"
+                gradient={modernColors.successGradient}
+                onPress={() => (navigation as any).navigate('Search')}
+              />
+              <QuickAction
+                iconName="heart"
+                title="Favoris"
+                gradient={modernColors.warningGradient}
+                onPress={() => (navigation as any).navigate('Services')}
+              />
+              <QuickAction
+                iconName="location"
+                title="Proche"
+                gradient={['#667eea', '#764ba2']}
+                onPress={() => (navigation as any).navigate('Search')}
+              />
+            </View>
+          </View>
+
+          {/* Statistiques */}
+          <View style={styles.statsContainer}>
+            <Text style={styles.sectionTitle}>Vos statistiques</Text>
+            <View style={styles.statsGrid}>
+              <StatCard
+                iconName="briefcase"
+                title="Services"
+                value="12"
+                color={modernColors.primary}
+                trend="+2 cette semaine"
+              />
+              <StatCard
+                iconName="star"
+                title="Évaluations"
+                value="4.8"
+                color={modernColors.warning}
+                trend="+0.2"
+              />
+              <StatCard
+                iconName="time"
+                title="Temps moyen"
+                value="2h"
+                color={modernColors.success}
+                trend="-15min"
+              />
+            </View>
+          </View>
+
+          {/* Services récents */}
+          <View style={styles.recentContainer}>
+            <Text style={styles.sectionTitle}>Services récents</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              {[1, 2, 3].map((item) => (
+                <ModernCard key={item} variant="glass" style={styles.serviceCard}>
+                  <View style={styles.serviceHeader}>
+                    <View style={styles.serviceIcon}>
+                      <SafeIcon name="service" size={20} color={modernColors.primary} />
+                    </View>
+                    <Text style={styles.serviceTitle}>Service {item}</Text>
+                  </View>
+                  <Text style={styles.serviceDescription}>
+                    Description du service avec détails...
+                  </Text>
+                  <View style={styles.serviceFooter}>
+                    <Text style={styles.servicePrice}>25€</Text>
+                    <SafeIcon name="star" size={16} color={modernColors.warning} />
+                    <Text style={styles.serviceRating}>4.8</Text>
+                  </View>
+                </ModernCard>
+              ))}
+            </ScrollView>
+          </View>
+        </Animated.View>
+      </SafeNativeView>
+    </NativeGradient>
   );
 };
 

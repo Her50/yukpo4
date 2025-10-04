@@ -1,24 +1,24 @@
 // HomeScreen moderne inspiré du frontend avec ChatInputMobile intégré
 import { useNavigation } from '@react-navigation/native';
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     Alert,
     ScrollView,
     StyleSheet,
     Text,
     TouchableOpacity,
-    View,
-    Dimensions,
+    View
 } from 'react-native';
-import LinearGradient from 'react-native-linear-gradient';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import ChatHistoryModal from '../components/ChatHistoryModal';
 import ChatInputMobile from '../components/ChatInputMobile';
-import { ChatHistoryModal } from '../components/ChatHistoryModal';
-import { NotificationHistoryModal } from '../components/NotificationHistoryModal';
+import NotificationHistoryModal from '../components/NotificationHistoryModal';
+import { SafeIcon } from '../components/SafeIcon';
+import { NativeGradient } from '../components/NativeDesign';
+import { SafeNativeView } from '../components/SafeNativeView';
 import { useAuth } from '../contexts/AuthContext';
-import { searchApi, serviceApi } from '../services/api';
-import { genererSuggestionsService } from '../lib/yukpoaclient';
 import { useWeather } from '../hooks/useWeather';
+import { genererSuggestionsService } from '../lib/yukpoaclient';
+import { servicesApi } from '../services/api';
 import { modernColors, modernStyles } from '../theme/modernTheme';
 
 const HomeScreenNew: React.FC = () => {
@@ -28,7 +28,7 @@ const HomeScreenNew: React.FC = () => {
     const [isCreateService, setIsCreateService] = useState(false);
     const [showChatHistory, setShowChatHistory] = useState(false);
     const [showNotifications, setShowNotifications] = useState(false);
-    
+
     // Météo - utiliser les coordonnées par défaut si pas de GPS
     const { weather } = useWeather(48.8566, 2.3522); // Paris par défaut
 
@@ -70,12 +70,13 @@ const HomeScreenNew: React.FC = () => {
     const handleSearch = async (input: any) => {
         try {
             console.log('[HomeScreenNew] Recherche directe...');
-            const response = await searchApi.search(input);
+            const response = await servicesApi.searchDirect(input);
 
             if (response.success && response.data) {
-                const results = response.data?.resultats?.resultats || response.data?.resultats || [];
+                const data = response.data as any;
+                const results = data?.resultats?.resultats || data?.resultats || [];
                 console.log('[HomeScreenNew] Résultats trouvés:', results.length);
-                
+
                 // TODO: Naviguer vers les résultats quand l'écran sera créé
                 Alert.alert('Résultats', `Trouvé ${results.length} résultats`);
             } else {
@@ -91,16 +92,16 @@ const HomeScreenNew: React.FC = () => {
     const handleCreateService = async (input: any) => {
         try {
             console.log('[HomeScreenNew] Génération de suggestions pour création...');
-            
+
             // Appeler genererSuggestionsService comme dans le frontend
             const result = await genererSuggestionsService(input);
-            
+
             if (result && result.data) {
                 console.log('[HomeScreenNew] Suggestions générées:', result.data);
-                
+
                 // TODO: Naviguer vers le formulaire de création quand l'écran sera créé
                 Alert.alert('Succès', 'Suggestions générées ! Redirection vers le formulaire...');
-                
+
                 // Pour l'instant, rediriger vers Mes Services
                 navigation.navigate('MesServices' as never);
             } else {
@@ -116,11 +117,11 @@ const HomeScreenNew: React.FC = () => {
     // Protection contre les erreurs de rendu
     if (!user) {
         return (
-            <SafeAreaView style={styles.container}>
+            <SafeNativeView style={styles.container}>
                 <View style={styles.loadingContainer}>
                     <Text style={styles.loadingText}>Chargement de votre profil...</Text>
                 </View>
-            </SafeAreaView>
+            </SafeNativeView>
         );
     }
 
@@ -130,30 +131,28 @@ const HomeScreenNew: React.FC = () => {
         if (!user.email || !user.id) {
             console.warn('[HomeScreenNew] Données utilisateur incomplètes:', user);
             return (
-                <SafeAreaView style={styles.container}>
+                <SafeNativeView style={styles.container}>
                     <View style={styles.loadingContainer}>
                         <Text style={styles.loadingText}>Initialisation du profil...</Text>
                     </View>
-                </SafeAreaView>
+                </SafeNativeView>
             );
         }
     } catch (error) {
         console.error('[HomeScreenNew] Erreur lors de la vérification utilisateur:', error);
         return (
-            <SafeAreaView style={styles.container}>
+            <SafeNativeView style={styles.container}>
                 <View style={styles.loadingContainer}>
                     <Text style={styles.loadingText}>Erreur de chargement...</Text>
                 </View>
-            </SafeAreaView>
+            </SafeNativeView>
         );
     }
 
     return (
-        <SafeAreaView style={styles.container}>
-            <LinearGradient
-                colors={['#667eea', '#764ba2', '#f093fb']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
+        <SafeNativeView style={styles.container}>
+            <NativeGradient
+                colors={modernColors.primaryGradient}
                 style={styles.gradientContainer}
             >
                 <ScrollView
@@ -171,7 +170,7 @@ const HomeScreenNew: React.FC = () => {
                                 <Text style={styles.balanceValue}>{user?.credits?.toLocaleString() || 0} tokens</Text>
                             </View>
                         </View>
-                        
+
                         <View style={styles.headerRight}>
                             {/* Météo */}
                             {weather && (
@@ -180,56 +179,58 @@ const HomeScreenNew: React.FC = () => {
                                     <Text style={styles.weatherTemp}>{weather.temperature}°C</Text>
                                 </View>
                             )}
-                            
+
                             {/* Boutons header */}
-                            <TouchableOpacity 
+                            <TouchableOpacity
                                 style={styles.headerButton}
                                 onPress={() => setShowChatHistory(true)}
                             >
-                                <Text style={styles.chatIcon}>💬</Text>
+                                <SafeIcon name="message" size={20} color="white" />
                             </TouchableOpacity>
-                            <TouchableOpacity 
+                            <TouchableOpacity
                                 style={styles.headerButton}
                                 onPress={() => setShowNotifications(true)}
                             >
-                                <Text style={styles.notificationIcon}>🔔</Text>
+                                <SafeIcon name="bell" size={20} color="white" />
                             </TouchableOpacity>
                         </View>
                     </View>
 
-                     {/* Toggle pour basculer entre recherche et création - EN HAUT */}
-                     <View style={styles.toggleSection}>
-                         <View style={styles.toggleContainer}>
-                             <TouchableOpacity
-                                 style={[styles.toggleButton, !isCreateService && styles.toggleButtonActive]}
-                                 onPress={() => setIsCreateService(false)}
-                             >
-                                 <Text style={[styles.toggleText, !isCreateService && styles.toggleTextActive]}>
-                                     🔍 Rechercher
-                                 </Text>
-                             </TouchableOpacity>
-                             <TouchableOpacity
-                                 style={[styles.toggleButton, isCreateService && styles.toggleButtonActive]}
-                                 onPress={() => setIsCreateService(true)}
-                             >
-                                 <Text style={[styles.toggleText, isCreateService && styles.toggleTextActive]}>
-                                     ➕ Créer un service
-                                 </Text>
-                             </TouchableOpacity>
-                         </View>
-                     </View>
+                    {/* Toggle pour basculer entre recherche et création - EN HAUT */}
+                    <View style={styles.toggleSection}>
+                        <View style={styles.toggleContainer}>
+                            <TouchableOpacity
+                                style={[styles.toggleButton, !isCreateService && styles.toggleButtonActive]}
+                                onPress={() => setIsCreateService(false)}
+                            >
+                                <SafeIcon name="search" size={18} color={!isCreateService ? "white" : "rgba(255,255,255,0.7)"} />
+                                <Text style={[styles.toggleText, !isCreateService && styles.toggleTextActive]}>
+                                    Rechercher
+                                </Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[styles.toggleButton, isCreateService && styles.toggleButtonActive]}
+                                onPress={() => setIsCreateService(true)}
+                            >
+                                <SafeIcon name="plus" size={18} color={isCreateService ? "white" : "rgba(255,255,255,0.7)"} />
+                                <Text style={[styles.toggleText, isCreateService && styles.toggleTextActive]}>
+                                    Créer un service
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
 
-                     {/* Section principale avec ChatInput */}
-                     <View style={styles.mainSection}>
-                         <View style={styles.titleContainer}>
-                             <Text style={styles.mainTitle}>
-                                 Yukpo
-                             </Text>
-                             <Text style={styles.subtitle}>
-                                 Créez ou trouvez un service en un instant.
-                                 {'\n'}Une description, une image, un audio ou un fichier suffit.
-                             </Text>
-                         </View>
+                    {/* Section principale avec ChatInput */}
+                    <View style={styles.mainSection}>
+                        <View style={styles.titleContainer}>
+                            <Text style={styles.mainTitle}>
+                                Yukpo
+                            </Text>
+                            <Text style={styles.subtitle}>
+                                Créez ou trouvez un service en un instant.
+                                {'\n'}Une description, une image, un audio ou un fichier suffit.
+                            </Text>
+                        </View>
 
                         {/* ChatInputMobile intégré */}
                         <View style={styles.chatInputContainer}>
@@ -243,18 +244,19 @@ const HomeScreenNew: React.FC = () => {
 
 
                 </ScrollView>
-            </LinearGradient>
-            
+            </NativeGradient>
+
             {/* Modals */}
             <ChatHistoryModal
                 isOpen={showChatHistory}
                 onClose={() => setShowChatHistory(false)}
+                onOpenChat={() => {}}
             />
             <NotificationHistoryModal
                 isOpen={showNotifications}
                 onClose={() => setShowNotifications(false)}
             />
-        </SafeAreaView>
+        </SafeNativeView>
     );
 };
 
@@ -344,14 +346,14 @@ const styles = StyleSheet.create({
     notificationIcon: {
         fontSize: 18,
     },
-     toggleSection: {
-         paddingHorizontal: modernStyles.spacing.lg,
-         marginBottom: modernStyles.spacing.md,
-     },
-     mainSection: {
-         paddingHorizontal: modernStyles.spacing.lg,
-         marginBottom: modernStyles.spacing.xl,
-     },
+    toggleSection: {
+        paddingHorizontal: modernStyles.spacing.lg,
+        marginBottom: modernStyles.spacing.md,
+    },
+    mainSection: {
+        paddingHorizontal: modernStyles.spacing.lg,
+        marginBottom: modernStyles.spacing.xl,
+    },
     titleContainer: {
         marginBottom: modernStyles.spacing.lg,
         alignItems: 'center',
@@ -388,6 +390,9 @@ const styles = StyleSheet.create({
         paddingHorizontal: modernStyles.spacing.md,
         borderRadius: modernStyles.borderRadius.small,
         alignItems: 'center',
+        flexDirection: 'row',
+        justifyContent: 'center',
+        gap: 6,
     },
     toggleButtonActive: {
         backgroundColor: 'rgba(255,255,255,0.2)',
