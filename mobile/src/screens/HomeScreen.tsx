@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 import * as React from 'react';
 import { useState } from 'react';
@@ -9,7 +10,8 @@ import GPSSelectorMobile from '../components/GPSSelectorMobile';
 import NotificationHistoryModal from '../components/NotificationHistoryModal';
 import { SafeNativeView } from '../components/SafeNativeView';
 import { useAuth } from '../contexts/AuthContext';
-import { iaApi, servicesApi } from '../services/api';
+
+const API_BASE_URL = 'https://yukpomnang.onrender.com';
 
 const { width } = Dimensions.get('window');
 
@@ -50,43 +52,38 @@ const HomeScreen: React.FC = () => {
         }
     }, []);
 
-    // Fonction de recherche directe (comme frontend - appel API puis navigation)
+    // Fonction de recherche directe (exactement comme frontend)
     const handleSearch = async (input: any) => {
         try {
             setLoading(true);
             console.log('[HomeScreen] Recherche avec:', input);
 
-            // Préparer la requête comme le frontend
-            const searchRequest = {
-                texte: input.texte || input.description || '',
-                base64_image: input.base64_image || [],
-                audio_base64: input.audio_base64 || [],
-                video_base64: input.video_base64 || [],
-                doc_base64: input.doc_base64 || [],
-                excel_base64: input.excel_base64 || [],
-                pdf_base64: input.pdf_base64 || [],
-                gps_mobile: input.gps_mobile || selectedLocation,
-                gps_zone: input.gps_zone,
-                gps_fixe: input.gps_fixe,
-                gps_fixe_coords: input.gps_fixe_coords
-            };
+            const token = await AsyncStorage.getItem('auth_token');
 
             // Appel direct à l'API de recherche (comme frontend)
-            const response = await servicesApi.searchDirect(searchRequest);
+            const response = await fetch(`${API_BASE_URL}/api/search/direct`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(input)
+            });
 
-            if (response.success && response.data) {
-                const result = response.data as any;
-                const results = result?.resultats?.resultats || result?.resultats || [];
-
-                // Rediriger vers ResultatBesoin avec les résultats
-                (navigation as any).navigate('ResultatBesoin', {
-                    results: results,
-                    type: 'recherche_besoin',
-                    suggestion: result
-                });
-            } else {
-                Alert.alert('Aucun résultat', 'Aucun service trouvé pour votre recherche');
+            if (!response.ok) {
+                throw new Error(`Erreur HTTP: ${response.status}`);
             }
+
+            const result = await response.json();
+            console.log('[HomeScreen] Résultat recherche:', result);
+
+            // Rediriger vers ResultatBesoin avec les résultats
+            const results = result?.resultats?.resultats || result?.resultats || [];
+            (navigation as any).navigate('ResultatBesoin', {
+                results: results,
+                type: 'recherche_besoin',
+                suggestion: result
+            });
         } catch (error) {
             console.error('Erreur recherche:', error);
             Alert.alert('Erreur', 'Impossible d\'effectuer la recherche. Vérifiez votre connexion.');
@@ -95,62 +92,62 @@ const HomeScreen: React.FC = () => {
         }
     };
 
-    // Fonction de création de service (comme frontend - génération de suggestions)
+    // Fonction de création de service (exactement comme frontend)
     const handleCreateService = async (input: any) => {
         try {
             setLoading(true);
             console.log('[HomeScreen] Création service avec:', input);
 
-            // Préparer la requête comme le frontend
-            const serviceRequest = {
-                texte: input.texte || input.description || '',
-                base64_image: input.base64_image || [],
-                audio_base64: input.audio_base64 || [],
-                video_base64: input.video_base64 || [],
-                doc_base64: input.doc_base64 || [],
-                excel_base64: input.excel_base64 || [],
-                pdf_base64: input.pdf_base64 || []
+            const token = await AsyncStorage.getItem('auth_token');
+
+            // Appel direct à l'API IA (comme frontend)
+            const response = await fetch(`${API_BASE_URL}/api/ia/creation-service`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(input)
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.message || `Erreur IA: ${response.status}`);
+            }
+
+            const result = await response.json();
+            console.log('[HomeScreen] Résultat création:', result);
+
+            // Extraire les médias de la réponse
+            const mediaData = {
+                base64_image: result.service_data?.base64_image || input.base64_image,
+                audio_base64: result.service_data?.audio_base64 || input.audio_base64,
+                video_base64: result.service_data?.video_base64 || input.video_base64,
+                doc_base64: result.service_data?.doc_base64 || input.doc_base64
             };
 
-            // Appeler l'IA pour générer des suggestions (comme frontend)
-            const response = await iaApi.generateServiceForm(serviceRequest);
+            // Extraire les données GPS
+            const gpsData = {
+                gps_mobile: input.gps_mobile || selectedLocation,
+                gps_zone: input.gps_zone,
+                gps_fixe: input.gps_fixe,
+                gps_fixe_coords: input.gps_fixe_coords
+            };
 
-            if (response.success && response.data) {
-                const result = response.data as any;
-
-                // Extraire les médias de la réponse
-                const mediaData = {
-                    base64_image: result.service_data?.base64_image || input.base64_image,
-                    audio_base64: result.service_data?.audio_base64 || input.audio_base64,
-                    video_base64: result.service_data?.video_base64 || input.video_base64,
-                    doc_base64: result.service_data?.doc_base64 || input.doc_base64
-                };
-
-                // Extraire les données GPS
-                const gpsData = {
-                    gps_mobile: input.gps_mobile || selectedLocation,
-                    gps_zone: input.gps_zone,
-                    gps_fixe: input.gps_fixe,
-                    gps_fixe_coords: input.gps_fixe_coords
-                };
-
-                // Rediriger vers FormulaireYukpoIntelligent avec les suggestions
-                (navigation as any).navigate('FormulaireYukpoIntelligent', {
-                    suggestion: {
-                        ...result,
-                        intention: 'creation_service',
-                        data: result.suggestions || result.data || result
-                    },
-                    type: 'creation_service',
-                    mediaData: mediaData,
-                    gpsData: gpsData
-                });
-            } else {
-                Alert.alert('Erreur', 'Impossible de générer les suggestions de service');
-            }
-        } catch (error) {
+            // Rediriger vers FormulaireYukpoIntelligent avec les suggestions
+            (navigation as any).navigate('FormulaireYukpoIntelligent', {
+                suggestion: {
+                    ...result,
+                    intention: 'creation_service',
+                    data: result.suggestions || result.data || result
+                },
+                type: 'creation_service',
+                mediaData: mediaData,
+                gpsData: gpsData
+            });
+        } catch (error: any) {
             console.error('Erreur création:', error);
-            Alert.alert('Erreur', 'Impossible de générer les suggestions. Vérifiez votre connexion.');
+            Alert.alert('Erreur', error.message || 'Impossible de générer les suggestions. Vérifiez votre connexion.');
         } finally {
             setLoading(false);
         }
@@ -273,21 +270,6 @@ const HomeScreen: React.FC = () => {
                     onGPSPress={() => setShowGPSMobileModal(true)}
                 />
 
-                {/* Indicateurs visuels */}
-                <View style={styles.indicatorsSection}>
-                    <View style={styles.indicator}>
-                        <Text style={styles.indicatorIcon}>🎯</Text>
-                        <Text style={styles.indicatorText}>Détection intelligente</Text>
-                    </View>
-                    <View style={styles.indicator}>
-                        <Text style={styles.indicatorIcon}>⚡</Text>
-                        <Text style={styles.indicatorText}>Traitement rapide</Text>
-                    </View>
-                    <View style={styles.indicator}>
-                        <Text style={styles.indicatorIcon}>🔐</Text>
-                        <Text style={styles.indicatorText}>100% sécurisé</Text>
-                    </View>
-                </View>
             </ScrollView>
 
             {/* Modal de confirmation création */}
@@ -502,27 +484,6 @@ const styles = StyleSheet.create({
     },
     modeButtonTextActive: {
         color: '#FFF',
-    },
-    indicatorsSection: {
-        flexDirection: 'row',
-        justifyContent: 'center',
-        marginHorizontal: 20,
-        marginTop: 32,
-        gap: 32,
-    },
-    indicator: {
-        alignItems: 'center',
-        flex: 1,
-    },
-    indicatorIcon: {
-        fontSize: 32,
-        marginBottom: 8,
-    },
-    indicatorText: {
-        fontSize: 12,
-        color: '#6B7280',
-        textAlign: 'center',
-        fontWeight: '400',
     },
     alertOverlay: {
         position: 'absolute',

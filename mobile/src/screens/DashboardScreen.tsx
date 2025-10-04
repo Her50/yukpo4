@@ -28,58 +28,68 @@ const DashboardScreen: React.FC = () => {
     try {
       setLoading(true);
 
-      // Charger les données du dashboard
-      const [servicesResponse, budgetResponse] = await Promise.all([
-        servicesApi.getUserServices(),
-        userApi.getUserBudget()
-      ]);
+      // Appeler l'API dashboard prestataire (comme frontend)
+      const response = await userApi.getDashboardPrestataire('30d');
 
-      if (servicesResponse.success && servicesResponse.data) {
-        const services = servicesResponse.data as any[];
-        const activeServices = services.filter(s => s.is_active).length;
-        const totalViews = services.reduce((sum, s) => sum + (s.views || 0), 0);
-        const totalInteractions = services.reduce((sum, s) => sum + (s.interactions || 0), 0);
-        const averageRating = services.length > 0
-          ? (services.reduce((sum, s) => sum + (s.rating || 0), 0) / services.length).toFixed(1)
-          : '0';
+      if (response.success && response.data) {
+        const data = response.data as any;
 
         setStats([
-          { title: 'Services Actifs', value: activeServices.toString(), icon: 'briefcase', color: '#4CAF50' },
-          { title: 'Interactions', value: totalInteractions.toString(), icon: 'people', color: '#2196F3' },
-          { title: 'Vues Total', value: totalViews.toString(), icon: 'eye', color: '#FF9800' },
-          { title: 'Évaluations', value: `${averageRating}/5`, icon: 'star', color: '#9C27B0' },
+          { title: 'Services Actifs', value: (data.activeServices || 0).toString(), icon: 'briefcase', color: '#10B981' },
+          { title: 'Vues Total', value: (data.totalViews || 0).toString(), icon: 'eye', color: '#3B82F6' },
+          { title: 'Interactions', value: (data.totalInteractions || 0).toString(), icon: 'people', color: '#F59E0B' },
+          { title: 'Évaluations', value: `${(data.averageRating || 0).toFixed(1)}/5`, icon: 'star', color: '#8B5CF6' },
         ]);
 
-        // Générer l'activité récente basée sur les services
-        const activity = services.slice(0, 3).map((service, index) => ({
-          id: service.id,
-          title: `Service "${service.nom || service.title}" ${index === 0 ? 'créé' : index === 1 ? 'mis à jour' : 'visualisé'}`,
-          time: index === 0 ? 'Il y a 2 heures' : index === 1 ? 'Il y a 4 heures' : 'Il y a 6 heures',
-          icon: index === 0 ? 'checkmark-circle' : index === 1 ? 'star' : 'eye',
-          color: index === 0 ? '#4CAF50' : index === 1 ? '#FF9800' : '#2196F3'
-        }));
-        setRecentActivity(activity);
-      }
+        // Activité récente
+        if (data.recentActivity && data.recentActivity.length > 0) {
+          setRecentActivity(data.recentActivity.slice(0, 5).map((activity: any) => ({
+            id: activity.id,
+            title: activity.title || 'Activité',
+            time: formatTime(new Date(activity.timestamp || activity.created_at)),
+            icon: activity.type === 'view' ? 'eye' : activity.type === 'message' ? 'chatbubbles' : 'checkmark-circle',
+            color: activity.type === 'view' ? '#3B82F6' : activity.type === 'message' ? '#10B981' : '#F59E0B'
+          })));
+        }
+      } else {
+        // Fallback: charger depuis l'API des services
+        const servicesResponse = await servicesApi.getUserServices();
 
-      if (budgetResponse.success && budgetResponse.data) {
-        const budgetData = budgetResponse.data as any;
-        // Mettre à jour les stats avec les données de budget si disponibles
-        setStats(prevStats => prevStats.map(stat => {
-          if (stat.title === 'Revenus du Mois') {
-            return {
-              ...stat,
-              value: budgetData.revenue ? `${budgetData.revenue}€` : '0€'
-            };
-          }
-          return stat;
-        }));
+        if (servicesResponse.success && servicesResponse.data) {
+          const services = servicesResponse.data as any[];
+          const activeServices = services.filter(s => s.is_active).length;
+          const totalViews = services.reduce((sum, s) => sum + (s.views || 0), 0);
+          const totalInteractions = services.reduce((sum, s) => sum + (s.interactions || 0), 0);
+          const averageRating = services.length > 0
+            ? (services.reduce((sum, s) => sum + (s.rating || 0), 0) / services.length).toFixed(1)
+            : '0';
+
+          setStats([
+            { title: 'Services Actifs', value: activeServices.toString(), icon: 'briefcase', color: '#10B981' },
+            { title: 'Vues Total', value: totalViews.toString(), icon: 'eye', color: '#3B82F6' },
+            { title: 'Interactions', value: totalInteractions.toString(), icon: 'people', color: '#F59E0B' },
+            { title: 'Évaluations', value: `${averageRating}/5`, icon: 'star', color: '#8B5CF6' },
+          ]);
+        }
       }
     } catch (error) {
       console.error('Erreur chargement dashboard:', error);
-      Alert.alert('Erreur', 'Impossible de charger les données du dashboard');
+      Alert.alert('Erreur', 'Impossible de charger les données du dashboard. Vérifiez votre connexion.');
     } finally {
       setLoading(false);
     }
+  };
+
+  const formatTime = (date: Date) => {
+    const now = new Date();
+    const diff = now.getTime() - date.getTime();
+    const minutes = Math.floor(diff / (1000 * 60));
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+
+    if (minutes < 60) return `Il y a ${minutes} min`;
+    if (hours < 24) return `Il y a ${hours}h`;
+    return `Il y a ${days}j`;
   };
 
   const quickActions = [

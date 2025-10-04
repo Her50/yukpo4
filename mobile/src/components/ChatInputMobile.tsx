@@ -253,54 +253,50 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = ({
                 </View>
             )}
 
-            {/* Boutons d'action pour médias */}
+            {/* Boutons d'action pour médias - tous visibles sans scroll */}
             <View style={styles.actionsContainer}>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                    {/* GPS */}
-                    <TouchableOpacity
-                        style={[styles.actionButton, gpsData && styles.actionButtonActive]}
-                        onPress={onGPSPress}
-                    >
-                        <Text style={[styles.gpsIcon, gpsData && styles.gpsIconActive]}>
-                            {gpsData ? '📍' : '📍'}
-                        </Text>
-                        <Text style={[styles.actionButtonText, gpsData && styles.actionButtonTextActive]}>
-                            GPS
-                        </Text>
-                    </TouchableOpacity>
+                {/* Audio - EN PREMIER */}
+                <TouchableOpacity
+                    style={[styles.actionButton, isRecording && styles.actionButtonRecording]}
+                    onPress={toggleRecording}
+                    disabled={loading}
+                >
+                    <Text style={[styles.actionIcon, isRecording && styles.actionIconRecording]}>
+                        {isRecording ? "⏹️" : "🎤"}
+                    </Text>
+                    <Text style={[styles.actionButtonText, isRecording && styles.actionButtonTextRecording]}>
+                        {isRecording ? 'Stop' : (audioUri ? '✓ Audio' : 'Audio')}
+                    </Text>
+                </TouchableOpacity>
 
-                    {/* Photo */}
-                    <TouchableOpacity style={styles.actionButton} onPress={takePhoto} disabled={loading}>
-                        <Text style={styles.actionIcon}>📷</Text>
-                        <Text style={styles.actionButtonText}>Photo</Text>
-                    </TouchableOpacity>
+                {/* GPS */}
+                <TouchableOpacity
+                    style={[styles.actionButton, gpsData && styles.actionButtonActive]}
+                    onPress={onGPSPress}
+                >
+                    <Text style={[styles.gpsIcon, gpsData && styles.gpsIconActive]}>📍</Text>
+                    <Text style={[styles.actionButtonText, gpsData && styles.actionButtonTextActive]}>
+                        GPS
+                    </Text>
+                </TouchableOpacity>
 
-                    {/* Image */}
-                    <TouchableOpacity style={styles.actionButton} onPress={pickImage} disabled={loading}>
-                        <Text style={styles.actionIcon}>🖼️</Text>
-                        <Text style={styles.actionButtonText}>Image</Text>
-                    </TouchableOpacity>
+                {/* Photo */}
+                <TouchableOpacity style={styles.actionButton} onPress={takePhoto} disabled={loading}>
+                    <Text style={styles.actionIcon}>📷</Text>
+                    <Text style={styles.actionButtonText}>Photo</Text>
+                </TouchableOpacity>
 
-                    {/* Audio */}
-                    <TouchableOpacity
-                        style={[styles.actionButton, isRecording && styles.actionButtonRecording]}
-                        onPress={toggleRecording}
-                        disabled={loading}
-                    >
-                        <Text style={[styles.actionIcon, isRecording && styles.actionIconRecording]}>
-                            {isRecording ? "⏹️" : "🎤"}
-                        </Text>
-                        <Text style={[styles.actionButtonText, isRecording && styles.actionButtonTextRecording]}>
-                            {isRecording ? 'Arrêter' : (audioUri ? '✓ Audio' : 'Audio')}
-                        </Text>
-                    </TouchableOpacity>
+                {/* Image */}
+                <TouchableOpacity style={styles.actionButton} onPress={pickImage} disabled={loading}>
+                    <Text style={styles.actionIcon}>🖼️</Text>
+                    <Text style={styles.actionButtonText}>Image</Text>
+                </TouchableOpacity>
 
-                    {/* Document */}
-                    <TouchableOpacity style={styles.actionButton} onPress={pickDocument} disabled={loading}>
-                        <Text style={styles.actionIcon}>📄</Text>
-                        <Text style={styles.actionButtonText}>Fichier</Text>
-                    </TouchableOpacity>
-                </ScrollView>
+                {/* Document */}
+                <TouchableOpacity style={styles.actionButton} onPress={pickDocument} disabled={loading}>
+                    <Text style={styles.actionIcon}>📄</Text>
+                    <Text style={styles.actionButtonText}>Fichier</Text>
+                </TouchableOpacity>
             </View>
 
             {/* Bouton d'envoi */}
@@ -348,16 +344,18 @@ const styles = StyleSheet.create({
         borderColor: '#E0E0E0',
     },
     actionsContainer: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
         marginBottom: 12,
     },
     actionButton: {
         flexDirection: 'row',
         alignItems: 'center',
         paddingVertical: 10,
-        paddingHorizontal: 16,
+        paddingHorizontal: 14,
         backgroundColor: '#F3F4F6',
         borderRadius: 12,
-        marginRight: 8,
         borderWidth: 1,
         borderColor: '#E5E7EB',
         gap: 6,

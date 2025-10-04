@@ -272,9 +272,12 @@ const RechargeTokensScreen: React.FC = () => {
       <TouchableOpacity
         onPress={() => setCurrentStep('payment')}
         disabled={!selectedOption && !customAmount}
-        style={styles.nextButton}
+        style={[
+          styles.nextButton,
+          (!selectedOption && !customAmount) && styles.nextButtonDisabled
+        ]}
       >
-        <Text>Continuer</Text>
+        <Text style={styles.nextButtonText}>Continuer →</Text>
       </TouchableOpacity>
     </View>
   );
@@ -322,14 +325,17 @@ const RechargeTokensScreen: React.FC = () => {
           onPress={() => setCurrentStep('amount')}
           style={styles.backButton}
         >
-          <Text>Retour</Text>
+          <Text style={styles.backButtonText}>← Retour</Text>
         </TouchableOpacity>
         <TouchableOpacity
           onPress={() => setCurrentStep('confirm')}
           disabled={!selectedPaymentMethod}
-          style={styles.nextButton}
+          style={[
+            styles.nextButton,
+            !selectedPaymentMethod && styles.nextButtonDisabled
+          ]}
         >
-          <Text>Continuer</Text>
+          <Text style={styles.nextButtonText}>Continuer →</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -374,14 +380,19 @@ const RechargeTokensScreen: React.FC = () => {
           onPress={() => setCurrentStep('payment')}
           style={styles.backButton}
         >
-          <Text>Retour</Text>
+          <Text style={styles.backButtonText}>← Retour</Text>
         </TouchableOpacity>
         <TouchableOpacity
           onPress={handleRecharge}
           disabled={loading}
-          style={styles.confirmButton}
+          style={[
+            styles.confirmButton,
+            loading && styles.confirmButtonDisabled
+          ]}
         >
-          <Text>Confirmer le paiement</Text>
+          <Text style={styles.confirmButtonText}>
+            {loading ? 'Traitement...' : '✓ Confirmer le paiement'}
+          </Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -633,16 +644,54 @@ const styles = StyleSheet.create({
   backButton: {
     flex: 1,
     marginRight: 8,
+    backgroundColor: '#F3F4F6',
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  backButtonText: {
+    color: '#6B7280',
+    fontSize: 16,
+    fontWeight: '600',
   },
   nextButton: {
     flex: 1,
     marginLeft: 8,
-    backgroundColor: theme.colors.primary,
+    backgroundColor: '#6366F1',
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  nextButtonDisabled: {
+    backgroundColor: '#9CA3AF',
+    opacity: 0.5,
+  },
+  nextButtonText: {
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
   confirmButton: {
     flex: 1,
     marginLeft: 8,
-    backgroundColor: theme.colors.primary,
+    backgroundColor: '#10B981',
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  confirmButtonDisabled: {
+    backgroundColor: '#9CA3AF',
+    opacity: 0.5,
+  },
+  confirmButtonText: {
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
 

@@ -1,14 +1,42 @@
 ﻿// Migration vers Phosphor React Native pour un design moderne
 import { CurrencyDollar, MapPin, Plus, Star, User } from 'phosphor-react-native';
 import * as React from 'react';
-import { useState } from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator } from 'react-native';
 import { Card, Paragraph, Searchbar, Title } from 'react-native-paper';
+import { servicesApi } from '../services/api';
 import { theme } from '../theme/theme';
 
 const ServicesScreen: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [services, setServices] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadUserServices();
+  }, []);
+
+  const loadUserServices = async () => {
+    try {
+      setLoading(true);
+      const response = await servicesApi.getUserServices();
+
+      if (response.success && response.data) {
+        const servicesData = response.data as any[];
+        setServices(servicesData);
+        console.log('[ServicesScreen] Services chargés:', servicesData.length);
+      } else {
+        setServices([]);
+      }
+    } catch (error) {
+      console.error('Erreur chargement services:', error);
+      Alert.alert('Erreur', 'Impossible de charger vos services');
+      setServices([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const categories = [
     { id: 'all', name: 'Tous', icon: 'grid-outline' },
@@ -19,62 +47,32 @@ const ServicesScreen: React.FC = () => {
     { id: 'business', name: 'Business', icon: 'briefcase-outline' },
   ];
 
-  const services = [
-    {
-      id: 1,
-      title: 'Plomberie Express',
-      category: 'home',
-      description: 'Réparation rapide de fuites et installations',
-      price: 'À partir de 25€',
-      rating: 4.8,
-      provider: 'Jean Dupont',
-      location: 'Paris 15e',
-    },
-    {
-      id: 2,
-      title: 'Cours de Mathématiques',
-      category: 'education',
-      description: 'Soutien scolaire niveau collège et lycée',
-      price: 'À partir de 20€/h',
-      rating: 4.9,
-      provider: 'Marie Martin',
-      location: 'Lyon',
-    },
-    {
-      id: 3,
-      title: 'Développement Web',
-      category: 'tech',
-      description: 'Création de sites web et applications',
-      price: 'À partir de 50€/h',
-      rating: 4.7,
-      provider: 'Pierre Durand',
-      location: 'Marseille',
-    },
-    {
-      id: 4,
-      title: 'Ménage à domicile',
-      category: 'home',
-      description: 'Service de ménage complet et régulier',
-      price: 'À partir de 15€/h',
-      rating: 4.6,
-      provider: 'Sophie Leroy',
-      location: 'Toulouse',
-    },
-  ];
-
   const filteredServices = services.filter(service => {
-    const matchesSearch = service.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      service.description.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = selectedCategory === 'all' || service.category === selectedCategory;
+    const serviceTitle = service.data?.title || service.nom || '';
+    const serviceDescription = service.data?.description || service.description || '';
+    const serviceCategory = service.data?.category || service.categorie || '';
+    
+    const matchesSearch = serviceTitle.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      serviceDescription.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesCategory = selectedCategory === 'all' || serviceCategory.toLowerCase().includes(selectedCategory.toLowerCase());
     return matchesSearch && matchesCategory;
   });
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#6366F1" />
+        <Text style={styles.loadingText}>Chargement de vos services...</Text>
+      </View>
+    );
+  }
 
   return (
     <ScrollView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.title}>Services Disponibles</Text>
-        <Text style={styles.subtitle}>Trouvez le service parfait pour vos besoins</Text>
+        <Text style={styles.title}>Mes Services</Text>
+        <Text style={styles.subtitle}>Gérez tous vos services en un coup d'œil</Text>
       </View>
 
       {/* Barre de recherche */}
@@ -136,60 +134,82 @@ const ServicesScreen: React.FC = () => {
           {filteredServices.length} service{filteredServices.length > 1 ? 's' : ''} trouvé{filteredServices.length > 1 ? 's' : ''}
         </Text>
 
-        {filteredServices.map((service) => (
-          <Card key={service.id} style={styles.serviceCard}>
-            <Card.Content>
-              <View style={styles.serviceHeader}>
-                <View style={styles.serviceInfo}>
-                  <Title style={styles.serviceTitle}>{service.title}</Title>
-                  <Paragraph style={styles.serviceDescription}>
-                    {service.description}
-                  </Paragraph>
-                </View>
-                <View style={styles.serviceRating}>
-                  <Star size={16} color="#FFD700" fill="#FFD700" />
-                  <Text style={styles.ratingText}>{service.rating}</Text>
-                </View>
-              </View>
+        {filteredServices.length === 0 ? (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyIcon}>📦</Text>
+            <Text style={styles.emptyText}>
+              {searchQuery || selectedCategory !== 'all' 
+                ? 'Aucun service ne correspond à votre recherche' 
+                : 'Vous n\'avez pas encore de services'}
+            </Text>
+            <TouchableOpacity 
+              style={styles.createButton}
+              onPress={() => console.log('Créer un service')}
+            >
+              <Plus size={20} color="#FFF" />
+              <Text style={styles.createButtonText}>Créer un service</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          filteredServices.map((service) => {
+            const serviceTitle = service.data?.title || service.nom || 'Service sans titre';
+            const serviceDescription = service.data?.description || service.description || '';
+            const servicePrice = service.data?.price || service.price || 'Prix sur demande';
+            const serviceLocation = service.data?.location || service.gps_zone || 'Non spécifié';
+            const serviceRating = service.rating || 0;
 
-              <View style={styles.serviceDetails}>
-                <View style={styles.serviceDetail}>
-                  <User size={16} color={theme.colors.textSecondary} />
-                  <Text style={styles.detailText}>{service.provider}</Text>
-                </View>
-                <View style={styles.serviceDetail}>
-                  <MapPin size={16} color={theme.colors.textSecondary} />
-                  <Text style={styles.detailText}>{service.location}</Text>
-                </View>
-                <View style={styles.serviceDetail}>
-                  <CurrencyDollar size={16} color={theme.colors.primary} />
-                  <Text style={[styles.detailText, styles.priceText]}>{service.price}</Text>
-                </View>
-              </View>
+            return (
+              <Card key={service.id} style={styles.serviceCard}>
+                <Card.Content>
+                  <View style={styles.serviceHeader}>
+                    <View style={styles.serviceInfo}>
+                      <Title style={styles.serviceTitle}>{serviceTitle}</Title>
+                      <Paragraph style={styles.serviceDescription}>
+                        {serviceDescription}
+                      </Paragraph>
+                    </View>
+                    {serviceRating > 0 && (
+                      <View style={styles.serviceRating}>
+                        <Star size={16} color="#FFD700" fill="#FFD700" />
+                        <Text style={styles.ratingText}>{serviceRating.toFixed(1)}</Text>
+                      </View>
+                    )}
+                  </View>
 
-              <View style={styles.serviceActions}>
-                <TouchableOpacity
-                  onPress={() => {
-                    // Navigation vers les détails du service
-                    console.log('Voir détails:', service.id);
-                  }}
-                  style={styles.actionButton}
-                >
-                  <Text>Voir détails</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => {
-                    // Contacter le prestataire
-                    console.log('Contacter:', service.id);
-                  }}
-                  style={styles.contactButton}
-                >
-                  <Text>Contacter</Text>
-                </TouchableOpacity>
-              </View>
-            </Card.Content>
-          </Card>
-        ))}
+                  <View style={styles.serviceDetails}>
+                    <View style={styles.serviceDetail}>
+                      <MapPin size={16} color={theme.colors.textSecondary} />
+                      <Text style={styles.detailText}>{serviceLocation}</Text>
+                    </View>
+                    <View style={styles.serviceDetail}>
+                      <CurrencyDollar size={16} color={theme.colors.primary} />
+                      <Text style={[styles.detailText, styles.priceText]}>{servicePrice}</Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.serviceActions}>
+                    <TouchableOpacity
+                      onPress={() => {
+                        console.log('Voir détails:', service.id);
+                      }}
+                      style={styles.actionButton}
+                    >
+                      <Text style={styles.actionButtonText}>Voir détails</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => {
+                        console.log('Modifier:', service.id);
+                      }}
+                      style={styles.editButton}
+                    >
+                      <Text style={styles.editButtonText}>Modifier</Text>
+                    </TouchableOpacity>
+                  </View>
+                </Card.Content>
+              </Card>
+            );
+          })
+        )}
       </View>
 
       {/* Call to action */}
@@ -401,6 +421,64 @@ const styles = StyleSheet.create({
   },
   ctaButton: {
     borderRadius: 8,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F8F9FA',
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#6B7280',
+  },
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+  emptyIcon: {
+    fontSize: 64,
+    marginBottom: 16,
+    opacity: 0.5,
+  },
+  emptyText: {
+    fontSize: 16,
+    color: '#6B7280',
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  createButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#6366F1',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 12,
+    gap: 8,
+  },
+  createButtonText: {
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  actionButtonText: {
+    color: '#6366F1',
+    fontSize: 14,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  editButton: {
+    flex: 1,
+    backgroundColor: '#F3F4F6',
+    paddingVertical: 10,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  editButtonText: {
+    color: '#6B7280',
+    fontSize: 14,
+    fontWeight: '600',
   },
 });
 
