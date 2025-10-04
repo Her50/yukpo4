@@ -109,6 +109,13 @@ const ProfileScreen: React.FC = () => {
 
   const profileActions = [
     {
+      title: 'Mon historique',
+      icon: 'analytics-outline',
+      color: '#F59E0B',
+      route: 'Historique',
+      description: 'Voir mon historique de transactions'
+    },
+    {
       title: 'Recharger Tokens',
       icon: 'wallet',
       color: '#EC4899',
@@ -116,28 +123,25 @@ const ProfileScreen: React.FC = () => {
       description: 'Ajouter des tokens à votre compte'
     },
     {
-      title: 'Modifier le Profil',
-      icon: 'person-outline',
-      color: theme.colors.primary,
-      route: null
+      title: 'Catalogue Services',
+      icon: 'document-outline',
+      color: '#8B5CF6',
+      route: 'Services',
+      description: 'Découvrir tous les services'
     },
     {
       title: 'Paramètres',
       icon: 'settings-outline',
       color: '#757575',
-      route: 'Settings'
+      route: 'Settings',
+      description: 'Configurer votre compte'
     },
     {
-      title: 'Support',
-      icon: 'help-circle-outline',
+      title: 'Contacter le Support',
+      icon: 'chatbubbles-outline',
       color: '#2196F3',
-      route: 'Contact'
-    },
-    {
-      title: 'À propos',
-      icon: 'information-circle-outline',
-      color: '#4CAF50',
-      route: 'About'
+      route: 'Contact',
+      description: 'Besoin d\'aide ?'
     },
   ];
 
@@ -188,8 +192,8 @@ const ProfileScreen: React.FC = () => {
             onPress={() => {
               if (action.route) {
                 (navigation as any).navigate(action.route);
-              } else if (action.title === 'Modifier le Profil') {
-                Alert.alert('Profil', 'Fonctionnalité en cours de développement');
+              } else {
+                Alert.alert('Information', 'Fonctionnalité en cours de développement');
               }
             }}
           >

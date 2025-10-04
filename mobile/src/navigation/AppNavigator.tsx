@@ -15,6 +15,8 @@ import HomeScreen from '../screens/HomeScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import RechargeTokensScreen from '../screens/RechargeTokensScreen';
 import ServicesScreen from '../screens/ServicesScreen';
+import ServicesListScreen from '../screens/ServicesListScreen';
+import ContactScreen from '../screens/ContactScreen';
 
 // Autres écrans (pour la navigation secondaire)
 import SettingsScreen from '../screens/SettingsScreen';
@@ -67,7 +69,7 @@ const AuthStack = () => (
   </Stack.Navigator>
 );
 
-// Tab Navigator moderne avec 5 onglets
+// Tab Navigator moderne avec 5 onglets (aligné sur frontend)
 const MainTabs = () => {
   return (
     <Tab.Navigator
@@ -90,8 +92,6 @@ const MainTabs = () => {
               return <Bell {...iconProps} />;
             case 'Historique':
               return <MagnifyingGlass {...iconProps} />;
-            case 'RechargeTokens':
-              return <Plus {...iconProps} />;
             case 'MonCompte':
               return <User {...iconProps} />;
             default:
@@ -134,7 +134,7 @@ const MainTabs = () => {
         component={ServicesScreen}
         options={{
           title: 'Mes Services',
-          tabBarLabel: 'Services'
+          tabBarLabel: 'Mes Services'
         }}
       />
       <Tab.Screen
@@ -142,23 +142,15 @@ const MainTabs = () => {
         component={DashboardScreen}
         options={{
           title: 'Dashboard',
-          tabBarLabel: 'Stats'
+          tabBarLabel: 'Dashboard'
         }}
       />
       <Tab.Screen
         name="Historique"
         component={SoldeDetailScreen}
         options={{
-          title: 'Historique',
+          title: 'Mon historique',
           tabBarLabel: 'Historique'
-        }}
-      />
-      <Tab.Screen
-        name="RechargeTokens"
-        component={RechargeTokensScreen}
-        options={{
-          title: 'Recharge Tokens',
-          tabBarLabel: 'Recharge'
         }}
       />
       <Tab.Screen
@@ -199,11 +191,26 @@ const MainStack = () => (
       options={{ headerShown: false }}
     />
 
-    {/* Paramètres - Accessible depuis Mon Compte */}
+    {/* Pages secondaires accessibles depuis la navigation */}
     <Stack.Screen
       name="Settings"
       component={SettingsScreen}
       options={{ title: 'Paramètres' }}
+    />
+    <Stack.Screen
+      name="Contact"
+      component={ContactScreen}
+      options={{ title: 'Contact' }}
+    />
+    <Stack.Screen
+      name="Services"
+      component={ServicesListScreen}
+      options={{ title: 'Catalogue Services' }}
+    />
+    <Stack.Screen
+      name="RechargeTokens"
+      component={RechargeTokensScreen}
+      options={{ title: 'Recharger Tokens' }}
     />
   </Stack.Navigator>
 );

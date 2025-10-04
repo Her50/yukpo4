@@ -9,7 +9,7 @@ import GPSSelectorMobile from '../components/GPSSelectorMobile';
 import NotificationHistoryModal from '../components/NotificationHistoryModal';
 import { SafeNativeView } from '../components/SafeNativeView';
 import { useAuth } from '../contexts/AuthContext';
-import { servicesApi, iaApi } from '../services/api';
+import { iaApi, servicesApi } from '../services/api';
 
 const { width } = Dimensions.get('window');
 
