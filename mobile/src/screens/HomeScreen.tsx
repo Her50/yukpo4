@@ -8,7 +8,6 @@ import GPSSelector from '../components/GPSSelector';
 import GPSSelectorMobile from '../components/GPSSelectorMobile';
 import NotificationHistoryModal from '../components/NotificationHistoryModal';
 import { SafeNativeView } from '../components/SafeNativeView';
-import YukpoLogo from '../components/YukpoLogo';
 import { useAuth } from '../contexts/AuthContext';
 
 const { width } = Dimensions.get('window');
@@ -169,16 +168,15 @@ const HomeScreen: React.FC = () => {
 
                 {/* Titre principal */}
                 <View style={styles.titleContainer}>
-                    <View style={styles.brandContainer}>
-                        <YukpoLogo size={50} />
-                        <Text style={styles.brandTitle}>
-                            <Text style={styles.brandYuk}>Yukpo</Text>
-                            <Text style={styles.brandMnang}>mnang</Text>
-                        </Text>
-                    </View>
+                    <Text style={styles.brandTitle}>
+                        <Text style={styles.brandYuk}>Yuk</Text>
+                        <Text style={styles.brandPo}>po</Text>
+                    </Text>
                     <Text style={styles.subtitle}>
                         Créez ou trouvez un service en un instant.{'\n'}
-                        Une description, une image, un audio ou un fichier suffit.
+                        <Text style={styles.subtitleSecondary}>
+                            Une description, une image, un audio ou un fichier suffit.
+                        </Text>
                     </Text>
                 </View>
 
@@ -222,44 +220,19 @@ const HomeScreen: React.FC = () => {
                     onGPSPress={() => setShowGPSMobileModal(true)}
                 />
 
-                {/* Section Comment ça marche */}
-                <View style={styles.howItWorksSection}>
-                    <Text style={styles.sectionTitle}>Comment ça marche ?</Text>
-
-                    <View style={styles.stepCard}>
-                        <View style={styles.stepNumber}>
-                            <Text style={styles.stepNumberText}>1</Text>
-                        </View>
-                        <View style={styles.stepContent}>
-                            <Text style={styles.stepTitle}>Décrivez votre besoin</Text>
-                            <Text style={styles.stepDescription}>
-                                Texte, photo, audio ou fichier
-                            </Text>
-                        </View>
+                {/* Indicateurs visuels */}
+                <View style={styles.indicatorsSection}>
+                    <View style={styles.indicator}>
+                        <Text style={styles.indicatorIcon}>🎯</Text>
+                        <Text style={styles.indicatorText}>Détection intelligente</Text>
                     </View>
-
-                    <View style={styles.stepCard}>
-                        <View style={styles.stepNumber}>
-                            <Text style={styles.stepNumberText}>2</Text>
-                        </View>
-                        <View style={styles.stepContent}>
-                            <Text style={styles.stepTitle}>L'IA analyse</Text>
-                            <Text style={styles.stepDescription}>
-                                Résultats personnalisés instantanés
-                            </Text>
-                        </View>
+                    <View style={styles.indicator}>
+                        <Text style={styles.indicatorIcon}>⚡</Text>
+                        <Text style={styles.indicatorText}>Traitement rapide</Text>
                     </View>
-
-                    <View style={styles.stepCard}>
-                        <View style={styles.stepNumber}>
-                            <Text style={styles.stepNumberText}>3</Text>
-                        </View>
-                        <View style={styles.stepContent}>
-                            <Text style={styles.stepTitle}>Connectez-vous</Text>
-                            <Text style={styles.stepDescription}>
-                                Contact direct avec les prestataires
-                            </Text>
-                        </View>
+                    <View style={styles.indicator}>
+                        <Text style={styles.indicatorIcon}>🔐</Text>
+                        <Text style={styles.indicatorText}>100% sécurisé</Text>
                     </View>
                 </View>
             </ScrollView>
@@ -418,29 +391,31 @@ const styles = StyleSheet.create({
         paddingHorizontal: 20,
         marginBottom: 24,
     },
-    brandContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 12,
-    },
     brandTitle: {
-        fontSize: 42,
+        fontSize: 48,
         fontWeight: 'bold',
-        marginLeft: 12,
+        marginBottom: 16,
+        textAlign: 'center',
     },
     brandYuk: {
-        color: '#6366F1',
+        color: '#FFC107',
         fontWeight: 'bold',
     },
-    brandMnang: {
-        color: '#1A1A1A',
-        fontWeight: '600',
+    brandPo: {
+        color: '#EF4444',
+        fontWeight: 'bold',
     },
     subtitle: {
-        fontSize: 16,
-        color: '#666',
+        fontSize: 18,
+        color: '#374151',
         textAlign: 'center',
-        lineHeight: 24,
+        lineHeight: 28,
+        fontWeight: '500',
+    },
+    subtitleSecondary: {
+        fontSize: 16,
+        color: '#6B7280',
+        fontWeight: '400',
     },
     modeSelector: {
         flexDirection: 'row',
@@ -475,55 +450,26 @@ const styles = StyleSheet.create({
     modeButtonTextActive: {
         color: '#FFF',
     },
-    howItWorksSection: {
+    indicatorsSection: {
+        flexDirection: 'row',
+        justifyContent: 'center',
         marginHorizontal: 20,
         marginTop: 32,
+        gap: 32,
     },
-    sectionTitle: {
-        fontSize: 22,
-        fontWeight: 'bold',
-        color: '#1A1A1A',
-        marginBottom: 20,
-    },
-    stepCard: {
-        flexDirection: 'row',
-        backgroundColor: '#FFF',
-        padding: 16,
-        borderRadius: 16,
-        marginBottom: 16,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.05,
-        shadowRadius: 4,
-        elevation: 2,
-    },
-    stepNumber: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        backgroundColor: '#6366F1',
-        justifyContent: 'center',
+    indicator: {
         alignItems: 'center',
-        marginRight: 16,
-    },
-    stepNumberText: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        color: '#FFF',
-    },
-    stepContent: {
         flex: 1,
     },
-    stepTitle: {
-        fontSize: 16,
-        fontWeight: 'bold',
-        color: '#1A1A1A',
-        marginBottom: 6,
+    indicatorIcon: {
+        fontSize: 32,
+        marginBottom: 8,
     },
-    stepDescription: {
-        fontSize: 14,
-        color: '#666',
-        lineHeight: 20,
+    indicatorText: {
+        fontSize: 12,
+        color: '#6B7280',
+        textAlign: 'center',
+        fontWeight: '400',
     },
     alertOverlay: {
         position: 'absolute',
