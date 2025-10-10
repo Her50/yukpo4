@@ -3,7 +3,8 @@
     "strict": false,
     "jsx": "react-jsx",
     "lib": [
-      "es2022"
+      "es2022",
+      "dom"
     ],
     "target": "esnext",
     "module": "esnext",
