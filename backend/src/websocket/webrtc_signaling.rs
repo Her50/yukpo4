@@ -90,6 +90,7 @@ impl WebRTCSignalingManager {
     }
     
     /// Obtient l'état d'un pair
+    #[allow(dead_code)]
     async fn get_peer_state(&self, user_id: &str) -> Option<PeerState> {
         let peers = self.peers.read().await;
         peers.get(user_id).cloned()

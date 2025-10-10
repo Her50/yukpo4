@@ -24,7 +24,7 @@ pub fn user_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route("/api/user/me/export", get(export_user_data))
         .route("/api/user/me", delete(delete_user_data))
         // Route publique pour récupérer les informations d'un utilisateur par ID
-        .route("/api/users/profile/:user_id", get(get_user_by_id))
+        .route("/api/users/profile/{user_id}", get(get_user_by_id))
         .layer(middleware::from_fn(jwt_auth))
         .with_state(state)
 }
