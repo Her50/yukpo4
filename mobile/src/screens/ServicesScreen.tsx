@@ -1,9 +1,10 @@
 ﻿// Migration vers Phosphor React Native pour un design moderne
-import { CurrencyDollar, MapPin, Plus, Star, User } from 'phosphor-react-native';
+import { Plus, Star } from 'phosphor-react-native';
 import * as React from 'react';
 import { useEffect, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator, TextInput } from 'react-native';
+import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 // Remplacement des composants react-native-paper par des composants natifs
+import ServiceManagementCard from '../components/ServiceManagementCard';
 import { servicesApi } from '../services/api';
 import { theme } from '../theme/theme';
 
@@ -17,24 +18,36 @@ const ServicesScreen: React.FC = () => {
     loadUserServices();
   }, []);
 
+  // Ajouter un bouton de rafraîchissement
+  const handleRefresh = () => {
+    console.log('[ServicesScreen] Rafraîchissement manuel...');
+    loadUserServices();
+  };
+
   const loadUserServices = async () => {
     try {
       setLoading(true);
+      console.log('[ServicesScreen] Début du chargement des services...');
+
       const response = await servicesApi.getUserServices();
+      console.log('[ServicesScreen] Réponse API:', response);
 
       if (response.success && response.data) {
         const servicesData = response.data as any[];
+        console.log('[ServicesScreen] Services chargés:', servicesData.length, 'services');
+        console.log('[ServicesScreen] Données des services:', servicesData);
         setServices(servicesData);
-        console.log('[ServicesScreen] Services chargés:', servicesData.length);
       } else {
+        console.log('[ServicesScreen] Aucun service trouvé ou erreur API');
         setServices([]);
       }
     } catch (error) {
-      console.error('Erreur chargement services:', error);
+      console.error('[ServicesScreen] Erreur chargement services:', error);
       Alert.alert('Erreur', 'Impossible de charger vos services');
       setServices([]);
     } finally {
       setLoading(false);
+      console.log('[ServicesScreen] Chargement terminé');
     }
   };
 
@@ -55,9 +68,58 @@ const ServicesScreen: React.FC = () => {
     return '';
   };
 
+  // Helper pour extraire le titre du service
+  const extractServiceTitle = (service: any): string => {
+    if (!service) return 'Service sans titre';
+
+    // Essayer différents champs possibles pour le titre
+    const title = extractValue(service.data?.titre_service) ||
+      extractValue(service.data?.title) ||
+      extractValue(service.nom) ||
+      extractValue(service.title) ||
+      extractValue(service.titre);
+
+    return title || 'Service sans titre';
+  };
+
+  // Helper pour extraire la description du service
+  const extractServiceDescription = (service: any): string => {
+    if (!service) return '';
+
+    const description = extractValue(service.data?.description) ||
+      extractValue(service.description) ||
+      extractValue(service.desc);
+
+    return description || '';
+  };
+
+  // Helper pour extraire le prix du service
+  const extractServicePrice = (service: any): string => {
+    if (!service) return 'Prix sur demande';
+
+    const price = extractValue(service.data?.price) ||
+      extractValue(service.data?.prix) ||
+      extractValue(service.price) ||
+      extractValue(service.prix);
+
+    return price || 'Prix sur demande';
+  };
+
+  // Helper pour extraire la localisation du service
+  const extractServiceLocation = (service: any): string => {
+    if (!service) return 'Non spécifié';
+
+    const location = extractValue(service.data?.location) ||
+      extractValue(service.data?.gps_zone) ||
+      extractValue(service.gps_zone) ||
+      extractValue(service.location);
+
+    return location || 'Non spécifié';
+  };
+
   const filteredServices = services.filter(service => {
-    const serviceTitle = extractValue(service.data?.title) || extractValue(service.nom) || '';
-    const serviceDescription = extractValue(service.data?.description) || extractValue(service.description) || '';
+    const serviceTitle = extractServiceTitle(service);
+    const serviceDescription = extractServiceDescription(service);
     const serviceCategory = extractValue(service.data?.category) || extractValue(service.categorie) || '';
     
     const matchesSearch = serviceTitle.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -81,6 +143,15 @@ const ServicesScreen: React.FC = () => {
       <View style={styles.header}>
         <Text style={styles.title}>Mes Services</Text>
         <Text style={styles.subtitle}>Gérez tous vos services en un coup d'œil</Text>
+        <TouchableOpacity
+          style={styles.refreshButton}
+          onPress={handleRefresh}
+          disabled={loading}
+        >
+          <Text style={styles.refreshButtonText}>
+            {loading ? 'Chargement...' : '🔄 Actualiser'}
+          </Text>
+        </TouchableOpacity>
       </View>
 
       {/* Barre de recherche */}
@@ -162,88 +233,17 @@ const ServicesScreen: React.FC = () => {
             </TouchableOpacity>
           </View>
         ) : (
-          filteredServices.map((service) => {
-            const serviceTitle = extractValue(service.data?.title) || extractValue(service.nom) || 'Service sans titre';
-            const serviceDescription = extractValue(service.data?.description) || extractValue(service.description) || '';
-            const servicePrice = extractValue(service.data?.price) || extractValue(service.price) || 'Prix sur demande';
-            const serviceLocation = extractValue(service.data?.location) || extractValue(service.gps_zone) || 'Non spécifié';
-            const serviceRating = typeof service.rating === 'number' ? service.rating : 0;
-
-            return (
-              <View key={service.id} style={styles.serviceCard}>
-                <View style={styles.serviceContent}>
-                  <View style={styles.serviceHeader}>
-                    <View style={styles.serviceInfo}>
-                      <Text style={styles.serviceTitle}>{serviceTitle}</Text>
-                      <Text style={styles.serviceDescription}>
-                        {serviceDescription}
-                      </Text>
-                    </View>
-                    {serviceRating > 0 && (
-                      <View style={styles.serviceRating}>
-                        <Star size={16} color="#FFD700" fill="#FFD700" />
-                        <Text style={styles.ratingText}>{serviceRating.toFixed(1)}</Text>
-                      </View>
-                    )}
-                  </View>
-
-                  <View style={styles.serviceDetails}>
-                    <View style={styles.serviceDetail}>
-                      <MapPin size={16} color={theme.colors.textSecondary} />
-                      <Text style={styles.detailText}>{serviceLocation}</Text>
-                    </View>
-                    <View style={styles.serviceDetail}>
-                      <CurrencyDollar size={16} color={theme.colors.primary} />
-                      <Text style={[styles.detailText, styles.priceText]}>{servicePrice}</Text>
-                    </View>
-                  </View>
-
-                  <View style={styles.serviceActions}>
-                    <TouchableOpacity
-                      onPress={() => {
-                        console.log('Voir détails:', service.id);
-                      }}
-                      style={styles.actionButton}
-                    >
-                      <Text style={styles.actionButtonText}>Voir détails</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      onPress={() => {
-                        console.log('Modifier:', service.id);
-                      }}
-                      style={styles.editButton}
-                    >
-                      <Text style={styles.editButtonText}>Modifier</Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              </View>
-            );
-          })
+          filteredServices.map((service) => (
+            <ServiceManagementCard
+              key={service.id}
+              service={service}
+              onServiceUpdated={loadUserServices}
+              onServiceDeleted={loadUserServices}
+            />
+          ))
         )}
       </View>
 
-      {/* Call to action */}
-      <View style={styles.ctaContainer}>
-        <View style={styles.ctaCard}>
-          <View style={styles.ctaContent}>
-            <Plus size={48} color={theme.colors.primary} />
-            <Text style={styles.ctaTitle}>Vous proposez un service ?</Text>
-            <Text style={styles.ctaDescription}>
-              Rejoignez notre plateforme et commencez à proposer vos services dès aujourd'hui.
-            </Text>
-            <TouchableOpacity
-              onPress={() => {
-                // Navigation vers la création de service
-                console.log('Créer un service');
-              }}
-              style={styles.ctaButton}
-            >
-              <Text style={styles.ctaButtonText}>Créer un service</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </View>
     </ScrollView>
   );
 };
@@ -425,50 +425,6 @@ const styles = StyleSheet.create({
   contactButton: {
     flex: 1,
   },
-  ctaContainer: {
-    padding: 20,
-    paddingBottom: 40,
-  },
-  ctaCard: {
-    backgroundColor: 'white',
-    borderRadius: 12,
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-  },
-  ctaContent: {
-    alignItems: 'center',
-    padding: 30,
-  },
-  ctaTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: theme.colors.text,
-    marginTop: 15,
-    marginBottom: 10,
-    textAlign: 'center',
-  },
-  ctaDescription: {
-    fontSize: 14,
-    color: theme.colors.textSecondary,
-    textAlign: 'center',
-    marginBottom: 20,
-    lineHeight: 20,
-  },
-  ctaButton: {
-    backgroundColor: theme.colors.primary,
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
-    marginTop: 16,
-  },
-  ctaButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '600',
-  },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -524,6 +480,19 @@ const styles = StyleSheet.create({
   },
   editButtonText: {
     color: '#6B7280',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  refreshButton: {
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    marginTop: 10,
+    alignSelf: 'center',
+  },
+  refreshButtonText: {
+    color: 'white',
     fontSize: 14,
     fontWeight: '600',
   },

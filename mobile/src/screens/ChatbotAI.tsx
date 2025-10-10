@@ -11,7 +11,7 @@ export default function ChatbotAI() {
 
   const handleAsk = async () => {
     try {
-      const res = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'https://yukpomnang.onrender.com'}/api/ask`, {
+      const res = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001'}/api/ask`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt }),

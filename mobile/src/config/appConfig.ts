@@ -5,7 +5,7 @@ export const appConfig = {
 
   // Configuration de l'API
   api: {
-    baseUrl: process.env.EXPO_PUBLIC_API_URL || 'https://yukpomnang.onrender.com',
+    baseUrl: process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001',
     timeout: 30000,
     retries: 3
   },

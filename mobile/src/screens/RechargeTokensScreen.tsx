@@ -122,7 +122,7 @@ const RechargeTokensScreen: React.FC = () => {
         : parseInt(customAmount) || 0;
 
       // Appel API pour initier le paiement
-      const response = await fetch('https://yukpomnang.onrender.com/api/payments/initiate', {
+      const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001'}/api/payments/initiate`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -427,9 +427,17 @@ const RechargeTokensScreen: React.FC = () => {
         {/* Header */}
         <View style={styles.header}>
           <Title style={styles.title}>💳 Recharger mes tokens</Title>
-          <Text style={styles.subtitle}>
-            Solde actuel: {user?.credits?.toLocaleString() || '0'} XAF
-          </Text>
+          <View style={styles.balanceContainer}>
+            <Text style={styles.subtitle}>
+              Solde actuel: {user?.credits?.toLocaleString() || '0'} XAF
+            </Text>
+            <TouchableOpacity
+              style={styles.historyButton}
+              onPress={() => (navigation as any).navigate('SoldeDetail')}
+            >
+              <Text style={styles.historyButtonText}>📊 Voir l'historique</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Étapes */}
@@ -488,6 +496,23 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 16,
     color: theme.colors.textSecondary,
+  },
+  balanceContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  historyButton: {
+    backgroundColor: theme.colors.primary,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  historyButtonText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: '600',
   },
   stepsIndicator: {
     flexDirection: 'row',

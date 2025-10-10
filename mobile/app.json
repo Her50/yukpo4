@@ -17,7 +17,11 @@
         "ios": {
             "supportsTablet": true,
             "bundleIdentifier": "com.hernandezlele.yukpomnangmobile",
-            "buildNumber": "1.0.0"
+            "buildNumber": "1.0.0",
+            "infoPlist": {
+                "NSCameraUsageDescription": "Yukpomnang a besoin d'accéder à votre caméra pour les appels vidéo.",
+                "NSMicrophoneUsageDescription": "Yukpomnang a besoin d'accéder à votre microphone pour les appels audio et vidéo."
+            }
         },
         "android": {
             "package": "com.hernandezlele.yukpomnangmobile",
@@ -38,9 +42,13 @@
                 "READ_EXTERNAL_STORAGE",
                 "WRITE_EXTERNAL_STORAGE",
                 "RECORD_AUDIO",
+                "MODIFY_AUDIO_SETTINGS",
                 "INTERNET",
                 "ACCESS_NETWORK_STATE",
-                "ACCESS_WIFI_STATE"
+                "ACCESS_WIFI_STATE",
+                "BLUETOOTH",
+                "BLUETOOTH_ADMIN",
+                "BLUETOOTH_CONNECT"
             ]
         },
         "web": {
@@ -56,7 +64,8 @@
                     "microphonePermission": "Autoriser Yukpomnang à accéder au microphone pour enregistrer des messages audio."
                 }
             ],
-            "expo-font"
+            "expo-font",
+            "@config-plugins/react-native-webrtc"
         ],
         "extra": {
             "eas": {

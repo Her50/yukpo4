@@ -1,59 +1,51 @@
 // Configuration WebSocket pour l'application mobile
-import { Platform } from 'react-native';
+// @ts-ignore
 
 export const WEBSOCKET_CONFIG = {
   // WebSockets activés
   enabled: true,
-  
+
   // URLs des WebSockets selon la plateforme
   urls: {
     // WebSocket pour les notifications
     notifications: (userId: string | number) => {
-      const baseUrl = Platform.OS === 'ios' 
-        ? 'wss://yukpomnang.onrender.com' 
-        : 'wss://yukpomnang.onrender.com';
+      const baseUrl = process.env.EXPO_PUBLIC_WS_URL || 'wss://yukpomnang.onrender.com';
       return `${baseUrl}/ws/notifications/${userId}`;
     },
-    
+
     // WebSocket pour le chat
     chat: (clientId: string | number) => {
-      const baseUrl = Platform.OS === 'ios' 
-        ? 'wss://yukpomnang.onrender.com' 
-        : 'wss://yukpomnang.onrender.com';
+      const baseUrl = process.env.EXPO_PUBLIC_WS_URL || 'wss://yukpomnang.onrender.com';
       return `${baseUrl}/ws/chat/${clientId}`;
     },
-    
+
     // WebSocket pour le statut des prestataires
     status: (userId: string | number) => {
-      const baseUrl = Platform.OS === 'ios' 
-        ? 'wss://yukpomnang.onrender.com' 
-        : 'wss://yukpomnang.onrender.com';
+      const baseUrl = process.env.EXPO_PUBLIC_WS_URL || 'wss://yukpomnang.onrender.com';
       return `${baseUrl}/ws/status/${userId}`;
     },
-    
+
     // WebSocket pour les paiements
     payments: (userId: string | number) => {
-      const baseUrl = Platform.OS === 'ios' 
-        ? 'wss://yukpomnang.onrender.com' 
-        : 'wss://yukpomnang.onrender.com';
+      const baseUrl = process.env.EXPO_PUBLIC_WS_URL || 'wss://yukpomnang.onrender.com';
       return `${baseUrl}/ws/payments/${userId}`;
     }
   },
-  
+
   // Configuration des reconnexions
   reconnect: {
     maxAttempts: 5,
     delay: 1000, // 1 seconde
     maxDelay: 30000, // 30 secondes
   },
-  
+
   // Timeouts
   timeouts: {
     connection: 10000, // 10 secondes
     ping: 30000, // 30 secondes
     pong: 5000, // 5 secondes
   },
-  
+
   // Messages de statut
   messages: {
     enabled: '✅ WebSockets activés - Fonctionnalités en temps réel disponibles',
@@ -73,12 +65,12 @@ export const getWebSocketUrl = (type: keyof typeof WEBSOCKET_CONFIG.urls, ...par
   if (!isWebSocketEnabled()) {
     throw new Error('WebSockets are disabled');
   }
-  
+
   const urlFn = WEBSOCKET_CONFIG.urls[type];
   if (typeof urlFn === 'function') {
     return urlFn(params[0] as string | number);
   }
-  
+
   throw new Error(`Invalid WebSocket type: ${type}`);
 };
 

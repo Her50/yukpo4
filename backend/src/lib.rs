@@ -47,7 +47,10 @@ use crate::routes::{
 use crate::routes::image_search_routes::image_search_routes;
 use crate::routes::echange_routes;
 use crate::routers::router_yukpo::router_yukpo;
-use crate::websocket::websocket_handler::create_websocket_router;
+use crate::websocket::{
+    websocket_handler::create_websocket_router,
+    webrtc_signaling::{create_webrtc_router, create_webrtc_manager},
+};
 // use crate::routes::fournitures_routes;
 async fn healthz() -> Json<serde_json::Value> {
     Json(serde_json::json!({
@@ -134,6 +137,9 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
     let yukpo = router_yukpo(state.clone());
     // Routes WebSocket pour le statut en ligne et les notifications
     let websocket = create_websocket_router();
+    // Routes WebSocket pour le signaling WebRTC
+    let webrtc_manager = create_webrtc_manager();
+    let webrtc = create_webrtc_router(webrtc_manager);
     
     let app = Router::new()
         .route("/", get(|| async { "Yukpomnang Backend API - Service actif" }))
@@ -152,6 +158,7 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .merge(prestataires)
         .merge(image_search)
         .merge(websocket)
+        .merge(webrtc)  // Ajouter le router WebRTC
         .route("/fournitures/gestion", axum::routing::post(fournitures_axum_handler))
         .layer(axum::middleware::from_fn(cors_middleware))  // ← AJOUTER CETTE LIGNE
         .with_state(state);    // Ajouter les routes WebSocket s?par?ment

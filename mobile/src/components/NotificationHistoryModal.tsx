@@ -1,6 +1,4 @@
-﻿// Remplacement des Ionicons par des emojis pour éviter les crashes
-import * as React from 'react';
-import { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import {
   Alert,
   Modal,
@@ -11,9 +9,8 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { Badge, Card, Title } from 'react-native-paper';
 import { useAuth } from '../contexts/AuthContext';
-import { notificationsApi } from '../services/api';
+import { apiGet } from '../services/api';
 import { theme } from '../theme/theme';
 
 interface NotificationItem {
@@ -21,12 +18,11 @@ interface NotificationItem {
   type: 'info' | 'warning' | 'success' | 'error';
   title: string;
   message: string;
-  timestamp: Date;
+  timestamp: Date | string;
   isRead: boolean;
   category: 'service' | 'system' | 'payment' | 'security';
   actionUrl?: string;
   actionText?: string;
-  metadata?: any;
 }
 
 interface NotificationHistoryModalProps {
@@ -43,8 +39,6 @@ const NotificationHistoryModal: React.FC<NotificationHistoryModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<string>('all');
-  const [filterCategory, setFilterCategory] = useState<string>('all');
-  const [showRead, setShowRead] = useState(true);
 
   useEffect(() => {
     if (isOpen && user?.id) {
@@ -55,47 +49,18 @@ const NotificationHistoryModal: React.FC<NotificationHistoryModalProps> = ({
   const loadNotifications = async () => {
     setLoading(true);
     try {
-      // Vérifier si l'API existe avant de l'appeler
-      if (notificationsApi && typeof notificationsApi.getNotifications === 'function') {
-        const response = await notificationsApi.getNotifications();
+      // Appel API pour récupérer les vraies notifications
+      const response = await apiGet(`/api/notifications/user/${user?.id}`);
 
-        if (response && response.data) {
-          const notificationsData = (response.data as NotificationItem[]) || [];
-          setNotifications(notificationsData);
-        } else {
-          setNotifications([]);
-        }
+      if (response.data && Array.isArray(response.data)) {
+        setNotifications(response.data);
       } else {
-        // Fallback: données mock pour éviter l'erreur
-        console.warn('API notifications non disponible, utilisation de données mock');
-        const mockNotifications: NotificationItem[] = [
-          {
-            id: '1',
-            type: 'info',
-            title: 'Bienvenue sur Yukpo',
-            message: 'Votre compte a été créé avec succès',
-            timestamp: new Date(),
-            isRead: false,
-            category: 'system'
-          }
-        ];
-        setNotifications(mockNotifications);
+        setNotifications([]);
       }
     } catch (error) {
       console.error('Erreur chargement notifications:', error);
-      // En cas d'erreur, afficher des données mock au lieu d'une alerte
-      const mockNotifications: NotificationItem[] = [
-        {
-          id: '1',
-          type: 'info',
-          title: 'Bienvenue sur Yukpo',
-          message: 'Votre compte a été créé avec succès',
-          timestamp: new Date(),
-          isRead: false,
-          category: 'system'
-        }
-      ];
-      setNotifications(mockNotifications);
+      // En cas d'erreur API, afficher un tableau vide au lieu de données mockées
+      setNotifications([]);
     } finally {
       setLoading(false);
     }
@@ -106,19 +71,20 @@ const NotificationHistoryModal: React.FC<NotificationHistoryModalProps> = ({
       const matchesSearch = notification.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
         notification.message.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesType = filterType === 'all' || notification.type === filterType;
-      const matchesCategory = filterCategory === 'all' || notification.category === filterCategory;
-      const matchesRead = showRead || !notification.isRead;
-      return matchesSearch && matchesType && matchesCategory && matchesRead;
+      return matchesSearch && matchesType;
     })
-    .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+    .sort((a, b) => {
+      const dateA = typeof a.timestamp === 'string' ? new Date(a.timestamp) : a.timestamp;
+      const dateB = typeof b.timestamp === 'string' ? new Date(b.timestamp) : b.timestamp;
+      return dateB.getTime() - dateA.getTime();
+    });
 
   const markAsRead = async (notificationId: string) => {
     try {
-      // Vérifier si l'API existe avant de l'appeler
-      if (notificationsApi && typeof notificationsApi.markAsRead === 'function') {
-        await notificationsApi.markAsRead(notificationId);
-      }
-      // Mettre à jour l'état local dans tous les cas
+      // Appel API pour marquer comme lu
+      await apiGet(`/api/notifications/${notificationId}/mark-read`);
+
+      // Mettre à jour le state local
       setNotifications(prev =>
         prev.map(notif =>
           notif.id === notificationId
@@ -127,49 +93,45 @@ const NotificationHistoryModal: React.FC<NotificationHistoryModalProps> = ({
         )
       );
     } catch (error) {
-      console.error('Erreur marquer comme lu:', error);
-      // Mettre à jour l'état local même en cas d'erreur
-      setNotifications(prev =>
-        prev.map(notif =>
-          notif.id === notificationId
-            ? { ...notif, isRead: true }
-            : notif
-        )
-      );
+      console.error('Erreur marquage notification comme lue:', error);
+      Alert.alert('Erreur', 'Impossible de marquer la notification comme lue');
     }
   };
 
   const markAllAsRead = async () => {
     try {
-      // TODO: Implémenter l'API pour marquer toutes les notifications comme lues
+      // Appel API pour tout marquer comme lu
+      await apiGet(`/api/notifications/user/${user?.id}/mark-all-read`);
+
+      // Mettre à jour le state local
       setNotifications(prev =>
         prev.map(notif => ({ ...notif, isRead: true }))
       );
       Alert.alert('Succès', 'Toutes les notifications ont été marquées comme lues');
     } catch (error) {
-      console.error('Erreur marquer tout comme lu:', error);
+      console.error('Erreur marquage toutes notifications:', error);
+      Alert.alert('Erreur', 'Impossible de marquer toutes les notifications comme lues');
     }
   };
 
   const deleteNotification = async (notificationId: string) => {
     try {
-      // Vérifier si l'API existe avant de l'appeler
-      if (notificationsApi && typeof notificationsApi.deleteNotification === 'function') {
-        await notificationsApi.deleteNotification(notificationId);
-      }
-      // Mettre à jour l'état local dans tous les cas
+      // Appel API pour supprimer
+      await apiGet(`/api/notifications/${notificationId}/delete`);
+
+      // Mettre à jour le state local
       setNotifications(prev => prev.filter(notif => notif.id !== notificationId));
       Alert.alert('Supprimé', 'Notification supprimée');
     } catch (error) {
       console.error('Erreur suppression notification:', error);
-      // Mettre à jour l'état local même en cas d'erreur
-      setNotifications(prev => prev.filter(notif => notif.id !== notificationId));
+      Alert.alert('Erreur', 'Impossible de supprimer la notification');
     }
   };
 
-  const formatTime = (date: Date) => {
+  const formatTime = (date: Date | string) => {
     const now = new Date();
-    const diff = now.getTime() - date.getTime();
+    const dateObj = typeof date === 'string' ? new Date(date) : date;
+    const diff = now.getTime() - dateObj.getTime();
     const minutes = Math.floor(diff / (1000 * 60));
     const hours = Math.floor(diff / (1000 * 60 * 60));
     const days = Math.floor(diff / (1000 * 60 * 60 * 24));
@@ -180,16 +142,6 @@ const NotificationHistoryModal: React.FC<NotificationHistoryModalProps> = ({
   };
 
   const getTypeIcon = (type: string) => {
-    switch (type) {
-      case 'success': return 'checkmark-circle';
-      case 'warning': return 'warning';
-      case 'error': return 'alert-circle';
-      case 'info': return 'information-circle';
-      default: return 'notifications';
-    }
-  };
-
-  const getTypeIconEmoji = (type: string) => {
     switch (type) {
       case 'success': return '✅';
       case 'warning': return '⚠️';
@@ -209,17 +161,11 @@ const NotificationHistoryModal: React.FC<NotificationHistoryModalProps> = ({
     }
   };
 
-  const getCategoryColor = (category: string) => {
-    switch (category) {
-      case 'service': return '#9C27B0';
-      case 'payment': return '#4CAF50';
-      case 'system': return '#2196F3';
-      case 'security': return '#F44336';
-      default: return '#9E9E9E';
-    }
-  };
-
   const unreadCount = notifications.filter(n => !n.isRead).length;
+
+  if (!isOpen) {
+    return null;
+  }
 
   return (
     <Modal
@@ -232,11 +178,13 @@ const NotificationHistoryModal: React.FC<NotificationHistoryModalProps> = ({
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.headerLeft}>
-            <Title style={styles.headerTitle}>
-              🔔 Historique des notifications
-            </Title>
+            <Text style={styles.headerTitle}>
+              🔔 Notifications
+            </Text>
             {unreadCount > 0 && (
-              <Badge style={styles.unreadBadge}>{`${unreadCount} non lues`}</Badge>
+              <View style={styles.unreadBadge}>
+                <Text style={styles.unreadBadgeText}>{unreadCount} non lues</Text>
+              </View>
             )}
           </View>
 
@@ -279,7 +227,7 @@ const NotificationHistoryModal: React.FC<NotificationHistoryModalProps> = ({
               onPress={() => setFilterType('all')}
             >
               <Text style={[styles.filterChipText, filterType === 'all' && styles.filterChipTextActive]}>
-                Tous les types
+                Tous
               </Text>
             </TouchableOpacity>
 
@@ -294,18 +242,6 @@ const NotificationHistoryModal: React.FC<NotificationHistoryModalProps> = ({
                 </Text>
               </TouchableOpacity>
             ))}
-
-            <TouchableOpacity
-              style={[styles.filterChip, !showRead && styles.filterChipActive]}
-              onPress={() => setShowRead(!showRead)}
-            >
-              <Text style={styles.filterIcon}>
-                {showRead ? "🙈" : "👁️"}
-              </Text>
-              <Text style={[styles.filterChipText, !showRead && styles.filterChipTextActive]}>
-                {showRead ? 'Masquer lues' : 'Afficher lues'}
-              </Text>
-            </TouchableOpacity>
           </ScrollView>
         </View>
 
@@ -322,18 +258,18 @@ const NotificationHistoryModal: React.FC<NotificationHistoryModalProps> = ({
             </View>
           ) : (
             filteredNotifications.map((notification) => (
-              <Card
+              <View
                 key={notification.id}
                 style={[
                   styles.notificationCard,
                   !notification.isRead && styles.unreadCard
                 ]}
               >
-                <Card.Content>
+                <View style={styles.cardContent}>
                   <View style={styles.notificationHeader}>
                     <View style={styles.notificationLeft}>
                       <Text style={styles.typeIcon}>
-                        {getTypeIconEmoji(notification.type)}
+                        {getTypeIcon(notification.type)}
                       </Text>
 
                       <View style={styles.notificationInfo}>
@@ -346,12 +282,9 @@ const NotificationHistoryModal: React.FC<NotificationHistoryModalProps> = ({
                           </Text>
 
                           <View style={styles.badgesContainer}>
-                            <Badge style={[styles.typeBadge, { backgroundColor: getTypeColor(notification.type) }]}>
-                              {notification.type}
-                            </Badge>
-                            <Badge style={[styles.categoryBadge, { backgroundColor: getCategoryColor(notification.category) }]}>
-                              {notification.category}
-                            </Badge>
+                            <View style={[styles.typeBadge, { backgroundColor: getTypeColor(notification.type) }]}>
+                              <Text style={styles.badgeText}>{notification.type}</Text>
+                            </View>
                           </View>
                         </View>
 
@@ -372,17 +305,6 @@ const NotificationHistoryModal: React.FC<NotificationHistoryModalProps> = ({
                   </View>
 
                   <View style={styles.notificationActions}>
-                    {notification.actionUrl && (
-                      <TouchableOpacity
-                        onPress={() => {
-                          // TODO: Naviguer vers l'action
-                          Alert.alert('Action', `Action: ${notification.actionText || 'Voir'}`);
-                        }}
-                      >
-                        <Text>{notification.actionText || 'Voir'}</Text>
-                      </TouchableOpacity>
-                    )}
-
                     <View style={styles.actionButtons}>
                       {!notification.isRead && (
                         <TouchableOpacity
@@ -398,13 +320,13 @@ const NotificationHistoryModal: React.FC<NotificationHistoryModalProps> = ({
                         style={styles.actionButton}
                         onPress={() => deleteNotification(notification.id)}
                       >
-                        <Text style={styles.deleteIcon}>🗑️</Text>
+                        <Text style={styles.actionIcon}>🗑️</Text>
                         <Text style={[styles.actionButtonText, { color: '#F44336' }]}>Supprimer</Text>
                       </TouchableOpacity>
                     </View>
                   </View>
-                </Card.Content>
-              </Card>
+                </View>
+              </View>
             ))
           )}
         </ScrollView>
@@ -439,6 +361,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#F44336',
     marginTop: 4,
     alignSelf: 'flex-start',
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  unreadBadgeText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: 'bold',
   },
   headerRight: {
     flexDirection: 'row',
@@ -452,6 +382,17 @@ const styles = StyleSheet.create({
   markAllText: {
     fontSize: 12,
     marginLeft: 4,
+  },
+  checkIcon: {
+    fontSize: 16,
+  },
+  closeIconButton: {
+    padding: 8,
+  },
+  closeIconText: {
+    fontSize: 24,
+    color: theme.colors.text,
+    fontWeight: 'bold',
   },
   filtersContainer: {
     backgroundColor: 'white',
@@ -470,32 +411,6 @@ const styles = StyleSheet.create({
     fontSize: 20,
     marginRight: 8,
   },
-  checkIcon: {
-    fontSize: 20,
-    marginRight: 8,
-  },
-  filterIcon: {
-    fontSize: 16,
-    marginRight: 4,
-  },
-  emptyIcon: {
-    fontSize: 48,
-    textAlign: 'center',
-    opacity: 0.5,
-    marginBottom: 16,
-  },
-  typeIcon: {
-    fontSize: 24,
-    marginRight: 12,
-  },
-  actionIcon: {
-    fontSize: 16,
-    marginRight: 4,
-  },
-  deleteIcon: {
-    fontSize: 16,
-    marginRight: 4,
-  },
   searchInput: {
     flex: 1,
     fontSize: 16,
@@ -507,8 +422,6 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
   },
   filterChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
     paddingHorizontal: 12,
     paddingVertical: 6,
     backgroundColor: theme.colors.surface,
@@ -524,7 +437,6 @@ const styles = StyleSheet.create({
   filterChipText: {
     fontSize: 12,
     color: theme.colors.text,
-    marginLeft: 4,
   },
   filterChipTextActive: {
     color: 'white',
@@ -548,19 +460,34 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  emptyIcon: {
+    fontSize: 48,
+    textAlign: 'center',
+    opacity: 0.5,
+    marginBottom: 16,
+  },
   emptyText: {
     fontSize: 16,
     color: theme.colors.textSecondary,
     marginTop: 16,
   },
   notificationCard: {
+    backgroundColor: 'white',
+    borderRadius: 12,
     marginBottom: 12,
-    elevation: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   unreadCard: {
     backgroundColor: '#E3F2FD',
     borderLeftWidth: 4,
     borderLeftColor: theme.colors.primary,
+  },
+  cardContent: {
+    padding: 16,
   },
   notificationHeader: {
     flexDirection: 'row',
@@ -570,9 +497,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flex: 1,
   },
+  typeIcon: {
+    fontSize: 24,
+    marginRight: 12,
+  },
   notificationInfo: {
     flex: 1,
-    marginLeft: 12,
   },
   notificationTitleRow: {
     flexDirection: 'row',
@@ -595,10 +525,14 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   typeBadge: {
-    fontSize: 10,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
   },
-  categoryBadge: {
+  badgeText: {
+    color: 'white',
     fontSize: 10,
+    fontWeight: 'bold',
   },
   notificationMessage: {
     fontSize: 14,
@@ -623,7 +557,7 @@ const styles = StyleSheet.create({
   },
   notificationActions: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-end',
     alignItems: 'center',
   },
   actionButtons: {
@@ -634,25 +568,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
+  actionIcon: {
+    fontSize: 16,
+    marginRight: 4,
+  },
   actionButtonText: {
     fontSize: 12,
     color: theme.colors.text,
-    marginLeft: 4,
-  },
-  closeIconButton: {
-    padding: 8,
-  },
-  closeIconText: {
-    fontSize: 24,
-    color: theme.colors.text,
-    fontWeight: 'bold',
   },
 });
 
 export default NotificationHistoryModal;
-
-
-
-
-
-

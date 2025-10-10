@@ -16,7 +16,8 @@ import {
 import { Avatar, IconButton, Title } from 'react-native-paper';
 import { useAuth } from '../contexts/AuthContext';
 import { theme } from '../theme/theme';
-import ChatModal from './ChatModal';
+// @ts-ignore
+import ChatModalMobile from './ChatModalMobile';
 
 interface ChatMessage {
   id: string;
@@ -517,19 +518,16 @@ const ChatHistoryModal: React.FC<ChatHistoryModalProps> = ({
         </ScrollView>
       </View>
 
-      {/* ChatModal intégré */}
-      <ChatModal
+      {/* ChatModalMobile avec WebSocket intégré */}
+      <ChatModalMobile
         visible={showChatModal}
         service={selectedService}
-        prestataire={selectedPrestataire}
+        prestataireInfo={selectedPrestataire}
+        user={user}
         onClose={() => {
           setShowChatModal(false);
           setSelectedService(null);
           setSelectedPrestataire(null);
-        }}
-        onSendMessage={(message) => {
-          console.log('Message envoyé via ChatModal:', message);
-          // Ici vous pourriez synchroniser avec l'historique des chats
         }}
       />
     </Modal>

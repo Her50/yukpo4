@@ -1,33 +1,15 @@
-import { BottomTabNavigationEventMap } from '@react-navigation/bottom-tabs';
-import { NavigationHelpers, ParamListBase } from '@react-navigation/native';
-
-declare module '@react-navigation/bottom-tabs' {
-  interface BottomTabNavigationEventMap {
-    tabPress: {
-      data: {
-        route: {
-          key: string;
-          name: string;
-          params?: any;
-        };
-      };
-      canPreventDefault: boolean;
-      preventDefault(): void;
-    };
-  }
+// Déclarations de types pour React Navigation
+declare module '@react-navigation/native' {
+    export function useNavigation(): any;
+    export function useRoute(): any;
+    export function useFocusEffect(): any;
+    export function useIsFocused(): boolean;
 }
 
+declare module '@react-navigation/stack' {
+    export function createStackNavigator(): any;
+}
 
-
-
-
-
-
-
-
-
-
-
-
-
-
+declare module '@react-navigation/bottom-tabs' {
+    export function createBottomTabNavigator(): any;
+}

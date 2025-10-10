@@ -1,23 +1,19 @@
 ﻿// src/components/intelligence/FormulaireYukpoIntelligent.tsx
 
-import * as React from "react";
-import { useEffect, useState, useMemo, useContext } from 'react';
-import { Text } from 'react-native';
-import { View } from 'react-native';
-import { TouchableOpacity } from 'react-native';
-import { useLocation, useNavigation } from 'react-router-dom';
 import AppLayout from '@/components/layout/AppLayout';
-import { Button } from '@/components/ui/buttons';
+import * as React from "react";
+import { useContext, useEffect, useMemo, useState } from 'react';
+import { Text, TouchableOpacity, View } from 'react-native';
+import { useLocation, useNavigation } from 'react-router-dom';
 // import { toast } from 'react-hot-toast'; // Removed - not available in React Native
-import { dispatchChampsFormulaireIA, ComposantFrontend } from '@/utils/form_constraint_dispatcher';
 import DynamicField from '@/components/intelligence/DynamicFields';
-import { appelerMoteurIA, creerService } from '@/lib/yukpoaclient';
-import { MultiModalInput } from '@/types/yukpoIaClient';
-import { useUser } from '@/hooks/useUser';
 import { GlobalIAStatsContext, GlobalIAStatsPanel } from '@/components/intelligence/GlobalIAStats';
-import axios from 'axios';
-import { showServiceCreationToast, showServiceCreationErrorToast } from '@/utils/toastUtils';
 import MapModal from '@/components/ui/MapModal';
+import { useUser } from '@/hooks/useUser';
+import { appelerMoteurIA, creerService } from '@/lib/yukpoaclient';
+import { ComposantFrontend, dispatchChampsFormulaireIA } from '@/utils/form_constraint_dispatcher';
+import { showServiceCreationErrorToast } from '@/utils/toastUtils';
+import axios from 'axios';
 import { MapPin } from 'lucide-react';
 
 import MediaManager from '@/components/ui/MediaManager';
@@ -61,17 +57,17 @@ export default function FormulaireDemandeOuService() {
       if (mode === 'edit' && serviceId) {
         try {
           const token = localStorage.getItem('token');
-          const response = await axios.get(`https://yukpomnang.onrender.com/api/services/${serviceId}`, {
+          const response = await axios.get(`${process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001'}/api/services/${serviceId}`, {
             headers: { Authorization: `Bearer ${token}` }
           });
-          
+
           const serviceData = response.data;
           console.log('Données du service à modifier:', serviceData);
-          
+
           // Pré-remplir les champs avec les données existantes
           if (serviceData.data) {
             const existingValues: Record<string, any> = {};
-            
+
             // Extraire les valeurs des champs existants
             Object.keys(serviceData.data).forEach(key => {
               const fieldData = serviceData.data[key];
@@ -81,11 +77,11 @@ export default function FormulaireDemandeOuService() {
                 existingValues[key] = fieldData;
               }
             });
-            
+
             setValeursFormulaire(existingValues);
             console.log('Valeurs pré-remplies:', existingValues);
           }
-          
+
           // Pré-remplir les médias si disponibles
           if (serviceData.base64_image) {
             setMediaFiles(prev => ({
@@ -93,14 +89,14 @@ export default function FormulaireDemandeOuService() {
               images: Array.isArray(serviceData.base64_image) ? serviceData.base64_image : [serviceData.base64_image]
             }));
           }
-          
+
         } catch (error) {
           console.error('Erreur lors du chargement du service:', error);
           toast.error('Erreur lors du chargement des données du service');
         }
       }
     };
-    
+
     loadServiceData();
   }, [mode, serviceId]);
 
@@ -110,24 +106,24 @@ export default function FormulaireDemandeOuService() {
 
   const loadLastServiceContactInfo = async () => {
     if (!user?.id) return;
-    
+
     try {
       const token = localStorage.getItem('token');
       const response = await axios.get('/api/services/last', {
         headers: token ? { Authorization: `Bearer ${token}` } : {}
       });
-      
+
       if (response.data && Object.keys(response.data).length > 0) {
         const contactData = {
           whatsapp: response.data.whatsapp?.valeur || response.data.whatsapp || '',
           telephone: response.data.telephone?.valeur || response.data.telephone || '',
           email: response.data.email?.valeur || response.data.email || '',
-          website: response.data.website?.valeur || response.data.website || 
-                   response.data.siteweb?.valeur || response.data.siteweb || 
-                   response.data.site?.valeur || response.data.site || 
-                   response.data.url?.valeur || response.data.url || ''
+          website: response.data.website?.valeur || response.data.website ||
+            response.data.siteweb?.valeur || response.data.siteweb ||
+            response.data.site?.valeur || response.data.site ||
+            response.data.url?.valeur || response.data.url || ''
         };
-        
+
         const hasContactInfo = Object.values(contactData).some(value => value && value.trim() !== '');
         if (hasContactInfo) {
           setUserContactInfo(contactData);
@@ -171,12 +167,12 @@ export default function FormulaireDemandeOuService() {
   // ?? NOUVEAU : Fonction de validation des champs obligatoires
   const validateRequiredFields = () => {
     const errors: string[] = [];
-    
+
     // Vérifier les champs obligatoires selon les composants générés
     composants.forEach(composant => {
       if (composant.obligatoire) {
         const valeur = valeursFormulaire[composant.nomChamp];
-        
+
         // Vérifier si le champ est vide ou non défini
         if (!valeur || (typeof valeur === 'string' && valeur.trim() === '')) {
           const label = composant.labelFrancais || composant.nomChamp
@@ -186,13 +182,13 @@ export default function FormulaireDemandeOuService() {
         }
       }
     });
-    
+
     return errors;
   };
 
   const handleValidationService = async () => {
     if (chargement) return;
-    
+
     // ?? NOUVEAU : Validation des champs obligatoires avant soumission
     const validationErrors = validateRequiredFields();
     if (validationErrors.length > 0) {
@@ -204,13 +200,13 @@ export default function FormulaireDemandeOuService() {
     }
 
     // 🚀 NOUVEAU FLUX : Appeler l'IA d'abord pour obtenir le coût réel
-    
+
     try {
       setChargement(true);
-      
+
       let result;
       let iaResponse: any = null; // Pour stocker la réponse de l'IA externe
-      
+
       if (serviceId) {
         // ?? CORRECTION : Construire donneesService pour la mise à jour
         const donneesService = {
@@ -224,13 +220,13 @@ export default function FormulaireDemandeOuService() {
           logo: mediaFiles.logo,
           banner: mediaFiles.banner
         };
-        
+
         result = await axios.put(`/api/services/${serviceId}`, donneesService, {
           headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
         });
       } else {
         // 💰 ÉTAPE 1 : Appeler l'IA externe pour générer le JSON ET obtenir le coût réel
-        
+
         // Construire les données brutes pour l'IA
         const donneesService = {
           texte: composants.map(c => `${c.nomChamp}: ${valeursFormulaire[c.nomChamp] || ''}`).join('\n'),
@@ -243,9 +239,9 @@ export default function FormulaireDemandeOuService() {
           logo: mediaFiles.logo,
           banner: mediaFiles.banner
         };
-        
+
         console.log('[FormulaireYukpoIntelligent] Données brutes pour génération IA:', donneesService);
-        
+
         // Appeler l'IA pour générer le JSON structuré (comptabilise les tokens)
         iaResponse = await appelerMoteurIA({
           texte: donneesService.texte || '',
@@ -257,18 +253,18 @@ export default function FormulaireDemandeOuService() {
           logo: donneesService.logo || [],
           banner: donneesService.banner || []
         });
-        
+
         console.log('[FormulaireYukpoIntelligent] Réponse IA reçue:', iaResponse);
-        
+
         // 💰 ÉTAPE 2 : Calculer le coût réel et vérifier le solde AVANT création
         const tokensIAExterne = iaResponse.data.tokens_consumed || iaResponse.data.tokens_used || iaResponse.data.tokens || 0;
         console.log('[FormulaireYukpoIntelligent] Tokens IA externes consommés:', tokensIAExterne);
-        
+
         // Calculer le coût réel avec le multiplier x100 pour création de service
         const coutTokenOpenAIFCFA = 0.004;
         const coutReel = Math.round(tokensIAExterne * coutTokenOpenAIFCFA * 100); // x100 pour création de service
         console.log('💰 [FormulaireYukpoIntelligent] Coût RÉEL calculé:', coutReel, 'FCFA pour', tokensIAExterne, 'tokens');
-        
+
         // Vérifier le solde actuel
         try {
           const token = localStorage.getItem('token');
@@ -288,7 +284,7 @@ export default function FormulaireDemandeOuService() {
 
           const balanceData = await balanceResponse.json();
           const soldeActuel = balanceData.tokens_balance || 0;
-          
+
           console.log('💰 [FormulaireYukpoIntelligent] Solde actuel:', soldeActuel);
 
           // Vérifier si le solde est suffisant avec le coût RÉEL
@@ -314,11 +310,11 @@ export default function FormulaireDemandeOuService() {
           toast.error('❌ Erreur lors de la vérification du solde. Veuillez réessayer.');
           return;
         }
-        
+
         // 🔧 ÉTAPE 3 : Extraire le JSON structuré de la réponse IA
         const jsonStructure = iaResponse.data;
         console.log('[FormulaireYukpoIntelligent] JSON structuré généré:', jsonStructure);
-        
+
         // 🔧 CORRECTION : Extraire les vraies données de service depuis service_data.data
         let serviceData = jsonStructure;
         if (jsonStructure.service_data && jsonStructure.service_data.data) {
@@ -328,20 +324,20 @@ export default function FormulaireDemandeOuService() {
           serviceData = jsonStructure.data;
           console.log('[FormulaireYukpoIntelligent] Données de service extraites depuis data:', serviceData);
         }
-        
+
         // 🔧 ÉTAPE 4 : Appeler l'endpoint de création avec les données de service correctes
         console.log('[FormulaireYukpoIntelligent] Transmission tokens IA externe au backend:', tokensIAExterne);
         result = await creerService(serviceData, tokensIAExterne);
         console.log('[FormulaireYukpoIntelligent] Service créé avec succès:', result);
       }
-      
+
       window.dispatchEvent(new CustomEvent('service_created'));
       localStorage.setItem('force_refresh_services', Date.now().toString());
-      
+
       // 💰 CORRECTION : Utiliser le coût réel calculé précédemment
       let coutFactureXAF = 0;
       let tokensConsommes = 0;
-      
+
       if (iaResponse) {
         // Cas où l'IA externe a été appelée - utiliser le coût réel calculé
         tokensConsommes = iaResponse.data.tokens_consumed || iaResponse.data.tokens_used || iaResponse.data.tokens || 0;
@@ -353,7 +349,7 @@ export default function FormulaireDemandeOuService() {
         if (result.data && typeof result.data === 'object') {
           tokensConsommes = result.data.tokens_consumed || result.data.tokens_used || result.data.tokens || 0;
         }
-        
+
         // Pour les modifications, récupérer le coût depuis les headers backend
         let costHeader: string | null = null;
         if (result.headers) {
@@ -364,7 +360,7 @@ export default function FormulaireDemandeOuService() {
             costHeader = headers['x-tokens-cost-xaf'] ? String(headers['x-tokens-cost-xaf']) : null;
           }
         }
-        
+
         if (costHeader) {
           coutFactureXAF = parseInt(costHeader, 10) || 0;
         } else {
@@ -391,15 +387,15 @@ export default function FormulaireDemandeOuService() {
         cout: coutFactureXAF
       });
       setShowSuccessToast(true);
-      
+
       // Redirection automatique après 5 secondes
       setTimeout(() => {
         navigation.navigate('/dashboard/mes-services');
       }, 5000);
-      
+
     } catch (error: any) {
       console.error('Erreur lors de la création du service:', error);
-      
+
       setStats({
         confidence: 0,
         tokensUsed: 0,
@@ -408,7 +404,7 @@ export default function FormulaireDemandeOuService() {
         inputLength: 0,
         tokensCostXaf: 0,
       });
-      
+
       showServiceCreationErrorToast(error.message || 'Erreur lors de la création du service');
     } finally {
       setChargement(false);
@@ -421,41 +417,41 @@ export default function FormulaireDemandeOuService() {
     console.log('[FormulaireYukpoIntelligent] Type de suggestion:', typeof suggestion);
     console.log('[FormulaireYukpoIntelligent] Clés de suggestion:', suggestion ? Object.keys(suggestion) : 'null');
     console.log('[FormulaireYukpoIntelligent] suggestion.data:', suggestion?.data);
-    
+
     // ?? ÉTAPE 1: Toujours générer les composants (par défaut ou depuis l'IA)
     let composantsAGenerer;
     let valeursAAppliquer: Record<string, any> = {};
-    
+
     // ?? Vérification plus robuste des données de l'IA
     // ?? CORRECTION : Vérifier la structure correcte des données
-    const hasValidIAData = suggestion && 
-                           typeof suggestion === 'object' && 
-                           Object.keys(suggestion).length > 0 &&
-                           // ?? Vérifier que suggestion.data contient des champs de service
-                           suggestion.data &&
-                           typeof suggestion.data === 'object' &&
-                           (suggestion.data.titre_service || suggestion.data.category || suggestion.data.description);
-    
+    const hasValidIAData = suggestion &&
+      typeof suggestion === 'object' &&
+      Object.keys(suggestion).length > 0 &&
+      // ?? Vérifier que suggestion.data contient des champs de service
+      suggestion.data &&
+      typeof suggestion.data === 'object' &&
+      (suggestion.data.titre_service || suggestion.data.category || suggestion.data.description);
+
     console.log('[FormulaireYukpoIntelligent] hasValidIAData:', hasValidIAData);
-    
+
     if (hasValidIAData) {
       // ?? Données de l'IA disponibles - les utiliser depuis suggestion.data
       console.log('[FormulaireYukpoIntelligent] Utilisation des données de l\'IA:', suggestion.data);
-      
+
       // ?? LOGS DE DÉBOGAGE SUPPLÉMENTAIRES
       console.log('[FormulaireYukpoIntelligent] Appel de dispatchChampsFormulaireIA avec:', suggestion);
       const composantsGeneres = dispatchChampsFormulaireIA(suggestion);
       console.log('[FormulaireYukpoIntelligent] Résultat de dispatchChampsFormulaireIA:', composantsGeneres);
       console.log('[FormulaireYukpoIntelligent] Type de composantsGeneres:', typeof composantsGeneres);
       console.log('[FormulaireYukpoIntelligent] Longueur de composantsGeneres:', composantsGeneres?.length);
-      
+
       composantsAGenerer = composantsGeneres;
-      
+
       // ?? Extraire les valeurs de l'IA pour pré-remplir les champs
       composantsAGenerer?.forEach(composant => {
         const champData = suggestion.data[composant.nomChamp];
         console.log(`[FormulaireYukpoIntelligent] Données pour ${composant.nomChamp}:`, champData);
-        
+
         if (champData) {
           // ?? Gérer les deux formats possibles
           if (typeof champData === 'object' && 'valeur' in champData) {
@@ -467,11 +463,11 @@ export default function FormulaireDemandeOuService() {
           }
         }
       });
-      
+
       // ?? NOUVEAU : Traiter les données GPS séparément
       if (gpsData.gps_fixe) {
         console.log('[FormulaireYukpoIntelligent] Données GPS reçues:', gpsData);
-        
+
         // ?? Convertir le format GPS si nécessaire
         let gpsValue = gpsData.gps_fixe;
         if (typeof gpsValue === 'string' && gpsValue.startsWith('[')) {
@@ -488,14 +484,14 @@ export default function FormulaireDemandeOuService() {
             console.warn('[FormulaireYukpoIntelligent] Erreur parsing GPS:', e);
           }
         }
-        
+
         valeursAAppliquer.gps_fixe = gpsValue;
         console.log('[FormulaireYukpoIntelligent] GPS fixe appliqué:', gpsValue);
       }
     } else {
       // ?? Aucune suggestion valide - utiliser les composants par défaut
       console.log('[FormulaireYukpoIntelligent] Génération de composants par défaut...');
-      
+
       const suggestionParDefaut = {
         intention: 'creation_service',
         data: {
@@ -509,9 +505,9 @@ export default function FormulaireDemandeOuService() {
           website: { type_donnee: 'string', valeur: '', origine_champs: 'formulaire' }
         }
       };
-      
+
       composantsAGenerer = dispatchChampsFormulaireIA(suggestionParDefaut);
-      
+
       // ?? Initialiser avec des valeurs vides
       composantsAGenerer?.forEach(composant => {
         const champData = suggestionParDefaut.data[composant.nomChamp as keyof typeof suggestionParDefaut.data];
@@ -520,22 +516,22 @@ export default function FormulaireDemandeOuService() {
         }
       });
     }
-    
+
     // ?? ÉTAPE 2: Appliquer les composants et valeurs
     if (composantsAGenerer && composantsAGenerer.length > 0) {
       console.log('[FormulaireYukpoIntelligent] Composants générés:', composantsAGenerer);
       console.log('[FormulaireYukpoIntelligent] Valeurs à appliquer:', valeursAAppliquer);
-      
+
       // ?? LOGS DE DÉBOGAGE SUPPLÉMENTAIRES
       console.log('[FormulaireYukpoIntelligent] Nombre de composants:', composantsAGenerer.length);
       console.log('[FormulaireYukpoIntelligent] Nombre de valeurs:', Object.keys(valeursAAppliquer).length);
-      
+
       // ?? Vérifier que chaque composant a une valeur correspondante
       composantsAGenerer.forEach(composant => {
         const valeur = valeursAAppliquer[composant.nomChamp];
         console.log(`[FormulaireYukpoIntelligent] Composant ${composant.nomChamp}: valeur =`, valeur);
       });
-      
+
       setComposants(composantsAGenerer);
       setValeursFormulaire(valeursAAppliquer);
     }
@@ -577,7 +573,7 @@ export default function FormulaireDemandeOuService() {
         isRealTime: false
       };
     }
-    
+
     // Priorité 2: Coordonnées sélectionnées depuis la carte (ChatInputPanel)
     if (gpsData.gps_fixe_coords) {
       try {
@@ -594,7 +590,7 @@ export default function FormulaireDemandeOuService() {
         console.warn('[FormulaireYukpoIntelligent] Erreur parsing GPS sélectionné:', e);
       }
     }
-    
+
     // Priorité 3: Coordonnées en temps réel du navigateur
     if (gps) {
       return {
@@ -603,7 +599,7 @@ export default function FormulaireDemandeOuService() {
         isRealTime: true
       };
     }
-    
+
     return null;
   };
 
@@ -620,7 +616,7 @@ export default function FormulaireDemandeOuService() {
   return (
     <AppLayout>
       <GlobalIAStatsPanel />
-      
+
       <View style="container mx-auto px-4 py-8">
         <View style="mb-6 flex justify-between items-start">
           <TouchableOpacity
@@ -629,7 +625,7 @@ export default function FormulaireDemandeOuService() {
           >
             ← 🏠 Retour à l'accueil
           </TouchableOpacity>
-          
+
           <View style="text-red-600 text-sm bg-red-50 px-3 py-2 rounded-lg border border-red-200">
             ⚠️ <strong>Rappel :</strong> Les champs marqués d'un astérisque (*) sont obligatoires
           </View>
@@ -642,12 +638,12 @@ export default function FormulaireDemandeOuService() {
                 <Text style="font-bold text-sm text-center text-white bg-blue-500 rounded py-1 mb-1 max-w-sm mx-auto">
                   📝 Informations générales
                 </Text>
-                
+
                 <View style="space-y-2">
                   {champsRegroupes.base.map((champ: ComposantFrontend, index: number) => (
-                    <DynamicField 
-                      key={`${champ.nomChamp}-${index}`} 
-                      champ={champ} 
+                    <DynamicField
+                      key={`${champ.nomChamp}-${index}`}
+                      champ={champ}
                       valeurExistante={valeursFormulaire[champ.nomChamp]}
                       onChange={handleFieldChange}
                       readonly={mode === 'readonly'}
@@ -663,9 +659,9 @@ export default function FormulaireDemandeOuService() {
                   📦 Liste des produits
                 </Text>
                 <View>
-                  <DynamicField 
-                    key={champsRegroupes.listeProduits.nomChamp} 
-                    champ={champsRegroupes.listeProduits} 
+                  <DynamicField
+                    key={champsRegroupes.listeProduits.nomChamp}
+                    champ={champsRegroupes.listeProduits}
                     valeurExistante={valeursFormulaire[champsRegroupes.listeProduits.nomChamp]}
                     onChange={handleFieldChange}
                     readonly={mode === 'readonly'}
@@ -681,9 +677,9 @@ export default function FormulaireDemandeOuService() {
                 </Text>
                 <View style="space-y-2">
                   {champsRegroupes.contact.map((champ: ComposantFrontend, index: number) => (
-                    <DynamicField 
-                      key={`${champ.nomChamp}-${index}`} 
-                      champ={champ} 
+                    <DynamicField
+                      key={`${champ.nomChamp}-${index}`}
+                      champ={champ}
                       valeurExistante={valeursFormulaire[champ.nomChamp]}
                       onChange={handleFieldChange}
                       isInContactBlock={true}
@@ -700,9 +696,9 @@ export default function FormulaireDemandeOuService() {
                   🎯 Position GPS fixe
                 </Text>
                 <View>
-                  <DynamicField 
-                    key={champsRegroupes.gpsFixe.nomChamp} 
-                    champ={champsRegroupes.gpsFixe} 
+                  <DynamicField
+                    key={champsRegroupes.gpsFixe.nomChamp}
+                    champ={champsRegroupes.gpsFixe}
                     valeurExistante={valeursFormulaire[champsRegroupes.gpsFixe.nomChamp]}
                     onChange={handleFieldChange}
                     readonly={mode === 'readonly'}
@@ -718,23 +714,22 @@ export default function FormulaireDemandeOuService() {
               <Text style="font-bold text-sm text-center text-white bg-blue-500 rounded py-1 mb-1 max-w-sm mx-auto">
                 📍 Localisation du service
               </Text>
-              
+
               <View style="space-y-2">
                 <View style="bg-gray-50 rounded p-2 max-w-sm mx-auto">
                   <label style="text-xs font-bold text-gray-700 mb-1 block">
                     🎯 Position GPS fixe (optionnel)
                   </label>
-                  
+
                   <View style="relative">
                     <TouchableOpacity
                       type="button"
                       onPress={() => mode !== 'readonly' && setShowMapModal(true)}
                       disabled={mode === 'readonly'}
-                      style={`w-full flex items-center justify-between text-xs h-8 px-2 border border-gray-300 rounded transition-colors ${
-                        mode === 'readonly'
-                          ? 'bg-gray-50 cursor-not-allowed text-gray-600' 
+                      style={`w-full flex items-center justify-between text-xs h-8 px-2 border border-gray-300 rounded transition-colors ${mode === 'readonly'
+                          ? 'bg-gray-50 cursor-not-allowed text-gray-600'
                           : 'bg-white hover:bg-gray-50 focus:ring-1 focus:ring-green-400 focus:border-green-400'
-                      }`}
+                        }`}
                     >
                       <Text style="flex items-center gap-2">
                         <MapPin style="w-3 h-3 text-gray-500" />
@@ -742,7 +737,7 @@ export default function FormulaireDemandeOuService() {
                       </Text>
                       <Text style="text-gray-400">▼</Text>
                     </TouchableOpacity>
-                    
+
                     {getCurrentGPSInfo() && (
                       <View style="mt-2 text-xs text-green-600">
                         ✅ Position GPS enregistrée: {getCurrentGPSInfo()?.coords}
@@ -752,12 +747,12 @@ export default function FormulaireDemandeOuService() {
                       </View>
                     )}
                   </View>
-                  
+
                   <View style="mt-2 text-xs text-gray-600 bg-gray-50 p-2 rounded">
-                    💡 <strong>Conseil :</strong> Renseignez ce champ si votre service est basé dans un lieu fixe 
+                    💡 <strong>Conseil :</strong> Renseignez ce champ si votre service est basé dans un lieu fixe
                     (boutique, bureau, atelier). Cela aide les clients à vous localiser plus facilement.
                   </View>
-                  
+
                   {showMapModal && mode !== 'readonly' && (
                     <MapModal
                       onClose={() => setShowMapModal(false)}
@@ -778,7 +773,7 @@ export default function FormulaireDemandeOuService() {
               </Text>
               <View style="space-y-2">
                 <View style="max-w-sm mx-auto">
-                  <MediaManager 
+                  <MediaManager
                     mediaFiles={mediaFiles}
                     onMediaChange={handleMediaChange}
                     readonly={mode === 'readonly'}
@@ -786,12 +781,12 @@ export default function FormulaireDemandeOuService() {
                 </View>
               </View>
             </View>
-            
+
             <View style="p-2 space-y-2">
               <Text style="font-bold text-sm text-center text-white bg-red-500 rounded py-1 mb-1 max-w-sm mx-auto">
                 🎉 Promotion et Offres
               </Text>
-              
+
               <View style="space-y-2">
                 <View style="max-w-sm mx-auto">
                   <label style="flex items-center gap-2 text-xs font-bold text-gray-700 mb-2">
@@ -804,7 +799,7 @@ export default function FormulaireDemandeOuService() {
                     />
                     Activer une promotion pour ce service
                   </label>
-                  
+
                   {valeursFormulaire.promotion_active && (
                     <View style="space-y-3 mt-3">
                       <View>
@@ -823,7 +818,7 @@ export default function FormulaireDemandeOuService() {
                           <option value="flash">Offre flash</option>
                         </select>
                       </View>
-                      
+
                       <View>
                         <label style="text-xs font-bold text-gray-700 mb-1 block">
                           💰 Valeur de la promotion
@@ -837,7 +832,7 @@ export default function FormulaireDemandeOuService() {
                           style="w-full text-xs p-2 border border-gray-300 rounded focus:ring-1 focus:ring-orange-400 focus:border-orange-400"
                         />
                       </View>
-                      
+
                       <View>
                         <label style="text-xs font-bold text-gray-700 mb-1 block">
                           📝 Description de la promotion
@@ -851,7 +846,7 @@ export default function FormulaireDemandeOuService() {
                           style="w-full text-xs p-2 border border-gray-300 rounded focus:ring-1 focus:ring-orange-400 focus:border-orange-400"
                         />
                       </View>
-                      
+
                       <View>
                         <label style="text-xs font-bold text-gray-700 mb-1 block">
                           📅 Date de fin de promotion
@@ -865,7 +860,7 @@ export default function FormulaireDemandeOuService() {
                           style="w-full text-xs p-2 border border-gray-300 rounded focus:ring-1 focus:ring-orange-400 focus:border-orange-400"
                         />
                       </View>
-                      
+
                       <View>
                         <label style="text-xs font-bold text-gray-700 mb-1 block">
                           ⚠️ Conditions (optionnel)
@@ -881,26 +876,26 @@ export default function FormulaireDemandeOuService() {
                       </View>
                     </View>
                   )}
-                  
+
                   <View style="mt-2 text-xs text-gray-600 bg-gray-50 p-2 rounded">
-                    💡 <strong>Conseil :</strong> Les promotions attirent l'attention et peuvent augmenter vos chances d'être contacté. 
+                    💡 <strong>Conseil :</strong> Les promotions attirent l'attention et peuvent augmenter vos chances d'être contacté.
                     Pensez à des offres attractives comme des réductions, des services gratuits ou des bonus.
                   </View>
                 </View>
               </View>
             </View>
-            
+
             {composants.length > 0 && (
               <View style="flex justify-center pt-4">
                 {mode === 'readonly' ? (
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     onPress={() => navigation.navigate('/dashboard/mes-services')}
                     style="bg-gray-600 hover:bg-gray-700 text-white px-8 py-3 font-semibold"
                   >
                     🔙 Retour à mes services
                   </TouchableOpacity>
                 ) : (
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     onPress={handleValidationService}
                     disabled={chargement}
                     style="bg-orange-600 hover:bg-orange-700 disabled:bg-gray-400 text-white px-8 py-3 font-semibold shadow-lg"
@@ -979,7 +974,7 @@ export default function FormulaireDemandeOuService() {
       </View>
     </AppLayout>
   );
-} 
+}
 
 
 

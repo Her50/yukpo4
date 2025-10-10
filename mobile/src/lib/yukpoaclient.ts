@@ -24,7 +24,7 @@ export async function login(email: string, password: string): Promise<{ token: s
     const data = await response.json();
 
     if (data.token) {
-      await AsyncStorage.setItem('token', data.token);
+      await AsyncStorage.setItem('auth_token', data.token);
       await AsyncStorage.removeItem('__DEV_FAKE_USER__'); // Supprimer le mode dev
 
       // Sauvegarder le solde initial
@@ -43,7 +43,7 @@ export async function login(email: string, password: string): Promise<{ token: s
 
 // ✅ Fonction pour se déconnecter
 export async function logout(): Promise<void> {
-  await AsyncStorage.removeItem('token');
+  await AsyncStorage.removeItem('auth_token');
   await AsyncStorage.removeItem('__DEV_FAKE_USER__');
 }
 
@@ -53,7 +53,7 @@ export async function toggleDevMode(): Promise<void> {
   const isDevMode = current === 'true';
   await AsyncStorage.setItem('__DEV_FAKE_USER__', isDevMode ? 'false' : 'true');
   if (!isDevMode) {
-    await AsyncStorage.removeItem('token'); // Supprimer le vrai token
+    await AsyncStorage.removeItem('auth_token'); // Supprimer le vrai token
   }
 }
 
@@ -75,7 +75,7 @@ export interface IAResponseWithHeaders {
 // Fonction qui appelle l'API backend IA
 export async function appelerMoteurIA(input: any, onAfterCall?: () => void): Promise<IAResponseWithHeaders> {
   // Récupérer le token depuis AsyncStorage
-  const token = await AsyncStorage.getItem('token');
+  const token = await AsyncStorage.getItem('auth_token');
   const isDevMode = await AsyncStorage.getItem('__DEV_FAKE_USER__') === 'true';
 
   // Préparer les headers
@@ -130,7 +130,7 @@ export async function appelerMoteurIA(input: any, onAfterCall?: () => void): Pro
 
 // ✅ Fonction pour générer des suggestions de service (sans créer le service)
 export async function genererSuggestionsService(input: any): Promise<IAResponseWithHeaders> {
-  const token = await AsyncStorage.getItem('token');
+  const token = await AsyncStorage.getItem('auth_token');
   const isDevMode = await AsyncStorage.getItem('__DEV_FAKE_USER__') === 'true';
 
   if (!token && !isDevMode) {
@@ -203,7 +203,7 @@ export async function genererSuggestionsService(input: any): Promise<IAResponseW
 
 // ✅ Fonction pour créer un service (maintenant utilisée dans le formulaire avec des données déjà structurées)
 export async function creerService(donneesStructurees: any, tokensIAExterne?: number): Promise<IAResponseWithHeaders> {
-  const token = await AsyncStorage.getItem('token');
+  const token = await AsyncStorage.getItem('auth_token');
   if (!token) {
     throw new Error('Token d\'authentification manquant');
   }
@@ -261,7 +261,7 @@ export async function creerService(donneesStructurees: any, tokensIAExterne?: nu
 
 // ✅ Fonction pour valider un brouillon de service
 export async function validerBrouillonService(donnees: any): Promise<any> {
-  const token = await AsyncStorage.getItem('token');
+  const token = await AsyncStorage.getItem('auth_token');
   if (!token) {
     throw new Error('Token d\'authentification manquant');
   }
@@ -285,7 +285,7 @@ export async function validerBrouillonService(donnees: any): Promise<any> {
 
 // ✅ Fonction pour modifier un service existant (sans génération de frais IA)
 export async function modifierService(serviceId: string | number, donneesStructurees: any, tokensIAExterne?: number): Promise<IAResponseWithHeaders> {
-  const token = await AsyncStorage.getItem('token');
+  const token = await AsyncStorage.getItem('auth_token');
   if (!token) {
     throw new Error('Token d\'authentification manquant');
   }
@@ -343,9 +343,9 @@ export async function modifierService(serviceId: string | number, donneesStructu
 
 // Fonction pour vectoriser un service existant (stub)
 export async function vectoriserService(servicePayload: any): Promise<any> {
-  const token = await AsyncStorage.getItem('token');
+  const token = await AsyncStorage.getItem('auth_token');
   if (!token) throw new Error('Token manquant');
-  
+
   const response = await fetch(`${API_BASE_URL}/api/services/vectorize`, {
     method: 'POST',
     headers: {
@@ -354,10 +354,10 @@ export async function vectoriserService(servicePayload: any): Promise<any> {
     },
     body: JSON.stringify(servicePayload)
   });
-  
+
   if (!response.ok) {
     throw new Error(`Erreur HTTP ${response.status}: ${response.statusText}`);
   }
-  
+
   return response.json();
 }

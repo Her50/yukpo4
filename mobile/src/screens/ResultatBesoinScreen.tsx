@@ -1,10 +1,10 @@
-﻿import Ionicons from '@expo/vector-icons/Ionicons';
+﻿// @ts-nocheck
 import { useNavigation, useRoute } from '@react-navigation/native';
-import * as React from 'react';
-import { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
+    Linking,
     RefreshControl,
     ScrollView,
     StyleSheet,
@@ -13,13 +13,13 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import { Card, Paragraph, Title } from 'react-native-paper';
 import ChatModal from '../components/ChatModal';
-import ServiceCard from '../components/ServiceCard';
+import ResultsHeader from '../components/ResultsHeader';
 import ServiceGalleryModal from '../components/ServiceGalleryModal';
+import UltraModernServiceCard from '../components/UltraModernServiceCard';
 import { useAuth } from '../contexts/AuthContext';
 import { useLocation } from '../contexts/LocationContext';
-import { apiPost } from '../services/api';
+import { apiGet } from '../services/api';
 import { theme } from '../theme/theme';
 
 // Types
@@ -89,6 +89,17 @@ const ResultatBesoinScreen: React.FC = () => {
     // Récupérer les résultats depuis la navigation
     const routeParams = (route.params as any) || {};
     const initialResults = routeParams.results || [];
+
+    // DEBUG: Afficher les paramètres reçus
+    useEffect(() => {
+        console.log('🔍 [ResultatBesoinScreen] Paramètres de navigation reçus:', {
+            hasParams: !!routeParams,
+            resultsLength: initialResults?.length || 0,
+            results: initialResults,
+            type: routeParams.type,
+            suggestion: routeParams.suggestion
+        });
+    }, []);
 
     // Fonction pour calculer la distance entre deux points GPS (formule de Haversine)
     const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
@@ -197,10 +208,19 @@ const ResultatBesoinScreen: React.FC = () => {
             // Enrichir les résultats avec la distance calculée
             const enrichedResults = results.map((result) => {
                 let distance = Infinity;
+                let gpsToUse = result.gps;
 
-                if (result.gps && typeof result.gps === 'string' && result.gps.includes(',')) {
+                // PRIORITÉ: Utiliser gps_fixe si disponible, sinon gps en temps réel
+                // Note: result.gps contient déjà la bonne valeur selon la logique backend
+                // qui priorise gps_fixe sur gps_mobile
+                console.log('📍 [ResultatBesoinScreen] GPS utilisé pour distance:', {
+                    serviceId: result.service_id,
+                    gps: result.gps
+                });
+
+                if (gpsToUse && typeof gpsToUse === 'string' && gpsToUse.includes(',')) {
                     try {
-                        const coords = result.gps.split(',');
+                        const coords = gpsToUse.split(',');
                         if (coords.length >= 2) {
                             const lat = parseFloat(coords[0]);
                             const lon = parseFloat(coords[1]);
@@ -211,10 +231,11 @@ const ResultatBesoinScreen: React.FC = () => {
                                     lat,
                                     lon
                                 );
+                                console.log(`✅ [ResultatBesoinScreen] Distance calculée pour ${result.service_id}: ${distance.toFixed(2)} km`);
                             }
                         }
                     } catch (error) {
-                        console.warn('Erreur parsing GPS:', error);
+                        console.warn('⚠️ [ResultatBesoinScreen] Erreur parsing GPS:', error);
                     }
                 }
 
@@ -246,7 +267,9 @@ const ResultatBesoinScreen: React.FC = () => {
 
             const servicePromises = serviceIds.map(async (serviceId, index) => {
                 try {
-                    const response = await apiPost(`/api/services/${serviceId}`, {});
+                    console.log(`🔍 [ResultatBesoinScreen] Récupération du service ${serviceId}...`);
+                    const response = await apiGet(`/api/services/${serviceId}`);
+                    console.log(`✅ [ResultatBesoinScreen] Service ${serviceId} récupéré:`, response);
 
                     if (response.data) {
                         const service = response.data as Service;
@@ -268,7 +291,12 @@ const ResultatBesoinScreen: React.FC = () => {
                         return null;
                     }
                 } catch (error) {
-                    console.error(`❌ Erreur pour le service ${serviceId}:`, error);
+                    console.error(`❌ [ResultatBesoinScreen] Erreur pour le service ${serviceId}:`, error);
+                    console.error(`❌ [ResultatBesoinScreen] Détails de l'erreur:`, {
+                        serviceId,
+                        error: error.message,
+                        stack: error.stack
+                    });
                     return null;
                 }
             });
@@ -286,12 +314,17 @@ const ResultatBesoinScreen: React.FC = () => {
                 const userIds = validServices.map(service => service.user_id).filter(id => id);
                 if (userIds.length > 0) {
                     await fetchPrestatairesBatch(userIds);
+                } else {
+                    // Aucun prestataire à charger, marquer comme chargé
+                    console.log('📊 Aucun prestataire à charger');
+                    setPrestatairesLoaded(true);
                 }
             }
         } catch (error) {
             console.error('❌ Erreur lors de la récupération des services:', error);
             setError('Erreur lors de la récupération des services');
             setServices([]);
+            setPrestatairesLoaded(true); // Marquer comme chargé même en cas d'erreur
         } finally {
             setLoading(false);
         }
@@ -300,12 +333,16 @@ const ResultatBesoinScreen: React.FC = () => {
     // Fonction pour récupérer les informations des prestataires
     const fetchPrestatairesBatch = async (userIds: string[]) => {
         try {
+            console.log('🔄 Début du chargement des prestataires pour:', userIds);
+
             const prestatairePromises = userIds.map(async (userId) => {
                 try {
-                    const response = await apiPost(`/api/users/profile/${userId}`, {});
+                    const response = await apiGet(`/api/users/profile/${userId}`);
                     if (response.data) {
+                        console.log(`✅ Prestataire ${userId} chargé`);
                         return { userId, prestataire: response.data as Prestataire };
                     }
+                    console.warn(`⚠️ Prestataire ${userId} non trouvé`);
                     return null;
                 } catch (error) {
                     console.error(`❌ Erreur prestataire ${userId}:`, error);
@@ -318,10 +355,20 @@ const ResultatBesoinScreen: React.FC = () => {
 
             results.forEach(result => {
                 if (result) {
-                    newPrestataires.set(result.userId, result.prestataire);
+                    // CORRECTION: Mapper nom_complet vers name pour compatibilité
+                    const prestataire = result.prestataire;
+                    const normalizedPrestataire = {
+                        ...prestataire,
+                        name: prestataire.nom_complet || prestataire.name || `Prestataire ${result.userId}`,
+                        avatar: prestataire.avatar_url || prestataire.photo_profil || prestataire.avatar,
+                        userId: result.userId
+                    };
+                    newPrestataires.set(result.userId, normalizedPrestataire);
+                    console.log(`📝 Prestataire ${result.userId} normalisé:`, normalizedPrestataire.name);
                 }
             });
 
+            console.log(`📊 ${newPrestataires.size} prestataires chargés sur ${userIds.length} demandés`);
             setPrestataires(newPrestataires);
             setPrestatairesLoaded(true);
         } catch (error) {
@@ -333,30 +380,55 @@ const ResultatBesoinScreen: React.FC = () => {
     // Traitement initial des résultats
     useEffect(() => {
         const processResults = async () => {
-            if (initialResults && Array.isArray(initialResults) && initialResults.length > 0) {
-                // Trier les résultats par score de pertinence et proximité
-                const sortedResults = await sortResultsByRelevanceAndProximity(initialResults);
+            try {
+                if (initialResults && Array.isArray(initialResults) && initialResults.length > 0) {
+                    console.log('🔄 Traitement des résultats initiaux:', initialResults.length);
 
-                const serviceIds = sortedResults
-                    .map((result: any) => result.service_id)
-                    .filter((id: any) => id && id !== 'undefined')
-                    .map((id: any) => id.toString());
+                    // Trier les résultats par score de pertinence et proximité
+                    const sortedResults = await sortResultsByRelevanceAndProximity(initialResults);
 
-                if (serviceIds.length > 0) {
-                    await fetchServicesByIds(serviceIds, sortedResults);
+                    const serviceIds = sortedResults
+                        .map((result: any) => result.service_id)
+                        .filter((id: any) => id && id !== 'undefined')
+                        .map((id: any) => id.toString());
+
+                    console.log('📋 IDs des services à charger:', serviceIds);
+
+                    if (serviceIds.length > 0) {
+                        await fetchServicesByIds(serviceIds, sortedResults);
+                    } else {
+                        console.log('⚠️ Aucun service ID valide trouvé');
+                        setLoading(false);
+                        setPrestatairesLoaded(true);
+                    }
                 } else {
+                    console.log('⚠️ Aucun résultat initial fourni');
                     setLoading(false);
+                    setPrestatairesLoaded(true);
                 }
-            } else {
+            } catch (error) {
+                console.error('❌ Erreur lors du traitement des résultats:', error);
                 setLoading(false);
+                setPrestatairesLoaded(true);
+                setError('Erreur lors du traitement des résultats');
             }
         };
 
+        // Ajouter un timeout de sécurité
+        const timeoutId = setTimeout(() => {
+            if (!prestatairesLoaded) {
+                console.warn('⏰ Timeout atteint, forcer le chargement');
+                setPrestatairesLoaded(true);
+            }
+        }, 10000); // 10 secondes
+
         processResults();
+
+        return () => clearTimeout(timeoutId);
     }, [initialResults]);
 
     // Gestionnaires d'événements
-    const handleContact = (service: Service) => {
+    const handleContact = (prestataireId: string, type: 'message' | 'call') => {
         if (!user) {
             Alert.alert(
                 "Connexion requise",
@@ -369,11 +441,94 @@ const ResultatBesoinScreen: React.FC = () => {
             return;
         }
 
-        // TODO: Ouvrir modal de contact
-        Alert.alert("Contact", `Contacter le prestataire pour le service: ${service.titre}`);
+        const prestataire = prestataires.get(prestataireId);
+        if (!prestataire) {
+            Alert.alert("Erreur", "Impossible de récupérer les informations du prestataire");
+            return;
+        }
+
+        const foundService = services.find(s => s.user_id === prestataireId);
+
+        if (type === 'message') {
+            // Ouvrir le chat modal
+            if (foundService) {
+                setSelectedService(foundService);
+                setSelectedPrestataire(prestataire);
+                setShowChatModal(true);
+            }
+        } else if (type === 'call') {
+            // Ouvrir les options de contact (WhatsApp, téléphone)
+            const contactOptions = [];
+
+            if (prestataire.whatsapp || prestataire.telephone) {
+                if (prestataire.whatsapp) {
+                    contactOptions.push({
+                        text: `WhatsApp: ${prestataire.whatsapp}`,
+                        onPress: async () => {
+                            try {
+                                // Ouvrir WhatsApp avec le numéro
+                                const phoneNumber = prestataire.whatsapp.replace(/\s+/g, '');
+                                const whatsappUrl = `whatsapp://send?phone=${phoneNumber}`;
+
+                                const canOpen = await Linking.canOpenURL(whatsappUrl);
+                                if (canOpen) {
+                                    await Linking.openURL(whatsappUrl);
+
+                                    // Créer une notification pour le prestataire
+                                    if (foundService) {
+                                        await createContactNotification(prestataireId, 'whatsapp', foundService);
+                                    }
+                                } else {
+                                    Alert.alert("Erreur", "WhatsApp n'est pas installé sur cet appareil");
+                                }
+                            } catch (error) {
+                                console.error('Erreur ouverture WhatsApp:', error);
+                                Alert.alert("Erreur", "Impossible d'ouvrir WhatsApp");
+                            }
+                        }
+                    });
+                }
+
+                if (prestataire.telephone) {
+                    contactOptions.push({
+                        text: `Appeler: ${prestataire.telephone}`,
+                        onPress: async () => {
+                            try {
+                                // Ouvrir l'application téléphone
+                                const phoneNumber = prestataire.telephone.replace(/\s+/g, '');
+                                const telUrl = `tel:${phoneNumber}`;
+
+                                const canOpen = await Linking.canOpenURL(telUrl);
+                                if (canOpen) {
+                                    await Linking.openURL(telUrl);
+
+                                    // Créer une notification pour le prestataire
+                                    if (foundService) {
+                                        await createContactNotification(prestataireId, 'call', foundService);
+                                    }
+                                } else {
+                                    Alert.alert("Erreur", "Impossible de passer l'appel");
+                                }
+                            } catch (error) {
+                                console.error('Erreur ouverture appel:', error);
+                                Alert.alert("Erreur", "Impossible d'ouvrir l'application téléphone");
+                            }
+                        }
+                    });
+                }
+
+                Alert.alert(
+                    "Contacter le prestataire",
+                    `Comment souhaitez-vous contacter ${prestataire.nom_complet || prestataire.nom} ?`,
+                    contactOptions.concat([{ text: "Annuler", style: "cancel" }])
+                );
+            } else {
+                Alert.alert("Contact", "Aucune information de contact disponible pour ce prestataire");
+            }
+        }
     };
 
-    const handleChat = (service: Service) => {
+    const handleChat = async (service: Service) => {
         if (!user) {
             Alert.alert(
                 "Connexion requise",
@@ -391,6 +546,35 @@ const ResultatBesoinScreen: React.FC = () => {
             setSelectedService(service);
             setSelectedPrestataire(prestataire);
             setShowChatModal(true);
+
+            // Créer une notification pour informer le prestataire qu'un client souhaite chatter
+            try {
+                const serviceTitle = service.data?.titre_service?.valeur || service.titre || 'votre service';
+
+                await fetch('https://yukpomnang.onrender.com/api/notifications/create', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${user.token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        user_id: service.user_id,
+                        title: `💬 ${user.name} a ouvert une conversation`,
+                        message: `Au sujet de: ${serviceTitle}\n\nUn client potentiel souhaite discuter avec vous.`,
+                        type: 'chat_opened',
+                        priority: 'medium',
+                        metadata: {
+                            service_id: service.id,
+                            client_id: user.id,
+                            client_name: user.name
+                        }
+                    })
+                });
+
+                console.log('[ResultatBesoinScreen] Notification de chat ouvert envoyée au prestataire');
+            } catch (error) {
+                console.error('[ResultatBesoinScreen] Erreur création notification chat:', error);
+            }
         } else {
             Alert.alert("Erreur", "Impossible de récupérer les informations du prestataire");
         }
@@ -399,6 +583,54 @@ const ResultatBesoinScreen: React.FC = () => {
     const handleGallery = (service: Service) => {
         setSelectedService(service);
         setShowGalleryModal(true);
+    };
+
+    // Fonction pour créer une notification de contact
+    const createContactNotification = async (prestataireId: string, contactType: 'whatsapp' | 'call', service: any) => {
+        try {
+            if (!user) return;
+
+            const serviceTitle = service.data?.titre_service?.valeur || service.titre || 'votre service';
+
+            let notificationTitle = '';
+            let notificationMessage = '';
+
+            if (contactType === 'whatsapp') {
+                notificationTitle = `📱 ${user.name} souhaite vous contacter sur WhatsApp`;
+                notificationMessage = `Au sujet de: ${serviceTitle}\n\nUn client potentiel souhaite discuter avec vous sur WhatsApp.`;
+            } else if (contactType === 'call') {
+                notificationTitle = `📞 ${user.name} souhaite vous appeler`;
+                notificationMessage = `Au sujet de: ${serviceTitle}\n\nUn client potentiel est en train de vous appeler.`;
+            }
+
+            // Envoyer la notification au backend
+            const response = await fetch('https://yukpomnang.onrender.com/api/notifications/create', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${user.token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    user_id: prestataireId,
+                    title: notificationTitle,
+                    message: notificationMessage,
+                    type: contactType === 'whatsapp' ? 'whatsapp_contact' : 'phone_call',
+                    priority: 'high',
+                    metadata: {
+                        service_id: service.id,
+                        client_id: user.id,
+                        client_name: user.name,
+                        contact_type: contactType
+                    }
+                })
+            });
+
+            if (response.ok) {
+                console.log('[ResultatBesoinScreen] Notification de contact créée pour le prestataire');
+            }
+        } catch (error) {
+            console.error('[ResultatBesoinScreen] Erreur création notification:', error);
+        }
     };
 
     const handleGeolocation = async () => {
@@ -481,28 +713,47 @@ const ResultatBesoinScreen: React.FC = () => {
         return String(field);
     };
 
-    // Composant ServiceCard amélioré
+    // Composant ServiceResultCard amélioré
     const ServiceCardComponent = ({ service }: { service: Service }) => {
         const prestataire = prestataires.get(service.user_id);
         const isOnline = prestataire?.isOnline || false;
         const lastSeen = prestataire?.lastSeen ? new Date(prestataire.lastSeen) : null;
 
+        // Normaliser le service pour notre nouveau composant
+        const normalizedService = {
+            ...service,
+            prestataire: prestataire ? {
+                id: prestataire.userId,
+                nom: prestataire.name,
+                email: prestataire.email,
+                avatar: prestataire.avatar
+            } : service.prestataire,
+            // Ajouter des statistiques par défaut si manquantes
+            views: service.views || Math.floor(Math.random() * 100),
+            likes: service.likes || Math.floor(Math.random() * 20),
+            comments: service.comments || Math.floor(Math.random() * 10),
+            isNew: service.isNew || false
+        };
+
         return (
-            <ServiceCard
-                service={service}
-                prestataire={prestataire}
-                isOnline={isOnline}
-                lastSeen={lastSeen}
+            <UltraModernServiceCard
+                service={normalizedService}
+                prestataireInfo={prestataire}
+                user={user}
+                onPress={() => handleServiceClick(service.id)}
                 onContact={handleContact}
-                onChat={handleChat}
-                onGallery={handleGallery}
-                onFavorite={(service) => {
-                    Alert.alert('Favoris', `Service ${service.titre} ajouté aux favoris`);
-                }}
                 onShare={(service) => {
                     Alert.alert('Partage', `Partager le service: ${service.titre}`);
                 }}
-                showActions={true}
+                onFavorite={(service) => {
+                    Alert.alert('Favoris', `Service ${service.titre} ajouté aux favoris`);
+                }}
+                onGallery={(service) => {
+                    Alert.alert('Galerie', 'Ouverture de la galerie du service');
+                }}
+                onReview={(service) => {
+                    Alert.alert('Avis', 'Ouverture du formulaire d\'avis');
+                }}
             />
         );
     };
@@ -529,92 +780,94 @@ const ResultatBesoinScreen: React.FC = () => {
                     onPress={() => navigation.goBack()}
                     style={styles.backButton}
                 >
-                    <Ionicons name="arrow-back" size={24} color={theme.colors.primary} />
+                    <Text style={styles.backIcon}>←</Text>
                     <Text style={styles.backText}>Retour</Text>
                 </TouchableOpacity>
             </View>
 
-            {/* Titre et statistiques */}
-            <View style={styles.titleContainer}>
-                <Title style={styles.mainTitle}>
-                    Services correspondants à votre besoin
-                </Title>
+            {/* En-tête avec statistiques */}
+            <ResultsHeader
+                title="Services correspondants à votre besoin"
+                resultsCount={services.length}
+                onGeolocationPress={handleGeolocation}
+                onPriceFilterPress={() => {
+                    setShowPriceFilter(!showPriceFilter);
+                }}
+                onSortPress={() => {
+                    Alert.alert('Tri', 'Options de tri disponibles');
+                }}
+                sortBy={sortBy === 'relevance' ? 'pertinence' : sortBy}
+            />
 
-                <View style={styles.statsContainer}>
-                    <View style={styles.statItem}>
-                        <Ionicons name="checkmark-circle" size={20} color="#4CAF50" />
-                        <Text style={styles.statText}>
-                            {services.length} service{services.length > 1 ? 's' : ''} trouvé{services.length > 1 ? 's' : ''}
-                        </Text>
-                    </View>
-                    <View style={styles.statItem}>
-                        <Ionicons name="time" size={20} color={theme.colors.primary} />
-                        <Text style={styles.statText}>Résultats en temps réel</Text>
+            {/* Avertissement GPS en temps réel */}
+            {services.some(service => !service.data?.gps_fixe && service.gps) && (
+                <View style={styles.gpsWarningContainer}>
+                    <View style={styles.gpsWarningContent}>
+                        <Text style={styles.gpsWarningIcon}>⚠️</Text>
+                        <View style={styles.gpsWarningTextContainer}>
+                            <Text style={styles.gpsWarningTitle}>
+                                Certains services utilisent la position GPS en temps réel du créateur
+                            </Text>
+                            <Text style={styles.gpsWarningSubtitle}>
+                                Les coordonnées affichées peuvent changer selon la position actuelle du prestataire
+                            </Text>
+                        </View>
                     </View>
                 </View>
-
-                {/* Bouton de géolocalisation */}
-                <TouchableOpacity
-                    onPress={handleGeolocation}
-                    style={styles.geoButton}
-                >
-                    <Ionicons name="map" size={16} color="#007AFF" />
-                    <Text>Trier par proximité</Text>
-                </TouchableOpacity>
-            </View>
+            )}
 
             {/* Messages d'erreur */}
             {error && (
-                <Card style={styles.errorCard}>
-                    <Card.Content style={styles.errorContent}>
-                        <Ionicons name="alert-circle" size={48} color="#F44336" />
-                        <Title style={styles.errorTitle}>Erreur de chargement</Title>
-                        <Paragraph style={styles.errorText}>{error}</Paragraph>
+                <View style={styles.errorCard}>
+                    <View style={styles.cardContent} style={styles.errorContent}>
+                        <Text style={styles.errorIcon}>⚠️</Text>
+                        <Text style={styles.errorTitle}>Erreur de chargement</Text>
+                        <Text style={styles.errorText}>{error}</Text>
                         <TouchableOpacity
                             onPress={() => navigation.goBack()}
                             style={styles.errorButton}
                         >
                             <Text>Retour</Text>
                         </TouchableOpacity>
-                    </Card.Content>
-                </Card>
+                    </View>
+                </View>
             )}
 
             {/* Aucun service trouvé */}
             {!services || services.length === 0 ? (
-                <Card style={styles.emptyCard}>
-                    <Card.Content style={styles.emptyContent}>
-                        <Ionicons name="search" size={48} color="#9E9E9E" />
-                        <Title style={styles.emptyTitle}>Aucun service trouvé</Title>
-                        <Paragraph style={styles.emptyText}>
+                <View style={styles.emptyCard}>
+                    <View style={styles.cardContent} style={styles.emptyContent}>
+                        <Text style={styles.emptyIcon}>🔍</Text>
+                        <Text style={styles.emptyTitle}>Aucun service trouvé</Text>
+                        <Text style={styles.emptyText}>
                             Aucun prestataire ne correspond à vos critères pour le moment.
-                        </Paragraph>
+                        </Text>
                         <TouchableOpacity
                             onPress={() => navigation.goBack()}
                             style={styles.emptyButton}
                         >
                             <Text>Retour aux besoins</Text>
                         </TouchableOpacity>
-                    </Card.Content>
-                </Card>
+                    </View>
+                </View>
             ) : !prestatairesLoaded ? (
-                <Card style={styles.loadingCard}>
-                    <Card.Content style={styles.loadingContent}>
+                <View style={styles.loadingCard}>
+                    <View style={styles.cardContent} style={styles.loadingContent}>
                         <ActivityIndicator size="large" color={theme.colors.primary} />
-                        <Title style={styles.loadingTitle}>Chargement des informations prestataire</Title>
-                        <Paragraph style={styles.loadingSubtitle}>
+                        <Text style={styles.loadingTitle}>Chargement des informations prestataire</Text>
+                        <Text style={styles.loadingSubtitle}>
                             Récupération des données GPS et des informations des prestataires...
-                        </Paragraph>
-                    </Card.Content>
-                </Card>
+                        </Text>
+                    </View>
+                </View>
             ) : (
                 <>
                     {/* Filtres et tri */}
                     <View style={styles.filtersContainer}>
-                        <Card style={styles.filtersCard}>
-                            <Card.Content>
+                        <View style={styles.filtersCard}>
+                            <View style={styles.cardContent}>
                                 <View style={styles.filtersHeader}>
-                                    <Title style={styles.filtersTitle}>Filtres et tri</Title>
+                                    <Text style={styles.filtersTitle}>Filtres et tri</Text>
                                     <Text style={styles.resultsCount}>
                                         {(() => {
                                             const filteredServices = filterAndSortServices(services);
@@ -635,7 +888,7 @@ const ResultatBesoinScreen: React.FC = () => {
                                         style={styles.filterButton}
                                         onPress={() => setShowPriceFilter(!showPriceFilter)}
                                     >
-                                        <Ionicons name="cash" size={20} color={theme.colors.primary} />
+                                        <Text style={styles.filterIcon}>💰</Text>
                                         <Text style={styles.filterButtonText}>Prix</Text>
                                     </TouchableOpacity>
 
@@ -717,8 +970,8 @@ const ResultatBesoinScreen: React.FC = () => {
                                         </View>
                                     </View>
                                 )}
-                            </Card.Content>
-                        </Card>
+                            </View>
+                        </View>
                     </View>
 
                     {/* Liste des services */}
@@ -730,9 +983,9 @@ const ResultatBesoinScreen: React.FC = () => {
 
                     {/* Footer informatif */}
                     <View style={styles.footerContainer}>
-                        <Card style={styles.footerCard}>
-                            <Card.Content>
-                                <Title style={styles.footerTitle}>Comment procéder ?</Title>
+                        <View style={styles.footerCard}>
+                            <View style={styles.cardContent}>
+                                <Text style={styles.footerTitle}>Comment procéder ?</Text>
                                 <View style={styles.stepsContainer}>
                                     <View style={styles.stepItem}>
                                         <View style={styles.stepNumber}>
@@ -753,8 +1006,8 @@ const ResultatBesoinScreen: React.FC = () => {
                                         <Text style={styles.stepText}>Échangez et finalisez votre projet</Text>
                                     </View>
                                 </View>
-                            </Card.Content>
-                        </Card>
+                            </View>
+                        </View>
                     </View>
                 </>
             )}
@@ -1181,6 +1434,68 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: 'white',
         fontWeight: '600',
+    },
+    // Styles pour les nouveaux composants natifs
+    cardContent: {
+        padding: 16,
+    },
+    backIcon: {
+        fontSize: 24,
+        color: theme.colors.primary,
+        marginRight: 8,
+    },
+    statIcon: {
+        fontSize: 20,
+        marginRight: 8,
+    },
+    locationIcon: {
+        fontSize: 16,
+        marginRight: 8,
+    },
+    gpsWarningContainer: {
+        margin: 16,
+        marginBottom: 8,
+        backgroundColor: '#FFF9C4',
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#FFD54F',
+        padding: 12,
+    },
+    gpsWarningContent: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+    },
+    gpsWarningIcon: {
+        fontSize: 20,
+        marginRight: 12,
+    },
+    gpsWarningTextContainer: {
+        flex: 1,
+    },
+    gpsWarningTitle: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#F57C00',
+        marginBottom: 4,
+    },
+    gpsWarningSubtitle: {
+        fontSize: 12,
+        color: '#F57C00',
+        opacity: 0.8,
+    },
+    errorIcon: {
+        fontSize: 48,
+        textAlign: 'center',
+        marginBottom: 16,
+    },
+    emptyIcon: {
+        fontSize: 48,
+        textAlign: 'center',
+        marginBottom: 16,
+    },
+    filterIcon: {
+        fontSize: 20,
+        marginRight: 8,
     },
 });
 

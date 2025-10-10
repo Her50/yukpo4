@@ -4,9 +4,11 @@ use axum::{
     response::Json,
     routing::get,
     Router,
+    http::StatusCode,
 };
 use serde::{Deserialize, Serialize};
 use reqwest::Client;
+use serde_json::{json, Value};
 
 use crate::state::AppState;
 
@@ -152,8 +154,23 @@ pub async fn get_weather(
     Json(weather_data)
 }
 
+/// Endpoint pour exposer la configuration météo (clé API) pour l'app mobile
+pub async fn get_weather_config(
+    State(_state): State<Arc<AppState>>,
+) -> Result<Json<Value>, StatusCode> {
+    let api_key = std::env::var("OPENWEATHER_API_KEY")
+        .unwrap_or_else(|_| "YOUR_OPENWEATHER_API_KEY".to_string());
+    
+    Ok(Json(json!({
+        "apiKey": api_key,
+        "status": "success",
+        "message": "Configuration météo récupérée avec succès"
+    })))
+}
+
 pub fn weather_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
     Router::<Arc<AppState>>::new()
         .route("/weather", get(get_weather))
+        .route("/weather/config", get(get_weather_config))
         .with_state(state)
 }

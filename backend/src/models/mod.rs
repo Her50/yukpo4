@@ -12,4 +12,5 @@ pub mod alert_model;
 pub mod service_embedding;
 pub mod echange;
 pub mod echange_model;
+pub mod webrtc_model;
 

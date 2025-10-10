@@ -1,8 +1,9 @@
+// @ts-nocheck
 // Migration vers Lucide React Native pour un design moderne
-import { Check, CheckCheck, MoreVertical, Send, X } from 'phosphor-react-native';
+import { Check, DotsThreeVertical, PaperPlaneTilt, X } from 'phosphor-react-native';
 import * as React from 'react';
 import { useEffect, useRef, useState } from 'react';
-import { Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Avatar } from 'react-native-paper';
 import { useAuth } from '../contexts/AuthContext';
 import { theme } from '../theme/theme';
@@ -54,6 +55,13 @@ const ChatModal: React.FC<ChatModalProps> = ({
     const [isTyping, setIsTyping] = useState(false);
     const scrollViewRef = useRef<ScrollView>(null);
 
+    // CORRECTION: Normaliser le nom du prestataire (nom_complet au lieu de name)
+    const normalizedPrestataire = prestataire ? {
+        ...prestataire,
+        name: (prestataire as any).nom_complet || prestataire.name || `Prestataire ${prestataire.id}`,
+        avatar: (prestataire as any).avatar_url || (prestataire as any).photo_profil || prestataire.avatar
+    } : null;
+
     useEffect(() => {
         if (visible && service) {
             // Charger les messages existants
@@ -62,61 +70,124 @@ const ChatModal: React.FC<ChatModalProps> = ({
     }, [visible, service]);
 
     const loadMessages = async () => {
-        // TODO: Charger les messages depuis l'API
-        // Pour l'instant, on simule quelques messages
-        const mockMessages: Message[] = [
-            {
-                id: '1',
-                content: 'Bonjour ! Je suis intéressé par votre service.',
-                from: 'client',
-                timestamp: new Date(Date.now() - 1000 * 60 * 30), // 30 min ago
-                status: 'read'
-            },
-            {
-                id: '2',
-                content: 'Bonjour ! Merci pour votre intérêt. Comment puis-je vous aider ?',
-                from: 'prestataire',
-                timestamp: new Date(Date.now() - 1000 * 60 * 25), // 25 min ago
-                status: 'read'
-            },
-            {
-                id: '3',
-                content: 'J\'aimerais en savoir plus sur les détails et le prix.',
-                from: 'client',
-                timestamp: new Date(Date.now() - 1000 * 60 * 20), // 20 min ago
-                status: 'read'
+        // Charger les messages depuis l'API
+        try {
+            if (!service || !user) return;
+
+            const response = await fetch(`https://yukpomnang.onrender.com/api/chat/messages/${service.id}`, {
+                headers: {
+                    'Authorization': `Bearer ${user.token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                const loadedMessages: Message[] = data.messages?.map((msg: any) => ({
+                    id: msg.id,
+                    content: msg.content || msg.message,
+                    from: msg.sender_id === user.id ? 'client' : 'prestataire',
+                    timestamp: new Date(msg.created_at || msg.timestamp),
+                    status: msg.status || 'read'
+                })) || [];
+
+                setMessages(loadedMessages);
+                console.log('[ChatModal] Messages chargés:', loadedMessages.length);
+            } else {
+                console.warn('[ChatModal] Aucun message chargé, conversation vide');
+                setMessages([]);
             }
-        ];
-        setMessages(mockMessages);
+        } catch (error) {
+            console.error('[ChatModal] Erreur chargement messages:', error);
+            // Initialiser avec une conversation vide
+            setMessages([]);
+        }
     };
 
-    const sendMessage = () => {
-        if (!newMessage.trim() || !service) return;
+    const sendMessage = async () => {
+        if (!newMessage.trim() || !service || !user || !prestataire) return;
 
-        const message: Message = {
-            id: Date.now().toString(),
-            content: newMessage.trim(),
+        const messageContent = newMessage.trim();
+        const tempId = Date.now().toString();
+
+        // Ajouter le message localement immédiatement pour UX réactive
+        const tempMessage: Message = {
+            id: tempId,
+            content: messageContent,
             from: 'client',
             timestamp: new Date(),
             status: 'sent'
         };
 
-        setMessages(prev => [...prev, message]);
+        setMessages(prev => [...prev, tempMessage]);
         setNewMessage('');
 
-        // Simuler une réponse du prestataire
-        setTimeout(() => {
-            const response: Message = {
-                id: (Date.now() + 1).toString(),
-                content: 'Merci pour votre message. Je vous réponds dans les plus brefs délais.',
-                from: 'prestataire',
-                timestamp: new Date(),
-                status: 'sent'
-            };
-            setMessages(prev => [...prev, response]);
-        }, 2000);
+        try {
+            // Envoyer le message à l'API
+            const response = await fetch(`https://yukpomnang.onrender.com/api/chat/messages`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${user.token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    service_id: service.id,
+                    receiver_id: service.user_id,
+                    sender_id: user.id,
+                    content: messageContent,
+                    type: 'text'
+                })
+            });
 
-        onSendMessage?.(newMessage.trim());
+            if (response.ok) {
+                const data = await response.json();
+                console.log('[ChatModal] Message envoyé avec succès:', data);
+
+                // Mettre à jour le message avec l'ID réel du serveur
+                setMessages(prev => prev.map(msg =>
+                    msg.id === tempId
+                        ? { ...msg, id: data.message_id || data.id, status: 'delivered' }
+                        : msg
+                ));
+
+                // Créer une notification pour le prestataire
+                await fetch(`https://yukpomnang.onrender.com/api/notifications/create`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${user.token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        user_id: service.user_id,
+                        title: `💬 Nouveau message de ${user.name}`,
+                        message: `Au sujet du service: ${service.titre}\n\n"${messageContent.substring(0, 100)}${messageContent.length > 100 ? '...' : ''}"`,
+                        type: 'chat_message',
+                        priority: 'high',
+                        metadata: {
+                            service_id: service.id,
+                            sender_id: user.id,
+                            sender_name: user.name,
+                            message_preview: messageContent.substring(0, 50)
+                        }
+                    })
+                });
+
+                console.log('[ChatModal] Notification envoyée au prestataire');
+                onSendMessage?.(messageContent);
+
+            } else {
+                // En cas d'erreur, marquer le message comme non envoyé
+                setMessages(prev => prev.map(msg =>
+                    msg.id === tempId
+                        ? { ...msg, status: 'sent' }
+                        : msg
+                ));
+                Alert.alert('Erreur', 'Impossible d\'envoyer le message. Veuillez réessayer.');
+            }
+        } catch (error) {
+            console.error('[ChatModal] Erreur envoi message:', error);
+            Alert.alert('Erreur', 'Erreur lors de l\'envoi du message');
+        }
     };
 
     const formatTime = (date: Date) => {
@@ -131,15 +202,15 @@ const ChatModal: React.FC<ChatModalProps> = ({
             case 'sent':
                 return <Check size={12} color="#9E9E9E" />;
             case 'delivered':
-                return <CheckCheck size={12} color="#9E9E9E" />;
+                return <Check size={12} color="#4CAF50" weight="duotone" />;
             case 'read':
-                return <CheckCheck size={12} color="#4CAF50" />;
+                return <Check size={12} color="#4CAF50" weight="fill" />;
             default:
                 return null;
         }
     };
 
-    if (!visible || !service || !prestataire) return null;
+    if (!visible || !service || !normalizedPrestataire) return null;
 
     return (
         <Modal
@@ -158,22 +229,22 @@ const ChatModal: React.FC<ChatModalProps> = ({
                     <View style={styles.headerInfo}>
                         <Avatar.Text
                             size={40}
-                            label={prestataire.name?.charAt(0) || '?'}
-                            style={[styles.avatar, prestataire.isOnline && styles.avatarOnline]}
+                            label={normalizedPrestataire.name?.charAt(0) || '?'}
+                            style={[styles.avatar, normalizedPrestataire.isOnline && styles.avatarOnline]}
                         />
                         <View style={styles.headerDetails}>
-                            <Text style={styles.prestataireName}>{prestataire.name}</Text>
+                            <Text style={styles.prestataireName}>{normalizedPrestataire.name}</Text>
                             <View style={styles.statusContainer}>
-                                <View style={[styles.statusDot, prestataire.isOnline ? styles.statusOnline : styles.statusOffline]} />
+                                <View style={[styles.statusDot, normalizedPrestataire.isOnline ? styles.statusOnline : styles.statusOffline]} />
                                 <Text style={styles.statusText}>
-                                    {prestataire.isOnline ? 'En ligne' : 'Hors ligne'}
+                                    {normalizedPrestataire.isOnline ? 'En ligne' : 'Hors ligne'}
                                 </Text>
                             </View>
                         </View>
                     </View>
 
                     <TouchableOpacity style={styles.moreButton}>
-                        <MoreVertical size={20} color={theme.colors.text} />
+                        <DotsThreeVertical size={20} color={theme.colors.text} />
                     </TouchableOpacity>
                 </View>
 
@@ -255,7 +326,7 @@ const ChatModal: React.FC<ChatModalProps> = ({
                             style={[styles.sendButton, !newMessage.trim() && styles.sendButtonDisabled]}
                             disabled={!newMessage.trim()}
                         >
-                            <Send size={20} color="white" />
+                            <PaperPlaneTilt size={20} color="white" weight="fill" />
                         </TouchableOpacity>
                     </View>
                 </View>

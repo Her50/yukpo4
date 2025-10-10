@@ -1,7 +1,5 @@
-import { Ionicons } from '@expo/vector-icons';
 import * as React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { Badge, Card } from 'react-native-paper';
 import { theme } from '../theme/theme';
 
 interface Product {
@@ -91,32 +89,32 @@ const ProductPricing: React.FC<ProductPricingProps> = ({
 
         return (
             <View style={styles.compactContainer}>
-                <Ionicons name="bag-outline" size={16} color={theme.colors.primary} />
+                <Text style={styles.compactIcon}>🛍️</Text>
                 <Text style={styles.compactPrice}>
                     {priceRange || averagePrice}
                 </Text>
-                <Badge style={styles.compactBadge}>
+                <View style={styles.compactBadge}>
                     <Text style={styles.compactBadgeText}>
                         {products.length} produit{products.length > 1 ? 's' : ''}
                     </Text>
-                </Badge>
+                </View>
             </View>
         );
     }
 
     return (
-        <Card style={styles.card}>
-            <Card.Content style={styles.cardContent}>
+        <View style={styles.card}>
+            <View style={styles.cardContent}>
                 <View style={styles.header}>
-                    <Ionicons name="bag-outline" size={18} color={theme.colors.primary} />
+                    <Text style={styles.headerIcon}>🛍️</Text>
                     <Text style={styles.headerTitle}>
                         Produits disponibles
                     </Text>
-                    <Badge style={styles.headerBadge}>
+                    <View style={styles.headerBadge}>
                         <Text style={styles.headerBadgeText}>
                             {products.length}
                         </Text>
-                    </Badge>
+                    </View>
                 </View>
 
                 <View style={styles.productsList}>
@@ -128,7 +126,7 @@ const ProductPricing: React.FC<ProductPricingProps> = ({
                                 </Text>
                                 {(product.images?.length || 0) > 0 && (
                                     <View style={styles.productMediaInfo}>
-                                        <Ionicons name="image-outline" size={12} color={theme.colors.textSecondary} />
+                                        <Text style={styles.mediaIcon}>🖼️</Text>
                                         <Text style={styles.productMediaText}>
                                             {product.images?.length} image{(product.images?.length || 0) > 1 ? 's' : ''}
                                         </Text>
@@ -143,11 +141,11 @@ const ProductPricing: React.FC<ProductPricingProps> = ({
 
                     {products.length > maxDisplay && (
                         <View style={styles.moreProductsContainer}>
-                            <Badge style={styles.moreProductsBadge}>
+                            <View style={styles.moreProductsBadge}>
                                 <Text style={styles.moreProductsText}>
                                     +{products.length - maxDisplay} autre{products.length - maxDisplay > 1 ? 's' : ''} produit{products.length - maxDisplay > 1 ? 's' : ''}
                                 </Text>
-                            </Badge>
+                            </View>
                         </View>
                     )}
                 </View>
@@ -168,8 +166,8 @@ const ProductPricing: React.FC<ProductPricingProps> = ({
                         </View>
                     </View>
                 )}
-            </Card.Content>
-        </Card>
+            </View>
+        </View>
     );
 };
 
@@ -179,6 +177,10 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         gap: 6,
         marginBottom: 8,
+    },
+    compactIcon: {
+        fontSize: 16,
+        color: theme.colors.primary,
     },
     compactPrice: {
         fontSize: 14,
@@ -206,6 +208,10 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         gap: 8,
         marginBottom: 12,
+    },
+    headerIcon: {
+        fontSize: 18,
+        color: theme.colors.primary,
     },
     headerTitle: {
         fontSize: 14,
@@ -247,6 +253,10 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         gap: 4,
+    },
+    mediaIcon: {
+        fontSize: 12,
+        color: theme.colors.textSecondary,
     },
     productMediaText: {
         fontSize: 10,

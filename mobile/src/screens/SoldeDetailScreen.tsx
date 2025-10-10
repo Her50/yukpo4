@@ -1,485 +1,597 @@
-﻿import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
-import * as React from 'react';
-import { useEffect, useState } from 'react';
-import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { Card, Chip, Title } from 'react-native-paper';
+﻿import React, { useEffect, useState } from 'react';
+import {
+  ActivityIndicator,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
+} from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 import { userApi } from '../services/api';
 import { theme } from '../theme/theme';
 
-interface Transaction {
-  id: string;
-  type: 'credit' | 'debit';
-  amount: number;
-  description: string;
+type UsageLog = {
   date: string;
+  usage_type: string;
+  montant: number;
+  moteur: string;
+  service_id?: string;
+  service_title?: string;
+  payment_method?: string;
+  transaction_id?: string;
+};
+
+type PaymentLog = {
+  id: string;
+  date: string;
+  amount: number;
+  payment_method: string;
   status: 'completed' | 'pending' | 'failed';
-}
+  transaction_id: string;
+  tokens_added: number;
+};
 
 const SoldeDetailScreen: React.FC = () => {
   const { user } = useAuth();
-  const navigation = useNavigation();
-  const [refreshing, setRefreshing] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [paymentHistory, setPaymentHistory] = useState<any[]>([]);
-  const [selectedPeriod, setSelectedPeriod] = useState<'7d' | '30d' | '90d'>('30d');
+  const [logs, setLogs] = useState<UsageLog[]>([]);
+  const [paymentLogs, setPaymentLogs] = useState<PaymentLog[]>([]);
+  const [selectedPeriod, setSelectedPeriod] = useState<'7d' | '30d' | '90d' | 'all'>('30d');
   const [selectedTab, setSelectedTab] = useState<'consumption' | 'payments'>('consumption');
-  const currentBalance = user?.credits || 0;
+  const [loading, setLoading] = useState(false);
 
-  // Charger les données au montage et quand la période change
-  useEffect(() => {
-    if (user?.id) {
-      loadHistoryData();
+  // Récupérer le solde actuel
+  const getCurrentBalance = () => {
+    if (user?.credits) {
+      return user.credits;
     }
-  }, [user?.id, selectedPeriod]);
+    return 0;
+  };
 
-  const loadHistoryData = async () => {
+  const currentBalance = getCurrentBalance();
+
+  useEffect(() => {
+    if (!user?.id) return;
+    loadData();
+  }, [user, selectedPeriod]);
+
+  const loadData = async () => {
+    setLoading(true);
     try {
-      setLoading(true);
-
       // Charger l'historique de consommation
-      const consumptionResponse = await userApi.getConsumptionHistory(user!.id, selectedPeriod);
-      if (consumptionResponse.success && consumptionResponse.data) {
-        const consumptionData = Array.isArray(consumptionResponse.data) ? consumptionResponse.data : [];
-
-        // Convertir en format Transaction
-        const consumptionTransactions: Transaction[] = consumptionData.map((item: any, index: number) => ({
-          id: `consumption-${index}`,
-          type: 'debit',
-          amount: item.montant || 0,
-          description: item.usage_type || 'Consommation',
-          date: item.date || new Date().toISOString(),
-          status: 'completed',
-        }));
-
-        setTransactions(consumptionTransactions);
+      const consumptionResponse = await userApi.getCreditHistory(user.id, selectedPeriod);
+      if (consumptionResponse.success && Array.isArray(consumptionResponse.data)) {
+        setLogs(consumptionResponse.data);
+      } else {
+        setLogs([]);
       }
 
       // Charger l'historique des paiements
-      const paymentsResponse = await userApi.getPaymentsHistory(user!.id, selectedPeriod);
-      if (paymentsResponse.success && paymentsResponse.data) {
-        const paymentsData = Array.isArray(paymentsResponse.data) ? paymentsResponse.data : [];
-        setPaymentHistory(paymentsData);
+      const paymentsResponse = await userApi.getPaymentsHistory(user.id, selectedPeriod);
+      if (paymentsResponse.success && Array.isArray(paymentsResponse.data)) {
+        setPaymentLogs(paymentsResponse.data);
+      } else {
+        setPaymentLogs([]);
       }
     } catch (error) {
-      console.error('Erreur chargement historique:', error);
+      console.error('Erreur lors du chargement des données:', error);
+      setLogs([]);
+      setPaymentLogs([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await loadHistoryData();
-    setRefreshing(false);
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('fr-FR', {
+      style: 'currency',
+      currency: 'XAF'
+    }).format(amount);
+  };
+
+  const getPaymentMethodIcon = (method: string) => {
+    switch (method.toLowerCase()) {
+      case 'orange_money':
+        return '📱';
+      case 'mtn_money':
+        return '📱';
+      case 'visa_card':
+      case 'mastercard':
+        return '💳';
+      default:
+        return '💰';
+    }
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'completed': return '#4CAF50';
-      case 'pending': return '#FF9800';
-      case 'failed': return '#F44336';
-      default: return theme.colors.textSecondary;
+      case 'completed': return '#10B981';
+      case 'pending': return '#F59E0B';
+      case 'failed': return '#EF4444';
+      default: return '#6B7280';
     }
   };
 
-  const getStatusText = (status: string) => {
-    switch (status) {
-      case 'completed': return 'Terminé';
-      case 'pending': return 'En attente';
-      case 'failed': return 'Échoué';
-      default: return status;
-    }
-  };
+  const totalConsumed = logs.reduce((sum, log) => sum + (log.montant || 0), 0);
+  const totalPaid = paymentLogs.reduce((sum, payment) => sum + (payment.amount || 0), 0);
+  const totalTokensAdded = paymentLogs.reduce((sum, payment) => sum + (payment.tokens_added || 0), 0);
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('fr-FR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-    });
-  };
-
-  if (loading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#FF8C00" />
-        <Text style={styles.loadingText}>Chargement de l'historique...</Text>
-      </View>
-    );
-  }
-
-  return (
-    <ScrollView
-      style={styles.container}
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#FF8C00']} />
-      }
-    >
-      {/* Header avec solde */}
-      <View style={styles.header}>
-        <Text style={styles.title}>Mon Historique</Text>
-        <View style={styles.balanceCard}>
-          <Text style={styles.balanceLabel}>Solde Actuel</Text>
-          <Text style={styles.balanceAmount}>{currentBalance.toLocaleString()} tokens</Text>
+  const renderPeriodSelector = () => (
+    <View style={styles.periodSelector}>
+      <Text style={styles.periodLabel}>Période:</Text>
+      <View style={styles.periodButtons}>
+        {[
+          { key: '7d', label: '7j' },
+          { key: '30d', label: '30j' },
+          { key: '90d', label: '90j' },
+          { key: 'all', label: 'Tout' }
+        ].map((period) => (
+          <TouchableOpacity
+            key={period.key}
+            style={[
+              styles.periodButton,
+              selectedPeriod === period.key && styles.periodButtonActive
+            ]}
+            onPress={() => setSelectedPeriod(period.key as any)}
+          >
+            <Text style={[
+              styles.periodButtonText,
+              selectedPeriod === period.key && styles.periodButtonTextActive
+            ]}>
+              {period.label}
+            </Text>
+          </TouchableOpacity>
+        ))}
         </View>
       </View>
+  );
 
-      {/* Onglets Consommation / Paiements */}
-      <View style={styles.tabsContainer}>
+  const renderTabSelector = () => (
+    <View style={styles.tabSelector}>
         <TouchableOpacity
-          style={[styles.tab, selectedTab === 'consumption' && styles.tabActive]}
+        style={[styles.tabButton, selectedTab === 'consumption' && styles.tabButtonActive]}
           onPress={() => setSelectedTab('consumption')}
         >
+        <Text style={styles.tabIcon}>⚡</Text>
           <Text style={[styles.tabText, selectedTab === 'consumption' && styles.tabTextActive]}>
             Consommation
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.tab, selectedTab === 'payments' && styles.tabActive]}
+        style={[styles.tabButton, selectedTab === 'payments' && styles.tabButtonActive]}
           onPress={() => setSelectedTab('payments')}
         >
+        <Text style={styles.tabIcon}>💳</Text>
           <Text style={[styles.tabText, selectedTab === 'payments' && styles.tabTextActive]}>
             Paiements
           </Text>
         </TouchableOpacity>
       </View>
+  );
 
-      {/* Filtres de période */}
-      <View style={styles.filtersContainer}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          <TouchableOpacity
-            style={[styles.filterChip, selectedPeriod === '7d' && styles.filterChipActive]}
-            onPress={() => setSelectedPeriod('7d')}
-          >
-            <Text style={[styles.filterChipText, selectedPeriod === '7d' && styles.filterChipTextActive]}>
-              7 jours
+  const renderConsumptionTab = () => (
+    <View style={styles.tabContent}>
+      {/* Statistiques */}
+      <View style={styles.statsContainer}>
+        <View style={styles.statCard}>
+          <Text style={styles.statIcon}>📉</Text>
+          <Text style={styles.statValue}>{formatCurrency(totalConsumed)}</Text>
+          <Text style={styles.statLabel}>Total consommé</Text>
+        </View>
+        <View style={styles.statCard}>
+          <Text style={styles.statIcon}>📊</Text>
+          <Text style={styles.statValue}>{logs.length}</Text>
+          <Text style={styles.statLabel}>Utilisations</Text>
+        </View>
+        <View style={styles.statCard}>
+          <Text style={styles.statIcon}>📈</Text>
+          <Text style={styles.statValue}>
+            {logs.length > 0 ? formatCurrency(totalConsumed / logs.length) : '0 FCFA'}
             </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.filterChip, selectedPeriod === '30d' && styles.filterChipActive]}
-            onPress={() => setSelectedPeriod('30d')}
-          >
-            <Text style={[styles.filterChipText, selectedPeriod === '30d' && styles.filterChipTextActive]}>
-              30 jours
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.filterChip, selectedPeriod === '90d' && styles.filterChipActive]}
-            onPress={() => setSelectedPeriod('90d')}
-          >
-            <Text style={[styles.filterChipText, selectedPeriod === '90d' && styles.filterChipTextActive]}>
-              90 jours
-            </Text>
-          </TouchableOpacity>
-        </ScrollView>
+          <Text style={styles.statLabel}>Moyenne</Text>
+        </View>
       </View>
 
-      {/* Liste des transactions */}
-      <View style={styles.transactionsContainer}>
-        <Text style={styles.sectionTitle}>
-          {selectedTab === 'consumption' ? 'Historique de Consommation' : 'Historique des Paiements'}
-        </Text>
-
-        {transactions.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Ionicons name="document-text-outline" size={64} color="#CCC" />
-            <Text style={styles.emptyText}>Aucune transaction pour cette période</Text>
+      {/* Liste des utilisations */}
+      <View style={styles.listContainer}>
+        <Text style={styles.listTitle}>Détail des utilisations Yukpo</Text>
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={theme.colors.primary} />
+            <Text style={styles.loadingText}>Chargement...</Text>
           </View>
-        ) : (
-          transactions.map((transaction) => (
-            <Card key={transaction.id} style={styles.transactionCard}>
-              <Card.Content style={styles.transactionContent}>
-                <View style={styles.transactionLeft}>
-                  <View style={[
-                    styles.transactionIcon,
-                    { backgroundColor: transaction.type === 'credit' ? '#4CAF50' + '20' : '#F44336' + '20' }
-                  ]}>
-                    <Ionicons
-                      name={transaction.type === 'credit' ? 'add-circle' : 'remove-circle'}
-                      size={24}
-                      color={transaction.type === 'credit' ? '#4CAF50' : '#F44336'}
-                    />
-                  </View>
-                  <View style={styles.transactionDetails}>
-                    <Text style={styles.transactionDescription}>{transaction.description}</Text>
-                    <Text style={styles.transactionDate}>{formatDate(transaction.date)}</Text>
-                    <Chip
-                      style={[styles.statusChip, { backgroundColor: getStatusColor(transaction.status) + '20' }]}
-                      textStyle={{ color: getStatusColor(transaction.status), fontSize: 12 }}
-                    >
-                      {getStatusText(transaction.status)}
-                    </Chip>
-                  </View>
-                </View>
-                <View style={styles.transactionRight}>
-                  <Text style={[
-                    styles.transactionAmount,
-                    { color: transaction.type === 'credit' ? '#4CAF50' : '#F44336' }
-                  ]}>
-                    {transaction.type === 'credit' ? '+' : '-'}{transaction.amount} crédits
-                  </Text>
-                </View>
-              </Card.Content>
-            </Card>
-          ))
-        )}
-      </View>
-
-      {/* Bouton de recharge */}
-      <View style={styles.rechargeContainer}>
-        <TouchableOpacity
-          onPress={() => (navigation as any).navigate('RechargeTokens')}
-          style={styles.rechargeButton}
-        >
-          <Ionicons name="wallet" size={20} color="white" />
-          <Text style={styles.rechargeButtonText}>Recharger des Tokens</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Statistiques réelles */}
-      {transactions.length > 0 && (
-        <Card style={styles.statsCard}>
-          <Card.Content>
-            <Title style={styles.statsTitle}>Statistiques de la Période</Title>
-            <View style={styles.statsRow}>
-              <View style={styles.statItem}>
-                <Text style={styles.statValue}>
-                  {transactions.filter(t => t.type === 'credit').reduce((sum, t) => sum + t.amount, 0)}
-                </Text>
-                <Text style={styles.statLabel}>Tokens reçus</Text>
+        ) : logs.length > 0 ? (
+          logs.map((log, index) => (
+            <View key={index} style={styles.logItem}>
+              <View style={styles.logIcon}>
+                <Text style={styles.logIconText}>⚡</Text>
               </View>
-              <View style={styles.statItem}>
-                <Text style={styles.statValue}>
-                  {transactions.filter(t => t.type === 'debit').reduce((sum, t) => sum + t.amount, 0)}
-                </Text>
-                <Text style={styles.statLabel}>Tokens dépensés</Text>
+              <View style={styles.logContent}>
+                <Text style={styles.logTitle}>{log.usage_type}</Text>
+                <Text style={styles.logSubtitle}>{log.moteur}</Text>
+                {log.service_title && (
+                  <Text style={styles.logService}>Service: {log.service_title}</Text>
+                )}
+                <Text style={styles.logDate}>
+                  {new Date(log.date).toLocaleDateString('fr-FR')}
+        </Text>
               </View>
-              <View style={styles.statItem}>
-                <Text style={styles.statValue}>{transactions.length}</Text>
-                <Text style={styles.statLabel}>Transactions</Text>
+              <View style={styles.logAmount}>
+                <Text style={styles.logAmountText}>-{formatCurrency(log.montant || 0)}</Text>
               </View>
             </View>
-          </Card.Content>
-        </Card>
-      )}
+          ))
+        ) : (
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyIcon}>⚡</Text>
+            <Text style={styles.emptyText}>Aucune utilisation Yukpo enregistrée</Text>
+          </View>
+        )}
+      </View>
+    </View>
+  );
+
+  const renderPaymentsTab = () => (
+    <View style={styles.tabContent}>
+      {/* Statistiques */}
+      <View style={styles.statsContainer}>
+        <View style={styles.statCard}>
+          <Text style={styles.statIcon}>📈</Text>
+          <Text style={styles.statValue}>{formatCurrency(totalPaid)}</Text>
+          <Text style={styles.statLabel}>Total payé</Text>
+          </View>
+        <View style={styles.statCard}>
+          <Text style={styles.statIcon}>💳</Text>
+          <Text style={styles.statValue}>{totalTokensAdded.toLocaleString()}</Text>
+          <Text style={styles.statLabel}>Tokens ajoutés</Text>
+                  </View>
+        <View style={styles.statCard}>
+          <Text style={styles.statIcon}>📋</Text>
+          <Text style={styles.statValue}>{paymentLogs.length}</Text>
+          <Text style={styles.statLabel}>Transactions</Text>
+                  </View>
+                </View>
+
+      {/* Liste des paiements */}
+      <View style={styles.listContainer}>
+        <Text style={styles.listTitle}>Historique des paiements</Text>
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={theme.colors.primary} />
+            <Text style={styles.loadingText}>Chargement...</Text>
+          </View>
+        ) : paymentLogs.length > 0 ? (
+          paymentLogs.map((payment) => (
+            <View key={payment.id} style={styles.logItem}>
+              <View style={styles.logIcon}>
+                <Text style={styles.logIconText}>{getPaymentMethodIcon(payment.payment_method)}</Text>
+              </View>
+              <View style={styles.logContent}>
+                <Text style={styles.logTitle}>{payment.payment_method}</Text>
+                <Text style={styles.logSubtitle}>ID: {payment.transaction_id}</Text>
+                <Text style={styles.logService}>+{(payment.tokens_added || 0).toLocaleString()} tokens</Text>
+                <Text style={styles.logDate}>
+                  {new Date(payment.date).toLocaleDateString('fr-FR')}
+                  </Text>
+                </View>
+              <View style={styles.logAmount}>
+                <Text style={[styles.logAmountText, { color: '#10B981' }]}>
+                  +{formatCurrency(payment.amount || 0)}
+                </Text>
+                <View style={[styles.statusBadge, { backgroundColor: getStatusColor(payment.status) }]}>
+                  <Text style={styles.statusText}>{payment.status}</Text>
+                </View>
+              </View>
+            </View>
+          ))
+        ) : (
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyIcon}>💳</Text>
+            <Text style={styles.emptyText}>Aucun paiement enregistré</Text>
+          </View>
+        )}
+      </View>
+    </View>
+  );
+
+  return (
+    <View style={styles.container}>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>Historique de Consommation</Text>
+      </View>
+
+        {/* Solde actuel */}
+        <View style={styles.balanceCard}>
+          <View style={styles.balanceContent}>
+            <View style={styles.balanceLeft}>
+              <Text style={styles.balanceLabel}>Solde actuel</Text>
+              <Text style={styles.balanceValue}>
+                {currentBalance.toFixed(0)} FCFA
+                </Text>
+              </View>
+            <View style={styles.balanceRight}>
+              <Text style={styles.balanceSubLabel}>Total consommé</Text>
+              <Text style={styles.balanceSubValue}>
+                {formatCurrency(totalConsumed)}
+                </Text>
+              </View>
+              </View>
+            </View>
+
+        {/* Sélecteur de période */}
+        {renderPeriodSelector()}
+
+        {/* Sélecteur d'onglets */}
+        {renderTabSelector()}
+
+        {/* Contenu des onglets */}
+        {selectedTab === 'consumption' ? renderConsumptionTab() : renderPaymentsTab()}
     </ScrollView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background,
+    backgroundColor: '#F8FAFC',
   },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: theme.colors.background,
-  },
-  loadingText: {
-    marginTop: 16,
-    fontSize: 16,
-    color: '#666',
-  },
-  tabsContainer: {
-    flexDirection: 'row',
-    marginHorizontal: 20,
-    marginVertical: 16,
-    backgroundColor: '#FFF',
-    borderRadius: 12,
-    padding: 4,
-  },
-  tab: {
-    flex: 1,
-    paddingVertical: 10,
-    alignItems: 'center',
-    borderRadius: 8,
-  },
-  tabActive: {
-    backgroundColor: '#FF8C00',
-  },
-  tabText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#666',
-  },
-  tabTextActive: {
-    color: '#FFF',
-  },
-  emptyState: {
-    alignItems: 'center',
-    paddingVertical: 40,
-  },
-  emptyText: {
-    fontSize: 16,
-    color: '#999',
-    marginTop: 16,
+  scrollContent: {
+    paddingBottom: 120,
   },
   header: {
-    backgroundColor: theme.colors.primary,
-    paddingBottom: 20,
+    padding: 20,
+    paddingTop: 40,
   },
-  title: {
+  headerTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: 'white',
-    textAlign: 'center',
-    paddingTop: 20,
-    marginBottom: 20,
+    color: theme.colors.text,
   },
   balanceCard: {
+    margin: 20,
+    marginTop: 0,
     backgroundColor: 'white',
-    marginHorizontal: 20,
-    borderRadius: 12,
+    borderRadius: 16,
     padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  balanceContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    elevation: 3,
+  },
+  balanceLeft: {
+    flex: 1,
   },
   balanceLabel: {
     fontSize: 16,
     color: theme.colors.textSecondary,
-    marginBottom: 5,
+    marginBottom: 4,
   },
-  balanceAmount: {
-    fontSize: 32,
+  balanceValue: {
+    fontSize: 28,
     fontWeight: 'bold',
-    color: theme.colors.primary,
+    color: '#10B981',
   },
-  filtersContainer: {
-    paddingVertical: 15,
-    paddingHorizontal: 20,
+  balanceRight: {
+    alignItems: 'flex-end',
   },
-  filterChip: {
-    backgroundColor: 'white',
+  balanceSubLabel: {
+    fontSize: 14,
+    color: theme.colors.textSecondary,
+    marginBottom: 4,
+  },
+  balanceSubValue: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#EF4444',
+  },
+  periodSelector: {
+    margin: 20,
+    marginTop: 0,
+  },
+  periodLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: theme.colors.text,
+    marginBottom: 12,
+  },
+  periodButtons: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  periodButton: {
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    marginRight: 10,
+    backgroundColor: 'white',
     borderWidth: 1,
     borderColor: theme.colors.border,
   },
-  filterChipActive: {
+  periodButtonActive: {
     backgroundColor: theme.colors.primary,
     borderColor: theme.colors.primary,
   },
-  filterChipText: {
-    color: theme.colors.textSecondary,
+  periodButtonText: {
     fontSize: 14,
+    color: theme.colors.text,
   },
-  filterChipTextActive: {
+  periodButtonTextActive: {
     color: 'white',
-    fontSize: 14,
-    fontWeight: '500',
+    fontWeight: '600',
   },
-  transactionsContainer: {
-    padding: 20,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: theme.colors.text,
-    marginBottom: 15,
-  },
-  transactionCard: {
-    marginBottom: 10,
-    elevation: 2,
-  },
-  transactionContent: {
+  tabSelector: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  transactionLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  transactionIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 15,
-  },
-  transactionDetails: {
-    flex: 1,
-  },
-  transactionDescription: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: theme.colors.text,
-    marginBottom: 2,
-  },
-  transactionDate: {
-    fontSize: 12,
-    color: theme.colors.textSecondary,
-    marginBottom: 5,
-  },
-  statusChip: {
-    alignSelf: 'flex-start',
-  },
-  transactionRight: {
-    alignItems: 'flex-end',
-  },
-  transactionAmount: {
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  rechargeContainer: {
-    padding: 20,
-  },
-  rechargeButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#FF8C00',
-    paddingVertical: 16,
-    borderRadius: 12,
-    gap: 8,
-    elevation: 4,
-  },
-  rechargeButtonText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#FFF',
-  },
-  statsCard: {
     margin: 20,
     marginTop: 0,
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 4,
+  },
+  tabButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderRadius: 8,
+    gap: 8,
+  },
+  tabButtonActive: {
+    backgroundColor: theme.colors.primary,
+  },
+  tabIcon: {
+    fontSize: 16,
+  },
+  tabText: {
+    fontSize: 14,
+    color: theme.colors.text,
+    fontWeight: '500',
+  },
+  tabTextActive: {
+    color: 'white',
+    fontWeight: '600',
+  },
+  tabContent: {
+    flex: 1,
+  },
+  statsContainer: {
+    flexDirection: 'row',
+    margin: 20,
+    marginTop: 0,
+    gap: 12,
+  },
+  statCard: {
+    flex: 1,
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
     elevation: 2,
   },
-  statsTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 15,
-    color: theme.colors.text,
-  },
-  statsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-  },
-  statItem: {
-    alignItems: 'center',
+  statIcon: {
+    fontSize: 24,
+    marginBottom: 8,
   },
   statValue: {
-    fontSize: 20,
+    fontSize: 16,
     fontWeight: 'bold',
-    color: theme.colors.primary,
+    color: theme.colors.text,
+    marginBottom: 4,
   },
   statLabel: {
     fontSize: 12,
     color: theme.colors.textSecondary,
-    marginTop: 5,
+    textAlign: 'center',
+  },
+  listContainer: {
+    margin: 20,
+    marginTop: 0,
+  },
+  listTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: theme.colors.text,
+    marginBottom: 16,
+  },
+  loadingContainer: {
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  loadingText: {
+    marginTop: 12,
+    color: theme.colors.textSecondary,
+  },
+  logItem: {
+    flexDirection: 'row',
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  logIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#FEF2F2',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  logIconText: {
+    fontSize: 18,
+  },
+  logContent: {
+    flex: 1,
+  },
+  logTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: theme.colors.text,
+    marginBottom: 2,
+  },
+  logSubtitle: {
+    fontSize: 14,
+    color: theme.colors.textSecondary,
+    marginBottom: 2,
+  },
+  logService: {
+    fontSize: 12,
+    color: '#3B82F6',
+    marginBottom: 2,
+  },
+  logDate: {
+    fontSize: 12,
+    color: theme.colors.textSecondary,
+  },
+  logAmount: {
+    alignItems: 'flex-end',
+  },
+  logAmountText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#EF4444',
+    marginBottom: 4,
+  },
+  statusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  statusText: {
+    fontSize: 10,
+    color: 'white',
+    fontWeight: '600',
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  emptyIcon: {
+    fontSize: 48,
+    marginBottom: 16,
+  },
+  emptyText: {
+    fontSize: 16,
+    color: theme.colors.textSecondary,
   },
 });
 
 export default SoldeDetailScreen;
-
-
-

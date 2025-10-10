@@ -10,7 +10,7 @@ import InteractiveMap from './InteractiveMap';
 interface GPSSelectorProps {
     visible: boolean;
     onClose: () => void;
-    onSelect: (coordinates: { lat: number; lng: number }) => void;
+    onSelect: (coordinates: { lat: number; lng: number; radius?: number; zoneType?: 'point' | 'circle' | 'rectangle' }) => void;
     currentLocation?: { lat: number; lng: number } | null;
 }
 
@@ -95,7 +95,7 @@ const GPSSelector: React.FC<GPSSelectorProps> = ({
         <Modal
             visible={visible}
             animationType="slide"
-            presentationStyle="pageSheet"
+            presentationStyle="fullScreen"
             onRequestClose={onClose}
         >
             <View style={styles.container}>
@@ -108,9 +108,9 @@ const GPSSelector: React.FC<GPSSelectorProps> = ({
 
                 <View style={styles.content}>
                     <Card style={styles.card}>
-                        <Card.Content>
+                        <View style={styles.cardContent}>
                             <View style={styles.iconContainer}>
-                                <Text style={styles.locationIcon}>📍</Text>
+                                <Text style={styles.locationIcon}>🗺️</Text>
                             </View>
 
                             <Title style={styles.cardTitle}>Position GPS</Title>
@@ -184,12 +184,12 @@ const GPSSelector: React.FC<GPSSelectorProps> = ({
                                     </Text>
                                 </Button>
                             </View>
-                        </Card.Content>
+                        </View>
                     </Card>
 
                     {currentLocation && (
                         <Card style={styles.currentCard}>
-                            <Card.Content>
+                            <View style={styles.cardContent}>
                                 <Title style={styles.currentTitle}>Position actuelle</Title>
                                 <View style={styles.coordinatesContainer}>
                                     <Text style={styles.pinIcon}>📌</Text>
@@ -197,7 +197,7 @@ const GPSSelector: React.FC<GPSSelectorProps> = ({
                                         {formatCoordinates(currentLocation.lat, currentLocation.lng)}
                                     </Text>
                                 </View>
-                            </Card.Content>
+                            </View>
                         </Card>
                     )}
                 </View>
@@ -217,12 +217,15 @@ const GPSSelector: React.FC<GPSSelectorProps> = ({
                     onLocationSelect={(location) => {
                         onSelect({
                             lat: location.latitude,
-                            lng: location.longitude
+                            lng: location.longitude,
+                            radius: location.radius,
+                            zoneType: location.zoneType
                         });
                         setShowMap(false);
                     }}
                     onClose={() => setShowMap(false)}
-                    showRadiusSelector={false}
+                    showRadiusSelector={true}
+                    allowZoneSelection={true}
                 />
             </Modal>
         </Modal>
@@ -250,7 +253,7 @@ const styles = StyleSheet.create({
         fontSize: 24,
     },
     locationIcon: {
-        fontSize: 48,
+        fontSize: 32,
         textAlign: 'center',
     },
     mapIcon: {
@@ -291,7 +294,15 @@ const styles = StyleSheet.create({
     },
     card: {
         marginBottom: 16,
-        elevation: 3,
+        elevation: 0,
+        borderWidth: 0,
+        backgroundColor: 'transparent',
+        shadowOpacity: 0,
+        shadowRadius: 0,
+        shadowOffset: { width: 0, height: 0 },
+    },
+    cardContent: {
+        padding: 16,
     },
     iconContainer: {
         alignItems: 'center',

@@ -1,22 +1,44 @@
-# Test de recherche d'embeddings
-Write-Host "Test de recherche d'embeddings..." -ForegroundColor Green
+# Script de diagnostic pour la recherche de services
+Write-Host "Diagnostic de la recherche de services" -ForegroundColor Cyan
 
-$body = @{
-    query = "Test embedding"
-    type_donnee = "texte"
-    top_k = 10
-} | ConvertTo-Json
+$baseUrl = "http://localhost:3000"
 
-$headers = @{"x-api-key" = "yukpo_embedding_key_2024"}
+# Test 1: Vérifier si le backend est accessible
+Write-Host "Test 1: Vérification du backend..." -ForegroundColor Green
+try {
+    $healthResponse = Invoke-RestMethod -Uri "$baseUrl/health" -Method GET -TimeoutSec 5
+    Write-Host "Backend accessible" -ForegroundColor Green
+}
+catch {
+    Write-Host "Backend non accessible: $($_.Exception.Message)" -ForegroundColor Red
+    exit 1
+}
+
+# Test 2: Vérifier les services existants
+Write-Host "Test 2: Vérification des services en base..." -ForegroundColor Green
+try {
+    $servicesResponse = Invoke-RestMethod -Uri "$baseUrl/api/services" -Method GET -TimeoutSec 10
+    $servicesCount = if ($servicesResponse -is [array]) { $servicesResponse.Count } else { 0 }
+    Write-Host "Services trouvés en base: $servicesCount" -ForegroundColor Green
+}
+catch {
+    Write-Host "Erreur services: $($_.Exception.Message)" -ForegroundColor Red
+}
+
+# Test 3: Test de recherche directe
+Write-Host "Test 3: Test de recherche directe..." -ForegroundColor Green
+$searchData = @{
+    texte      = "restaurant"
+    gps_mobile = $null
+}
 
 try {
-    $response = Invoke-RestMethod -Uri "http://localhost:8000/api/v1/search_embedding_pinecone" -Method POST -Body $body -ContentType "application/json" -Headers $headers
-    Write-Host "Recherche réussie: $($response.results.Count) résultats" -ForegroundColor Green
-    
-    if ($response.results.Count -gt 0) {
-        Write-Host "Premier résultat:" -ForegroundColor Cyan
-        $response.results[0] | ConvertTo-Json
-    }
-} catch {
-    Write-Host "Erreur recherche: $($_.Exception.Message)" -ForegroundColor Red
-} 
+    $searchResponse = Invoke-RestMethod -Uri "$baseUrl/api/search/direct" -Method POST -Body ($searchData | ConvertTo-Json) -ContentType "application/json" -TimeoutSec 10
+    Write-Host "Recherche réussie" -ForegroundColor Green
+}
+catch {
+    $statusCode = $_.Exception.Response.StatusCode.value__
+    Write-Host "Status: $statusCode (attendu sans auth)" -ForegroundColor Yellow
+}
+
+Write-Host "Diagnostic terminé!" -ForegroundColor Cyan

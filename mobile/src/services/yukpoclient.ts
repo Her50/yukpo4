@@ -1,6 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-
-const API_BASE_URL = 'https://yukpomnang.onrender.com';
+import { API_BASE_URL } from '../config/api';
 
 // Interface pour la réponse IA
 export interface IAResponse {
@@ -18,8 +17,24 @@ export interface IAResponseWithHeaders {
 }
 
 // Helper pour obtenir le token
+// Essaie plusieurs clés pour compatibilité (auth_token, token)
 const getToken = async (): Promise<string | null> => {
-  return await AsyncStorage.getItem('auth_token');
+  // Essayer 'auth_token' d'abord (nouvelle clé)
+  let token = await AsyncStorage.getItem('auth_token');
+
+  if (!token) {
+    // Fallback vers 'token' (ancienne clé, compatibilité avec le frontend)
+    token = await AsyncStorage.getItem('token');
+    console.log('[yukpoclient] Token récupéré depuis clé "token" (fallback)');
+  } else {
+    console.log('[yukpoclient] Token récupéré depuis clé "auth_token"');
+  }
+
+  if (!token) {
+    console.error('[yukpoclient] ❌ Aucun token trouvé (ni auth_token, ni token)');
+  }
+
+  return token;
 };
 
 // ✅ Fonction pour générer des suggestions de service (sans créer le service)
@@ -42,7 +57,7 @@ export async function genererSuggestionsService(input: any): Promise<IAResponseW
   };
 
   try {
-    console.log('[yukpoclient] Appel /api/ia/creation-service...');
+    console.log('[yukpoclient] Appel /api/ia/creation-service (comme le frontend)...');
     const iaResponse = await fetch(`${API_BASE_URL}/api/ia/creation-service`, {
       method: 'POST',
       headers: {
@@ -54,7 +69,21 @@ export async function genererSuggestionsService(input: any): Promise<IAResponseW
 
     if (!iaResponse.ok) {
       const errorData = await iaResponse.json().catch(() => ({}));
-      throw new Error(errorData.message || `Erreur IA: ${iaResponse.status}`);
+      console.error('[yukpoclient] Erreur IA détaillée:', {
+        status: iaResponse.status,
+        statusText: iaResponse.statusText,
+        errorData: errorData
+      });
+
+      if (iaResponse.status === 500) {
+        throw new Error(`Erreur serveur IA (500): ${errorData.message || 'Erreur interne du serveur'}`);
+      } else if (iaResponse.status === 401) {
+        throw new Error('Erreur d\'authentification: Token invalide ou expiré');
+      } else if (iaResponse.status === 400) {
+        throw new Error(`Erreur de requête (400): ${errorData.message || 'Données invalides'}`);
+      } else {
+        throw new Error(`Erreur IA (${iaResponse.status}): ${errorData.message || iaResponse.statusText}`);
+      }
     }
 
     const iaData = await iaResponse.json();
@@ -103,7 +132,22 @@ export async function rechercherServices(input: any): Promise<any> {
     }
 
     const result = await response.json();
-    console.log('[yukpoclient] Résultats recherche:', result);
+    console.log('[yukpoclient] ===== RÉPONSE API RECHERCHE =====');
+    console.log('[yukpoclient] Status:', response.status);
+    console.log('[yukpoclient] Headers:', {
+      contentType: response.headers.get('content-type'),
+      tokensRemaining: response.headers.get('x-tokens-remaining')
+    });
+    console.log('[yukpoclient] Résultats bruts:', JSON.stringify(result, null, 2));
+    console.log('[yukpoclient] Structure:', {
+      hasResultats: !!result.resultats,
+      typeResultats: typeof result.resultats,
+      isArray: Array.isArray(result.resultats),
+      hasNestedResultats: !!result.resultats?.resultats,
+      nestedType: typeof result.resultats?.resultats,
+      nestedIsArray: Array.isArray(result.resultats?.resultats),
+      nestedLength: Array.isArray(result.resultats?.resultats) ? result.resultats.resultats.length : 'N/A'
+    });
 
     // Mettre à jour le solde de tokens
     const remaining = response.headers.get('x-tokens-remaining');
@@ -111,6 +155,7 @@ export async function rechercherServices(input: any): Promise<any> {
       await AsyncStorage.setItem('tokens_balance', remaining);
     }
 
+    console.log('[yukpoclient] Retour du résultat complet');
     return result;
   } catch (error: any) {
     console.error('[yukpoclient] Erreur recherche:', error);

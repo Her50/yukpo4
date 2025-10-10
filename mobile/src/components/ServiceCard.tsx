@@ -1,13 +1,20 @@
-// Migration vers Lucide React Native pour un design moderne
 import { useNavigation } from '@react-navigation/native';
-import { CaretRight, Eye, Heart, Images, MapPin, ChatCircle, Phone, Play, Share } from 'phosphor-react-native';
 import * as React from 'react';
 import { useState } from 'react';
 import { Alert, Dimensions, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { Avatar, Card, Chip, Paragraph, Title } from 'react-native-paper';
 import { useAuth } from '../contexts/AuthContext';
+import useFavorites from '../hooks/useFavorites';
+import useOnlineStatus from '../hooks/useOnlineStatus';
+import useServiceMedia from '../hooks/useServiceMedia';
+import useServiceStats from '../hooks/useServiceStats';
+import useWebSocket from '../hooks/useWebSocket';
 import { theme } from '../theme/theme';
+import ChatModalAdvanced from './ChatModalAdvanced';
+import LocationDisplayModern from './LocationDisplayModern';
 import ProductPricing from './ProductPricing';
+import ServiceMediaGallery from './ServiceMediaGallery';
+import ServiceRating from './ServiceRating';
+import ServiceStats from './ServiceStats';
 
 const { width } = Dimensions.get('window');
 
@@ -50,6 +57,11 @@ interface ServiceCardProps {
     onShare?: (service: Service) => void;
     compact?: boolean;
     showActions?: boolean;
+    // Nouvelles props pour la parité avec le frontend
+    prestataires?: Map<number, any>;
+    user?: any;
+    wsConnected?: boolean;
+    userStatus?: any;
 }
 
 // Fonction utilitaire pour extraire la valeur d'un champ de service
@@ -118,11 +130,44 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
     onFavorite,
     onShare,
     compact = false,
-    showActions = true
+    showActions = true,
+    // Nouvelles props
+    prestataires,
+    user: propUser,
+    wsConnected = false,
+    userStatus
 }) => {
     const navigation = useNavigation();
-    const { user } = useAuth();
-    const [isFavorited, setIsFavorited] = useState(false);
+    const { user: authUser } = useAuth();
+    const user = propUser || authUser;
+    const [isFavoritedLocal, setIsFavoritedLocal] = useState(false);
+    const [showGallery, setShowGallery] = useState(false);
+    const [showChat, setShowChat] = useState(false);
+
+    // Utiliser les hooks pour la parité avec le frontend
+    const serviceMedia = useServiceMedia(service.id);
+    const { isOnline: realTimeOnline, lastSeen: realTimeLastSeen } = useOnlineStatus(
+        service.user_id,
+        wsConnected,
+        userStatus,
+        service.created_at
+    );
+    const { isFavorited, toggleFavorite } = useFavorites(user?.id);
+    const { stats: serviceStats } = useServiceStats(service.id);
+
+    // Gérer la connexion WebSocket pour les mises à jour en temps réel
+    const { isConnected: wsIsConnected, sendUserStatus } = useWebSocket(user?.id, {
+        onUserStatusUpdate: (update) => {
+            console.log('📡 [ServiceCard] Mise à jour statut utilisateur:', update.data);
+        },
+        onConnectionChange: (connected) => {
+            console.log('📡 [ServiceCard] WebSocket:', connected ? 'connecté' : 'déconnecté');
+        }
+    });
+
+    // Utiliser le statut en temps réel si disponible, sinon fallback sur les props
+    const finalIsOnline = wsIsConnected ? realTimeOnline : isOnline;
+    const finalLastSeen = wsIsConnected ? realTimeLastSeen : lastSeen;
 
     const handleContact = () => {
         if (!user) {
@@ -151,31 +196,83 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
             );
             return;
         }
-        onChat?.(service);
+        setShowChat(true);
     };
 
     const handleGallery = () => {
+        setShowGallery(true);
         onGallery?.(service);
     };
 
-    const handleFavorite = () => {
-        setIsFavorited(!isFavorited);
+    const handleFavorite = async () => {
+        if (!user) {
+            Alert.alert(
+                "Connexion requise",
+                "Veuillez vous connecter pour ajouter aux favoris",
+                [
+                    { text: "Annuler", style: "cancel" },
+                    { text: "Se connecter", onPress: () => navigation.navigate('Login' as never) }
+                ]
+            );
+            return;
+        }
+
+        try {
+            const success = await toggleFavorite(service.id);
+            if (success) {
+                setIsFavoritedLocal(!isFavoritedLocal);
+                Alert.alert(
+                    'Succès',
+                    isFavorited(service.id) ? 'Service ajouté aux favoris !' : 'Service retiré des favoris !'
+                );
+            } else {
+                Alert.alert('Erreur', 'Impossible de modifier les favoris');
+            }
+        } catch (error) {
+            console.error('Erreur favori:', error);
+            Alert.alert('Erreur', 'Impossible de modifier les favoris');
+        }
+
         onFavorite?.(service);
     };
 
-    const handleShare = () => {
+    const handleShare = async () => {
+        try {
+            // Générer le lien de partage externe avec redirection intelligente
+            const shareUrl = `${process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001'}/shared-service?serviceId=${service.id}`;
+
+            // Utiliser l'API de partage native si disponible
+            if (navigator.share) {
+                await navigator.share({
+                    title: getServiceFieldValue(service.data?.titre_service) || 'Service intéressant',
+                    text: getServiceFieldValue(service.data?.description) || 'Découvrez ce service sur Yukpo',
+                    url: shareUrl
+                });
+            } else {
+                // Fallback : copier le lien de partage externe
+                await navigator.clipboard.writeText(shareUrl);
+                Alert.alert(
+                    'Lien copié !',
+                    'Le lien a été copié. Les personnes non connectées seront redirigées vers l\'inscription.'
+                );
+            }
+        } catch (error) {
+            console.error('Erreur lors du partage:', error);
+            Alert.alert('Erreur', 'Impossible de partager le service');
+        }
+
         onShare?.(service);
     };
 
     const getStatusColor = () => {
-        if (isOnline) return '#4CAF50';
+        if (finalIsOnline) return '#4CAF50';
         return '#9E9E9E';
     };
 
     const getStatusText = () => {
-        if (isOnline) return 'En ligne';
-        if (lastSeen) {
-            const diffMinutes = Math.floor((Date.now() - lastSeen.getTime()) / (1000 * 60));
+        if (finalIsOnline) return 'En ligne';
+        if (finalLastSeen) {
+            const diffMinutes = Math.floor((Date.now() - finalLastSeen.getTime()) / (1000 * 60));
             if (diffMinutes < 60) return `Il y a ${diffMinutes}min`;
             const diffHours = Math.floor(diffMinutes / 60);
             if (diffHours < 24) return `Il y a ${diffHours}h`;
@@ -197,7 +294,7 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
     };
 
     return (
-        <Card style={[styles.card, compact && styles.compactCard]}>
+        <View style={[styles.card, compact && styles.compactCard]}>
             {/* Header avec logo et badge de score */}
             <View style={styles.header}>
                 {/* Logo du service si disponible */}
@@ -221,23 +318,25 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
             </View>
 
             {/* Contenu principal */}
-            <Card.Content style={styles.content}>
+            <View style={[styles.cardContent, styles.content]}>
                 {/* Titre et catégorie */}
                 <View style={styles.titleContainer}>
-                    <Title style={styles.title} numberOfLines={2}>
+                    <Text style={styles.title} numberOfLines={2}>
                         {getServiceFieldValue(service.data?.titre_service) || service.titre}
-                    </Title>
+                    </Text>
                     {getServiceFieldValue(service.data?.category) !== 'Non spécifié' && (
-                        <Chip style={styles.categoryChip} textStyle={styles.categoryText}>
-                            {getServiceFieldValue(service.data?.category)}
-                        </Chip>
+                        <View style={styles.categoryChip}>
+                            <Text style={styles.categoryText}>
+                                {getServiceFieldValue(service.data?.category)}
+                            </Text>
+                        </View>
                     )}
                 </View>
 
                 {/* Description */}
-                <Paragraph style={styles.description} numberOfLines={compact ? 2 : 3}>
+                <Text style={styles.description} numberOfLines={compact ? 2 : 3}>
                     {getServiceFieldValue(service.data?.description) || service.description}
-                </Paragraph>
+                </Text>
 
                 {/* Produits avec prix */}
                 {(() => {
@@ -264,11 +363,11 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
                 {/* Informations prestataire */}
                 <View style={styles.prestataireContainer}>
                     <View style={styles.prestataireInfo}>
-                        <Avatar.Text
-                            size={32}
-                            label={prestataire?.name?.charAt(0) || '?'}
-                            style={[styles.avatar, isOnline && styles.avatarOnline]}
-                        />
+                        <View style={[styles.avatar, finalIsOnline && styles.avatarOnline]}>
+                            <Text style={styles.avatarText}>
+                                {prestataire?.name?.charAt(0) || '?'}
+                            </Text>
+                        </View>
                         <View style={styles.prestataireDetails}>
                             <Text style={styles.prestataireName}>
                                 {prestataire?.name || getServiceFieldValue(service.data?.nom_prestataire) || `Créateur #${service.user_id}`}
@@ -288,46 +387,49 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
                     )}
                 </View>
 
-                {/* Localisation GPS complète */}
-                <View style={styles.locationContainer}>
-                    <View style={styles.locationHeader}>
-                        <MapPin size={16} color={theme.colors.primary} />
-                        <Text style={styles.locationTitle}>Localisation</Text>
-                    </View>
-                    <View style={styles.locationContent}>
-                        {getServiceFieldValue(service.data?.gps_fixe) !== 'Non spécifié' ? (
-                            <Text style={styles.locationText}>
-                                {getServiceFieldValue(service.data?.gps_fixe)}
-                            </Text>
-                        ) : getServiceFieldValue(service.data?.adresse) !== 'Non spécifié' ? (
-                            <Text style={styles.locationText}>
-                                {getServiceFieldValue(service.data?.adresse)}
-                            </Text>
-                        ) : service.distance ? (
-                            <View style={styles.distanceContainer}>
-                                <Text style={styles.distanceText}>
-                                    {service.distance < 1
-                                        ? `${Math.round(service.distance * 1000)}m`
-                                        : `${service.distance.toFixed(1)}km`
-                                    }
-                                </Text>
-                            </View>
-                        ) : (
-                            <Text style={styles.locationUnavailable}>Localisation non disponible</Text>
-                        )}
-                    </View>
-                </View>
+                {/* Localisation GPS moderne */}
+                <LocationDisplayModern
+                    service={service}
+                    serviceCreatorInfo={prestataire ? {
+                        id: prestataire.id,
+                        name: prestataire.name,
+                        location: prestataire.location,
+                        coordinates: prestataire.coordinates
+                    } : undefined}
+                    compact={compact}
+                />
 
-                {/* Galerie média moderne avec défilement */}
-                {(getServiceFieldValue(service.data?.images_realisations) !== 'Non spécifié' ||
-                    getServiceFieldValue(service.data?.videos) !== 'Non spécifié') && (
+                {/* Galerie média avec médias réels */}
+                {(() => {
+                    // Utiliser les médias réels de l'API si disponibles, sinon fallback sur les données du service
+                    const displayImages = serviceMedia.loading ? [] :
+                        (serviceMedia.error ?
+                            (getServiceFieldValue(service.data?.images_realisations) !== 'Non spécifié' ?
+                                (Array.isArray(getServiceFieldValue(service.data?.images_realisations)) ?
+                                    getServiceFieldValue(service.data?.images_realisations) :
+                                    [getServiceFieldValue(service.data?.images_realisations)]) : []) :
+                            serviceMedia.images);
+
+                    const displayVideos = serviceMedia.loading ? [] :
+                        (serviceMedia.error ?
+                            (getServiceFieldValue(service.data?.videos) !== 'Non spécifié' ?
+                                (Array.isArray(getServiceFieldValue(service.data?.videos)) ?
+                                    getServiceFieldValue(service.data?.videos) :
+                                    [getServiceFieldValue(service.data?.videos)]) : []) :
+                            serviceMedia.videos);
+
+                    const hasMedia = displayImages.length > 0 || displayVideos.length > 0;
+
+                    if (!hasMedia) return null;
+
+                    return (
                         <View style={styles.mediaGalleryContainer}>
                             <View style={styles.mediaGalleryHeader}>
-                                <Images size={16} color={theme.colors.primary} />
+                                <Text style={styles.mediaIcon}>🖼️</Text>
                                 <Text style={styles.mediaGalleryTitle}>Galerie</Text>
                                 <TouchableOpacity onPress={handleGallery} style={styles.seeAllButton}>
                                     <Text style={styles.seeAllText}>Voir tout</Text>
-                                    <CaretRight size={14} color={theme.colors.primary} />
+                                    <Text style={styles.arrowIcon}>→</Text>
                                 </TouchableOpacity>
                             </View>
 
@@ -337,56 +439,47 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
                                 style={styles.mediaScrollView}
                                 contentContainerStyle={styles.mediaScrollContent}
                             >
-                                {/* Images */}
-                                {getServiceFieldValue(service.data?.images_realisations) !== 'Non spécifié' &&
-                                    (() => {
-                                        const images = getServiceFieldValue(service.data?.images_realisations);
-                                        const imageArray = Array.isArray(images) ? images : (images ? [images] : []);
-                                        return (imageArray as string[]).slice(0, 10).map((image: string, index: number) => (
-                                            <TouchableOpacity
-                                                key={`img-${index}`}
-                                                style={styles.mediaThumbnail}
-                                                onPress={handleGallery}
-                                            >
-                                                <Image
-                                                    source={{ uri: image }}
-                                                    style={styles.mediaThumbnailImage}
-                                                    resizeMode="cover"
-                                                />
-                                                {index === 9 && imageArray.length > 10 && (
-                                                    <View style={styles.moreMediaOverlay}>
-                                                        <Text style={styles.moreMediaText}>+{imageArray.length - 10}</Text>
-                                                    </View>
-                                                )}
-                                            </TouchableOpacity>
-                                        ));
-                                    })()}
+                                {/* Images réelles */}
+                                {displayImages.slice(0, 10).map((image: string, index: number) => (
+                                    <TouchableOpacity
+                                        key={`img-${index}`}
+                                        style={styles.mediaThumbnail}
+                                        onPress={handleGallery}
+                                    >
+                                        <Image
+                                            source={{ uri: image }}
+                                            style={styles.mediaThumbnailImage}
+                                            resizeMode="cover"
+                                        />
+                                        {index === 9 && displayImages.length > 10 && (
+                                            <View style={styles.moreMediaOverlay}>
+                                                <Text style={styles.moreMediaText}>+{displayImages.length - 10}</Text>
+                                            </View>
+                                        )}
+                                    </TouchableOpacity>
+                                ))}
 
-                                {/* Vidéos */}
-                                {getServiceFieldValue(service.data?.videos) !== 'Non spécifié' &&
-                                    (() => {
-                                        const videos = getServiceFieldValue(service.data?.videos);
-                                        const videoArray = Array.isArray(videos) ? videos : (videos ? [videos] : []);
-                                        return (videoArray as string[]).slice(0, 2).map((video: string, index: number) => (
-                                            <TouchableOpacity
-                                                key={`vid-${index}`}
-                                                style={styles.mediaThumbnail}
-                                                onPress={handleGallery}
-                                            >
-                                                <Image
-                                                    source={{ uri: video }}
-                                                    style={styles.mediaThumbnailImage}
-                                                    resizeMode="cover"
-                                                />
-                                                <View style={styles.videoPlayOverlay}>
-                                                    <Play size={24} color="rgba(255, 255, 255, 0.9)" />
-                                                </View>
-                                            </TouchableOpacity>
-                                        ));
-                                    })()}
+                                {/* Vidéos réelles */}
+                                {displayVideos.slice(0, 2).map((video: string, index: number) => (
+                                    <TouchableOpacity
+                                        key={`vid-${index}`}
+                                        style={styles.mediaThumbnail}
+                                        onPress={handleGallery}
+                                    >
+                                        <Image
+                                            source={{ uri: video }}
+                                            style={styles.mediaThumbnailImage}
+                                            resizeMode="cover"
+                                        />
+                                        <View style={styles.videoPlayOverlay}>
+                                            <Text style={styles.playIcon}>▶️</Text>
+                                        </View>
+                                    </TouchableOpacity>
+                                ))}
                             </ScrollView>
                         </View>
-                    )}
+                    );
+                })()}
 
                 {/* Actions */}
                 {showActions && (
@@ -396,7 +489,7 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
                             style={styles.primaryButton}
                             onPress={handleChat}
                         >
-                            <ChatCircle size={20} color="white" />
+                            <Text style={styles.chatIcon}>💬</Text>
                             <Text style={styles.primaryButtonText}>Démarrer une conversation</Text>
                         </TouchableOpacity>
 
@@ -406,7 +499,7 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
                                 style={styles.secondaryButton}
                                 onPress={handleContact}
                             >
-                                <Phone size={16} color={theme.colors.primary} />
+                                <Text style={styles.actionIcon}>📞</Text>
                                 <Text style={styles.secondaryButtonText}>Contacter</Text>
                             </TouchableOpacity>
 
@@ -414,7 +507,7 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
                                 style={styles.secondaryButton}
                                 onPress={handleGallery}
                             >
-                                <Eye size={16} color={theme.colors.primary} />
+                                <Text style={styles.actionIcon}>👁️</Text>
                                 <Text style={styles.secondaryButtonText}>Galerie</Text>
                             </TouchableOpacity>
 
@@ -422,12 +515,8 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
                                 style={styles.secondaryButton}
                                 onPress={handleFavorite}
                             >
-                                <Heart
-                                    size={16}
-                                    color={isFavorited ? "#F44336" : theme.colors.primary}
-                                    weight={isFavorited ? "fill" : "regular"}
-                                />
-                                <Text style={[styles.secondaryButtonText, isFavorited && styles.favoritedText]}>
+                                <Text style={styles.actionIcon}>{isFavorited(service.id) ? '❤️' : '🤍'}</Text>
+                                <Text style={[styles.secondaryButtonText, isFavorited(service.id) && styles.favoritedText]}>
                                     Favoris
                                 </Text>
                             </TouchableOpacity>
@@ -436,23 +525,90 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
                                 style={styles.secondaryButton}
                                 onPress={handleShare}
                             >
-                                <Share size={16} color={theme.colors.primary} />
+                                <Text style={styles.actionIcon}>📤</Text>
                                 <Text style={styles.secondaryButtonText}>Partager</Text>
                             </TouchableOpacity>
                         </View>
                     </View>
                 )}
-            </Card.Content>
-        </Card>
+
+                {/* Statistiques du service */}
+                <ServiceStats serviceId={service.id} compact={true} />
+
+                {/* Section notation et avis */}
+                <View style={styles.ratingSection}>
+                    <ServiceRating
+                        service={service}
+                        onRatingSubmit={async (rating, comment) => {
+                            try {
+                                const response = await fetch(`/api/services/${service.id}/reviews`, {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                        'Authorization': `Bearer ${user?.token || ''}`
+                                    },
+                                    body: JSON.stringify({ rating, comment })
+                                });
+
+                                if (!response.ok) {
+                                    throw new Error('Erreur lors de l\'envoi');
+                                }
+                            } catch (error) {
+                                console.error('Erreur envoi avis:', error);
+                                throw error;
+                            }
+                        }}
+                        onReviewHelpful={async (reviewId) => {
+                            try {
+                                await fetch(`/api/reviews/${reviewId}/helpful`, {
+                                    method: 'POST',
+                                    headers: {
+                                        'Authorization': `Bearer ${user?.token || ''}`
+                                    }
+                                });
+                            } catch (error) {
+                                console.error('Erreur marquer utile:', error);
+                            }
+                        }}
+                    />
+                </View>
+            </View>
+
+            {/* Galerie média */}
+            <ServiceMediaGallery
+                service={service}
+                visible={showGallery}
+                onClose={() => setShowGallery(false)}
+            />
+
+            {/* Chat avancé */}
+            <ChatModalAdvanced
+                visible={showChat}
+                onClose={() => setShowChat(false)}
+                service={service}
+                prestataire={service.prestataire || {
+                    id: service.user_id || 'unknown',
+                    name: service.prestataireName || 'Prestataire',
+                    email: service.prestataireEmail || '',
+                    avatar: service.prestataireAvatar
+                }}
+            />
+        </View>
     );
 };
 
 const styles = StyleSheet.create({
     card: {
-        marginBottom: 16,
-        elevation: 3,
-        borderRadius: 12,
+        marginBottom: 20,
+        elevation: 6,
+        borderRadius: 20,
         backgroundColor: 'white',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.15,
+        shadowRadius: 12,
+        borderWidth: 1,
+        borderColor: '#F3F4F6',
     },
     compactCard: {
         marginBottom: 8,
@@ -505,6 +661,9 @@ const styles = StyleSheet.create({
     categoryChip: {
         alignSelf: 'flex-start',
         backgroundColor: theme.colors.primary,
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 12,
     },
     categoryText: {
         color: 'white',
@@ -535,7 +694,12 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     avatar: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
         backgroundColor: theme.colors.primary,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     avatarOnline: {
         backgroundColor: '#4CAF50',
@@ -729,6 +893,42 @@ const styles = StyleSheet.create({
     },
     favoritedText: {
         color: '#F44336',
+    },
+    ratingSection: {
+        marginTop: 16,
+        borderTopWidth: 1,
+        borderTopColor: '#E0E0E0',
+        paddingTop: 16,
+    },
+    // Styles pour les nouveaux composants natifs
+    cardContent: {
+        padding: 16,
+    },
+    mediaIcon: {
+        fontSize: 16,
+        marginRight: 8,
+    },
+    arrowIcon: {
+        fontSize: 14,
+        color: theme.colors.primary,
+        marginLeft: 4,
+    },
+    playIcon: {
+        fontSize: 24,
+        color: 'rgba(255, 255, 255, 0.9)',
+    },
+    chatIcon: {
+        fontSize: 20,
+        marginRight: 8,
+    },
+    actionIcon: {
+        fontSize: 16,
+        marginRight: 4,
+    },
+    avatarText: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        color: 'white',
     },
 });
 

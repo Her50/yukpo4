@@ -12,17 +12,19 @@ import { useAuth } from '../contexts/AuthContext';
 // Screens
 import ContactScreen from '../screens/ContactScreen';
 import DashboardScreen from '../screens/DashboardScreen';
-import HomeScreen from '../screens/HomeScreen';
+import HomeScreen from '../screens/HomeScreen'; // HomeScreen amélioré avec avatar 56px, FCFA et fond ultramoderne
 import ProfileScreen from '../screens/ProfileScreen';
 import RechargeTokensScreen from '../screens/RechargeTokensScreen';
 import ServicesListScreen from '../screens/ServicesListScreen';
 import ServicesScreen from '../screens/ServicesScreen';
 
 // Autres écrans (pour la navigation secondaire)
+import EnhancedSettingsScreen from '../screens/EnhancedSettingsScreen';
 import FormulaireYukpoIntelligentScreen from '../screens/FormulaireYukpoIntelligentScreen';
 import ResultatBesoinScreen from '../screens/ResultatBesoinScreen';
-import SettingsScreen from '../screens/SettingsScreen';
+import ServicesInteragisScreen from '../screens/ServicesInteragisScreen';
 import SoldeDetailScreen from '../screens/SoldeDetailScreen';
+import YukpoServicePlaceholderScreen from '../screens/YukpoServicePlaceholderScreen';
 
 // Auth screens
 import LoginScreen from '../screens/auth/LoginScreen';
@@ -149,7 +151,7 @@ const MainTabs = () => {
       />
       <Tab.Screen
         name="Historique"
-        component={SoldeDetailScreen}
+        component={ServicesInteragisScreen}
         options={{
           title: 'Mon historique',
           tabBarLabel: 'Historique'
@@ -196,8 +198,11 @@ const MainStack = () => (
     {/* Pages secondaires accessibles depuis la navigation */}
     <Stack.Screen
       name="Settings"
-      component={SettingsScreen}
-      options={{ title: 'Paramètres' }}
+      component={EnhancedSettingsScreen}
+      options={{
+        title: 'Paramètres',
+        headerShown: false // Masquer le header car nous avons notre propre header
+      }}
     />
     <Stack.Screen
       name="Contact"
@@ -223,6 +228,16 @@ const MainStack = () => (
       name="FormulaireYukpoIntelligent"
       component={FormulaireYukpoIntelligentScreen}
       options={{ title: 'Création de service' }}
+    />
+    <Stack.Screen
+      name="SoldeDetail"
+      component={SoldeDetailScreen}
+      options={{ title: 'Historique de Consommation' }}
+    />
+    <Stack.Screen
+      name="YukpoService"
+      component={YukpoServicePlaceholderScreen}
+      options={{ headerShown: false }}
     />
   </Stack.Navigator>
 );

@@ -1,5 +1,6 @@
 // Composant d'icônes sécurisé avec fallbacks
-import React from 'react';
+import * as React from 'react';
+// @ts-ignore
 import { StyleSheet, Text } from 'react-native';
 
 // Import sécurisé de Lucide avec fallback
@@ -41,11 +42,16 @@ const iconToEmoji: { [key: string]: string } = {
     'check': '✅',
     'x': '❌',
     'edit': '✏️',
+    'edit-2': '✏️',
     'delete': '🗑️',
+    'trash': '🗑️',
+    'trash-2': '🗑️',
     'save': '💾',
     'download': '⬇️',
     'upload': '⬆️',
-    'share': '📤',
+    'share': '↗️',
+    'share-2': '↗️',
+    'Share2': '↗️',
     'copy': '📋',
     'refresh': '🔄',
     'back': '←',
@@ -63,6 +69,9 @@ const iconToEmoji: { [key: string]: string } = {
     'dislike': '👎',
     'eye': '👁️',
     'eye-off': '🙈',
+    'power': '⚡',
+    'power-off': '🔌',
+    'slash': '🚫',
     'lock': '🔒',
     'unlock': '🔓',
     'key': '🗝️',
@@ -101,6 +110,37 @@ const iconToEmoji: { [key: string]: string } = {
     'time': '🕐',
     'calendar': '📅',
 
+    // Services Yukpo
+    'Heart': '❤️',
+    'Activity': '💊',
+    'activity': '💊',
+    'BookOpen': '📚',
+    'book-open': '📚',
+    'ShoppingCart': '🛒',
+    'shopping-cart': '🛒',
+    'ShoppingBag': '🛍️',
+    'shopping-bag': '🛍️',
+    'Package': '📦',
+    'package': '📦',
+    'Plane': '✈️',
+    'plane': '✈️',
+    'Car': '🚗',
+    'car': '🚗',
+    'ChevronRight': '›',
+    'chevron-right': '›',
+    'arrow-left': '←',
+    'arrow-right': '→',
+    'clock': '⏰',
+    'mic': '🎤',
+    'mic-off': '🔇',
+    'stop-circle': '⏹️',
+    'play-circle': '▶️',
+    'smile': '😊',
+    'video': '📹',
+    'video-off': '🚫',
+    'volume-2': '🔊',
+    'phone-off': '📵',
+
     // Défaut
     'default': '📱'
 };
@@ -115,7 +155,7 @@ export const SafeIcon: React.FC<SafeIconProps> = ({
     if (type === 'lucide' && LucideIcons[name]) {
         try {
             const IconComponent = LucideIcons[name];
-            return <IconComponent size={size} color={color} />;
+            return <IconComponent size={size} color={color} accessibilityLabel="" accessibilityRole="none" />;
         } catch (error) {
             console.warn(`[SafeIcon] Erreur avec l'icône Lucide ${name}:`, error);
         }
@@ -126,7 +166,7 @@ export const SafeIcon: React.FC<SafeIconProps> = ({
         try {
             const glyphMap = Ionicons.default.getRawGlyphMap();
             if (glyphMap[name]) {
-                return <Ionicons.default name={name} size={size} color={color} />;
+                return <Ionicons.default name={name} size={size} color={color} accessibilityLabel="" accessibilityRole="none" />;
             }
         } catch (error) {
             console.warn(`[SafeIcon] Erreur avec l'icône Ionicons ${name}:`, error);

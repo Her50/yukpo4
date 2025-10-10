@@ -1,32 +1,20 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// Configuration de base - Import sécurisé
-let config: any;
-try {
-  config = require('../config/environment').config;
-} catch (error) {
-  console.warn('[API] Configuration non disponible, utilisation des valeurs par défaut');
-  config = {
-    API_BASE_URL: 'https://yukpomnang.onrender.com'
-  };
-}
+// Configuration de base - Valeurs par défaut
+import { config } from '../config/environment';
 
-// Gestionnaire d'erreurs - Import sécurisé
-let errorHandler: any;
-try {
-  errorHandler = require('./errorHandler').errorHandler;
-} catch (error) {
-  console.warn('[API] ErrorHandler non disponible, utilisation du fallback');
-  errorHandler = {
-    handleApiError: (error: any, context?: string) => ({
-      message: error?.message || 'Une erreur inattendue s\'est produite',
-      status: 500,
-      code: 'UNKNOWN_ERROR'
-    })
-  };
-}
+// Utilise la configuration centralisée
 
-const API_BASE_URL = config.API_BASE_URL || 'https://yukpomnang.onrender.com';
+// Gestionnaire d'erreurs - Fallback
+const errorHandler = {
+  handleApiError: (error: any, context?: string) => ({
+    message: error?.message || 'Une erreur inattendue s\'est produite',
+    status: 500,
+    code: 'UNKNOWN_ERROR'
+  })
+};
+
+const API_BASE_URL = config.API_BASE_URL;
 
 // Types pour les réponses API
 interface ApiResponse<T = any> {
@@ -39,7 +27,10 @@ interface ApiResponse<T = any> {
 // Fonction pour récupérer le token d'authentification
 const getAuthToken = async (): Promise<string | null> => {
   try {
-    return await AsyncStorage.getItem('auth_token');
+    if (AsyncStorage && typeof AsyncStorage.getItem === 'function') {
+      return await AsyncStorage.getItem('auth_token');
+    }
+    return null;
   } catch (error) {
     console.error('Erreur récupération token:', error);
     return null;
@@ -49,7 +40,9 @@ const getAuthToken = async (): Promise<string | null> => {
 // Fonction pour sauvegarder le token d'authentification
 const saveAuthToken = async (token: string): Promise<void> => {
   try {
-    await AsyncStorage.setItem('auth_token', token);
+    if (AsyncStorage && typeof AsyncStorage.setItem === 'function') {
+      await AsyncStorage.setItem('auth_token', token);
+    }
   } catch (error) {
     console.error('Erreur sauvegarde token:', error);
   }
@@ -58,7 +51,9 @@ const saveAuthToken = async (token: string): Promise<void> => {
 // Fonction pour supprimer le token
 const removeAuthToken = async (): Promise<void> => {
   try {
-    await AsyncStorage.removeItem('auth_token');
+    if (AsyncStorage && typeof AsyncStorage.removeItem === 'function') {
+      await AsyncStorage.removeItem('auth_token');
+    }
   } catch (error) {
     console.error('Erreur suppression token:', error);
   }
@@ -83,6 +78,11 @@ const apiCall = async <T>(
   };
 
   try {
+    // Vérifier si fetch est disponible
+    if (typeof fetch !== 'function') {
+      throw new Error('Fetch API non disponible');
+    }
+
     // Debug: Log the URL being used
     console.log(`[Mobile API] Making request to: ${API_BASE_URL}${endpoint}`);
     console.log(`[Mobile API] Request headers:`, config.headers);
@@ -340,6 +340,16 @@ export const iaApi = {
     });
   },
 
+  // Récupérer les médias d'un service
+  getServiceMedia: async (serviceId: string | number) => {
+    return apiCall(`/api/services/${serviceId}/media`);
+  },
+
+  // Récupérer les statistiques d'un service
+  getServiceStats: async (serviceId: string | number) => {
+    return apiCall(`/api/services/${serviceId}/stats`);
+  },
+
   // Suggérer des mots-clés
   suggestKeywords: async (text: string) => {
     return apiCall('/api/ia/keywords', {
@@ -398,6 +408,27 @@ export const userApi = {
   getDashboardPrestataire: async (period: string = '30d') => {
     return apiCall(`/api/dashboard/prestataire?period=${period}`);
   },
+  getPreviousContacts: async () => {
+    return apiCall('/api/user/previous-contacts');
+  },
+  saveContact: async (contact: any) => {
+    return apiCall('/api/user/contacts', 'POST', contact);
+  },
+  getCreditHistory: async (userId: string, period: string = '30d') => {
+    return apiCall(`/api/user/credit/history/${userId}?period=${period}`);
+  },
+  getPaymentsHistory: async (userId: string, period: string = '30d') => {
+    return apiCall(`/api/user/payments/history/${userId}?period=${period}`);
+  },
+  toggleServiceStatus: async (serviceId: number, isActive: boolean) => {
+    return apiCall(`/api/services/${serviceId}/toggle-status`, 'PATCH', { actif: isActive });
+  },
+  deleteService: async (serviceId: number) => {
+    return apiCall(`/api/services/${serviceId}/delete`, 'DELETE');
+  },
+  updateServicePromotion: async (serviceId: number, promotionData: any) => {
+    return apiCall(`/api/services/${serviceId}/promotion`, 'PATCH', promotionData);
+  },
 
   // Obtenir le budget utilisateur
   getUserBudget: async () => {
@@ -412,6 +443,24 @@ export const userApi = {
   // Obtenir l'historique des paiements
   getPaymentsHistory: async (userId: string, period: string = 'month') => {
     return apiCall(`/api/user/payments/history/${userId}?period=${period}`);
+  },
+
+  // Gestion des favoris
+  getUserFavorites: async (userId: string) => {
+    return apiCall(`/api/users/${userId}/favorites`);
+  },
+
+  addFavorite: async (serviceId: string) => {
+    return apiCall('/api/favorites', {
+      method: 'POST',
+      body: JSON.stringify({ service_id: serviceId }),
+    });
+  },
+
+  removeFavorite: async (favoriteId: string) => {
+    return apiCall(`/api/favorites/${favoriteId}`, {
+      method: 'DELETE',
+    });
   },
 };
 
@@ -495,6 +544,13 @@ export const apiPost = async <T>(endpoint: string, data: any): Promise<ApiRespon
   return apiCall<T>(endpoint, {
     method: 'POST',
     body: JSON.stringify(data),
+  });
+};
+
+// Export pour compatibilité avec les anciens imports  
+export const apiGet = async <T>(endpoint: string): Promise<ApiResponse<T>> => {
+  return apiCall<T>(endpoint, {
+    method: 'GET',
   });
 };
 

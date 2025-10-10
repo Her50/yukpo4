@@ -1,30 +1,22 @@
-﻿import ResponsiveContainer from '@/components/layout/ResponsiveContainer';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/buttons/Button';
-import { Card, CardContent } from '@/components/ui/card';
-import { useToast } from '@/components/ui/use-toast';
-import { useUser } from '@/hooks/useUser';
-import { servicesApi } from '@/services/api';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import {
-    Clock,
-    Eye,
-    Filter,
-    Heart,
-    MapPin,
-    ChatCircle,
-    Phone,
-    Search,
-    Share2,
-    Star,
-    Video
-} from 'lucide-react';
-import * as React from "react";
-import { useEffect, useState } from 'react';
-import { Text } from 'react-native';
-import { View } from 'react-native';
-import { TouchableOpacity } from 'react-native';
+﻿import AsyncStorage from '@react-native-async-storage/async-storage';
+import React, { useEffect, useState } from 'react';
+import ReactNative from 'react-native';
+import { useAuth } from '../contexts/AuthContext';
+import { servicesApi } from '../services/api';
+import { theme } from '../theme/theme';
+
+const {
+    Alert,
+    Dimensions,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
+    TextInput,
+    ActivityIndicator,
+    Image
+} = ReactNative;
 
 interface InteractedService {
     id: string;
@@ -44,7 +36,7 @@ interface InteractedService {
     status: 'active' | 'completed' | 'cancelled';
 }
 
-const ServicesInteragisPage: React.FC = () => {
+const ServicesInteragisScreen: React.FC = () => {
     const [services, setServices] = useState<InteractedService[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
@@ -53,7 +45,6 @@ const ServicesInteragisPage: React.FC = () => {
     const [availableCategories, setAvailableCategories] = useState<string[]>([]);
     const [availableTypes, setAvailableTypes] = useState<string[]>([]);
     const { user } = useAuth();
-    const { toast } = useToast();
 
     useEffect(() => {
         if (user?.id) {
@@ -143,86 +134,88 @@ const ServicesInteragisPage: React.FC = () => {
 
     const getInteractionIcon = (type: string) => {
         switch (type) {
-            case 'message': return <ChatCircle style="w-4 h-4" />;
-            case 'call': return <Texthone style="w-4 h-4" />;
-            case 'video': return <Video style="w-4 h-4" />;
-            case 'review': return <Star style="w-4 h-4" />;
-            case 'favorite': return <Heart style="w-4 h-4" />;
-            case 'share': return <Share2 style="w-4 h-4" />;
-            case 'view': return <Eye style="w-4 h-4" />;
-            default: return <ChatCircle style="w-4 h-4" />;
+            case 'message': return '💬';
+            case 'call': return '📞';
+            case 'video': return '📹';
+            case 'review': return '⭐';
+            case 'favorite': return '❤️';
+            case 'share': return '📤';
+            case 'view': return '👁️';
+            default: return '💬';
         }
     };
 
     const getInteractionColor = (type: string) => {
         switch (type) {
-            case 'message': return 'bg-blue-100 text-blue-800';
-            case 'call': return 'bg-green-100 text-green-800';
-            case 'video': return 'bg-purple-100 text-purple-800';
-            case 'review': return 'bg-yellow-100 text-yellow-800';
-            case 'favorite': return 'bg-red-100 text-red-800';
-            case 'share': return 'bg-gray-100 text-gray-800';
-            case 'view': return 'bg-indigo-100 text-indigo-800';
-            default: return 'bg-gray-100 text-gray-800';
+            case 'message': return theme.colors.primary;
+            case 'call': return '#10B981';
+            case 'video': return '#8B5CF6';
+            case 'review': return '#F59E0B';
+            case 'favorite': return '#EF4444';
+            case 'share': return '#6B7280';
+            case 'view': return '#6366F1';
+            default: return '#6B7280';
         }
     };
 
     const getStatusColor = (status: string) => {
         switch (status) {
-            case 'active': return 'bg-green-100 text-green-800';
-            case 'completed': return 'bg-blue-100 text-blue-800';
-            case 'cancelled': return 'bg-red-100 text-red-800';
-            default: return 'bg-gray-100 text-gray-800';
+            case 'active': return '#10B981';
+            case 'completed': return theme.colors.primary;
+            case 'cancelled': return '#EF4444';
+            default: return '#6B7280';
         }
     };
 
     if (loading) {
         return (
-            <ResponsiveContainer>
-                <View style="text-center py-12">
-                    <View style="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></View>
-                    <Text style="mt-4 text-gray-600">Chargement de vos services...</Text>
+            <View style={styles.container}>
+                <View style={styles.loadingContainer}>
+                    <ActivityIndicator size="large" color={theme.colors.primary} />
+                    <Text style={styles.loadingText}>Chargement de vos services...</Text>
                 </View>
-            </ResponsiveContainer>
+            </View>
         );
     }
 
     return (
-        <ResponsiveContainer>
-            <View style="py-8">
+        <View style={styles.container}>
+            <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
                 {/* Header */}
-                <View style="mb-8">
-                    <Text style="text-3xl font-bold text-gray-900 mb-2">
-                        Mon historique
-                    </Text>
-                    <Text style="text-gray-600">
+                <View style={styles.header}>
+                    <Text style={styles.title}>Mon historique</Text>
+                    <Text style={styles.subtitle}>
                         Retrouvez tous vos échanges et interactions avec les services
                     </Text>
                 </View>
 
                 {/* Filtres et recherche */}
-                <Card style="mb-6">
-                    <CardContent style="p-6">
-                        <View style="grid grid-cols-1 md:grid-cols-4 gap-4">
-                            <View style="relative">
-                                <Search style="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <View style={styles.filtersCard}>
                                 <TextInput
-                                    type="text"
+                        style={styles.searchInput}
                                     placeholder="Rechercher un service..."
                                     value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                    style="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                />
-                            </View>
+                        onChangeText={setSearchTerm}
+                        placeholderTextColor="#9CA3AF"
+                    />
 
-                            <select
-                                value={filterType}
-                                onChange={(e) => setFilterType(e.target.value)}
-                                style="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    <View style={styles.filterRow}>
+                        <TouchableOpacity
+                            style={[styles.filterButton, filterType === 'all' && styles.filterButtonActive]}
+                            onPress={() => setFilterType('all')}
+                        >
+                            <Text style={[styles.filterButtonText, filterType === 'all' && styles.filterButtonTextActive]}>
+                                Tous
+                            </Text>
+                        </TouchableOpacity>
+
+                        {availableTypes.map(type => (
+                            <TouchableOpacity
+                                key={type}
+                                style={[styles.filterButton, filterType === type && styles.filterButtonActive]}
+                                onPress={() => setFilterType(type)}
                             >
-                                <option value="all">Tous les types</option>
-                                {availableTypes.map(type => (
-                                    <option key={type} value={type}>
+                                <Text style={[styles.filterButtonText, filterType === type && styles.filterButtonTextActive]}>
                                         {type === 'message' ? 'Messages' :
                                             type === 'call' ? 'Appels' :
                                                 type === 'video' ? 'Vidéos' :
@@ -230,168 +223,395 @@ const ServicesInteragisPage: React.FC = () => {
                                                         type === 'favorite' ? 'Favoris' :
                                                             type === 'share' ? 'Partages' :
                                                                 type === 'view' ? 'Vues' : type}
-                                    </option>
-                                ))}
-                            </select>
+                                </Text>
+                            </TouchableOpacity>
+                        ))}
+                    </View>
 
-                            <select
-                                value={filterCategory}
-                                onChange={(e) => setFilterCategory(e.target.value)}
-                                style="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            >
-                                <option value="all">Toutes les catégories</option>
-                                {availableCategories.map(category => (
-                                    <option key={category} value={category}>
-                                        {category}
-                                    </option>
-                                ))}
-                            </select>
-
-                            <TouchableOpacity
-                                variant="outline"
-                                onPress={loadInteractedServices}
-                                style="flex items-center gap-2"
-                            >
-                                <Filter style="w-4 h-4" />
-                                Actualiser
+                    <TouchableOpacity style={styles.refreshButton} onPress={loadInteractedServices}>
+                        <Text style={styles.refreshButtonText}>🔄 Actualiser</Text>
                             </TouchableOpacity>
                         </View>
-                    </CardContent>
-                </Card>
 
                 {/* Liste des services */}
-                <View style="space-y-4">
+                <View style={styles.servicesList}>
                     {filteredServices.length === 0 ? (
-                        <Card>
-                            <CardContent style="text-center py-12">
-                                <ChatCircle style="w-16 h-16 mx-auto mb-4 text-gray-300" />
-                                <Text style="text-lg font-medium text-gray-900 mb-2">
-                                    Aucun service interagi
-                                </Text>
-                                <Text style="text-gray-600">
+                        <View style={styles.emptyState}>
+                            <Text style={styles.emptyIcon}>💬</Text>
+                            <Text style={styles.emptyTitle}>Aucun service interagi</Text>
+                            <Text style={styles.emptySubtitle}>
                                     Commencez à interagir avec des services pour les voir apparaître ici
                                 </Text>
-                            </CardContent>
-                        </Card>
+                        </View>
                     ) : (
                         filteredServices.map((service) => (
-                            <Card key={service.id} style="hover:shadow-lg transition-shadow">
-                                <CardContent style="p-6">
-                                    <View style="flex items-start justify-between mb-4">
-                                        <View style="flex items-start gap-4">
-                                            <Avatar style="w-12 h-12">
-                                                <AvatarImage src={service.prestataireAvatar} />
-                                                <AvatarFallback style="bg-blue-500 text-white">
+                            <View key={service.id} style={styles.serviceCard}>
+                                <View style={styles.serviceHeader}>
+                                    <View style={styles.serviceInfo}>
+                                        <View style={styles.avatarContainer}>
+                                            {service.prestataireAvatar ? (
+                                                <Image source={{ uri: service.prestataireAvatar }} style={styles.avatar} />
+                                            ) : (
+                                                <View style={styles.avatarFallback}>
+                                                    <Text style={styles.avatarText}>
                                                     {service.prestataireName.charAt(0).toUpperCase()}
-                                                </AvatarFallback>
-                                            </Avatar>
-
-                                            <View style="flex-1">
-                                                <View style="flex items-center gap-2 mb-2">
-                                                    <Text style="text-lg font-semibold text-gray-900">
-                                                        {service.serviceTitle}
                                                     </Text>
-                                                    <Badge style={getStatusColor(service.status)}>
-                                                        {service.status}
-                                                    </Badge>
-                                                    <Badge style={getInteractionColor(service.interactionType)}>
-                                                        {getInteractionIcon(service.interactionType)}
-                                                        <Text style="ml-1">{service.interactionType}</Text>
-                                                    </Badge>
+                                                </View>
+                                            )}
                                                 </View>
 
-                                                <Text style="text-gray-600 mb-2">
-                                                    {service.serviceDescription}
-                                                </Text>
-
-                                                <View style="flex items-center gap-4 text-sm text-gray-500">
-                                                    <Text style="flex items-center gap-1">
-                                                        <MapPin style="w-4 h-4" />
-                                                        {service.location}
-                                                    </Text>
-                                                    <Text style="flex items-center gap-1">
-                                                        <Star style="w-4 h-4 text-yellow-500" />
-                                                        {service.prestataireRating}
-                                                    </Text>
-                                                    <Text style="flex items-center gap-1">
-                                                        <Clock style="w-4 h-4" />
-                                                        {formatTimeAgo(service.lastInteraction)}
+                                        <View style={styles.serviceDetails}>
+                                            <View style={styles.serviceTitleRow}>
+                                                <Text style={styles.serviceTitle}>{service.serviceTitle}</Text>
+                                                <View style={[styles.statusBadge, { backgroundColor: getStatusColor(service.status) }]}>
+                                                    <Text style={styles.statusText}>{service.status}</Text>
+                                                </View>
+                                                <View style={[styles.typeBadge, { backgroundColor: getInteractionColor(service.interactionType) }]}>
+                                                    <Text style={styles.typeText}>
+                                                        {getInteractionIcon(service.interactionType)} {service.interactionType}
                                                     </Text>
                                                 </View>
                                             </View>
-                                        </View>
 
-                                        <View style="flex items-center gap-2">
-                                            <TouchableOpacity
-                                                variant="ghost"
-                                                size="sm"
-                                                style="text-red-500 hover:text-red-700"
-                                            >
-                                                <Heart style={`w-4 h-4 ${service.isFavorite ? 'fill-current' : ''}`} />
-                                            </TouchableOpacity>
-                                            <TouchableOpacity variant="ghost" size="sm">
-                                                <Share2 style="w-4 h-4" />
-                                            </TouchableOpacity>
+                                            <Text style={styles.serviceDescription}>{service.serviceDescription}</Text>
+
+                                            <View style={styles.serviceMeta}>
+                                                <Text style={styles.metaItem}>📍 {service.location}</Text>
+                                                <Text style={styles.metaItem}>⭐ {service.prestataireRating}</Text>
+                                                <Text style={styles.metaItem}>🕒 {formatTimeAgo(service.lastInteraction)}</Text>
+                                        </View>
                                         </View>
                                     </View>
 
-                                    <View style="flex items-center justify-between">
-                                        <View style="flex items-center gap-4">
-                                            <View style="flex items-center gap-2">
-                                                {getInteractionIcon(service.interactionType)}
-                                                <Text style="text-sm text-gray-600">
-                                                    {service.interactionCount} interactions
+                                    <View style={styles.serviceActions}>
+                                        <TouchableOpacity style={styles.actionButton}>
+                                            <Text style={[styles.actionIcon, service.isFavorite && styles.favoriteActive]}>
+                                                {service.isFavorite ? '❤️' : '🤍'}
                                                 </Text>
-                                            </View>
-                                            <View style="text-sm font-medium text-green-600">
-                                                {service.price.toLocaleString()} FCFA
+                                        </TouchableOpacity>
+                                        <TouchableOpacity style={styles.actionButton}>
+                                            <Text style={styles.actionIcon}>📤</Text>
+                                        </TouchableOpacity>
                                             </View>
                                         </View>
 
-                                        <View style="flex items-center gap-2">
+                                <View style={styles.serviceFooter}>
+                                    <View style={styles.serviceStats}>
+                                        <Text style={styles.interactionCount}>
+                                            {getInteractionIcon(service.interactionType)} {service.interactionCount} interactions
+                                        </Text>
+                                        <Text style={styles.price}>{service.price.toLocaleString()} FCFA</Text>
+                                    </View>
+
+                                    <View style={styles.serviceButtons}>
                                             <TouchableOpacity
-                                                variant="outline"
-                                                size="sm"
+                                            style={styles.chatButton}
                                                 onPress={() => {
-                                                    // Ouvrir le chat
-                                                    toast({
-                                                        title: "Ouverture du chat",
-                                                        description: `Chat avec ${service.prestataireName}`,
-                                                        type: "success"
-                                                    });
-                                                }}
-                                            >
-                                                <ChatCircle style="w-4 h-4 mr-2" />
-                                                Chat
+                                                Alert.alert("Chat", `Chat avec ${service.prestataireName}`);
+                                            }}
+                                        >
+                                            <Text style={styles.chatButtonText}>💬 Chat</Text>
                                             </TouchableOpacity>
                                             <TouchableOpacity
-                                                variant="outline"
-                                                size="sm"
+                                            style={styles.callButton}
                                                 onPress={() => {
-                                                    // Appeler
-                                                    toast({
-                                                        title: "Appel",
-                                                        description: `Appel vers ${service.prestataireName}`,
-                                                        type: "success"
-                                                    });
-                                                }}
-                                            >
-                                                <Texthone style="w-4 h-4 mr-2" />
-                                                Appeler
+                                                Alert.alert("Appel", `Appel vers ${service.prestataireName}`);
+                                            }}
+                                        >
+                                            <Text style={styles.callButtonText}>📞 Appeler</Text>
                                             </TouchableOpacity>
                                         </View>
                                     </View>
-                                </CardContent>
-                            </Card>
+                            </View>
                         ))
                     )}
                 </View>
+            </ScrollView>
             </View>
-        </ResponsiveContainer>
     );
 };
 
-export default ServicesInteragisPage;
+export default ServicesInteragisScreen;
+
+const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+        backgroundColor: '#F9FAFB',
+    },
+    scrollView: {
+        flex: 1,
+    },
+    loadingContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 20,
+    },
+    loadingText: {
+        marginTop: 16,
+        fontSize: 16,
+        color: '#6B7280',
+    },
+    header: {
+        padding: 20,
+        paddingTop: 40,
+    },
+    title: {
+        fontSize: 28,
+        fontWeight: 'bold',
+        color: '#111827',
+        marginBottom: 8,
+    },
+    subtitle: {
+        fontSize: 16,
+        color: '#6B7280',
+    },
+    filtersCard: {
+        backgroundColor: '#FFFFFF',
+        margin: 20,
+        marginTop: 0,
+        padding: 20,
+        borderRadius: 12,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+        elevation: 4,
+    },
+    searchInput: {
+        borderWidth: 1,
+        borderColor: '#D1D5DB',
+        borderRadius: 8,
+        padding: 12,
+        fontSize: 16,
+        backgroundColor: '#FFFFFF',
+        marginBottom: 16,
+    },
+    filterRow: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+        marginBottom: 16,
+    },
+    filterButton: {
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        borderRadius: 20,
+        backgroundColor: '#F3F4F6',
+        borderWidth: 1,
+        borderColor: '#D1D5DB',
+    },
+    filterButtonActive: {
+        backgroundColor: theme.colors.primary,
+        borderColor: theme.colors.primary,
+    },
+    filterButtonText: {
+        fontSize: 14,
+        color: '#6B7280',
+        fontWeight: '500',
+    },
+    filterButtonTextActive: {
+        color: '#FFFFFF',
+    },
+    refreshButton: {
+        alignSelf: 'flex-start',
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        backgroundColor: '#F3F4F6',
+        borderRadius: 8,
+    },
+    refreshButtonText: {
+        fontSize: 14,
+        color: '#6B7280',
+        fontWeight: '500',
+    },
+    servicesList: {
+        padding: 20,
+        paddingTop: 0,
+    },
+    emptyState: {
+        backgroundColor: '#FFFFFF',
+        padding: 40,
+        borderRadius: 12,
+        alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+        elevation: 4,
+    },
+    emptyIcon: {
+        fontSize: 48,
+        marginBottom: 16,
+    },
+    emptyTitle: {
+        fontSize: 18,
+        fontWeight: '600',
+        color: '#111827',
+        marginBottom: 8,
+    },
+    emptySubtitle: {
+        fontSize: 14,
+        color: '#6B7280',
+        textAlign: 'center',
+    },
+    serviceCard: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 12,
+        padding: 16,
+        marginBottom: 16,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+        elevation: 4,
+    },
+    serviceHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginBottom: 16,
+    },
+    serviceInfo: {
+        flexDirection: 'row',
+        flex: 1,
+    },
+    avatarContainer: {
+        marginRight: 12,
+    },
+    avatar: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+    },
+    avatarFallback: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        backgroundColor: theme.colors.primary,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    avatarText: {
+        color: '#FFFFFF',
+        fontSize: 18,
+        fontWeight: 'bold',
+    },
+    serviceDetails: {
+        flex: 1,
+    },
+    serviceTitleRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 8,
+        flexWrap: 'wrap',
+    },
+    serviceTitle: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#111827',
+        marginRight: 8,
+        marginBottom: 4,
+    },
+    statusBadge: {
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 12,
+        marginRight: 8,
+        marginBottom: 4,
+    },
+    statusText: {
+        fontSize: 12,
+        color: '#FFFFFF',
+        fontWeight: '500',
+    },
+    typeBadge: {
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 12,
+        marginBottom: 4,
+    },
+    typeText: {
+        fontSize: 12,
+        color: '#FFFFFF',
+        fontWeight: '500',
+    },
+    serviceDescription: {
+        fontSize: 14,
+        color: '#6B7280',
+        marginBottom: 12,
+        lineHeight: 20,
+    },
+    serviceMeta: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 12,
+    },
+    metaItem: {
+        fontSize: 12,
+        color: '#6B7280',
+    },
+    serviceActions: {
+        flexDirection: 'row',
+        gap: 8,
+    },
+    actionButton: {
+        padding: 8,
+    },
+    actionIcon: {
+        fontSize: 20,
+    },
+    favoriteActive: {
+        color: '#EF4444',
+    },
+    serviceFooter: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    serviceStats: {
+        flex: 1,
+    },
+    interactionCount: {
+        fontSize: 12,
+        color: '#6B7280',
+        marginBottom: 4,
+    },
+    price: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#10B981',
+    },
+    serviceButtons: {
+        flexDirection: 'row',
+        gap: 8,
+    },
+    chatButton: {
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        backgroundColor: '#F3F4F6',
+        borderRadius: 6,
+        borderWidth: 1,
+        borderColor: '#D1D5DB',
+    },
+    chatButtonText: {
+        fontSize: 12,
+        color: '#6B7280',
+        fontWeight: '500',
+    },
+    callButton: {
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        backgroundColor: '#F3F4F6',
+        borderRadius: 6,
+        borderWidth: 1,
+        borderColor: '#D1D5DB',
+    },
+    callButtonText: {
+        fontSize: 12,
+        color: '#6B7280',
+        fontWeight: '500',
+    },
+});
 
 
 

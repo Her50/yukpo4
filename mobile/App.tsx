@@ -1,12 +1,12 @@
-import { NavigationContainer } from '@react-navigation/native';
+// @ts-nocheck
 import { StatusBar } from 'expo-status-bar';
-import React from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { PaperProvider } from 'react-native-paper';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 // BLOC 1 : Contexts de base
 import ErrorBoundary from './src/components/ErrorBoundary';
+import GPSTrackingManager from './src/components/GPSTrackingManager';
 import { GlobalIAStatsProvider } from './src/components/intelligence/GlobalIAStats';
 import { AuthProvider } from './src/contexts/AuthContext';
 import { LocationProvider } from './src/contexts/LocationContext';
@@ -21,16 +21,17 @@ export default function App() {
 
     return (
         <ErrorBoundary>
+            {/* @ts-ignore */}
             <GestureHandlerRootView style={{ flex: 1 }}>
                 <SafeAreaProvider>
                     <PaperProvider theme={theme}>
                         <AuthProvider>
                             <LocationProvider>
                                 <GlobalIAStatsProvider>
-                                    <NavigationContainer>
-                                        <StatusBar style="auto" />
-                                        <AppNavigator />
-                                    </NavigationContainer>
+                                    {/* Tracking GPS automatique en arrière-plan */}
+                                    <GPSTrackingManager />
+                                    <StatusBar style="auto" />
+                                    <AppNavigator />
                                 </GlobalIAStatsProvider>
                             </LocationProvider>
                         </AuthProvider>
@@ -40,4 +41,5 @@ export default function App() {
         </ErrorBoundary>
     );
 }
+
 

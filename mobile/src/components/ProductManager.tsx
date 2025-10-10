@@ -1,630 +1,321 @@
-import { Ionicons } from '@expo/vector-icons';
-import * as React from 'react';
-import { useState } from 'react';
-import { Alert, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { Button, Card, TextInput, Title } from 'react-native-paper';
+import { DollarSign, Package, Plus } from 'phosphor-react-native';
+import React, { useState } from 'react';
+import ReactNative from 'react-native';
+import { Button, Card, IconButton, TextInput } from 'react-native-paper';
 import { theme } from '../theme/theme';
+
+const { StyleSheet, Text, TouchableOpacity, View, ScrollView, Alert } = ReactNative;
 
 interface Product {
     id: string;
     name: string;
-    price: string;
-    currency: string;
-    images: string[];
-    videos: string[];
+    description: string;
+    price: number;
+    unit: string;
 }
 
 interface ProductManagerProps {
-    visible: boolean;
-    onClose: () => void;
-    onSave: (products: Product[]) => void;
-    initialProducts?: Product[];
+    products: Product[];
+    onProductsChange: (products: Product[]) => void;
+    compact?: boolean;
 }
 
-const CURRENCIES = [
-    { code: 'XAF', name: 'Franc CFA (XAF)', symbol: 'FCFA' },
-    { code: 'USD', name: 'Dollar US (USD)', symbol: '$' },
-    { code: 'EUR', name: 'Euro (EUR)', symbol: '€' },
-    { code: 'GBP', name: 'Livre Sterling (GBP)', symbol: '£' },
-    { code: 'CAD', name: 'Dollar Canadien (CAD)', symbol: 'C$' },
-    { code: 'JPY', name: 'Yen Japonais (JPY)', symbol: '¥' },
-    { code: 'CNY', name: 'Yuan Chinois (CNY)', symbol: '¥' },
-    { code: 'INR', name: 'Roupie Indienne (INR)', symbol: '₹' },
-    { code: 'BRL', name: 'Real Brésilien (BRL)', symbol: 'R$' },
-    { code: 'AUD', name: 'Dollar Australien (AUD)', symbol: 'A$' },
-];
-
-const ProductManager: React.FC<ProductManagerProps> = ({
-    visible,
-    onClose,
-    onSave,
-    initialProducts = []
-}) => {
-    const [products, setProducts] = useState<Product[]>(initialProducts);
-    const [editingProduct, setEditingProduct] = useState<Product | null>(null);
-    const [showProductForm, setShowProductForm] = useState(false);
-    const [showCurrencyModal, setShowCurrencyModal] = useState(false);
-
-    const handleAddProduct = () => {
-        const newProduct: Product = {
-            id: Date.now().toString(),
+const ProductManager: React.FC<ProductManagerProps> = ({ products, onProductsChange, compact = false }) => {
+    const [showAddForm, setShowAddForm] = useState(false);
+    const [newProduct, setNewProduct] = useState({
             name: '',
-            price: '',
-            currency: 'XAF',
-            images: [],
-            videos: []
-        };
-        setEditingProduct(newProduct);
-        setShowProductForm(true);
-    };
+        description: '',
+        price: 0,
+        unit: '€'
+    });
 
-    const handleEditProduct = (product: Product) => {
-        setEditingProduct(product);
-        setShowProductForm(true);
-    };
-
-    const handleDeleteProduct = (productId: string) => {
-        Alert.alert(
-            'Supprimer le produit',
-            'Êtes-vous sûr de vouloir supprimer ce produit ?',
-            [
-                { text: 'Annuler', style: 'cancel' },
-                {
-                    text: 'Supprimer',
-                    style: 'destructive',
-                    onPress: () => {
-                        setProducts(prev => prev.filter(p => p.id !== productId));
-                    }
-                }
-            ]
-        );
-    };
-
-    const handleSaveProduct = (product: Product) => {
-        if (!product.name.trim() || !product.price.trim()) {
-            Alert.alert('Erreur', 'Veuillez remplir le nom et le prix du produit');
+    const addProduct = () => {
+        if (!newProduct.name.trim()) {
+            Alert.alert('Erreur', 'Le nom du produit est requis');
             return;
         }
 
-        const existingIndex = products.findIndex(p => p.id === product.id);
-        if (existingIndex >= 0) {
-            setProducts(prev => prev.map((p, index) =>
-                index === existingIndex ? product : p
-            ));
-        } else {
-            setProducts(prev => [...prev, product]);
-        }
+        const product: Product = {
+            id: Date.now().toString(),
+            ...newProduct
+        };
 
-        setShowProductForm(false);
-        setEditingProduct(null);
+        onProductsChange([...products, product]);
+        setNewProduct({ name: '', description: '', price: 0, unit: '€' });
+        setShowAddForm(false);
     };
 
-    const handleSaveAll = () => {
-        onSave(products);
-        onClose();
+    const removeProduct = (id: string) => {
+        onProductsChange(products.filter(p => p.id !== id));
     };
 
-    const formatPrice = (price: string, currency: string) => {
-        const currencyInfo = CURRENCIES.find(c => c.code === currency);
-        const symbol = currencyInfo?.symbol || currency;
-        return `${price} ${symbol}`;
+    const updateProduct = (id: string, field: keyof Product, value: any) => {
+        onProductsChange(products.map(p =>
+            p.id === id ? { ...p, [field]: value } : p
+        ));
     };
 
-    return (
-        <Modal
-            visible={visible}
-            animationType="slide"
-            presentationStyle="pageSheet"
-            onRequestClose={onClose}
-        >
-            <View style={styles.container}>
-                <View style={styles.header}>
-                    <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-                        <Ionicons name="close" size={24} color={theme.colors.text} />
-                    </TouchableOpacity>
-                    <Title style={styles.title}>Gestion des Produits</Title>
-                </View>
-
-                <ScrollView style={styles.content}>
-                    {products.length === 0 ? (
-                        <Card style={styles.emptyCard}>
-                            <Card.Content style={styles.emptyContent}>
-                                <Ionicons name="cube-outline" size={48} color={theme.colors.textSecondary} />
-                                <Text style={styles.emptyTitle}>Aucun produit</Text>
-                                <Text style={styles.emptyDescription}>
-                                    Ajoutez des produits pour votre service
-                                </Text>
-                            </Card.Content>
-                        </Card>
-                    ) : (
-                        products.map((product) => (
+    const renderProduct = (product: Product) => (
                             <Card key={product.id} style={styles.productCard}>
                                 <Card.Content>
                                     <View style={styles.productHeader}>
-                                        <View style={styles.productInfo}>
                                             <Text style={styles.productName}>{product.name}</Text>
-                                            <Text style={styles.productPrice}>
-                                                {formatPrice(product.price, product.currency)}
-                                            </Text>
-                                        </View>
-                                        <View style={styles.productActions}>
-                                            <TouchableOpacity
-                                                onPress={() => handleEditProduct(product)}
-                                                style={styles.actionButton}
-                                            >
-                                                <Ionicons name="create-outline" size={20} color={theme.colors.primary} />
-                                            </TouchableOpacity>
-                                            <TouchableOpacity
-                                                onPress={() => handleDeleteProduct(product.id)}
-                                                style={styles.actionButton}
-                                            >
-                                                <Ionicons name="trash-outline" size={20} color="#F44336" />
-                                            </TouchableOpacity>
-                                        </View>
+                    <IconButton
+                        icon="close"
+                        size={16}
+                        onPress={() => removeProduct(product.id)}
+                        iconColor={theme.colors.error}
+                    />
                                     </View>
 
-                                    {(product.images.length > 0 || product.videos.length > 0) && (
-                                        <View style={styles.mediaInfo}>
-                                            <Text style={styles.mediaText}>
-                                                📷 {product.images.length} image(s) • 🎥 {product.videos.length} vidéo(s)
+                {product.description && (
+                    <Text style={styles.productDescription}>{product.description}</Text>
+                )}
+
+                <View style={styles.productPrice}>
+                    <DollarSign size={16} color={theme.colors.primary} />
+                    <Text style={styles.priceText}>
+                        {product.price} {product.unit}
                                             </Text>
                                         </View>
-                                    )}
                                 </Card.Content>
                             </Card>
-                        ))
-                    )}
-
-                    <TouchableOpacity
-                        style={styles.addButton}
-                        onPress={handleAddProduct}
-                    >
-                        <Ionicons name="add" size={24} color="white" />
-                        <Text style={styles.addButtonText}>Ajouter un produit</Text>
-                    </TouchableOpacity>
-                </ScrollView>
-
-                <View style={styles.footer}>
-                    <Button
-                        mode="outlined"
-                        onPress={onClose}
-                        style={styles.cancelButton}
-                    >
-                        Annuler
-                    </Button>
-                    <Button
-                        mode="contained"
-                        onPress={handleSaveAll}
-                        style={styles.saveButton}
-                    >
-                        Enregistrer ({products.length})
-                    </Button>
-                </View>
-            </View>
-
-            {/* Formulaire de produit */}
-            {showProductForm && editingProduct && (
-                <ProductForm
-                    product={editingProduct}
-                    onSave={handleSaveProduct}
-                    onCancel={() => {
-                        setShowProductForm(false);
-                        setEditingProduct(null);
-                    }}
-                />
-            )}
-        </Modal>
     );
-};
 
-// Composant formulaire de produit
-interface ProductFormProps {
-    product: Product;
-    onSave: (product: Product) => void;
-    onCancel: () => void;
-}
-
-const ProductForm: React.FC<ProductFormProps> = ({ product, onSave, onCancel }) => {
-    const [formData, setFormData] = useState<Product>(product);
-    const [showCurrencyModal, setShowCurrencyModal] = useState(false);
-
-    const handleSave = () => {
-        onSave(formData);
-    };
-
-    const handleCurrencySelect = (currency: string) => {
-        setFormData(prev => ({ ...prev, currency }));
-        setShowCurrencyModal(false);
-    };
+    if (compact) {
+        return (
+            <TouchableOpacity style={styles.compactContainer}>
+                <Package size={20} color={theme.colors.primary} />
+                <Text style={styles.compactText}>{products.length} produits</Text>
+                    </TouchableOpacity>
+        );
+    }
 
     return (
-        <Modal
-            visible={true}
-            animationType="slide"
-            presentationStyle="pageSheet"
-        >
-            <View style={styles.formContainer}>
-                <View style={styles.formHeader}>
-                    <TouchableOpacity onPress={onCancel} style={styles.closeButton}>
-                        <Ionicons name="close" size={24} color={theme.colors.text} />
+        <Card style={styles.container}>
+            <Card.Content>
+                <View style={styles.header}>
+                    <Text style={styles.title}>Gestion des produits</Text>
+                    <TouchableOpacity
+                        style={styles.addButton}
+                        onPress={() => setShowAddForm(!showAddForm)}
+                    >
+                        <Plus size={16} color={theme.colors.primary} />
+                        <Text style={styles.addButtonText}>Ajouter</Text>
                     </TouchableOpacity>
-                    <Title style={styles.formTitle}>
-                        {product.id ? 'Modifier le produit' : 'Nouveau produit'}
-                    </Title>
                 </View>
 
-                <ScrollView style={styles.formContent}>
-                    <Card style={styles.formCard}>
+                {/* Add Product Form */}
+                {showAddForm && (
+                    <Card style={styles.addForm}>
                         <Card.Content>
+                            <Text style={styles.formTitle}>Nouveau produit</Text>
+
                             <TextInput
                                 label="Nom du produit"
-                                value={formData.name}
-                                onChangeText={(text) => setFormData(prev => ({ ...prev, name: text }))}
-                                style={styles.input}
+                                value={newProduct.name}
+                                onChangeText={(text) => setNewProduct({ ...newProduct, name: text })}
                                 mode="outlined"
+                                style={styles.input}
                             />
 
-                            <View style={styles.priceContainer}>
+                            <TextInput
+                                label="Description (optionnel)"
+                                value={newProduct.description}
+                                onChangeText={(text) => setNewProduct({ ...newProduct, description: text })}
+                                mode="outlined"
+                                multiline
+                                numberOfLines={2}
+                                style={styles.input}
+                            />
+
+                            <View style={styles.priceRow}>
                                 <TextInput
                                     label="Prix"
-                                    value={formData.price}
-                                    onChangeText={(text) => setFormData(prev => ({ ...prev, price: text }))}
-                                    style={styles.priceInput}
+                                    value={newProduct.price.toString()}
+                                    onChangeText={(text) => setNewProduct({ ...newProduct, price: parseFloat(text) || 0 })}
                                     mode="outlined"
                                     keyboardType="numeric"
+                                    style={[styles.input, styles.priceInput]}
                                 />
 
-                                <TouchableOpacity
-                                    style={styles.currencyButton}
-                                    onPress={() => setShowCurrencyModal(true)}
-                                >
-                                    <Text style={styles.currencyText}>{formData.currency}</Text>
-                                    <Ionicons name="chevron-down" size={16} color={theme.colors.primary} />
-                                </TouchableOpacity>
+                                <TextInput
+                                    label="Unité"
+                                    value={newProduct.unit}
+                                    onChangeText={(text) => setNewProduct({ ...newProduct, unit: text })}
+                                    mode="outlined"
+                                    style={[styles.input, styles.unitInput]}
+                                />
                             </View>
 
-                            <View style={styles.mediaSection}>
-                                <Text style={styles.sectionTitle}>Médias</Text>
-                                <Text style={styles.sectionDescription}>
-                                    Images et vidéos du produit (fonctionnalité à implémenter)
-                                </Text>
-                            </View>
-                        </Card.Content>
-                    </Card>
-                </ScrollView>
-
-                <View style={styles.formFooter}>
+                            <View style={styles.formActions}>
                     <Button
                         mode="outlined"
-                        onPress={onCancel}
+                                    onPress={() => setShowAddForm(false)}
                         style={styles.cancelButton}
                     >
                         Annuler
                     </Button>
                     <Button
                         mode="contained"
-                        onPress={handleSave}
+                                    onPress={addProduct}
                         style={styles.saveButton}
                     >
-                        Enregistrer
+                                    Ajouter
                     </Button>
                 </View>
-            </View>
+                        </Card.Content>
+                    </Card>
+                )}
 
-            {/* Modal de sélection de devise */}
-            <Modal
-                visible={showCurrencyModal}
-                animationType="slide"
-                presentationStyle="pageSheet"
-                onRequestClose={() => setShowCurrencyModal(false)}
-            >
-                <View style={styles.currencyContainer}>
-                    <View style={styles.currencyHeader}>
-                        <TouchableOpacity
-                            onPress={() => setShowCurrencyModal(false)}
-                            style={styles.closeButton}
-                        >
-                            <Ionicons name="close" size={24} color={theme.colors.text} />
-                        </TouchableOpacity>
-                        <Title style={styles.currencyTitle}>Sélectionner une devise</Title>
-                    </View>
+                {/* Products List */}
+                <ScrollView style={styles.productsList}>
+                    {products.map(renderProduct)}
 
-                    <ScrollView style={styles.currencyList}>
-                        {CURRENCIES.map((currency) => (
-                            <TouchableOpacity
-                                key={currency.code}
-                                style={[
-                                    styles.currencyItem,
-                                    formData.currency === currency.code && styles.currencyItemSelected
-                                ]}
-                                onPress={() => handleCurrencySelect(currency.code)}
-                            >
-                                <View style={styles.currencyInfo}>
-                                    <Text style={styles.currencyCode}>{currency.code}</Text>
-                                    <Text style={styles.currencyName}>{currency.name}</Text>
+                    {products.length === 0 && (
+                        <View style={styles.emptyState}>
+                            <Package size={48} color="#E0E0E0" />
+                            <Text style={styles.emptyText}>Aucun produit ajouté</Text>
+                            <Text style={styles.emptySubtext}>
+                                Ajoutez des produits pour définir vos offres
+                            </Text>
                                 </View>
-                                <Text style={styles.currencySymbol}>{currency.symbol}</Text>
-                                {formData.currency === currency.code && (
-                                    <Ionicons name="checkmark" size={20} color={theme.colors.primary} />
                                 )}
-                            </TouchableOpacity>
-                        ))}
                     </ScrollView>
-                </View>
-            </Modal>
-        </Modal>
+            </Card.Content>
+        </Card>
     );
 };
 
 const styles = StyleSheet.create({
     container: {
-        flex: 1,
-        backgroundColor: theme.colors.background,
+        marginVertical: 8,
     },
     header: {
         flexDirection: 'row',
+        justifyContent: 'space-between',
         alignItems: 'center',
-        paddingHorizontal: 16,
-        paddingVertical: 12,
-        backgroundColor: 'white',
-        borderBottomWidth: 1,
-        borderBottomColor: theme.colors.border,
-    },
-    closeButton: {
-        padding: 8,
+        marginBottom: 16,
     },
     title: {
         fontSize: 18,
         fontWeight: 'bold',
         color: theme.colors.text,
-        marginLeft: 8,
-    },
-    content: {
-        flex: 1,
-        padding: 16,
-    },
-    emptyCard: {
-        marginBottom: 16,
-    },
-    emptyContent: {
-        alignItems: 'center',
-        paddingVertical: 32,
-    },
-    emptyTitle: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        color: theme.colors.text,
-        marginTop: 16,
-        marginBottom: 8,
-    },
-    emptyDescription: {
-        fontSize: 14,
-        color: theme.colors.textSecondary,
-        textAlign: 'center',
-    },
-    productCard: {
-        marginBottom: 12,
-        elevation: 2,
-    },
-    productHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'flex-start',
-    },
-    productInfo: {
-        flex: 1,
-    },
-    productName: {
-        fontSize: 16,
-        fontWeight: 'bold',
-        color: theme.colors.text,
-        marginBottom: 4,
-    },
-    productPrice: {
-        fontSize: 14,
-        color: theme.colors.primary,
-        fontWeight: '600',
-    },
-    productActions: {
-        flexDirection: 'row',
-        gap: 8,
-    },
-    actionButton: {
-        padding: 8,
-        borderRadius: 6,
-        backgroundColor: '#f8f9fa',
-    },
-    mediaInfo: {
-        marginTop: 8,
-        paddingTop: 8,
-        borderTopWidth: 1,
-        borderTopColor: '#e9ecef',
-    },
-    mediaText: {
-        fontSize: 12,
-        color: theme.colors.textSecondary,
     },
     addButton: {
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: theme.colors.primary,
-        paddingVertical: 16,
-        paddingHorizontal: 24,
-        borderRadius: 8,
-        marginTop: 16,
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: theme.colors.primary,
+        backgroundColor: 'white',
     },
     addButtonText: {
-        color: 'white',
+        fontSize: 14,
+        color: theme.colors.primary,
+        marginLeft: 4,
+        fontWeight: '500',
+    },
+    addForm: {
+        marginBottom: 16,
+        backgroundColor: '#f8f9fa',
+    },
+    formTitle: {
         fontSize: 16,
         fontWeight: '600',
-        marginLeft: 8,
+        color: theme.colors.text,
+        marginBottom: 16,
     },
-    footer: {
-        flexDirection: 'row',
-        padding: 16,
+    input: {
         backgroundColor: 'white',
-        borderTopWidth: 1,
-        borderTopColor: theme.colors.border,
+        marginBottom: 12,
+    },
+    priceRow: {
+        flexDirection: 'row',
         gap: 12,
+    },
+    priceInput: {
+        flex: 2,
+    },
+    unitInput: {
+        flex: 1,
+    },
+    formActions: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginTop: 8,
     },
     cancelButton: {
         flex: 1,
+        marginRight: 8,
     },
     saveButton: {
         flex: 1,
-        backgroundColor: theme.colors.primary,
-    },
-    formContainer: {
-        flex: 1,
-        backgroundColor: theme.colors.background,
-    },
-    formHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: 16,
-        paddingVertical: 12,
-        backgroundColor: 'white',
-        borderBottomWidth: 1,
-        borderBottomColor: theme.colors.border,
-    },
-    formTitle: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        color: theme.colors.text,
         marginLeft: 8,
     },
-    formContent: {
-        flex: 1,
-        padding: 16,
+    productsList: {
+        maxHeight: 300,
     },
-    formCard: {
-        elevation: 2,
+    productCard: {
+        marginBottom: 8,
+        backgroundColor: 'white',
     },
-    input: {
-        marginBottom: 16,
-    },
-    priceContainer: {
+    productHeader: {
         flexDirection: 'row',
-        gap: 12,
-        marginBottom: 16,
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 8,
     },
-    priceInput: {
+    productName: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: theme.colors.text,
         flex: 1,
     },
-    currencyButton: {
+    productDescription: {
+        fontSize: 14,
+        color: theme.colors.textSecondary,
+        marginBottom: 8,
+    },
+    productPrice: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingHorizontal: 16,
-        paddingVertical: 12,
-        backgroundColor: '#f8f9fa',
-        borderRadius: 8,
-        borderWidth: 1,
-        borderColor: '#e9ecef',
-        minWidth: 80,
     },
-    currencyText: {
-        fontSize: 14,
-        color: theme.colors.text,
-        marginRight: 4,
-    },
-    mediaSection: {
-        marginTop: 16,
-        paddingTop: 16,
-        borderTopWidth: 1,
-        borderTopColor: '#e9ecef',
-    },
-    sectionTitle: {
+    priceText: {
         fontSize: 16,
         fontWeight: 'bold',
-        color: theme.colors.text,
+        color: theme.colors.primary,
+        marginLeft: 4,
+    },
+    emptyState: {
+        alignItems: 'center',
+        paddingVertical: 32,
+    },
+    emptyText: {
+        fontSize: 16,
+        color: theme.colors.textSecondary,
+        marginTop: 12,
         marginBottom: 4,
     },
-    sectionDescription: {
+    emptySubtext: {
         fontSize: 14,
         color: theme.colors.textSecondary,
+        textAlign: 'center',
     },
-    formFooter: {
-        flexDirection: 'row',
-        padding: 16,
-        backgroundColor: 'white',
-        borderTopWidth: 1,
-        borderTopColor: theme.colors.border,
-        gap: 12,
-    },
-    currencyContainer: {
-        flex: 1,
-        backgroundColor: theme.colors.background,
-    },
-    currencyHeader: {
+    compactContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingHorizontal: 16,
-        paddingVertical: 12,
-        backgroundColor: 'white',
-        borderBottomWidth: 1,
-        borderBottomColor: theme.colors.border,
-    },
-    currencyTitle: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        color: theme.colors.text,
-        marginLeft: 8,
-    },
-    currencyList: {
-        flex: 1,
-        padding: 16,
-    },
-    currencyItem: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingVertical: 16,
-        paddingHorizontal: 12,
-        backgroundColor: 'white',
+        padding: 8,
+        backgroundColor: '#f8f9fa',
         borderRadius: 8,
-        marginBottom: 8,
-        elevation: 1,
     },
-    currencyItemSelected: {
-        backgroundColor: '#e8f5e8',
-        borderWidth: 1,
-        borderColor: theme.colors.primary,
-    },
-    currencyInfo: {
-        flex: 1,
-    },
-    currencyCode: {
-        fontSize: 16,
-        fontWeight: 'bold',
+    compactText: {
+        fontSize: 12,
         color: theme.colors.text,
-    },
-    currencyName: {
-        fontSize: 14,
-        color: theme.colors.textSecondary,
-        marginTop: 2,
-    },
-    currencySymbol: {
-        fontSize: 16,
-        color: theme.colors.primary,
-        fontWeight: '600',
-        marginRight: 8,
+        marginLeft: 4,
     },
 });
 
 export default ProductManager;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

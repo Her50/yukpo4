@@ -1,19 +1,17 @@
-﻿// Migration vers Lucide React Native pour un design moderne
-import { AlertTriangle, BarChart3, Bell, Clock, Eye, Key, Mail, MapPin, Megaphone, ChatCircle, Radio, Shield } from 'phosphor-react-native';
+﻿// Migration vers des composants React Native natifs pour éviter les crashes
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as React from 'react';
 import { useState } from 'react';
-import {
-  Alert,
-  ScrollView,
-  StyleSheet, TouchableOpacity, View, Text, TextInput, Switch
-} from 'react-native';
-// Remplacement des composants react-native-paper par des composants natifs
-import { SafeAreaView } from 'react-native-safe-area-context';
+import ReactNative from 'react-native';
+import { SafeNativeView } from '../components/SafeNativeView';
 import { useAuth } from '../contexts/AuthContext';
 import { theme } from '../theme/theme';
+const { Alert, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } = ReactNative;
 
 interface UserSettings {
   // Profil
+  firstName: string;
+  lastName: string;
   name: string;
   email: string;
   phone: string;
@@ -30,6 +28,7 @@ interface UserSettings {
   showLocation: boolean;
   showOnlineStatus: boolean;
   allowDataCollection: boolean;
+  gpsEnabled: boolean;
 
   // Apparence
   theme: 'light' | 'dark' | 'auto';
@@ -47,6 +46,8 @@ const SettingsScreen: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [settings, setSettings] = useState<UserSettings>({
     // Profil
+    firstName: user?.name ? user.name.split(' ')[0] || '' : '',
+    lastName: user?.name ? user.name.split(' ').slice(1).join(' ') || '' : '',
     name: user?.name || '',
     email: user?.email || '',
     phone: user?.phone || '',
@@ -63,6 +64,7 @@ const SettingsScreen: React.FC = () => {
     showLocation: true,
     showOnlineStatus: true,
     allowDataCollection: true,
+    gpsEnabled: true,
 
     // Apparence
     theme: 'light',
@@ -78,14 +80,43 @@ const SettingsScreen: React.FC = () => {
   // Vérification de l'initialisation
   React.useEffect(() => {
     if (user) {
+      const nameParts = user.name ? user.name.split(' ') : ['', ''];
       setSettings(prev => ({
         ...prev,
+        firstName: nameParts[0] || '',
+        lastName: nameParts.slice(1).join(' ') || '',
         name: user.name || '',
         email: user.email || '',
         phone: user.phone || '',
       }));
     }
   }, [user]);
+
+  // Charger les paramètres GPS au démarrage
+  React.useEffect(() => {
+    const loadGPSSetting = async () => {
+      try {
+        const gpsEnabled = await AsyncStorage.getItem('gpsEnabled');
+        if (gpsEnabled !== null) {
+          setSettings(prev => ({
+            ...prev,
+            gpsEnabled: JSON.parse(gpsEnabled)
+          }));
+        } else {
+          // Si aucun paramètre GPS n'est défini, l'activer par défaut
+          setSettings(prev => ({
+            ...prev,
+            gpsEnabled: true
+          }));
+          await AsyncStorage.setItem('gpsEnabled', JSON.stringify(true));
+        }
+      } catch (error) {
+        console.error('Erreur lors du chargement du paramètre GPS:', error);
+      }
+    };
+
+    loadGPSSetting();
+  }, []);
 
   const handleSave = async () => {
     setLoading(true);
@@ -94,11 +125,37 @@ const SettingsScreen: React.FC = () => {
       await new Promise(resolve => setTimeout(resolve, 1000));
 
       // Mettre à jour l'utilisateur
+      const fullName = `${settings.firstName} ${settings.lastName}`.trim();
       updateUser({
-        name: settings.name,
+        name: fullName,
         email: settings.email,
         phone: settings.phone,
       });
+
+      // CORRECTION: Sauvegarder le paramètre GPS dans AsyncStorage ET envoyer au backend
+      await AsyncStorage.setItem('gpsEnabled', JSON.stringify(settings.gpsEnabled));
+
+      // Envoyer le consentement GPS au backend
+      try {
+        const response = await fetch('https://yukpomnang.onrender.com/api/user/me/gps_consent', {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${user?.token || ''}`
+          },
+          body: JSON.stringify({
+            gps_consent: settings.gpsEnabled
+          })
+        });
+
+        if (response.ok) {
+          console.log('✅ [SettingsScreen] Consentement GPS envoyé au backend:', settings.gpsEnabled);
+        } else {
+          console.warn('⚠️ [SettingsScreen] Erreur envoi consentement GPS au backend');
+        }
+      } catch (error) {
+        console.error('❌ [SettingsScreen] Erreur réseau consentement GPS:', error);
+      }
 
       Alert.alert('Succès', 'Paramètres sauvegardés avec succès');
     } catch (error) {
@@ -108,39 +165,50 @@ const SettingsScreen: React.FC = () => {
     }
   };
 
-  const getInitials = (name: string) => {
-    return name
-      .split(' ')
-      .map(word => word.charAt(0))
-      .join('')
-      .toUpperCase()
-      .slice(0, 2);
+  const getInitials = (firstName: string, lastName: string) => {
+    const firstInitial = firstName.charAt(0).toUpperCase();
+    const lastInitial = lastName.charAt(0).toUpperCase();
+    return `${firstInitial}${lastInitial}`;
   };
 
   const renderProfileSection = () => (
     <View style={styles.sectionCard}>
       <View style={styles.sectionContent}>
-        <Text style={styles.sectionTitle}>Profil</Text>
+        <Text style={styles.sectionTitle}>Mon Profil</Text>
 
-        <View style={styles.avatarContainer}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{getInitials(settings.name)}</Text>
+        {/* Avatar compact */}
+        <View style={styles.compactAvatarContainer}>
+          <View style={styles.compactAvatar}>
+            <Text style={styles.compactAvatarText}>{getInitials(settings.firstName, settings.lastName)}</Text>
           </View>
           <TouchableOpacity
             onPress={() => Alert.alert('Info', 'Fonctionnalité de changement de photo en cours de développement')}
-            style={styles.changePhotoButton}
+            style={styles.compactChangePhotoButton}
           >
-            <Text style={styles.changePhotoText}>Changer la photo</Text>
+            <Text style={styles.compactChangePhotoText}>📷 Changer</Text>
           </TouchableOpacity>
         </View>
 
-        <View style={styles.inputContainer}>
-          <Text style={styles.inputLabel}>Nom complet</Text>
-          <TextInput
-            value={settings.name}
-            onChangeText={(text) => setSettings(prev => ({ ...prev, name: text }))}
-            style={styles.input}
-          />
+        {/* Champs nom et prénom côte à côte */}
+        <View style={styles.nameRow}>
+          <View style={[styles.inputContainer, styles.halfWidth]}>
+            <Text style={styles.inputLabel}>Prénom</Text>
+            <TextInput
+              value={settings.firstName}
+              onChangeText={(text) => setSettings(prev => ({ ...prev, firstName: text }))}
+              style={styles.input}
+              placeholder="Votre prénom"
+            />
+          </View>
+          <View style={[styles.inputContainer, styles.halfWidth]}>
+            <Text style={styles.inputLabel}>Nom</Text>
+            <TextInput
+              value={settings.lastName}
+              onChangeText={(text) => setSettings(prev => ({ ...prev, lastName: text }))}
+              style={styles.input}
+              placeholder="Votre nom"
+            />
+          </View>
         </View>
 
         <View style={styles.inputContainer}>
@@ -151,6 +219,7 @@ const SettingsScreen: React.FC = () => {
             keyboardType="email-address"
             autoCapitalize="none"
             style={styles.input}
+            placeholder="votre@email.com"
           />
         </View>
 
@@ -161,6 +230,7 @@ const SettingsScreen: React.FC = () => {
             onChangeText={(text) => setSettings(prev => ({ ...prev, phone: text }))}
             keyboardType="phone-pad"
             style={styles.input}
+            placeholder="+237 6XX XX XX XX"
           />
         </View>
 
@@ -170,8 +240,9 @@ const SettingsScreen: React.FC = () => {
             value={settings.bio}
             onChangeText={(text) => setSettings(prev => ({ ...prev, bio: text }))}
             multiline
-            numberOfLines={3}
-            style={styles.input}
+            numberOfLines={2}
+            style={[styles.input, styles.bioInput]}
+            placeholder="Décrivez-vous en quelques mots..."
           />
         </View>
       </View>
@@ -185,7 +256,7 @@ const SettingsScreen: React.FC = () => {
 
         <View style={styles.settingRow}>
           <View style={styles.settingInfo}>
-            <Mail size={20} color={theme.colors.primary} />
+            <Text style={styles.iconEmoji}>📧</Text>
             <View style={styles.settingText}>
               <Text style={styles.settingLabel}>Notifications email</Text>
               <Text style={styles.settingDescription}>Recevoir des notifications par email</Text>
@@ -199,7 +270,7 @@ const SettingsScreen: React.FC = () => {
 
         <View style={styles.settingRow}>
           <View style={styles.settingInfo}>
-            <Bell size={20} color={theme.colors.primary} />
+            <Text style={styles.iconEmoji}>🔔</Text>
             <View style={styles.settingText}>
               <Text style={styles.settingLabel}>Notifications push</Text>
               <Text style={styles.settingDescription}>Recevoir des notifications push</Text>
@@ -213,7 +284,7 @@ const SettingsScreen: React.FC = () => {
 
         <View style={styles.settingRow}>
           <View style={styles.settingInfo}>
-            <ChatCircle size={20} color={theme.colors.primary} />
+            <Text style={styles.iconEmoji}>💬</Text>
             <View style={styles.settingText}>
               <Text style={styles.settingLabel}>Notifications SMS</Text>
               <Text style={styles.settingDescription}>Recevoir des notifications par SMS</Text>
@@ -227,7 +298,7 @@ const SettingsScreen: React.FC = () => {
 
         <View style={styles.settingRow}>
           <View style={styles.settingInfo}>
-            <Megaphone size={20} color={theme.colors.primary} />
+            <Text style={styles.iconEmoji}>📢</Text>
             <View style={styles.settingText}>
               <Text style={styles.settingLabel}>Emails marketing</Text>
               <Text style={styles.settingDescription}>Recevoir des offres et nouveautés</Text>
@@ -249,7 +320,7 @@ const SettingsScreen: React.FC = () => {
 
         <View style={styles.settingRow}>
           <View style={styles.settingInfo}>
-            <Eye size={20} color={theme.colors.primary} />
+            <Text style={styles.iconEmoji}>👁️</Text>
             <View style={styles.settingText}>
               <Text style={styles.settingLabel}>Visibilité du profil</Text>
               <Text style={styles.settingDescription}>Qui peut voir votre profil</Text>
@@ -264,13 +335,13 @@ const SettingsScreen: React.FC = () => {
             }}
             style={styles.visibilityButton}
           >
-            <Text>{settings.profileVisibility}</Text>
+            <Text style={styles.visibilityButtonText}>{settings.profileVisibility}</Text>
           </TouchableOpacity>
         </View>
 
         <View style={styles.settingRow}>
           <View style={styles.settingInfo}>
-            <MapPin size={20} color={theme.colors.primary} />
+            <Text style={styles.iconEmoji}>📍</Text>
             <View style={styles.settingText}>
               <Text style={styles.settingLabel}>Afficher la localisation</Text>
               <Text style={styles.settingDescription}>Partager votre position</Text>
@@ -284,7 +355,7 @@ const SettingsScreen: React.FC = () => {
 
         <View style={styles.settingRow}>
           <View style={styles.settingInfo}>
-            <Radio size={20} color={theme.colors.primary} />
+            <Text style={styles.iconEmoji}>📡</Text>
             <View style={styles.settingText}>
               <Text style={styles.settingLabel}>Statut en ligne</Text>
               <Text style={styles.settingDescription}>Afficher quand vous êtes en ligne</Text>
@@ -298,7 +369,28 @@ const SettingsScreen: React.FC = () => {
 
         <View style={styles.settingRow}>
           <View style={styles.settingInfo}>
-            <BarChart3 size={20} color={theme.colors.primary} />
+            <Text style={styles.iconEmoji}>🛰️</Text>
+            <View style={styles.settingText}>
+              <Text style={styles.settingLabel}>Localisation en temps réel</Text>
+              <Text style={styles.settingDescription}>
+                Partager votre position GPS avec vos clients (activé par défaut)
+              </Text>
+            </View>
+          </View>
+          <Switch
+            value={settings.gpsEnabled}
+            onValueChange={async (value) => {
+              setSettings(prev => ({ ...prev, gpsEnabled: value }));
+              // CORRECTION: Sauvegarder immédiatement pour que le hook détecte le changement
+              await AsyncStorage.setItem('gpsEnabled', JSON.stringify(value));
+              console.log('[SettingsScreen] GPS', value ? 'activé' : 'désactivé');
+            }}
+          />
+        </View>
+
+        <View style={styles.settingRow}>
+          <View style={styles.settingInfo}>
+            <Text style={styles.iconEmoji}>📊</Text>
             <View style={styles.settingText}>
               <Text style={styles.settingLabel}>Collecte de données</Text>
               <Text style={styles.settingDescription}>Autoriser l'analyse d'usage</Text>
@@ -320,7 +412,7 @@ const SettingsScreen: React.FC = () => {
 
         <View style={styles.settingRow}>
           <View style={styles.settingInfo}>
-            <Shield size={20} color={theme.colors.primary} />
+            <Text style={styles.iconEmoji}>🛡️</Text>
             <View style={styles.settingText}>
               <Text style={styles.settingLabel}>Authentification à deux facteurs</Text>
               <Text style={styles.settingDescription}>Sécuriser votre compte</Text>
@@ -334,7 +426,7 @@ const SettingsScreen: React.FC = () => {
 
         <View style={styles.settingRow}>
           <View style={styles.settingInfo}>
-            <Clock size={20} color={theme.colors.primary} />
+            <Text style={styles.iconEmoji}>⏰</Text>
             <View style={styles.settingText}>
               <Text style={styles.settingLabel}>Délai de session</Text>
               <Text style={styles.settingDescription}>Minutes avant déconnexion automatique</Text>
@@ -349,13 +441,13 @@ const SettingsScreen: React.FC = () => {
             }}
             style={styles.timeoutButton}
           >
-            <Text>{settings.sessionTimeout}min</Text>
+            <Text style={styles.timeoutButtonText}>{settings.sessionTimeout}min</Text>
           </TouchableOpacity>
         </View>
 
         <View style={styles.settingRow}>
           <View style={styles.settingInfo}>
-            <AlertTriangle size={20} color={theme.colors.primary} />
+            <Text style={styles.iconEmoji}>⚠️</Text>
             <View style={styles.settingText}>
               <Text style={styles.settingLabel}>Alertes de connexion</Text>
               <Text style={styles.settingDescription}>Être notifié des nouvelles connexions</Text>
@@ -371,8 +463,8 @@ const SettingsScreen: React.FC = () => {
           onPress={() => Alert.alert('Info', 'Fonctionnalité de changement de mot de passe en cours de développement')}
           style={styles.changePasswordButton}
         >
-          <Key size={20} color={theme.colors.primary} />
-          <Text>Changer le mot de passe</Text>
+          <Text style={styles.changePasswordIcon}>🔑</Text>
+          <Text style={styles.changePasswordText}>Changer le mot de passe</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -381,7 +473,7 @@ const SettingsScreen: React.FC = () => {
   // Gestion d'erreur pour éviter les crashes
   try {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeNativeView style={styles.container}>
         <ScrollView contentContainerStyle={styles.scrollContent}>
           {user ? (
             <>
@@ -409,17 +501,17 @@ const SettingsScreen: React.FC = () => {
             </View>
           )}
         </ScrollView>
-      </SafeAreaView>
+      </SafeNativeView>
     );
   } catch (error) {
     console.error('Erreur dans SettingsScreen:', error);
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeNativeView style={styles.container}>
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>Erreur d'affichage des paramètres</Text>
           <Text style={styles.errorSubtext}>Veuillez réessayer plus tard</Text>
         </View>
-      </SafeAreaView>
+      </SafeNativeView>
     );
   }
 };
@@ -453,31 +545,50 @@ const styles = StyleSheet.create({
     color: theme.colors.text,
     marginBottom: 16,
   },
-  avatarContainer: {
+  // Styles compacts pour le profil
+  compactAvatarContainer: {
+    flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 16,
   },
-  avatar: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+  compactAvatar: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
     backgroundColor: theme.colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 12,
+    marginRight: 12,
   },
-  avatarText: {
+  compactAvatarText: {
     color: 'white',
-    fontSize: 24,
+    fontSize: 16,
     fontWeight: 'bold',
   },
-  changePhotoButton: {
+  compactChangePhotoButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: theme.colors.surface,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  compactChangePhotoText: {
+    color: theme.colors.primary,
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  nameRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     marginBottom: 16,
   },
-  changePhotoText: {
-    color: theme.colors.primary,
-    fontSize: 14,
-    fontWeight: '500',
+  halfWidth: {
+    width: '48%',
+  },
+  bioInput: {
+    height: 60,
+    textAlignVertical: 'top',
   },
   inputContainer: {
     marginBottom: 16,
@@ -524,14 +635,57 @@ const styles = StyleSheet.create({
     color: theme.colors.textSecondary,
     marginTop: 2,
   },
+  iconEmoji: {
+    fontSize: 20,
+    marginRight: 12,
+  },
   visibilityButton: {
     minWidth: 80,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: theme.colors.surface,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  visibilityButtonText: {
+    color: theme.colors.primary,
+    fontSize: 14,
+    fontWeight: '500',
   },
   timeoutButton: {
     minWidth: 80,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: theme.colors.surface,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  timeoutButtonText: {
+    color: theme.colors.primary,
+    fontSize: 14,
+    fontWeight: '500',
   },
   changePasswordButton: {
     marginTop: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    backgroundColor: theme.colors.surface,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: theme.colors.primary,
+  },
+  changePasswordIcon: {
+    fontSize: 20,
+    marginRight: 8,
+  },
+  changePasswordText: {
+    color: theme.colors.primary,
+    fontSize: 16,
+    fontWeight: '500',
   },
   saveButton: {
     backgroundColor: theme.colors.primary,
