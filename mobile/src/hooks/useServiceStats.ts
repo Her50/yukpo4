@@ -1,4 +1,15 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useState } from 'react';
+
+// Fonction pour récupérer le token d'authentification
+const getToken = async (): Promise<string | null> => {
+    try {
+        return await AsyncStorage.getItem('auth_token');
+    } catch (error) {
+        console.warn('[useServiceStats] Erreur récupération token:', error);
+        return null;
+    }
+};
 
 interface ServiceStats {
     views: number;
@@ -31,9 +42,13 @@ export const useServiceStats = (serviceId: number, createdAt: string): UseServic
                 // Récupérer le token d'authentification
                 const token = await getToken();
 
-                // Appel API réel pour récupérer les statistiques
+                // Appel API réel pour récupérer les statistiques avec gestion d'erreur robuste
                 const response = await fetch(`https://yukpomnang.onrender.com/api/services/${serviceId}/stats`, {
-                    headers: token ? { Authorization: `Bearer ${token}` } : {}
+                    headers: token ? { Authorization: `Bearer ${token}` } : {},
+                    timeout: 10000 // Timeout de 10 secondes
+                }).catch((fetchError) => {
+                    console.warn(`[useServiceStats] Erreur réseau pour service ${serviceId}:`, fetchError);
+                    throw new Error('Erreur de connexion réseau');
                 });
 
                 if (response.ok) {

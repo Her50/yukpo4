@@ -58,6 +58,10 @@ export async function genererSuggestionsService(input: any): Promise<IAResponseW
 
   try {
     console.log('[yukpoclient] Appel /api/ia/creation-service (comme le frontend)...');
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 45000); // Timeout de 45 secondes pour l'IA
+
     const iaResponse = await fetch(`${API_BASE_URL}/api/ia/creation-service`, {
       method: 'POST',
       headers: {
@@ -65,7 +69,10 @@ export async function genererSuggestionsService(input: any): Promise<IAResponseW
         'Authorization': `Bearer ${token}`
       },
       body: JSON.stringify(serviceRequest),
+      signal: controller.signal
     });
+
+    clearTimeout(timeoutId);
 
     if (!iaResponse.ok) {
       const errorData = await iaResponse.json().catch(() => ({}));
@@ -104,6 +111,9 @@ export async function genererSuggestionsService(input: any): Promise<IAResponseW
     };
   } catch (error: any) {
     console.error('[yukpoclient] Erreur génération suggestions:', error);
+    if (error.name === 'AbortError') {
+      throw new Error('Timeout: La génération de suggestions a pris trop de temps (45s)');
+    }
     throw error;
   }
 }
@@ -118,14 +128,21 @@ export async function rechercherServices(input: any): Promise<any> {
 
   try {
     console.log('[yukpoclient] Appel /api/search/direct...');
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // Timeout de 30 secondes pour la recherche
+
     const response = await fetch(`${API_BASE_URL}/api/search/direct`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`
       },
-      body: JSON.stringify(input)
+      body: JSON.stringify(input),
+      signal: controller.signal
     });
+
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       throw new Error(`Erreur HTTP: ${response.status}`);
@@ -159,6 +176,9 @@ export async function rechercherServices(input: any): Promise<any> {
     return result;
   } catch (error: any) {
     console.error('[yukpoclient] Erreur recherche:', error);
+    if (error.name === 'AbortError') {
+      throw new Error('Timeout: La recherche a pris trop de temps (30s)');
+    }
     throw error;
   }
 }

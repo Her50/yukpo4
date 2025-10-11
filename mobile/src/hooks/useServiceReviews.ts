@@ -1,4 +1,15 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useState } from 'react';
+
+// Fonction pour récupérer le token d'authentification
+const getToken = async (): Promise<string | null> => {
+    try {
+        return await AsyncStorage.getItem('auth_token');
+    } catch (error) {
+        console.warn('[useServiceReviews] Erreur récupération token:', error);
+        return null;
+    }
+};
 
 interface Review {
     id: number;
@@ -39,9 +50,13 @@ export const useServiceReviews = (serviceId: number): UseServiceReviewsReturn =>
                 setLoading(true);
                 const token = await getToken();
 
-                // Récupérer les avis
+                // Récupérer les avis avec gestion d'erreur robuste
                 const reviewsResponse = await fetch(`https://yukpomnang.onrender.com/api/services/${serviceId}/reviews`, {
-                    headers: token ? { Authorization: `Bearer ${token}` } : {}
+                    headers: token ? { Authorization: `Bearer ${token}` } : {},
+                    timeout: 10000 // Timeout de 10 secondes
+                }).catch((fetchError) => {
+                    console.warn(`[useServiceReviews] Erreur réseau pour service ${serviceId}:`, fetchError);
+                    throw new Error('Erreur de connexion réseau');
                 });
 
                 if (reviewsResponse.ok) {

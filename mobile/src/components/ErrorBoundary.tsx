@@ -1,7 +1,10 @@
-import React, { Component, ReactNode } from 'react';
+import { Component, ReactNode } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-// Migration vers Phosphor React Native pour un design moderne
-import { ArrowClockwise, Bug, Warning } from 'phosphor-react-native';
+// Utilisation de SafeIcon pour éviter les crashes d'import
+import { SafeIcon } from './SafeIcon';
+import { debugLogger } from '../utils/DebugLogger';
+import CrashRecoveryScreen from './CrashRecoveryScreen';
+import EmergencyDebugScreen from './EmergencyDebugScreen';
 
 interface Props {
     children: ReactNode;
@@ -11,24 +14,39 @@ interface Props {
 interface State {
     hasError: boolean;
     error?: Error;
+    showCrashRecovery: boolean;
+    showEmergencyDebug: boolean;
 }
 
 class ErrorBoundary extends Component<Props, State> {
     constructor(props: Props) {
         super(props);
-        this.state = { hasError: false };
+        this.state = { hasError: false, showCrashRecovery: false };
     }
 
     static getDerivedStateFromError(error: Error): State {
-        return { hasError: true, error };
+        return { hasError: true, error, showCrashRecovery: false };
     }
 
     componentDidCatch(error: Error, errorInfo: any) {
         console.error('ErrorBoundary caught an error:', error, errorInfo);
+
+        // Logger l'erreur dans le système de debug
+        debugLogger.crash('ErrorBoundary', 'Application crashed', error, errorInfo);
+
+        // Afficher automatiquement l'écran de récupération après un délai
+        setTimeout(() => {
+            this.setState({ showCrashRecovery: true });
+        }, 1000);
     }
 
     handleRetry = () => {
-        this.setState({ hasError: false, error: undefined });
+        debugLogger.log('ErrorBoundary', 'User requested retry');
+        this.setState({ hasError: false, error: undefined, showCrashRecovery: false });
+    };
+
+    handleShowCrashRecovery = () => {
+        this.setState({ showCrashRecovery: true });
     };
 
     render() {
@@ -39,10 +57,10 @@ class ErrorBoundary extends Component<Props, State> {
 
             return (
                 <View style={styles.container}>
-                    <View style={styles.errorCard}>
-                        <Warning size={48} color="#DC2626" />
+                <View style={styles.errorCard}>
+                    <SafeIcon name="warning" size={48} color="#DC2626" type="phosphor" />
 
-                        <Text style={styles.errorTitle}>Oups ! Une erreur s'est produite</Text>
+                    <Text style={styles.errorTitle}>Oups ! Une erreur s'est produite</Text>
 
                         <Text style={styles.errorMessage}>
                             L'application a rencontré une erreur inattendue. Veuillez redémarrer l'application ou contacter le support si le problème persiste.
@@ -61,19 +79,16 @@ class ErrorBoundary extends Component<Props, State> {
                                 style={styles.retryButton}
                                 onPress={this.handleRetry}
                             >
-                                <ArrowClockwise size={20} color="#FFF" />
+                                <SafeIcon name="arrow-clockwise" size={20} color="#FFF" type="phosphor" />
                                 <Text style={styles.retryButtonText}>Redémarrer</Text>
                             </TouchableOpacity>
 
                             <TouchableOpacity
                                 style={styles.reportButton}
-                                onPress={() => {
-                                    // TODO: Implémenter le signalement d'erreur
-                                    console.log('Report error:', this.state.error);
-                                }}
+                                onPress={this.handleShowCrashRecovery}
                             >
-                                <Bug size={20} color="#6366F1" />
-                                <Text style={styles.reportButtonText}>Signaler</Text>
+                                <SafeIcon name="bug" size={20} color="#6366F1" type="phosphor" />
+                                <Text style={styles.reportButtonText}>Debug</Text>
                             </TouchableOpacity>
                         </View>
                     </View>
@@ -81,7 +96,18 @@ class ErrorBoundary extends Component<Props, State> {
             );
         }
 
-        return this.props.children;
+        return (
+            <>
+                {this.props.children}
+                {this.state.showCrashRecovery && (
+                    <CrashRecoveryScreen
+                        error={this.state.error}
+                        onRetry={this.handleRetry}
+                        onContinue={() => this.setState({ showCrashRecovery: false })}
+                    />
+                )}
+            </>
+        );
     }
 }
 

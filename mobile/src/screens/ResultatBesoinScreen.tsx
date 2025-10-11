@@ -585,6 +585,11 @@ const ResultatBesoinScreen: React.FC = () => {
         setShowGalleryModal(true);
     };
 
+    const handleServiceClick = (serviceId: string) => {
+        console.log('[ResultatBesoinScreen] Clic sur service:', serviceId);
+        // Pour l'instant, juste log - peut être étendu plus tard
+    };
+
     // Fonction pour créer une notification de contact
     const createContactNotification = async (prestataireId: string, contactType: 'whatsapp' | 'call', service: any) => {
         try {

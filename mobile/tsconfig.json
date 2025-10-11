@@ -17,6 +17,7 @@
     "strictNullChecks": false,
     "isolatedModules": true,
     "baseUrl": ".",
+    "types": [],
     "typeRoots": [
       "./node_modules/@types",
       "./src/types"
@@ -53,6 +54,10 @@
     "babel.config.js",
     "metro.config.js",
     "**/*.spec.ts",
-    "**/*.test.ts"
+    "**/*.test.ts",
+    "postinstall.js",
+    "fix-metro-exports*.js",
+    "create-metro-private-links.js",
+    "eas-build-*.sh"
   ]
 }

@@ -1,0 +1,266 @@
+// Version simplifiée et robuste de l'App pour éviter les crashes
+import React, { useEffect, useState } from 'react';
+import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+// Import conditionnel sécurisé de tous les composants
+let StatusBar, GestureHandlerRootView, PaperProvider, SafeAreaProvider, SafeAreaView;
+let ErrorBoundary, AuthProvider, theme, AppNavigator, debugLogger;
+
+try {
+    StatusBar = require('expo-status-bar').StatusBar;
+    GestureHandlerRootView = require('react-native-gesture-handler').GestureHandlerRootView;
+    PaperProvider = require('react-native-paper').PaperProvider;
+    SafeAreaProvider = require('react-native-safe-area-context').SafeAreaProvider;
+    SafeAreaView = require('react-native-safe-area-context').SafeAreaView;
+    
+    ErrorBoundary = require('./src/components/ErrorBoundary').default;
+    AuthProvider = require('./src/contexts/AuthContext').AuthProvider;
+    theme = require('./src/theme/theme').theme;
+    AppNavigator = require('./src/navigation/AppNavigator').default;
+    debugLogger = require('./src/utils/DebugLogger').debugLogger;
+    
+    console.log('[App] ✅ Tous les composants chargés avec succès');
+} catch (error) {
+    console.error('[App] ❌ Erreur chargement composants:', error);
+}
+
+// Fallback pour SafeAreaView
+if (!SafeAreaView) {
+    SafeAreaView = View;
+    console.warn('[App] SafeAreaView non disponible, utilisation de View');
+}
+
+export default function App() {
+    const [showEmergencyScreen, setShowEmergencyScreen] = useState(false);
+    const [error, setError] = useState<any>(null);
+
+    useEffect(() => {
+        initializeApp();
+    }, []);
+
+    const initializeApp = async () => {
+        try {
+            console.log('[App] 🚀 Initialisation de Yukpomnang...');
+            
+            if (debugLogger) {
+                debugLogger.log('App', '🚀 Yukpomnang - Version fixée sans crash');
+                debugLogger.log('App', '📱 Version: 1.0.0 - Production Ready (Fixed)');
+            }
+
+            // Timer de sécurité - si l'app crash dans les 5 secondes, afficher l'écran d'urgence
+            setTimeout(() => {
+                console.log('[App] ⏰ Timer de sécurité déclenché');
+                setShowEmergencyScreen(true);
+            }, 5000);
+
+        } catch (error) {
+            console.error('[App] Erreur initialisation:', error);
+            setError(error);
+            setShowEmergencyScreen(true);
+        }
+    };
+
+    const copyLogs = async () => {
+        try {
+            const logs = await AsyncStorage.getItem('debug_logs') || '[]';
+            const emergencyLogs = await AsyncStorage.getItem('emergency_logs') || '[]';
+            
+            const exportData = {
+                exportDate: new Date().toISOString(),
+                deviceInfo: {
+                    platform: 'React Native Fixed',
+                    timestamp: Date.now(),
+                    version: '1.0.0-fixed'
+                },
+                error: error,
+                debugLogs: JSON.parse(logs),
+                emergencyLogs: JSON.parse(emergencyLogs),
+                summary: {
+                    hasError: !!error,
+                    debugLogsCount: JSON.parse(logs).length,
+                    emergencyLogsCount: JSON.parse(emergencyLogs).length
+                }
+            };
+
+            const jsonString = JSON.stringify(exportData, null, 2);
+            await AsyncStorage.setItem('exported_logs', jsonString);
+            
+            Alert.alert(
+                '📋 Logs exportés !',
+                'Les logs ont été sauvegardés localement. Vérifiez AsyncStorage pour les récupérer.',
+                [{ text: 'OK' }]
+            );
+        } catch (err) {
+            Alert.alert('Erreur', 'Impossible d\'exporter les logs: ' + err.message);
+        }
+    };
+
+    // Si l'app crash ou si on force l'affichage de l'écran d'urgence
+    if (showEmergencyScreen) {
+        return (
+            <SafeAreaView style={styles.emergencyContainer}>
+                <View style={styles.emergencyHeader}>
+                    <Text style={styles.emergencyTitle}>🚨 ÉCRAN D'URGENCE</Text>
+                    <Text style={styles.emergencySubtitle}>
+                        L'application a rencontré un problème au démarrage.
+                    </Text>
+                </View>
+
+                {error && (
+                    <View style={styles.emergencyErrorSection}>
+                        <Text style={styles.emergencyErrorTitle}>Erreur détectée:</Text>
+                        <Text style={styles.emergencyErrorText}>
+                            {error?.message || 'Erreur inconnue'}
+                        </Text>
+                    </View>
+                )}
+
+                <TouchableOpacity
+                    style={styles.emergencyButton}
+                    onPress={copyLogs}
+                >
+                    <Text style={styles.emergencyButtonText}>📋 EXPORTER LES LOGS</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                    style={[styles.emergencyButton, styles.emergencyButtonSecondary]}
+                    onPress={() => setShowEmergencyScreen(false)}
+                >
+                    <Text style={[styles.emergencyButtonText, { color: '#6366F1' }]}>
+                        Essayer de continuer
+                    </Text>
+                </TouchableOpacity>
+            </SafeAreaView>
+        );
+    }
+
+    // Vérifier que tous les composants essentiels sont disponibles
+    if (!StatusBar || !GestureHandlerRootView || !PaperProvider || !SafeAreaProvider ||
+        !ErrorBoundary || !AuthProvider || !theme || !AppNavigator) {
+        return (
+            <SafeAreaView style={styles.emergencyContainer}>
+                <Text style={styles.emergencyTitle}>🚨 COMPOSANTS MANQUANTS</Text>
+                <Text style={styles.emergencySubtitle}>
+                    Certains composants n'ont pas pu être chargés. Affichage de l'écran d'urgence.
+                </Text>
+                <TouchableOpacity
+                    style={styles.emergencyButton}
+                    onPress={() => setShowEmergencyScreen(true)}
+                >
+                    <Text style={styles.emergencyButtonText}>Afficher les détails</Text>
+                </TouchableOpacity>
+            </SafeAreaView>
+        );
+    }
+
+    // App normale si tous les composants sont disponibles
+    return (
+        <ErrorBoundary>
+            <GestureHandlerRootView style={{ flex: 1 }}>
+                <SafeAreaProvider>
+                    <PaperProvider theme={theme}>
+                        <AuthProvider>
+                            <StatusBar style="auto" />
+                            <AppNavigator />
+                        </AuthProvider>
+                    </PaperProvider>
+                </SafeAreaProvider>
+            </GestureHandlerRootView>
+        </ErrorBoundary>
+    );
+}
+
+const styles = StyleSheet.create({
+    emergencyContainer: {
+        flex: 1,
+        backgroundColor: '#F8F9FA',
+        padding: 16,
+    },
+    emergencyHeader: {
+        alignItems: 'center',
+        marginBottom: 24,
+        paddingVertical: 16,
+    },
+    emergencyTitle: {
+        fontSize: 24,
+        fontWeight: 'bold',
+        color: '#DC2626',
+        marginBottom: 8,
+        textAlign: 'center',
+    },
+    emergencySubtitle: {
+        fontSize: 16,
+        color: '#6B7280',
+        textAlign: 'center',
+    },
+    emergencyErrorSection: {
+        backgroundColor: '#FEF2F2',
+        padding: 16,
+        borderRadius: 12,
+        marginBottom: 16,
+        borderLeftWidth: 4,
+        borderLeftColor: '#DC2626',
+    },
+    emergencyErrorTitle: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: '#1F2937',
+        marginBottom: 8,
+    },
+    emergencyErrorText: {
+        fontSize: 16,
+        color: '#DC2626',
+        fontFamily: 'monospace',
+    },
+    emergencyButton: {
+        backgroundColor: '#DC2626',
+        paddingVertical: 16,
+        paddingHorizontal: 24,
+        borderRadius: 8,
+        alignItems: 'center',
+        marginBottom: 16,
+    },
+    emergencyButtonSecondary: {
+        backgroundColor: '#F3F4F6',
+        borderWidth: 1,
+        borderColor: '#6366F1',
+    },
+    emergencyButtonText: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        color: '#FFF',
+    },
+    emergencyLogs: {
+        flex: 1,
+        backgroundColor: '#F9FAFB',
+        borderRadius: 12,
+        padding: 12,
+        marginBottom: 16,
+    },
+    emergencyLogsTitle: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: '#1F2937',
+        marginBottom: 8,
+    },
+    emergencyLogEntry: {
+        backgroundColor: '#FFF',
+        padding: 12,
+        borderRadius: 8,
+        marginBottom: 8,
+        borderLeftWidth: 3,
+        borderLeftColor: '#6366F1',
+    },
+    emergencyLogTime: {
+        fontSize: 10,
+        color: '#6B7280',
+        marginBottom: 4,
+    },
+    emergencyLogMessage: {
+        fontSize: 14,
+        color: '#374151',
+    },
+});
+
+

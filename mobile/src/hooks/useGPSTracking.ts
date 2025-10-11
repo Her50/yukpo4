@@ -37,7 +37,7 @@ export const useGPSTracking = (): UseGPSTrackingReturn => {
     const intervalRef = useRef<NodeJS.Timeout | null>(null);
     const watchRef = useRef<Location.LocationSubscription | null>(null);
 
-    // Vérifier et démarrer automatiquement si GPS activé
+    // Vérifier et démarrer automatiquement si GPS activé (avec gestion d'erreur robuste)
     useEffect(() => {
         const checkAndStartGPS = async () => {
             if (!user) return;
@@ -45,22 +45,33 @@ export const useGPSTracking = (): UseGPSTrackingReturn => {
             try {
                 // Vérifier si le GPS est activé dans les paramètres
                 const gpsEnabled = await AsyncStorage.getItem('gpsEnabled');
-                const isGPSEnabled = gpsEnabled !== null ? JSON.parse(gpsEnabled) : true; // Par défaut activé
+                const isGPSEnabled = gpsEnabled !== null ? JSON.parse(gpsEnabled) : false; // Par défaut DÉSACTIVÉ pour éviter les crashes
 
                 console.log('[useGPSTracking] Paramètre GPS:', isGPSEnabled);
 
                 if (isGPSEnabled) {
                     console.log('[useGPSTracking] Démarrage automatique du tracking GPS...');
-                    await startTracking();
+                    // Délai pour éviter le crash au démarrage
+                    setTimeout(async () => {
+                        try {
+                            await startTracking();
+                        } catch (trackingError) {
+                            console.error('[useGPSTracking] Erreur tracking différé:', trackingError);
+                        }
+                    }, 2000); // 2 secondes de délai
                 } else {
                     console.log('[useGPSTracking] GPS désactivé dans les paramètres');
                 }
             } catch (error) {
                 console.error('[useGPSTracking] Erreur lors de la vérification GPS:', error);
+                // En cas d'erreur, ne pas faire échouer l'app
             }
         };
 
-        checkAndStartGPS();
+        // Délai initial pour laisser l'app se charger
+        const timeoutId = setTimeout(checkAndStartGPS, 3000);
+
+        return () => clearTimeout(timeoutId);
 
         // Cleanup au démontage
         return () => {

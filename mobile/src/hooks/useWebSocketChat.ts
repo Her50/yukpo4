@@ -192,10 +192,13 @@ export const useWebSocketChat = (serviceId: number, prestataireId: number, userI
         } else {
             console.warn('⚠️ [useWebSocketChat] WebSocket non connecté, envoi via API REST');
 
-            // Fallback : envoyer via API REST
+            // Fallback : envoyer via API REST avec timeout
             try {
                 const token = await getToken();
                 if (!token) throw new Error('Token non disponible');
+
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 10000); // Timeout de 10 secondes
 
                 const response = await fetch('https://yukpomnang.onrender.com/api/chat/send', {
                     method: 'POST',
@@ -209,8 +212,11 @@ export const useWebSocketChat = (serviceId: number, prestataireId: number, userI
                         content,
                         messageType: type,
                         timestamp: message.timestamp.toISOString()
-                    })
+                    }),
+                    signal: controller.signal
                 });
+
+                clearTimeout(timeoutId);
 
                 if (response.ok) {
                     setMessages(prev => prev.map(msg =>
@@ -221,6 +227,9 @@ export const useWebSocketChat = (serviceId: number, prestataireId: number, userI
                 }
             } catch (error) {
                 console.error('❌ [useWebSocketChat] Erreur envoi REST:', error);
+                if (error.name === 'AbortError') {
+                    console.warn('⚠️ [useWebSocketChat] Timeout envoi REST (10s)');
+                }
                 setMessages(prev => prev.map(msg =>
                     msg.id === messageId ? { ...msg, status: 'sent' } : msg
                 ));

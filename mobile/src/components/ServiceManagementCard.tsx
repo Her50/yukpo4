@@ -17,8 +17,27 @@ import { theme } from '../theme/theme';
 
 const { width } = Dimensions.get('window');
 
+interface ServiceData {
+    [key: string]: any;
+}
+
+interface Service {
+    id: string;
+    data?: ServiceData;
+    nom?: string;
+    is_active?: boolean;
+    actif?: boolean;
+    created_at: string;
+    gps?: string;
+    promotion?: {
+        active: boolean;
+    };
+    intention?: string;
+    confidence?: number;
+}
+
 interface ServiceManagementCardProps {
-    service: any;
+    service: Service;
     onServiceUpdated?: () => void;
     onServiceDeleted?: () => void;
 }
@@ -40,7 +59,7 @@ const ServiceManagementCard: React.FC<ServiceManagementCardProps> = ({
     });
 
     // Extraire les données du service
-    const getServiceFieldValue = (field: any) => {
+    const getServiceFieldValue = (field: any): string => {
         if (!field) return 'Non spécifié';
         if (typeof field === 'string') return field;
         if (field.valeur) return field.valeur;

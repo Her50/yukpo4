@@ -21,11 +21,20 @@ try {
     console.warn('[SafeIcon] ❌ Ionicons non disponible');
 }
 
+// Import sécurisé de Phosphor avec fallback
+let PhosphorIcons: any = {};
+try {
+    PhosphorIcons = require('phosphor-react-native');
+    console.log('[SafeIcon] ✅ Phosphor chargé avec succès');
+} catch (error) {
+    console.warn('[SafeIcon] ❌ Phosphor non disponible');
+}
+
 interface SafeIconProps {
     name: string;
     size?: number;
     color?: string;
-    type?: 'lucide' | 'ionicons' | 'emoji';
+    type?: 'lucide' | 'ionicons' | 'phosphor' | 'emoji';
 }
 
 // Mapping des icônes vers des emojis comme fallback
@@ -151,6 +160,16 @@ export const SafeIcon: React.FC<SafeIconProps> = ({
     color = '#000',
     type = 'lucide'
 }) => {
+    // Essayer Phosphor en premier si demandé
+    if (type === 'phosphor' && PhosphorIcons[name]) {
+        try {
+            const IconComponent = PhosphorIcons[name];
+            return <IconComponent size={size} color={color} accessibilityLabel="" accessibilityRole="none" />;
+        } catch (error) {
+            console.warn(`[SafeIcon] Erreur avec l'icône Phosphor ${name}:`, error);
+        }
+    }
+
     // Essayer Lucide en premier
     if (type === 'lucide' && LucideIcons[name]) {
         try {

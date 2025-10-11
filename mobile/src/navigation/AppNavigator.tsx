@@ -1,10 +1,10 @@
-// Navigation ultra-moderne avec Phosphor Icons et gradients
+// Navigation ultra-moderne avec SafeIcon et gradients
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
-import { Briefcase, ChartBar, ClockCounterClockwise, House, User } from 'phosphor-react-native';
 import React from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { modernColors, modernStyles } from '../theme/modernTheme';
+import { SafeIcon } from '../components/SafeIcon';
 
 // Contexts
 import { useAuth } from '../contexts/AuthContext';
@@ -79,27 +79,25 @@ const MainTabs = () => {
     <Tab.Navigator
       screenOptions={({ route }: any) => ({
         tabBarIcon: ({ focused, color, size }: any) => {
-          // Icônes Phosphor ultra-modernes avec poids dynamique
+          // Icônes sécurisées avec fallback
           const iconProps = {
             size: size,
             color: color,
-            weight: (focused ? 'fill' : 'regular') as any,
-            style: { marginBottom: focused ? 2 : 0 }
           };
 
           switch (route.name) {
             case 'Home':
-              return <House {...iconProps} />;
+              return <SafeIcon name="home" {...iconProps} type="phosphor" />;
             case 'MesServices':
-              return <Briefcase {...iconProps} />;
+              return <SafeIcon name="briefcase" {...iconProps} type="phosphor" />;
             case 'Dashboard':
-              return <ChartBar {...iconProps} />;
+              return <SafeIcon name="chart-bar" {...iconProps} type="phosphor" />;
             case 'Historique':
-              return <ClockCounterClockwise {...iconProps} />;
+              return <SafeIcon name="clock-counter-clockwise" {...iconProps} type="phosphor" />;
             case 'MonCompte':
-              return <User {...iconProps} />;
+              return <SafeIcon name="user" {...iconProps} type="phosphor" />;
             default:
-              return <House {...iconProps} />;
+              return <SafeIcon name="home" {...iconProps} type="phosphor" />;
           }
         },
         tabBarActiveTintColor: modernColors.primary,

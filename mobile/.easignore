@@ -10,25 +10,26 @@ src/screens/YukpoIaHub.tsx
 src/components/AdvancedGeospatialSearch.tsx
 src/screens/ServiceView.tsx
 
-# Fichiers de documentation et scripts à ignorer
+# Fichiers de documentation
 *.md
+README.md
+
+# Scripts PowerShell et Bash
 *.ps1
 *.sh
-*.js
+
+# Fichiers HTML
 *.html
-*.txt
+
+# Apps alternatifs
 App-*.tsx
 App.*.tsx
-debug-*
-test-*
-setup-*
-fix-*
-lancer-*
-start-*
-deploy-*
-diagnose-*
-build-*
-*.backup.*
+
+# Fichiers de debug et test à la racine uniquement
+debug-*.js
+test-*.js
+debug-*.ts
+test-*.ts
 
 # Dossiers à ignorer
 dist/
@@ -36,7 +37,8 @@ scripts/
 android/
 
 # Fichiers de configuration de développement
-.env
+.env.local
+.env.development.local
 env.example
 response.txt
 

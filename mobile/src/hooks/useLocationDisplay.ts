@@ -50,13 +50,19 @@ export const useLocationDisplay = (service: any, serviceCreatorInfo?: any): UseL
 
             console.log('📍 [useLocationDisplay] Coordonnées parsées:', { lat, lng });
 
-            // Essayer d'abord l'API interne
+            // Essayer d'abord l'API interne avec timeout
             try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 8000); // Timeout de 8 secondes
+
                 const response = await fetch(`https://yukpomnang.onrender.com/api/geocoding/reverse`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ latitude: lat, longitude: lng })
+                    body: JSON.stringify({ latitude: lat, longitude: lng }),
+                    signal: controller.signal
                 });
+
+                clearTimeout(timeoutId);
 
                 console.log('🔗 [useLocationDisplay] Statut API interne:', response.status);
 
@@ -102,6 +108,9 @@ export const useLocationDisplay = (service: any, serviceCreatorInfo?: any): UseL
                 }
             } catch (apiError) {
                 console.warn('⚠️ [useLocationDisplay] Erreur API interne:', apiError);
+                if (apiError.name === 'AbortError') {
+                    console.warn('⚠️ [useLocationDisplay] Timeout API interne (8s)');
+                }
             }
 
             // Fallback : Utiliser Expo Location pour le géocodage inversé
