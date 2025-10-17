@@ -1,7 +1,7 @@
 // Service de notifications système
 use sqlx::PgPool;
 use serde_json::json;
-use log::{info, error};
+use log::info;
 
 /// Type de notification
 #[derive(Debug, Clone)]

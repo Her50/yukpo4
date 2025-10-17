@@ -123,9 +123,10 @@ pub async fn send_push_notification(
     
     let client = Client::new();
     let mut success_count = 0;
+    let total_tokens = tokens.len(); // ✅ Sauvegarder la longueur avant la boucle
     
     // Envoyer à tous les tokens
-    for token in tokens {
+    for token in &tokens { // ✅ Itérer sur référence pour éviter le move
         let message = PushMessage {
             to: token.clone(),
             title: title.clone(),
@@ -160,7 +161,7 @@ pub async fn send_push_notification(
         }
     }
     
-    info!("[PushService] ✅ {} notifications push envoyées sur {} tokens", success_count, tokens.len());
+    info!("[PushService] ✅ {} notifications push envoyées sur {} tokens", success_count, total_tokens);
     Ok(success_count)
 }
 

@@ -642,10 +642,13 @@ pub async fn toggle_service_status(
                 "is_active": is_active
             });
             
+            // ✅ Cloner pg_pool pour l'utiliser dans tokio::spawn
+            let pg_pool_clone = pg_pool.clone();
+            
             // Créer la notification (ne pas bloquer si ça échoue)
             tokio::spawn(async move {
                 if let Err(e) = crate::services::notification_service::create_notification(
-                    pg_pool,
+                    &pg_pool_clone,
                     user_id,
                     notification_type,
                     title,
