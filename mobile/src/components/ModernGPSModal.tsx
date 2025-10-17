@@ -208,7 +208,7 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
                         <View style={styles.controlCard}>
                             <View style={styles.cardHeader}>
                                 <SafeIcon name="layers" size={14} color={modernColors.primary} />
-                                <Text style={styles.cardTitle}>Mode</Text>
+                                <Text style={styles.cardTitle} numberOfLines={1}>Mode</Text>
                             </View>
 
                             <View style={styles.selectionModeButtons}>
@@ -220,10 +220,13 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
                                     onPress={() => setZoneType('point')}
                                 >
                                     <SafeIcon name="map-pin" size={14} color={zoneType === 'point' ? '#FFFFFF' : modernColors.primary} />
-                                    <Text style={[
-                                        styles.modeButtonText,
-                                        zoneType === 'point' && styles.modeButtonTextActive
-                                    ]}>
+                                    <Text 
+                                        style={[
+                                            styles.modeButtonText,
+                                            zoneType === 'point' && styles.modeButtonTextActive
+                                        ]}
+                                        numberOfLines={1}
+                                    >
                                         Point
                                     </Text>
                                 </TouchableOpacity>
@@ -237,10 +240,13 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
                                         onPress={() => setZoneType('polygon')}
                                     >
                                         <SafeIcon name="map" size={14} color={zoneType === 'polygon' ? '#FFFFFF' : modernColors.primary} />
-                                        <Text style={[
-                                            styles.modeButtonText,
-                                            zoneType === 'polygon' && styles.modeButtonTextActive
-                                        ]}>
+                                        <Text 
+                                            style={[
+                                                styles.modeButtonText,
+                                                zoneType === 'polygon' && styles.modeButtonTextActive
+                                            ]}
+                                            numberOfLines={1}
+                                        >
                                             Zone
                                         </Text>
                                     </TouchableOpacity>
@@ -252,7 +258,7 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
                         <View style={styles.controlCard}>
                             <View style={styles.cardHeader}>
                                 <SafeIcon name="search" size={14} color={modernColors.primary} />
-                                <Text style={styles.cardTitle}>Recherche</Text>
+                                <Text style={styles.cardTitle} numberOfLines={1}>Recherche</Text>
                             </View>
 
                             <View style={styles.searchContainer}>
@@ -281,7 +287,9 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
                                 disabled={loading}
                             >
                                 <SafeIcon name="map-pin" size={16} color="#FFFFFF" />
-                                <Text style={styles.gpsButtonText}>Ma Position</Text>
+                                <Text style={styles.gpsButtonText} numberOfLines={1}>
+                                    {loading ? 'Chargement...' : 'Ma Position'}
+                                </Text>
                             </TouchableOpacity>
                         </View>
 
@@ -290,15 +298,15 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
                             <View style={styles.controlCard}>
                                 <View style={styles.cardHeader}>
                                     <SafeIcon name="check-circle" size={14} color={modernColors.success} />
-                                    <Text style={styles.cardTitle}>Sélectionné</Text>
+                                    <Text style={styles.cardTitle} numberOfLines={1}>Sélectionné</Text>
                                 </View>
 
                                 <View style={styles.selectedLocationContainer}>
-                                    <Text style={styles.selectedLocationText}>
+                                    <Text style={styles.selectedLocationText} numberOfLines={1}>
                                         {selectedLocation.lat.toFixed(4)}, {selectedLocation.lng.toFixed(4)}
                                     </Text>
                                     {address && (
-                                        <Text style={styles.selectedAddressText} numberOfLines={2}>
+                                        <Text style={styles.selectedAddressText} numberOfLines={2} ellipsizeMode="tail">
                                             {address}
                                         </Text>
                                     )}
@@ -311,7 +319,9 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
                             <View style={styles.controlCard}>
                                 <View style={styles.cardHeader}>
                                     <SafeIcon name="map" size={14} color={modernColors.warning} />
-                                    <Text style={styles.cardTitle}>Zone ({selectedPolygon.length} points)</Text>
+                                    <Text style={styles.cardTitle} numberOfLines={1}>
+                                        Zone ({selectedPolygon.length}pts)
+                                    </Text>
                                 </View>
 
                                 <TouchableOpacity
@@ -319,7 +329,7 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
                                     onPress={clearPolygon}
                                 >
                                     <SafeIcon name="trash-2" size={14} color="#EF4444" />
-                                    <Text style={styles.clearButtonText}>Effacer</Text>
+                                    <Text style={styles.clearButtonText} numberOfLines={1}>Effacer</Text>
                                 </TouchableOpacity>
                             </View>
                         )}
