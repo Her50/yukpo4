@@ -41,4 +41,3 @@ const GPSTrackingManager: React.FC = () => {
 
 export default GPSTrackingManager;
 
-

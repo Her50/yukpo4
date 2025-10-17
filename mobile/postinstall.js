@@ -38,13 +38,6 @@ try {
         execSync('node fix-reanimated-worklets.js', { stdio: 'inherit' });
     }
 
-    // Patch react-native-reanimated build.gradle (complete fix)
-    if (fs.existsSync(path.join(__dirname, 'fix-reanimated-build-gradle-complete.js'))) {
-        execSync('node fix-reanimated-build-gradle-complete.js', { stdio: 'inherit' });
-    } else if (fs.existsSync(path.join(__dirname, 'fix-reanimated-build-gradle.js'))) {
-        execSync('node fix-reanimated-build-gradle.js', { stdio: 'inherit' });
-    }
-
     // Toujours exécuter le fix Metro
     if (fs.existsSync(path.join(__dirname, 'fix-metro-exports-comprehensive.js'))) {
         console.log('🔧 Fixing Metro exports...');

@@ -19,23 +19,14 @@ try {
     const currentContent = fs.readFileSync(pluginPath, 'utf8');
     console.log(`📖 Current content: ${currentContent.trim()}`);
 
-    // Remplacer par un stub vide car ce plugin est uniquement pour Babel, pas pour le runtime
-    // Ce plugin ne doit PAS être inclus dans le bundle React Native
-    const fixedContent = `// Stub for react-native-worklets-core plugin (Babel plugin, not runtime)
-// This file should not be bundled in the React Native app
-module.exports = function() {
-  return {
-    name: 'react-native-worklets-core',
-    visitor: {}
-  };
-};
-`;
+    // Le fixer pour pointer explicitement vers index.js
+    const fixedContent = 'module.exports = require("./src/plugin/index.js");\n';
 
     // Écrire le nouveau contenu
     fs.writeFileSync(pluginPath, fixedContent, 'utf8');
 
-    console.log('✅ Replaced plugin.js with empty stub');
-    console.log('📝 This prevents Metro from trying to bundle the Babel plugin\n');
+    console.log('✅ Fixed plugin.js to use explicit path: ./src/plugin/index.js');
+    console.log('📝 This ensures Metro can resolve the module on EAS Build\n');
 
 } catch (error) {
     console.error('❌ Error fixing plugin.js:', error.message);

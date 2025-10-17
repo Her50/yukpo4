@@ -1,0 +1,42 @@
+========================================
+  COMMENT TROUVER L'ERREUR DE CRASH
+========================================
+
+ÉTAPES:
+
+1. Regardez la fenêtre PowerShell avec "npm start"
+   (celle avec le QR code)
+
+2. Scannez le QR code avec Expo Go
+
+3. Quand l'app crash, l'erreur s'affiche en ROUGE
+   dans cette fenêtre Metro
+
+4. COPIEZ tout le texte de l'erreur
+
+5. Envoyez-moi ce texte
+
+L'ERREUR RESSEMBLE À ÇA:
+
+ERROR  [quelque chose]
+Error: Cannot find module...
+ou
+TypeError: undefined is not an object...
+ou
+ReferenceError: xxx is not defined...
+
+EXEMPLE D'ERREUR:
+
+ERROR  Error: Unable to resolve module @react-navigation/native
+at node_modules\...
+etc.
+
+========================================
+
+JE NE PEUX PAS CORRIGER SANS VOIR L'ERREUR EXACTE!
+
+Donnez-moi le texte de l'erreur qui apparaît
+en ROUGE dans la fenêtre Metro.
+
+========================================
+

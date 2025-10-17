@@ -55,6 +55,17 @@
             "bundler": "metro"
         },
         "plugins": [
+            [
+                "expo-build-properties",
+                {
+                    "android": {
+                        "kotlinVersion": "2.0.0",
+                        "enableProguardInReleaseBuilds": false,
+                        "enableShrinkResourcesInReleaseBuilds": false,
+                        "useLegacyPackaging": false
+                    }
+                }
+            ],
             "expo-location",
             "expo-image-picker",
             "expo-document-picker",
@@ -64,9 +75,12 @@
                     "microphonePermission": "Autoriser Yukpomnang à accéder au microphone pour enregistrer des messages audio."
                 }
             ],
-            "expo-font",
-            "./plugins/withKotlinVersion.js",
+            "expo-font"
         ],
+        "updates": {
+            "enabled": false,
+            "fallbackToCacheTimeout": 0
+        },
         "extra": {
             "eas": {
                 "projectId": "a5407780-d5ad-45fa-8b72-a673d3828b93"

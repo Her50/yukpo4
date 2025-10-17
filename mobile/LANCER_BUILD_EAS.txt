@@ -1,0 +1,136 @@
+═══════════════════════════════════════════════════════════════
+    🚀 LANCER UN BUILD EAS - YUKPOMNANG MOBILE - GUIDE RAPIDE
+═══════════════════════════════════════════════════════════════
+
+📌 MÉTHODE 1 : AVEC L'INTERFACE GRAPHIQUE (RECOMMANDÉ)
+───────────────────────────────────────────────────────────────
+
+Double-cliquez sur le fichier :
+    ► BUILD-EAS.bat
+
+Puis suivez le menu interactif !
+
+
+📌 MÉTHODE 2 : EN LIGNE DE COMMANDE
+───────────────────────────────────────────────────────────────
+
+Ouvrez PowerShell dans le dossier mobile/ et exécutez :
+
+1️⃣ VÉRIFIER LA CONFIGURATION
+    powershell -ExecutionPolicy Bypass -File ./verif-eas.ps1
+
+2️⃣ INSTALLER EAS CLI (si pas installé)
+    npm install -g eas-cli
+
+3️⃣ SE CONNECTER À EXPO
+    eas login
+    (utilisez le compte : hernandezlele)
+
+4️⃣ INSTALLER LES DÉPENDANCES
+    npm install
+
+5️⃣ LANCER LE BUILD
+    npm run build:preview
+
+    OU
+
+    npx eas build --platform android --profile preview
+
+
+📌 MÉTHODE 3 : COMMANDE UNIQUE
+───────────────────────────────────────────────────────────────
+
+Si tout est déjà configuré :
+
+    cd mobile
+    npx eas build --platform android --profile preview
+
+
+═══════════════════════════════════════════════════════════════
+    ⏱️  DURÉE : 15-25 MINUTES
+═══════════════════════════════════════════════════════════════
+
+Le build se fera sur les serveurs Expo.
+Vous recevrez un lien pour suivre la progression.
+Une fois terminé, téléchargez l'APK et installez-le sur Android.
+
+
+═══════════════════════════════════════════════════════════════
+    📚 DOCUMENTATION COMPLÈTE
+═══════════════════════════════════════════════════════════════
+
+Pour plus de détails, consultez :
+
+    ► DEMARRAGE_EAS_BUILD.md       (Guide rapide)
+    ► GUIDE_EAS_BUILD.md           (Guide complet)
+    ► VERIFICATION_AVANT_BUILD.md  (Checklist)
+    ► RESUME_CONFIGURATION_EAS.md  (Résumé)
+
+
+═══════════════════════════════════════════════════════════════
+    🛠️  RÉPARER LE FONCTIONNEMENT LOCAL
+═══════════════════════════════════════════════════════════════
+
+Si l'app ne fonctionne plus en local (npm start) :
+
+OPTION 1 : Nettoyage rapide
+    npm run clean
+    npm start
+
+OPTION 2 : Nettoyage complet
+    npm run clean:deep
+    npm start
+
+OPTION 3 : Réinstallation manuelle
+    rm -rf node_modules .expo android ios
+    npm install
+    npm start
+
+
+═══════════════════════════════════════════════════════════════
+    🆘 PROBLÈMES COURANTS
+═══════════════════════════════════════════════════════════════
+
+❌ "eas : commande introuvable"
+    → npm install -g eas-cli
+
+❌ "Not logged in"
+    → eas logout
+    → eas login
+
+❌ "node_modules manquant"
+    → npm install
+
+❌ "Build failed"
+    → Vérifiez les logs sur expo.dev
+    → Exécutez : ./verif-eas.ps1
+    → Consultez GUIDE_EAS_BUILD.md
+
+
+═══════════════════════════════════════════════════════════════
+    ✅ CHECKLIST AVANT BUILD
+═══════════════════════════════════════════════════════════════
+
+Assurez-vous d'avoir :
+    ☐ Node.js 18+ installé
+    ☐ EAS CLI installé (npm install -g eas-cli)
+    ☐ Connexion Expo active (eas login)
+    ☐ node_modules installé (npm install)
+    ☐ Internet stable et rapide
+    ☐ Script de vérification OK (./verif-eas.ps1)
+
+
+═══════════════════════════════════════════════════════════════
+    🎯 COMMANDE FINALE
+═══════════════════════════════════════════════════════════════
+
+    cd mobile
+    npx eas build --platform android --profile preview
+
+
+═══════════════════════════════════════════════════════════════
+
+✨ C'est tout ! Bonne chance avec votre build ! 🚀
+
+═══════════════════════════════════════════════════════════════
+

@@ -2,15 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ReactNavigation from '@react-navigation/native';
 import * as Location from 'expo-location';
 import React, { useState } from 'react';
-import {
-    Alert,
-    Dimensions,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
-} from 'react-native';
+import ReactNative from 'react-native';
 import ChatHistoryModal from '../components/ChatHistoryModal';
 import ChatInputMobile from '../components/ChatInputMobile';
 import ModernBackground from '../components/ModernBackground';
@@ -23,6 +15,8 @@ import YukpoServicesQuickAccess from '../components/YukpoServicesQuickAccess';
 import { useAuth } from '../contexts/AuthContext';
 import { apiGet } from '../services/api';
 import { genererSuggestionsService, rechercherServices } from '../services/yukpoclient';
+// @ts-ignore
+const { Alert, Dimensions, ScrollView, StyleSheet, Text, TouchableOpacity, View, KeyboardAvoidingView, Platform } = ReactNative;
 
 const { width } = Dimensions.get('window');
 

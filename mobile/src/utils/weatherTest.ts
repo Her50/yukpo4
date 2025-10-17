@@ -92,7 +92,3 @@ export const testBackendWeatherEndpoint = async () => {
 
 
 
-
-
-
-

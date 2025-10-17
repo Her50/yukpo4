@@ -7,6 +7,9 @@
         "development": {
             "developmentClient": true,
             "distribution": "internal",
+            "cache": {
+                "disabled": true
+            },
             "ios": {
                 "resourceClass": "m-medium"
             },
@@ -35,38 +38,7 @@
                 "withoutCredentials": false
             }
         },
-        "preview-optimized": {
-            "distribution": "internal",
-            "env": {
-                "EXPO_PUBLIC_API_URL": "https://yukpomnang.onrender.com",
-                "EXPO_PUBLIC_ENVIRONMENT": "production",
-                "EXPO_PUBLIC_GOOGLE_MAPS_API_KEY": "AIzaSyDFfWEq1Umm06SNTbR-cRhRQ5Sq_taEAWQ",
-                "EXPO_PUBLIC_GOOGLE_TRANSLATE_API_KEY": "AIzaSyDFfWEq1Umm06SNTbR-cRhRQ5Sq_taEAWQ"
-            },
-            "android": {
-                "buildType": "apk",
-                "credentialsSource": "remote",
-                "image": "latest",
-                "withoutCredentials": false
-            }
-        },
         "debug": {
-            "distribution": "internal",
-            "env": {
-                "EXPO_PUBLIC_API_URL": "https://yukpomnang.onrender.com",
-                "EXPO_PUBLIC_ENVIRONMENT": "development",
-                "EXPO_PUBLIC_GOOGLE_MAPS_API_KEY": "AIzaSyDFfWEq1Umm06SNTbR-cRhRQ5Sq_taEAWQ",
-                "EXPO_PUBLIC_GOOGLE_TRANSLATE_API_KEY": "AIzaSyDFfWEq1Umm06SNTbR-cRhRQ5Sq_taEAWQ"
-            },
-            "android": {
-                "buildType": "apk",
-                "gradleCommand": ":app:assembleDebug",
-                "credentialsSource": "remote",
-                "image": "latest",
-                "withoutCredentials": false
-            }
-        },
-        "debug-safe": {
             "distribution": "internal",
             "env": {
                 "EXPO_PUBLIC_API_URL": "https://yukpomnang.onrender.com",

@@ -83,19 +83,9 @@ const UltraModernServiceCard: React.FC<UltraModernServiceCardProps> = ({
     const [showMediaGallery, setShowMediaGallery] = useState(false);
 
     // Utiliser les hooks pour les données réelles
-    // TEMPORAIREMENT DÉSACTIVÉ POUR ÉVITER LE CRASH
-    // const { stats, loading: statsLoading } = useServiceStats(parseInt(service.id), service.date_creation || service.created_at || new Date().toISOString());
-    // const { reviews, stats: reviewsStats, submitReview } = useServiceReviews(parseInt(service.id));
-    // const { locationData, loading: locationLoading } = useLocationDisplay(service, prestataireInfo);
-    
-    // Données par défaut pour éviter les erreurs
-    const stats = { views: 0, likes: 0, shares: 0, contacts: 0, messages: 0, rating: 0, totalRatings: 0, createdDaysAgo: 0 };
-    const statsLoading = false;
-    const reviews = [];
-    const reviewsStats = { average_rating: 0, total_reviews: 0, rating_distribution: {}, completion_rate: 0, response_time: 0 };
-    const submitReview = () => {};
-    const locationData = null;
-    const locationLoading = false;
+    const { stats, loading: statsLoading } = useServiceStats(parseInt(service.id), service.date_creation || service.created_at || new Date().toISOString());
+    const { reviews, stats: reviewsStats, submitReview } = useServiceReviews(parseInt(service.id));
+    const { locationData, loading: locationLoading } = useLocationDisplay(service, prestataireInfo);
 
     // Fonction pour extraire la valeur d'un champ de service (comme le frontend)
     const getServiceFieldValue = (field: any): string => {

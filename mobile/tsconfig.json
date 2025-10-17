@@ -1,27 +1,11 @@
 {
+  "extends": "expo/tsconfig.base",
   "compilerOptions": {
     "strict": false,
-    "jsx": "react-jsx",
-    "lib": [
-      "es2022",
-      "dom"
-    ],
-    "target": "esnext",
-    "module": "esnext",
-    "moduleResolution": "bundler",
-    "allowSyntheticDefaultImports": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "resolveJsonModule": true,
     "noImplicitAny": false,
     "strictNullChecks": false,
-    "isolatedModules": true,
+    "skipLibCheck": true,
     "baseUrl": ".",
-    "types": [],
-    "typeRoots": [
-      "./node_modules/@types",
-      "./src/types"
-    ],
     "paths": {
       "@components/*": [
         "src/components/*"
@@ -42,22 +26,5 @@
         "src/theme/*"
       ]
     }
-  },
-  "include": [
-    "src/**/*",
-    "*.ts",
-    "*.tsx",
-    "App.tsx"
-  ],
-  "exclude": [
-    "node_modules",
-    "babel.config.js",
-    "metro.config.js",
-    "**/*.spec.ts",
-    "**/*.test.ts",
-    "postinstall.js",
-    "fix-metro-exports*.js",
-    "create-metro-private-links.js",
-    "eas-build-*.sh"
-  ]
+  }
 }

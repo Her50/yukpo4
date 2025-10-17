@@ -4,7 +4,7 @@
  * Utilise WebRTCCallModal pour les vrais appels WebRTC
  */
 import React from 'react';
-// import WebRTCCallModal from './WebRTCCallModal'; // TEMPORAIREMENT DÉSACTIVÉ POUR TEST
+import WebRTCCallModal from './WebRTCCallModal';
 
 interface InAppCallModalProps {
     visible: boolean;

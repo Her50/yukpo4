@@ -176,9 +176,9 @@ const WebRTCCallModal: React.FC<WebRTCCallModalProps> = ({
                 offerToReceiveAudio: true,
                 offerToReceiveVideo: callType === 'video'
             });
-
+            
             await peerConnection.current?.setLocalDescription(offer);
-
+            
             sendSignalingMessage({
                 type: 'offer',
                 sdp: offer,
@@ -186,7 +186,7 @@ const WebRTCCallModal: React.FC<WebRTCCallModalProps> = ({
                 from: currentUserId,
                 callType
             });
-
+            
             setCallState('ringing');
         } catch (error) {
             console.error('[WebRTC] Erreur création offer:', error);
@@ -201,7 +201,7 @@ const WebRTCCallModal: React.FC<WebRTCCallModalProps> = ({
                     new RTCSessionDescription(message.sdp)
                 );
                 break;
-
+            
             case 'ice-candidate':
                 if (message.candidate) {
                     await peerConnection.current?.addIceCandidate(
@@ -209,12 +209,12 @@ const WebRTCCallModal: React.FC<WebRTCCallModalProps> = ({
                     );
                 }
                 break;
-
+            
             case 'call-rejected':
                 Alert.alert('Appel refusé', `${recipientName} a refusé l'appel`);
                 onClose();
                 break;
-
+            
             case 'call-ended':
                 endCall();
                 break;

@@ -3,13 +3,19 @@
 
 set -e
 
-echo "🔧 EAS Build post-install: Fixing Metro exports, worklets and Kotlin version..."
+echo "🔧 EAS Build post-install: Fixing Metro exports and worklets..."
 
-# Note: Kotlin version is now managed automatically by React Native
-echo "ℹ️  Kotlin version will be determined automatically by React Native/Expo"
-
-# Note: Reanimated 3.x doesn't need worklets fixes
-echo "ℹ️  Using react-native-reanimated 3.x (no worklets dependency needed)"
+# Fix react-native-worklets-core plugin.js FIRST (CRITICAL)
+echo "🔧 Fixing react-native-worklets-core plugin.js..."
+if [ -f "fix-worklets-core-plugin.js" ]; then
+    node fix-worklets-core-plugin.js || {
+        echo "❌ Worklets fix failed!"
+        exit 1
+    }
+else
+    echo "❌ fix-worklets-core-plugin.js not found!"
+    exit 1
+fi
 
 # Forcer l'exécution des scripts de correction Metro
 echo "📦 Running Metro exports fix..."

@@ -2,7 +2,6 @@
 import * as React from 'react';
 import { createContext, ReactNode, useContext, useEffect, useState } from 'react';
 import { authApi } from '../services/api';
-import { debugLogger } from '../utils/DebugLogger';
 import { jwtDecode } from '../utils/jwtDecode';
 
 interface User {
@@ -51,17 +50,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [forceRender, setForceRender] = useState(0);
 
-  // Debug minimal - DÉSACTIVÉ pour éviter les logs excessifs
-  // console.log('[AuthContext] État:', { user: !!user, loading });
+  // Debug minimal
+  if (false) { // FORCÉ EN MODE PRODUCTION
+    console.log('[AuthContext] État:', { user: !!user, loading });
+  }
 
   // Vérifier l'authentification au démarrage avec gestion d'erreur
   useEffect(() => {
     const initializeAuth = async () => {
       try {
-        debugLogger.log('AuthContext', 'Initialisation du contexte d\'authentification');
         await checkAuthStatus();
       } catch (error) {
-        debugLogger.error('AuthContext', 'Erreur lors de l\'initialisation', error);
         console.error('[AuthContext] Erreur lors de l\'initialisation:', error);
         // En cas d'erreur, continuer sans authentification
         setUser(null);
@@ -75,62 +74,42 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const checkAuthStatus = async () => {
     try {
       setLoading(true);
-      debugLogger.log('AuthContext', 'Vérification du statut d\'authentification');
-
       const token = await AsyncStorage.getItem('auth_token');
-      debugLogger.log('AuthContext', 'Token trouvé au démarrage', { hasToken: !!token });
       console.log('[AuthContext] Token trouvé au démarrage:', !!token);
 
       if (token) {
-        try {
-          const decoded = jwtDecode<DecodedToken>(token);
-          debugLogger.log('AuthContext', 'Token décodé avec succès', {
-            userId: decoded.sub,
+        const decoded = jwtDecode<DecodedToken>(token);
+        console.log('[AuthContext] Token décodé:', decoded);
+
+        if (decoded.exp * 1000 > Date.now()) {
+          const userData: User = {
+            id: String(decoded.sub),
             email: decoded.email,
-            role: decoded.role
-          });
-          console.log('[AuthContext] Token décodé:', decoded);
+            role: decoded.role,
+            name: decoded.name || '',
+            credits: decoded.tokens_balance ?? 0,
+            phone: '',
+            photo: '',
+            token: token
+          };
 
-          if (decoded.exp * 1000 > Date.now()) {
-            const userData: User = {
-              id: String(decoded.sub),
-              email: decoded.email,
-              role: decoded.role,
-              name: decoded.name || '',
-              credits: decoded.tokens_balance ?? 0,
-              phone: '',
-              photo: '',
-              token: token
-            };
-
-            debugLogger.log('AuthContext', 'Utilisateur connecté depuis JWT', userData);
-            console.log('[AuthContext] Utilisateur connecté depuis JWT:', userData);
-            setUser(userData);
-          } else {
-            debugLogger.warn('AuthContext', 'Token expiré, déconnexion automatique');
-            console.log('[AuthContext] Token expiré, déconnexion...');
-            await AsyncStorage.removeItem('auth_token');
-          }
-        } catch (decodeError) {
-          debugLogger.error('AuthContext', 'Erreur de décodage du token', decodeError);
-          console.error('[AuthContext] Erreur de décodage du token:', decodeError);
-          // En cas d'erreur de décodage, supprimer le token corrompu
+          console.log('[AuthContext] Utilisateur connecté depuis JWT:', userData);
+          setUser(userData);
+        } else {
+          console.log('[AuthContext] Token expiré, déconnexion...');
           await AsyncStorage.removeItem('auth_token');
           setUser(null);
         }
       } else {
-        debugLogger.log('AuthContext', 'Aucun token trouvé, utilisateur non connecté');
         console.log('[AuthContext] Aucun token trouvé');
         setUser(null);
       }
     } catch (error) {
-      debugLogger.error('AuthContext', 'Erreur lors de la vérification auth', error);
       console.error('[AuthContext] Erreur vérification auth:', error);
       await AsyncStorage.removeItem('auth_token');
       setUser(null);
     } finally {
       setLoading(false);
-      debugLogger.log('AuthContext', 'Vérification auth terminée, loading = false');
       console.log('[AuthContext] Vérification auth terminée, loading = false');
     }
   };

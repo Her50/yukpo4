@@ -237,7 +237,3 @@ export default TestSearchScreen;
 
 
 
-
-
-
-

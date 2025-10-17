@@ -5,6 +5,7 @@
 
 import { registerRootComponent } from 'expo';
 import { Platform } from 'react-native';
+import 'react-native-gesture-handler';
 
 // Capturer les erreurs globales JavaScript AVANT le chargement de l'app
 if (global.ErrorUtils) {
@@ -70,10 +71,11 @@ try {
 
     // Créer une app de secours minimale qui affiche l'erreur
     const React = require('react');
-    const { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Clipboard } = require('react-native');
+    const { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } = require('react-native');
+    const Clipboard = require('expo-clipboard');
 
     App = () => {
-        const copyError = () => {
+        const copyError = async () => {
             const errorText = `
 === ERREUR CRITIQUE YUKPOMNANG ===
 Message: ${error?.message || 'Erreur inconnue'}
@@ -83,8 +85,12 @@ Timestamp: ${new Date().toISOString()}
 === FIN ===
             `.trim();
 
-            Clipboard.setString(errorText);
-            Alert.alert('✅ Copié', 'L\'erreur a été copiée dans le presse-papier. Collez-la ici pour analyse.');
+            try {
+                await Clipboard.setStringAsync(errorText);
+                Alert.alert('✅ Copié', 'L\'erreur a été copiée dans le presse-papier. Collez-la ici pour analyse.');
+            } catch (e) {
+                console.error('[INDEX.JS] Erreur copie presse-papier:', e);
+            }
         };
 
         return React.createElement(View, { style: styles.container },
