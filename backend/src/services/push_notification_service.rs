@@ -1,30 +1,8 @@
 // Service de push notifications (Expo Push Notifications)
-use sqlx::{PgPool, FromRow};
+use sqlx::PgPool;
 use serde::{Deserialize, Serialize};
 use reqwest::Client;
 use log::{info, error, warn};
-use chrono::{DateTime, Utc};
-
-/// Struct pour mapper les résultats de requêtes user_push_tokens
-#[derive(Debug, FromRow)]
-struct PushTokenRow {
-    id: i32,
-    #[allow(dead_code)]
-    user_id: i32,
-    push_token: String,
-    #[allow(dead_code)]
-    device_type: String,
-    #[allow(dead_code)]
-    device_id: Option<String>,
-    #[allow(dead_code)]
-    is_active: bool,
-    #[allow(dead_code)]
-    created_at: DateTime<Utc>,
-    #[allow(dead_code)]
-    updated_at: DateTime<Utc>,
-    #[allow(dead_code)]
-    last_used_at: DateTime<Utc>,
-}
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PushMessage {
