@@ -92,6 +92,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     icon: string;
     fields: DynamicField[];
   }[]>([]);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   // Fonction de gestion du retour
   const handleGoBack = () => {
@@ -258,8 +259,91 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     return blocksWithFixedOnes.filter(block => block.fields.length > 0);
   };
 
+  // Fonction de validation des champs
+  const validateField = (field: DynamicField, value: any): { isValid: boolean; error: string } => {
+    // Champ obligatoire vide
+    if (field.required && (!value || value.toString().trim() === '')) {
+      return { isValid: false, error: `${field.label} est obligatoire` };
+    }
+
+    // Validation spécifique pour WhatsApp
+    if (field.name === 'whatsapp' && value) {
+      const whatsappRegex = /^(\+?237|00237)?[0-9]{9}$/;
+      const cleanValue = value.replace(/\s/g, '');
+      if (!whatsappRegex.test(cleanValue)) {
+        return { isValid: false, error: 'Numéro WhatsApp invalide (ex: +237 6XX XX XX XX)' };
+      }
+    }
+
+    // Validation spécifique pour téléphone
+    if (field.name === 'telephone' && value) {
+      const phoneRegex = /^(\+?237|00237)?[0-9]{9}$/;
+      const cleanValue = value.replace(/\s/g, '');
+      if (!phoneRegex.test(cleanValue)) {
+        return { isValid: false, error: 'Numéro de téléphone invalide' };
+      }
+    }
+
+    // Validation spécifique pour email
+    if ((field.type === 'email' || field.name === 'email') && value) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(value)) {
+        return { isValid: false, error: 'Adresse email invalide' };
+      }
+    }
+
+    // Validation spécifique pour URL
+    if ((field.type === 'url' || field.name === 'website') && value) {
+      const urlRegex = /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/;
+      if (!urlRegex.test(value)) {
+        return { isValid: false, error: 'URL invalide (ex: https://exemple.com)' };
+      }
+    }
+
+    return { isValid: true, error: '' };
+  };
+
+  // Fonction de validation d'un bloc complet
+  const validateCurrentBlock = (): { isValid: boolean; errors: string[]; fieldErrors: Record<string, string> } => {
+    const currentBlockData = blocks[currentBlock];
+    if (!currentBlockData) return { isValid: true, errors: [], fieldErrors: {} };
+
+    const errors: string[] = [];
+    const newFieldErrors: Record<string, string> = {};
+
+    currentBlockData.fields.forEach(field => {
+      const value = valeursFormulaire[field.name];
+      const validation = validateField(field, value);
+      
+      if (!validation.isValid) {
+        errors.push(validation.error);
+        newFieldErrors[field.name] = validation.error;
+      }
+    });
+
+    return { isValid: errors.length === 0, errors, fieldErrors: newFieldErrors };
+  };
+
   // Fonctions de navigation entre blocs
   const goToNextBlock = () => {
+    // Valider le bloc actuel avant de passer au suivant
+    const validation = validateCurrentBlock();
+    
+    if (!validation.isValid) {
+      // Afficher les erreurs dans les champs
+      setFieldErrors(validation.fieldErrors);
+      
+      Alert.alert(
+        'Champs invalides',
+        validation.errors.join('\n\n'),
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+
+    // Effacer les erreurs si la validation réussit
+    setFieldErrors({});
+
     if (currentBlock < blocks.length - 1) {
       setCurrentBlock(currentBlock + 1);
     }
@@ -697,6 +781,23 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       case 'text':
       case 'email':
       case 'url':
+        // Déterminer le type de clavier en fonction du champ
+        let keyboardType: any = 'default';
+        let autoCapitalize: any = 'sentences';
+        
+        if (field.type === 'email' || field.name === 'email') {
+          keyboardType = 'email-address';
+          autoCapitalize = 'none';
+        } else if (field.type === 'url' || field.name === 'website') {
+          keyboardType = 'url';
+          autoCapitalize = 'none';
+        } else if (field.name === 'whatsapp' || field.name === 'telephone') {
+          keyboardType = 'phone-pad';
+          autoCapitalize = 'none';
+        }
+        
+        const hasError = fieldErrors[field.name];
+        
         return (
           <View key={field.name} style={styles.fieldContainer}>
             <Text style={styles.fieldLabel}>
@@ -705,9 +806,25 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
             <NativeInput
               placeholder={field.placeholder}
               value={valeursFormulaire[field.name] || ''}
-              onChangeText={(text) => handleFieldChange(field.name, text)}
-              style={styles.fieldInput}
+              onChangeText={(text) => {
+                handleFieldChange(field.name, text);
+                // Effacer l'erreur quand l'utilisateur tape
+                if (hasError) {
+                  setFieldErrors(prev => {
+                    const newErrors = { ...prev };
+                    delete newErrors[field.name];
+                    return newErrors;
+                  });
+                }
+              }}
+              style={[styles.fieldInput, hasError && styles.fieldInputError]}
+              keyboardType={keyboardType}
+              autoCapitalize={autoCapitalize}
+              autoCorrect={false}
             />
+            {hasError && (
+              <Text style={styles.fieldErrorText}>⚠️ {hasError}</Text>
+            )}
           </View>
         );
       case 'textarea':
@@ -736,6 +853,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
               value={valeursFormulaire[field.name]?.toString() || ''}
               onChangeText={(text) => handleFieldChange(field.name, text)}
               style={styles.fieldInput}
+              keyboardType="numeric"
             />
           </View>
         );
@@ -1511,6 +1629,17 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     fontSize: 14,
     color: modernColors.text,
+  },
+  fieldInputError: {
+    borderColor: '#EF4444',
+    borderWidth: 2,
+    backgroundColor: '#FEF2F2',
+  },
+  fieldErrorText: {
+    color: '#EF4444',
+    fontSize: 12,
+    marginTop: 4,
+    marginLeft: 4,
   },
   textareaInput: {
     minHeight: 80,

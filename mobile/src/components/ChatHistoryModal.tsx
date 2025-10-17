@@ -16,6 +16,7 @@ import {
 import { Avatar, IconButton, Title } from 'react-native-paper';
 import { useAuth } from '../contexts/AuthContext';
 import { theme } from '../theme/theme';
+import { apiGet } from '../services/api';
 // @ts-ignore
 import ChatModalMobile from './ChatModalMobile';
 
@@ -88,18 +89,24 @@ const ChatHistoryModal: React.FC<ChatHistoryModalProps> = ({
   const loadChatHistories = async () => {
     setLoading(true);
     try {
-      // TODO: Charger les vraies conversations depuis l'API
-      // En attendant que l'endpoint soit disponible, afficher un état vide
+      // Charger les vraies conversations depuis l'API
+      if (!user?.id) {
+        console.log('[ChatHistoryModal] Aucun utilisateur connecté');
+        setChatHistories([]);
+        return;
+      }
 
-      // const response = await notificationsApi.getChatHistory();
-      // if (response.success && response.data) {
+      // TODO: Implémenter l'API pour récupérer la liste des conversations de l'utilisateur
+      // Pour l'instant, on utilise un tableau vide en attendant l'endpoint
+      // const response = await apiGet(`/api/chat/conversations/${user.id}`);
+      // if (response.data && Array.isArray(response.data)) {
       //   setChatHistories(response.data);
       // }
 
-      // Pour l'instant, tableau vide (pas de données fictives)
+      // Tableau vide en attendant l'implémentation de l'API
       setChatHistories([]);
 
-      console.log('[ChatHistoryModal] Historique des conversations chargé (vide pour l\'instant)');
+      console.log('[ChatHistoryModal] Historique des conversations chargé (vide - API à implémenter)');
     } catch (error) {
       console.error('Erreur chargement historique chat:', error);
       setChatHistories([]);
@@ -110,14 +117,19 @@ const ChatHistoryModal: React.FC<ChatHistoryModalProps> = ({
 
   const loadChatMessages = async (chatId: string) => {
     try {
-      // TODO: Charger les vrais messages depuis l'API
-      // En attendant que l'endpoint soit disponible, afficher vide
+      // Charger les vrais messages depuis l'API
+      if (!user?.id || !selectedChat) {
+        setChatMessages([]);
+        return;
+      }
 
-      // const response = await notificationsApi.getChatMessages(chatId);
-      // if (response.success && response.data) {
+      // Utiliser l'API existante pour charger l'historique des messages
+      // const response = await apiGet(`/api/chat/history/${selectedChat.clientId}/${selectedChat.prestataireId}`);
+      // if (response.data && Array.isArray(response.data)) {
       //   setChatMessages(response.data);
       // }
 
+      // Tableau vide en attendant l'implémentation de l'API
       setChatMessages([]);
       console.log('[ChatHistoryModal] Messages chargés pour chat:', chatId);
     } catch (error) {

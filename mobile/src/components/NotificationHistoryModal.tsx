@@ -43,6 +43,17 @@ const NotificationHistoryModal: React.FC<NotificationHistoryModalProps> = ({
   useEffect(() => {
     if (isOpen && user?.id) {
       loadNotifications();
+      
+      // Rafraîchissement automatique toutes les 15 secondes quand le modal est ouvert
+      const interval = setInterval(() => {
+        console.log('[NotificationHistoryModal] 🔄 Rafraîchissement automatique des notifications');
+        loadNotifications();
+      }, 15000); // 15 secondes
+      
+      // Nettoyer l'intervalle quand le modal se ferme
+      return () => {
+        clearInterval(interval);
+      };
     }
   }, [isOpen, user?.id]);
 
@@ -96,6 +107,11 @@ const NotificationHistoryModal: React.FC<NotificationHistoryModalProps> = ({
       console.error('Erreur marquage notification comme lue:', error);
       Alert.alert('Erreur', 'Impossible de marquer la notification comme lue');
     }
+  };
+
+  const handleRefresh = async () => {
+    console.log('[NotificationHistoryModal] 🔄 Rafraîchissement manuel des notifications');
+    await loadNotifications();
   };
 
   const markAllAsRead = async () => {
@@ -189,6 +205,16 @@ const NotificationHistoryModal: React.FC<NotificationHistoryModalProps> = ({
           </View>
 
           <View style={styles.headerRight}>
+            <TouchableOpacity
+              style={styles.refreshButton}
+              onPress={handleRefresh}
+              disabled={loading}
+            >
+              <Text style={[styles.refreshIcon, loading && styles.refreshIconDisabled]}>
+                {loading ? '⏳' : '🔄'}
+              </Text>
+            </TouchableOpacity>
+
             <TouchableOpacity
               style={styles.markAllButton}
               onPress={markAllAsRead}
@@ -373,6 +399,19 @@ const styles = StyleSheet.create({
   headerRight: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  refreshButton: {
+    padding: 8,
+    marginRight: 8,
+    borderRadius: 20,
+    backgroundColor: '#F5F5F5',
+  },
+  refreshIcon: {
+    fontSize: 18,
+    color: theme.colors.primary,
+  },
+  refreshIconDisabled: {
+    color: '#9E9E9E',
   },
   markAllButton: {
     flexDirection: 'row',

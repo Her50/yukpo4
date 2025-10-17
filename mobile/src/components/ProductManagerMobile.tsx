@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import {
     Alert,
+    Image,
     Modal,
     ScrollView,
     StyleSheet,
@@ -10,6 +11,12 @@ import {
 } from 'react-native';
 // @ts-ignore
 import { LinearGradient } from 'expo-linear-gradient';
+// @ts-ignore
+import * as ImagePicker from 'expo-image-picker';
+// @ts-ignore
+import * as DocumentPicker from 'expo-document-picker';
+// @ts-ignore
+import * as FileSystem from 'expo-file-system';
 // @ts-ignore
 import SafeIcon from './SafeIcon';
 // @ts-ignore
@@ -23,6 +30,7 @@ interface Product {
     prix: string;
     devise: string;
     description?: string;
+    image?: string; // Base64 ou URI de l'image/étiquette du produit
 }
 
 interface ProductManagerMobileProps {
@@ -42,10 +50,100 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
         nom: '',
         prix: '',
         devise: 'XAF',
-        description: ''
+        description: '',
+        image: undefined
     });
 
     const devises = ['XAF', 'EUR', 'USD', 'GBP'];
+
+    // Fonction pour sélectionner une image
+    const handlePickImage = async () => {
+        try {
+            const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+            
+            if (permissionResult.granted === false) {
+                Alert.alert('Permission refusée', 'Vous devez autoriser l\'accès à la galerie');
+                return;
+            }
+
+            const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                allowsEditing: true,
+                aspect: [4, 3],
+                quality: 0.8,
+                base64: true
+            });
+
+            if (!result.canceled && result.assets[0]) {
+                const base64Image = `data:image/jpeg;base64,${result.assets[0].base64}`;
+                setNewProduct({ ...newProduct, image: base64Image });
+            }
+        } catch (error) {
+            console.error('Erreur sélection image:', error);
+            Alert.alert('Erreur', 'Impossible de sélectionner l\'image');
+        }
+    };
+
+    // Fonction pour importer des produits depuis Excel
+    const handleImportExcel = async () => {
+        try {
+            const result = await DocumentPicker.getDocumentAsync({
+                type: [
+                    'application/vnd.ms-excel',
+                    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                    'text/csv'
+                ],
+                copyToCacheDirectory: true
+            });
+
+            if (result.type === 'cancel' || !result.uri) {
+                return;
+            }
+
+            // Lire le fichier
+            const fileContent = await FileSystem.readAsStringAsync(result.uri);
+            
+            // Parser le CSV (format simple: nom,prix,devise,description)
+            const lines = fileContent.split('\n').filter(line => line.trim());
+            
+            if (lines.length === 0) {
+                Alert.alert('Erreur', 'Le fichier est vide');
+                return;
+            }
+
+            // Ignorer la première ligne (en-têtes)
+            const dataLines = lines.slice(1);
+            const newProducts: Product[] = [];
+
+            dataLines.forEach(line => {
+                const columns = line.split(',').map(col => col.trim());
+                
+                if (columns.length >= 2 && columns[0] && columns[1]) {
+                    newProducts.push({
+                        id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+                        nom: columns[0],
+                        prix: columns[1],
+                        devise: columns[2] || 'XAF',
+                        description: columns[3] || ''
+                    });
+                }
+            });
+
+            if (newProducts.length > 0) {
+                onProductsChange([...products, ...newProducts]);
+                Alert.alert(
+                    'Import réussi',
+                    `${newProducts.length} produit(s) ont été importés avec succès`
+                );
+            } else {
+                Alert.alert('Erreur', 'Aucun produit valide trouvé dans le fichier');
+            }
+
+        } catch (error) {
+            console.error('Erreur import Excel:', error);
+            Alert.alert('Erreur', 'Impossible d\'importer le fichier');
+        }
+    };
 
     const handleAddProduct = () => {
         if (!newProduct.nom.trim() || !newProduct.prix.trim()) {
@@ -96,7 +194,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
     };
 
     const handleCancel = () => {
-        setNewProduct({ nom: '', prix: '', devise: 'XAF', description: '' });
+        setNewProduct({ nom: '', prix: '', devise: 'XAF', description: '', image: undefined });
         setEditingProductId(null);
         setShowAddModal(false);
     };
@@ -108,33 +206,44 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                 <ScrollView style={styles.productsList} showsVerticalScrollIndicator={false}>
                     {products.map((product) => (
                         <View key={product.id} style={styles.productCard}>
-                            <View style={styles.productHeader}>
-                                <Text style={styles.productName}>{product.nom}</Text>
-                                {!readonly && (
-                                    <View style={styles.productActions}>
-                                        <TouchableOpacity
-                                            style={styles.actionButton}
-                                            onPress={() => handleEditProduct(product)}
-                                        >
-                                            <SafeIcon name="edit-2" size={16} color={modernColors.primary} />
-                                        </TouchableOpacity>
-                                        <TouchableOpacity
-                                            style={styles.actionButton}
-                                            onPress={() => handleDeleteProduct(product.id)}
-                                        >
-                                            <SafeIcon name="trash-2" size={16} color={modernColors.error} />
-                                        </TouchableOpacity>
-                                    </View>
+                            <View style={styles.productContent}>
+                                {product.image && (
+                                    <Image 
+                                        source={{ uri: product.image }} 
+                                        style={styles.productImage}
+                                        resizeMode="cover"
+                                    />
                                 )}
+                                <View style={styles.productInfo}>
+                                    <View style={styles.productHeader}>
+                                        <Text style={styles.productName}>{product.nom}</Text>
+                                        {!readonly && (
+                                            <View style={styles.productActions}>
+                                                <TouchableOpacity
+                                                    style={styles.actionButton}
+                                                    onPress={() => handleEditProduct(product)}
+                                                >
+                                                    <SafeIcon name="edit-2" size={16} color={modernColors.primary} />
+                                                </TouchableOpacity>
+                                                <TouchableOpacity
+                                                    style={styles.actionButton}
+                                                    onPress={() => handleDeleteProduct(product.id)}
+                                                >
+                                                    <SafeIcon name="trash-2" size={16} color={modernColors.error} />
+                                                </TouchableOpacity>
+                                            </View>
+                                        )}
+                                    </View>
+                                    <Text style={styles.productPrice}>
+                                        {product.prix} {product.devise}
+                                    </Text>
+                                    {product.description && (
+                                        <Text style={styles.productDescription} numberOfLines={2}>
+                                            {product.description}
+                                        </Text>
+                                    )}
+                                </View>
                             </View>
-                            <Text style={styles.productPrice}>
-                                {product.prix} {product.devise}
-                            </Text>
-                            {product.description && (
-                                <Text style={styles.productDescription} numberOfLines={2}>
-                                    {product.description}
-                                </Text>
-                            )}
                         </View>
                     ))}
                 </ScrollView>
@@ -148,20 +257,41 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                 </View>
             )}
 
-            {/* Bouton d'ajout */}
+            {/* Boutons d'ajout et d'import */}
             {!readonly && (
-                <TouchableOpacity
-                    style={styles.addButton}
-                    onPress={() => setShowAddModal(true)}
-                >
-                    <LinearGradient
-                        colors={modernColors.primaryGradient}
-                        style={styles.addButtonGradient}
-                    >
-                        <SafeIcon name="plus" size={20} color="#FFFFFF" />
-                        <Text style={styles.addButtonText}>Ajouter un produit</Text>
-                    </LinearGradient>
-                </TouchableOpacity>
+                <>
+                    <View style={styles.buttonsContainer}>
+                        <TouchableOpacity
+                            style={styles.addButton}
+                            onPress={() => setShowAddModal(true)}
+                        >
+                            <LinearGradient
+                                colors={modernColors.primaryGradient}
+                                style={styles.addButtonGradient}
+                            >
+                                <SafeIcon name="plus" size={20} color="#FFFFFF" />
+                                <Text style={styles.addButtonText}>Ajouter un produit</Text>
+                            </LinearGradient>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            style={styles.importButton}
+                            onPress={handleImportExcel}
+                        >
+                            <SafeIcon name="file-text" size={20} color={modernColors.primary} />
+                            <Text style={styles.importButtonText}>Importer Excel/CSV</Text>
+                        </TouchableOpacity>
+                    </View>
+                    
+                    <View style={styles.hintBox}>
+                        <Text style={styles.hintText}>
+                            💡 <Text style={styles.hintBold}>Format CSV :</Text> nom,prix,devise,description
+                        </Text>
+                        <Text style={styles.hintSubText}>
+                            Exemple : "Menu du jour,5000,XAF,Plat complet avec boisson"
+                        </Text>
+                    </View>
+                </>
             )}
 
             {/* Modal d'ajout/modification */}
@@ -235,6 +365,33 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                     </ScrollView>
                                 </View>
                             </View>
+                        </View>
+
+                        <View style={styles.fieldContainer}>
+                            <Text style={styles.fieldLabel}>Image/Étiquette du produit (optionnel)</Text>
+                            <TouchableOpacity
+                                style={styles.imagePickerButton}
+                                onPress={handlePickImage}
+                            >
+                                {newProduct.image ? (
+                                    <View style={styles.imagePreviewContainer}>
+                                        <Image 
+                                            source={{ uri: newProduct.image }} 
+                                            style={styles.imagePreview}
+                                            resizeMode="cover"
+                                        />
+                                        <View style={styles.imageOverlay}>
+                                            <SafeIcon name="camera" size={24} color="#FFFFFF" />
+                                            <Text style={styles.imageOverlayText}>Changer l'image</Text>
+                                        </View>
+                                    </View>
+                                ) : (
+                                    <View style={styles.imagePlaceholder}>
+                                        <SafeIcon name="camera" size={32} color={modernColors.textSecondary} />
+                                        <Text style={styles.imagePlaceholderText}>Ajouter une image</Text>
+                                    </View>
+                                )}
+                            </TouchableOpacity>
                         </View>
 
                         <View style={styles.fieldContainer}>
@@ -350,6 +507,83 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         color: '#FFFFFF',
     },
+    buttonsContainer: {
+        marginTop: 12,
+        gap: 8,
+    },
+    importButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        borderRadius: 12,
+        gap: 8,
+        backgroundColor: modernColors.surface,
+        borderWidth: 1,
+        borderColor: modernColors.primary,
+    },
+    importButtonText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: modernColors.primary,
+    },
+    productContent: {
+        flexDirection: 'row',
+        gap: 12,
+    },
+    productImage: {
+        width: 80,
+        height: 80,
+        borderRadius: 8,
+        backgroundColor: modernColors.background,
+    },
+    productInfo: {
+        flex: 1,
+    },
+    imagePickerButton: {
+        borderWidth: 2,
+        borderColor: modernColors.border,
+        borderRadius: 12,
+        borderStyle: 'dashed',
+        overflow: 'hidden',
+    },
+    imagePreviewContainer: {
+        position: 'relative',
+        width: '100%',
+        height: 200,
+    },
+    imagePreview: {
+        width: '100%',
+        height: '100%',
+    },
+    imageOverlay: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        gap: 8,
+    },
+    imageOverlayText: {
+        color: '#FFFFFF',
+        fontSize: 14,
+        fontWeight: '600',
+    },
+    imagePlaceholder: {
+        height: 150,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: modernColors.background,
+        gap: 8,
+    },
+    imagePlaceholderText: {
+        fontSize: 14,
+        color: modernColors.textSecondary,
+    },
     modalContainer: {
         flex: 1,
         backgroundColor: modernColors.background,
@@ -431,6 +665,29 @@ const styles = StyleSheet.create({
     },
     deviseButtonTextActive: {
         color: '#FFFFFF',
+    },
+    hintBox: {
+        backgroundColor: '#EFF6FF',
+        borderRadius: 8,
+        padding: 12,
+        marginTop: 8,
+        borderLeftWidth: 4,
+        borderLeftColor: modernColors.primary,
+    },
+    hintText: {
+        fontSize: 12,
+        color: modernColors.text,
+        lineHeight: 16,
+    },
+    hintBold: {
+        fontWeight: '600',
+        color: modernColors.primary,
+    },
+    hintSubText: {
+        fontSize: 11,
+        color: modernColors.textSecondary,
+        marginTop: 4,
+        fontStyle: 'italic',
     },
     modalFooter: {
         flexDirection: 'row',

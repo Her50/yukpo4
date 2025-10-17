@@ -60,12 +60,26 @@ const HomeScreen: React.FC = () => {
             }
         };
 
+        // Charger immédiatement
         loadUnreadNotificationsCount();
 
         // Recharger quand le modal de notifications se ferme
         if (!showNotificationModal) {
             loadUnreadNotificationsCount();
         }
+
+        // Rafraîchissement automatique toutes les 30 secondes
+        const interval = setInterval(() => {
+            if (user?.id) {
+                console.log('[HomeScreen] 🔄 Rafraîchissement automatique des notifications');
+                loadUnreadNotificationsCount();
+            }
+        }, 30000); // 30 secondes
+
+        // Nettoyer l'intervalle quand le composant se démonte
+        return () => {
+            clearInterval(interval);
+        };
     }, [user?.id, showNotificationModal]);
 
     // Détection GPS automatique au chargement (si activé dans les paramètres)
@@ -554,13 +568,15 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        paddingHorizontal: 8,
-        gap: 8, // Espacement uniforme entre tous les éléments
+        paddingHorizontal: 4,
+        gap: 12, // Espacement plus généreux entre les éléments
+        marginBottom: 8, // Ajout d'un espacement en bas
     },
     avatarContainer: {
         flex: 0,
-        width: 56, // Augmenté de 44px à 56px pour plus de présence
-        height: 56,
+        width: 52, // Légèrement réduit pour équilibrer
+        height: 52,
+        marginRight: 4, // Espacement spécifique après l'avatar
     },
     headerTop: {
         flexDirection: 'row',
@@ -633,23 +649,24 @@ const styles = StyleSheet.create({
     },
     headerActionsCompact: {
         flexDirection: 'row',
-        gap: 8,
+        gap: 6,
         flex: 0,
-        marginLeft: 8, // Ajout d'une marge pour éviter le collage
+        marginLeft: 4, // Espacement réduit mais suffisant
+        marginRight: 2, // Espacement à droite
     },
     headerButtonCompact: {
-        width: 44,
-        height: 44,
-        borderRadius: 22,
-        backgroundColor: '#FFFFFF', // Fond blanc opaque pour visibilité
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: '#FFFFFF',
         justifyContent: 'center',
         alignItems: 'center',
         position: 'relative',
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
+        shadowOpacity: 0.08,
         shadowRadius: 4,
-        elevation: 3,
+        elevation: 2,
     },
     headerButtonIconCompact: {
         fontSize: 20, // Augmenté pour meilleure visibilité
@@ -708,7 +725,8 @@ const styles = StyleSheet.create({
     },
     titleContainerCompact: {
         alignItems: 'center',
-        marginBottom: 20,
+        marginBottom: 16, // Réduit pour rapprocher du contenu
+        marginTop: 4, // Espacement après l'en-tête
     },
     brandTitle: {
         fontSize: 48,
@@ -960,21 +978,22 @@ const styles = StyleSheet.create({
     balanceCardModern: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#FFFFFF', // Fond blanc opaque pour visibilité
-        paddingVertical: 10,
-        paddingHorizontal: 14,
-        borderRadius: 12,
-        gap: 6,
+        backgroundColor: '#FFFFFF',
+        paddingVertical: 8,
+        paddingHorizontal: 12,
+        borderRadius: 14,
+        gap: 4,
         borderWidth: 1,
         borderColor: '#E5E7EB',
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.15,
-        shadowRadius: 8,
-        elevation: 4,
-        height: 44, // Hauteur fixe pour uniformiser avec avatar et météo
-        marginRight: 12, // Espacement augmenté pour éviter le collage avec la météo
-        minWidth: 85,
+        shadowOpacity: 0.08,
+        shadowRadius: 6,
+        elevation: 2,
+        height: 40, // Légèrement réduit pour équilibrer
+        marginHorizontal: 4, // Espacement horizontal uniforme
+        minWidth: 75,
+        maxWidth: 95,
     },
     balanceIconModern: {
         fontSize: 14,
@@ -997,13 +1016,13 @@ const styles = StyleSheet.create({
 
     // Styles modernes pour la météo - SANS fond pour éviter la double couche
     weatherContainerModern: {
-        // Pas de backgroundColor - laissé au WeatherWidget pour éviter la double couche
         flex: 1,
-        minWidth: 50,
-        maxWidth: 80,
-        height: 44, // Hauteur fixe pour uniformiser avec avatar et solde
+        minWidth: 60,
+        maxWidth: 85,
+        height: 40, // Uniformisé avec le solde
         alignItems: 'center',
         justifyContent: 'center',
+        marginHorizontal: 2, // Espacement horizontal
     },
 
     // Styles pour l'alerte de confirmation
