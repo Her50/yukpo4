@@ -1,7 +1,24 @@
 // Service de notifications système
-use sqlx::PgPool;
+use sqlx::{PgPool, FromRow};
 use serde_json::json;
 use log::info;
+use chrono::{DateTime, Utc};
+
+/// Struct pour mapper les résultats de requêtes notifications
+#[derive(Debug, FromRow)]
+struct NotificationRow {
+    id: i32,
+    #[allow(dead_code)]
+    user_id: i32,
+    #[allow(dead_code)]
+    r#type: String,
+    title: String,
+    message: String,
+    data: Option<serde_json::Value>,
+    is_read: bool,
+    created_at: DateTime<Utc>,
+    read_at: Option<DateTime<Utc>>,
+}
 
 /// Type de notification
 #[derive(Debug, Clone)]
@@ -44,23 +61,23 @@ pub async fn create_notification(
     
     info!("[NotificationService] Création notification pour user {}: {}", user_id, title);
     
-    let result = sqlx::query_scalar!(
+    let result: (i32,) = sqlx::query_as(
         r#"
         INSERT INTO notifications (user_id, type, title, message, data, is_read, created_at)
         VALUES ($1, $2, $3, $4, $5, FALSE, CURRENT_TIMESTAMP)
         RETURNING id
-        "#,
-        user_id,
-        type_str,
-        title,
-        message,
-        data
+        "#
     )
+    .bind(user_id)
+    .bind(type_str)
+    .bind(title)
+    .bind(message)
+    .bind(data)
     .fetch_one(pool)
     .await?;
     
-    info!("[NotificationService] ✅ Notification créée avec ID: {}", result);
-    Ok(result)
+    info!("[NotificationService] ✅ Notification créée avec ID: {}", result.0);
+    Ok(result.0)
 }
 
 /// Récupérer toutes les notifications d'un utilisateur
@@ -71,17 +88,17 @@ pub async fn get_user_notifications(
 ) -> Result<Vec<serde_json::Value>, sqlx::Error> {
     info!("[NotificationService] Récupération notifications pour user {}", user_id);
     
-    let rows = sqlx::query!(
+    let rows: Vec<NotificationRow> = sqlx::query_as(
         r#"
-        SELECT id, type, title, message, data, is_read, created_at, read_at
+        SELECT id, user_id, type, title, message, data, is_read, created_at, read_at
         FROM notifications
         WHERE user_id = $1
         ORDER BY created_at DESC
         LIMIT $2
-        "#,
-        user_id,
-        limit
+        "#
     )
+    .bind(user_id)
+    .bind(limit)
     .fetch_all(pool)
     .await?;
     
@@ -113,16 +130,16 @@ pub async fn mark_notification_as_read(
 ) -> Result<bool, sqlx::Error> {
     info!("[NotificationService] Marquage notification {} comme lue pour user {}", notification_id, user_id);
     
-    let result = sqlx::query!(
+    let result: Option<(i32,)> = sqlx::query_as(
         r#"
         UPDATE notifications
         SET is_read = TRUE, read_at = CURRENT_TIMESTAMP
         WHERE id = $1 AND user_id = $2
         RETURNING id
-        "#,
-        notification_id,
-        user_id
+        "#
     )
+    .bind(notification_id)
+    .bind(user_id)
     .fetch_optional(pool)
     .await?;
     
@@ -136,14 +153,14 @@ pub async fn mark_all_as_read(
 ) -> Result<u64, sqlx::Error> {
     info!("[NotificationService] Marquage de toutes les notifications comme lues pour user {}", user_id);
     
-    let result = sqlx::query!(
+    let result = sqlx::query(
         r#"
         UPDATE notifications
         SET is_read = TRUE, read_at = CURRENT_TIMESTAMP
         WHERE user_id = $1 AND is_read = FALSE
-        "#,
-        user_id
+        "#
     )
+    .bind(user_id)
     .execute(pool)
     .await?;
     
@@ -157,18 +174,18 @@ pub async fn count_unread_notifications(
     pool: &PgPool,
     user_id: i32,
 ) -> Result<i64, sqlx::Error> {
-    let count = sqlx::query_scalar!(
+    let count: (i64,) = sqlx::query_as(
         r#"
-        SELECT COUNT(*)::bigint as "count!"
+        SELECT COUNT(*)::bigint
         FROM notifications
         WHERE user_id = $1 AND is_read = FALSE
-        "#,
-        user_id
+        "#
     )
+    .bind(user_id)
     .fetch_one(pool)
     .await?;
     
-    Ok(count)
+    Ok(count.0)
 }
 
 /// Supprimer les anciennes notifications (plus de 90 jours)
@@ -178,13 +195,13 @@ pub async fn cleanup_old_notifications(
 ) -> Result<u64, sqlx::Error> {
     info!("[NotificationService] Nettoyage des notifications de plus de {} jours", days);
     
-    let result = sqlx::query!(
+    let result = sqlx::query(
         r#"
         DELETE FROM notifications
         WHERE created_at < CURRENT_TIMESTAMP - INTERVAL '1 day' * $1
-        "#,
-        days
+        "#
     )
+    .bind(days)
     .execute(pool)
     .await?;
     

@@ -1,8 +1,30 @@
 // Service de push notifications (Expo Push Notifications)
-use sqlx::PgPool;
+use sqlx::{PgPool, FromRow};
 use serde::{Deserialize, Serialize};
 use reqwest::Client;
 use log::{info, error, warn};
+use chrono::{DateTime, Utc};
+
+/// Struct pour mapper les résultats de requêtes user_push_tokens
+#[derive(Debug, FromRow)]
+struct PushTokenRow {
+    id: i32,
+    #[allow(dead_code)]
+    user_id: i32,
+    push_token: String,
+    #[allow(dead_code)]
+    device_type: String,
+    #[allow(dead_code)]
+    device_id: Option<String>,
+    #[allow(dead_code)]
+    is_active: bool,
+    #[allow(dead_code)]
+    created_at: DateTime<Utc>,
+    #[allow(dead_code)]
+    updated_at: DateTime<Utc>,
+    #[allow(dead_code)]
+    last_used_at: DateTime<Utc>,
+}
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PushMessage {
@@ -32,52 +54,52 @@ pub async fn register_push_token(
     info!("[PushService] Enregistrement token push pour user {}: {}", user_id, &push_token[..20]);
     
     // Vérifier si le token existe déjà
-    let existing = sqlx::query!(
+    let existing: Option<(i32,)> = sqlx::query_as(
         r#"
         SELECT id FROM user_push_tokens
         WHERE push_token = $1
-        "#,
-        push_token
+        "#
     )
+    .bind(&push_token)
     .fetch_optional(pool)
     .await?;
     
     if let Some(row) = existing {
         // Mettre à jour le token existant
-        sqlx::query!(
+        sqlx::query(
             r#"
             UPDATE user_push_tokens
             SET user_id = $1, device_type = $2, device_id = $3, is_active = TRUE, last_used_at = CURRENT_TIMESTAMP
             WHERE push_token = $4
-            "#,
-            user_id,
-            device_type,
-            device_id,
-            push_token
+            "#
         )
+        .bind(user_id)
+        .bind(&device_type)
+        .bind(&device_id)
+        .bind(&push_token)
         .execute(pool)
         .await?;
         
-        info!("[PushService] ✅ Token push mis à jour: {}", row.id);
-        Ok(row.id)
+        info!("[PushService] ✅ Token push mis à jour: {}", row.0);
+        Ok(row.0)
     } else {
         // Insérer un nouveau token
-        let result = sqlx::query_scalar!(
+        let result: (i32,) = sqlx::query_as(
             r#"
             INSERT INTO user_push_tokens (user_id, push_token, device_type, device_id, is_active)
             VALUES ($1, $2, $3, $4, TRUE)
             RETURNING id
-            "#,
-            user_id,
-            push_token,
-            device_type,
-            device_id
+            "#
         )
+        .bind(user_id)
+        .bind(&push_token)
+        .bind(&device_type)
+        .bind(&device_id)
         .fetch_one(pool)
         .await?;
         
-        info!("[PushService] ✅ Nouveau token push enregistré: {}", result);
-        Ok(result)
+        info!("[PushService] ✅ Nouveau token push enregistré: {}", result.0);
+        Ok(result.0)
     }
 }
 
@@ -86,20 +108,21 @@ pub async fn get_user_push_tokens(
     pool: &PgPool,
     user_id: i32,
 ) -> Result<Vec<String>, sqlx::Error> {
-    let tokens = sqlx::query_scalar!(
+    let tokens: Vec<(String,)> = sqlx::query_as(
         r#"
         SELECT push_token
         FROM user_push_tokens
         WHERE user_id = $1 AND is_active = TRUE
         ORDER BY last_used_at DESC
-        "#,
-        user_id
+        "#
     )
+    .bind(user_id)
     .fetch_all(pool)
     .await?;
     
-    info!("[PushService] {} tokens actifs pour user {}", tokens.len(), user_id);
-    Ok(tokens)
+    let result: Vec<String> = tokens.into_iter().map(|t| t.0).collect();
+    info!("[PushService] {} tokens actifs pour user {}", result.len(), user_id);
+    Ok(result)
 }
 
 /// Envoyer une push notification via Expo Push Notifications
@@ -204,15 +227,15 @@ pub async fn deactivate_push_token(
 ) -> Result<bool, sqlx::Error> {
     info!("[PushService] Désactivation token push: {}", &push_token[..20]);
     
-    let result = sqlx::query!(
+    let result: Option<(i32,)> = sqlx::query_as(
         r#"
         UPDATE user_push_tokens
         SET is_active = FALSE
         WHERE push_token = $1
         RETURNING id
-        "#,
-        push_token
+        "#
     )
+    .bind(&push_token)
     .fetch_optional(pool)
     .await?;
     
@@ -226,14 +249,14 @@ pub async fn cleanup_old_push_tokens(
 ) -> Result<u64, sqlx::Error> {
     info!("[PushService] Nettoyage tokens push de plus de {} jours", days);
     
-    let result = sqlx::query!(
+    let result = sqlx::query(
         r#"
         DELETE FROM user_push_tokens
         WHERE is_active = FALSE 
         AND updated_at < CURRENT_TIMESTAMP - INTERVAL '1 day' * $1
-        "#,
-        days
+        "#
     )
+    .bind(days)
     .execute(pool)
     .await?;
     

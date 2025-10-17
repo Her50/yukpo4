@@ -18,8 +18,10 @@ else
     echo "Script de configuration de base de données non trouvé"
 fi
 
-# Étape 2: Compilation avec Cargo
+# Étape 2: Compilation avec Cargo en mode offline SQLx
 echo "2. Compilation de l'application..."
+echo "Mode SQLx: OFFLINE (utilisation des métadonnées .sqlx)"
+export SQLX_OFFLINE=true
 cargo build --release
 
 if [ $? -eq 0 ]; then
