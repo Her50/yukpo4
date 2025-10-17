@@ -1042,6 +1042,17 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                   console.log('[FormulaireYukpoIntelligentScreen] Produits ajoutés:', products);
                 }
 
+                // ✅ CORRECTION CRITIQUE : Ajouter le GPS fixe si présent (évite GPS Nigeria)
+                if (valeursFormulaire.gps_fixe) {
+                  finalServiceData.gps_fixe = {
+                    valeur: valeursFormulaire.gps_fixe,
+                    type: 'text'
+                  };
+                  console.log('[FormulaireYukpoIntelligentScreen] ✅ GPS FIXE ajouté:', valeursFormulaire.gps_fixe);
+                } else {
+                  console.warn('[FormulaireYukpoIntelligentScreen] ⚠️ AUCUN GPS FIXE - Le service utilisera le GPS en temps réel!');
+                }
+
                 // 🔧 ÉTAPE 5 : Créer le service avec les données structurées par l'IA
                 console.log('[FormulaireYukpoIntelligentScreen] Transmission tokens IA externe au backend:', tokensIAExterne);
 

@@ -332,6 +332,34 @@ export default function FormulaireDemandeOuService() {
           console.log('[FormulaireYukpoIntelligent] Produits ajoutés aux données de service:', products);
         }
 
+        // ✅ CORRECTION CRITIQUE : Ajouter le GPS fixe si présent (évite GPS Nigeria)
+        if (valeursFormulaire.gps_fixe) {
+          serviceData.gps_fixe = {
+            valeur: valeursFormulaire.gps_fixe,
+            type: 'text'
+          };
+          console.log('[FormulaireYukpoIntelligent] ✅ GPS FIXE ajouté:', valeursFormulaire.gps_fixe);
+        } else if (gpsData.gps_fixe_coords) {
+          // Fallback: utiliser les coords du GPS initial si disponibles
+          try {
+            const coords = JSON.parse(gpsData.gps_fixe_coords);
+            if (Array.isArray(coords) && coords.length > 0) {
+              const { lat, lng } = coords[0];
+              serviceData.gps_fixe = {
+                valeur: `${lat.toFixed(6)}, ${lng.toFixed(6)}`,
+                type: 'text'
+              };
+              console.log('[FormulaireYukpoIntelligent] ✅ GPS FIXE ajouté depuis gpsData:', serviceData.gps_fixe.valeur);
+            }
+          } catch (e) {
+            console.warn('[FormulaireYukpoIntelligent] ⚠️ Erreur parsing gps_fixe_coords');
+          }
+        }
+        
+        if (!serviceData.gps_fixe) {
+          console.warn('[FormulaireYukpoIntelligent] ⚠️ AUCUN GPS FIXE - Le service utilisera le GPS en temps réel!');
+        }
+
         // 🔧 ÉTAPE 5 : Appeler l'endpoint approprié selon le mode
         console.log('[FormulaireYukpoIntelligent] Mode:', mode, 'ServiceId:', serviceId);
         console.log('[FormulaireYukpoIntelligent] Transmission tokens IA externe au backend:', tokensIAExterne);

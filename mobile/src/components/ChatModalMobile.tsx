@@ -630,7 +630,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                             style={styles.mediaButton} 
                             onPress={() => setShowMediaGallery(true)}
                         >
-                            <SafeIcon name="play-circle" size={22} color={modernColors.primary} />
+                            <SafeIcon name="folder-open" size={22} color={modernColors.primary} />
                         </TouchableOpacity>
                     </View>
 
