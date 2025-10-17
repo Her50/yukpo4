@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO service_logs (service_id, user_id, action, reason)\n            VALUES ($1, $2, 'auto_deactivation', 'Expiration de la p?riode active')\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "a2a4c0d4469eca588713a165aa1f18bc6302b2a7eebb3794ce06138864bbf4fe"
+}

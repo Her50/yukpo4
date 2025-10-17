@@ -1,0 +1,34 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT id, user_id, last_alert_sent_at\n        FROM services\n        WHERE is_active = FALSE\n          AND is_tarissable = TRUE\n          AND (last_alert_sent_at IS NULL OR last_alert_sent_at < $1)\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "user_id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 2,
+        "name": "last_alert_sent_at",
+        "type_info": "Timestamp"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Timestamp"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "8f89751c80af55c4a08faf2bdd3fd6d7c973864c09c81dc1bb8b1d82427b68e7"
+}

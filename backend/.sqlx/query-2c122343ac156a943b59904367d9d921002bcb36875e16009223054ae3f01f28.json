@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE services\n        SET is_active = TRUE,\n            last_reactivated_at = NOW()\n        WHERE id = $1 AND user_id = $2\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "2c122343ac156a943b59904367d9d921002bcb36875e16009223054ae3f01f28"
+}

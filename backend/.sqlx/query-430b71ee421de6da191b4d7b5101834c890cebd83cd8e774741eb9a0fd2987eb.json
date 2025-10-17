@@ -1,0 +1,52 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT \n                u.id,\n                u.tokens_balance,\n                COUNT(s.id) as services_count,\n                COUNT(CASE WHEN s.is_active THEN 1 END) as active_services_count,\n                NULL::BIGINT as reviews_count,\n                NULL::DOUBLE PRECISION as avg_rating\n            FROM users u\n            LEFT JOIN services s ON u.id = s.user_id\n            WHERE u.id = $1\n            GROUP BY u.id, u.tokens_balance\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "tokens_balance",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 2,
+        "name": "services_count",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 3,
+        "name": "active_services_count",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 4,
+        "name": "reviews_count",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 5,
+        "name": "avg_rating",
+        "type_info": "Float8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      null,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "430b71ee421de6da191b4d7b5101834c890cebd83cd8e774741eb9a0fd2987eb"
+}

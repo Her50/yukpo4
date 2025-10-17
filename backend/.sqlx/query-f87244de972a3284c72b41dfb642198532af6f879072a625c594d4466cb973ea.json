@@ -1,0 +1,34 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT nom, prenom, photo_profil FROM users WHERE id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "nom",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 1,
+        "name": "prenom",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "photo_profil",
+        "type_info": "Varchar"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4"
+      ]
+    },
+    "nullable": [
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "f87244de972a3284c72b41dfb642198532af6f879072a625c594d4466cb973ea"
+}

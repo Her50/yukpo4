@@ -1,0 +1,34 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT s.id, s.user_id, u.tokens_balance\n        FROM services s\n        JOIN users u ON s.user_id = u.id\n        WHERE s.is_active = TRUE\n          AND s.is_tarissable = FALSE\n          AND s.auto_deactivate_at IS NOT NULL\n          AND s.auto_deactivate_at < $1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "user_id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 2,
+        "name": "tokens_balance",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Timestamptz"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "32433df791602f2697f05815687795c94962fe646eb82deb5eaa5b7861cce2b1"
+}

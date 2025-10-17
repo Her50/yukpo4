@@ -1,0 +1,64 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT \n            id,\n            CASE \n                WHEN TRIM(COALESCE(nom, '') || ' ' || COALESCE(prenom, '')) = '' \n                THEN split_part(email, '@', 1)\n                ELSE TRIM(COALESCE(nom, '') || ' ' || COALESCE(prenom, ''))\n            END as nom_complet,\n            email,\n            is_provider,\n            gps,\n            photo_profil,\n            avatar_url,\n            created_at\n        FROM users \n        WHERE id = ANY($1)\n        ORDER BY id\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "nom_complet",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "email",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "is_provider",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 4,
+        "name": "gps",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 5,
+        "name": "photo_profil",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 6,
+        "name": "avatar_url",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 7,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4Array"
+      ]
+    },
+    "nullable": [
+      false,
+      null,
+      false,
+      false,
+      true,
+      true,
+      true,
+      false
+    ]
+  },
+  "hash": "032e3082897d6db55afe3cf70f6537aa62f767263e85f109059d3922ff249f0e"
+}

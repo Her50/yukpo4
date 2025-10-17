@@ -1,0 +1,62 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO alerts (user_id, service_id, client_id, alert_type, is_read, created_at)\n           VALUES ($1, $2, $3, $4, FALSE, $5)\n           RETURNING id, user_id, service_id, client_id, alert_type, is_read, created_at as \"created_at: chrono::NaiveDateTime\"",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "user_id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 2,
+        "name": "service_id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 3,
+        "name": "client_id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 4,
+        "name": "alert_type",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 5,
+        "name": "is_read",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 6,
+        "name": "created_at: chrono::NaiveDateTime",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4",
+        "Int4",
+        "Int4",
+        "Varchar",
+        "Timestamptz"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "0c0e5c498ddea7f41f82c7679963331ae2837157ef19299e9694ce86162c8bd3"
+}

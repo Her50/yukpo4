@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT programme FROM programmes_scolaires\n        WHERE etablissement = $1 AND classe = $2\n        ORDER BY annee DESC NULLS LAST\n        LIMIT 1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "programme",
+        "type_info": "Jsonb"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "3e08edb777247cb9cf2caea3abf640fcd24fb8e17573d7e9809bc3d11b96d4dd"
+}

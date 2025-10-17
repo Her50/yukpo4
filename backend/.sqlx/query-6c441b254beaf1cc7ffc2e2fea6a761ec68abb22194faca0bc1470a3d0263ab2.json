@@ -1,0 +1,38 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id, user_id, offre, besoin FROM echanges WHERE statut = 'en_attente'",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "user_id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 2,
+        "name": "offre",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 3,
+        "name": "besoin",
+        "type_info": "Jsonb"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "6c441b254beaf1cc7ffc2e2fea6a761ec68abb22194faca0bc1470a3d0263ab2"
+}

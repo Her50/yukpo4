@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT COUNT(*) as count\n        FROM services s\n        JOIN users u ON s.user_id = u.id\n        WHERE s.is_active = TRUE\n          AND s.is_tarissable = FALSE\n          AND s.auto_deactivate_at IS NOT NULL\n          AND s.auto_deactivate_at < $1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "count",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Timestamptz"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "88978d746440e71daa1968a601faec1caa4c300bd810531b7c3514168b20b1c2"
+}
