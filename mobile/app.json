@@ -36,7 +36,6 @@
                     "apiKey": "AIzaSyDFfWEq1Umm06SNTbR-cRhRQ5Sq_taEAWQ"
                 }
             },
-            "googleServicesFile": "./google-services.json",
             "useNextNotificationsApi": true,
             "permissions": [
                 "ACCESS_FINE_LOCATION",
