@@ -79,8 +79,21 @@ export default function FormulaireDemandeOuService() {
               }
             });
 
+            // ✅ S'assurer que les contacts sont bien chargés
+            existingValues.whatsapp = serviceData.data?.whatsapp?.valeur || serviceData.whatsapp || existingValues.whatsapp || '';
+            existingValues.telephone = serviceData.data?.telephone?.valeur || serviceData.telephone || existingValues.telephone || '';
+            existingValues.email = serviceData.data?.email?.valeur || serviceData.email || existingValues.email || '';
+            existingValues.website = serviceData.data?.website?.valeur || serviceData.website || serviceData.siteweb || existingValues.website || '';
+
+            console.log('✅ Valeurs pré-remplies:', existingValues);
+            console.log('✅ Contacts chargés:', {
+              whatsapp: existingValues.whatsapp,
+              telephone: existingValues.telephone,
+              email: existingValues.email,
+              website: existingValues.website
+            });
+
             setValeursFormulaire(existingValues);
-            console.log('Valeurs pré-remplies:', existingValues);
           }
 
           // Pré-remplir les médias si disponibles
@@ -355,7 +368,7 @@ export default function FormulaireDemandeOuService() {
             console.warn('[FormulaireYukpoIntelligent] ⚠️ Erreur parsing gps_fixe_coords');
           }
         }
-        
+
         if (!serviceData.gps_fixe) {
           console.warn('[FormulaireYukpoIntelligent] ⚠️ AUCUN GPS FIXE - Le service utilisera le GPS en temps réel!');
         }

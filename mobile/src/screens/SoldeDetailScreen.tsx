@@ -1,4 +1,5 @@
-﻿import React, { useEffect, useState } from 'react';
+﻿import { useFocusEffect } from '@react-navigation/native'; // ✅ Pour rafraîchir au retour sur l'écran
+import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   ScrollView,
@@ -33,7 +34,7 @@ type PaymentLog = {
 };
 
 const SoldeDetailScreen: React.FC = () => {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth(); // ✅ Ajout de refreshUser
   const [logs, setLogs] = useState<UsageLog[]>([]);
   const [paymentLogs, setPaymentLogs] = useState<PaymentLog[]>([]);
   const [selectedPeriod, setSelectedPeriod] = useState<'7d' | '30d' | '90d' | 'all'>('30d');
@@ -54,6 +55,21 @@ const SoldeDetailScreen: React.FC = () => {
     if (!user?.id) return;
     loadData();
   }, [user, selectedPeriod]);
+
+  // ✅ NOUVEAU: Rafraîchir les données quand on revient sur l'écran
+  useFocusEffect(
+    React.useCallback(() => {
+      console.log('[SoldeDetailScreen] 🔄 Écran focus - Rafraîchissement des données...');
+      if (user?.id) {
+        // Rafraîchir le solde utilisateur
+        refreshUser().catch(err => {
+          console.error('[SoldeDetailScreen] Erreur rafraîchissement solde:', err);
+        });
+        // Recharger les logs
+        loadData();
+      }
+    }, [user?.id])
+  );
 
   const loadData = async () => {
     setLoading(true);
@@ -142,31 +158,31 @@ const SoldeDetailScreen: React.FC = () => {
             </Text>
           </TouchableOpacity>
         ))}
-        </View>
       </View>
+    </View>
   );
 
   const renderTabSelector = () => (
     <View style={styles.tabSelector}>
-        <TouchableOpacity
+      <TouchableOpacity
         style={[styles.tabButton, selectedTab === 'consumption' && styles.tabButtonActive]}
-          onPress={() => setSelectedTab('consumption')}
-        >
+        onPress={() => setSelectedTab('consumption')}
+      >
         <Text style={styles.tabIcon}>⚡</Text>
-          <Text style={[styles.tabText, selectedTab === 'consumption' && styles.tabTextActive]}>
-            Consommation
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
+        <Text style={[styles.tabText, selectedTab === 'consumption' && styles.tabTextActive]}>
+          Consommation
+        </Text>
+      </TouchableOpacity>
+      <TouchableOpacity
         style={[styles.tabButton, selectedTab === 'payments' && styles.tabButtonActive]}
-          onPress={() => setSelectedTab('payments')}
-        >
+        onPress={() => setSelectedTab('payments')}
+      >
         <Text style={styles.tabIcon}>💳</Text>
-          <Text style={[styles.tabText, selectedTab === 'payments' && styles.tabTextActive]}>
-            Paiements
-          </Text>
-        </TouchableOpacity>
-      </View>
+        <Text style={[styles.tabText, selectedTab === 'payments' && styles.tabTextActive]}>
+          Paiements
+        </Text>
+      </TouchableOpacity>
+    </View>
   );
 
   const renderConsumptionTab = () => (
@@ -187,7 +203,7 @@ const SoldeDetailScreen: React.FC = () => {
           <Text style={styles.statIcon}>📈</Text>
           <Text style={styles.statValue}>
             {logs.length > 0 ? formatCurrency(totalConsumed / logs.length) : '0 FCFA'}
-            </Text>
+          </Text>
           <Text style={styles.statLabel}>Moyenne</Text>
         </View>
       </View>
@@ -214,7 +230,7 @@ const SoldeDetailScreen: React.FC = () => {
                 )}
                 <Text style={styles.logDate}>
                   {new Date(log.date).toLocaleDateString('fr-FR')}
-        </Text>
+                </Text>
               </View>
               <View style={styles.logAmount}>
                 <Text style={styles.logAmountText}>-{formatCurrency(log.montant || 0)}</Text>
@@ -239,18 +255,18 @@ const SoldeDetailScreen: React.FC = () => {
           <Text style={styles.statIcon}>📈</Text>
           <Text style={styles.statValue}>{formatCurrency(totalPaid)}</Text>
           <Text style={styles.statLabel}>Total payé</Text>
-          </View>
+        </View>
         <View style={styles.statCard}>
           <Text style={styles.statIcon}>💳</Text>
           <Text style={styles.statValue}>{totalTokensAdded.toLocaleString()}</Text>
           <Text style={styles.statLabel}>Tokens ajoutés</Text>
-                  </View>
+        </View>
         <View style={styles.statCard}>
           <Text style={styles.statIcon}>📋</Text>
           <Text style={styles.statValue}>{paymentLogs.length}</Text>
           <Text style={styles.statLabel}>Transactions</Text>
-                  </View>
-                </View>
+        </View>
+      </View>
 
       {/* Liste des paiements */}
       <View style={styles.listContainer}>
@@ -272,8 +288,8 @@ const SoldeDetailScreen: React.FC = () => {
                 <Text style={styles.logService}>+{(payment.tokens_added || 0).toLocaleString()} tokens</Text>
                 <Text style={styles.logDate}>
                   {new Date(payment.date).toLocaleDateString('fr-FR')}
-                  </Text>
-                </View>
+                </Text>
+              </View>
               <View style={styles.logAmount}>
                 <Text style={[styles.logAmountText, { color: '#10B981' }]}>
                   +{formatCurrency(payment.amount || 0)}
@@ -300,7 +316,7 @@ const SoldeDetailScreen: React.FC = () => {
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Historique de Consommation</Text>
-      </View>
+        </View>
 
         {/* Solde actuel */}
         <View style={styles.balanceCard}>
@@ -309,16 +325,16 @@ const SoldeDetailScreen: React.FC = () => {
               <Text style={styles.balanceLabel}>Solde actuel</Text>
               <Text style={styles.balanceValue}>
                 {currentBalance.toFixed(0)} FCFA
-                </Text>
-              </View>
+              </Text>
+            </View>
             <View style={styles.balanceRight}>
               <Text style={styles.balanceSubLabel}>Total consommé</Text>
               <Text style={styles.balanceSubValue}>
                 {formatCurrency(totalConsumed)}
-                </Text>
-              </View>
-              </View>
+              </Text>
             </View>
+          </View>
+        </View>
 
         {/* Sélecteur de période */}
         {renderPeriodSelector()}
@@ -328,7 +344,7 @@ const SoldeDetailScreen: React.FC = () => {
 
         {/* Contenu des onglets */}
         {selectedTab === 'consumption' ? renderConsumptionTab() : renderPaymentsTab()}
-    </ScrollView>
+      </ScrollView>
     </View>
   );
 };

@@ -22,7 +22,7 @@ const { width } = Dimensions.get('window');
 
 const HomeScreen: React.FC = () => {
     const navigation = ReactNavigation.useNavigation();
-    const { user } = useAuth();
+    const { user, refreshUser } = useAuth(); // ✅ Ajout de refreshUser
 
     // Debug pour vérifier les données utilisateur
     React.useEffect(() => {
@@ -33,6 +33,20 @@ const HomeScreen: React.FC = () => {
             role: user?.role
         });
     }, [user]);
+
+    // ✅ NOUVEAU: Rafraîchir le solde quand on revient sur HomeScreen
+    React.useEffect(() => {
+        const unsubscribe = navigation.addListener('focus', () => {
+            console.log('[HomeScreen] 🔄 Écran focus - Rafraîchissement du solde...');
+            if (user?.id && refreshUser) {
+                refreshUser().catch(err => {
+                    console.error('[HomeScreen] Erreur rafraîchissement solde:', err);
+                });
+            }
+        });
+
+        return unsubscribe;
+    }, [navigation, user?.id, refreshUser]);
 
     const [loading, setLoading] = useState(false);
     const [isCreateService, setIsCreateService] = useState(false);
@@ -788,7 +802,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#FFFFFF',
         borderRadius: 12,
         padding: 2,
-        marginBottom: 12, // ✅ Réduit de 20 à 12 pour monter le bloc
+        marginBottom: 8, // ✅ Réduit de 12 à 8 pour rapprocher de ChatInput
         borderWidth: 1,
         borderColor: '#E5E7EB',
         shadowColor: '#000',
@@ -980,9 +994,9 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         backgroundColor: '#FFFFFF',
         paddingVertical: 8,
-        paddingHorizontal: 12,
+        paddingHorizontal: 16, // ✅ Augmenté de 12 à 16 pour englober FCFA
         borderRadius: 14,
-        gap: 4,
+        gap: 2, // ✅ Réduit de 4 à 2 pour rapprocher montant et devise
         borderWidth: 1,
         borderColor: '#E5E7EB',
         shadowColor: '#000',

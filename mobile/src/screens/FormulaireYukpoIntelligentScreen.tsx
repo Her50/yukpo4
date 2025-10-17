@@ -71,6 +71,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
   const [activeStep, setActiveStep] = useState(1);
   const [composants, setComposants] = useState<DynamicField[]>([]);
   const [loading, setLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false); // ✅ NOUVEAU: Protection contre double soumission
   const [valeursFormulaire, setValeursFormulaire] = useState<Record<string, any>>({});
   const [showGPSModal, setShowGPSModal] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: number } | null>(null);
@@ -365,8 +366,56 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     }
   };
 
-  // Charger les informations de contact du dernier service (comme le frontend)
+  // ✅ NOUVEAU: Charger les données du service en mode édition
   useEffect(() => {
+    const loadServiceData = async () => {
+      if (mode === 'edit' && serviceId) {
+        console.log('[FormulaireYukpoIntelligentScreen] 📝 Mode édition - Chargement du service:', serviceId);
+
+        try {
+          const response = await fetch(`https://yukpomnang.onrender.com/api/services/${serviceId}`, {
+            headers: { 'Authorization': `Bearer ${user?.token || ''}` }
+          });
+
+          if (response.ok) {
+            const serviceData = await response.json();
+            console.log('[FormulaireYukpoIntelligentScreen] ✅ Service chargé:', serviceData);
+
+            // Extraire et pré-remplir TOUS les champs du service
+            const formValues: Record<string, any> = {};
+
+            if (serviceData.data) {
+              Object.keys(serviceData.data).forEach(key => {
+                const value = serviceData.data[key];
+                formValues[key] = value?.valeur !== undefined ? value.valeur : value;
+              });
+            }
+
+            // ✅ S'assurer que les contacts sont bien chargés
+            formValues.whatsapp = serviceData.data?.whatsapp?.valeur || serviceData.whatsapp || '';
+            formValues.telephone = serviceData.data?.telephone?.valeur || serviceData.telephone || '';
+            formValues.email = serviceData.data?.email?.valeur || serviceData.email || '';
+            formValues.website = serviceData.data?.website?.valeur || serviceData.website || serviceData.siteweb || '';
+
+            console.log('[FormulaireYukpoIntelligentScreen] ✅ Contacts chargés:', {
+              whatsapp: formValues.whatsapp,
+              telephone: formValues.telephone,
+              email: formValues.email,
+              website: formValues.website
+            });
+
+            setValeursFormulaire(formValues);
+            setActiveStep(2); // Aller directement au formulaire
+          }
+        } catch (error) {
+          console.error('[FormulaireYukpoIntelligentScreen] Erreur chargement service:', error);
+        }
+      } else {
+        // Mode création : charger les contacts du dernier service
+        loadLastServiceContactInfo();
+      }
+    };
+
     const loadLastServiceContactInfo = async () => {
       if (!user?.id) return;
 
@@ -398,8 +447,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       }
     };
 
-    loadLastServiceContactInfo();
-  }, [user?.id]);
+    loadServiceData();
+  }, [user?.id, mode, serviceId]);
 
   // Traiter les données IA au chargement (comme le frontend)
   useEffect(() => {
@@ -883,7 +932,11 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
   // Soumettre le formulaire
   const soumettreFormulaire = async () => {
-    if (loading) return;
+    // ✅ Protection contre double soumission
+    if (loading || isSubmitting) {
+      console.log('[FormulaireYukpoIntelligentScreen] ⚠️ Soumission déjà en cours, ignorée');
+      return;
+    }
 
     // Validation des champs obligatoires avant soumission
     const validationErrors = validateRequiredFields();
@@ -970,11 +1023,24 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         '💰 Création de service',
         `Coût réel : ${coutReel.toLocaleString()} FCFA\nTokens consommés : ${tokensIAExterne.toLocaleString()}\nVotre solde : ${soldeActuel.toLocaleString()} FCFA\nSolde après création : ${(soldeActuel - coutReel).toLocaleString()} FCFA\n\nConfirmez-vous la création de ce service ?`,
         [
-          { text: 'Annuler', style: 'cancel' },
+          {
+            text: 'Annuler',
+            style: 'cancel',
+            onPress: () => {
+              setLoading(false); // ✅ Remettre loading à false si annulé
+            }
+          },
           {
             text: 'Confirmer',
             onPress: async () => {
+              // ✅ Protection contre double-clic sur le bouton Confirmer
+              if (isSubmitting) {
+                console.log('[FormulaireYukpoIntelligentScreen] ⚠️ Création déjà en cours, ignorée');
+                return;
+              }
+
               try {
+                setIsSubmitting(true);
                 console.log('[FormulaireYukpoIntelligentScreen] Création du service en cours...');
 
                 // 🔧 ÉTAPE 3 : Extraire le JSON structuré de la réponse IA (comme le frontend)
@@ -1028,10 +1094,14 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                 }
 
                 const result = await response.json();
-                console.log('[FormulaireYukpoIntelligentScreen] Service créé avec succès:', result);
+                console.log('[FormulaireYukpoIntelligentScreen] ✅ Service créé avec succès:', result);
 
                 setSuccessData({ serviceId: result.id || 'nouveau', cout: coutReel });
                 setShowSuccessToast(true);
+
+                // ✅ Marquer la soumission comme terminée
+                setIsSubmitting(false);
+                setLoading(false);
 
                 // Redirection après 3 secondes
                 setTimeout(() => {
@@ -1043,11 +1113,13 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                 }, 3000);
 
               } catch (innerError: any) {
-                console.error('[FormulaireYukpoIntelligentScreen] Erreur création:', innerError);
+                console.error('[FormulaireYukpoIntelligentScreen] ❌ Erreur création:', innerError);
                 Alert.alert(
                   'Erreur de création',
                   innerError.message || 'Impossible de créer le service. Vérifiez vos données et réessayez.'
                 );
+                // ✅ Remettre les flags à false en cas d'erreur
+                setIsSubmitting(false);
                 setLoading(false);
               }
             }
@@ -1058,9 +1130,11 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     } catch (error) {
       console.error('[FormulaireYukpoIntelligentScreen] Erreur soumission:', error);
       Alert.alert('Erreur', error instanceof Error ? error.message : 'Impossible de créer le service');
-    } finally {
+      // ✅ Remettre les flags à false en cas d'erreur avant l'Alert
       setLoading(false);
+      setIsSubmitting(false);
     }
+    // ✅ IMPORTANT : Ne pas mettre de finally ici car l'Alert gère loading séparément
   };
 
   return (
@@ -1302,12 +1376,16 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                     </TouchableOpacity>
                   ) : !isReadonly ? (
                     <TouchableOpacity
-                      style={[styles.navButton, styles.navButtonSuccess]}
+                      style={[
+                        styles.navButton,
+                        styles.navButtonSuccess,
+                        (loading || isSubmitting) && styles.navButtonDisabled // ✅ Désactiver visuellement pendant soumission
+                      ]}
                       onPress={soumettreFormulaire}
-                      disabled={loading}
+                      disabled={loading || isSubmitting} // ✅ Désactiver pendant loading OU soumission
                     >
                       <Text style={styles.navButtonTextSuccess}>
-                        {loading
+                        {(loading || isSubmitting)
                           ? (mode === 'edit' ? 'Modification...' : 'Création...')
                           : (mode === 'edit' ? 'Modifier le service' : 'Créer le service')
                         }

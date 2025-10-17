@@ -219,9 +219,9 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
                                     ]}
                                     onPress={() => setZoneType('point')}
                                 >
-                                    {/* ✅ Symbole plus parlant : target pour point précis */}
-                                    <SafeIcon name="crosshair" size={16} color={zoneType === 'point' ? '#FFFFFF' : modernColors.primary} />
-                                    <Text 
+                                    {/* ✅ Symbole très clair : map-pin pour un point précis */}
+                                    <Text style={{ fontSize: 18 }}>📍</Text>
+                                    <Text
                                         style={[
                                             styles.modeButtonText,
                                             zoneType === 'point' && styles.modeButtonTextActive
@@ -240,9 +240,9 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
                                         ]}
                                         onPress={() => setZoneType('polygon')}
                                     >
-                                        {/* ✅ Symbole plus parlant : polygon pour zone/surface */}
-                                        <SafeIcon name="hexagon" size={16} color={zoneType === 'polygon' ? '#FFFFFF' : modernColors.primary} />
-                                        <Text 
+                                        {/* ✅ Symbole très clair : zone délimitée */}
+                                        <Text style={{ fontSize: 18 }}>⬛</Text>
+                                        <Text
                                             style={[
                                                 styles.modeButtonText,
                                                 zoneType === 'polygon' && styles.modeButtonTextActive
@@ -288,10 +288,12 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
                                 onPress={handleGetCurrentLocation}
                                 disabled={loading}
                             >
-                                {/* ✅ Symbole plus parlant : navigation pour "ma position actuelle" */}
-                                <SafeIcon name="navigation" size={16} color="#FFFFFF" />
+                                {/* ✅ Symbole ultra clair : localiser */}
+                                <Text style={{ fontSize: 18, marginRight: 4 }}>
+                                    {loading ? '⏳' : '🎯'}
+                                </Text>
                                 <Text style={styles.gpsButtonText} numberOfLines={1}>
-                                    {loading ? '⏳' : '📍'}
+                                    Me localiser
                                 </Text>
                             </TouchableOpacity>
                         </View>

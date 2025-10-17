@@ -85,7 +85,7 @@ const YukpoServicesQuickAccess: React.FC<YukpoServicesQuickAccessProps> = ({
                 <Text style={styles.yukpoPo}>po</Text>
                 <Text style={styles.titleRest}> Services</Text>
             </Text>
-            <Text style={styles.subtitle}>Fonctionnalités à venir</Text>
+            {/* ✅ Texte "Fonctionnalités à venir" supprimé */}
 
             <ScrollView
                 horizontal
@@ -113,11 +113,7 @@ const YukpoServicesQuickAccess: React.FC<YukpoServicesQuickAccessProps> = ({
                             </Text>
                             <Text style={styles.serviceDescription}>{service.description}</Text>
 
-                            {service.comingSoon && (
-                                <View style={styles.badgeContainer}>
-                                    <Text style={styles.badgeText}>Bientôt</Text>
-                                </View>
-                            )}
+                            {/* ✅ Badge "Bientôt" supprimé pour interface plus épurée */}
                         </LinearGradient>
                     </TouchableOpacity>
                 ))}
@@ -176,8 +172,8 @@ const styles = StyleSheet.create({
         elevation: 3,
     },
     cardGradient: {
-        padding: 10,  // ✅ Réduit de 12 à 10
-        minHeight: 125,  // ✅ Réduit de 145 à 125
+        padding: 8,  // ✅ Réduit de 10 à 8
+        minHeight: 110,  // ✅ Réduit de 125 à 110
         justifyContent: 'space-between',
     },
     iconContainer: {

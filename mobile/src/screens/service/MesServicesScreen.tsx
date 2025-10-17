@@ -1,5 +1,5 @@
 ﻿import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native'; // ✅ Ajout useFocusEffect
 import * as React from "react";
 import { useEffect, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -28,6 +28,14 @@ const MesServicesScreen: React.FC = () => {
     useEffect(() => {
         loadServices();
     }, []);
+
+    // ✅ NOUVEAU: Rafraîchir la liste quand on revient sur l'écran
+    useFocusEffect(
+        React.useCallback(() => {
+            console.log('[MesServices] 🔄 Écran focus - Rafraîchissement de la liste...');
+            loadServices();
+        }, [])
+    );
 
     const loadServices = async () => {
         try {

@@ -4,6 +4,7 @@
  * IMPORTANT: Nécessite l'installation de react-native-webrtc
  * Voir WEBRTC_SETUP.md pour les instructions d'installation
  */
+import { Audio } from 'expo-av'; // ✅ Pour la sonnerie d'appel
 import React, { useEffect, useRef, useState } from 'react';
 import {
     Alert,
@@ -55,6 +56,9 @@ const WebRTCCallModal: React.FC<WebRTCCallModalProps> = ({
     const peerConnection = useRef<RTCPeerConnection | null>(null);
     const ws = useRef<WebSocket | null>(null);
 
+    // ✅ NOUVEAU: Sonnerie d'appel
+    const [ringSound, setRingSound] = useState<Audio.Sound | null>(null);
+
     const pulseAnim = useRef(new Animated.Value(1)).current;
     const callTimer = useRef<NodeJS.Timeout | null>(null);
 
@@ -74,12 +78,51 @@ const WebRTCCallModal: React.FC<WebRTCCallModalProps> = ({
             callTimer.current = setInterval(() => {
                 setCallDuration(prev => prev + 1);
             }, 1000);
+            
+            // ✅ Arrêter la sonnerie quand l'appel est accepté
+            stopRingTone();
         }
 
         return () => {
             if (callTimer.current) {
                 clearInterval(callTimer.current);
             }
+        };
+    }, [callState]);
+
+    // ✅ NOUVEAU: Jouer la sonnerie quand l'état passe à 'ringing'
+    useEffect(() => {
+        if (callState === 'ringing') {
+            playRingTone();
+            
+            // ✅ Animation de pulse pendant la sonnerie
+            const pulseAnimation = Animated.loop(
+                Animated.sequence([
+                    Animated.timing(pulseAnim, {
+                        toValue: 1.2,
+                        duration: 800,
+                        useNativeDriver: true,
+                    }),
+                    Animated.timing(pulseAnim, {
+                        toValue: 1,
+                        duration: 800,
+                        useNativeDriver: true,
+                    }),
+                ])
+            );
+            pulseAnimation.start();
+            
+            return () => {
+                pulseAnimation.stop();
+                pulseAnim.setValue(1);
+            };
+        } else if (callState === 'active' || callState === 'ended') {
+            stopRingTone();
+            pulseAnim.setValue(1);
+        }
+
+        return () => {
+            stopRingTone();
         };
     }, [callState]);
 
@@ -272,6 +315,9 @@ const WebRTCCallModal: React.FC<WebRTCCallModalProps> = ({
             clearInterval(callTimer.current);
         }
 
+        // ✅ Arrêter la sonnerie
+        stopRingTone();
+
         // Nettoyer les ressources WebRTC
         if (localStream) {
             localStream.getTracks().forEach(track => track.stop());
@@ -281,6 +327,47 @@ const WebRTCCallModal: React.FC<WebRTCCallModalProps> = ({
         }
         if (ws.current) {
             ws.current.close();
+        }
+    };
+
+    // ✅ NOUVEAU: Jouer la sonnerie d'appel
+    const playRingTone = async () => {
+        try {
+            console.log('[WebRTC] 🔔 Démarrage sonnerie...');
+            
+            // Configurer le mode audio
+            await Audio.setAudioModeAsync({
+                playsInSilentModeIOS: true,
+                staysActiveInBackground: true,
+                shouldDuckAndroid: false,
+            });
+
+            // Créer et jouer un son de sonnerie simple avec expo-av
+            const { sound } = await Audio.Sound.createAsync(
+                // Utiliser un son système par défaut ou générer un bip
+                { uri: 'https://www.soundjay.com/phone/sounds/phone-calling-1.mp3' },
+                { shouldPlay: true, isLooping: true, volume: 0.5 }
+            );
+            
+            setRingSound(sound);
+            console.log('[WebRTC] ✅ Sonnerie démarrée');
+        } catch (error) {
+            console.error('[WebRTC] Erreur sonnerie:', error);
+            // Fallback : vibration ou pas de son
+        }
+    };
+
+    // ✅ NOUVEAU: Arrêter la sonnerie
+    const stopRingTone = async () => {
+        try {
+            if (ringSound) {
+                console.log('[WebRTC] 🔕 Arrêt sonnerie');
+                await ringSound.stopAsync();
+                await ringSound.unloadAsync();
+                setRingSound(null);
+            }
+        } catch (error) {
+            console.error('[WebRTC] Erreur arrêt sonnerie:', error);
         }
     };
 
@@ -350,10 +437,22 @@ const WebRTCCallModal: React.FC<WebRTCCallModalProps> = ({
 
                     <Text style={styles.callStatus}>
                         {callState === 'connecting' && 'Connexion...'}
-                        {callState === 'ringing' && 'Appel en cours...'}
+                        {callState === 'ringing' && '🔔 Sonnerie en cours...'}
                         {callState === 'active' && formatDuration(callDuration)}
                         {callState === 'ended' && 'Appel terminé'}
                     </Text>
+                    
+                    {/* ✅ Indicateur sonore pendant ringing */}
+                    {callState === 'ringing' && (
+                        <View style={styles.ringingIndicator}>
+                            <Text style={styles.ringingText}>🔊 Appel en cours</Text>
+                            <View style={styles.soundWaves}>
+                                <Animated.View style={[styles.soundWave, { opacity: pulseAnim }]} />
+                                <Animated.View style={[styles.soundWave, { opacity: pulseAnim, animationDelay: 200 }]} />
+                                <Animated.View style={[styles.soundWave, { opacity: pulseAnim, animationDelay: 400 }]} />
+                            </View>
+                        </View>
+                    )}
 
                     {callType === 'video' && callState === 'active' && (
                         <Text style={styles.callType}>Appel vidéo</Text>
@@ -426,6 +525,19 @@ const WebRTCCallModal: React.FC<WebRTCCallModalProps> = ({
                             onPress={endCall}
                         >
                             <SafeIcon name="phone-off" size={32} color="#FFFFFF" />
+                        </TouchableOpacity>
+                    </View>
+                )}
+
+                {/* ✅ NOUVEAU: Bouton raccrocher pendant connecting/ringing */}
+                {(callState === 'connecting' || callState === 'ringing') && (
+                    <View style={styles.controlsConnecting}>
+                        <TouchableOpacity
+                            style={styles.endCallButtonLarge}
+                            onPress={endCall}
+                        >
+                            <SafeIcon name="phone-off" size={40} color="#FFFFFF" />
+                            <Text style={styles.endCallText}>Annuler l'appel</Text>
                         </TouchableOpacity>
                     </View>
                 )}
@@ -559,6 +671,57 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.3,
         shadowRadius: 8,
         elevation: 8,
+    },
+    // ✅ NOUVEAU: Contrôles pendant connecting/ringing
+    controlsConnecting: {
+        position: 'absolute',
+        bottom: 60,
+        left: 0,
+        right: 0,
+        alignItems: 'center',
+        paddingHorizontal: 40,
+    },
+    endCallButtonLarge: {
+        width: 180,
+        height: 70,
+        borderRadius: 35,
+        backgroundColor: modernColors.error,
+        justifyContent: 'center',
+        alignItems: 'center',
+        flexDirection: 'row',
+        gap: 12,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.4,
+        shadowRadius: 12,
+        elevation: 12,
+    },
+    endCallText: {
+        color: '#FFFFFF',
+        fontSize: 16,
+        fontWeight: '700',
+    },
+    // ✅ NOUVEAU: Indicateur de sonnerie
+    ringingIndicator: {
+        marginTop: 20,
+        alignItems: 'center',
+        gap: 12,
+    },
+    ringingText: {
+        color: modernColors.primary,
+        fontSize: 14,
+        fontWeight: '600',
+    },
+    soundWaves: {
+        flexDirection: 'row',
+        gap: 8,
+        alignItems: 'center',
+    },
+    soundWave: {
+        width: 4,
+        height: 30,
+        backgroundColor: modernColors.primary,
+        borderRadius: 2,
     },
     demoNote: {
         position: 'absolute',
