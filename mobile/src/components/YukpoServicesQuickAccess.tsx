@@ -31,8 +31,8 @@ const YukpoServicesQuickAccess: React.FC<YukpoServicesQuickAccessProps> = ({
         {
             id: 'sante',
             title: 'Santé',
-            icon: 'activity',
-            gradient: ['#EF4444', '#F87171'],
+            icon: 'heart',
+            gradient: ['#10B981', '#34D399'],
             description: 'Pharmacies de garde, banque de sang, spécialistes',
             comingSoon: true
         },
@@ -103,7 +103,7 @@ const YukpoServicesQuickAccess: React.FC<YukpoServicesQuickAccessProps> = ({
                             style={styles.cardGradient}
                         >
                             <View style={styles.iconContainer}>
-                                <SafeIcon name={service.icon} size={32} color="#FFFFFF" />
+                                <SafeIcon name={service.icon} size={28} color="#FFFFFF" />
                             </View>
 
                             <Text style={styles.serviceTitle}>
@@ -165,9 +165,9 @@ const styles = StyleSheet.create({
         paddingHorizontal: 4,
     },
     serviceCard: {
-        width: 150,
-        marginRight: 12,
-        borderRadius: 16,
+        width: 130,  // ✅ Réduit de 150 à 130
+        marginRight: 10,  // Réduit pour plus de compacité
+        borderRadius: 14,  // Légèrement réduit
         overflow: 'hidden',
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
@@ -176,24 +176,24 @@ const styles = StyleSheet.create({
         elevation: 3,
     },
     cardGradient: {
-        padding: 14,
-        minHeight: 160,
+        padding: 12,  // Réduit de 14 à 12
+        minHeight: 145,  // Réduit de 160 à 145
         justifyContent: 'space-between',
     },
     iconContainer: {
         alignSelf: 'flex-start',
-        marginBottom: 8,
+        marginBottom: 6,  // Réduit de 8 à 6
     },
     serviceTitle: {
-        fontSize: 15,
+        fontSize: 14,  // Réduit de 15 à 14
         fontWeight: '600',
         color: '#FFFFFF',
-        marginBottom: 6,
+        marginBottom: 4,  // Réduit de 6 à 4
     },
     serviceDescription: {
-        fontSize: 11,
+        fontSize: 10,  // Réduit de 11 à 10
         color: 'rgba(255, 255, 255, 0.9)',
-        lineHeight: 15,
+        lineHeight: 14,  // Réduit de 15 à 14
     },
     badgeContainer: {
         alignSelf: 'flex-start',
