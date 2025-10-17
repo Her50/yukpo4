@@ -5,7 +5,7 @@ use axum::{
     response::Json,
     http::StatusCode,
 };
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use serde_json::{json, Value};
 use crate::{
     state::AppState,

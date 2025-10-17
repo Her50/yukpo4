@@ -3,11 +3,10 @@ use std::sync::Arc;
 use axum::{
     routing::{post, patch},
     Router,
-    middleware,
 };
 use crate::{
     state::AppState,
-    middlewares::auth::auth_middleware,
+    middlewares::jwt::jwt_auth,
     controllers::push_controller,
 };
 
@@ -23,7 +22,7 @@ pub fn push_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route("/api/push/send", post(push_controller::send_push_notification))
         
         // Appliquer l'authentification à toutes les routes
-        .layer(middleware::from_fn_with_state(state.clone(), auth_middleware))
+        .layer(axum::middleware::from_fn_with_state(state.clone(), jwt_auth))
         .with_state(state)
 }
 

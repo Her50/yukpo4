@@ -3,19 +3,17 @@ use std::sync::Arc;
 use axum::{
     routing::post,
     Router,
-    middleware,
     extract::State,
     response::Json,
     Extension,
     http::StatusCode,
 };
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use serde_json::{json, Value};
 use crate::{
     state::AppState,
-    middlewares::auth::auth_middleware,
+    middlewares::jwt::{jwt_auth, AuthenticatedUser},
     services::{notification_service, push_notification_service},
-    middlewares::auth::AuthenticatedUser,
 };
 
 #[derive(Debug, Deserialize)]
@@ -102,7 +100,7 @@ pub fn chat_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route("/api/chat/notify-message", post(notify_new_message))
         
         // Appliquer l'authentification
-        .layer(middleware::from_fn_with_state(state.clone(), auth_middleware))
+        .layer(axum::middleware::from_fn_with_state(state.clone(), jwt_auth))
         .with_state(state)
 }
 
