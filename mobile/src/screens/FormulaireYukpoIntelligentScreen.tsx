@@ -1041,15 +1041,17 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                 // 🔧 ÉTAPE 5 : Créer le service avec les données structurées par l'IA
                 console.log('[FormulaireYukpoIntelligentScreen] Transmission tokens IA externe au backend:', tokensIAExterne);
 
-                const response = await fetch('https://yukpomnang.onrender.com/api/services', {
+                // ✅ CORRECTION : Utiliser /api/services/create comme dans le frontend
+                const response = await fetch('https://yukpomnang.onrender.com/api/services/create', {
                   method: 'POST',
                   headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${user?.token || ''}`
                   },
                   body: JSON.stringify({
+                    user_id: user?.id,
                     ...finalServiceData,
-                    tokens_ia_externe: tokensIAExterne // Transmettre les tokens IA externes
+                    ...(tokensIAExterne && { tokens_ia_externe: tokensIAExterne }) // Transmettre les tokens IA externes
                   })
                 });
 
