@@ -22,6 +22,7 @@ use crate::{
         weather_routes::weather_routes,
         nearby_services_routes::nearby_services_routes,
         ai_chat_routes::ai_chat_routes,
+        notification_routes::notification_routes, // ✅ NOUVEAU: Routes de notifications
     },
     core::types::{AppResult, AppError},
     services::creer_service,
@@ -142,7 +143,8 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
     let mobile_routes = Router::<Arc<AppState>>::new()
         .merge(weather_routes(state.clone()))
         .merge(nearby_services_routes(state.clone()))
-        .merge(ai_chat_routes(state.clone()));
+        .merge(ai_chat_routes(state.clone()))
+        .merge(notification_routes(state.clone())); // ✅ NOUVEAU: Routes de notifications
     
     // Combinaison des routes
     public_routes.merge(protected_routes).merge(mobile_routes).with_state(state)

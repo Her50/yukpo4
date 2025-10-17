@@ -14,6 +14,7 @@ pub mod image_search_routes;
 pub mod weather_routes;
 pub mod nearby_services_routes;
 pub mod ai_chat_routes;
+pub mod notification_routes; // ✅ NOUVEAU: Routes de notifications
 
 // === Routes d'Optimisation IA ===
 // pub mod ia_routes_optimized; // Temporairement d?sactiv?

@@ -846,6 +846,38 @@ pub async fn creer_service(
     log::info!("[CREER_SERVICE] Tokens consommés pour utilisateur {}: {:?}", user_id, token_tracker);
     log::info!("[CREER_SERVICE] Total tokens retournés: {} (type: u32)", token_tracker.total_tokens);
     
+    // ✅ NOUVEAU: Créer une notification de création de service
+    let service_title = data_obj.get("titre_service")
+        .or_else(|| data_obj.get("titre"))
+        .and_then(|v| {
+            if let Some(obj) = v.as_object() {
+                obj.get("valeur").and_then(|val| val.as_str())
+            } else {
+                v.as_str()
+            }
+        })
+        .unwrap_or("Votre service");
+    
+    let notification_data = serde_json::json!({
+        "service_id": service_id,
+        "service_title": service_title,
+        "tokens_consumed": token_tracker.total_tokens
+    });
+    
+    // Créer la notification (ne pas bloquer si ça échoue)
+    if let Err(e) = crate::services::notification_service::create_notification(
+        pool,
+        user_id,
+        crate::services::notification_service::NotificationType::ServiceCreated,
+        "🎉 Service créé avec succès !".to_string(),
+        format!("Votre service '{}' a été créé et est maintenant visible par tous les utilisateurs.", service_title),
+        Some(notification_data),
+    ).await {
+        log::warn!("[CREER_SERVICE] Impossible de créer la notification: {}", e);
+    } else {
+        log::info!("[CREER_SERVICE] ✅ Notification de création envoyée");
+    }
+    
     Ok((service_creation_result, token_tracker.total_tokens as u32))
 }
 

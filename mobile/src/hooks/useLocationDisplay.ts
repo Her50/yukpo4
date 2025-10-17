@@ -246,19 +246,34 @@ export const useLocationDisplay = (service: any, serviceCreatorInfo?: any): UseL
 
                 // PRIORITÉ 1: GPS fixe du service (coordonnées choisies par le prestataire)
                 const gpsFixe = getFieldValue(service.data?.gps_fixe);
-                console.log('📍 [useLocationDisplay] GPS fixe du service:', gpsFixe);
+                console.log('📍 [useLocationDisplay] ==================');
+                console.log('📍 [useLocationDisplay] ANALYSE GPS POUR SERVICE ID:', service.id);
+                console.log('📍 [useLocationDisplay] GPS fixe brut:', service.data?.gps_fixe);
+                console.log('📍 [useLocationDisplay] GPS fixe après getFieldValue:', gpsFixe);
+                console.log('📍 [useLocationDisplay] Type:', typeof gpsFixe);
 
-                if (gpsFixe && gpsFixe !== 'Non spécifié' && gpsFixe.includes(',')) {
+                if (gpsFixe && gpsFixe !== 'Non spécifié' && gpsFixe !== '' && gpsFixe.includes(',')) {
                     // Gérer aussi les zones (polygones avec |)
                     const firstPoint = gpsFixe.split('|')[0]; // Prendre le premier point si c'est une zone
                     const coords = firstPoint.split(',').map(coord => parseFloat(coord.trim()));
+                    console.log('📍 [useLocationDisplay] Coordonnées parsées:', coords);
+                    
                     if (coords.length === 2 && !isNaN(coords[0]) && !isNaN(coords[1])) {
                         coordinates = { lat: coords[0], lng: coords[1] };
-                        console.log('✅ [useLocationDisplay] GPS fixe valide:', gpsFixe);
+                        console.log('✅ [useLocationDisplay] GPS FIXE UTILISÉ:', gpsFixe);
+                        console.log('✅ [useLocationDisplay] Coordonnées:', coordinates);
                         location = await convertGpsToLocation(`${coords[0]},${coords[1]}`);
                         source = 'service';
                         isRealTime = false; // GPS fixe n'est pas en temps réel
+                    } else {
+                        console.warn('⚠️ [useLocationDisplay] GPS fixe invalide (NaN):', coords);
                     }
+                } else {
+                    console.warn('⚠️ [useLocationDisplay] GPS fixe non utilisable:', {
+                        exists: !!gpsFixe,
+                        value: gpsFixe,
+                        hasComma: gpsFixe?.includes(',')
+                    });
                 }
 
                 // PRIORITÉ 2: GPS du service lui-même (champ gps standard)

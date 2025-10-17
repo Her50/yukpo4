@@ -617,6 +617,45 @@ pub async fn toggle_service_status(
     match result {
         Ok(Some(_)) => {
             info!("[toggle_service_status] Statut mis ? jour avec succ?s");
+            
+            // ✅ NOUVEAU: Créer une notification d'activation/désactivation
+            let notification_type = if is_active {
+                crate::services::notification_service::NotificationType::ServiceActivated
+            } else {
+                crate::services::notification_service::NotificationType::ServiceDeactivated
+            };
+            
+            let (title, message) = if is_active {
+                (
+                    "✅ Service activé".to_string(),
+                    "Votre service a été activé et est maintenant visible par tous les utilisateurs.".to_string()
+                )
+            } else {
+                (
+                    "⏸️ Service désactivé".to_string(),
+                    "Votre service a été désactivé et n'est plus visible dans les recherches.".to_string()
+                )
+            };
+            
+            let notification_data = serde_json::json!({
+                "service_id": service_id,
+                "is_active": is_active
+            });
+            
+            // Créer la notification (ne pas bloquer si ça échoue)
+            tokio::spawn(async move {
+                if let Err(e) = crate::services::notification_service::create_notification(
+                    pg_pool,
+                    user_id,
+                    notification_type,
+                    title,
+                    message,
+                    Some(notification_data),
+                ).await {
+                    log::warn!("[toggle_service_status] Impossible de créer la notification: {}", e);
+                }
+            });
+            
             (StatusCode::OK, Json(json!({
                 "success": true,
                 "message": if is_active { "Service activ?" } else { "Service d?sactiv?" }
