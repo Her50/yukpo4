@@ -219,7 +219,8 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
                                     ]}
                                     onPress={() => setZoneType('point')}
                                 >
-                                    <SafeIcon name="map-pin" size={14} color={zoneType === 'point' ? '#FFFFFF' : modernColors.primary} />
+                                    {/* ✅ Symbole plus parlant : target pour point précis */}
+                                    <SafeIcon name="crosshair" size={16} color={zoneType === 'point' ? '#FFFFFF' : modernColors.primary} />
                                     <Text 
                                         style={[
                                             styles.modeButtonText,
@@ -239,7 +240,8 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
                                         ]}
                                         onPress={() => setZoneType('polygon')}
                                     >
-                                        <SafeIcon name="map" size={14} color={zoneType === 'polygon' ? '#FFFFFF' : modernColors.primary} />
+                                        {/* ✅ Symbole plus parlant : polygon pour zone/surface */}
+                                        <SafeIcon name="hexagon" size={16} color={zoneType === 'polygon' ? '#FFFFFF' : modernColors.primary} />
                                         <Text 
                                             style={[
                                                 styles.modeButtonText,
@@ -286,9 +288,10 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
                                 onPress={handleGetCurrentLocation}
                                 disabled={loading}
                             >
-                                <SafeIcon name="map-pin" size={16} color="#FFFFFF" />
+                                {/* ✅ Symbole plus parlant : navigation pour "ma position actuelle" */}
+                                <SafeIcon name="navigation" size={16} color="#FFFFFF" />
                                 <Text style={styles.gpsButtonText} numberOfLines={1}>
-                                    {loading ? 'Chargement...' : 'Ma Position'}
+                                    {loading ? '⏳' : '📍'}
                                 </Text>
                             </TouchableOpacity>
                         </View>

@@ -103,7 +103,7 @@ const YukpoServicesQuickAccess: React.FC<YukpoServicesQuickAccessProps> = ({
                             style={styles.cardGradient}
                         >
                             <View style={styles.iconContainer}>
-                                <SafeIcon name={service.icon} size={28} color="#FFFFFF" />
+                                <SafeIcon name={service.icon} size={24} color="#FFFFFF" />
                             </View>
 
                             <Text style={styles.serviceTitle}>
@@ -165,9 +165,9 @@ const styles = StyleSheet.create({
         paddingHorizontal: 4,
     },
     serviceCard: {
-        width: 130,  // ✅ Réduit de 150 à 130
-        marginRight: 10,  // Réduit pour plus de compacité
-        borderRadius: 14,  // Légèrement réduit
+        width: 115,  // ✅ Réduit de 130 à 115
+        marginRight: 8,  // ✅ Réduit de 10 à 8
+        borderRadius: 12,  // ✅ Réduit de 14 à 12
         overflow: 'hidden',
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
@@ -176,24 +176,24 @@ const styles = StyleSheet.create({
         elevation: 3,
     },
     cardGradient: {
-        padding: 12,  // Réduit de 14 à 12
-        minHeight: 145,  // Réduit de 160 à 145
+        padding: 10,  // ✅ Réduit de 12 à 10
+        minHeight: 125,  // ✅ Réduit de 145 à 125
         justifyContent: 'space-between',
     },
     iconContainer: {
         alignSelf: 'flex-start',
-        marginBottom: 6,  // Réduit de 8 à 6
+        marginBottom: 4,  // ✅ Réduit de 6 à 4
     },
     serviceTitle: {
-        fontSize: 14,  // Réduit de 15 à 14
+        fontSize: 13,  // ✅ Réduit de 14 à 13
         fontWeight: '600',
         color: '#FFFFFF',
-        marginBottom: 4,  // Réduit de 6 à 4
+        marginBottom: 3,  // ✅ Réduit de 4 à 3
     },
     serviceDescription: {
-        fontSize: 10,  // Réduit de 11 à 10
+        fontSize: 9,  // ✅ Réduit de 10 à 9
         color: 'rgba(255, 255, 255, 0.9)',
-        lineHeight: 14,  // Réduit de 15 à 14
+        lineHeight: 13,  // ✅ Réduit de 14 à 13
     },
     badgeContainer: {
         alignSelf: 'flex-start',

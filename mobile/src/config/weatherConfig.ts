@@ -6,11 +6,20 @@ const BACKEND_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
 // Fonction pour récupérer la clé API depuis le backend
 export const getWeatherApiKey = async (): Promise<string> => {
     try {
-        const response = await fetch(`${BACKEND_URL}/api/weather/config`);
+        // ✅ CORRECTION : L'endpoint backend est /weather/config (pas /api/weather/config)
+        const response = await fetch(`${BACKEND_URL}/weather/config`);
+
+        if (!response.ok) {
+            console.warn('[Weather] Erreur récupération config:', response.status);
+            return 'YOUR_OPENWEATHER_API_KEY';
+        }
+
         const data = await response.json();
+        console.log('[Weather] Clé API récupérée depuis le backend:', data.apiKey ? 'Oui' : 'Non');
+
         return data.apiKey || 'YOUR_OPENWEATHER_API_KEY';
     } catch (error) {
-        console.warn('Impossible de récupérer la clé API depuis le backend, utilisation de la clé par défaut');
+        console.warn('[Weather] Impossible de récupérer la clé API depuis le backend:', error);
         return 'YOUR_OPENWEATHER_API_KEY';
     }
 };

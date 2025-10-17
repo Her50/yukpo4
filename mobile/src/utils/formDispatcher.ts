@@ -111,20 +111,15 @@ function createFieldComponent(fieldName: string, fieldData: any): DynamicField |
           placeholder: `Entrez votre ${label.toLowerCase()}`,
           value: valeur || ''
         };
-      } else if (fieldName === 'category') {
-        return {
-          type: 'select',
-          label,
-          name: fieldName,
-          options: ['Informatique', 'Marketing', 'Design', 'Écriture', 'Traduction', 'Autre'],
-          value: valeur || ''
-        };
       } else {
+        // ✅ CORRECTION : Traiter category comme un simple champ texte
+        // On récupère juste la valeur du backend sans liste de sélection
         return {
           type: 'text',
           label,
           name: fieldName,
           placeholder: `Entrez votre ${label.toLowerCase()}`,
+          required: fieldName === 'category' || fieldName === 'titre_service', // Champs obligatoires
           value: valeur || ''
         };
       }
@@ -178,10 +173,11 @@ function generateDefaultComponents(): DynamicField[] {
       value: ''
     },
     {
-      type: 'select',
+      // ✅ CORRECTION : category est maintenant un simple champ texte
+      type: 'text',
       label: 'Catégorie',
       name: 'category',
-      options: ['Informatique', 'Marketing', 'Design', 'Écriture', 'Traduction', 'Autre'],
+      placeholder: 'Ex: Restauration, Technologie, Santé...',
       required: true,
       value: ''
     },

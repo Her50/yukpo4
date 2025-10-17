@@ -562,21 +562,21 @@ const styles = StyleSheet.create({
         paddingBottom: 100, // Espace pour la navigation
     },
     header: {
-        marginBottom: 24,
+        marginBottom: 16, // ✅ Réduit de 24 à 16
     },
     headerRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
         paddingHorizontal: 4,
-        gap: 12, // Espacement plus généreux entre les éléments
-        marginBottom: 8, // Ajout d'un espacement en bas
+        gap: 8, // ✅ Réduit de 12 à 8 pour équilibrer les espacements
+        marginBottom: 6, // ✅ Réduit de 8 à 6
     },
     avatarContainer: {
         flex: 0,
-        width: 52, // Légèrement réduit pour équilibrer
-        height: 52,
-        marginRight: 4, // Espacement spécifique après l'avatar
+        width: 48, // ✅ Réduit de 52 à 48
+        height: 48, // ✅ Réduit de 52 à 48
+        marginRight: 8, // ✅ Augmenté de 4 à 8 pour équilibrer avec le solde
     },
     headerTop: {
         flexDirection: 'row',
@@ -628,9 +628,9 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         backgroundColor: 'rgba(255, 255, 255, 0.9)',
-        paddingHorizontal: 8,
-        paddingVertical: 6,
-        borderRadius: 12,
+        paddingHorizontal: 7, // ✅ Réduit de 8 à 7
+        paddingVertical: 5, // ✅ Réduit de 6 à 5
+        borderRadius: 10, // ✅ Réduit de 12 à 10
         borderWidth: 1,
         borderColor: 'rgba(255, 255, 255, 0.3)',
         shadowColor: '#000',
@@ -639,25 +639,25 @@ const styles = StyleSheet.create({
         shadowRadius: 4,
         elevation: 3,
         marginHorizontal: 2,
-        marginLeft: 8, // Décalé vers la gauche
+        marginLeft: 8, // ✅ Équilibré
     },
     weatherContainer: {
         flex: 0.8,
         marginHorizontal: 2,
-        marginLeft: 8, // Décalé vers la gauche pour éviter le collage avec les notifications
-        marginRight: 8, // Ajout d'une marge à droite pour séparer des notifications
+        marginLeft: 8, // ✅ Équilibré
+        marginRight: 8,
     },
     headerActionsCompact: {
         flexDirection: 'row',
         gap: 6,
         flex: 0,
-        marginLeft: 4, // Espacement réduit mais suffisant
-        marginRight: 2, // Espacement à droite
+        marginLeft: 8, // ✅ Augmenté de 4 à 8 pour équilibrer
+        marginRight: 2,
     },
     headerButtonCompact: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
+        width: 38, // ✅ Réduit de 40 à 38
+        height: 38, // ✅ Réduit de 40 à 38
+        borderRadius: 19, // ✅ Ajusté proportionnellement
         backgroundColor: '#FFFFFF',
         justifyContent: 'center',
         alignItems: 'center',
@@ -669,8 +669,8 @@ const styles = StyleSheet.create({
         elevation: 2,
     },
     headerButtonIconCompact: {
-        fontSize: 20, // Augmenté pour meilleure visibilité
-        color: '#4F46E5', // Couleur indigo pour contraste
+        fontSize: 18, // ✅ Réduit de 20 à 18
+        color: '#4F46E5',
     },
     notificationBadgeCompact: {
         position: 'absolute',
@@ -693,12 +693,12 @@ const styles = StyleSheet.create({
         textAlign: 'center',
     },
     balanceIconCompact: {
-        fontSize: 12,
-        marginRight: 4,
+        fontSize: 11, // ✅ Réduit de 12 à 11
+        marginRight: 3, // ✅ Réduit de 4 à 3
     },
     balanceTextCompact: {
-        color: '#1F2937', // Gris foncé pour meilleur contraste
-        fontSize: 10,
+        color: '#1F2937',
+        fontSize: 9, // ✅ Réduit de 10 à 9
         fontWeight: '600',
     },
     balanceIcon: {
@@ -725,8 +725,8 @@ const styles = StyleSheet.create({
     },
     titleContainerCompact: {
         alignItems: 'center',
-        marginBottom: 16, // Réduit pour rapprocher du contenu
-        marginTop: 4, // Espacement après l'en-tête
+        marginBottom: 10, // ✅ Réduit de 16 à 10 pour monter le bloc
+        marginTop: 0, // ✅ Réduit de 4 à 0 pour monter le bloc
     },
     brandTitle: {
         fontSize: 48,
@@ -738,9 +738,9 @@ const styles = StyleSheet.create({
         textShadowRadius: 4,
     },
     brandTitleCompact: {
-        fontSize: 42,
+        fontSize: 38, // ✅ Réduit de 42 à 38
         fontWeight: '900',
-        marginBottom: 8,
+        marginBottom: 6, // ✅ Réduit de 8 à 6
         textAlign: 'center',
         textShadowColor: 'rgba(0, 0, 0, 0.3)',
         textShadowOffset: { width: 0, height: 2 },
@@ -763,11 +763,11 @@ const styles = StyleSheet.create({
         textShadowRadius: 2,
     },
     subtitleCompact: {
-        fontSize: 16,
+        fontSize: 14, // ✅ Réduit de 16 à 14
         color: '#374151',
         textAlign: 'center',
         fontWeight: '600',
-        lineHeight: 20,
+        lineHeight: 18, // ✅ Réduit de 20 à 18
     },
     modeSelector: {
         flexDirection: 'row',
@@ -788,7 +788,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#FFFFFF',
         borderRadius: 12,
         padding: 2,
-        marginBottom: 20,
+        marginBottom: 12, // ✅ Réduit de 20 à 12 pour monter le bloc
         borderWidth: 1,
         borderColor: '#E5E7EB',
         shadowColor: '#000',

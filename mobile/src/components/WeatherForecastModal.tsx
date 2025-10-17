@@ -212,7 +212,7 @@ const WeatherForecastModal: React.FC<WeatherForecastModalProps> = ({
             const mockForecast: WeatherForecast[] = [];
             const { descriptions, icons, temperatureRange, humidityRange, windSpeedRange } = WEATHER_CONFIG.MOCK_DATA;
 
-            console.log('[WeatherForecastModal] Génération de', requestedDays, 'jours de données mockées');
+            console.log('[WeatherForecastModal] ✅ Génération de', requestedDays, 'jours de données mockées');
 
             for (let i = 0; i < requestedDays; i++) {
                 const date = new Date();
@@ -234,10 +234,11 @@ const WeatherForecastModal: React.FC<WeatherForecastModalProps> = ({
                 };
 
                 mockForecast.push(mockDay);
-                console.log('[WeatherForecastModal] Jour', i + 1, 'généré:', mockDay.day, mockDay.temperature.max + '°C');
             }
 
-            console.log('[WeatherForecastModal] Données mockées générées:', mockForecast.length, 'jours');
+            console.log('[WeatherForecastModal] ✅ Données mockées générées:', mockForecast.length, 'jours');
+            console.log('[WeatherForecastModal] 📅 Plage:', mockForecast[0]?.day, 'à', mockForecast[mockForecast.length - 1]?.day);
+
             setForecast(mockForecast);
             setError(null); // Pas d'erreur, on utilise les données mockées
         } finally {

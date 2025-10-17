@@ -110,13 +110,16 @@ export const NativeGradient: React.FC<NativeGradientProps> = ({
 };
 
 // Input natif
-interface NativeInputProps {
+export interface NativeInputProps {
     placeholder?: string;
     value?: string;
     onChangeText?: (text: string) => void;
     secureTextEntry?: boolean;
     style?: any;
     multiline?: boolean;
+    keyboardType?: any; // ✅ Ajout pour supporter différents types de clavier
+    autoCapitalize?: any; // ✅ Ajout pour contrôler la capitalisation
+    autoCorrect?: boolean; // ✅ Ajout pour contrôler l'auto-correction
 }
 
 export const NativeInput: React.FC<NativeInputProps> = ({
@@ -125,7 +128,10 @@ export const NativeInput: React.FC<NativeInputProps> = ({
     onChangeText,
     secureTextEntry,
     style,
-    multiline
+    multiline,
+    keyboardType,
+    autoCapitalize,
+    autoCorrect
 }) => {
     return (
         <View style={[styles.inputContainer, style]}>
@@ -136,6 +142,9 @@ export const NativeInput: React.FC<NativeInputProps> = ({
                 onChangeText={onChangeText}
                 secureTextEntry={secureTextEntry}
                 multiline={multiline}
+                keyboardType={keyboardType}
+                autoCapitalize={autoCapitalize}
+                autoCorrect={autoCorrect}
                 placeholderTextColor={modernColors.textSecondary}
             />
         </View>

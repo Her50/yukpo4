@@ -59,11 +59,11 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
   const mediaData = (route.params as any)?.mediaData || {};
   const gpsData = (route.params as any)?.gpsData || {};
   const type = (route.params as any)?.type || '';
-  const mode = (route.params as any)?.mode || 'edit';
+  const mode = (route.params as any)?.mode || 'create'; // ✅ Par défaut 'create' au lieu de 'edit'
   const serviceId = (route.params as any)?.serviceId;
   const fromMesServices = (route.params as any)?.fromMesServices || false;
   const readonlyParam = (route.params as any)?.readonly || false;
-  
+
   // ✅ Déterminer si on est en mode lecture seule
   const isReadonly = mode === 'readonly' || mode === 'view' || readonlyParam;
 
@@ -318,7 +318,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     currentBlockData.fields.forEach(field => {
       const value = valeursFormulaire[field.name];
       const validation = validateField(field, value);
-      
+
       if (!validation.isValid) {
         errors.push(validation.error);
         newFieldErrors[field.name] = validation.error;
@@ -332,11 +332,11 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
   const goToNextBlock = () => {
     // Valider le bloc actuel avant de passer au suivant
     const validation = validateCurrentBlock();
-    
+
     if (!validation.isValid) {
       // Afficher les erreurs dans les champs
       setFieldErrors(validation.fieldErrors);
-      
+
       Alert.alert(
         'Champs invalides',
         validation.errors.join('\n\n'),
@@ -435,6 +435,21 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           : suggestion.data.category;
         initialValues.category = categoryValue;
         console.log('[FormulaireYukpoIntelligentScreen] Catégorie chargée:', categoryValue);
+      }
+
+      // ✅ NOUVEAU: Pré-remplir le GPS depuis ChatInputMobile si disponible
+      if (gpsData && gpsData.gps_fixe) {
+        initialValues.gps_fixe = gpsData.gps_fixe;
+        console.log('[FormulaireYukpoIntelligentScreen] ✅ GPS fixe pré-rempli depuis ChatInputMobile:', gpsData.gps_fixe);
+
+        // Parser pour afficher dans le state local aussi
+        const firstPoint = gpsData.gps_fixe.split('|')[0].split(',');
+        if (firstPoint.length === 2) {
+          const lat = parseFloat(firstPoint[0]);
+          const lng = parseFloat(firstPoint[1]);
+          setSelectedLocation({ lat, lng });
+          console.log('[FormulaireYukpoIntelligentScreen] ✅ Position GPS définie:', { lat, lng });
+        }
       }
 
       console.log('[FormulaireYukpoIntelligentScreen] Valeurs initiales automatiques:', initialValues);
@@ -731,77 +746,16 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     switch (field.type) {
       case 'select':
       case 'dropdown':
-        // Gérer particulièrement le champ category - utiliser les options du backend
-        if (field.name === 'category') {
-          // Utiliser les options du champ s'il y en a, sinon utiliser les catégories par défaut
-          const categories = field.options && field.options.length > 0 ? field.options : [
-            'Services automobiles',
-            'Immobilier',
-            'Éducation',
-            'Santé',
-            'Technologie',
-            'Restauration',
-            'Événementiel',
-            'Commerce',
-            'Services professionnels',
-            'Artisanat',
-            'Transport',
-            'Loisirs',
-            'Autres'
-          ];
-
-          return (
-            <View key={field.name} style={styles.fieldContainer}>
-              <Text style={styles.fieldLabel}>
-                {field.label} {field.required && <Text style={styles.required}>*</Text>}
-              </Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryScroll}>
-                <View style={styles.categoryButtons}>
-                  {categories.map((cat) => (
-                    <TouchableOpacity
-                      key={cat}
-                      style={[
-                        styles.categoryButton,
-                        valeursFormulaire[field.name] === cat && styles.categoryButtonActive
-                      ]}
-                      onPress={() => handleFieldChange(field.name, cat)}
-                      disabled={isReadonly}
-                    >
-                      <Text style={[
-                        styles.categoryButtonText,
-                        valeursFormulaire[field.name] === cat && styles.categoryButtonTextActive
-                      ]}>
-                        {cat}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </ScrollView>
-            </View>
-          );
-        }
+        // ✅ CORRECTION : Ne plus traiter category comme un select
+        // Tous les champs select/dropdown autres que category sont ignorés pour l'instant
+        // category est maintenant un simple champ texte (traité dans case 'text')
         return null;
 
       case 'text':
       case 'email':
       case 'url':
-        // Déterminer le type de clavier en fonction du champ
-        let keyboardType: any = 'default';
-        let autoCapitalize: any = 'sentences';
-        
-        if (field.type === 'email' || field.name === 'email') {
-          keyboardType = 'email-address';
-          autoCapitalize = 'none';
-        } else if (field.type === 'url' || field.name === 'website') {
-          keyboardType = 'url';
-          autoCapitalize = 'none';
-        } else if (field.name === 'whatsapp' || field.name === 'telephone') {
-          keyboardType = 'phone-pad';
-          autoCapitalize = 'none';
-        }
-        
         const hasError = fieldErrors[field.name];
-        
+
         return (
           <View key={field.name} style={styles.fieldContainer}>
             <Text style={styles.fieldLabel}>
@@ -822,9 +776,6 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                 }
               }}
               style={[styles.fieldInput, hasError && styles.fieldInputError]}
-              keyboardType={keyboardType}
-              autoCapitalize={autoCapitalize}
-              autoCorrect={false}
             />
             {hasError && (
               <Text style={styles.fieldErrorText}>⚠️ {hasError}</Text>
@@ -857,7 +808,6 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
               value={valeursFormulaire[field.name]?.toString() || ''}
               onChangeText={(text) => handleFieldChange(field.name, text)}
               style={styles.fieldInput}
-              keyboardType="numeric"
             />
           </View>
         );
@@ -967,7 +917,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       console.log('[FormulaireYukpoIntelligentScreen] Données brutes pour génération IA:', donneesService);
 
       // Appeler l'IA pour générer le JSON structuré (comptabilise les tokens)
-      const iaResponse = await fetch('https://yukpomnang.onrender.com/api/ia/generate-service', {
+      // ✅ CORRECTION : Utiliser /api/ia/creation-service qui existe dans le backend
+      const iaResponse = await fetch('https://yukpomnang.onrender.com/api/ia/creation-service', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1125,12 +1076,12 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         <View style={styles.headerCenter}>
           <Text style={styles.headerTitle}>
             {isReadonly ? 'Consultation' :
-              mode === 'edit' && fromMesServices ? 'Modification' :
+              mode === 'edit' ? 'Modification' :
                 'Formulaire Intelligent'}
           </Text>
           <Text style={styles.headerSubtitle}>
             {isReadonly ? 'Mode lecture seule' :
-              mode === 'edit' && fromMesServices ? 'Modification en cours' :
+              mode === 'edit' ? 'Modification en cours' :
                 'Propulsé par l\'IA Yukpo'}
           </Text>
         </View>
@@ -1356,8 +1307,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                       disabled={loading}
                     >
                       <Text style={styles.navButtonTextSuccess}>
-                        {loading 
-                          ? (mode === 'edit' ? 'Modification...' : 'Création...') 
+                        {loading
+                          ? (mode === 'edit' ? 'Modification...' : 'Création...')
                           : (mode === 'edit' ? 'Modifier le service' : 'Créer le service')
                         }
                       </Text>
@@ -1822,36 +1773,6 @@ const styles = StyleSheet.create({
   hintBold: {
     fontWeight: '600',
     color: modernColors.text,
-  },
-  // Styles pour le champ category
-  categoryScroll: {
-    maxHeight: 200,
-  },
-  categoryButtons: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  categoryButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 20,
-    backgroundColor: modernColors.background,
-    borderWidth: 1,
-    borderColor: modernColors.border,
-  },
-  categoryButtonActive: {
-    backgroundColor: modernColors.primary,
-    borderColor: modernColors.primary,
-  },
-  categoryButtonText: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: modernColors.textSecondary,
-  },
-  categoryButtonTextActive: {
-    color: '#FFFFFF',
-    fontWeight: '600',
   },
   // Style pour le ScrollView horizontal du blockNavigation
   blockNavigationScrollView: {

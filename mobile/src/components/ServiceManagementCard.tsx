@@ -516,10 +516,10 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         backgroundColor: '#F8F9FA',
-        paddingHorizontal: 16,
-        paddingVertical: 12,
-        borderRadius: 12,
-        gap: 6,
+        paddingHorizontal: 10, // ✅ Réduit de 16 à 10
+        paddingVertical: 8, // ✅ Réduit de 12 à 8
+        borderRadius: 10, // ✅ Réduit de 12 à 10
+        gap: 4, // ✅ Réduit de 6 à 4
         flex: 1,
         borderWidth: 1,
         borderColor: '#E5E7EB',
@@ -534,15 +534,15 @@ const styles = StyleSheet.create({
         borderColor: '#F59E0B',
     },
     editButton: {
-        backgroundColor: '#EBF8FF',
+        backgroundColor: '#EFF6FF', // ✅ Couleur plus légère
         borderColor: '#3B82F6',
     },
     viewButton: {
-        backgroundColor: '#F0FDF4',
+        backgroundColor: '#F0FDF4', // Conservé - déjà léger
         borderColor: '#10B981',
     },
     shareButton: {
-        backgroundColor: '#FDF4FF',
+        backgroundColor: '#FAF5FF', // ✅ Couleur plus légère
         borderColor: '#8B5CF6',
     },
     activateButton: {
@@ -558,10 +558,10 @@ const styles = StyleSheet.create({
         borderColor: '#EF4444',
     },
     actionIcon: {
-        fontSize: 14,
+        fontSize: 12, // ✅ Réduit de 14 à 12
     },
     actionText: {
-        fontSize: 12,
+        fontSize: 10, // ✅ Réduit de 12 à 10
         color: theme.colors.text,
         fontWeight: '500',
     },
