@@ -5,6 +5,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
 import React, { useEffect, useRef, useState } from 'react';
 import {
+    ActivityIndicator,
     Alert,
     Animated,
     Image,
@@ -15,6 +16,7 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+import { uploadToCloud, uploadMultipleToCloud } from '../services/cloudUpload';
 import ModernGPSModal from './ModernGPSModal'; // Utiliser ModernGPSModal pour support des zones
 
 interface ChatInputMobileProps {
@@ -45,6 +47,8 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = ({
     const [showGPSModal, setShowGPSModal] = useState(false);
     const [gpsData, setGpsData] = useState<{ lat: number; lng: number; address?: string } | null>(null);
     const [gpsString, setGpsString] = useState<string>(''); // Format: "lat,lng" ou "lat1,lng1|lat2,lng2|..."
+    const [isUploading, setIsUploading] = useState(false);
+    const [uploadProgress, setUploadProgress] = useState<string>('');
 
     // Animations pour l'enregistrement audio
     const pulseAnim = useRef(new Animated.Value(1)).current;
@@ -120,11 +124,46 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = ({
             base64: true,
         });
 
-        if (!result.canceled) {
-            const newImages = result.assets
-                .filter(asset => asset.base64)
-                .map(asset => `data:image/jpeg;base64,${asset.base64}`);
-            setImages([...images, ...newImages]);
+        if (!result.canceled && result.assets.length > 0) {
+            setIsUploading(true);
+            setUploadProgress('Upload des images...');
+
+            try {
+                // Préparer les fichiers pour l'upload
+                const filesToUpload = result.assets
+                    .filter(asset => asset.base64)
+                    .map(asset => ({
+                        uri: `data:image/jpeg;base64,${asset.base64}`,
+                        name: asset.fileName || `image_${Date.now()}.jpg`
+                    }));
+
+                // Upload vers le cloud
+                const uploadResults = await uploadMultipleToCloud(
+                    filesToUpload,
+                    'image',
+                    (completed, total) => {
+                        setUploadProgress(`Upload ${completed}/${total} images...`);
+                    }
+                );
+
+                // Récupérer les URLs des images uploadées
+                const uploadedUrls = uploadResults
+                    .filter(result => result.success && result.url)
+                    .map(result => result.url!);
+
+                if (uploadedUrls.length > 0) {
+                    setImages([...images, ...uploadedUrls]);
+                    console.log('[ChatInputMobile] Images uploadées:', uploadedUrls.length);
+                } else {
+                    Alert.alert('Erreur', 'Impossible d\'uploader les images');
+                }
+            } catch (error) {
+                console.error('Erreur upload images:', error);
+                Alert.alert('Erreur', 'Échec de l\'upload des images');
+            } finally {
+                setIsUploading(false);
+                setUploadProgress('');
+            }
         }
     };
 

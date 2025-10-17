@@ -1,17 +1,12 @@
 ﻿import React, { useEffect, useState } from 'react';
-import {
-  Alert,
-  Modal,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+// @ts-ignore
+import ReactNative from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 import { apiGet } from '../services/api';
 import { theme } from '../theme/theme';
+
+// @ts-ignore
+const { Alert, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } = ReactNative;
 
 interface NotificationItem {
   id: string;
@@ -43,13 +38,13 @@ const NotificationHistoryModal: React.FC<NotificationHistoryModalProps> = ({
   useEffect(() => {
     if (isOpen && user?.id) {
       loadNotifications();
-      
+
       // Rafraîchissement automatique toutes les 15 secondes quand le modal est ouvert
       const interval = setInterval(() => {
         console.log('[NotificationHistoryModal] 🔄 Rafraîchissement automatique des notifications');
         loadNotifications();
       }, 15000); // 15 secondes
-      
+
       // Nettoyer l'intervalle quand le modal se ferme
       return () => {
         clearInterval(interval);
