@@ -193,6 +193,10 @@ const WebRTCCallModal: React.FC<WebRTCCallModalProps> = ({
 
         ws.current.onopen = () => {
             console.log('[WebRTC] Connecté au serveur de signaling');
+            
+            // ✅ NOUVEAU: Envoyer une push notification au destinataire
+            sendCallPushNotification();
+            
             // Envoyer l'offre d'appel
             createOffer();
         };
@@ -375,6 +379,40 @@ const WebRTCCallModal: React.FC<WebRTCCallModalProps> = ({
         const mins = Math.floor(seconds / 60);
         const secs = seconds % 60;
         return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    };
+
+    // ✅ NOUVEAU: Envoyer une notification push d'appel au destinataire
+    const sendCallPushNotification = async () => {
+        try {
+            console.log('[WebRTC] 📲 Envoi notification push d\'appel à:', recipientId);
+            
+            // Note: Le backend devrait avoir un endpoint pour envoyer des push notifications
+            // Pour l'instant, on utilise le WebSocket qui notifiera le serveur
+            // Le serveur enverra automatiquement la push notification via Expo Push API
+            
+            const response = await fetch('https://yukpomnang.onrender.com/api/webrtc/notify-call', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    recipient_id: recipientId,
+                    caller_id: currentUserId,
+                    caller_name: 'Utilisateur', // TODO: Récupérer le vrai nom
+                    call_type: callType,
+                    service_id: serviceId
+                })
+            });
+            
+            if (response.ok) {
+                console.log('[WebRTC] ✅ Notification push envoyée');
+            } else {
+                console.warn('[WebRTC] ⚠️ Erreur envoi push notification:', response.status);
+            }
+        } catch (error) {
+            console.error('[WebRTC] ❌ Erreur notification push:', error);
+            // Ne pas bloquer l'appel si la notification échoue
+        }
     };
 
     return (

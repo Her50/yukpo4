@@ -15,7 +15,9 @@ pub mod payment_controller;
 pub mod webhook_controller;
 pub mod embedding_controller;
 pub mod intelligent_service_controller;
-pub mod notification_controller; // ✅ NOUVEAU: Contrôleur de notifications
+pub mod notification_controller; // ✅ Contrôleur de notifications
+pub mod push_controller; // ✅ Contrôleur de push notifications
+pub mod webrtc_controller; // ✅ NOUVEAU: Contrôleur WebRTC pour appels
 
 // pub use service_controller::update_token_debit;
 

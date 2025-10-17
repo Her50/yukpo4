@@ -14,7 +14,10 @@ pub mod image_search_routes;
 pub mod weather_routes;
 pub mod nearby_services_routes;
 pub mod ai_chat_routes;
-pub mod notification_routes; // ✅ NOUVEAU: Routes de notifications
+pub mod notification_routes; // ✅ Routes de notifications
+pub mod push_routes; // ✅ Routes de push notifications
+pub mod webrtc_routes; // ✅ Routes WebRTC pour appels
+pub mod chat_routes; // ✅ NOUVEAU: Routes de chat avec push notifications
 
 // === Routes d'Optimisation IA ===
 // pub mod ia_routes_optimized; // Temporairement d?sactiv?

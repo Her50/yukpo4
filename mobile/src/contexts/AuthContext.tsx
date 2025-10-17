@@ -145,6 +145,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
           console.log('[AuthContext] Utilisateur créé depuis JWT:', userData);
           setUser(userData);
+
+          // ✅ NOUVEAU: Enregistrer le token push pour notifications
+          try {
+            const { registerForPushNotificationsAsync } = await import('../services/pushNotifications');
+            const pushToken = await registerForPushNotificationsAsync(response.data.token);
+            if (pushToken) {
+              console.log('[AuthContext] ✅ Token push enregistré');
+            }
+          } catch (pushError) {
+            console.warn('[AuthContext] ⚠️ Erreur enregistrement push token:', pushError);
+            // Ne pas bloquer le login si push échoue
+          }
           setForceRender(prev => prev + 1);
           console.log('[AuthContext] ✅ setUser() appelé avec:', userData);
           console.log('[AuthContext] ✅ forceRender incrémenté pour forcer le re-render');

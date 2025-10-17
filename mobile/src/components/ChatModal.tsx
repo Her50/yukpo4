@@ -150,29 +150,34 @@ const ChatModal: React.FC<ChatModalProps> = ({
                         : msg
                 ));
 
-                // Créer une notification pour le prestataire
-                await fetch(`https://yukpomnang.onrender.com/api/notifications/create`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${user.token}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        user_id: service.user_id,
-                        title: `💬 Nouveau message de ${user.name}`,
-                        message: `Au sujet du service: ${service.titre}\n\n"${messageContent.substring(0, 100)}${messageContent.length > 100 ? '...' : ''}"`,
-                        type: 'chat_message',
-                        priority: 'high',
-                        metadata: {
-                            service_id: service.id,
+                // ✅ NOUVEAU: Envoyer une push notification au prestataire
+                try {
+                    const pushResponse = await fetch('https://yukpomnang.onrender.com/api/chat/notify-message', {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${user.token}`,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            recipient_id: service.user_id,
                             sender_id: user.id,
-                            sender_name: user.name,
-                            message_preview: messageContent.substring(0, 50)
-                        }
-                    })
-                });
+                            sender_name: user.name || user.email || 'Utilisateur',
+                            message_preview: messageContent.substring(0, 100),
+                            service_id: service.id,
+                            service_title: service.titre || 'Service'
+                        })
+                    });
+                    
+                    if (pushResponse.ok) {
+                        console.log('[ChatModal] ✅ Push notification envoyée au destinataire');
+                    } else {
+                        console.warn('[ChatModal] ⚠️ Erreur push notification:', pushResponse.status);
+                    }
+                } catch (pushError) {
+                    console.warn('[ChatModal] ⚠️ Erreur push notification (message envoyé quand même):', pushError);
+                }
 
-                console.log('[ChatModal] Notification envoyée au prestataire');
+                console.log('[ChatModal] Message et notification envoyés');
                 onSendMessage?.(messageContent);
 
             } else {

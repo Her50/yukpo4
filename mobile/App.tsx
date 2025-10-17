@@ -7,6 +7,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 // BLOC 1 : Contexts de base
 import ErrorBoundary from './src/components/ErrorBoundary';
 import GPSTrackingManager from './src/components/GPSTrackingManager';
+import PushNotificationManager from './src/components/PushNotificationManager'; // ✅ NOUVEAU: Gestionnaire de push notifications
 import { GlobalIAStatsProvider } from './src/components/intelligence/GlobalIAStats';
 import { AuthProvider } from './src/contexts/AuthContext';
 import { LocationProvider } from './src/contexts/LocationContext';
@@ -32,6 +33,8 @@ export default function App() {
                 <GlobalIAStatsProvider>
                   {/* Tracking GPS automatique en arrière-plan */}
                   <GPSTrackingManager />
+                  {/* ✅ NOUVEAU: Gestionnaire de push notifications et appels */}
+                  <PushNotificationManager />
                   <StatusBar style="auto" />
                   <NavigationContainer linking={linking}>
                     <AppNavigator />
