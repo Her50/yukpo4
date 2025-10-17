@@ -22,6 +22,7 @@ import ServicesScreen from '../screens/ServicesScreen';
 import EnhancedSettingsScreen from '../screens/EnhancedSettingsScreen';
 import FormulaireYukpoIntelligentScreen from '../screens/FormulaireYukpoIntelligentScreen';
 import ResultatBesoinScreen from '../screens/ResultatBesoinScreen';
+import ServiceDetailSharedScreen from '../screens/ServiceDetailSharedScreen';
 import ServicesInteragisScreen from '../screens/ServicesInteragisScreen';
 import SoldeDetailScreen from '../screens/SoldeDetailScreen';
 import YukpoServicePlaceholderScreen from '../screens/YukpoServicePlaceholderScreen';
@@ -228,6 +229,11 @@ const MainStack = () => (
       name="FormulaireYukpoIntelligent"
       component={FormulaireYukpoIntelligentScreen}
       options={{ title: 'Création de service' }}
+    />
+    <Stack.Screen
+      name="ServiceDetailShared"
+      component={ServiceDetailSharedScreen}
+      options={{ title: 'Service partagé', headerShown: false }}
     />
     <Stack.Screen
       name="SoldeDetail"

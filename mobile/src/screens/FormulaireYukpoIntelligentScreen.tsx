@@ -62,6 +62,10 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
   const mode = (route.params as any)?.mode || 'edit';
   const serviceId = (route.params as any)?.serviceId;
   const fromMesServices = (route.params as any)?.fromMesServices || false;
+  const readonlyParam = (route.params as any)?.readonly || false;
+  
+  // ✅ Déterminer si on est en mode lecture seule
+  const isReadonly = mode === 'readonly' || mode === 'view' || readonlyParam;
 
   // États locaux
   const [activeStep, setActiveStep] = useState(1);
@@ -564,7 +568,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           <ProductManagerMobile
             products={products}
             onProductsChange={setProducts}
-            readonly={mode === 'readonly'}
+            readonly={isReadonly}
           />
         </View>
       );
@@ -576,7 +580,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           <MediaManagerMobile
             mediaFiles={mediaFiles}
             onMediaChange={handleMediaChange}
-            readonly={mode === 'readonly'}
+            readonly={isReadonly}
           />
         </View>
       );
@@ -592,8 +596,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
           <TouchableOpacity
             style={styles.gpsButton}
-            onPress={() => !mode || mode === 'readonly' ? null : setShowGPSModal(true)}
-            disabled={mode === 'readonly'}
+            onPress={() => isReadonly ? null : setShowGPSModal(true)}
+            disabled={isReadonly}
           >
             <SafeIcon name="map-pin" size={16} color={modernColors.primary} />
             <Text style={styles.gpsButtonText}>
@@ -628,7 +632,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           <TouchableOpacity
             style={styles.checkboxContainer}
             onPress={() => handleFieldChange('promotion_active', !valeursFormulaire.promotion_active)}
-            disabled={mode === 'readonly'}
+            disabled={isReadonly}
           >
             <View style={[
               styles.checkbox,
@@ -655,7 +659,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                         valeursFormulaire.promotion_type === type && styles.pickerButtonActive
                       ]}
                       onPress={() => handleFieldChange('promotion_type', type)}
-                      disabled={mode === 'readonly'}
+                      disabled={isReadonly}
                     >
                       <Text style={[
                         styles.pickerButtonText,
@@ -761,7 +765,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                         valeursFormulaire[field.name] === cat && styles.categoryButtonActive
                       ]}
                       onPress={() => handleFieldChange(field.name, cat)}
-                      disabled={mode === 'readonly'}
+                      disabled={isReadonly}
                     >
                       <Text style={[
                         styles.categoryButtonText,
@@ -888,7 +892,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
             <TouchableOpacity
               style={styles.checkboxContainer}
               onPress={() => handleFieldChange(field.name, !valeursFormulaire[field.name])}
-              disabled={mode === 'readonly'}
+              disabled={isReadonly}
             >
               <View style={[
                 styles.checkbox,
@@ -1109,12 +1113,12 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         </TouchableOpacity>
         <View style={styles.headerCenter}>
           <Text style={styles.headerTitle}>
-            {mode === 'edit' && fromMesServices ? 'Modification' :
-              mode === 'readonly' ? 'Consultation' :
+            {isReadonly ? 'Consultation' :
+              mode === 'edit' && fromMesServices ? 'Modification' :
                 'Formulaire Intelligent'}
           </Text>
           <Text style={styles.headerSubtitle}>
-            {mode === 'readonly' ? 'Mode lecture seule' :
+            {isReadonly ? 'Mode lecture seule' :
               mode === 'edit' && fromMesServices ? 'Modification en cours' :
                 'Propulsé par l\'IA Yukpo'}
           </Text>
@@ -1334,18 +1338,21 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                       <Text style={styles.navButtonTextPrimary}>Suivant</Text>
                       <SafeIcon name="chevron-right" size={20} color="#FFFFFF" />
                     </TouchableOpacity>
-                  ) : (
+                  ) : !isReadonly ? (
                     <TouchableOpacity
                       style={[styles.navButton, styles.navButtonSuccess]}
                       onPress={soumettreFormulaire}
                       disabled={loading}
                     >
                       <Text style={styles.navButtonTextSuccess}>
-                        {loading ? 'Création...' : 'Créer le service'}
+                        {loading 
+                          ? (mode === 'edit' ? 'Modification...' : 'Création...') 
+                          : (mode === 'edit' ? 'Modifier le service' : 'Créer le service')
+                        }
                       </Text>
                       <SafeIcon name="check" size={20} color="#FFFFFF" />
                     </TouchableOpacity>
-                  )}
+                  ) : null}
                 </View>
               </>
             )}

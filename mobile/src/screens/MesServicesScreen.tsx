@@ -147,7 +147,7 @@ const MesServicesScreen: React.FC = () => {
     try {
       // Navigation vers l'écran de visualisation en mode lecture seule
       (navigation as any).navigate('FormulaireYukpoIntelligent', {
-        mode: 'readonly',
+        mode: 'view',  // ✅ CORRECTION : Utiliser 'view' au lieu de 'readonly'
         serviceId: service.id,
         serviceData: service.data,
         suggestion: {
@@ -156,7 +156,7 @@ const MesServicesScreen: React.FC = () => {
           confidence: service.confidence || 0.8
         },
         type: 'visualisation_service',
-        // Ajouter un flag pour indiquer qu'on vient de MesServices
+        readonly: true,  // ✅ Flag explicite pour mode lecture seule
         fromMesServices: true
       });
     } catch (error) {
@@ -167,12 +167,15 @@ const MesServicesScreen: React.FC = () => {
 
   const handleShareService = async (service: any) => {
     try {
-      // Implémentation du partage avec plus de détails
+      // Implémentation du partage avec deep linking
       const titre = service.data?.titre_service?.valeur || service.data?.titre?.valeur || service.title || 'Service Yukpo';
       const description = service.data?.description?.valeur || service.description || 'Découvrez ce service sur Yukpo';
       const prix = service.data?.prix?.valeur || service.prix;
       const localisation = service.data?.localisation?.valeur || service.localisation;
 
+      // ✅ AMÉLIORATION : Créer un lien deep link vers le service
+      const serviceUrl = `https://yukpomnang.com/service/${service.id}`;
+      
       let shareText = `🌟 ${titre}\n\n${description}`;
 
       if (prix) {
@@ -183,16 +186,17 @@ const MesServicesScreen: React.FC = () => {
         shareText += `\n📍 Localisation: ${localisation}`;
       }
 
-      shareText += `\n\n📱 Découvrez plus de services sur Yukpo !\n🌐 https://yukpomnang.com`;
+      shareText += `\n\n📱 Voir ce service sur Yukpo :\n🔗 ${serviceUrl}`;
 
       // Utiliser l'API de partage native React Native
       const result = await Share.share({
         message: shareText,
         title: titre,
-        url: 'https://yukpomnang.com'
+        url: serviceUrl  // ✅ URL spécifique au service
       });
 
       if (result.action === Share.sharedAction) {
+        console.log('[MesServicesScreen] Service partagé:', serviceUrl);
         Alert.alert('Succès', 'Service partagé avec succès !');
       }
     } catch (error) {
@@ -290,11 +294,13 @@ const MesServicesScreen: React.FC = () => {
           // Message déjà affiché plus haut pour la réactivation
         }
       } else {
-        throw new Error('Erreur lors du changement de statut');
+        const errorText = await response.text();
+        console.error('[MesServicesScreen] Erreur API toggle status:', response.status, errorText);
+        Alert.alert('Erreur', `Impossible de changer le statut (Code: ${response.status})`);
       }
-    } catch (error) {
-      console.error('Erreur toggle status:', error);
-      Alert.alert('Erreur', 'Impossible de changer le statut du service');
+    } catch (error: any) {
+      console.error('[MesServicesScreen] Erreur toggle status:', error);
+      Alert.alert('Erreur', error.message || 'Impossible de changer le statut du service');
     }
   };
 

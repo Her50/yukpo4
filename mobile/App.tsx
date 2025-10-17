@@ -15,6 +15,7 @@ import { theme } from './src/theme/theme';
 // BLOC 2 : Navigation moderne
 import { NavigationContainer } from '@react-navigation/native';
 import AppNavigator from './src/navigation/AppNavigator';
+import { linking } from './src/config/linking';
 
 export default function App() {
   console.log('[App] 🚀 Yukpomnang - Application complète de production avec navigation moderne');
@@ -32,7 +33,7 @@ export default function App() {
                   {/* Tracking GPS automatique en arrière-plan */}
                   <GPSTrackingManager />
                   <StatusBar style="auto" />
-                  <NavigationContainer>
+                  <NavigationContainer linking={linking}>
                     <AppNavigator />
                   </NavigationContainer>
                 </GlobalIAStatsProvider>
