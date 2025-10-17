@@ -4,6 +4,7 @@
  */
 
 import { LinkingOptions } from '@react-navigation/native';
+import * as Linking from 'expo-linking';
 
 export const linking: LinkingOptions<any> = {
   prefixes: [
@@ -15,7 +16,7 @@ export const linking: LinkingOptions<any> = {
   config: {
     screens: {
       Home: '',
-      ServiceDetail: {
+      ServiceDetailShared: {
         path: 'service/:serviceId',
         parse: {
           serviceId: (serviceId: string) => serviceId,
@@ -29,19 +30,17 @@ export const linking: LinkingOptions<any> = {
   },
   async getInitialURL() {
     // Gérer l'ouverture via un lien partagé
-    const url = await import('expo-linking').then(m => m.default.getInitialURL());
+    const url = await Linking.getInitialURL();
     return url;
   },
   subscribe(listener) {
     // Écouter les événements de deep linking
-    const subscription = import('expo-linking').then(m => 
-      m.default.addEventListener('url', ({ url }: { url: string }) => {
-        listener(url);
-      })
-    );
+    const subscription = Linking.addEventListener('url', ({ url }: { url: string }) => {
+      listener(url);
+    });
 
     return () => {
-      subscription.then(s => s && typeof s === 'object' && 'remove' in s && s.remove());
+      subscription.remove();
     };
   },
 };
