@@ -20,7 +20,7 @@ import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
 
 // Import WebRTC - Package installé
-import { RTCView, mediaDevices, RTCPeerConnection, RTCIceCandidate, RTCSessionDescription, MediaStream } from 'react-native-webrtc';
+import { mediaDevices, MediaStream, RTCIceCandidate, RTCPeerConnection, RTCSessionDescription, RTCView } from 'react-native-webrtc';
 
 const { width, height } = Dimensions.get('window');
 
@@ -78,7 +78,7 @@ const WebRTCCallModal: React.FC<WebRTCCallModalProps> = ({
             callTimer.current = setInterval(() => {
                 setCallDuration(prev => prev + 1);
             }, 1000);
-            
+
             // ✅ Arrêter la sonnerie quand l'appel est accepté
             stopRingTone();
         }
@@ -94,7 +94,7 @@ const WebRTCCallModal: React.FC<WebRTCCallModalProps> = ({
     useEffect(() => {
         if (callState === 'ringing') {
             playRingTone();
-            
+
             // ✅ Animation de pulse pendant la sonnerie
             const pulseAnimation = Animated.loop(
                 Animated.sequence([
@@ -111,7 +111,7 @@ const WebRTCCallModal: React.FC<WebRTCCallModalProps> = ({
                 ])
             );
             pulseAnimation.start();
-            
+
             return () => {
                 pulseAnimation.stop();
                 pulseAnim.setValue(1);
@@ -193,10 +193,10 @@ const WebRTCCallModal: React.FC<WebRTCCallModalProps> = ({
 
         ws.current.onopen = () => {
             console.log('[WebRTC] Connecté au serveur de signaling');
-            
+
             // ✅ NOUVEAU: Envoyer une push notification au destinataire
             sendCallPushNotification();
-            
+
             // Envoyer l'offre d'appel
             createOffer();
         };
@@ -223,9 +223,9 @@ const WebRTCCallModal: React.FC<WebRTCCallModalProps> = ({
                 offerToReceiveAudio: true,
                 offerToReceiveVideo: callType === 'video'
             });
-            
+
             await peerConnection.current?.setLocalDescription(offer);
-            
+
             sendSignalingMessage({
                 type: 'offer',
                 sdp: offer,
@@ -233,7 +233,7 @@ const WebRTCCallModal: React.FC<WebRTCCallModalProps> = ({
                 from: currentUserId,
                 callType
             });
-            
+
             setCallState('ringing');
         } catch (error) {
             console.error('[WebRTC] Erreur création offer:', error);
@@ -248,7 +248,7 @@ const WebRTCCallModal: React.FC<WebRTCCallModalProps> = ({
                     new RTCSessionDescription(message.sdp)
                 );
                 break;
-            
+
             case 'ice-candidate':
                 if (message.candidate) {
                     await peerConnection.current?.addIceCandidate(
@@ -256,12 +256,12 @@ const WebRTCCallModal: React.FC<WebRTCCallModalProps> = ({
                     );
                 }
                 break;
-            
+
             case 'call-rejected':
                 Alert.alert('Appel refusé', `${recipientName} a refusé l'appel`);
                 onClose();
                 break;
-            
+
             case 'call-ended':
                 endCall();
                 break;
@@ -338,7 +338,7 @@ const WebRTCCallModal: React.FC<WebRTCCallModalProps> = ({
     const playRingTone = async () => {
         try {
             console.log('[WebRTC] 🔔 Démarrage sonnerie...');
-            
+
             // Configurer le mode audio
             await Audio.setAudioModeAsync({
                 playsInSilentModeIOS: true,
@@ -352,7 +352,7 @@ const WebRTCCallModal: React.FC<WebRTCCallModalProps> = ({
                 { uri: 'https://www.soundjay.com/phone/sounds/phone-calling-1.mp3' },
                 { shouldPlay: true, isLooping: true, volume: 0.5 }
             );
-            
+
             setRingSound(sound);
             console.log('[WebRTC] ✅ Sonnerie démarrée');
         } catch (error) {
@@ -385,11 +385,11 @@ const WebRTCCallModal: React.FC<WebRTCCallModalProps> = ({
     const sendCallPushNotification = async () => {
         try {
             console.log('[WebRTC] 📲 Envoi notification push d\'appel à:', recipientId);
-            
+
             // Note: Le backend devrait avoir un endpoint pour envoyer des push notifications
             // Pour l'instant, on utilise le WebSocket qui notifiera le serveur
             // Le serveur enverra automatiquement la push notification via Expo Push API
-            
+
             const response = await fetch('https://yukpomnang.onrender.com/api/webrtc/notify-call', {
                 method: 'POST',
                 headers: {
@@ -403,7 +403,7 @@ const WebRTCCallModal: React.FC<WebRTCCallModalProps> = ({
                     service_id: serviceId
                 })
             });
-            
+
             if (response.ok) {
                 console.log('[WebRTC] ✅ Notification push envoyée');
             } else {
@@ -479,7 +479,7 @@ const WebRTCCallModal: React.FC<WebRTCCallModalProps> = ({
                         {callState === 'active' && formatDuration(callDuration)}
                         {callState === 'ended' && 'Appel terminé'}
                     </Text>
-                    
+
                     {/* ✅ Indicateur sonore pendant ringing */}
                     {callState === 'ringing' && (
                         <View style={styles.ringingIndicator}>

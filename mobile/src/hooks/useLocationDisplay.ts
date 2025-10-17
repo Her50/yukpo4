@@ -257,7 +257,7 @@ export const useLocationDisplay = (service: any, serviceCreatorInfo?: any): UseL
                     const firstPoint = gpsFixe.split('|')[0]; // Prendre le premier point si c'est une zone
                     const coords = firstPoint.split(',').map(coord => parseFloat(coord.trim()));
                     console.log('📍 [useLocationDisplay] Coordonnées parsées:', coords);
-                    
+
                     if (coords.length === 2 && !isNaN(coords[0]) && !isNaN(coords[1])) {
                         coordinates = { lat: coords[0], lng: coords[1] };
                         console.log('✅ [useLocationDisplay] GPS FIXE UTILISÉ:', gpsFixe);
