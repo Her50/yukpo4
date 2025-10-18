@@ -389,7 +389,7 @@ pub fn chat_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route("/api/chat/notify-message", post(notify_new_message))
         
         // Appliquer l'authentification
-        .layer(axum::middleware::from_fn_with_state(state.clone(), jwt_auth))
+        .layer(axum::middleware::from_fn(jwt_auth))
         .with_state(state)
 }
 
