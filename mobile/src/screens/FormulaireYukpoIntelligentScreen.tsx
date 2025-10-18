@@ -986,15 +986,14 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       console.log('💰 [FormulaireYukpoIntelligentScreen] Coût RÉEL calculé:', coutReel, 'FCFA pour', tokensIAExterne, 'tokens');
 
       // Vérifier le solde actuel
-      // ✅ CORRIGÉ: Utilise apiGet
+      // ✅ CORRIGÉ: Utilise apiGet avec nouvelle structure ApiResponse
       const balanceResponse = await apiGet('/api/users/balance');
 
-      if (!balanceResponse.ok) {
-        throw new Error('Impossible de vérifier votre solde');
+      if (!balanceResponse.success || !balanceResponse.data) {
+        throw new Error(balanceResponse.error || 'Impossible de vérifier votre solde');
       }
 
-      const balanceData = await balanceResponse.json();
-      const soldeActuel = balanceData.tokens_balance || 0;
+      const soldeActuel = balanceResponse.data.tokens_balance || 0;
       console.log('💰 [FormulaireYukpoIntelligentScreen] Solde actuel:', soldeActuel);
 
       // Vérifier si le solde est suffisant
@@ -1119,44 +1118,35 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                 console.log('[FormulaireYukpoIntelligentScreen] 🔑 Token utilisé:', user?.token ? `${user.token.substring(0, 20)}...` : 'AUCUN TOKEN');
                 console.log('[FormulaireYukpoIntelligentScreen] 👤 User ID:', user?.id);
 
-                // ✅ CORRIGÉ: Utilise apiPost
+                // ✅ CORRIGÉ: Utilise apiPost avec nouvelle structure ApiResponse
                 const response = await apiPost('/api/services/create', servicePayload);
 
-                console.log('[FormulaireYukpoIntelligentScreen] 📡 Statut réponse:', response.status);
-                console.log('[FormulaireYukpoIntelligentScreen] 📡 Headers réponse:', JSON.stringify([...response.headers.entries()]));
+                console.log('[FormulaireYukpoIntelligentScreen] 📡 Réponse API:', response);
 
-                if (!response.ok) {
-                  const errorText = await response.text();
-                  console.error('[FormulaireYukpoIntelligentScreen] ❌ Erreur API complète:', errorText);
-                  console.error('[FormulaireYukpoIntelligentScreen] ❌ Status:', response.status);
+                if (!response.success || !response.data) {
+                  const errorMessage = response.error || 'Erreur inconnue';
+                  console.error('[FormulaireYukpoIntelligentScreen] ❌ Erreur API:', errorMessage);
+                  console.error('[FormulaireYukpoIntelligentScreen] ❌ Data:', response.data);
                   console.error('[FormulaireYukpoIntelligentScreen] ❌ Payload qui a causé l\'erreur:', JSON.stringify(servicePayload, null, 2));
 
                   // Afficher une alerte plus détaillée
                   Alert.alert(
                     'Erreur de création',
-                    `Statut: ${response.status}\nDétails: ${errorText.substring(0, 200)}`,
+                    errorMessage.substring(0, 200),
                     [{ text: 'OK' }]
                   );
-                  throw new Error(`Erreur création service: ${response.status} - ${errorText}`);
+                  throw new Error(`Erreur création service: ${errorMessage}`);
                 }
 
-                const result = await response.json();
+                const result = response.data;
                 console.log('[FormulaireYukpoIntelligentScreen] ✅ Service créé avec succès:', result);
 
-                // ✅ NOUVEAU : Récupérer le nouveau JWT du header et mettre à jour le token
-                const newJwt = response.headers.get('x-new-jwt');
-                if (newJwt) {
-                  console.log('[FormulaireYukpoIntelligentScreen] 🔑 Nouveau JWT reçu, mise à jour du token...');
-                  try {
-                    const AsyncStorage = await import('@react-native-async-storage/async-storage');
-                    await AsyncStorage.default.setItem('auth_token', newJwt);
-                    console.log('[FormulaireYukpoIntelligentScreen] ✅ Token sauvegardé dans AsyncStorage');
-                  } catch (error) {
-                    console.error('[FormulaireYukpoIntelligentScreen] Erreur mise à jour token:', error);
-                  }
-                }
+                // ✅ NOTE : Le nouveau JWT est automatiquement géré par apiCall
+                // Il est sauvegardé dans AsyncStorage quand le header x-new-jwt est présent
+                // Voir mobile/src/services/api.ts lignes 102-105
+                // Le solde de tokens est aussi mis à jour automatiquement
 
-                setSuccessData({ serviceId: result.id || 'nouveau', cout: coutReel });
+                setSuccessData({ serviceId: result.id || result.service_id || 'nouveau', cout: coutReel });
                 setShowSuccessToast(true);
 
                 // ✅ Marquer la soumission comme terminée
