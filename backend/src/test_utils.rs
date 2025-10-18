@@ -10,6 +10,7 @@ pub fn gen_jwt(role: &str, user_id: i32) -> String {
         user_id,
         role,
         &format!("test{}@example.com", user_id),
+        Some(format!("Test User {}", user_id)), // ✅ NOUVEAU: nom de test
         100,
         &secret,
     ).unwrap()

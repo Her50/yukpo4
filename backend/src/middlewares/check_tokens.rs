@@ -50,7 +50,7 @@ pub async fn update_jwt_with_new_balance(
 ) -> Result<String, Box<dyn std::error::Error>> {
     // R?cup?rer les informations utilisateur
     let user_data = sqlx::query!(
-        "SELECT email, role FROM users WHERE id = $1",
+        "SELECT email, role, nom_complet FROM users WHERE id = $1",
         user_id
     )
     .fetch_one(&state.pg)
@@ -64,6 +64,7 @@ pub async fn update_jwt_with_new_balance(
         user_id,
         &user_data.role,
         &user_data.email,
+        user_data.nom_complet.clone(), // ✅ NOUVEAU: passer le nom de l'utilisateur
         new_balance,
         &secret,
     )?;

@@ -10,18 +10,20 @@ pub struct UserClaims {
     pub sub: i32,             // ID utilisateur
     pub role: String,         // ex: "user", "admin"
     pub email: String,        // email de l?utilisateur
+    pub name: Option<String>, // ✅ NOUVEAU: nom de l'utilisateur
     pub tokens_balance: i64,  // solde
     pub iat: usize,           // ?mis ?
     pub exp: usize,           // expiration
 }
 
 impl UserClaims {
-    pub fn new(user_id: i32, role: &str, email: &str, tokens_balance: i64, ttl_secs: i64) -> Self {
+    pub fn new(user_id: i32, role: &str, email: &str, name: Option<String>, tokens_balance: i64, ttl_secs: i64) -> Self {
         let now = Utc::now();
         Self {
             sub: user_id,
             role: role.to_string(),
             email: email.to_string(),
+            name,
             tokens_balance,
             iat: now.timestamp() as usize,
             exp: (now + Duration::seconds(ttl_secs)).timestamp() as usize,
@@ -34,10 +36,11 @@ pub fn generate_jwt(
     user_id: i32,
     role: &str,
     email: &str,
+    name: Option<String>, // ✅ NOUVEAU: nom de l'utilisateur
     tokens_balance: i64,
     secret: &str,
 ) -> Result<String, AppError> {
-    let claims = UserClaims::new(user_id, role, email, tokens_balance, 60 * 60 * 24); // 24h
+    let claims = UserClaims::new(user_id, role, email, name, tokens_balance, 60 * 60 * 24); // 24h
     encode(
         &Header::new(Algorithm::HS256),
         &claims,

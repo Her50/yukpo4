@@ -151,6 +151,11 @@ pub async fn send_push_notification(
             sound: sound.clone().or(Some("default".to_string())),
             badge: Some(1),
             priority: Some("high".to_string()),
+            // ✅ Champs optionnels pour notifications normales (non-appels)
+            channel_id: None,
+            category_id: None,
+            time_to_live: None,
+            mutable_content: None,
         };
         
         // API Expo Push Notifications

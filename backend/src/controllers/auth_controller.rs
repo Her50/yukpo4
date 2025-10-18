@@ -29,7 +29,7 @@ pub async fn login_handler(
     let db = &state.pg;
     let user = sqlx::query!(
         r#"
-        SELECT id, email, password_hash, role, tokens_balance
+        SELECT id, email, password_hash, role, tokens_balance, nom_complet
         FROM users
         WHERE email = $1
         "#,
@@ -58,6 +58,7 @@ pub async fn login_handler(
         user.id,
         &user.role,
         &user.email,
+        user.nom_complet.clone(), // ✅ NOUVEAU: passer le nom de l'utilisateur
         user.tokens_balance,
         &secret,
     )?;
@@ -165,6 +166,7 @@ pub async fn register_user(
         new.id,
         "user",
         &payload.email,
+        nom_complet.clone(), // ✅ NOUVEAU: passer le nom de l'utilisateur
         new.tokens_balance,
         &secret,
     )?;
@@ -239,10 +241,17 @@ pub async fn oauth_login_handler(
             return Err(AppError::Unauthorized("Impossible de rÃ©cupÃ©rer lÃ©email".into()));
         }
     };
+    
+    // ✅ NOUVEAU: Récupérer le nom depuis OAuth
+    let oauth_name = user_res
+        .get("name")
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string());
+    
     let db = &state.pg;
     let row = sqlx::query!(
         r#"
-        SELECT id, role, tokens_balance
+        SELECT id, role, tokens_balance, nom_complet
         FROM users
         WHERE email = $1
         "#,
@@ -250,23 +259,24 @@ pub async fn oauth_login_handler(
     )
     .fetch_optional(db)
     .await;
-    let (user_id, role, balance) = match row {
-        Ok(Some(u)) => (u.id, u.role, u.tokens_balance),
+    let (user_id, role, balance, nom_complet) = match row {
+        Ok(Some(u)) => (u.id, u.role, u.tokens_balance, u.nom_complet),
         Ok(None) => {
             let new = sqlx::query!(
                 r#"
-                INSERT INTO users (email, role, tokens_balance)
-                VALUES ($1, $2, $3)
+                INSERT INTO users (email, role, tokens_balance, nom_complet)
+                VALUES ($1, $2, $3, $4)
                 RETURNING id, tokens_balance
                 "#,
                 email,
                 "user",
-                INITIAL_TOKENS
+                INITIAL_TOKENS,
+                oauth_name.as_deref() // ✅ NOUVEAU: sauvegarder le nom depuis OAuth
             )
             .fetch_one(db)
             .await;
             match new {
-                Ok(n) => (n.id, "user".to_string(), n.tokens_balance),
+                Ok(n) => (n.id, "user".to_string(), n.tokens_balance, oauth_name.clone()),
                 Err(e) => {
                     error!("[oauth_login_handler] DB error (insert): {e:?}");
                     return Err(e.into());
@@ -284,6 +294,7 @@ pub async fn oauth_login_handler(
         user_id,
         &role,
         email,
+        nom_complet, // ✅ NOUVEAU: passer le nom de l'utilisateur
         balance,
         &secret,
     )?;
