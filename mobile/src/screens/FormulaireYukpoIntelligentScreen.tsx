@@ -53,7 +53,7 @@ interface MediaFiles {
 const FormulaireYukpoIntelligentScreen: React.FC = () => {
   const navigation = useNavigation();
   const route = useRoute();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
 
   // État des données reçues
   const suggestion = (route.params as any)?.suggestion || {};
@@ -988,13 +988,27 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       // Vérifier le solde actuel
       // ✅ CORRIGÉ: Utilise apiGet avec nouvelle structure ApiResponse
       console.log('💰 [FormulaireYukpoIntelligentScreen] Vérification du solde...');
-      const balanceResponse = await apiGet('/api/users/balance');
+      console.log('💰 [FormulaireYukpoIntelligentScreen] Token actuel:', user?.token ? 'Présent' : 'ABSENT');
       
-      console.log('💰 [FormulaireYukpoIntelligentScreen] Réponse balance:', JSON.stringify(balanceResponse, null, 2));
+      const balanceResponse = await apiGet<{tokens_balance: number}>('/api/users/balance');
+      
+      console.log('💰 [FormulaireYukpoIntelligentScreen] Réponse balance complète:', JSON.stringify(balanceResponse, null, 2));
 
       if (!balanceResponse.success) {
         const errorMsg = balanceResponse.error || 'Impossible de vérifier votre solde';
         console.error('💰 [FormulaireYukpoIntelligentScreen] ❌ Erreur vérification solde:', errorMsg);
+        console.error('💰 [FormulaireYukpoIntelligentScreen] ❌ Data reçue:', balanceResponse.data);
+        
+        // Si problème d'authentification, rediriger vers login
+        if (errorMsg.includes('401') || errorMsg.includes('Unauthorized') || errorMsg.includes('authentification')) {
+          Alert.alert(
+            'Session expirée',
+            'Votre session a expiré. Veuillez vous reconnecter.',
+            [{ text: 'OK', onPress: () => logout() }]
+          );
+          return;
+        }
+        
         throw new Error(errorMsg);
       }
 
