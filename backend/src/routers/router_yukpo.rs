@@ -22,10 +22,6 @@ use crate::{
         weather_routes::weather_routes,
         nearby_services_routes::nearby_services_routes,
         ai_chat_routes::ai_chat_routes,
-        notification_routes::notification_routes, // ✅ Routes de notifications
-        push_routes::push_routes, // ✅ Routes de push notifications
-        webrtc_routes::webrtc_routes, // ✅ Routes WebRTC pour appels
-        chat_routes::chat_routes, // ✅ NOUVEAU: Routes de chat avec push
     },
     core::types::{AppResult, AppError},
     services::creer_service,
@@ -147,11 +143,7 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
     let mobile_routes = Router::<Arc<AppState>>::new()
         .merge(weather_routes(state.clone()))
         .merge(nearby_services_routes(state.clone()))
-        .merge(ai_chat_routes(state.clone()))
-        .merge(notification_routes(state.clone())) // ✅ Routes de notifications
-        .merge(push_routes(state.clone())) // ✅ Routes de push notifications
-        .merge(webrtc_routes(state.clone())) // ✅ Routes WebRTC pour appels
-        .merge(chat_routes(state.clone())); // ✅ NOUVEAU: Routes de chat avec push
+        .merge(ai_chat_routes(state.clone()));
     
     // Combinaison des routes
     public_routes.merge(protected_routes).merge(mobile_routes).with_state(state)
