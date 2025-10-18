@@ -1,11 +1,15 @@
 // @ts-nocheck
 // Migration vers Lucide React Native pour un design moderne
-import { Check, DotsThreeVertical, PaperPlaneTilt, X } from 'phosphor-react-native';
+import * as DocumentPicker from 'expo-document-picker';
+import * as ImagePicker from 'expo-image-picker';
+import { Check, DotsThreeVertical, Image as ImageIcon, Paperclip, PaperPlaneTilt, X } from 'phosphor-react-native';
 import * as React from 'react';
 import { useEffect, useRef, useState } from 'react';
-import { Alert, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Avatar } from 'react-native-paper';
+import { API_ENDPOINTS } from '../config/api.config';
 import { useAuth } from '../contexts/AuthContext';
+import { apiGet, apiPost } from '../services/api';
 import { theme } from '../theme/theme';
 
 interface Message {
@@ -14,6 +18,9 @@ interface Message {
     from: 'client' | 'prestataire';
     timestamp: Date;
     status: 'sent' | 'delivered' | 'read';
+    type?: 'text' | 'image' | 'audio' | 'file';
+    mediaUrl?: string;
+    fileName?: string;
 }
 
 interface Service {
@@ -53,6 +60,8 @@ const ChatModal: React.FC<ChatModalProps> = ({
     const [messages, setMessages] = useState<Message[]>([]);
     const [newMessage, setNewMessage] = useState('');
     const [isTyping, setIsTyping] = useState(false);
+    const [uploadingMedia, setUploadingMedia] = useState(false);
+    const [selectedImage, setSelectedImage] = useState<string | null>(null);
     const scrollViewRef = useRef<ScrollView>(null);
 
     // CORRECTION: Normaliser le nom du prestataire (nom_complet au lieu de name)
@@ -70,29 +79,31 @@ const ChatModal: React.FC<ChatModalProps> = ({
     }, [visible, service]);
 
     const loadMessages = async () => {
-        // Charger les messages depuis l'API
+        // ✅ CORRECTION: Utiliser le bon endpoint backend
         try {
             if (!service || !user) return;
 
-            const response = await fetch(`https://yukpomnang.onrender.com/api/chat/messages/${service.id}`, {
-                headers: {
-                    'Authorization': `Bearer ${user.token}`,
-                    'Content-Type': 'application/json'
-                }
-            });
+            // ✅ CORRIGÉ: Utilise apiGet
+            const response = await apiGet(API_ENDPOINTS.SERVICES.INTERACTIONS(parseInt(service.id)));
 
-            if (response.ok) {
-                const data = await response.json();
-                const loadedMessages: Message[] = data.messages?.map((msg: any) => ({
-                    id: msg.id,
-                    content: msg.content || msg.message,
-                    from: msg.sender_id === user.id ? 'client' : 'prestataire',
-                    timestamp: new Date(msg.created_at || msg.timestamp),
-                    status: msg.status || 'read'
-                })) || [];
+            if (response.success && response.data) {
+                const interactions = response.data;
+                console.log('[ChatModal] Interactions chargées:', interactions);
+
+                // ✅ Filtrer uniquement les messages texte et audio
+                const loadedMessages: Message[] = (interactions || [])
+                    .filter((interaction: any) => interaction.interaction_type === 'message' || interaction.interaction_type === 'audio')
+                    .map((interaction: any) => ({
+                        id: interaction._id || interaction.id || String(Date.now()),
+                        content: interaction.metadata || interaction.content || '',
+                        from: interaction.user_id === parseInt(user.id) ? 'client' : 'prestataire',
+                        timestamp: new Date(interaction.created_at || interaction.timestamp || Date.now()),
+                        status: 'read' // Les messages chargés sont considérés comme lus
+                    }))
+                    .sort((a: Message, b: Message) => a.timestamp.getTime() - b.timestamp.getTime());
 
                 setMessages(loadedMessages);
-                console.log('[ChatModal] Messages chargés:', loadedMessages.length);
+                console.log('[ChatModal] ✅ Messages chargés:', loadedMessages.length);
             } else {
                 console.warn('[ChatModal] Aucun message chargé, conversation vide');
                 setMessages([]);
@@ -123,65 +134,30 @@ const ChatModal: React.FC<ChatModalProps> = ({
         setNewMessage('');
 
         try {
-            // Envoyer le message à l'API
-            const response = await fetch(`https://yukpomnang.onrender.com/api/chat/messages`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${user.token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    service_id: service.id,
-                    receiver_id: service.user_id,
-                    sender_id: user.id,
-                    content: messageContent,
-                    type: 'text'
-                })
+            // ✅ CORRECTION: Utiliser le bon endpoint backend
+            // ✅ CORRIGÉ: Utilise apiPost
+            const response = await apiPost(`/api/services/${service.id}/message`, {
+                content: messageContent
             });
 
             if (response.ok) {
                 const data = await response.json();
-                console.log('[ChatModal] Message envoyé avec succès:', data);
+                console.log('[ChatModal] ✅ Message envoyé avec succès:', data);
 
                 // Mettre à jour le message avec l'ID réel du serveur
                 setMessages(prev => prev.map(msg =>
                     msg.id === tempId
-                        ? { ...msg, id: data.message_id || data.id, status: 'delivered' }
+                        ? { ...msg, id: data._id || data.id || tempId, status: 'delivered' }
                         : msg
                 ));
 
-                // ✅ NOUVEAU: Envoyer une push notification au prestataire
-                try {
-                    const pushResponse = await fetch('https://yukpomnang.onrender.com/api/chat/notify-message', {
-                        method: 'POST',
-                        headers: {
-                            'Authorization': `Bearer ${user.token}`,
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            recipient_id: service.user_id,
-                            sender_id: user.id,
-                            sender_name: user.name || user.email || 'Utilisateur',
-                            message_preview: messageContent.substring(0, 100),
-                            service_id: service.id,
-                            service_title: service.titre || 'Service'
-                        })
-                    });
-                    
-                    if (pushResponse.ok) {
-                        console.log('[ChatModal] ✅ Push notification envoyée au destinataire');
-                    } else {
-                        console.warn('[ChatModal] ⚠️ Erreur push notification:', pushResponse.status);
-                    }
-                } catch (pushError) {
-                    console.warn('[ChatModal] ⚠️ Erreur push notification (message envoyé quand même):', pushError);
-                }
-
-                console.log('[ChatModal] Message et notification envoyés');
+                console.log('[ChatModal] ✅ Message sauvegardé et alerte prestataire créée');
                 onSendMessage?.(messageContent);
 
             } else {
                 // En cas d'erreur, marquer le message comme non envoyé
+                const errorText = await response.text();
+                console.error('[ChatModal] ❌ Erreur envoi message:', response.status, errorText);
                 setMessages(prev => prev.map(msg =>
                     msg.id === tempId
                         ? { ...msg, status: 'sent' }
@@ -190,8 +166,112 @@ const ChatModal: React.FC<ChatModalProps> = ({
                 Alert.alert('Erreur', 'Impossible d\'envoyer le message. Veuillez réessayer.');
             }
         } catch (error) {
-            console.error('[ChatModal] Erreur envoi message:', error);
+            console.error('[ChatModal] ❌ Erreur envoi message:', error);
             Alert.alert('Erreur', 'Erreur lors de l\'envoi du message');
+        }
+    };
+
+    // ✅ NOUVEAU : Fonction pour sélectionner une image
+    const pickImage = async () => {
+        try {
+            const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+            if (permissionResult.granted === false) {
+                Alert.alert('Permission refusée', 'Permission d\'accès à la galerie refusée');
+                return;
+            }
+
+            const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                allowsEditing: true,
+                quality: 0.7,
+                base64: true
+            });
+
+            if (!result.canceled && result.assets[0]) {
+                const imageUri = result.assets[0].uri;
+                const base64 = result.assets[0].base64;
+                setSelectedImage(imageUri);
+
+                // Envoyer immédiatement l'image
+                await sendMediaMessage('image', base64);
+            }
+        } catch (error) {
+            console.error('[ChatModal] Erreur sélection image:', error);
+            Alert.alert('Erreur', 'Impossible de sélectionner l\'image');
+        }
+    };
+
+    // ✅ NOUVEAU : Fonction pour sélectionner un fichier
+    const pickDocument = async () => {
+        try {
+            const result = await DocumentPicker.getDocumentAsync({
+                type: '*/*',
+                copyToCacheDirectory: true
+            });
+
+            if (result.type === 'success') {
+                Alert.alert('Fichier sélectionné', `${result.name} sera envoyé`);
+                // TODO: Implémenter l'upload de fichier
+            }
+        } catch (error) {
+            console.error('[ChatModal] Erreur sélection fichier:', error);
+            Alert.alert('Erreur', 'Impossible de sélectionner le fichier');
+        }
+    };
+
+    // ✅ NOUVEAU : Fonction pour envoyer un média
+    const sendMediaMessage = async (mediaType: 'image' | 'audio' | 'file', base64Data: string) => {
+        if (!service || !user) return;
+
+        setUploadingMedia(true);
+        const tempId = Date.now().toString();
+
+        try {
+            // Ajouter le message localement avec preview
+            const tempMessage: Message = {
+                id: tempId,
+                content: mediaType === 'image' ? 'Image' : 'Fichier',
+                from: 'client',
+                timestamp: new Date(),
+                status: 'sent',
+                type: mediaType,
+                mediaUrl: mediaType === 'image' ? `data:image/jpeg;base64,${base64Data}` : undefined
+            };
+
+            setMessages(prev => [...prev, tempMessage]);
+            setSelectedImage(null);
+
+            // ✅ CORRIGÉ: Envoyer au backend via apiPost
+            const endpoint = mediaType === 'audio' ? 'audio' : 'message';
+            const response = await apiPost(`/api/services/${service.id}/${endpoint}`,
+                mediaType === 'audio' ? {
+                    audio_url: `data:audio/mp3;base64,${base64Data}`
+                } : {
+                    content: `[${mediaType.toUpperCase()}] data:${mediaType}/*;base64,${base64Data.substring(0, 100)}...`
+                }
+            );
+
+            if (response.ok) {
+                const data = await response.json();
+                console.log('[ChatModal] ✅ Média envoyé:', data);
+
+                setMessages(prev => prev.map(msg =>
+                    msg.id === tempId
+                        ? { ...msg, id: data._id || data.id || tempId, status: 'delivered' }
+                        : msg
+                ));
+            } else {
+                throw new Error('Erreur envoi média');
+            }
+        } catch (error) {
+            console.error('[ChatModal] Erreur envoi média:', error);
+            Alert.alert('Erreur', 'Impossible d\'envoyer le média');
+
+            // Retirer le message en cas d'erreur
+            setMessages(prev => prev.filter(msg => msg.id !== tempId));
+        } finally {
+            setUploadingMedia(false);
         }
     };
 
@@ -282,6 +362,15 @@ const ChatModal: React.FC<ChatModalProps> = ({
                                     message.from === 'client' ? styles.messageBubbleRight : styles.messageBubbleLeft
                                 ]}
                             >
+                                {/* ✅ NOUVEAU : Afficher l'image si c'est un message image */}
+                                {message.type === 'image' && message.mediaUrl && (
+                                    <Image
+                                        source={{ uri: message.mediaUrl }}
+                                        style={styles.messageImage}
+                                        resizeMode="cover"
+                                    />
+                                )}
+
                                 <Text style={[
                                     styles.messageText,
                                     message.from === 'client' ? styles.messageTextRight : styles.messageTextLeft
@@ -317,22 +406,49 @@ const ChatModal: React.FC<ChatModalProps> = ({
 
                 {/* Input */}
                 <View style={styles.inputContainer}>
-                    <View style={styles.inputWrapper}>
-                        <TextInput
-                            style={styles.textInput}
-                            placeholder="Tapez votre message..."
-                            value={newMessage}
-                            onChangeText={setNewMessage}
-                            multiline
-                            maxLength={500}
-                        />
+                    {/* ✅ NOUVEAU : Boutons pour les médias */}
+                    <View style={styles.mediaButtons}>
                         <TouchableOpacity
-                            onPress={sendMessage}
-                            style={[styles.sendButton, !newMessage.trim() && styles.sendButtonDisabled]}
-                            disabled={!newMessage.trim()}
+                            style={styles.mediaButton}
+                            onPress={pickImage}
+                            disabled={uploadingMedia}
                         >
-                            <PaperPlaneTilt size={20} color="white" weight="fill" />
+                            <ImageIcon size={20} color={theme.colors.primary} />
                         </TouchableOpacity>
+                        <TouchableOpacity
+                            style={styles.mediaButton}
+                            onPress={pickDocument}
+                            disabled={uploadingMedia}
+                        >
+                            <Paperclip size={20} color={theme.colors.primary} />
+                        </TouchableOpacity>
+                    </View>
+
+                    <View style={styles.inputWrapper}>
+                        {uploadingMedia ? (
+                            <View style={styles.uploadingContainer}>
+                                <ActivityIndicator size="small" color={theme.colors.primary} />
+                                <Text style={styles.uploadingText}>Envoi en cours...</Text>
+                            </View>
+                        ) : (
+                            <>
+                                <TextInput
+                                    style={styles.textInput}
+                                    placeholder="Tapez votre message..."
+                                    value={newMessage}
+                                    onChangeText={setNewMessage}
+                                    multiline
+                                    maxLength={500}
+                                />
+                                <TouchableOpacity
+                                    onPress={sendMessage}
+                                    style={[styles.sendButton, !newMessage.trim() && styles.sendButtonDisabled]}
+                                    disabled={!newMessage.trim()}
+                                >
+                                    <PaperPlaneTilt size={20} color="white" weight="fill" />
+                                </TouchableOpacity>
+                            </>
+                        )}
                     </View>
                 </View>
             </View>
@@ -512,6 +628,37 @@ const styles = StyleSheet.create({
     },
     sendButtonDisabled: {
         backgroundColor: '#9E9E9E',
+    },
+    // ✅ NOUVEAU : Styles pour les médias
+    mediaButtons: {
+        flexDirection: 'row',
+        gap: 12,
+        marginBottom: 8,
+    },
+    mediaButton: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: '#f1f3f4',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    uploadingContainer: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        paddingVertical: 12,
+    },
+    uploadingText: {
+        fontSize: 14,
+        color: theme.colors.textSecondary,
+    },
+    messageImage: {
+        width: 200,
+        height: 150,
+        borderRadius: 8,
+        marginBottom: 8,
     },
 });
 

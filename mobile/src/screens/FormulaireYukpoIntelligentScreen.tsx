@@ -3,6 +3,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 // @ts-ignore
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useEffect, useState } from 'react';
+import { apiGet, apiPost } from '../services/api';
 // @ts-ignore
 import {
   Alert,
@@ -373,9 +374,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         console.log('[FormulaireYukpoIntelligentScreen] 📝 Mode édition - Chargement du service:', serviceId);
 
         try {
-          const response = await fetch(`https://yukpomnang.onrender.com/api/services/${serviceId}`, {
-            headers: { 'Authorization': `Bearer ${user?.token || ''}` }
-          });
+          // ✅ CORRIGÉ: Utilise apiGet
+          const response = await apiGet(`/api/services/${serviceId}`);
 
           if (response.ok) {
             const serviceData = await response.json();
@@ -420,9 +420,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       if (!user?.id) return;
 
       try {
-        const response = await fetch('https://yukpomnang.onrender.com/api/services/last', {
-          headers: { 'Authorization': `Bearer ${user?.token || ''}` }
-        });
+        // ✅ CORRIGÉ: Utilise apiGet
+        const response = await apiGet('/api/services/last');
 
         if (response.ok) {
           const data = await response.json();
@@ -969,24 +968,15 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
       console.log('[FormulaireYukpoIntelligentScreen] Données brutes pour génération IA:', donneesService);
 
-      // Appeler l'IA pour générer le JSON structuré (comptabilise les tokens)
-      // ✅ CORRECTION : Utiliser /api/ia/creation-service qui existe dans le backend
-      const iaResponse = await fetch('https://yukpomnang.onrender.com/api/ia/creation-service', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${user?.token || ''}`
-        },
-        body: JSON.stringify(donneesService)
-      });
+      // ✅ CORRIGÉ: Utilise apiPost pour appel IA
+      const iaResponse = await apiPost('/api/ia/creation-service', donneesService);
 
-      if (!iaResponse.ok) {
-        const errorText = await iaResponse.text();
-        console.error('[FormulaireYukpoIntelligentScreen] Erreur IA:', errorText);
-        throw new Error(`Erreur IA: ${iaResponse.status}`);
+      if (!iaResponse.success) {
+        console.error('[FormulaireYukpoIntelligentScreen] Erreur IA:', iaResponse.error);
+        throw new Error(`Erreur IA: ${iaResponse.error || 'Erreur inconnue'}`);
       }
 
-      const iaData = await iaResponse.json();
+      const iaData = iaResponse.data;
       console.log('[FormulaireYukpoIntelligentScreen] Réponse IA reçue:', iaData);
 
       // 💰 ÉTAPE 2 : Calculer le coût réel avec le multiplier x100 pour création de service
@@ -996,9 +986,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       console.log('💰 [FormulaireYukpoIntelligentScreen] Coût RÉEL calculé:', coutReel, 'FCFA pour', tokensIAExterne, 'tokens');
 
       // Vérifier le solde actuel
-      const balanceResponse = await fetch('https://yukpomnang.onrender.com/api/users/balance', {
-        headers: { 'Authorization': `Bearer ${user?.token || ''}` }
-      });
+      // ✅ CORRIGÉ: Utilise apiGet
+      const balanceResponse = await apiGet('/api/users/balance');
 
       if (!balanceResponse.ok) {
         throw new Error('Impossible de vérifier votre solde');
@@ -1053,6 +1042,26 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                   console.log('[FormulaireYukpoIntelligentScreen] Données extraites depuis data:', finalServiceData);
                 }
 
+                // ✅ NOUVEAU : Transformer les valeurs du formulaire en structure attendue par le backend
+                // Les données de valeursFormulaire doivent être fusionnées correctement
+                Object.keys(valeursFormulaire).forEach(key => {
+                  const value = valeursFormulaire[key];
+                  if (value !== undefined && value !== null && value !== '') {
+                    // Si la valeur existe déjà et est un objet avec 'valeur', on met à jour
+                    if (finalServiceData[key] && typeof finalServiceData[key] === 'object' && finalServiceData[key].valeur !== undefined) {
+                      finalServiceData[key].valeur = value;
+                    } else {
+                      // Sinon, créer la structure complète
+                      finalServiceData[key] = {
+                        type_donnee: typeof value === 'boolean' ? 'boolean' : typeof value === 'number' ? 'number' : 'string',
+                        valeur: value,
+                        origine_champs: 'formulaire'
+                      };
+                    }
+                  }
+                });
+                console.log('[FormulaireYukpoIntelligentScreen] ✅ Données fusionnées avec le formulaire:', finalServiceData);
+
                 // 🔧 ÉTAPE 4 : Ajouter les produits aux données de service
                 if (products.length > 0) {
                   finalServiceData.produits = products;
@@ -1062,8 +1071,9 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                 // ✅ CORRECTION CRITIQUE : Ajouter le GPS fixe si présent (évite GPS Nigeria)
                 if (valeursFormulaire.gps_fixe) {
                   finalServiceData.gps_fixe = {
+                    type_donnee: 'string', // ✅ CORRECTION : type_donnee au lieu de type
                     valeur: valeursFormulaire.gps_fixe,
-                    type: 'text'
+                    origine_champs: 'formulaire' // ✅ CORRECTION : Ajouter origine_champs
                   };
                   console.log('[FormulaireYukpoIntelligentScreen] ✅ GPS FIXE ajouté:', valeursFormulaire.gps_fixe);
                 } else {
@@ -1074,27 +1084,77 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                 console.log('[FormulaireYukpoIntelligentScreen] Transmission tokens IA externe au backend:', tokensIAExterne);
 
                 // ✅ CORRECTION : Utiliser /api/services/create comme dans le frontend
-                const response = await fetch('https://yukpomnang.onrender.com/api/services/create', {
-                  method: 'POST',
-                  headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${user?.token || ''}`
-                  },
-                  body: JSON.stringify({
-                    user_id: user?.id,
-                    ...finalServiceData,
-                    ...(tokensIAExterne && { tokens_ia_externe: tokensIAExterne }) // Transmettre les tokens IA externes
-                  })
-                });
+                // ⚠️ IMPORTANT : Le backend attend les données dans un champ "data"
+                // ✅ CORRECTION CRITIQUE : Convertir user.id (string) en number pour le backend
+                const userId = parseInt(user?.id || '0', 10);
+                if (isNaN(userId) || userId === 0) {
+                  throw new Error('ID utilisateur invalide');
+                }
+
+                // ✅ VÉRIFICATION : S'assurer que les champs obligatoires sont présents
+                const champsObligatoires = ['titre_service', 'description', 'category'];
+                const champManquants = champsObligatoires.filter(champ => !finalServiceData[champ]);
+
+                if (champManquants.length > 0) {
+                  console.error('[FormulaireYukpoIntelligentScreen] ❌ Champs obligatoires manquants:', champManquants);
+                  Alert.alert(
+                    'Erreur de validation',
+                    `Les champs suivants sont manquants : ${champManquants.join(', ')}\n\nVeuillez réessayer.`,
+                    [{ text: 'OK' }]
+                  );
+                  setIsSubmitting(false);
+                  setLoading(false);
+                  return;
+                }
+
+                // ✅ CORRECTION : Structure exacte comme le frontend
+                // Le backend attend : { user_id: number, data: {...}, tokens_ia_externe?: number }
+                const servicePayload = {
+                  user_id: userId,
+                  data: finalServiceData, // Les données sont déjà structurées
+                  ...(tokensIAExterne && { tokens_ia_externe: tokensIAExterne })
+                };
+
+                console.log('[FormulaireYukpoIntelligentScreen] ✅ Payload envoyé au backend:', JSON.stringify(servicePayload, null, 2));
+                console.log('[FormulaireYukpoIntelligentScreen] 🔑 Token utilisé:', user?.token ? `${user.token.substring(0, 20)}...` : 'AUCUN TOKEN');
+                console.log('[FormulaireYukpoIntelligentScreen] 👤 User ID:', user?.id);
+
+                // ✅ CORRIGÉ: Utilise apiPost
+                const response = await apiPost('/api/services/create', servicePayload);
+
+                console.log('[FormulaireYukpoIntelligentScreen] 📡 Statut réponse:', response.status);
+                console.log('[FormulaireYukpoIntelligentScreen] 📡 Headers réponse:', JSON.stringify([...response.headers.entries()]));
 
                 if (!response.ok) {
                   const errorText = await response.text();
-                  console.error('[FormulaireYukpoIntelligentScreen] Erreur API:', errorText);
+                  console.error('[FormulaireYukpoIntelligentScreen] ❌ Erreur API complète:', errorText);
+                  console.error('[FormulaireYukpoIntelligentScreen] ❌ Status:', response.status);
+                  console.error('[FormulaireYukpoIntelligentScreen] ❌ Payload qui a causé l\'erreur:', JSON.stringify(servicePayload, null, 2));
+
+                  // Afficher une alerte plus détaillée
+                  Alert.alert(
+                    'Erreur de création',
+                    `Statut: ${response.status}\nDétails: ${errorText.substring(0, 200)}`,
+                    [{ text: 'OK' }]
+                  );
                   throw new Error(`Erreur création service: ${response.status} - ${errorText}`);
                 }
 
                 const result = await response.json();
                 console.log('[FormulaireYukpoIntelligentScreen] ✅ Service créé avec succès:', result);
+
+                // ✅ NOUVEAU : Récupérer le nouveau JWT du header et mettre à jour le token
+                const newJwt = response.headers.get('x-new-jwt');
+                if (newJwt) {
+                  console.log('[FormulaireYukpoIntelligentScreen] 🔑 Nouveau JWT reçu, mise à jour du token...');
+                  try {
+                    const AsyncStorage = await import('@react-native-async-storage/async-storage');
+                    await AsyncStorage.default.setItem('auth_token', newJwt);
+                    console.log('[FormulaireYukpoIntelligentScreen] ✅ Token sauvegardé dans AsyncStorage');
+                  } catch (error) {
+                    console.error('[FormulaireYukpoIntelligentScreen] Erreur mise à jour token:', error);
+                  }
+                }
 
                 setSuccessData({ serviceId: result.id || 'nouveau', cout: coutReel });
                 setShowSuccessToast(true);

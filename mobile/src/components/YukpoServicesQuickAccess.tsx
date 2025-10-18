@@ -8,7 +8,6 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
-import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
 
 interface YukpoService {
@@ -80,12 +79,7 @@ const YukpoServicesQuickAccess: React.FC<YukpoServicesQuickAccessProps> = ({
 
     return (
         <View style={styles.container}>
-            <Text style={styles.title}>
-                <Text style={styles.yukpoYuk}>Yuk</Text>
-                <Text style={styles.yukpoPo}>po</Text>
-                <Text style={styles.titleRest}> Services</Text>
-            </Text>
-            {/* ✅ Texte "Fonctionnalités à venir" supprimé */}
+            {/* ✅ Titre "Yukpo Services" supprimé */}
 
             <ScrollView
                 horizontal
@@ -102,18 +96,17 @@ const YukpoServicesQuickAccess: React.FC<YukpoServicesQuickAccessProps> = ({
                             colors={service.gradient}
                             style={styles.cardGradient}
                         >
-                            <View style={styles.iconContainer}>
-                                <SafeIcon name={service.icon} size={24} color="#FFFFFF" />
+                            {/* ✅ Titre et icône sur la même ligne */}
+                            <View style={styles.titleRow}>
+                                <SafeIcon name={service.icon} size={20} color="#FFFFFF" />
+                                <Text style={styles.serviceTitle}>
+                                    <Text style={styles.yukpoYukWhite}>Yuk</Text>
+                                    <Text style={styles.yukpoPoWhite}>po</Text>
+                                    <Text> {service.title}</Text>
+                                </Text>
                             </View>
 
-                            <Text style={styles.serviceTitle}>
-                                <Text style={styles.yukpoYukWhite}>Yuk</Text>
-                                <Text style={styles.yukpoPoWhite}>po</Text>
-                                <Text> {service.title}</Text>
-                            </Text>
                             <Text style={styles.serviceDescription}>{service.description}</Text>
-
-                            {/* ✅ Badge "Bientôt" supprimé pour interface plus épurée */}
                         </LinearGradient>
                     </TouchableOpacity>
                 ))}
@@ -124,46 +117,24 @@ const YukpoServicesQuickAccess: React.FC<YukpoServicesQuickAccessProps> = ({
 
 const styles = StyleSheet.create({
     container: {
-        marginVertical: 12,
+        marginVertical: 8, // ✅ Réduit de 12 à 8
         paddingHorizontal: 4,
     },
-    title: {
-        fontSize: 18,
-        fontWeight: '600',
-        marginBottom: 4,
-    },
-    yukpoYuk: {
-        color: '#EAB308', // Jaune pour Yuk
-        fontWeight: '900',
-    },
-    yukpoPo: {
-        color: '#DC2626', // Rouge pour po
-        fontWeight: '900',
-    },
-    titleRest: {
-        color: modernColors.text,
-        fontWeight: '600',
-    },
     yukpoYukWhite: {
-        color: '#FEF3C7', // Jaune clair pour Yuk sur fond coloré
+        color: '#FEF3C7',
         fontWeight: '700',
     },
     yukpoPoWhite: {
-        color: '#FEE2E2', // Rouge clair pour po sur fond coloré
+        color: '#FEE2E2',
         fontWeight: '700',
-    },
-    subtitle: {
-        fontSize: 14,
-        color: modernColors.textSecondary,
-        marginBottom: 12,
     },
     scrollContent: {
         paddingHorizontal: 4,
     },
     serviceCard: {
-        width: 115,  // ✅ Réduit de 130 à 115
-        marginRight: 8,  // ✅ Réduit de 10 à 8
-        borderRadius: 12,  // ✅ Réduit de 14 à 12
+        width: 105, // ✅ Réduit de 115 à 105
+        marginRight: 6, // ✅ Réduit de 8 à 6
+        borderRadius: 10, // ✅ Réduit de 12 à 10
         overflow: 'hidden',
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
@@ -172,24 +143,27 @@ const styles = StyleSheet.create({
         elevation: 3,
     },
     cardGradient: {
-        padding: 8,  // ✅ Réduit de 10 à 8
-        minHeight: 110,  // ✅ Réduit de 125 à 110
+        padding: 6, // ✅ Réduit de 8 à 6
+        minHeight: 95, // ✅ Réduit de 110 à 95
         justifyContent: 'space-between',
     },
-    iconContainer: {
-        alignSelf: 'flex-start',
-        marginBottom: 4,  // ✅ Réduit de 6 à 4
+    // ✅ Nouvelle ligne pour icône et titre
+    titleRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        marginBottom: 4,
     },
     serviceTitle: {
-        fontSize: 13,  // ✅ Réduit de 14 à 13
+        fontSize: 11, // ✅ Réduit de 13 à 11
         fontWeight: '600',
         color: '#FFFFFF',
-        marginBottom: 3,  // ✅ Réduit de 4 à 3
+        flex: 1,
     },
     serviceDescription: {
-        fontSize: 9,  // ✅ Réduit de 10 à 9
+        fontSize: 8, // ✅ Réduit de 9 à 8
         color: 'rgba(255, 255, 255, 0.9)',
-        lineHeight: 13,  // ✅ Réduit de 14 à 13
+        lineHeight: 11, // ✅ Réduit de 13 à 11
     },
     badgeContainer: {
         alignSelf: 'flex-start',

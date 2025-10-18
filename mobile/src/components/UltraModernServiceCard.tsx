@@ -16,6 +16,7 @@ import SafeIcon from './SafeIcon';
 import { useLocationDisplay } from '../hooks/useLocationDisplay';
 import { useServiceReviews } from '../hooks/useServiceReviews';
 import { useServiceStats } from '../hooks/useServiceStats';
+import { apiPost } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
 import ChatModalMobile from './ChatModalMobile';
 import ServiceMediaGallery from './ServiceMediaGallery';
@@ -167,7 +168,9 @@ const UltraModernServiceCard: React.FC<UltraModernServiceCardProps> = ({
 
     const handleShare = async () => {
         try {
-            const serviceUrl = `https://yukpomnang.com/service/${service.id}`;
+            // ✅ CORRIGÉ: Utilise variable d'environnement pour URL de partage
+            const SHARE_BASE_URL = process.env.EXPO_PUBLIC_SHARE_URL || 'https://yukpomnang.com';
+            const serviceUrl = `${SHARE_BASE_URL}/service/${service.id}`;
             const shareText = `🌟 Découvrez ce service sur Yukpomnang :\n\n${normalizedService.titre}\n\n${normalizedService.description}\n\n💰 Prix: ${normalizedService.prix} ${normalizedService.devise}\n📍 Localisation: ${locationData?.location || 'Non spécifiée'}\n\n🔗 ${serviceUrl}`;
 
             const result = await Share.share({
@@ -179,19 +182,12 @@ const UltraModernServiceCard: React.FC<UltraModernServiceCardProps> = ({
             if (result.action === Share.sharedAction) {
                 console.log('✅ Service partagé avec succès');
 
-                // Créer une interaction "share" pour les statistiques
+                // ✅ CORRIGÉ: Créer une interaction "share" avec apiPost
                 if (user?.id) {
                     try {
-                        await fetch(`https://yukpomnang.onrender.com/api/services/${service.id}/interact`, {
-                            method: 'POST',
-                            headers: {
-                                'Authorization': `Bearer ${user.token}`,
-                                'Content-Type': 'application/json'
-                            },
-                            body: JSON.stringify({
-                                type_interaction: 'share',
-                                user_id: user.id
-                            })
+                        await apiPost(`/api/services/${service.id}/interact`, {
+                            type_interaction: 'share',
+                            user_id: user.id
                         });
                     } catch (error) {
                         console.error('Erreur enregistrement interaction share:', error);

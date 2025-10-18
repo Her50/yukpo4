@@ -2,6 +2,7 @@
 // Remplace les appels fetch directs avec gestion des tokens
 
 import { getValidToken } from '../utils/auth';
+import { API_BASE_URL } from '../config/api.config';
 
 interface ApiServiceOptions extends RequestInit {
   isAuthenticated?: boolean;
@@ -41,9 +42,8 @@ export const apiService = async (
     signal: AbortSignal.timeout(30000), // 30 secondes timeout
   };
 
-  // Utiliser le proxy Netlify en production, ou l'URL directe en développement
-  const baseUrl = import.meta.env.VITE_APP_API_URL || 
-    (window.location.hostname.includes('netlify.app') ? '' : 'https://yukpomnang.onrender.com');
+  // ✅ CORRIGÉ: Utilise la configuration centralisée depuis api.config.ts
+  const baseUrl = API_BASE_URL;
 
   // Debug: Log the URL being used
   console.log(`[API Service] Making request to: ${baseUrl}${endpoint}`);

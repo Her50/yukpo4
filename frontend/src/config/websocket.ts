@@ -1,33 +1,36 @@
+// ✅ CORRIGÉ: Utilise la configuration centralisée
+import { WS_BASE_URL, WS_ENDPOINTS } from './api.config';
+
 // Configuration WebSocket - ACTIVÉE ET OPTIMISÉE
 export const WEBSOCKET_CONFIG = {
   // WebSockets activés avec correction HTTPS
   enabled: true,
 
-  // URLs des WebSockets
+  // ✅ URLs des WebSockets depuis configuration centralisée
   urls: {
     status: (userId: number) => {
-      // Configuration production uniquement
-      const protocol = 'wss:';
-      const host = 'yukpomnang.onrender.com';
-      return `${protocol}//${host}/ws/status/${userId}`;
+      if (import.meta.env.DEV) {
+        return `ws://localhost:3001/ws/status/${userId}`;
+      }
+      return WS_ENDPOINTS.STATUS(userId);
     },
     notifications: (userId: number) => {
-      // Configuration production uniquement
-      const protocol = 'wss:';
-      const host = 'yukpomnang.onrender.com';
-      return `${protocol}//${host}/ws/notifications/${userId}`;
+      if (import.meta.env.DEV) {
+        return `ws://localhost:3001/ws/notifications/${userId}`;
+      }
+      return WS_ENDPOINTS.NOTIFICATIONS(userId);
     },
     chat: (clientId: string) => {
-      // Configuration production uniquement
-      const protocol = 'wss:';
-      const host = 'yukpomnang.onrender.com';
-      return `${protocol}//${host}/ws/chat/${clientId}`;
+      if (import.meta.env.DEV) {
+        return `ws://localhost:3001/ws/chat/${clientId}`;
+      }
+      return WS_ENDPOINTS.CHAT(clientId);
     },
     access: () => {
-      // Configuration production uniquement
-      const protocol = 'wss:';
-      const host = 'yukpomnang.onrender.com';
-      return `${protocol}//${host}/ws/access`;
+      if (import.meta.env.DEV) {
+        return `ws://localhost:3001/ws/access`;
+      }
+      return `${WS_BASE_URL}/ws/access`;
     }
   },
 

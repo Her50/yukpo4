@@ -1,4 +1,4 @@
-﻿import { useFocusEffect } from '@react-navigation/native'; // ✅ Pour rafraîchir au retour sur l'écran
+﻿import { useFocusEffect, useNavigation } from '@react-navigation/native'; // ✅ Pour rafraîchir au retour sur l'écran
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -34,6 +34,7 @@ type PaymentLog = {
 };
 
 const SoldeDetailScreen: React.FC = () => {
+  const navigation = useNavigation();
   const { user, refreshUser } = useAuth(); // ✅ Ajout de refreshUser
   const [logs, setLogs] = useState<UsageLog[]>([]);
   const [paymentLogs, setPaymentLogs] = useState<PaymentLog[]>([]);
@@ -76,16 +77,55 @@ const SoldeDetailScreen: React.FC = () => {
     try {
       // Charger l'historique de consommation
       const consumptionResponse = await userApi.getCreditHistory(user.id, selectedPeriod);
-      if (consumptionResponse.success && Array.isArray(consumptionResponse.data)) {
-        setLogs(consumptionResponse.data);
+      console.log('[SoldeDetailScreen] Réponse consommation:', consumptionResponse);
+
+      // ✅ Adapter le format des données backend vers le format mobile
+      if (consumptionResponse.success && consumptionResponse.data) {
+        const history = consumptionResponse.data.history || consumptionResponse.data;
+        if (Array.isArray(history)) {
+          // ✅ Mapping corrigé selon la structure réelle du backend:
+          // Backend retourne: { id, date, service, amount, type, description }
+          const mappedLogs = history.map((item: any) => ({
+            date: item.date,                    // ✅ Déjà formaté par le backend
+            usage_type: item.description,       // ✅ Description de la consommation
+            montant: item.amount,               // ✅ Montant consommé
+            moteur: item.type,                  // ✅ Type: "consumption" ou "recharge"
+            service_id: item.id,                // ✅ ID de l'entrée
+            service_title: item.service         // ✅ Nom du service
+          }));
+          console.log('[SoldeDetailScreen] Logs mappés:', mappedLogs);
+          setLogs(mappedLogs);
+        } else {
+          setLogs([]);
+        }
       } else {
         setLogs([]);
       }
 
       // Charger l'historique des paiements
       const paymentsResponse = await userApi.getPaymentsHistory(user.id, selectedPeriod);
-      if (paymentsResponse.success && Array.isArray(paymentsResponse.data)) {
-        setPaymentLogs(paymentsResponse.data);
+      console.log('[SoldeDetailScreen] Réponse paiements:', paymentsResponse);
+
+      // ✅ Adapter le format des données backend vers le format mobile
+      if (paymentsResponse.success && paymentsResponse.data) {
+        const payments = paymentsResponse.data.payments || paymentsResponse.data;
+        if (Array.isArray(payments)) {
+          // ✅ Mapping corrigé selon la structure réelle du backend:
+          // Backend retourne: { id, date, amount, payment_method, status, transaction_id, description }
+          const mappedPayments = payments.map((item: any) => ({
+            id: item.id,                                // ✅ ID du paiement
+            date: item.date,                            // ✅ Déjà formaté par le backend
+            amount: item.amount,                        // ✅ Montant payé en FCFA
+            payment_method: item.payment_method,        // ✅ Méthode de paiement
+            status: item.status,                        // ✅ Statut: completed/pending/failed
+            transaction_id: item.transaction_id || '',  // ✅ ID de transaction (optionnel)
+            tokens_added: item.amount                   // ✅ Tokens = montant (1 FCFA = 1 token)
+          }));
+          console.log('[SoldeDetailScreen] Paiements mappés:', mappedPayments);
+          setPaymentLogs(mappedPayments);
+        } else {
+          setPaymentLogs([]);
+        }
       } else {
         setPaymentLogs([]);
       }
@@ -334,6 +374,16 @@ const SoldeDetailScreen: React.FC = () => {
               </Text>
             </View>
           </View>
+
+          {/* ✅ Bouton Recharger Tokens - Bien visible */}
+          <TouchableOpacity
+            style={styles.rechargeButton}
+            onPress={() => (navigation as any).navigate('RechargeTokens')}
+          >
+            <Text style={styles.rechargeIcon}>💰</Text>
+            <Text style={styles.rechargeText}>Recharger tokens</Text>
+            <Text style={styles.rechargeArrow}>→</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Sélecteur de période */}
@@ -607,6 +657,39 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 16,
     color: theme.colors.textSecondary,
+  },
+  // ✅ Styles pour le bouton Recharger Tokens
+  rechargeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FEF3C7',
+    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    marginTop: 16,
+    borderWidth: 2,
+    borderColor: '#F59E0B',
+    shadowColor: '#F59E0B',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  rechargeIcon: {
+    fontSize: 20,
+    marginRight: 8,
+  },
+  rechargeText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#D97706',
+    flex: 1,
+  },
+  rechargeArrow: {
+    fontSize: 18,
+    color: '#D97706',
+    fontWeight: 'bold',
   },
 });
 

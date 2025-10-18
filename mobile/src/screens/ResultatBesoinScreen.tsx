@@ -19,7 +19,7 @@ import ServiceGalleryModal from '../components/ServiceGalleryModal';
 import UltraModernServiceCard from '../components/UltraModernServiceCard';
 import { useAuth } from '../contexts/AuthContext';
 import { useLocation } from '../contexts/LocationContext';
-import { apiGet } from '../services/api';
+import { apiGet, apiPost } from '../services/api';
 import { theme } from '../theme/theme';
 
 // Types
@@ -551,24 +551,18 @@ const ResultatBesoinScreen: React.FC = () => {
             try {
                 const serviceTitle = service.data?.titre_service?.valeur || service.titre || 'votre service';
 
-                await fetch('https://yukpomnang.onrender.com/api/notifications/create', {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${user.token}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        user_id: service.user_id,
-                        title: `💬 ${user.name} a ouvert une conversation`,
-                        message: `Au sujet de: ${serviceTitle}\n\nUn client potentiel souhaite discuter avec vous.`,
-                        type: 'chat_opened',
-                        priority: 'medium',
-                        metadata: {
-                            service_id: service.id,
-                            client_id: user.id,
-                            client_name: user.name
-                        }
-                    })
+                // ✅ CORRIGÉ: Utilise apiPost
+                await apiPost('/api/notifications/create', {
+                    user_id: service.user_id,
+                    title: `💬 ${user.name} a ouvert une conversation`,
+                    message: `Au sujet de: ${serviceTitle}\n\nUn client potentiel souhaite discuter avec vous.`,
+                    type: 'chat_opened',
+                    priority: 'medium',
+                    metadata: {
+                        service_id: service.id,
+                        client_id: user.id,
+                        client_name: user.name
+                    }
                 });
 
                 console.log('[ResultatBesoinScreen] Notification de chat ouvert envoyée au prestataire');
@@ -603,29 +597,22 @@ const ResultatBesoinScreen: React.FC = () => {
                 notificationMessage = `Au sujet de: ${serviceTitle}\n\nUn client potentiel est en train de vous appeler.`;
             }
 
-            // Envoyer la notification au backend
-            const response = await fetch('https://yukpomnang.onrender.com/api/notifications/create', {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${user.token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    user_id: prestataireId,
-                    title: notificationTitle,
-                    message: notificationMessage,
-                    type: contactType === 'whatsapp' ? 'whatsapp_contact' : 'phone_call',
-                    priority: 'high',
-                    metadata: {
-                        service_id: service.id,
-                        client_id: user.id,
-                        client_name: user.name,
-                        contact_type: contactType
-                    }
-                })
+            // ✅ CORRIGÉ: Envoyer la notification via apiPost
+            const response = await apiPost('/api/notifications/create', {
+                user_id: prestataireId,
+                title: notificationTitle,
+                message: notificationMessage,
+                type: contactType === 'whatsapp' ? 'whatsapp_contact' : 'phone_call',
+                priority: 'high',
+                metadata: {
+                    service_id: service.id,
+                    client_id: user.id,
+                    client_name: user.name,
+                    contact_type: contactType
+                }
             });
 
-            if (response.ok) {
+            if (response.success) {
                 console.log('[ResultatBesoinScreen] Notification de contact créée pour le prestataire');
             }
         } catch (error) {
@@ -819,7 +806,7 @@ const ResultatBesoinScreen: React.FC = () => {
             {/* Messages d'erreur */}
             {error && (
                 <View style={styles.errorCard}>
-                    <View style={styles.cardContent} style={styles.errorContent}>
+                    <View style={[styles.cardContent, styles.errorContent]}>
                         <Text style={styles.errorIcon}>⚠️</Text>
                         <Text style={styles.errorTitle}>Erreur de chargement</Text>
                         <Text style={styles.errorText}>{error}</Text>
@@ -836,7 +823,7 @@ const ResultatBesoinScreen: React.FC = () => {
             {/* Aucun service trouvé */}
             {!services || services.length === 0 ? (
                 <View style={styles.emptyCard}>
-                    <View style={styles.cardContent} style={styles.emptyContent}>
+                    <View style={[styles.cardContent, styles.emptyContent]}>
                         <Text style={styles.emptyIcon}>🔍</Text>
                         <Text style={styles.emptyTitle}>Aucun service trouvé</Text>
                         <Text style={styles.emptyText}>
@@ -852,7 +839,7 @@ const ResultatBesoinScreen: React.FC = () => {
                 </View>
             ) : !prestatairesLoaded ? (
                 <View style={styles.loadingCard}>
-                    <View style={styles.cardContent} style={styles.loadingContent}>
+                    <View style={[styles.cardContent, styles.loadingContent]}>
                         <ActivityIndicator size="large" color={theme.colors.primary} />
                         <Text style={styles.loadingTitle}>Chargement des informations prestataire</Text>
                         <Text style={styles.loadingSubtitle}>

@@ -3,23 +3,23 @@
  * Gère l'authentification automatique et l'affichage du service
  */
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useRoute, useNavigation } from '@react-navigation/native';
-import React, { useEffect, useState } from 'react';
-import { 
-  View, 
-  Text, 
-  ActivityIndicator, 
-  StyleSheet, 
-  TouchableOpacity,
-  ScrollView,
-  Alert 
-} from 'react-native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useAuth } from '../contexts/AuthContext';
-import { modernColors } from '../theme/modernTheme';
-import SafeIcon from '../components/SafeIcon';
+import React, { useEffect, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
+} from 'react-native';
 import { NativeButton } from '../components/NativeDesign';
+import SafeIcon from '../components/SafeIcon';
+import { useAuth } from '../contexts/AuthContext';
+import { apiGet } from '../services/api';
+import { modernColors } from '../theme/modernTheme';
 
 const ServiceDetailSharedScreen: React.FC = () => {
   const route = useRoute();
@@ -44,16 +44,9 @@ const ServiceDetailSharedScreen: React.FC = () => {
   const loadServiceDetails = async () => {
     try {
       setLoading(true);
-      
-      // Charger les détails du service (accessible sans authentification)
-      const response = await fetch(
-        `https://yukpomnang.onrender.com/api/services/${serviceId}`,
-        {
-          headers: {
-            'Content-Type': 'application/json'
-          }
-        }
-      );
+
+      // ✅ CORRIGÉ: Charger les détails du service avec apiGet
+      const response = await apiGet(`/api/services/${serviceId}`);
 
       if (!response.ok) {
         throw new Error(`Service non trouvé (${response.status})`);
@@ -133,8 +126,8 @@ const ServiceDetailSharedScreen: React.FC = () => {
         colors={[modernColors.primary, modernColors.primaryDark]}
         style={styles.header}
       >
-        <TouchableOpacity 
-          style={styles.backButton} 
+        <TouchableOpacity
+          style={styles.backButton}
           onPress={() => (navigation as any).navigate('Home')}
         >
           <SafeIcon name="arrow-left" size={24} color="#FFFFFF" />

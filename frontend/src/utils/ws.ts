@@ -1,4 +1,6 @@
 // @ts-check
+import { WS_BASE_URL } from '../config/api.config';
+
 let ws: WebSocket | null = null;
 let listeners: ((data: string) => void)[] = [];
 
@@ -8,10 +10,8 @@ let listeners: ((data: string) => void)[] = [];
 export function initAccessWebSocket() {
   if (ws && ws.readyState === WebSocket.OPEN) return;
 
-  // Déterminer le protocole WebSocket approprié
-  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const host = 'yukpomnang.onrender.com';
-  const wsUrl = `${protocol}//${host}/ws/access`;
+  // ✅ CORRIGÉ: Utilise la configuration centralisée
+  const wsUrl = `${WS_BASE_URL}/ws/access`;
 
   console.log('📡 Connexion WebSocket Access à:', wsUrl);
 

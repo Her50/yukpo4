@@ -4,9 +4,9 @@
  */
 
 import * as FileSystem from 'expo-file-system';
+import { API_BASE_URL } from '../config/api.config';
 
-// Configuration de l'API
-const API_BASE_URL = 'https://yukpomnang.onrender.com';
+// ✅ CORRIGÉ: Utilise la configuration centralisée depuis .env
 
 export interface UploadProgress {
     loaded: number;
@@ -46,7 +46,7 @@ export const uploadToCloud = async (
 
         // Préparer le fichier pour l'upload
         let base64Data: string;
-        
+
         if (fileUri.startsWith('data:')) {
             // Déjà en base64
             base64Data = fileUri.split(',')[1];
@@ -75,7 +75,7 @@ export const uploadToCloud = async (
 
         // Préparer les données pour l'upload
         const formData = new FormData();
-        
+
         // Créer un blob depuis le base64
         const blob = base64ToBlob(base64Data, mimeType);
         const file = new File([blob], fileName || `file_${Date.now()}.${getExtension(mimeType)}`, {
@@ -87,7 +87,7 @@ export const uploadToCloud = async (
 
         // Upload vers l'API
         const uploadUrl = `${API_BASE_URL}/api/upload`;
-        
+
         const response = await fetch(uploadUrl, {
             method: 'POST',
             body: formData,
@@ -152,7 +152,7 @@ export const uploadMultipleToCloud = async (
         const result = await uploadToCloud(file.uri, fileType, file.name);
         results.push(result);
         completed++;
-        
+
         if (onProgress) {
             onProgress(completed, files.length);
         }
@@ -167,11 +167,11 @@ export const uploadMultipleToCloud = async (
 function base64ToBlob(base64: string, mimeType: string): Blob {
     const byteCharacters = atob(base64);
     const byteNumbers = new Array(byteCharacters.length);
-    
+
     for (let i = 0; i < byteCharacters.length; i++) {
         byteNumbers[i] = byteCharacters.charCodeAt(i);
     }
-    
+
     const byteArray = new Uint8Array(byteNumbers);
     return new Blob([byteArray], { type: mimeType });
 }
@@ -262,11 +262,11 @@ function getExtension(mimeType: string): string {
  */
 function formatFileSize(bytes: number): string {
     if (bytes === 0) return '0 B';
-    
+
     const k = 1024;
     const sizes = ['B', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
-    
+
     return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
 }
 

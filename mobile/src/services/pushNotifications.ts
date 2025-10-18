@@ -2,8 +2,10 @@
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
+import { API_BASE_URL } from '../config/api.config';
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://yukpomnang.onrender.com';
+// ✅ CORRIGÉ: Utilise la configuration centralisée
+const API_URL = API_BASE_URL;
 
 // Configuration du comportement des notifications
 Notifications.setNotificationHandler({

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { checkBackendHealth } from '../config/api.config';
 
 interface ServerStatus {
     isOnline: boolean;
@@ -15,20 +16,10 @@ export const useServerStatus = () => {
 
     const checkServerStatus = useCallback(async () => {
         try {
-            // Utiliser le proxy Netlify en production, ou l'URL directe en développement
-            const baseUrl = typeof window !== 'undefined' && window.location.hostname.includes('netlify.app') ? '' : 'https://yukpomnang.onrender.com';
-            console.log(`[ServerStatus] Checking health at: ${baseUrl}/healthz`);
-            const response = await fetch(`${baseUrl}/healthz`, {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                signal: AbortSignal.timeout(10000), // 10 secondes timeout
-                mode: 'cors', // Forcer le mode CORS
-                credentials: 'omit' // Ne pas envoyer de cookies
-            });
+            // ✅ CORRIGÉ: Utilise checkBackendHealth de la config centralisée
+            const isOnline = await checkBackendHealth();
 
-            if (response.ok) {
+            if (isOnline) {
                 setStatus(prev => ({
                     isOnline: true,
                     lastCheck: new Date(),
@@ -36,7 +27,7 @@ export const useServerStatus = () => {
                 }));
                 return true;
             } else {
-                throw new Error(`Server returned ${response.status}`);
+                throw new Error('Server is offline');
             }
         } catch (error) {
             console.warn('[ServerStatus] Serveur inaccessible:', error);

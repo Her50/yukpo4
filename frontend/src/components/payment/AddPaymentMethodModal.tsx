@@ -1,10 +1,10 @@
+import { Building2, CreditCard, Smartphone, X } from 'lucide-react';
 import React, { useState } from 'react';
-import { X, Smartphone, CreditCard, Building2 } from 'lucide-react';
-import PaymentMethodIcons from './PaymentMethodIcons';
 import { Button } from '../ui/buttons/Button';
+import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
-import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
+import PaymentMethodIcons from './PaymentMethodIcons';
 
 interface AddPaymentMethodModalProps {
   isOpen: boolean;
@@ -103,22 +103,24 @@ const AddPaymentMethodModal: React.FC<AddPaymentMethodModalProps> = ({
 
       // Simulation de la sauvegarde
       console.log('Simulation de la sauvegarde du moyen de paiement:', methodData);
-      
+
       // Créer un objet simulé avec un ID
       const savedMethod = {
         id: Date.now().toString(),
         ...methodData,
         lastUsed: new Date().toISOString().split('T')[0]
       };
-      
+
       console.log('Moyen de paiement simulé sauvegardé:', savedMethod);
-      
+
       onSave(savedMethod);
       onClose();
-      
+
       // TODO: Remplacer par un vrai appel API quand l'endpoint sera disponible
       /*
-      const response = await fetch('https://yukpomnang.onrender.com/api/users/payment-methods', {
+      // ✅ EXEMPLE avec configuration centralisée:
+      import { buildUrl } from '../../config/api.config';
+      const response = await fetch(buildUrl('/api/users/payment-methods'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -156,7 +158,7 @@ const AddPaymentMethodModal: React.FC<AddPaymentMethodModalProps> = ({
             <X className="w-4 h-4" />
           </Button>
         </CardHeader>
-        
+
         <CardContent className="space-y-6">
           {/* Type de paiement */}
           <div className="space-y-3">
@@ -196,19 +198,19 @@ const AddPaymentMethodModal: React.FC<AddPaymentMethodModalProps> = ({
           <div className="space-y-3">
             <Label className="text-sm font-medium">Fournisseur</Label>
             <div className="grid grid-cols-1 gap-2">
-              {(selectedType === 'mobile' ? mobileProviders : 
+              {(selectedType === 'mobile' ? mobileProviders :
                 selectedType === 'card' ? cardProviders : bankProviders).map((provider) => (
-                <Button
-                  key={provider.id}
-                  variant={selectedProvider === provider.id ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setSelectedProvider(provider.id)}
-                  className="flex items-center space-x-2 justify-start"
-                >
-                  <PaymentMethodIcons method={provider.icon} className="w-4 h-4" />
-                  <span>{provider.name}</span>
-                </Button>
-              ))}
+                  <Button
+                    key={provider.id}
+                    variant={selectedProvider === provider.id ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setSelectedProvider(provider.id)}
+                    className="flex items-center space-x-2 justify-start"
+                  >
+                    <PaymentMethodIcons method={provider.icon} className="w-4 h-4" />
+                    <span>{provider.name}</span>
+                  </Button>
+                ))}
             </div>
           </div>
 
@@ -244,7 +246,7 @@ const AddPaymentMethodModal: React.FC<AddPaymentMethodModalProps> = ({
                   className="w-full"
                 />
               </div>
-              
+
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label htmlFor="expiryDate" className="text-sm font-medium">
@@ -273,7 +275,7 @@ const AddPaymentMethodModal: React.FC<AddPaymentMethodModalProps> = ({
                   />
                 </div>
               </div>
-              
+
               <div>
                 <Label htmlFor="cardholderName" className="text-sm font-medium">
                   Nom du titulaire

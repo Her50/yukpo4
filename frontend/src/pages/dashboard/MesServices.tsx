@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/buttons";
 import ServiceMediaGallery from "@/components/ui/ServiceMediaGallery";
 import { useUser } from "@/hooks/useUser";
 import axios from "axios";
+import { buildUrl, API_ENDPOINTS } from "../../config/api.config";
 import { Edit2, Eye, Power, PowerOff, Share2, Trash2, X } from 'lucide-react';
 import { useEffect, useState } from "react";
 import { toast } from "react-hot-toast";
@@ -88,7 +89,8 @@ const MesServices = () => {
         const token = localStorage.getItem('token');
         console.log('[MesServices] Token présent:', !!token);
 
-        const res = await axios.get("https://yukpomnang.onrender.com/api/prestataire/services", {
+        // ✅ CORRIGÉ: Utilise buildUrl et API_ENDPOINTS
+        const res = await axios.get(buildUrl(API_ENDPOINTS.SERVICES.PRESTATAIRE_SERVICES), {
           headers: {
             Authorization: `Bearer ${token}`
           },

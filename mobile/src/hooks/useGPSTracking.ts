@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Location from 'expo-location';
 import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { apiPatch } from '../services/api';
 
 interface GPSTrackingState {
     isTracking: boolean;
@@ -215,18 +216,12 @@ export const useGPSTracking = (): UseGPSTrackingReturn => {
         }
 
         try {
-            const response = await fetch('https://yukpomnang.onrender.com/api/user/me/gps_location', {
-                method: 'PATCH',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${user.token}`
-                },
-                body: JSON.stringify({
-                    latitude,
-                    longitude,
-                    accuracy: 10,
-                    timestamp: new Date().toISOString()
-                })
+            // ✅ CORRIGÉ: Utilise apiPatch
+            const response = await apiPatch('/api/user/me/gps_location', {
+                latitude,
+                longitude,
+                accuracy: 10,
+                timestamp: new Date().toISOString()
             });
 
             if (response.ok) {

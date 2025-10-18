@@ -5,7 +5,6 @@ import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
 import React, { useEffect, useRef, useState } from 'react';
 import {
-    ActivityIndicator,
     Alert,
     Animated,
     Image,
@@ -16,7 +15,7 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
-import { uploadToCloud, uploadMultipleToCloud } from '../services/cloudUpload';
+import { uploadMultipleToCloud } from '../services/cloudUpload';
 import ModernGPSModal from './ModernGPSModal'; // Utiliser ModernGPSModal pour support des zones
 
 interface ChatInputMobileProps {
@@ -815,67 +814,66 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = ({
 
 const styles = StyleSheet.create({
     container: {
-        backgroundColor: '#FFFFFF', // Fond blanc pour la visibilité
-        borderRadius: 16, // Rayon de bordure réduit
-        padding: 16, // Padding réduit pour économiser l'espace
+        backgroundColor: '#FFFFFF',
+        borderRadius: 12, // ✅ Réduit de 16 à 12
+        padding: 12, // ✅ Réduit de 16 à 12
         marginHorizontal: 0,
-        marginBottom: 12, // Marge réduite
-        borderWidth: 2, // Bordure plus épaisse et raffinée
-        borderColor: '#E5E7EB', // Bordure grise claire raffinée
-        minHeight: 140, // Hauteur minimale réduite
-        // Suppression de l'ombre
+        marginBottom: 8, // ✅ Réduit de 12 à 8
+        borderWidth: 1.5, // ✅ Réduit de 2 à 1.5
+        borderColor: '#E5E7EB',
+        minHeight: 110, // ✅ Réduit de 140 à 110
     },
     inputContainer: {
-        borderRadius: 12, // Rayon de bordure réduit
+        borderRadius: 10, // ✅ Réduit de 12 à 10
         borderWidth: 1,
-        borderColor: '#D1D5DB', // Bordure grise claire
-        backgroundColor: '#F9FAFB', // Fond gris très clair
-        marginBottom: 12, // Marge réduite
-        minHeight: 80, // Hauteur minimale réduite
+        borderColor: '#D1D5DB',
+        backgroundColor: '#F9FAFB',
+        marginBottom: 8, // ✅ Réduit de 12 à 8
+        minHeight: 65, // ✅ Réduit de 80 à 65
     },
     textInput: {
-        fontSize: 15,
-        color: '#374151', // Texte gris foncé pour la visibilité
-        minHeight: 60, // Hauteur minimale réduite
-        maxHeight: 100, // Hauteur maximale réduite
+        fontSize: 14, // ✅ Réduit de 15 à 14
+        color: '#374151',
+        minHeight: 50, // ✅ Réduit de 60 à 50
+        maxHeight: 85, // ✅ Réduit de 100 à 85
         textAlignVertical: 'top',
-        padding: 12, // Padding réduit
+        padding: 10, // ✅ Réduit de 12 à 10
         fontWeight: '500',
     },
     actionsContainer: {
         flexDirection: 'row',
-        justifyContent: 'space-between',
+        justifyContent: 'flex-end', // ✅ Compacter à droite
         alignItems: 'center',
-        paddingVertical: 8,
-        paddingHorizontal: 8,
+        paddingVertical: 6, // ✅ Réduit de 8 à 6
+        paddingHorizontal: 6, // ✅ Réduit de 8 à 6
         borderTopWidth: 1,
         borderTopColor: '#E5E7EB',
-        gap: 4,
-        marginBottom: 4, // Espace réduit
+        gap: 3, // ✅ Réduit de 4 à 3
+        marginBottom: 0, // ✅ Supprimé l'espace
     },
     sendButtonContainer: {
-        paddingHorizontal: 8,
-        paddingBottom: 4, // Padding réduit
+        paddingHorizontal: 6,
+        paddingBottom: 2,
         alignItems: 'center',
-        marginTop: 2,
+        marginTop: 0,
     },
     sendButtonContainerExternal: {
-        paddingHorizontal: 8,
-        paddingTop: 8,
-        paddingBottom: 4,
+        paddingHorizontal: 6,
+        paddingTop: 4, // ✅ Réduit de 8 à 4
+        paddingBottom: 2,
         alignItems: 'center',
-        marginTop: 4,
+        marginTop: 0, // ✅ Supprimé l'espace
     },
     actionButton: {
         flexDirection: 'column',
         alignItems: 'center',
-        paddingVertical: 6,
-        paddingHorizontal: 3,
-        minWidth: 45,
+        paddingVertical: 4, // ✅ Réduit de 6 à 4
+        paddingHorizontal: 2, // ✅ Réduit de 3 à 2
+        minWidth: 40, // ✅ Réduit de 45 à 40
         borderRadius: 6,
-        backgroundColor: 'transparent', // Suppression du fond
-        borderWidth: 0, // Suppression de la bordure
-        flex: 1,
+        backgroundColor: 'transparent',
+        borderWidth: 0,
+        flex: 0, // ✅ Pas de flex pour compacter à droite
         marginHorizontal: 1,
     },
     actionButtonActive: {
@@ -1157,19 +1155,19 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: '#10B981', // Vert moderne au lieu du turquoise
-        paddingVertical: 12,
-        paddingHorizontal: 32,
-        borderRadius: 12,
-        gap: 6,
+        backgroundColor: '#10B981',
+        paddingVertical: 10, // ✅ Réduit de 12 à 10
+        paddingHorizontal: 28, // ✅ Réduit de 32 à 28
+        borderRadius: 10, // ✅ Réduit de 12 à 10
+        gap: 5, // ✅ Réduit de 6 à 5
         borderWidth: 1,
         borderColor: '#10B981',
         shadowColor: '#10B981',
-        shadowOffset: { width: 0, height: 3 },
-        shadowOpacity: 0.4,
-        shadowRadius: 6,
-        elevation: 6,
-        marginTop: 16, // Remonte le bouton pour qu'il ne soit pas trop bas
+        shadowOffset: { width: 0, height: 2 }, // ✅ Réduit shadow
+        shadowOpacity: 0.3, // ✅ Réduit opacité
+        shadowRadius: 4, // ✅ Réduit radius
+        elevation: 4,
+        marginTop: 6, // ✅ Réduit de 16 à 6 pour optimiser l'espace
     },
     submitButtonDisabled: {
         backgroundColor: '#9CA3AF',

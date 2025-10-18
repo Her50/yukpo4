@@ -33,10 +33,10 @@ export default function App() {
                 <GlobalIAStatsProvider>
                   {/* Tracking GPS automatique en arrière-plan */}
                   <GPSTrackingManager />
-                  {/* ✅ NOUVEAU: Gestionnaire de push notifications et appels */}
-                  <PushNotificationManager />
                   <StatusBar style="auto" />
                   <NavigationContainer linking={linking}>
+                    {/* ✅ NOUVEAU: Gestionnaire de push notifications et appels - DÉPLACÉ À L'INTÉRIEUR */}
+                    <PushNotificationManager />
                     <AppNavigator />
                   </NavigationContainer>
                 </GlobalIAStatsProvider>

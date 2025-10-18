@@ -21,8 +21,7 @@
             "infoPlist": {
                 "NSCameraUsageDescription": "Yukpomnang a besoin d'accéder à votre caméra pour les appels vidéo.",
                 "NSMicrophoneUsageDescription": "Yukpomnang a besoin d'accéder à votre microphone pour les appels audio et vidéo."
-            },
-            "usesApnsForNotifications": true
+            }
         },
         "android": {
             "package": "com.hernandezlele.yukpomnangmobile",
@@ -36,7 +35,6 @@
                     "apiKey": "AIzaSyDFfWEq1Umm06SNTbR-cRhRQ5Sq_taEAWQ"
                 }
             },
-            "useNextNotificationsApi": true,
             "permissions": [
                 "ACCESS_FINE_LOCATION",
                 "ACCESS_COARSE_LOCATION",
@@ -85,7 +83,9 @@
                 {
                     "icon": "./assets/notification-icon.png",
                     "color": "#6366F1",
-                    "sounds": ["./assets/sounds/call_ringtone.mp3"],
+                    "sounds": [
+                        "./assets/sounds/call_ringtone.mp3"
+                    ],
                     "androidMode": "default",
                     "androidCollapsedTitle": "Yukpomnang"
                 }
@@ -102,7 +102,6 @@
             }
         },
         "owner": "hernandezlele",
-        "scheme": "yukpomnang",
-        "privacy": "public"
+        "scheme": "yukpomnang"
     }
 }

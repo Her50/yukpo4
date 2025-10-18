@@ -1,6 +1,6 @@
 ﻿use std::sync::Arc;
 use axum::{
-    extract::{Extension, State, Path},
+    extract::{Extension, State, Path, Query},
     Json,
 };
 use serde::{Deserialize, Serialize};
@@ -420,8 +420,19 @@ pub struct ConsumptionHistoryResponse {
 pub async fn get_consumption_history(
     Extension(user): Extension<AuthenticatedUser>,
     State(state): State<Arc<AppState>>,
+    Query(params): Query<std::collections::HashMap<String, String>>,
 ) -> AppResult<Json<ConsumptionHistoryResponse>> {
     info!("Appel get_consumption_history pour user_id={}", user.id);
+    
+    // ✅ Calculer la date de début selon la période demandée
+    let period = params.get("period").map(|s| s.as_str()).unwrap_or("30d");
+    let days_ago = match period {
+        "7d" => 7,
+        "30d" => 30,
+        "90d" => 90,
+        "all" => 365 * 10, // 10 ans pour "tout"
+        _ => 30,
+    };
     
     // Récupérer l'historique des consommations depuis la table token_consumption_logs
     let rows = sqlx::query(
@@ -435,11 +446,13 @@ pub async fn get_consumption_history(
             description
         FROM token_consumption_logs 
         WHERE user_id = $1 
+        AND created_at >= NOW() - INTERVAL '1 day' * $2
         ORDER BY created_at DESC 
-        LIMIT 50
+        LIMIT 200
         "#
     )
     .bind(user.id)
+    .bind(days_ago)
     .fetch_all(&state.pg)
     .await;
 
@@ -482,11 +495,13 @@ pub async fn get_consumption_history(
             CONCAT('Recharge de ', amount_paid, ' FCFA') as description
         FROM purchase_history 
         WHERE user_id = $1 
+        AND created_at >= NOW() - INTERVAL '1 day' * $2
         ORDER BY created_at DESC 
-        LIMIT 20
+        LIMIT 100
         "#
     )
     .bind(user.id)
+    .bind(days_ago)
     .fetch_all(&state.pg)
     .await;
 
@@ -541,8 +556,19 @@ pub struct PaymentHistoryResponse {
 pub async fn get_payment_history(
     Extension(user): Extension<AuthenticatedUser>,
     State(state): State<Arc<AppState>>,
+    Query(params): Query<std::collections::HashMap<String, String>>,
 ) -> AppResult<Json<PaymentHistoryResponse>> {
     info!("Appel get_payment_history pour user_id={}", user.id);
+    
+    // ✅ Calculer la date de début selon la période demandée
+    let period = params.get("period").map(|s| s.as_str()).unwrap_or("30d");
+    let days_ago = match period {
+        "7d" => 7,
+        "30d" => 30,
+        "90d" => 90,
+        "all" => 365 * 10, // 10 ans pour "tout"
+        _ => 30,
+    };
     
     // Récupérer l'historique des paiements depuis la table purchase_history
     let rows = sqlx::query(
@@ -557,11 +583,13 @@ pub async fn get_payment_history(
             CONCAT('Recharge de ', amount_paid, ' FCFA') as description
         FROM purchase_history 
         WHERE user_id = $1 
+        AND created_at >= NOW() - INTERVAL '1 day' * $2
         ORDER BY created_at DESC 
-        LIMIT 50
+        LIMIT 200
         "#
     )
     .bind(user.id)
+    .bind(days_ago)
     .fetch_all(&state.pg)
     .await;
 
@@ -745,5 +773,37 @@ pub async fn get_user_profile(
 
     info!("[get_user_profile] Profil récupéré avec succès pour user_id={}", user.id);
     Ok(Json(profile))
+}
+
+/// ✅ NOUVEAU : Récupère la liste des conversations de l'utilisateur
+#[derive(Serialize)]
+pub struct ConversationItem {
+    pub service_id: i32,
+    pub service_title: String,
+    pub prestataire_id: i32,
+    pub prestataire_name: String,
+    pub last_interaction_at: chrono::DateTime<chrono::Utc>,
+    pub interaction_count: i64,
+}
+
+#[derive(Serialize)]
+pub struct ConversationsResponse {
+    pub conversations: Vec<ConversationItem>,
+}
+
+pub async fn get_user_conversations(
+    Extension(user): Extension<AuthenticatedUser>,
+    State(_state): State<Arc<AppState>>,
+) -> AppResult<Json<ConversationsResponse>> {
+    info!("[get_user_conversations] Récupération conversations pour user_id={}", user.id);
+    
+    // Cette fonction nécessite MongoDB car les interactions sont stockées là
+    // Pour l'instant, retourner une liste vide
+    // TODO: Implémenter avec MongoDB quand disponible
+    
+    info!("[get_user_conversations] Retour liste vide (MongoDB non disponible)");
+    Ok(Json(ConversationsResponse {
+        conversations: vec![]
+    }))
 }
 

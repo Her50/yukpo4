@@ -193,4 +193,55 @@ pub async fn post_review_helpful(
     }))
 }
 
+/// GET /services/:id/stats - Récupère les statistiques d'un service
+pub async fn get_service_stats(
+    Path(service_id): Path<i32>,
+    State(state): State<Arc<AppState>>,
+) -> Json<Value> {
+    log::info!("[InteractionController] 📊 Récupération stats pour service {}", service_id);
+    
+    // Récupérer toutes les interactions du service
+    let interactions = get_interactions(
+        state.mongo_history.clone(),
+        service_id,
+        None,
+        None
+    ).await.unwrap_or_default();
+
+    // Récupérer tous les avis du service
+    let reviews = get_reviews(
+        state.mongo_history.clone(),
+        service_id,
+        None
+    ).await.unwrap_or_default();
+
+    // Calculer les statistiques
+    let views = interactions.iter().filter(|i| i.get("type").and_then(|v| v.as_str()) == Some("view")).count();
+    let contacts = interactions.iter().filter(|i| i.get("type").and_then(|v| v.as_str()) == Some("contact")).count();
+    let messages = interactions.iter().filter(|i| i.get("type").and_then(|v| v.as_str()) == Some("message")).count();
+    let shares = interactions.iter().filter(|i| i.get("type").and_then(|v| v.as_str()) == Some("share")).count();
+    let likes = interactions.iter().filter(|i| i.get("type").and_then(|v| v.as_str()) == Some("like")).count();
+
+    // Calculer la note moyenne
+    let total_reviews = reviews.len();
+    let total_rating: i32 = reviews.iter()
+        .filter_map(|r| r.get("rating").and_then(|v| v.as_i64()).map(|v| v as i32))
+        .sum();
+    let average_rating = if total_reviews > 0 {
+        total_rating as f64 / total_reviews as f64
+    } else {
+        0.0
+    };
+
+    Json(json!({
+        "views": views,
+        "contacts": contacts,
+        "messages": messages,
+        "shares": shares,
+        "likes": likes,
+        "average_rating": average_rating,
+        "total_ratings": total_reviews
+    }))
+}
+
 // ? compl?ter avec la logique m?tier

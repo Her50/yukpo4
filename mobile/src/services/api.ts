@@ -415,10 +415,10 @@ export const userApi = {
     return apiCall('/api/user/contacts', 'POST', contact);
   },
   getCreditHistory: async (userId: string, period: string = '30d') => {
-    return apiCall(`/api/user/credit/history/${userId}?period=${period}`);
+    return apiCall(`/api/users/consumption-history?period=${period}`);
   },
   getPaymentsHistory: async (userId: string, period: string = '30d') => {
-    return apiCall(`/api/user/payments/history/${userId}?period=${period}`);
+    return apiCall(`/api/users/payment-history?period=${period}`);
   },
   toggleServiceStatus: async (serviceId: number, isActive: boolean) => {
     return apiCall(`/api/services/${serviceId}/toggle-status`, 'PATCH', { actif: isActive });
@@ -438,11 +438,6 @@ export const userApi = {
   // Obtenir l'historique de consommation
   getConsumptionHistory: async (userId: string, period: string = 'month') => {
     return apiCall(`/api/user/credit/history/${userId}?period=${period}`);
-  },
-
-  // Obtenir l'historique des paiements
-  getPaymentsHistory: async (userId: string, period: string = 'month') => {
-    return apiCall(`/api/user/payments/history/${userId}?period=${period}`);
   },
 
   // Gestion des favoris
@@ -551,6 +546,29 @@ export const apiPost = async <T>(endpoint: string, data: any): Promise<ApiRespon
 export const apiGet = async <T>(endpoint: string): Promise<ApiResponse<T>> => {
   return apiCall<T>(endpoint, {
     method: 'GET',
+  });
+};
+
+// ✅ AJOUT: apiPatch pour les mises à jour partielles
+export const apiPatch = async <T>(endpoint: string, data?: any): Promise<ApiResponse<T>> => {
+  return apiCall<T>(endpoint, {
+    method: 'PATCH',
+    body: data ? JSON.stringify(data) : undefined,
+  });
+};
+
+// ✅ AJOUT: apiPut pour les mises à jour complètes
+export const apiPut = async <T>(endpoint: string, data: any): Promise<ApiResponse<T>> => {
+  return apiCall<T>(endpoint, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+};
+
+// ✅ AJOUT: apiDelete pour les suppressions
+export const apiDelete = async <T>(endpoint: string): Promise<ApiResponse<T>> => {
+  return apiCall<T>(endpoint, {
+    method: 'DELETE',
   });
 };
 

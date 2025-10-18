@@ -2,12 +2,15 @@ import React, { useState } from 'react';
 import { Image, Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 import { theme } from '../theme/theme';
+import WeatherWidget from './WeatherWidget';
 
 interface UserAvatarMenuProps {
     onNavigate: (route: string) => void;
+    balance?: number;
+    weatherLocation?: { lat: number; lng: number } | null;
 }
 
-const UserAvatarMenu: React.FC<UserAvatarMenuProps> = ({ onNavigate }) => {
+const UserAvatarMenu: React.FC<UserAvatarMenuProps> = ({ onNavigate, balance = 0, weatherLocation }) => {
     const { user, logout } = useAuth();
     const [showMenu, setShowMenu] = useState(false);
 
@@ -22,7 +25,8 @@ const UserAvatarMenu: React.FC<UserAvatarMenuProps> = ({ onNavigate }) => {
             title: 'Recharger Tokens',
             icon: '💰',
             route: 'RechargeTokens',
-            description: 'Ajouter des tokens à votre compte'
+            description: 'Ajouter des tokens à votre compte',
+            highlighted: true // ✅ Mise en évidence du lien de recharge
         },
         {
             title: 'Paramètres',
@@ -113,6 +117,28 @@ const UserAvatarMenu: React.FC<UserAvatarMenuProps> = ({ onNavigate }) => {
                             </View>
                         </View>
 
+                        {/* ✅ Solde et Météo intégrés dans le menu */}
+                        <View style={styles.balanceWeatherContainer}>
+                            {/* Solde */}
+                            <TouchableOpacity
+                                style={styles.balanceCard}
+                                onPress={() => {
+                                    setShowMenu(false);
+                                    onNavigate('SoldeDetail');
+                                }}
+                            >
+                                <Text style={styles.balanceLabel}>Solde</Text>
+                                <Text style={styles.balanceAmount}>
+                                    {balance.toLocaleString('fr-FR')} <Text style={styles.balanceCurrency}>FCFA</Text>
+                                </Text>
+                            </TouchableOpacity>
+
+                            {/* Météo */}
+                            <View style={styles.weatherCard}>
+                                <WeatherWidget location={weatherLocation} compact={true} />
+                            </View>
+                        </View>
+
                         {/* Items du menu */}
                         <View style={styles.menuItems}>
                             {menuItems.map((item, index) => (
@@ -120,7 +146,8 @@ const UserAvatarMenu: React.FC<UserAvatarMenuProps> = ({ onNavigate }) => {
                                     key={index}
                                     style={[
                                         styles.menuItem,
-                                        item.route === 'logout' && styles.logoutItem
+                                        item.route === 'logout' && styles.logoutItem,
+                                        item.highlighted && styles.highlightedItem
                                     ]}
                                     onPress={() => handleMenuItemPress(item)}
                                 >
@@ -128,12 +155,18 @@ const UserAvatarMenu: React.FC<UserAvatarMenuProps> = ({ onNavigate }) => {
                                     <View style={styles.menuItemContent}>
                                         <Text style={[
                                             styles.menuItemTitle,
-                                            item.route === 'logout' && styles.logoutText
+                                            item.route === 'logout' && styles.logoutText,
+                                            item.highlighted && styles.highlightedText
                                         ]}>
                                             {item.title}
                                         </Text>
                                         <Text style={styles.menuItemDescription}>{item.description}</Text>
                                     </View>
+                                    {item.highlighted && (
+                                        <View style={styles.highlightedBadge}>
+                                            <Text style={styles.highlightedBadgeText}>⚡</Text>
+                                        </View>
+                                    )}
                                 </TouchableOpacity>
                             ))}
                         </View>
@@ -258,6 +291,63 @@ const styles = StyleSheet.create({
         fontSize: 12,
         color: theme.colors.textSecondary,
         marginTop: 2,
+    },
+    // ✅ Styles pour le solde et la météo
+    balanceWeatherContainer: {
+        flexDirection: 'row',
+        paddingHorizontal: 20,
+        paddingVertical: 16,
+        gap: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: '#F3F4F6',
+    },
+    balanceCard: {
+        flex: 1,
+        backgroundColor: '#F0FDF4',
+        borderRadius: 12,
+        padding: 12,
+        borderWidth: 1,
+        borderColor: '#10B981',
+    },
+    balanceLabel: {
+        fontSize: 12,
+        color: '#059669',
+        fontWeight: '600',
+        marginBottom: 4,
+    },
+    balanceAmount: {
+        fontSize: 18,
+        color: '#047857',
+        fontWeight: '700',
+    },
+    balanceCurrency: {
+        fontSize: 12,
+        color: '#059669',
+        fontWeight: '600',
+    },
+    weatherCard: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    // ✅ Styles pour l'item mis en évidence
+    highlightedItem: {
+        backgroundColor: '#FEF3C7',
+        borderLeftWidth: 4,
+        borderLeftColor: '#F59E0B',
+    },
+    highlightedText: {
+        color: '#D97706',
+        fontWeight: '700',
+    },
+    highlightedBadge: {
+        backgroundColor: '#F59E0B',
+        borderRadius: 12,
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+    },
+    highlightedBadgeText: {
+        fontSize: 14,
     },
 });
 

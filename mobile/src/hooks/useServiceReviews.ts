@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { API_ENDPOINTS } from '../config/api.config';
+import { apiGet, apiPost } from '../services/api';
 
 interface Review {
     id: number;
@@ -37,15 +39,12 @@ export const useServiceReviews = (serviceId: number): UseServiceReviewsReturn =>
         const fetchReviews = async () => {
             try {
                 setLoading(true);
-                const token = await getToken();
 
-                // Récupérer les avis
-                const reviewsResponse = await fetch(`https://yukpomnang.onrender.com/api/services/${serviceId}/reviews`, {
-                    headers: token ? { Authorization: `Bearer ${token}` } : {}
-                });
+                // ✅ CORRIGÉ: Utilise apiGet au lieu de fetch hardcodé
+                const reviewsResponse = await apiGet(API_ENDPOINTS.SERVICES.REVIEWS(serviceId));
 
-                if (reviewsResponse.ok) {
-                    const reviewsData = await reviewsResponse.json();
+                if (reviewsResponse.success && reviewsResponse.data) {
+                    const reviewsData = reviewsResponse.data;
                     setReviews(reviewsData.reviews || []);
 
                     // Calculer les statistiques
@@ -101,28 +100,18 @@ export const useServiceReviews = (serviceId: number): UseServiceReviewsReturn =>
 
     const submitReview = async (rating: number, comment: string): Promise<boolean> => {
         try {
-            const token = await getToken();
-            if (!token) {
-                throw new Error('Utilisateur non authentifié');
-            }
-
-            const response = await fetch(`https://yukpomnang.onrender.com/api/services/${serviceId}/reviews`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({ rating, comment })
+            // ✅ CORRIGÉ: Utilise apiPost au lieu de fetch hardcodé
+            const response = await apiPost(API_ENDPOINTS.SERVICES.SUBMIT_REVIEW(serviceId), {
+                rating,
+                comment
             });
 
-            if (response.ok) {
+            if (response.success) {
                 // Recharger les avis après soumission
-                const reviewsResponse = await fetch(`https://yukpomnang.onrender.com/api/services/${serviceId}/reviews`, {
-                    headers: { Authorization: `Bearer ${token}` }
-                });
+                const reviewsResponse = await apiGet(API_ENDPOINTS.SERVICES.REVIEWS(serviceId));
 
-                if (reviewsResponse.ok) {
-                    const reviewsData = await reviewsResponse.json();
+                if (reviewsResponse.success && reviewsResponse.data) {
+                    const reviewsData = reviewsResponse.data;
                     setReviews(reviewsData.reviews || []);
 
                     // Mettre à jour les statistiques
@@ -158,19 +147,10 @@ export const useServiceReviews = (serviceId: number): UseServiceReviewsReturn =>
 
     const markReviewHelpful = async (reviewId: number): Promise<boolean> => {
         try {
-            const token = await getToken();
-            if (!token) {
-                throw new Error('Utilisateur non authentifié');
-            }
+            // ✅ CORRIGÉ: Utilise apiPost au lieu de fetch hardcodé
+            const response = await apiPost(API_ENDPOINTS.REVIEWS.MARK_HELPFUL(reviewId), {});
 
-            const response = await fetch(`https://yukpomnang.onrender.com/api/reviews/${reviewId}/helpful`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            });
-
-            if (response.ok) {
+            if (response.success) {
                 // Mettre à jour localement le compteur
                 setReviews(prev => prev.map(review =>
                     review.id === reviewId
@@ -190,20 +170,7 @@ export const useServiceReviews = (serviceId: number): UseServiceReviewsReturn =>
     return { reviews, stats, loading, error, submitReview, markReviewHelpful };
 };
 
-// Fonction utilitaire pour récupérer le token
-const getToken = async (): Promise<string | null> => {
-    try {
-        const AsyncStorage = require('@react-native-async-storage/async-storage').default;
-        let token = await AsyncStorage.getItem('auth_token');
-        if (!token) {
-            token = await AsyncStorage.getItem('token');
-        }
-        return token;
-    } catch (error) {
-        console.error('❌ [useServiceReviews] Erreur récupération token:', error);
-        return null;
-    }
-};
+// ✅ getToken() n'est plus nécessaire car apiGet/apiPost gèrent automatiquement le token
 
 
 

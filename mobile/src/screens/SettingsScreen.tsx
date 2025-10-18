@@ -5,6 +5,7 @@ import { useState } from 'react';
 import ReactNative from 'react-native';
 import { SafeNativeView } from '../components/SafeNativeView';
 import { useAuth } from '../contexts/AuthContext';
+import { apiPatch } from '../services/api';
 import { theme } from '../theme/theme';
 const { Alert, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } = ReactNative;
 
@@ -135,20 +136,13 @@ const SettingsScreen: React.FC = () => {
       // CORRECTION: Sauvegarder le paramètre GPS dans AsyncStorage ET envoyer au backend
       await AsyncStorage.setItem('gpsEnabled', JSON.stringify(settings.gpsEnabled));
 
-      // Envoyer le consentement GPS au backend
+      // ✅ CORRIGÉ: Envoyer le consentement GPS au backend avec apiPatch
       try {
-        const response = await fetch('https://yukpomnang.onrender.com/api/user/me/gps_consent', {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${user?.token || ''}`
-          },
-          body: JSON.stringify({
-            gps_consent: settings.gpsEnabled
-          })
+        const response = await apiPatch('/api/user/me/gps_consent', {
+          gps_consent: settings.gpsEnabled
         });
 
-        if (response.ok) {
+        if (response.success) {
           console.log('✅ [SettingsScreen] Consentement GPS envoyé au backend:', settings.gpsEnabled);
         } else {
           console.warn('⚠️ [SettingsScreen] Erreur envoi consentement GPS au backend');

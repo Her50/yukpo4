@@ -1,15 +1,17 @@
 // Routes pour le chat et messagerie
 use std::sync::Arc;
 use axum::{
-    routing::post,
+    routing::{post, get},
     Router,
-    extract::State,
+    extract::{State, Path},
     response::Json,
     Extension,
     http::StatusCode,
 };
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
+use sqlx::Row;
+use chrono::{DateTime, Utc};
 use crate::{
     state::AppState,
     middlewares::jwt::{jwt_auth, AuthenticatedUser},
@@ -94,8 +96,295 @@ pub async fn notify_new_message(
     }
 }
 
+// ✅ AJOUT: Structures pour les conversations et messages
+
+#[derive(Debug, Serialize)]
+pub struct Conversation {
+    pub id: String,
+    pub client_id: String,
+    pub prestataire_id: String,
+    pub client_name: String,
+    pub prestataire_name: String,
+    pub client_photo: Option<String>,
+    pub prestataire_photo: Option<String>,
+    pub last_message: String,
+    pub last_message_time: DateTime<Utc>,
+    pub unread_count: i32,
+    pub is_active: bool,
+    pub service_title: Option<String>,
+    pub status: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ChatMessage {
+    pub id: String,
+    pub conversation_id: String,
+    pub from: String, // 'client' ou 'prestataire'
+    pub content: String,
+    pub created_at: DateTime<Utc>,
+    pub is_from_client: bool,
+    pub r#type: String, // 'text', 'image', 'audio', 'file'
+    pub metadata: Option<Value>,
+}
+
+/// GET /api/chat/conversations - Récupère toutes les conversations de l'utilisateur
+pub async fn get_user_conversations(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+) -> Result<Json<Vec<Conversation>>, StatusCode> {
+    log::info!("[ChatController] 📋 Récupération conversations pour user_id={}", user.id);
+
+    // ✅ Récupérer les conversations depuis PostgreSQL
+    let rows = sqlx::query(
+        r#"
+        SELECT 
+            c.id,
+            c.client_id::text,
+            c.prestataire_id::text,
+            COALESCE(u_client.name, 'Client') as client_name,
+            COALESCE(u_prestataire.name, 'Prestataire') as prestataire_name,
+            u_client.avatar as client_photo,
+            u_prestataire.avatar as prestataire_photo,
+            COALESCE(
+                (SELECT content FROM chat_messages WHERE conversation_id = c.id ORDER BY created_at DESC LIMIT 1),
+                'Nouvelle conversation'
+            ) as last_message,
+            c.last_message_at,
+            COALESCE(
+                (SELECT unread_count FROM chat_unread_counts WHERE conversation_id = c.id AND user_id = $1),
+                0
+            ) as unread_count,
+            c.is_active,
+            c.service_title,
+            c.status
+        FROM conversations c
+        LEFT JOIN users u_client ON c.client_id = u_client.id
+        LEFT JOIN users u_prestataire ON c.prestataire_id = u_prestataire.id
+        WHERE c.client_id = $1 OR c.prestataire_id = $1
+        ORDER BY c.last_message_at DESC
+        LIMIT 100
+        "#
+    )
+    .bind(user.id)
+    .fetch_all(&state.pg)
+    .await;
+
+    let mut conversations = Vec::new();
+
+    match rows {
+        Ok(rows) => {
+            for row in rows {
+                conversations.push(Conversation {
+                    id: row.try_get("id").unwrap_or_default(),
+                    client_id: row.try_get("client_id").unwrap_or_default(),
+                    prestataire_id: row.try_get("prestataire_id").unwrap_or_default(),
+                    client_name: row.try_get("client_name").unwrap_or_else(|_| "Client".to_string()),
+                    prestataire_name: row.try_get("prestataire_name").unwrap_or_else(|_| "Prestataire".to_string()),
+                    client_photo: row.try_get("client_photo").ok(),
+                    prestataire_photo: row.try_get("prestataire_photo").ok(),
+                    last_message: row.try_get("last_message").unwrap_or_else(|_| "".to_string()),
+                    last_message_time: row.try_get("last_message_at").unwrap_or_else(|_| Utc::now()),
+                    unread_count: row.try_get("unread_count").unwrap_or(0),
+                    is_active: row.try_get("is_active").unwrap_or(true),
+                    service_title: row.try_get("service_title").ok(),
+                    status: row.try_get("status").unwrap_or_else(|_| "active".to_string()),
+                });
+            }
+        }
+        Err(e) => {
+            log::error!("[ChatController] ❌ Erreur DB: {:?}", e);
+            // Retourner tableau vide en cas d'erreur
+        }
+    }
+    
+    log::info!("[ChatController] ✅ {} conversations trouvées", conversations.len());
+    Ok(Json(conversations))
+}
+
+/// GET /api/chat/messages/:conversation_id - Récupère les messages d'une conversation
+pub async fn get_conversation_messages(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+    Path(conversation_id): Path<String>,
+) -> Result<Json<Vec<ChatMessage>>, StatusCode> {
+    log::info!("[ChatController] 📨 Récupération messages conversation={} user={}", 
+        conversation_id, user.id);
+
+    // ✅ Vérifier que l'utilisateur fait partie de la conversation
+    let conversation_check = sqlx::query(
+        "SELECT 1 FROM conversations WHERE id = $1 AND (client_id = $2 OR prestataire_id = $2)"
+    )
+    .bind(&conversation_id)
+    .bind(user.id)
+    .fetch_optional(&state.pg)
+    .await;
+
+    if conversation_check.is_err() || conversation_check.unwrap().is_none() {
+        log::warn!("[ChatController] ❌ Utilisateur {} n'a pas accès à la conversation {}", user.id, conversation_id);
+        return Err(StatusCode::FORBIDDEN);
+    }
+
+    // ✅ Récupérer les messages depuis PostgreSQL
+    let rows = sqlx::query(
+        r#"
+        SELECT 
+            id,
+            conversation_id,
+            from_user_id,
+            content,
+            message_type as type,
+            metadata,
+            is_read,
+            created_at
+        FROM chat_messages
+        WHERE conversation_id = $1
+        ORDER BY created_at ASC
+        LIMIT 500
+        "#
+    )
+    .bind(&conversation_id)
+    .fetch_all(&state.pg)
+    .await;
+
+    let mut messages = Vec::new();
+
+    match rows {
+        Ok(rows) => {
+            for row in rows {
+                let from_user_id: i32 = row.try_get("from_user_id").unwrap_or(0);
+                let from = if from_user_id == user.id { "prestataire" } else { "client" };
+                
+                messages.push(ChatMessage {
+                    id: row.try_get("id").unwrap_or_default(),
+                    conversation_id: row.try_get("conversation_id").unwrap_or_default(),
+                    from: from.to_string(),
+                    content: row.try_get("content").unwrap_or_default(),
+                    created_at: row.try_get("created_at").unwrap_or_else(|_| Utc::now()),
+                    is_from_client: from == "client",
+                    r#type: row.try_get("type").unwrap_or_else(|_| "text".to_string()),
+                    metadata: row.try_get("metadata").ok(),
+                });
+            }
+
+            // ✅ Marquer les messages comme lus
+            let _ = sqlx::query(
+                "UPDATE chat_messages SET is_read = TRUE WHERE conversation_id = $1 AND from_user_id != $2"
+            )
+            .bind(&conversation_id)
+            .bind(user.id)
+            .execute(&state.pg)
+            .await;
+
+            // ✅ Réinitialiser le compteur de non lus
+            let _ = sqlx::query(
+                "UPDATE chat_unread_counts SET unread_count = 0, last_read_at = NOW() WHERE conversation_id = $1 AND user_id = $2"
+            )
+            .bind(&conversation_id)
+            .bind(user.id)
+            .execute(&state.pg)
+            .await;
+        }
+        Err(e) => {
+            log::error!("[ChatController] ❌ Erreur DB: {:?}", e);
+        }
+    }
+    
+    log::info!("[ChatController] ✅ {} messages trouvés", messages.len());
+    Ok(Json(messages))
+}
+
+#[derive(Debug, Deserialize)]
+pub struct SendMessageRequest {
+    pub conversation_id: Option<String>,
+    pub recipient_id: i32,
+    pub service_id: Option<i32>,
+    pub content: String,
+    pub r#type: Option<String>, // 'text', 'image', 'audio', 'file'
+    pub metadata: Option<Value>,
+}
+
+/// POST /api/chat/messages - Envoyer un nouveau message
+pub async fn send_message(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+    Json(payload): Json<SendMessageRequest>,
+) -> Result<Json<Value>, StatusCode> {
+    log::info!("[ChatController] 📤 Envoi message de user={} vers user={}", 
+        user.id, payload.recipient_id);
+
+    // ✅ 1. Créer ou récupérer la conversation
+    let conversation_id = if let Some(conv_id) = &payload.conversation_id {
+        conv_id.clone()
+    } else {
+        // Créer une nouvelle conversation
+        let new_conv_id = format!("conv_{}", chrono::Utc::now().timestamp_millis());
+        
+        let insert_result = sqlx::query(
+            r#"
+            INSERT INTO conversations (id, client_id, prestataire_id, service_id, service_title)
+            VALUES ($1, $2, $3, $4, 'Conversation directe')
+            ON CONFLICT DO NOTHING
+            RETURNING id
+            "#
+        )
+        .bind(&new_conv_id)
+        .bind(user.id)
+        .bind(payload.recipient_id)
+        .bind(payload.service_id)
+        .fetch_optional(&state.pg)
+        .await;
+
+        match insert_result {
+            Ok(Some(row)) => row.try_get("id").unwrap_or(new_conv_id.clone()),
+            _ => new_conv_id
+        }
+    };
+
+    // ✅ 2. Sauvegarder le message
+    let message_id = format!("msg_{}", chrono::Utc::now().timestamp_millis());
+    let message_type = payload.r#type.unwrap_or_else(|| "text".to_string());
+    
+    let insert_message = sqlx::query(
+        r#"
+        INSERT INTO chat_messages (id, conversation_id, from_user_id, content, message_type, metadata)
+        VALUES ($1, $2, $3, $4, $5, $6)
+        "#
+    )
+    .bind(&message_id)
+    .bind(&conversation_id)
+    .bind(user.id)
+    .bind(&payload.content)
+    .bind(&message_type)
+    .bind(&payload.metadata)
+    .execute(&state.pg)
+    .await;
+
+    if let Err(e) = insert_message {
+        log::error!("[ChatController] ❌ Erreur sauvegarde message: {:?}", e);
+        return Err(StatusCode::INTERNAL_SERVER_ERROR);
+    }
+
+    // ✅ 3. Le trigger PostgreSQL s'occupe automatiquement de:
+    //    - Mettre à jour last_message_at dans conversations
+    //    - Incrémenter unread_count pour le destinataire
+    
+    log::info!("[ChatController] ✅ Message {} créé dans conversation {}", message_id, conversation_id);
+    
+    Ok(Json(json!({
+        "success": true,
+        "message_id": message_id,
+        "conversation_id": conversation_id,
+        "created_at": chrono::Utc::now()
+    })))
+}
+
 pub fn chat_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
     Router::<Arc<AppState>>::new()
+        // ✅ AJOUT: Routes pour conversations et messages
+        .route("/api/chat/conversations", get(get_user_conversations))
+        .route("/api/chat/messages/:conversation_id", get(get_conversation_messages))
+        .route("/api/chat/messages", post(send_message))
+        
         // Notifier un nouveau message
         .route("/api/chat/notify-message", post(notify_new_message))
         

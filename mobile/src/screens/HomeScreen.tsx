@@ -10,7 +10,6 @@ import ModernGPSModal from '../components/ModernGPSModal'; // Utiliser ModernGPS
 import NotificationHistoryModal from '../components/NotificationHistoryModal';
 import { SafeNativeView } from '../components/SafeNativeView';
 import UserAvatarMenu from '../components/UserAvatarMenu';
-import WeatherWidget from '../components/WeatherWidget';
 import YukpoServicesQuickAccess from '../components/YukpoServicesQuickAccess';
 import { useAuth } from '../contexts/AuthContext';
 import { apiGet } from '../services/api';
@@ -347,6 +346,52 @@ const HomeScreen: React.FC = () => {
     return (
         <ModernBackground variant="home">
             <SafeNativeView style={styles.container}>
+                {/* ✅ ENTÊTE FIXE - Reste visible au scroll */}
+                <View style={styles.fixedHeader}>
+                    <View style={styles.headerRow}>
+                        {/* Avatar utilisateur */}
+                        <View style={styles.avatarContainer}>
+                            <UserAvatarMenu
+                                onNavigate={(route) => (navigation as any).navigate(route)}
+                                // Passer les données de solde et météo
+                                balance={user?.credits || 0}
+                                weatherLocation={selectedLocation}
+                            />
+                        </View>
+
+                        {/* Titre principal centré */}
+                        <View style={styles.brandTitleContainer}>
+                            <Text style={styles.brandTitleCompact}>
+                                <Text style={styles.brandYuk}>Yuk</Text>
+                                <Text style={styles.brandPo}>po</Text>
+                            </Text>
+                        </View>
+
+                        {/* Actions (notifications et conversation) */}
+                        <View style={styles.headerActionsCompact}>
+                            <TouchableOpacity
+                                style={styles.headerButtonCompact}
+                                onPress={() => setShowNotificationModal(true)}
+                            >
+                                <Text style={styles.headerButtonIconCompact}>🔔</Text>
+                                {unreadNotificationsCount > 0 && (
+                                    <View style={styles.notificationBadgeCompact}>
+                                        {unreadNotificationsCount < 10 && (
+                                            <Text style={styles.notificationBadgeText}>{unreadNotificationsCount}</Text>
+                                        )}
+                                    </View>
+                                )}
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={styles.headerButtonCompact}
+                                onPress={() => setShowChatModal(true)}
+                            >
+                                <Text style={styles.headerButtonIconCompact}>💬</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+
                 <ScrollView
                     style={styles.scrollContainer}
                     contentContainerStyle={styles.scrollContent}
@@ -354,72 +399,8 @@ const HomeScreen: React.FC = () => {
                     keyboardShouldPersistTaps="handled"
                 >
                     <View>
-                        {/* Header aligné sur une ligne - COMPACT ET MODERNE */}
-                        <View style={styles.header}>
-                            <View style={styles.headerRow}>
-                                {/* Avatar utilisateur - AGRANDI 56px avec glassmorphisme */}
-                                <View style={styles.avatarContainer}>
-                                    <UserAvatarMenu
-                                        onNavigate={(route) => (navigation as any).navigate(route)}
-                                    />
-                                </View>
 
-                                {/* Solde - MODERNE AVEC FCFA */}
-                                <TouchableOpacity
-                                    style={styles.balanceCardModern}
-                                    onPress={() => (navigation as any).navigate('SoldeDetail')}
-                                >
-                                    <Text style={styles.balanceTextModern}>
-                                        {(user?.credits || 0).toLocaleString('fr-FR')}
-                                    </Text>
-                                    <Text style={styles.balanceDeviseModern}>FCFA</Text>
-                                </TouchableOpacity>
-
-                                {/* Météo - COMPACT ET VISIBLE */}
-                                <View style={styles.weatherContainerModern}>
-                                    <WeatherWidget
-                                        location={selectedLocation}
-                                        compact={true}
-                                    />
-                                </View>
-
-                                {/* Actions (notifications et conversation) - COMPACT */}
-                                <View style={styles.headerActionsCompact}>
-                                    <TouchableOpacity
-                                        style={styles.headerButtonCompact}
-                                        onPress={() => setShowNotificationModal(true)}
-                                    >
-                                        <Text style={styles.headerButtonIconCompact}>🔔</Text>
-                                        {unreadNotificationsCount > 0 && (
-                                            <View style={styles.notificationBadgeCompact}>
-                                                {unreadNotificationsCount < 10 && (
-                                                    <Text style={styles.notificationBadgeText}>{unreadNotificationsCount}</Text>
-                                                )}
-                                            </View>
-                                        )}
-                                    </TouchableOpacity>
-                                    <TouchableOpacity
-                                        style={styles.headerButtonCompact}
-                                        onPress={() => setShowChatModal(true)}
-                                    >
-                                        <Text style={styles.headerButtonIconCompact}>💬</Text>
-                                    </TouchableOpacity>
-                                </View>
-                            </View>
-                        </View>
-
-                        {/* Titre principal - RESSERRÉ VERS LE HAUT */}
-                        <View style={styles.titleContainerCompact}>
-                            <Text style={styles.brandTitleCompact}>
-                                <Text style={styles.brandYuk}>Yuk</Text>
-                                <Text style={styles.brandPo}>po</Text>
-                            </Text>
-                            <Text style={styles.subtitleCompact}>
-                                Créez ou trouvez un service en un instant
-                            </Text>
-                        </View>
-
-                        {/* Sélecteur de mode moderne et visible */}
+                        {/* Sélecteur de mode moderne - REMONTÉ */}
                         <View style={styles.modeSelectorModern}>
                             <TouchableOpacity
                                 style={[styles.modeButtonModern, !isCreateService && styles.modeButtonActiveModern]}
@@ -442,7 +423,7 @@ const HomeScreen: React.FC = () => {
                             </TouchableOpacity>
                         </View>
 
-                        {/* ChatInput simplifié - AVEC BOUTON ENVOYER INTÉGRÉ */}
+                        {/* ChatInput optimisé - COMPACT */}
                         <ChatInputMobile
                             onSubmit={handleSubmit}
                             loading={loading}
@@ -543,14 +524,28 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: '#FFFFFF',
     },
+    // ✅ ENTÊTE FIXE - Reste visible au scroll
+    fixedHeader: {
+        backgroundColor: '#FFFFFF',
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: '#E5E7EB',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 3,
+        zIndex: 1000,
+    },
     backgroundTop: {
         position: 'absolute',
         top: 0,
         left: 0,
         right: 0,
-        height: '32%', // Augmenté légèrement pour plus d'impact
-        backgroundColor: '#4F46E5', // Indigo moderne plus profond
-        borderBottomLeftRadius: 32, // Bords plus arrondis
+        height: '32%',
+        backgroundColor: '#4F46E5',
+        borderBottomLeftRadius: 32,
         borderBottomRightRadius: 32,
         shadowColor: '#4F46E5',
         shadowOffset: { width: 0, height: 8 },
@@ -563,8 +558,8 @@ const styles = StyleSheet.create({
         bottom: 0,
         left: 0,
         right: 0,
-        height: '70%', // Augmenté de 60% à 70% pour compenser la réduction du bleu
-        backgroundColor: '#FFFFFF', // Blanc comme dans l'image
+        height: '70%',
+        backgroundColor: '#FFFFFF',
     },
     scrollContainer: {
         flex: 1,
@@ -572,25 +567,28 @@ const styles = StyleSheet.create({
     scrollContent: {
         flexGrow: 1,
         paddingHorizontal: 20,
-        paddingTop: 20,
-        paddingBottom: 100, // Espace pour la navigation
+        paddingTop: 12, // ✅ Réduit pour remonter le contenu
+        paddingBottom: 100,
     },
     header: {
-        marginBottom: 16, // ✅ Réduit de 24 à 16
+        marginBottom: 8,
     },
     headerRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        paddingHorizontal: 4,
-        gap: 8, // ✅ Réduit de 12 à 8 pour équilibrer les espacements
-        marginBottom: 6, // ✅ Réduit de 8 à 6
+        gap: 12,
     },
     avatarContainer: {
         flex: 0,
-        width: 48, // ✅ Réduit de 52 à 48
-        height: 48, // ✅ Réduit de 52 à 48
-        marginRight: 8, // ✅ Augmenté de 4 à 8 pour équilibrer avec le solde
+        width: 44,
+        height: 44,
+    },
+    // ✅ Conteneur pour le titre centré
+    brandTitleContainer: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     headerTop: {
         flexDirection: 'row',
@@ -663,28 +661,23 @@ const styles = StyleSheet.create({
     },
     headerActionsCompact: {
         flexDirection: 'row',
-        gap: 6,
+        gap: 8,
         flex: 0,
-        marginLeft: 8, // ✅ Augmenté de 4 à 8 pour équilibrer
-        marginRight: 2,
     },
     headerButtonCompact: {
-        width: 38, // ✅ Réduit de 40 à 38
-        height: 38, // ✅ Réduit de 40 à 38
-        borderRadius: 19, // ✅ Ajusté proportionnellement
-        backgroundColor: '#FFFFFF',
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: '#F3F4F6',
         justifyContent: 'center',
         alignItems: 'center',
         position: 'relative',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.08,
-        shadowRadius: 4,
-        elevation: 2,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
     },
     headerButtonIconCompact: {
-        fontSize: 18, // ✅ Réduit de 20 à 18
-        color: '#4F46E5',
+        fontSize: 20,
+        color: '#374151',
     },
     notificationBadgeCompact: {
         position: 'absolute',
@@ -752,13 +745,9 @@ const styles = StyleSheet.create({
         textShadowRadius: 4,
     },
     brandTitleCompact: {
-        fontSize: 38, // ✅ Réduit de 42 à 38
+        fontSize: 28, // ✅ Adapté pour l'entête
         fontWeight: '900',
-        marginBottom: 6, // ✅ Réduit de 8 à 6
         textAlign: 'center',
-        textShadowColor: 'rgba(0, 0, 0, 0.3)',
-        textShadowOffset: { width: 0, height: 2 },
-        textShadowRadius: 4,
     },
     brandYuk: {
         color: '#EAB308', // text-yellow-500 du frontend
@@ -938,18 +927,18 @@ const styles = StyleSheet.create({
         color: '#FFFFFF',
     },
 
-    // NOUVEAUX STYLES MODERNES
+    // ✅ STYLES MODERNES OPTIMISÉS
     modeSelectorModern: {
         flexDirection: 'row',
-        backgroundColor: '#F8FAFC', // Fond gris très clair
-        borderRadius: 16,
-        padding: 6,
-        marginBottom: 24,
+        backgroundColor: '#F8FAFC',
+        borderRadius: 12, // ✅ Réduit de 16 à 12
+        padding: 4, // ✅ Réduit de 6 à 4
+        marginBottom: 12, // ✅ Réduit de 24 à 12
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.1,
-        shadowRadius: 12,
-        elevation: 4,
+        shadowOffset: { width: 0, height: 2 }, // ✅ Réduit shadow
+        shadowOpacity: 0.08, // ✅ Réduit opacité
+        shadowRadius: 6, // ✅ Réduit radius
+        elevation: 2,
         borderWidth: 1,
         borderColor: '#E2E8F0',
     },

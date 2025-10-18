@@ -141,8 +141,8 @@ const RechargeTokensPage: React.FC = () => {
 
     setLoading(true);
     try {
-      // Appel API pour effectuer la recharge
-      const response = await fetch('https://yukpomnang.onrender.com/api/users/recharge', {
+      // ✅ CORRIGÉ: Utilise buildUrl et API_ENDPOINTS
+      const response = await fetch(buildUrl(API_ENDPOINTS.USER.RECHARGE), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -218,8 +218,8 @@ const RechargeTokensPage: React.FC = () => {
           customAmount >= 2000 ? Math.floor(customAmount * 0.05) : 0;
       const totalTokens = tokens + bonus;
 
-      // Appel API pour effectuer la recharge personnalisée
-      const response = await fetch('https://yukpomnang.onrender.com/api/users/recharge', {
+      // ✅ CORRIGÉ: Utilise buildUrl et API_ENDPOINTS
+      const response = await fetch(buildUrl(API_ENDPOINTS.USER.RECHARGE), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

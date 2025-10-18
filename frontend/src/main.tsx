@@ -14,7 +14,9 @@ import './config/axios';
 // Log pour confirmer que la nouvelle version se charge
 console.log('[main] 🚀 Yukpomnang v2.1.4 - FORCE CACHE BUST ' + Date.now() + '-' + Math.random().toString(36).substr(2, 9));
 console.log('[main] 🔧 API Base URL configuré:', import.meta.env.VITE_API_BASE_URL || '(URLs relatives)');
-console.log('[main] 🌐 WebSocket config: wss://yukpomnang.onrender.com');
+// ✅ CORRIGÉ: Log les variables d'environnement chargées
+console.log('[main] 🌐 API config:', import.meta.env.VITE_API_BASE_URL || '(utilise fallback)');
+console.log('[main] 🌐 WebSocket config:', import.meta.env.VITE_WS_BASE_URL || '(utilise fallback)');
 
 
 const root = document.getElementById('root');

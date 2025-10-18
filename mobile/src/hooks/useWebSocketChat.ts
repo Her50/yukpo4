@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { API_ENDPOINTS, WS_ENDPOINTS } from '../config/api.config';
+import { apiDelete, apiPost, apiPut } from '../services/api';
 
 interface ChatMessage {
     id: string;
@@ -51,8 +53,8 @@ export const useWebSocketChat = (serviceId: number, prestataireId: number, userI
         try {
             console.log('🔌 [useWebSocketChat] Connexion WebSocket...');
 
-            // Créer l'URL WebSocket
-            const wsUrl = `wss://yukpomnang.onrender.com/ws/chat/${serviceId}/${prestataireId}/${userId}`;
+            // ✅ CORRIGÉ: Utilise la configuration centralisée
+            const wsUrl = WS_ENDPOINTS.CHAT(serviceId, prestataireId, userId);
             wsRef.current = new WebSocket(wsUrl);
 
             wsRef.current.onopen = () => {
@@ -192,27 +194,17 @@ export const useWebSocketChat = (serviceId: number, prestataireId: number, userI
         } else {
             console.warn('⚠️ [useWebSocketChat] WebSocket non connecté, envoi via API REST');
 
-            // Fallback : envoyer via API REST
+            // ✅ CORRIGÉ: Fallback via API REST avec apiPost
             try {
-                const token = await getToken();
-                if (!token) throw new Error('Token non disponible');
-
-                const response = await fetch('https://yukpomnang.onrender.com/api/chat/send', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    },
-                    body: JSON.stringify({
-                        serviceId,
-                        prestataireId,
-                        content,
-                        messageType: type,
-                        timestamp: message.timestamp.toISOString()
-                    })
+                const response = await apiPost(API_ENDPOINTS.CHAT.SEND_MESSAGE, {
+                    serviceId,
+                    prestataireId,
+                    content,
+                    messageType: type,
+                    timestamp: message.timestamp.toISOString()
                 });
 
-                if (response.ok) {
+                if (response.success) {
                     setMessages(prev => prev.map(msg =>
                         msg.id === messageId ? { ...msg, status: 'delivered' } : msg
                     ));
@@ -248,19 +240,9 @@ export const useWebSocketChat = (serviceId: number, prestataireId: number, userI
                 timestamp: new Date().toISOString()
             }));
         } else {
-            // Fallback REST
+            // ✅ CORRIGÉ: Fallback REST avec apiPut
             try {
-                const token = await getToken();
-                if (!token) throw new Error('Token non disponible');
-
-                await fetch(`https://yukpomnang.onrender.com/api/chat/messages/${messageId}/edit`, {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    },
-                    body: JSON.stringify({ newContent })
-                });
+                await apiPut(`/api/chat/messages/${messageId}/edit`, { newContent });
             } catch (error) {
                 console.error('❌ [useWebSocketChat] Erreur édition REST:', error);
             }
@@ -280,17 +262,9 @@ export const useWebSocketChat = (serviceId: number, prestataireId: number, userI
                 timestamp: new Date().toISOString()
             }));
         } else {
-            // Fallback REST
+            // ✅ CORRIGÉ: Fallback REST avec apiDelete
             try {
-                const token = await getToken();
-                if (!token) throw new Error('Token non disponible');
-
-                await fetch(`https://yukpomnang.onrender.com/api/chat/messages/${messageId}`, {
-                    method: 'DELETE',
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
-                });
+                await apiDelete(`/api/chat/messages/${messageId}`);
             } catch (error) {
                 console.error('❌ [useWebSocketChat] Erreur suppression REST:', error);
             }

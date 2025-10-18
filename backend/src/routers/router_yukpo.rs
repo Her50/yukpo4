@@ -14,7 +14,7 @@ use tokio::io::AsyncReadExt;
 
 use crate::{
     controllers::{
-        interaction_controller::{post_message, post_review, get_service_interactions, get_service_reviews, get_service_score, post_audio, post_call, post_share, post_review_helpful},
+        interaction_controller::{post_message, post_review, get_service_interactions, get_service_reviews, get_service_score, get_service_stats, post_audio, post_call, post_share, post_review_helpful},
         service_controller::{get_services_for_prestataire, toggle_service_status, modifier_service, supprimer_service, get_service_by_id},
         intelligent_service_controller::{process_services_intelligently, get_services_pending_processing, reactivate_service_intelligent},
     },
@@ -101,6 +101,7 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route("/api/services/{id}/interactions", get(get_service_interactions))
         .route("/api/services/{id}/reviews", get(get_service_reviews))
         .route("/api/services/{id}/score", get(get_service_score))
+        .route("/api/services/{id}/stats", get(get_service_stats))
         .route("/api/services/{id}/audio", post(post_audio)
             .layer(axum::middleware::from_fn_with_state(state.clone(), jwt_auth))
             .layer(axum::middleware::from_fn_with_state(state.clone(), track_service_interaction)))

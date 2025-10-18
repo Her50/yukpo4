@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useUserCredit } from "@/hooks/useUserCredit";
 import { useUserSWR } from "@/hooks/useUserSWR";
 import axios from "axios";
+import { buildUrl } from "../config/api.config";
 import {
   BarChart3,
   CreditCard,
@@ -69,26 +70,26 @@ const SoldeDetailPage: React.FC = () => {
     if (!user?.id) return;
     mutate(); // force le rafraîchissement du user/tokens à chaque affichage
 
-    // Charger l'historique de consommation
-    axios.get(`https://yukpomnang.onrender.com/api/user/credit/history/${user.id}?period=${selectedPeriod}`, {
+    // ✅ CORRIGÉ: Charger l'historique de consommation avec buildUrl
+    axios.get(buildUrl(`/api/users/consumption-history?period=${selectedPeriod}`), {
       headers: {
         'Authorization': `Bearer ${localStorage.getItem('token')}`
       }
     }).then((res) => {
-      const data = Array.isArray(res.data) ? res.data : [];
+      const data = res.data?.history || (Array.isArray(res.data) ? res.data : []);
       setLogs(data);
     }).catch((error) => {
       console.error('Erreur lors du chargement de l\'historique de consommation:', error);
       setLogs([]); // En cas d'erreur, initialiser avec une liste vide
     });
 
-    // Charger l'historique des paiements
-    axios.get(`https://yukpomnang.onrender.com/api/user/payments/history/${user.id}?period=${selectedPeriod}`, {
+    // ✅ CORRIGÉ: Charger l'historique des paiements avec buildUrl
+    axios.get(buildUrl(`/api/users/payment-history?period=${selectedPeriod}`), {
       headers: {
         'Authorization': `Bearer ${localStorage.getItem('token')}`
       }
     }).then((res) => {
-      const data = Array.isArray(res.data) ? res.data : [];
+      const data = res.data?.payments || (Array.isArray(res.data) ? res.data : []);
       setPaymentLogs(data);
     }).catch((error) => {
       console.error('Erreur lors du chargement de l\'historique des paiements:', error);

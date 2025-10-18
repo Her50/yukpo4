@@ -1,33 +1,20 @@
-// Configuration API pour Vite avec gestion d'erreur
-// Utiliser le proxy Netlify en production, ou l'URL directe en développement
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 
-  (typeof window !== 'undefined' && window.location.hostname.includes('netlify.app') ? '' : 'https://yukpomnang.onrender.com');
+/**
+ * ⚠️ FICHIER OBSOLÈTE - Utiliser `api.config.ts` à la place
+ * Ce fichier réexporte maintenant depuis api.config.ts pour compatibilité
+ * 
+ * ✅ MIGRATION: Tous les imports doivent pointer vers './api.config'
+ */
 
-// Configuration de fallback pour le d�veloppement
-const FALLBACK_API_URL = 'https://jsonplaceholder.typicode.com';
+// ✅ Réexporter depuis la nouvelle configuration centralisée
+export {
+  API_BASE_URL, API_ENDPOINTS, WS_BASE_URL, WS_ENDPOINTS, buildUrl, checkBackendHealth
+} from './api.config';
 
-// Fonction pour v�rifier si le backend est accessible
-export const checkBackendHealth = async () => {
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000);
-    
-    const response = await fetch(`${API_BASE_URL}/healthz`, {
-      method: 'GET',
-      signal: controller.signal
-    });
-    
-    clearTimeout(timeoutId);
-    return response.ok;
-  } catch (error) {
-    console.warn('Backend non accessible:', error);
-    return false;
-  }
-};
-
-// Fonction pour obtenir l'URL de l'API avec fallback
-export const getApiBaseUrl = () => {
+// Fonction pour obtenir l'URL de l'API (compatibilité avec ancien code)
+export const getApiBaseUrl = (): string => {
+  const { API_BASE_URL } = require('./api.config');
   return API_BASE_URL;
 };
 
-export { API_BASE_URL, FALLBACK_API_URL };
+// Garder FALLBACK_API_URL pour compatibilité
+export const FALLBACK_API_URL = 'https://jsonplaceholder.typicode.com';

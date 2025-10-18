@@ -15,6 +15,7 @@ import SafeIcon from '../components/SafeIcon';
 import ServiceCardModern from '../components/ServiceCardModern';
 // @ts-ignore
 import { useAuth } from '../contexts/AuthContext';
+import { apiDelete, apiGet, apiPatch, apiPost } from '../services/api';
 import { modernColors, modernStyles } from '../theme/modernTheme';
 
 const { width } = Dimensions.get('window');
@@ -55,13 +56,8 @@ const MesServicesScreen: React.FC = () => {
 
       const token = await AsyncStorage.getItem('auth_token');
 
-      // Charger les services réels depuis l'API
-      const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'https://yukpomnang.onrender.com'}/api/prestataire/services`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
+      // ✅ CORRIGÉ: Utilise apiGet
+      const response = await apiGet('/api/prestataire/services');
 
       if (response.ok) {
         const data = await response.json();
@@ -175,7 +171,7 @@ const MesServicesScreen: React.FC = () => {
 
       // ✅ AMÉLIORATION : Créer un lien deep link vers le service
       const serviceUrl = `https://yukpomnang.com/service/${service.id}`;
-      
+
       let shareText = `🌟 ${titre}\n\n${description}`;
 
       if (prix) {
@@ -213,13 +209,8 @@ const MesServicesScreen: React.FC = () => {
 
       // Si on réactive un service (passage de inactif à actif), facturer 1000 FCFA
       if (!currentStatus) {
-        // Vérifier le solde avant la réactivation
-        const balanceResponse = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'https://yukpomnang.onrender.com'}/api/users/balance`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        });
+        // ✅ CORRIGÉ: Vérifier le solde avec apiGet
+        const balanceResponse = await apiGet('/api/users/balance');
 
         if (balanceResponse.ok) {
           const balanceData = await balanceResponse.json();
@@ -234,20 +225,13 @@ const MesServicesScreen: React.FC = () => {
             return;
           }
 
-          // Déduire le coût de réactivation
-          const deductResponse = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'https://yukpomnang.onrender.com'}/api/users/deduct-balance`, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              amount: activationCost,
-              reason: 'service_reactivation'
-            })
+          // ✅ CORRIGÉ: Déduire le coût avec apiPost
+          const deductResponse = await apiPost('/api/users/deduct-balance', {
+            amount: activationCost,
+            reason: 'service_reactivation'
           });
 
-          if (deductResponse.ok) {
+          if (deductResponse.success) {
             const newBalance = currentBalance - activationCost;
 
             // Déclencher un rafraîchissement du solde dans l'interface
@@ -263,19 +247,12 @@ const MesServicesScreen: React.FC = () => {
         }
       }
 
-      // Procéder au changement de statut
-      const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'https://yukpomnang.onrender.com'}/api/services/${service.id}/toggle-status`, {
-        method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          actif: newStatus
-        })
+      // ✅ CORRIGÉ: Changer le statut avec apiPatch
+      const response = await apiPatch(`/api/services/${service.id}/toggle-status`, {
+        actif: newStatus
       });
 
-      if (response.ok) {
+      if (response.success) {
         // Mettre à jour l'état local
         setServices(prevServices =>
           prevServices.map(s =>
@@ -318,12 +295,8 @@ const MesServicesScreen: React.FC = () => {
             try {
               const token = await AsyncStorage.getItem('auth_token');
 
-              const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'https://yukpomnang.onrender.com'}/api/services/${service.id}/delete`, {
-                method: 'DELETE',
-                headers: {
-                  'Authorization': `Bearer ${token}`
-                }
-              });
+              // ✅ CORRIGÉ: Supprimer avec apiDelete
+              const response = await apiDelete(`/api/services/${service.id}/delete`);
 
               if (response.ok) {
                 // Supprimer de l'état local

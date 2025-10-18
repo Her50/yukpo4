@@ -10,6 +10,7 @@ import { appelerMoteurIA, creerService, modifierService } from '@/lib/yukpoaclie
 import { ComposantFrontend, dispatchChampsFormulaireIA } from '@/utils/form_constraint_dispatcher';
 import { showServiceCreationErrorToast } from '@/utils/toastUtils';
 import axios from 'axios';
+import { buildUrl, API_ENDPOINTS } from '../config/api.config';
 import { MapPin } from 'lucide-react';
 import { useContext, useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-hot-toast';
@@ -58,7 +59,8 @@ export default function FormulaireDemandeOuService() {
       if (mode === 'edit' && serviceId) {
         try {
           const token = localStorage.getItem('token');
-          const response = await axios.get(`https://yukpomnang.onrender.com/api/services/${serviceId}`, {
+          // ✅ CORRIGÉ: Utilise buildUrl
+          const response = await axios.get(buildUrl(API_ENDPOINTS.SERVICES.DETAIL(parseInt(serviceId))), {
             headers: { Authorization: `Bearer ${token}` }
           });
 

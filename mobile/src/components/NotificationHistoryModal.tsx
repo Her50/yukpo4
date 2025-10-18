@@ -1,8 +1,9 @@
 ﻿import React, { useEffect, useState } from 'react';
 // @ts-ignore
 import ReactNative from 'react-native';
+import { API_ENDPOINTS } from '../config/api.config';
 import { useAuth } from '../contexts/AuthContext';
-import { apiGet } from '../services/api';
+import { apiDelete, apiGet, apiPatch } from '../services/api';
 import { theme } from '../theme/theme';
 
 // @ts-ignore
@@ -55,8 +56,8 @@ const NotificationHistoryModal: React.FC<NotificationHistoryModalProps> = ({
   const loadNotifications = async () => {
     setLoading(true);
     try {
-      // Appel API pour récupérer les vraies notifications
-      const response = await apiGet(`/api/notifications/user/${user?.id}`);
+      // ✅ Utilise la configuration centralisée
+      const response = await apiGet(API_ENDPOINTS.NOTIFICATIONS.USER_NOTIFICATIONS(user?.id || ''));
 
       if (response.data && Array.isArray(response.data)) {
         setNotifications(response.data);
@@ -87,8 +88,8 @@ const NotificationHistoryModal: React.FC<NotificationHistoryModalProps> = ({
 
   const markAsRead = async (notificationId: string) => {
     try {
-      // Appel API pour marquer comme lu
-      await apiGet(`/api/notifications/${notificationId}/mark-read`);
+      // ✅ CORRIGÉ: Utilise PATCH au lieu de GET
+      await apiPatch(API_ENDPOINTS.NOTIFICATIONS.MARK_READ(notificationId), {});
 
       // Mettre à jour le state local
       setNotifications(prev =>
@@ -111,8 +112,8 @@ const NotificationHistoryModal: React.FC<NotificationHistoryModalProps> = ({
 
   const markAllAsRead = async () => {
     try {
-      // Appel API pour tout marquer comme lu
-      await apiGet(`/api/notifications/user/${user?.id}/mark-all-read`);
+      // ✅ CORRIGÉ: Utilise PATCH au lieu de GET
+      await apiPatch(API_ENDPOINTS.NOTIFICATIONS.MARK_ALL_READ(user?.id || ''), {});
 
       // Mettre à jour le state local
       setNotifications(prev =>
@@ -127,8 +128,8 @@ const NotificationHistoryModal: React.FC<NotificationHistoryModalProps> = ({
 
   const deleteNotification = async (notificationId: string) => {
     try {
-      // Appel API pour supprimer
-      await apiGet(`/api/notifications/${notificationId}/delete`);
+      // ✅ CORRIGÉ: Utilise DELETE au lieu de GET
+      await apiDelete(API_ENDPOINTS.NOTIFICATIONS.DELETE(notificationId));
 
       // Mettre à jour le state local
       setNotifications(prev => prev.filter(notif => notif.id !== notificationId));

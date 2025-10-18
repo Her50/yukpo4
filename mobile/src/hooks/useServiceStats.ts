@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { API_ENDPOINTS } from '../config/api.config';
+import { apiGet } from '../services/api';
 
 interface ServiceStats {
     views: number;
@@ -28,16 +30,11 @@ export const useServiceStats = (serviceId: number, createdAt: string): UseServic
             try {
                 setLoading(true);
 
-                // Récupérer le token d'authentification
-                const token = await getToken();
+                // ✅ CORRIGÉ: Utilise apiGet au lieu de fetch hardcodé
+                const response = await apiGet(API_ENDPOINTS.SERVICES.STATS(serviceId));
 
-                // Appel API réel pour récupérer les statistiques
-                const response = await fetch(`https://yukpomnang.onrender.com/api/services/${serviceId}/stats`, {
-                    headers: token ? { Authorization: `Bearer ${token}` } : {}
-                });
-
-                if (response.ok) {
-                    const data = await response.json();
+                if (response.success && response.data) {
+                    const data = response.data;
                     console.log(`📊 [useServiceStats] Statistiques réelles récupérées pour service ${serviceId}:`, data);
 
                     // Calculer l'âge du service
@@ -60,15 +57,13 @@ export const useServiceStats = (serviceId: number, createdAt: string): UseServic
                     // Si l'API n'existe pas encore, utiliser des données basées sur l'activité réelle
                     console.log(`📊 [useServiceStats] API stats non disponible, génération basée sur l'activité pour service ${serviceId}`);
 
-                    // Récupérer les données d'interaction réelles depuis la base
-                    const interactionsResponse = await fetch(`https://yukpomnang.onrender.com/api/services/${serviceId}/interactions`, {
-                        headers: token ? { Authorization: `Bearer ${token}` } : {}
-                    });
+                    // ✅ CORRIGÉ: Récupérer les données d'interaction avec apiGet
+                    const interactionsResponse = await apiGet(API_ENDPOINTS.SERVICES.INTERACTIONS(serviceId));
 
                     let realViews = 0, realContacts = 0, realMessages = 0;
 
-                    if (interactionsResponse.ok) {
-                        const interactions = await interactionsResponse.json();
+                    if (interactionsResponse.success && interactionsResponse.data) {
+                        const interactions = interactionsResponse.data;
                         realViews = interactions.filter((i: any) => i.type === 'view').length;
                         realContacts = interactions.filter((i: any) => i.type === 'contact').length;
                         realMessages = interactions.filter((i: any) => i.type === 'message').length;
@@ -129,17 +124,4 @@ export const useServiceStats = (serviceId: number, createdAt: string): UseServic
     return { stats, loading, error };
 };
 
-// Fonction utilitaire pour récupérer le token
-const getToken = async (): Promise<string | null> => {
-    try {
-        const AsyncStorage = require('@react-native-async-storage/async-storage').default;
-        let token = await AsyncStorage.getItem('auth_token');
-        if (!token) {
-            token = await AsyncStorage.getItem('token');
-        }
-        return token;
-    } catch (error) {
-        console.error('❌ [useServiceStats] Erreur récupération token:', error);
-        return null;
-    }
-};
+// ✅ getToken() n'est plus nécessaire car apiGet gère automatiquement le token

@@ -16,6 +16,7 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+import { API_ENDPOINTS, buildUrl, WS_ENDPOINTS } from '../config/api.config';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
 
@@ -188,8 +189,9 @@ const WebRTCCallModal: React.FC<WebRTCCallModalProps> = ({
 
     // Connexion au serveur de signaling
     const connectToSignalingServer = () => {
-        // WebSocket pour le signaling
-        ws.current = new WebSocket('wss://yukpomnang.onrender.com/ws/webrtc');
+        // ✅ CORRIGÉ: Génère un ID unique pour l'appel et utilise configuration centralisée
+        const callId = `call_${currentUserId}_${recipientId}_${Date.now()}`;
+        ws.current = new WebSocket(WS_ENDPOINTS.WEBRTC(callId));
 
         ws.current.onopen = () => {
             console.log('[WebRTC] Connecté au serveur de signaling');
@@ -390,7 +392,8 @@ const WebRTCCallModal: React.FC<WebRTCCallModalProps> = ({
             // Pour l'instant, on utilise le WebSocket qui notifiera le serveur
             // Le serveur enverra automatiquement la push notification via Expo Push API
 
-            const response = await fetch('https://yukpomnang.onrender.com/api/webrtc/notify-call', {
+            // ✅ CORRIGÉ: Utilise buildUrl pour construire l'URL complète
+            const response = await fetch(buildUrl(API_ENDPOINTS.WEBRTC.NOTIFY_CALL), {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

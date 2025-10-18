@@ -37,6 +37,10 @@ use crate::routes::{
     user_routes::user_routes,
     service_routes::service_routes,
     media_routes::media_routes,
+    chat_routes::chat_routes, // ✅ NOUVEAU : Routes de chat
+    webrtc_routes::webrtc_routes, // ✅ NOUVEAU : Routes WebRTC
+    notification_routes, // ✅ NOUVEAU : Routes de notifications
+    push_routes, // ✅ NOUVEAU : Routes push
     ia_routes::ia_routes,
     history_routes::history_routes,
     payment_routes::payment_routes,
@@ -141,6 +145,14 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
     let webrtc_manager = create_webrtc_manager();
     let webrtc = create_webrtc_router(webrtc_manager);
     
+    // ✅ NOUVEAU : Routes de chat et WebRTC HTTP
+    let chat = chat_routes(state.clone());
+    let webrtc_http = webrtc_routes(state.clone());
+    
+    // ✅ NOUVEAU : Routes de notifications (si pas déjà ajoutées)
+    let notifications = notification_routes::notification_routes(state.clone());
+    let push_notifs = push_routes::push_routes(state.clone());
+    
     let app = Router::new()
         .route("/", get(|| async { "Yukpomnang Backend API - Service actif" }))
         .route("/healthz", get(healthz))
@@ -158,7 +170,11 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .merge(prestataires)
         .merge(image_search)
         .merge(websocket)
-        .merge(webrtc)  // Ajouter le router WebRTC
+        .merge(webrtc)  // WebSocket WebRTC
+        .merge(chat)  // ✅ NOUVEAU : Routes de chat HTTP
+        .merge(webrtc_http)  // ✅ NOUVEAU : Routes WebRTC HTTP
+        .merge(notifications)  // ✅ NOUVEAU : Routes de notifications
+        .merge(push_notifs)  // ✅ NOUVEAU : Routes push notifications
         .route("/fournitures/gestion", axum::routing::post(fournitures_axum_handler))
         .layer(axum::middleware::from_fn(cors_middleware))  // ← AJOUTER CETTE LIGNE
         .with_state(state);    // Ajouter les routes WebSocket s?par?ment

@@ -1,5 +1,6 @@
 import * as Location from 'expo-location';
 import { useCallback, useEffect, useState } from 'react';
+import { apiPost } from '../services/api';
 
 interface LocationData {
     location: string;
@@ -50,18 +51,17 @@ export const useLocationDisplay = (service: any, serviceCreatorInfo?: any): UseL
 
             console.log('📍 [useLocationDisplay] Coordonnées parsées:', { lat, lng });
 
-            // Essayer d'abord l'API interne
+            // ✅ CORRIGÉ: Essayer d'abord l'API interne avec apiPost
             try {
-                const response = await fetch(`https://yukpomnang.onrender.com/api/geocoding/reverse`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ latitude: lat, longitude: lng })
+                const response = await apiPost('/api/geocoding/reverse', {
+                    latitude: lat,
+                    longitude: lng
                 });
 
-                console.log('🔗 [useLocationDisplay] Statut API interne:', response.status);
+                console.log('🔗 [useLocationDisplay] Statut API interne:', response.success);
 
-                if (response.ok) {
-                    const data = await response.json();
+                if (response.success && response.data) {
+                    const data = response.data;
                     console.log('📍 [useLocationDisplay] Réponse API interne:', data);
 
                     // CORRECTION: Filtrer les Plus Codes (format: 2RH9+W2, XXXX+XX, etc.) de manière plus robuste

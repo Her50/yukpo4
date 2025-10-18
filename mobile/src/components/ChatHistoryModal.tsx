@@ -15,8 +15,8 @@ import {
 } from 'react-native';
 import { Avatar, IconButton, Title } from 'react-native-paper';
 import { useAuth } from '../contexts/AuthContext';
-import { theme } from '../theme/theme';
 import { apiGet } from '../services/api';
+import { theme } from '../theme/theme';
 // @ts-ignore
 import ChatModalMobile from './ChatModalMobile';
 
@@ -96,19 +96,19 @@ const ChatHistoryModal: React.FC<ChatHistoryModalProps> = ({
         return;
       }
 
-      // TODO: Implémenter l'API pour récupérer la liste des conversations de l'utilisateur
-      // Pour l'instant, on utilise un tableau vide en attendant l'endpoint
-      // const response = await apiGet(`/api/chat/conversations/${user.id}`);
-      // if (response.data && Array.isArray(response.data)) {
-      //   setChatHistories(response.data);
-      // }
+      // ✅ CORRIGÉ: Utilise apiGet au lieu de fetch hardcodé
+      const response = await apiGet('/api/chat/conversations');
 
-      // Tableau vide en attendant l'implémentation de l'API
-      setChatHistories([]);
-
-      console.log('[ChatHistoryModal] Historique des conversations chargé (vide - API à implémenter)');
+      if (response.success && response.data) {
+        const conversations = Array.isArray(response.data) ? response.data : [];
+        console.log('[ChatHistoryModal] Conversations chargées:', conversations);
+        setChatHistories(conversations);
+      } else {
+        console.warn('[ChatHistoryModal] Endpoint conversations non disponible, affichage liste vide');
+        setChatHistories([]);
+      }
     } catch (error) {
-      console.error('Erreur chargement historique chat:', error);
+      console.error('[ChatHistoryModal] Erreur chargement historique chat:', error);
       setChatHistories([]);
     } finally {
       setLoading(false);
@@ -123,14 +123,27 @@ const ChatHistoryModal: React.FC<ChatHistoryModalProps> = ({
         return;
       }
 
-      // Utiliser l'API existante pour charger l'historique des messages
-      // const response = await apiGet(`/api/chat/history/${selectedChat.clientId}/${selectedChat.prestataireId}`);
-      // if (response.data && Array.isArray(response.data)) {
-      //   setChatMessages(response.data);
-      // }
+      // ✅ CORRIGÉ: Utilise l'API pour charger l'historique des messages
+      const response = await apiGet(`/api/chat/messages/${chatId}`);
 
-      // Tableau vide en attendant l'implémentation de l'API
-      setChatMessages([]);
+      if (response.success && response.data && Array.isArray(response.data)) {
+        // Mapper les messages de l'API au format attendu
+        const mappedMessages: ChatMessage[] = response.data.map((msg: any) => ({
+          id: msg.id || String(Date.now()),
+          clientId: msg.client_id || selectedChat.clientId,
+          prestataireId: msg.prestataire_id || selectedChat.prestataireId,
+          message: msg.content || msg.message,
+          timestamp: new Date(msg.created_at || msg.timestamp),
+          isFromClient: msg.from === 'client' || msg.is_from_client,
+          messageType: msg.type || 'text',
+          metadata: msg.metadata
+        }));
+        setChatMessages(mappedMessages);
+      } else {
+        // Si l'API n'est pas encore prête, afficher message vide
+        setChatMessages([]);
+      }
+
       console.log('[ChatHistoryModal] Messages chargés pour chat:', chatId);
     } catch (error) {
       console.error('Erreur chargement messages:', error);
