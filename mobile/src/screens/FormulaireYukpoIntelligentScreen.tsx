@@ -987,14 +987,24 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
       // Vérifier le solde actuel
       // ✅ CORRIGÉ: Utilise apiGet avec nouvelle structure ApiResponse
+      console.log('💰 [FormulaireYukpoIntelligentScreen] Vérification du solde...');
       const balanceResponse = await apiGet('/api/users/balance');
+      
+      console.log('💰 [FormulaireYukpoIntelligentScreen] Réponse balance:', JSON.stringify(balanceResponse, null, 2));
 
-      if (!balanceResponse.success || !balanceResponse.data) {
-        throw new Error(balanceResponse.error || 'Impossible de vérifier votre solde');
+      if (!balanceResponse.success) {
+        const errorMsg = balanceResponse.error || 'Impossible de vérifier votre solde';
+        console.error('💰 [FormulaireYukpoIntelligentScreen] ❌ Erreur vérification solde:', errorMsg);
+        throw new Error(errorMsg);
+      }
+
+      if (!balanceResponse.data || typeof balanceResponse.data.tokens_balance === 'undefined') {
+        console.error('💰 [FormulaireYukpoIntelligentScreen] ❌ Données solde invalides:', balanceResponse.data);
+        throw new Error('Données de solde invalides reçues du serveur');
       }
 
       const soldeActuel = balanceResponse.data.tokens_balance || 0;
-      console.log('💰 [FormulaireYukpoIntelligentScreen] Solde actuel:', soldeActuel);
+      console.log('💰 [FormulaireYukpoIntelligentScreen] ✅ Solde actuel récupéré:', soldeActuel);
 
       // Vérifier si le solde est suffisant
       if (soldeActuel < coutReel) {
