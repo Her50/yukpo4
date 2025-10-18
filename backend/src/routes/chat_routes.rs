@@ -379,7 +379,7 @@ pub async fn send_message(
 }
 
 pub fn chat_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
-    Router::<Arc<AppState>>::new()
+    Router::new()
         // ✅ AJOUT: Routes pour conversations et messages
         .route("/api/chat/conversations", get(get_user_conversations))
         .route("/api/chat/messages/{conversation_id}", get(get_conversation_messages))
