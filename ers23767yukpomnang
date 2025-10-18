@@ -1,0 +1,35 @@
+[1mdiff --git a/frontend/dist/index.html b/frontend/dist/index.html[m
+[1mindex 97d8144..8416fc8 100644[m
+[1m--- a/frontend/dist/index.html[m
+[1m+++ b/frontend/dist/index.html[m
+[36m@@ -5,18 +5,18 @@[m
+     <link rel="icon" type="image/png" href="/logo.png" />[m
+     <meta name="viewport" content="width=device-width, initial-scale=1.0" />[m
+     <title>Yukpomnang</title>[m
+[31m-    <script type="module" crossorigin src="/assets/index-1760674210291.js"></script>[m
+[31m-    <link rel="modulepreload" crossorigin href="/assets/react-vendor-1760674210291.js">[m
+[31m-    <link rel="modulepreload" crossorigin href="/assets/router-vendor-1760674210291.js">[m
+[31m-    <link rel="modulepreload" crossorigin href="/assets/mantine-vendor-1760674210291.js">[m
+[31m-    <link rel="modulepreload" crossorigin href="/assets/toast-vendor-1760674210291.js">[m
+[31m-    <link rel="modulepreload" crossorigin href="/assets/framer-vendor-1760674210291.js">[m
+[31m-    <link rel="modulepreload" crossorigin href="/assets/lucide-vendor-1760674210291.js">[m
+[31m-    <link rel="modulepreload" crossorigin href="/assets/utils-vendor-1760674210291.js">[m
+[31m-    <link rel="modulepreload" crossorigin href="/assets/radix-vendor-1760674210291.js">[m
+[31m-    <link rel="modulepreload" crossorigin href="/assets/maps-vendor-1760674210291.js">[m
+[31m-    <link rel="modulepreload" crossorigin href="/assets/charts-vendor-1760674210291.js">[m
+[31m-    <link rel="stylesheet" crossorigin href="/assets/index-1760674210291.css">[m
+[32m+[m[32m    <script type="module" crossorigin src="/assets/index-1760793421036.js"></script>[m
+[32m+[m[32m    <link rel="modulepreload" crossorigin href="/assets/react-vendor-1760793421036.js">[m
+[32m+[m[32m    <link rel="modulepreload" crossorigin href="/assets/router-vendor-1760793421036.js">[m
+[32m+[m[32m    <link rel="modulepreload" crossorigin href="/assets/mantine-vendor-1760793421036.js">[m
+[32m+[m[32m    <link rel="modulepreload" crossorigin href="/assets/toast-vendor-1760793421036.js">[m
+[32m+[m[32m    <link rel="modulepreload" crossorigin href="/assets/framer-vendor-1760793421036.js">[m
+[32m+[m[32m    <link rel="modulepreload" crossorigin href="/assets/lucide-vendor-1760793421036.js">[m
+[32m+[m[32m    <link rel="modulepreload" crossorigin href="/assets/utils-vendor-1760793421036.js">[m
+[32m+[m[32m    <link rel="modulepreload" crossorigin href="/assets/radix-vendor-1760793421036.js">[m
+[32m+[m[32m    <link rel="modulepreload" crossorigin href="/assets/maps-vendor-1760793421036.js">[m
+[32m+[m[32m    <link rel="modulepreload" crossorigin href="/assets/charts-vendor-1760793421036.js">[m
+[32m+[m[32m    <link rel="stylesheet" crossorigin href="/assets/index-1760793421036.css">[m
+   </head>[m
+   <body>[m
+     <div id="root"></div>[m

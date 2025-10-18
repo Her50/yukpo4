@@ -382,7 +382,7 @@ pub fn chat_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
     Router::<Arc<AppState>>::new()
         // ✅ AJOUT: Routes pour conversations et messages
         .route("/api/chat/conversations", get(get_user_conversations))
-        .route("/api/chat/messages/:conversation_id", get(get_conversation_messages))
+        .route("/api/chat/messages/{conversation_id}", get(get_conversation_messages))
         .route("/api/chat/messages", post(send_message))
         
         // Notifier un nouveau message
