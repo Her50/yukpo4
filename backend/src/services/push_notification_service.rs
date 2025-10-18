@@ -13,6 +13,21 @@ pub struct PushMessage {
     pub sound: Option<String>,
     pub badge: Option<i32>,
     pub priority: Option<String>,
+    
+    // ✅ NOUVEAU: Paramètres pour les appels
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub channel_id: Option<String>, // Canal Android pour les appels
+    
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub category_id: Option<String>, // Catégorie pour iOS/Android
+    
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "ttl")]
+    pub time_to_live: Option<i32>, // Durée de vie de la notification (secondes)
+    
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "mutableContent")]
+    pub mutable_content: Option<bool>, // Pour iOS: notification modifiable
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -166,7 +181,8 @@ pub async fn send_push_notification(
     Ok(success_count)
 }
 
-/// Envoyer une notification d'appel entrant
+/// Envoyer une notification d'appel entrant avec PRIORITÉ MAXIMALE
+/// ✅ AMÉLIORÉ: Notifications optimisées pour réveiller l'app même si elle est fermée
 pub async fn send_call_notification(
     pool: &PgPool,
     recipient_user_id: i32,
@@ -174,28 +190,132 @@ pub async fn send_call_notification(
     call_type: String, // 'audio' ou 'video'
     service_id: Option<i32>,
 ) -> Result<usize, Box<dyn std::error::Error>> {
-    info!("[PushService] 📞 Envoi notification d'appel à user {} de {}", recipient_user_id, caller_name);
+    info!("[PushService] 📞 Envoi notification d'appel HAUTE PRIORITÉ à user {} de {}", recipient_user_id, caller_name);
     
     let title = format!("📞 Appel {} entrant", if call_type == "video" { "vidéo" } else { "audio" });
     let body = format!("{} vous appelle", caller_name);
     
+    // ✅ NOUVEAU: Data enrichie pour les appels
     let data = serde_json::json!({
         "type": "incoming_call",
         "call_type": call_type,
         "caller_name": caller_name,
         "service_id": service_id,
-        "timestamp": chrono::Utc::now().to_rfc3339()
+        "timestamp": chrono::Utc::now().to_rfc3339(),
+        // Paramètres pour réveiller l'app
+        "experienceId": "@hernandezlele/yukpomnang-mobile-new", // Project ID Expo
+        "categoryId": "call", // Catégorie appel
     });
     
-    // Son spécial pour les appels
-    send_push_notification(
+    // ✅ AMÉLIORATION: Utiliser la fonction spécialisée pour les appels
+    send_high_priority_call_notification(
         pool,
         recipient_user_id,
         title,
         body,
-        Some(data),
-        Some("call_ringtone.mp3".to_string()) // Son custom pour appels
+        data,
+        call_type,
     ).await
+}
+
+/// ✅ NOUVELLE FONCTION: Envoyer une notification d'appel avec configuration optimale
+async fn send_high_priority_call_notification(
+    pool: &PgPool,
+    user_id: i32,
+    title: String,
+    body: String,
+    data: serde_json::Value,
+    call_type: String,
+) -> Result<usize, Box<dyn std::error::Error>> {
+    info!("[PushService] 📞 Envoi HIGH PRIORITY call notification à user {}", user_id);
+    
+    // Récupérer les tokens push de l'utilisateur
+    let tokens = get_user_push_tokens(pool, user_id).await?;
+    
+    if tokens.is_empty() {
+        warn!("[PushService] ⚠️ Aucun token push pour user {}", user_id);
+        return Ok(0);
+    }
+    
+    let client = Client::new();
+    let mut success_count = 0;
+    let total_tokens = tokens.len();
+    
+    // ✅ Configuration spéciale pour les appels
+    let is_video = call_type == "video";
+    
+    // Envoyer à tous les tokens
+    for token in &tokens {
+        let message = PushMessage {
+            to: token.clone(),
+            title: title.clone(),
+            body: body.clone(),
+            data: Some(data.clone()),
+            
+            // ✅ Son spécifique pour les appels
+            sound: Some("call_ringtone".to_string()),
+            
+            // ✅ Badge pour attirer l'attention
+            badge: Some(1),
+            
+            // ✅ PRIORITÉ MAXIMALE pour réveiller l'app
+            priority: Some("high".to_string()),
+            
+            // ✅ Canal Android spécial pour les appels (défini côté mobile)
+            channel_id: Some("calls".to_string()),
+            
+            // ✅ Catégorie pour identifier le type de notification
+            category_id: Some(if is_video { "video_call" } else { "audio_call" }.to_string()),
+            
+            // ✅ TTL court pour les appels (30 secondes)
+            // Si l'utilisateur ne répond pas dans 30s, la notification expire
+            time_to_live: Some(30),
+            
+            // ✅ Contenu modifiable pour iOS (permet d'ajouter des actions)
+            mutable_content: Some(true),
+        };
+        
+        info!("[PushService] 📤 Envoi HIGH PRIORITY à token {} (canal: calls, TTL: 30s)", &token[..20]);
+        
+        // API Expo Push Notifications
+        let response = client
+            .post("https://exp.host/--/api/v2/push/send")
+            .header("Accept", "application/json")
+            .header("Accept-Encoding", "gzip, deflate")
+            .header("Content-Type", "application/json")
+            .json(&message)
+            .send()
+            .await;
+        
+        match response {
+            Ok(resp) => {
+                if resp.status().is_success() {
+                    info!("[PushService] ✅ Push HIGH PRIORITY envoyé au token {}", &token[..20]);
+                    success_count += 1;
+                    
+                    // Log de la réponse pour debug
+                    if let Ok(response_text) = resp.text().await {
+                        info!("[PushService] 📬 Réponse Expo: {}", response_text);
+                    }
+                } else {
+                    let status = resp.status();
+                    let error_text = resp.text().await.unwrap_or_else(|_| "Unknown error".to_string());
+                    error!("[PushService] ❌ Erreur push ({}): {}", status, error_text);
+                }
+            }
+            Err(e) => {
+                error!("[PushService] ❌ Erreur réseau push: {}", e);
+            }
+        }
+    }
+    
+    if success_count > 0 {
+        info!("[PushService] ✅ {} notifications d'appel HIGH PRIORITY envoyées sur {} tokens", success_count, total_tokens);
+    } else {
+        warn!("[PushService] ⚠️ Aucune notification d'appel envoyée (échec sur {} tokens)", total_tokens);
+    }
+    
+    Ok(success_count)
 }
 
 /// Désactiver un token push (quand l'utilisateur se déconnecte)

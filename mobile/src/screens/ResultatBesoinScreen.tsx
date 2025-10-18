@@ -13,7 +13,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import ChatModal from '../components/ChatModal';
+import ChatModalMobile from '../components/ChatModalMobile';
 import ResultsHeader from '../components/ResultsHeader';
 import ServiceGalleryModal from '../components/ServiceGalleryModal';
 import UltraModernServiceCard from '../components/UltraModernServiceCard';
@@ -274,16 +274,31 @@ const ResultatBesoinScreen: React.FC = () => {
                     if (response.data) {
                         const service = response.data as Service;
 
+                        // Récupérer le GPS des résultats de recherche (qui priorise déjà gps_fixe > gps_mobile)
+                        const searchGps = originalResults[index]?.gps;
+
                         // Enrichir le service avec les données de recherche (score, etc.)
                         const enrichedService: Service = {
                             ...service,
                             score: originalResults[index]?.score || 0,
                             semantic_score: originalResults[index]?.semantic_score || 0,
                             interaction_score: originalResults[index]?.interaction_score || 0,
-                            gps: originalResults[index]?.gps || undefined,
+                            gps: searchGps || service.gps || undefined,
                             distance: originalResults[index]?.distance,
-                            proximityScore: originalResults[index]?.proximityScore
+                            proximityScore: originalResults[index]?.proximityScore,
+                            // ✅ CORRECTION: Injecter le GPS dans data.gps_fixe si le service l'a défini
+                            data: {
+                                ...service.data,
+                                // Si le GPS de recherche est défini et qu'il vient de gps_fixe, l'injecter
+                                gps_fixe: searchGps ? { valeur: searchGps } : service.data?.gps_fixe
+                            }
                         };
+
+                        console.log(`✅ [ResultatBesoinScreen] Service ${service.id} enrichi avec GPS:`, {
+                            searchGps,
+                            finalGps: enrichedService.gps,
+                            gps_fixe: enrichedService.data?.gps_fixe
+                        });
 
                         return enrichedService;
                     } else {
@@ -999,18 +1014,16 @@ const ResultatBesoinScreen: React.FC = () => {
                 </>
             )}
 
-            {/* Chat Modal */}
-            <ChatModal
+            {/* Chat Modal avec WebSocket */}
+            <ChatModalMobile
                 visible={showChatModal}
                 service={selectedService}
-                prestataire={selectedPrestataire}
+                prestataireInfo={selectedPrestataire}
+                user={user}
                 onClose={() => {
                     setShowChatModal(false);
                     setSelectedService(null);
                     setSelectedPrestataire(null);
-                }}
-                onSendMessage={(message) => {
-                    console.log('Message envoyé:', message);
                 }}
             />
 

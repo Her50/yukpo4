@@ -1,8 +1,9 @@
 // @ts-nocheck
 // Migration vers Lucide React Native pour un design moderne
+import { Audio } from 'expo-av';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
-import { Check, DotsThreeVertical, Image as ImageIcon, Paperclip, PaperPlaneTilt, X } from 'phosphor-react-native';
+import { Check, DotsThreeVertical, Image as ImageIcon, Microphone, Paperclip, PaperPlaneTilt, X } from 'phosphor-react-native';
 import * as React from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Image, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
@@ -62,7 +63,11 @@ const ChatModal: React.FC<ChatModalProps> = ({
     const [isTyping, setIsTyping] = useState(false);
     const [uploadingMedia, setUploadingMedia] = useState(false);
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
+    const [recording, setRecording] = useState<Audio.Recording | null>(null);
+    const [isRecording, setIsRecording] = useState(false);
+    const [recordingDuration, setRecordingDuration] = useState(0);
     const scrollViewRef = useRef<ScrollView>(null);
+    const timerInterval = useRef<NodeJS.Timeout | null>(null);
 
     // CORRECTION: Normaliser le nom du prestataire (nom_complet au lieu de name)
     const normalizedPrestataire = prestataire ? {
@@ -90,16 +95,55 @@ const ChatModal: React.FC<ChatModalProps> = ({
                 const interactions = response.data;
                 console.log('[ChatModal] Interactions chargées:', interactions);
 
-                // ✅ Filtrer uniquement les messages texte et audio
+                // ✅ CORRIGÉ: Charger tous les types de messages (texte, audio, image, fichier)
                 const loadedMessages: Message[] = (interactions || [])
-                    .filter((interaction: any) => interaction.interaction_type === 'message' || interaction.interaction_type === 'audio')
-                    .map((interaction: any) => ({
-                        id: interaction._id || interaction.id || String(Date.now()),
-                        content: interaction.metadata || interaction.content || '',
-                        from: interaction.user_id === parseInt(user.id) ? 'client' : 'prestataire',
-                        timestamp: new Date(interaction.created_at || interaction.timestamp || Date.now()),
-                        status: 'read' // Les messages chargés sont considérés comme lus
-                    }))
+                    .filter((interaction: any) =>
+                        interaction.interaction_type === 'message' ||
+                        interaction.interaction_type === 'audio' ||
+                        interaction.interaction_type === 'image' ||
+                        interaction.interaction_type === 'file'
+                    )
+                    .map((interaction: any) => {
+                        const content = interaction.metadata || interaction.content || '';
+                        const interactionType = interaction.interaction_type;
+
+                        // Déterminer le type de message
+                        let messageType: 'text' | 'image' | 'audio' | 'file' = 'text';
+                        let mediaUrl: string | undefined = undefined;
+                        let fileName: string | undefined = undefined;
+
+                        if (interactionType === 'audio') {
+                            messageType = 'audio';
+                            mediaUrl = content.startsWith('data:') ? content : undefined;
+                        } else if (interactionType === 'image') {
+                            messageType = 'image';
+                            mediaUrl = content.startsWith('data:') ? content : undefined;
+                        } else if (interactionType === 'file') {
+                            messageType = 'file';
+                            mediaUrl = content.startsWith('data:') ? content : undefined;
+                            fileName = interaction.fileName || 'Fichier';
+                        } else if (content.startsWith('data:image')) {
+                            messageType = 'image';
+                            mediaUrl = content;
+                        } else if (content.startsWith('data:audio')) {
+                            messageType = 'audio';
+                            mediaUrl = content;
+                        } else if (content.startsWith('data:application')) {
+                            messageType = 'file';
+                            mediaUrl = content;
+                        }
+
+                        return {
+                            id: interaction._id || interaction.id || String(Date.now()),
+                            content: messageType === 'text' ? content : (messageType === 'image' ? '📷 Image' : messageType === 'audio' ? '🎤 Audio' : `📎 ${fileName || 'Fichier'}`),
+                            from: interaction.user_id === parseInt(user.id) ? 'client' : 'prestataire',
+                            timestamp: new Date(interaction.created_at || interaction.timestamp || Date.now()),
+                            status: 'read', // Les messages chargés sont considérés comme lus
+                            type: messageType,
+                            mediaUrl,
+                            fileName
+                        };
+                    })
                     .sort((a: Message, b: Message) => a.timestamp.getTime() - b.timestamp.getTime());
 
                 setMessages(loadedMessages);
@@ -202,7 +246,7 @@ const ChatModal: React.FC<ChatModalProps> = ({
         }
     };
 
-    // ✅ NOUVEAU : Fonction pour sélectionner un fichier
+    // ✅ CORRIGÉ : Fonction pour sélectionner et envoyer un fichier
     const pickDocument = async () => {
         try {
             const result = await DocumentPicker.getDocumentAsync({
@@ -210,9 +254,27 @@ const ChatModal: React.FC<ChatModalProps> = ({
                 copyToCacheDirectory: true
             });
 
-            if (result.type === 'success') {
-                Alert.alert('Fichier sélectionné', `${result.name} sera envoyé`);
-                // TODO: Implémenter l'upload de fichier
+            if (!result.canceled && result.assets[0]) {
+                const file = result.assets[0];
+                console.log('[ChatModal] Fichier sélectionné:', file.name, file.mimeType);
+
+                // Convertir le fichier en base64
+                const response = await fetch(file.uri);
+                const blob = await response.blob();
+
+                const reader = new FileReader();
+                reader.onloadend = async () => {
+                    const base64data = reader.result as string;
+                    // Extraire seulement la partie base64 (sans le préfixe data:...)
+                    const base64 = base64data.split(',')[1];
+
+                    // Envoyer le fichier
+                    await sendMediaMessage('file', base64, file.name);
+                };
+                reader.onerror = () => {
+                    Alert.alert('Erreur', 'Impossible de lire le fichier');
+                };
+                reader.readAsDataURL(blob);
             }
         } catch (error) {
             console.error('[ChatModal] Erreur sélection fichier:', error);
@@ -220,53 +282,163 @@ const ChatModal: React.FC<ChatModalProps> = ({
         }
     };
 
-    // ✅ NOUVEAU : Fonction pour envoyer un média
-    const sendMediaMessage = async (mediaType: 'image' | 'audio' | 'file', base64Data: string) => {
+    // ✅ NOUVEAU : Fonction pour démarrer l'enregistrement audio
+    const startRecording = async () => {
+        try {
+            console.log('[ChatModal] Demande permission audio...');
+            const permission = await Audio.requestPermissionsAsync();
+
+            if (permission.status !== 'granted') {
+                Alert.alert('Permission refusée', 'Permission d\'enregistrement audio refusée');
+                return;
+            }
+
+            await Audio.setAudioModeAsync({
+                allowsRecordingIOS: true,
+                playsInSilentModeIOS: true,
+            });
+
+            console.log('[ChatModal] Démarrage enregistrement...');
+            const { recording: newRecording } = await Audio.Recording.createAsync(
+                Audio.RecordingOptionsPresets.HIGH_QUALITY
+            );
+
+            setRecording(newRecording);
+            setIsRecording(true);
+            setRecordingDuration(0);
+
+            // Timer pour la durée
+            timerInterval.current = setInterval(() => {
+                setRecordingDuration(prev => prev + 1);
+            }, 1000);
+
+            console.log('[ChatModal] ✅ Enregistrement démarré');
+        } catch (error) {
+            console.error('[ChatModal] Erreur démarrage enregistrement:', error);
+            Alert.alert('Erreur', 'Impossible de démarrer l\'enregistrement');
+        }
+    };
+
+    // ✅ NOUVEAU : Fonction pour arrêter l'enregistrement et envoyer
+    const stopRecording = async () => {
+        if (!recording) {
+            console.warn('[ChatModal] Pas d\'enregistrement actif');
+            setIsRecording(false);
+            return;
+        }
+
+        try {
+            console.log('[ChatModal] Arrêt enregistrement...');
+            setIsRecording(false);
+
+            if (timerInterval.current) {
+                clearInterval(timerInterval.current);
+                timerInterval.current = null;
+            }
+
+            await recording.stopAndUnloadAsync();
+            await Audio.setAudioModeAsync({
+                allowsRecordingIOS: false,
+            });
+
+            const uri = recording.getURI();
+            console.log('[ChatModal] URI audio:', uri);
+
+            if (uri) {
+                // Convertir en base64
+                const response = await fetch(uri);
+                const blob = await response.blob();
+
+                const reader = new FileReader();
+                reader.onloadend = async () => {
+                    const base64data = reader.result as string;
+                    const base64 = base64data.split(',')[1];
+
+                    // Envoyer l'audio
+                    await sendMediaMessage('audio', base64, `audio_${Date.now()}.m4a`);
+                };
+                reader.onerror = () => {
+                    Alert.alert('Erreur', 'Impossible de lire l\'audio');
+                };
+                reader.readAsDataURL(blob);
+            }
+
+            setRecording(null);
+            setRecordingDuration(0);
+        } catch (error) {
+            console.error('[ChatModal] Erreur arrêt enregistrement:', error);
+            Alert.alert('Erreur', 'Erreur lors de l\'arrêt de l\'enregistrement');
+            setRecording(null);
+            setIsRecording(false);
+        }
+    };
+
+    // Nettoyer le timer quand le composant se démonte
+    useEffect(() => {
+        return () => {
+            if (timerInterval.current) {
+                clearInterval(timerInterval.current);
+            }
+        };
+    }, []);
+
+    // ✅ CORRIGÉ : Fonction pour envoyer un média
+    const sendMediaMessage = async (mediaType: 'image' | 'audio' | 'file', base64Data: string, fileName?: string) => {
         if (!service || !user) return;
 
         setUploadingMedia(true);
         const tempId = Date.now().toString();
 
         try {
+            // Construire l'URL du média
+            const mediaUrl = mediaType === 'image'
+                ? `data:image/jpeg;base64,${base64Data}`
+                : mediaType === 'audio'
+                    ? `data:audio/mp3;base64,${base64Data}`
+                    : `data:application/octet-stream;base64,${base64Data}`;
+
             // Ajouter le message localement avec preview
             const tempMessage: Message = {
                 id: tempId,
-                content: mediaType === 'image' ? 'Image' : 'Fichier',
+                content: mediaType === 'image' ? '📷 Image' : mediaType === 'audio' ? '🎤 Audio' : `📎 ${fileName || 'Fichier'}`,
                 from: 'client',
                 timestamp: new Date(),
                 status: 'sent',
                 type: mediaType,
-                mediaUrl: mediaType === 'image' ? `data:image/jpeg;base64,${base64Data}` : undefined
+                mediaUrl: mediaUrl,
+                fileName: fileName
             };
 
             setMessages(prev => [...prev, tempMessage]);
             setSelectedImage(null);
 
-            // ✅ CORRIGÉ: Envoyer au backend via apiPost
-            const endpoint = mediaType === 'audio' ? 'audio' : 'message';
-            const response = await apiPost(`/api/services/${service.id}/${endpoint}`,
-                mediaType === 'audio' ? {
-                    audio_url: `data:audio/mp3;base64,${base64Data}`
-                } : {
-                    content: `[${mediaType.toUpperCase()}] data:${mediaType}/*;base64,${base64Data.substring(0, 100)}...`
-                }
-            );
+            // ✅ CORRIGÉ: Envoyer au backend via apiPost avec le bon format
+            const payload = {
+                content: mediaUrl, // Envoyer le data URI complet
+                type: mediaType,
+                fileName: fileName
+            };
 
-            if (response.ok) {
-                const data = await response.json();
-                console.log('[ChatModal] ✅ Média envoyé:', data);
+            console.log(`[ChatModal] 📤 Envoi ${mediaType} pour service ${service.id}`);
+
+            const response = await apiPost(`/api/services/${service.id}/message`, payload);
+
+            if (response.success && response.data) {
+                console.log('[ChatModal] ✅ Média envoyé avec succès:', response.data);
 
                 setMessages(prev => prev.map(msg =>
                     msg.id === tempId
-                        ? { ...msg, id: data._id || data.id || tempId, status: 'delivered' }
+                        ? { ...msg, id: response.data._id || response.data.id || tempId, status: 'delivered' }
                         : msg
                 ));
+
+                Alert.alert('Succès', `${mediaType === 'image' ? 'Image' : mediaType === 'audio' ? 'Audio' : 'Fichier'} envoyé avec succès`);
             } else {
-                throw new Error('Erreur envoi média');
+                throw new Error(response.error || 'Erreur envoi média');
             }
         } catch (error) {
-            console.error('[ChatModal] Erreur envoi média:', error);
-            Alert.alert('Erreur', 'Impossible d\'envoyer le média');
+            console.error('[ChatModal] ❌ Erreur envoi média:', error);
+            Alert.alert('Erreur', `Impossible d'envoyer ${mediaType === 'image' ? "l'image" : mediaType === 'audio' ? "l'audio" : 'le fichier'}`);
 
             // Retirer le message en cas d'erreur
             setMessages(prev => prev.filter(msg => msg.id !== tempId));
@@ -362,7 +534,7 @@ const ChatModal: React.FC<ChatModalProps> = ({
                                     message.from === 'client' ? styles.messageBubbleRight : styles.messageBubbleLeft
                                 ]}
                             >
-                                {/* ✅ NOUVEAU : Afficher l'image si c'est un message image */}
+                                {/* ✅ CORRIGÉ : Afficher les différents types de médias */}
                                 {message.type === 'image' && message.mediaUrl && (
                                     <Image
                                         source={{ uri: message.mediaUrl }}
@@ -371,12 +543,38 @@ const ChatModal: React.FC<ChatModalProps> = ({
                                     />
                                 )}
 
-                                <Text style={[
-                                    styles.messageText,
-                                    message.from === 'client' ? styles.messageTextRight : styles.messageTextLeft
-                                ]}>
-                                    {message.content}
-                                </Text>
+                                {message.type === 'audio' && (
+                                    <View style={styles.audioMessage}>
+                                        <Microphone size={16} color={message.from === 'client' ? '#FFFFFF' : theme.colors.primary} weight="fill" />
+                                        <Text style={[
+                                            styles.audioText,
+                                            message.from === 'client' ? styles.messageTextRight : styles.messageTextLeft
+                                        ]}>
+                                            Message vocal
+                                        </Text>
+                                    </View>
+                                )}
+
+                                {message.type === 'file' && (
+                                    <View style={styles.fileMessage}>
+                                        <Paperclip size={16} color={message.from === 'client' ? '#FFFFFF' : theme.colors.primary} />
+                                        <Text style={[
+                                            styles.fileText,
+                                            message.from === 'client' ? styles.messageTextRight : styles.messageTextLeft
+                                        ]} numberOfLines={1}>
+                                            {message.fileName || 'Fichier'}
+                                        </Text>
+                                    </View>
+                                )}
+
+                                {(!message.type || message.type === 'text') && (
+                                    <Text style={[
+                                        styles.messageText,
+                                        message.from === 'client' ? styles.messageTextRight : styles.messageTextLeft
+                                    ]}>
+                                        {message.content}
+                                    </Text>
+                                )}
 
                                 <View style={styles.messageFooter}>
                                     <Text style={[
@@ -406,23 +604,40 @@ const ChatModal: React.FC<ChatModalProps> = ({
 
                 {/* Input */}
                 <View style={styles.inputContainer}>
-                    {/* ✅ NOUVEAU : Boutons pour les médias */}
+                    {/* ✅ CORRIGÉ : Boutons pour les médias avec audio */}
                     <View style={styles.mediaButtons}>
                         <TouchableOpacity
                             style={styles.mediaButton}
                             onPress={pickImage}
-                            disabled={uploadingMedia}
+                            disabled={uploadingMedia || isRecording}
                         >
                             <ImageIcon size={20} color={theme.colors.primary} />
                         </TouchableOpacity>
                         <TouchableOpacity
                             style={styles.mediaButton}
                             onPress={pickDocument}
-                            disabled={uploadingMedia}
+                            disabled={uploadingMedia || isRecording}
                         >
                             <Paperclip size={20} color={theme.colors.primary} />
                         </TouchableOpacity>
+                        <TouchableOpacity
+                            style={[styles.mediaButton, isRecording && styles.mediaButtonRecording]}
+                            onPress={isRecording ? stopRecording : startRecording}
+                            disabled={uploadingMedia}
+                        >
+                            <Microphone size={20} color={isRecording ? '#EF4444' : theme.colors.primary} weight={isRecording ? 'fill' : 'regular'} />
+                        </TouchableOpacity>
                     </View>
+
+                    {/* ✅ NOUVEAU : Indicateur d'enregistrement */}
+                    {isRecording && (
+                        <View style={styles.recordingIndicator}>
+                            <View style={styles.recordingDot} />
+                            <Text style={styles.recordingText}>
+                                Enregistrement... {Math.floor(recordingDuration / 60)}:{(recordingDuration % 60).toString().padStart(2, '0')}
+                            </Text>
+                        </View>
+                    )}
 
                     <View style={styles.inputWrapper}>
                         {uploadingMedia ? (
@@ -659,6 +874,57 @@ const styles = StyleSheet.create({
         height: 150,
         borderRadius: 8,
         marginBottom: 8,
+    },
+    // ✅ NOUVEAU : Styles pour l'enregistrement
+    mediaButtonRecording: {
+        backgroundColor: '#FEE2E2',
+        borderWidth: 2,
+        borderColor: '#EF4444',
+    },
+    recordingIndicator: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#FEE2E2',
+        paddingVertical: 8,
+        paddingHorizontal: 12,
+        borderRadius: 8,
+        marginBottom: 8,
+        gap: 8,
+    },
+    recordingDot: {
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+        backgroundColor: '#EF4444',
+    },
+    recordingText: {
+        fontSize: 14,
+        color: '#991B1B',
+        fontWeight: '600',
+    },
+    // ✅ NOUVEAU : Styles pour les messages audio
+    audioMessage: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        paddingVertical: 4,
+    },
+    audioText: {
+        fontSize: 14,
+        fontWeight: '500',
+    },
+    // ✅ NOUVEAU : Styles pour les messages fichiers
+    fileMessage: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        paddingVertical: 4,
+        maxWidth: 200,
+    },
+    fileText: {
+        fontSize: 14,
+        fontWeight: '500',
+        flex: 1,
     },
 });
 

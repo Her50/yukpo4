@@ -844,12 +844,12 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'flex-end', // ✅ Compacter à droite
         alignItems: 'center',
-        paddingVertical: 6, // ✅ Réduit de 8 à 6
-        paddingHorizontal: 6, // ✅ Réduit de 8 à 6
+        paddingVertical: 4, // ✅ Réduit de 6 à 4
+        paddingHorizontal: 4, // ✅ Réduit de 6 à 4
         borderTopWidth: 1,
         borderTopColor: '#E5E7EB',
-        gap: 3, // ✅ Réduit de 4 à 3
-        marginBottom: 0, // ✅ Supprimé l'espace
+        gap: 2, // ✅ Réduit de 3 à 2
+        marginBottom: 0,
     },
     sendButtonContainer: {
         paddingHorizontal: 6,
@@ -867,14 +867,14 @@ const styles = StyleSheet.create({
     actionButton: {
         flexDirection: 'column',
         alignItems: 'center',
-        paddingVertical: 4, // ✅ Réduit de 6 à 4
-        paddingHorizontal: 2, // ✅ Réduit de 3 à 2
-        minWidth: 40, // ✅ Réduit de 45 à 40
-        borderRadius: 6,
+        paddingVertical: 3, // ✅ Réduit de 4 à 3
+        paddingHorizontal: 1, // ✅ Réduit de 2 à 1
+        minWidth: 32, // ✅ Réduit de 40 à 32 pour compacter davantage
+        borderRadius: 5,
         backgroundColor: 'transparent',
         borderWidth: 0,
         flex: 0, // ✅ Pas de flex pour compacter à droite
-        marginHorizontal: 1,
+        marginHorizontal: 0, // ✅ Supprimé la marge pour plus de compacité
     },
     actionButtonActive: {
         backgroundColor: 'rgba(99, 102, 241, 0.2)',
@@ -885,8 +885,8 @@ const styles = StyleSheet.create({
         borderColor: '#EF4444',
     },
     actionButtonText: {
-        fontSize: 9,
-        color: 'rgba(255, 255, 255, 0.8)',
+        fontSize: 7, // ✅ Réduit de 9 à 7 pour compacter
+        color: '#6B7280',
         fontWeight: '500',
         textAlign: 'center',
     },
@@ -941,8 +941,8 @@ const styles = StyleSheet.create({
         color: '#4CAF50',
     },
     actionIcon: {
-        fontSize: 20,
-        marginRight: 4,
+        fontSize: 16, // ✅ Réduit de 20 à 16 pour compacter
+        marginRight: 0, // ✅ Supprimé la marge
     },
     actionIconRecording: {
         color: '#EF4444',

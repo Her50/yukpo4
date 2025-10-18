@@ -16,7 +16,7 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
-import { API_ENDPOINTS, buildUrl, WS_ENDPOINTS } from '../config/api.config';
+import { API_ENDPOINTS, WS_ENDPOINTS } from '../config/api.config';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
 
@@ -33,6 +33,7 @@ interface WebRTCCallModalProps {
     recipientId: string;
     currentUserId: string;
     serviceId?: string;
+    isIncoming?: boolean; // ✅ NOUVEAU: Détecter si c'est un appel entrant
 }
 
 const WebRTCCallModal: React.FC<WebRTCCallModalProps> = ({
@@ -42,7 +43,8 @@ const WebRTCCallModal: React.FC<WebRTCCallModalProps> = ({
     recipientName,
     recipientId,
     currentUserId,
-    serviceId
+    serviceId,
+    isIncoming = false // ✅ NOUVEAU: Défaut = false (appel sortant)
 }) => {
     const [callState, setCallState] = useState<'connecting' | 'ringing' | 'active' | 'ended'>('connecting');
     const [isMuted, setIsMuted] = useState(false);
@@ -91,9 +93,17 @@ const WebRTCCallModal: React.FC<WebRTCCallModalProps> = ({
         };
     }, [callState]);
 
-    // ✅ NOUVEAU: Jouer la sonnerie quand l'état passe à 'ringing'
+    // ✅ AMÉLIORÉ: Jouer la sonnerie selon le type d'appel
     useEffect(() => {
-        if (callState === 'ringing') {
+        // Appel ENTRANT : jouer la sonnerie immédiatement pour alerter le destinataire
+        if (isIncoming && visible && callState === 'connecting') {
+            console.log('[WebRTC] 🔔 Appel entrant - Démarrage sonnerie destinataire');
+            playRingTone();
+        }
+
+        // Appel SORTANT : jouer la sonnerie quand on attend la réponse
+        if (!isIncoming && callState === 'ringing') {
+            console.log('[WebRTC] 🔔 Appel sortant - Démarrage sonnerie émetteur');
             playRingTone();
 
             // ✅ Animation de pulse pendant la sonnerie
@@ -123,9 +133,11 @@ const WebRTCCallModal: React.FC<WebRTCCallModalProps> = ({
         }
 
         return () => {
-            stopRingTone();
+            if (callState === 'ended') {
+                stopRingTone();
+            }
         };
-    }, [callState]);
+    }, [callState, isIncoming, visible]);
 
     // Initialisation WebRTC
     const initializeWebRTC = async () => {
@@ -210,11 +222,35 @@ const WebRTCCallModal: React.FC<WebRTCCallModalProps> = ({
 
         ws.current.onerror = (error) => {
             console.error('[WebRTC] Erreur WebSocket:', error);
-            Alert.alert('Erreur', 'Impossible de se connecter au serveur');
+
+            // ✅ AMÉLIORÉ: Message d'erreur plus explicite avec option de fallback
+            Alert.alert(
+                'Appel indisponible',
+                'Le service d\'appel vidéo/audio n\'est pas disponible pour le moment. Vous pouvez contacter le prestataire par message.',
+                [
+                    { text: 'Fermer', style: 'cancel', onPress: () => onClose() },
+                    {
+                        text: 'Envoyer un message',
+                        onPress: () => {
+                            onClose();
+                            // L'utilisateur retournera au chat modal
+                        }
+                    }
+                ]
+            );
         };
 
-        ws.current.onclose = () => {
-            console.log('[WebRTC] Déconnecté du serveur de signaling');
+        ws.current.onclose = (event) => {
+            console.log('[WebRTC] Déconnecté du serveur de signaling. Code:', event.code, 'Raison:', event.reason);
+
+            // ✅ AMÉLIORÉ: Gérer les fermetures anormales
+            if (event.code !== 1000 && callState !== 'ended') {
+                console.warn('[WebRTC] Connexion fermée de manière inattendue');
+                if (callState === 'active') {
+                    Alert.alert('Appel interrompu', 'La connexion a été perdue');
+                    endCall();
+                }
+            }
         };
     };
 
@@ -336,30 +372,57 @@ const WebRTCCallModal: React.FC<WebRTCCallModalProps> = ({
         }
     };
 
-    // ✅ NOUVEAU: Jouer la sonnerie d'appel
+    // ✅ CORRIGÉ: Jouer la sonnerie d'appel avec son système
     const playRingTone = async () => {
         try {
             console.log('[WebRTC] 🔔 Démarrage sonnerie...');
+
+            // Si déjà en cours, ne rien faire
+            if (ringSound) {
+                console.log('[WebRTC] ⚠️ Sonnerie déjà en cours');
+                return;
+            }
 
             // Configurer le mode audio
             await Audio.setAudioModeAsync({
                 playsInSilentModeIOS: true,
                 staysActiveInBackground: true,
                 shouldDuckAndroid: false,
+                playThroughEarpieceAndroid: false,
             });
 
-            // Créer et jouer un son de sonnerie simple avec expo-av
+            // ✅ CORRIGÉ: Utiliser le son système de notification
+            // require() pour charger un asset local depuis assets/sounds/
+            const soundSource = require('../assets/sounds/ringtone.mp3');
+
             const { sound } = await Audio.Sound.createAsync(
-                // Utiliser un son système par défaut ou générer un bip
-                { uri: 'https://www.soundjay.com/phone/sounds/phone-calling-1.mp3' },
-                { shouldPlay: true, isLooping: true, volume: 0.5 }
+                soundSource,
+                {
+                    shouldPlay: true,
+                    isLooping: true,
+                    volume: isIncoming ? 1.0 : 0.5 // Plus fort pour appel entrant
+                }
             );
 
             setRingSound(sound);
             console.log('[WebRTC] ✅ Sonnerie démarrée');
         } catch (error) {
-            console.error('[WebRTC] Erreur sonnerie:', error);
-            // Fallback : vibration ou pas de son
+            console.error('[WebRTC] ❌ Erreur sonnerie:', error);
+
+            // ✅ FALLBACK: Si le fichier son n'existe pas, essayer un son système alternatif
+            try {
+                console.log('[WebRTC] 🔄 Tentative fallback avec son système...');
+                // Utiliser le son de notification système par défaut
+                const { sound } = await Audio.Sound.createAsync(
+                    { uri: 'https://actions.google.com/sounds/v1/alarms/digital_watch_alarm_long.ogg' },
+                    { shouldPlay: true, isLooping: true, volume: 0.7 }
+                );
+                setRingSound(sound);
+                console.log('[WebRTC] ✅ Sonnerie fallback démarrée');
+            } catch (fallbackError) {
+                console.error('[WebRTC] ❌ Erreur sonnerie fallback:', fallbackError);
+                // Pas de son du tout, mais l'appel continue
+            }
         }
     };
 
@@ -383,37 +446,46 @@ const WebRTCCallModal: React.FC<WebRTCCallModalProps> = ({
         return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     };
 
-    // ✅ NOUVEAU: Envoyer une notification push d'appel au destinataire
+    // ✅ CORRIGÉ: Envoyer une notification d'appel via API et WebSocket
     const sendCallPushNotification = async () => {
         try {
-            console.log('[WebRTC] 📲 Envoi notification push d\'appel à:', recipientId);
+            console.log('[WebRTC] 📲 Envoi notification d\'appel à:', recipientId);
 
-            // Note: Le backend devrait avoir un endpoint pour envoyer des push notifications
-            // Pour l'instant, on utilise le WebSocket qui notifiera le serveur
-            // Le serveur enverra automatiquement la push notification via Expo Push API
+            // Import dynamique de apiPost
+            const { apiPost } = await import('../services/api');
 
-            // ✅ CORRIGÉ: Utilise buildUrl pour construire l'URL complète
-            const response = await fetch(buildUrl(API_ENDPOINTS.WEBRTC.NOTIFY_CALL), {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    recipient_id: recipientId,
-                    caller_id: currentUserId,
-                    caller_name: 'Utilisateur', // TODO: Récupérer le vrai nom
-                    call_type: callType,
-                    service_id: serviceId
-                })
+            // ✅ MÉTHODE 1: Envoyer via API avec authentification
+            const response = await apiPost(API_ENDPOINTS.WEBRTC.NOTIFY_CALL, {
+                recipient_id: recipientId,
+                caller_id: currentUserId,
+                caller_name: recipientName || 'Un utilisateur',
+                call_type: callType,
+                service_id: serviceId
             });
 
-            if (response.ok) {
-                console.log('[WebRTC] ✅ Notification push envoyée');
+            if (response.success) {
+                console.log('[WebRTC] ✅ Notification API envoyée avec succès');
             } else {
-                console.warn('[WebRTC] ⚠️ Erreur envoi push notification:', response.status);
+                console.warn('[WebRTC] ⚠️ Erreur envoi notification API:', response.status);
             }
+
+            // ✅ MÉTHODE 2: Envoyer également via WebSocket pour notification temps réel
+            // Utiliser le WebSocket de signaling pour envoyer la notification
+            if (ws.current && ws.current.readyState === WebSocket.OPEN) {
+                ws.current.send(JSON.stringify({
+                    type: 'call_notification',
+                    to: recipientId,
+                    from: currentUserId,
+                    caller_name: recipientName || 'Un utilisateur',
+                    call_type: callType,
+                    service_id: serviceId,
+                    timestamp: new Date().toISOString()
+                }));
+                console.log('[WebRTC] ✅ Notification WebSocket envoyée');
+            }
+
         } catch (error) {
-            console.error('[WebRTC] ❌ Erreur notification push:', error);
+            console.error('[WebRTC] ❌ Erreur notification:', error);
             // Ne pas bloquer l'appel si la notification échoue
         }
     };

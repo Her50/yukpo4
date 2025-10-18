@@ -17,9 +17,9 @@ import {
 } from 'react-native';
 import { useWebSocketChat } from '../hooks/useWebSocketChat';
 import { modernColors } from '../theme/modernTheme';
+import InAppCallModal from './InAppCallModal';
 import SafeIcon from './SafeIcon';
 import ServiceMediaGallery from './ServiceMediaGallery';
-import InAppCallModal from './InAppCallModal';
 
 interface ChatModalMobileProps {
     visible: boolean;
@@ -41,16 +41,19 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
     const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
     const [editingContent, setEditingContent] = useState('');
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-    
+
     // États pour les médias
     const [selectedImages, setSelectedImages] = useState<string[]>([]);
     const [selectedAudio, setSelectedAudio] = useState<string | null>(null);
+    const [selectedAudioUri, setSelectedAudioUri] = useState<string | null>(null);
     const [selectedDocuments, setSelectedDocuments] = useState<string[]>([]);
     const [isRecording, setIsRecording] = useState(false);
     const [recording, setRecording] = useState<Audio.Recording | null>(null);
     const [recordingDuration, setRecordingDuration] = useState(0);
     const [showMediaGallery, setShowMediaGallery] = useState(false);
-    
+    const [isPlayingAudio, setIsPlayingAudio] = useState(false);
+    const [audioSound, setAudioSound] = useState<Audio.Sound | null>(null);
+
     // États pour les appels internes
     const [showCallModal, setShowCallModal] = useState(false);
     const [callType, setCallType] = useState<'audio' | 'video'>('audio');
@@ -247,10 +250,10 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
             });
 
             if (!result.canceled && result.assets) {
-                const images64 = result.assets.map(asset => 
+                const images64 = result.assets.map(asset =>
                     asset.base64 ? `data:image/jpeg;base64,${asset.base64}` : ''
                 ).filter(img => img);
-                
+
                 setSelectedImages([...selectedImages, ...images64]);
             }
         } catch (error) {
@@ -338,7 +341,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
         try {
             setIsRecording(false);
             await recording.stopAndUnloadAsync();
-            
+
             await Audio.setAudioModeAsync({
                 allowsRecordingIOS: false,
             });
@@ -347,12 +350,58 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
             if (uri) {
                 const audioBase64 = await convertFileToBase64(uri);
                 setSelectedAudio(audioBase64);
+                setSelectedAudioUri(uri); // Sauvegarder l'URI pour la lecture
             }
             setRecording(null);
         } catch (error) {
             console.error('Erreur arrêt audio:', error);
             setRecording(null);
         }
+    };
+
+    // Fonction pour jouer/arrêter l'audio enregistré
+    const togglePlayAudio = async () => {
+        try {
+            if (isPlayingAudio && audioSound) {
+                // Arrêter la lecture
+                await audioSound.stopAsync();
+                await audioSound.unloadAsync();
+                setAudioSound(null);
+                setIsPlayingAudio(false);
+            } else if (selectedAudioUri) {
+                // Démarrer la lecture
+                const { sound } = await Audio.Sound.createAsync(
+                    { uri: selectedAudioUri },
+                    { shouldPlay: true }
+                );
+                setAudioSound(sound);
+                setIsPlayingAudio(true);
+
+                // Arrêter automatiquement quand la lecture est terminée
+                sound.setOnPlaybackStatusUpdate((status) => {
+                    if (status.isLoaded && status.didJustFinish) {
+                        setIsPlayingAudio(false);
+                        sound.unloadAsync();
+                        setAudioSound(null);
+                    }
+                });
+            }
+        } catch (error) {
+            console.error('Erreur lecture audio:', error);
+            Alert.alert('Erreur', 'Impossible de lire l\'audio');
+            setIsPlayingAudio(false);
+        }
+    };
+
+    // Fonction pour supprimer l'audio
+    const deleteAudio = async () => {
+        if (audioSound) {
+            await audioSound.unloadAsync();
+            setAudioSound(null);
+        }
+        setSelectedAudio(null);
+        setSelectedAudioUri(null);
+        setIsPlayingAudio(false);
     };
 
     // Envoyer message avec médias
@@ -370,13 +419,30 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
         };
 
         await sendMessage(newMessage.trim(), 'text', messageData);
-        
+
+        // Nettoyer l'audio si présent
+        if (audioSound) {
+            await audioSound.unloadAsync();
+            setAudioSound(null);
+        }
+
         // Réinitialiser
         setNewMessage('');
         setSelectedImages([]);
         setSelectedAudio(null);
+        setSelectedAudioUri(null);
         setSelectedDocuments([]);
+        setIsPlayingAudio(false);
     };
+
+    // Nettoyer l'audio quand le modal se ferme
+    useEffect(() => {
+        return () => {
+            if (audioSound) {
+                audioSound.unloadAsync();
+            }
+        };
+    }, [audioSound]);
 
     return (
         <Modal
@@ -416,8 +482,8 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                     </View>
 
                     <View style={styles.headerActions}>
-                        <TouchableOpacity 
-                            style={styles.actionButton} 
+                        <TouchableOpacity
+                            style={styles.actionButton}
                             onPress={() => {
                                 setCallType('audio');
                                 setShowCallModal(true);
@@ -425,9 +491,9 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                         >
                             <SafeIcon name="phone" size={20} color={modernColors.success} />
                         </TouchableOpacity>
-                        
-                        <TouchableOpacity 
-                            style={styles.actionButton} 
+
+                        <TouchableOpacity
+                            style={styles.actionButton}
                             onPress={() => {
                                 setCallType('video');
                                 setShowCallModal(true);
@@ -483,12 +549,50 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                     </View>
                                 ) : (
                                     <>
-                                        <Text style={[
-                                            styles.messageText,
-                                            message.from === 'client' ? styles.messageTextRight : styles.messageTextLeft
-                                        ]}>
-                                            {message.content}
-                                        </Text>
+                                        {/* ✅ NOUVEAU: Afficher l'image si présente */}
+                                        {message.type === 'image' && message.imageUrl && (
+                                            <Image
+                                                source={{ uri: message.imageUrl }}
+                                                style={styles.messageImage}
+                                                resizeMode="cover"
+                                            />
+                                        )}
+
+                                        {/* ✅ NOUVEAU: Afficher l'audio si présent */}
+                                        {message.type === 'audio' && message.audioUrl && (
+                                            <View style={styles.audioContainer}>
+                                                <SafeIcon name="mic" size={20} color={message.from === 'client' ? '#FFFFFF' : modernColors.primary} />
+                                                <Text style={[
+                                                    styles.audioText,
+                                                    message.from === 'client' ? styles.messageTextRight : styles.messageTextLeft
+                                                ]}>
+                                                    Message vocal
+                                                </Text>
+                                            </View>
+                                        )}
+
+                                        {/* ✅ NOUVEAU: Afficher le fichier si présent */}
+                                        {message.type === 'file' && message.fileUrl && (
+                                            <View style={styles.fileContainer}>
+                                                <SafeIcon name="file" size={20} color={message.from === 'client' ? '#FFFFFF' : modernColors.primary} />
+                                                <Text style={[
+                                                    styles.fileText,
+                                                    message.from === 'client' ? styles.messageTextRight : styles.messageTextLeft
+                                                ]}>
+                                                    Document
+                                                </Text>
+                                            </View>
+                                        )}
+
+                                        {/* Afficher le texte pour les messages texte ou avec le texte */}
+                                        {(message.type === 'text' || (message.content && !message.content.match(/^[📷🎤📎]/))) && (
+                                            <Text style={[
+                                                styles.messageText,
+                                                message.from === 'client' ? styles.messageTextRight : styles.messageTextLeft
+                                            ]}>
+                                                {message.content}
+                                            </Text>
+                                        )}
 
                                         <View style={styles.messageFooter}>
                                             <Text style={[
@@ -566,7 +670,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                             {selectedImages.map((img, idx) => (
                                 <View key={idx} style={styles.mediaPreviewItem}>
                                     <Image source={{ uri: img }} style={styles.previewImage} />
-                                    <TouchableOpacity 
+                                    <TouchableOpacity
                                         style={styles.removeMediaButton}
                                         onPress={() => setSelectedImages(selectedImages.filter((_, i) => i !== idx))}
                                     >
@@ -574,19 +678,33 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                     </TouchableOpacity>
                                 </View>
                             ))}
-                            
+
                             {/* Audio */}
                             {selectedAudio && (
                                 <View style={styles.mediaPreviewItem}>
                                     <View style={styles.audioPreview}>
-                                        <SafeIcon name="mic" size={20} color="#FFFFFF" />
-                                        <Text style={styles.audioPreviewText}>Audio</Text>
+                                        <TouchableOpacity
+                                            style={styles.playAudioButton}
+                                            onPress={togglePlayAudio}
+                                        >
+                                            <SafeIcon
+                                                name={isPlayingAudio ? "pause" : "play"}
+                                                size={24}
+                                                color="#FFFFFF"
+                                            />
+                                        </TouchableOpacity>
+                                        <View style={styles.audioInfo}>
+                                            <SafeIcon name="mic" size={16} color="#FFFFFF" />
+                                            <Text style={styles.audioPreviewText}>
+                                                {isPlayingAudio ? 'En lecture...' : 'Audio enregistré'}
+                                            </Text>
+                                        </View>
                                     </View>
-                                    <TouchableOpacity 
+                                    <TouchableOpacity
                                         style={styles.removeMediaButton}
-                                        onPress={() => setSelectedAudio(null)}
+                                        onPress={deleteAudio}
                                     >
-                                        <Text style={styles.removeMediaText}>×</Text>
+                                        <SafeIcon name="trash-2" size={12} color="#FFFFFF" />
                                     </TouchableOpacity>
                                 </View>
                             )}
@@ -598,7 +716,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                         <SafeIcon name="file" size={20} color="#FFFFFF" />
                                         <Text style={styles.audioPreviewText}>Doc</Text>
                                     </View>
-                                    <TouchableOpacity 
+                                    <TouchableOpacity
                                         style={styles.removeMediaButton}
                                         onPress={() => setSelectedDocuments(selectedDocuments.filter((_, i) => i !== idx))}
                                     >
@@ -614,9 +732,9 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                         <TouchableOpacity style={styles.mediaButton} onPress={pickImage}>
                             <SafeIcon name="image" size={22} color={modernColors.primary} />
                         </TouchableOpacity>
-                        
-                        <TouchableOpacity 
-                            style={[styles.mediaButton, isRecording && styles.mediaButtonActive]} 
+
+                        <TouchableOpacity
+                            style={[styles.mediaButton, isRecording && styles.mediaButtonActive]}
                             onPress={isRecording ? stopAudioRecording : startAudioRecording}
                         >
                             <SafeIcon name={isRecording ? "stop-circle" : "mic"} size={22} color={isRecording ? "#EF4444" : modernColors.primary} />
@@ -626,8 +744,8 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                             <SafeIcon name="file" size={22} color={modernColors.primary} />
                         </TouchableOpacity>
 
-                        <TouchableOpacity 
-                            style={styles.mediaButton} 
+                        <TouchableOpacity
+                            style={styles.mediaButton}
                             onPress={() => setShowMediaGallery(true)}
                         >
                             <SafeIcon name="folder-open" size={22} color={modernColors.primary} />
@@ -977,17 +1095,34 @@ const styles = StyleSheet.create({
         backgroundColor: modernColors.surfaceVariant,
     },
     audioPreview: {
-        width: 80,
+        width: 140,
         height: 80,
         borderRadius: 12,
         backgroundColor: modernColors.primary,
+        flexDirection: 'row',
+        justifyContent: 'space-around',
+        alignItems: 'center',
+        paddingHorizontal: 8,
+    },
+    playAudioButton: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    audioInfo: {
+        flex: 1,
+        marginLeft: 8,
         justifyContent: 'center',
         alignItems: 'center',
     },
     audioPreviewText: {
-        fontSize: 10,
+        fontSize: 9,
         color: '#FFFFFF',
         marginTop: 4,
+        textAlign: 'center',
     },
     documentPreview: {
         width: 80,
@@ -1050,6 +1185,33 @@ const styles = StyleSheet.create({
         fontSize: 10,
         color: '#EF4444',
         fontWeight: 'bold',
+    },
+    // ✅ NOUVEAU: Styles pour les médias dans les messages
+    messageImage: {
+        width: 200,
+        height: 150,
+        borderRadius: 12,
+        marginBottom: 8,
+    },
+    audioContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        paddingVertical: 8,
+    },
+    audioText: {
+        fontSize: 14,
+        fontWeight: '500',
+    },
+    fileContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        paddingVertical: 8,
+    },
+    fileText: {
+        fontSize: 14,
+        fontWeight: '500',
     },
 });
 

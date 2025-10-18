@@ -22,6 +22,8 @@
             "distribution": "internal",
             "env": {
                 "EXPO_PUBLIC_API_URL": "https://yukpomnang.onrender.com",
+                "EXPO_PUBLIC_WS_URL": "wss://yukpomnang.onrender.com",
+                "EXPO_PUBLIC_SHARE_URL": "https://yukpomnang.com",
                 "EXPO_PUBLIC_ENVIRONMENT": "production",
                 "EXPO_PUBLIC_GOOGLE_MAPS_API_KEY": "AIzaSyDFfWEq1Umm06SNTbR-cRhRQ5Sq_taEAWQ",
                 "EXPO_PUBLIC_GOOGLE_TRANSLATE_API_KEY": "AIzaSyDFfWEq1Umm06SNTbR-cRhRQ5Sq_taEAWQ"
@@ -42,6 +44,8 @@
             "distribution": "internal",
             "env": {
                 "EXPO_PUBLIC_API_URL": "https://yukpomnang.onrender.com",
+                "EXPO_PUBLIC_WS_URL": "wss://yukpomnang.onrender.com",
+                "EXPO_PUBLIC_SHARE_URL": "https://yukpomnang.com",
                 "EXPO_PUBLIC_ENVIRONMENT": "development",
                 "EXPO_PUBLIC_GOOGLE_MAPS_API_KEY": "AIzaSyDFfWEq1Umm06SNTbR-cRhRQ5Sq_taEAWQ",
                 "EXPO_PUBLIC_GOOGLE_TRANSLATE_API_KEY": "AIzaSyDFfWEq1Umm06SNTbR-cRhRQ5Sq_taEAWQ"
@@ -87,6 +91,8 @@
             "distribution": "internal",
             "env": {
                 "EXPO_PUBLIC_API_URL": "https://yukpomnang.onrender.com",
+                "EXPO_PUBLIC_WS_URL": "wss://yukpomnang.onrender.com",
+                "EXPO_PUBLIC_SHARE_URL": "https://yukpomnang.com",
                 "EXPO_PUBLIC_ENVIRONMENT": "production",
                 "EXPO_PUBLIC_GOOGLE_MAPS_API_KEY": "AIzaSyDFfWEq1Umm06SNTbR-cRhRQ5Sq_taEAWQ",
                 "EXPO_PUBLIC_GOOGLE_TRANSLATE_API_KEY": "AIzaSyDFfWEq1Umm06SNTbR-cRhRQ5Sq_taEAWQ"
@@ -103,6 +109,8 @@
             "distribution": "internal",
             "env": {
                 "EXPO_PUBLIC_API_URL": "https://yukpomnang.onrender.com",
+                "EXPO_PUBLIC_WS_URL": "wss://yukpomnang.onrender.com",
+                "EXPO_PUBLIC_SHARE_URL": "https://yukpomnang.com",
                 "EXPO_PUBLIC_ENVIRONMENT": "production",
                 "EXPO_PUBLIC_GOOGLE_MAPS_API_KEY": "AIzaSyDFfWEq1Umm06SNTbR-cRhRQ5Sq_taEAWQ",
                 "EXPO_PUBLIC_GOOGLE_TRANSLATE_API_KEY": "AIzaSyDFfWEq1Umm06SNTbR-cRhRQ5Sq_taEAWQ"
@@ -119,6 +127,8 @@
             "distribution": "internal",
             "env": {
                 "EXPO_PUBLIC_API_URL": "https://yukpomnang.onrender.com",
+                "EXPO_PUBLIC_WS_URL": "wss://yukpomnang.onrender.com",
+                "EXPO_PUBLIC_SHARE_URL": "https://yukpomnang.com",
                 "EXPO_PUBLIC_ENVIRONMENT": "production",
                 "EXPO_PUBLIC_GOOGLE_MAPS_API_KEY": "AIzaSyDFfWEq1Umm06SNTbR-cRhRQ5Sq_taEAWQ",
                 "EXPO_PUBLIC_GOOGLE_TRANSLATE_API_KEY": "AIzaSyDFfWEq1Umm06SNTbR-cRhRQ5Sq_taEAWQ"
@@ -138,6 +148,8 @@
             "distribution": "internal",
             "env": {
                 "EXPO_PUBLIC_API_URL": "https://yukpomnang.onrender.com",
+                "EXPO_PUBLIC_WS_URL": "wss://yukpomnang.onrender.com",
+                "EXPO_PUBLIC_SHARE_URL": "https://yukpomnang.com",
                 "EXPO_PUBLIC_ENVIRONMENT": "production",
                 "EXPO_PUBLIC_GOOGLE_MAPS_API_KEY": "AIzaSyDFfWEq1Umm06SNTbR-cRhRQ5Sq_taEAWQ",
                 "EXPO_PUBLIC_GOOGLE_TRANSLATE_API_KEY": "AIzaSyDFfWEq1Umm06SNTbR-cRhRQ5Sq_taEAWQ"
@@ -156,6 +168,8 @@
         "production": {
             "env": {
                 "EXPO_PUBLIC_API_URL": "https://yukpomnang.onrender.com",
+                "EXPO_PUBLIC_WS_URL": "wss://yukpomnang.onrender.com",
+                "EXPO_PUBLIC_SHARE_URL": "https://yukpomnang.com",
                 "EXPO_PUBLIC_ENVIRONMENT": "production",
                 "EXPO_PUBLIC_GOOGLE_MAPS_API_KEY": "AIzaSyDFfWEq1Umm06SNTbR-cRhRQ5Sq_taEAWQ",
                 "EXPO_PUBLIC_GOOGLE_TRANSLATE_API_KEY": "AIzaSyDFfWEq1Umm06SNTbR-cRhRQ5Sq_taEAWQ"

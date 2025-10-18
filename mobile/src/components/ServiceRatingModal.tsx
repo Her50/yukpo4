@@ -140,8 +140,16 @@ const ServiceRatingModal: React.FC<ServiceRatingModalProps> = ({
                     </View>
 
                     {/* Rating section */}
-                    <View style={styles.ratingSection}>
-                        <Text style={styles.ratingLabel}>Votre note</Text>
+                    <View style={[
+                        styles.ratingSection,
+                        rating === 0 && comment.length > 0 && styles.ratingSectionHighlight
+                    ]}>
+                        <Text style={styles.ratingLabel}>
+                            Votre note <Text style={styles.requiredStar}>*</Text>
+                        </Text>
+                        <Text style={styles.ratingInstruction}>
+                            Cliquez sur les étoiles ci-dessous pour noter
+                        </Text>
                         {renderStars()}
                         <Text style={[
                             styles.ratingText,
@@ -149,6 +157,14 @@ const ServiceRatingModal: React.FC<ServiceRatingModalProps> = ({
                         ]}>
                             {getRatingText()}
                         </Text>
+                        {rating === 0 && comment.length > 0 && (
+                            <View style={styles.warningBox}>
+                                <SafeIcon name="alert-circle" size={16} color="#F59E0B" />
+                                <Text style={styles.warningText}>
+                                    N'oubliez pas de sélectionner une note !
+                                </Text>
+                            </View>
+                        )}
                     </View>
 
                     {/* Comment section */}
@@ -184,31 +200,47 @@ const ServiceRatingModal: React.FC<ServiceRatingModalProps> = ({
                     <TouchableOpacity
                         style={[
                             styles.button,
-                            styles.submitButton
+                            styles.submitButton,
+                            rating === 0 && styles.submitButtonLocked
                         ]}
-                        onPress={handleSubmit}
-                        disabled={rating === 0 || isSubmitting}
-                        activeOpacity={rating === 0 ? 1 : 0.7}
+                        onPress={rating === 0 ? () => {
+                            Alert.alert(
+                                '⭐ Note requise',
+                                'Veuillez d\'abord sélectionner une note en cliquant sur les étoiles ci-dessus.',
+                                [{ text: 'Compris' }]
+                            );
+                        } : handleSubmit}
+                        disabled={isSubmitting}
+                        activeOpacity={0.7}
                     >
                         <LinearGradient
                             colors={rating === 0
-                                ? ['#9CA3AF', '#9CA3AF']
+                                ? ['#E5E7EB', '#D1D5DB']
                                 : (isSubmitting
                                     ? ['#667eea', '#764ba2']
                                     : modernColors.primaryGradient)}
                             style={styles.submitButtonGradient}
                         >
-                            {rating === 0 && (
-                                <SafeIcon name="lock" size={20} color="#FFFFFF" style={styles.buttonIcon} />
-                            )}
-                            <Text style={[
-                                styles.submitButtonText,
-                                rating === 0 && styles.submitButtonTextDisabled
-                            ]}>
-                                {isSubmitting ? 'Envoi en cours...' : (rating === 0 ? 'Sélectionnez une note' : 'Envoyer l\'avis')}
-                            </Text>
-                            {rating > 0 && !isSubmitting && (
-                                <SafeIcon name="send" size={20} color="#FFFFFF" style={styles.buttonIcon} />
+                            {rating === 0 ? (
+                                <>
+                                    <SafeIcon name="star" size={20} color="#6B7280" style={styles.buttonIcon} />
+                                    <Text style={styles.submitButtonTextLocked}>
+                                        Cliquez sur les étoiles d'abord
+                                    </Text>
+                                    <SafeIcon name="arrow-up" size={20} color="#6B7280" style={styles.buttonIcon} />
+                                </>
+                            ) : (
+                                <>
+                                    {isSubmitting && (
+                                        <SafeIcon name="loader" size={20} color="#FFFFFF" style={styles.buttonIcon} />
+                                    )}
+                                    <Text style={styles.submitButtonText}>
+                                        {isSubmitting ? 'Envoi en cours...' : 'Envoyer l\'avis'}
+                                    </Text>
+                                    {!isSubmitting && (
+                                        <SafeIcon name="send" size={20} color="#FFFFFF" style={styles.buttonIcon} />
+                                    )}
+                                </>
                             )}
                         </LinearGradient>
                     </TouchableOpacity>
@@ -266,12 +298,32 @@ const styles = StyleSheet.create({
     ratingSection: {
         alignItems: 'center',
         marginBottom: 32,
+        padding: 16,
+        borderRadius: 12,
+        backgroundColor: modernColors.surface,
+    },
+    ratingSectionHighlight: {
+        backgroundColor: '#FEF3C7',
+        borderWidth: 2,
+        borderColor: '#F59E0B',
     },
     ratingLabel: {
         fontSize: 16,
         fontWeight: '600',
         color: modernColors.text,
+        marginBottom: 8,
+    },
+    requiredStar: {
+        color: '#EF4444',
+        fontSize: 18,
+        fontWeight: 'bold',
+    },
+    ratingInstruction: {
+        fontSize: 13,
+        color: modernColors.textSecondary,
         marginBottom: 16,
+        textAlign: 'center',
+        fontStyle: 'italic',
     },
     starsContainer: {
         flexDirection: 'row',
@@ -291,6 +343,24 @@ const styles = StyleSheet.create({
     ratingText: {
         fontSize: 16,
         fontWeight: '600',
+    },
+    warningBox: {
+        marginTop: 12,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        backgroundColor: '#FEF3C7',
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: '#F59E0B',
+    },
+    warningText: {
+        fontSize: 13,
+        color: '#D97706',
+        fontWeight: '600',
+        flex: 1,
     },
     commentSection: {
         marginBottom: 20,
@@ -344,6 +414,9 @@ const styles = StyleSheet.create({
     submitButton: {
         // Style géré par le gradient
     },
+    submitButtonLocked: {
+        opacity: 1,
+    },
     submitButtonDisabled: {
         opacity: 0.5,
     },
@@ -358,6 +431,11 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '700',
         color: '#FFFFFF',
+    },
+    submitButtonTextLocked: {
+        fontSize: 15,
+        fontWeight: '600',
+        color: '#6B7280',
     },
     submitButtonTextDisabled: {
         opacity: 0.7,

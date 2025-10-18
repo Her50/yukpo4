@@ -86,7 +86,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             id: String(decoded.sub),
             email: decoded.email,
             role: decoded.role,
-            name: decoded.name || '',
+            name: decoded.name || decoded.email.split('@')[0] || 'Utilisateur',
             credits: decoded.tokens_balance ?? 0,
             phone: '',
             photo: '',
