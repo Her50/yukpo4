@@ -26,15 +26,7 @@ where
 {
     type Rejection = (StatusCode, String);
 
-    async fn from_request_parts<'life0, 'life1, 'async_trait>(
-        parts: &'life0 mut Parts,
-        _state: &'life1 S,
-    ) -> Result<Self, Self::Rejection>
-    where
-        'life0: 'async_trait,
-        'life1: 'async_trait,
-        Self: 'async_trait,
-    {
+    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
         let auth_header = parts.headers.get("Authorization")
             .and_then(|h| h.to_str().ok())
             .ok_or((StatusCode::UNAUTHORIZED, "Missing Authorization header".to_string()))?;
