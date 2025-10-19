@@ -76,6 +76,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tokio::spawn(async move {
         yukpomnang_backend::tasks::matching_echange_cron::relance_matching_echanges(state_clone).await;
     });
+    
+    // ✅ Lancer la désactivation automatique des produits (tous les jours à minuit)
+    let state_clone_products = app_state.clone();
+    tokio::spawn(async move {
+        use tokio::time::{interval, Duration};
+        let mut interval = interval(Duration::from_secs(86400)); // 24 heures
+        
+        loop {
+            interval.tick().await;
+            log::info!("🔄 Démarrage de la désactivation automatique des produits...");
+            
+            match yukpomnang_backend::tasks::product_deactivation::deactivate_expired_products(&state_clone_products.pg).await {
+                Ok(count) => log::info!("✅ {} produits désactivés automatiquement", count),
+                Err(e) => log::error!("❌ Erreur désactivation produits: {}", e),
+            }
+        }
+    });
 
     // Construction de l'application avec Extension
     let app = build_app(app_state.clone())

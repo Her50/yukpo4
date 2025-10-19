@@ -10,13 +10,13 @@ import { appelerMoteurIA, creerService, modifierService } from '@/lib/yukpoaclie
 import { ComposantFrontend, dispatchChampsFormulaireIA } from '@/utils/form_constraint_dispatcher';
 import { showServiceCreationErrorToast } from '@/utils/toastUtils';
 import axios from 'axios';
-import { buildUrl, API_ENDPOINTS } from '../config/api.config';
 import { MapPin } from 'lucide-react';
 import { useContext, useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { API_ENDPOINTS, buildUrl } from '../config/api.config';
 
-import MediaManager from '@/components/ui/MediaManager';
+import BrandingManager from '@/components/ui/BrandingManager';
 import ProductManager from '@/components/ui/ProductManager';
 
 export default function FormulaireDemandeOuService() {
@@ -848,124 +848,24 @@ export default function FormulaireDemandeOuService() {
               </div>
             </div>
 
-            {/* Bloc Médias du service */}
+            {/* Bloc Identité Visuelle */}
             <div className="p-2 space-y-2">
-              <h3 className="font-bold text-sm text-center text-white bg-orange-500 rounded py-1 mb-1 max-w-sm mx-auto">
-                📁 Médias du service
+              <h3 className="font-bold text-sm text-center text-white bg-gradient-to-r from-purple-500 to-pink-500 rounded py-1 mb-1 max-w-sm mx-auto">
+                🎨 Identité Visuelle
               </h3>
               <div className="space-y-2">
                 <div className="max-w-sm mx-auto">
-                  <MediaManager
-                    mediaFiles={mediaFiles}
-                    onMediaChange={handleMediaChange}
+                  <BrandingManager
+                    logo={mediaFiles.logo || []}
+                    banner={mediaFiles.banner || []}
+                    onLogoChange={(logo) => handleMediaChange({ ...mediaFiles, logo })}
+                    onBannerChange={(banner) => handleMediaChange({ ...mediaFiles, banner })}
                     readonly={mode === 'readonly'}
                   />
                 </div>
               </div>
             </div>
 
-            <div className="p-2 space-y-2">
-              <h3 className="font-bold text-sm text-center text-white bg-red-500 rounded py-1 mb-1 max-w-sm mx-auto">
-                🎉 Promotion et Offres
-              </h3>
-
-              <div className="space-y-2">
-                <div className="max-w-sm mx-auto">
-                  <label className="flex items-center gap-2 text-xs font-bold text-gray-700 mb-2">
-                    <input
-                      type="checkbox"
-                      checked={valeursFormulaire.promotion_active || false}
-                      onChange={(e) => handleFieldChange('promotion_active', e.target.checked)}
-                      disabled={mode === 'readonly'}
-                      className="w-4 h-4 text-orange-600 border-gray-300 rounded focus:ring-orange-500"
-                    />
-                    Activer une promotion pour ce service
-                  </label>
-
-                  {valeursFormulaire.promotion_active && (
-                    <div className="space-y-3 mt-3">
-                      <div>
-                        <label className="text-xs font-bold text-gray-700 mb-1 block">
-                          🏷️ Type de promotion
-                        </label>
-                        <select
-                          value={valeursFormulaire.promotion_type || 'reduction'}
-                          onChange={(e) => handleFieldChange('promotion_type', e.target.value)}
-                          disabled={mode === 'readonly'}
-                          className="w-full text-xs p-2 border border-gray-300 rounded focus:ring-1 focus:ring-orange-400 focus:border-orange-400"
-                        >
-                          <option value="reduction">Réduction</option>
-                          <option value="offre">Offre spéciale</option>
-                          <option value="bon_plan">Bon plan</option>
-                          <option value="flash">Offre flash</option>
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="text-xs font-bold text-gray-700 mb-1 block">
-                          💰 Valeur de la promotion
-                        </label>
-                        <input
-                          type="text"
-                          placeholder="ex: 20%, 50€, Gratuit"
-                          value={valeursFormulaire.promotion_valeur || ''}
-                          onChange={(e) => handleFieldChange('promotion_valeur', e.target.value)}
-                          disabled={mode === 'readonly'}
-                          className="w-full text-xs p-2 border border-gray-300 rounded focus:ring-1 focus:ring-orange-400 focus:border-orange-400"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="text-xs font-bold text-gray-700 mb-1 block">
-                          📝 Description de la promotion
-                        </label>
-                        <textarea
-                          placeholder="Décrivez votre offre promotionnelle..."
-                          value={valeursFormulaire.promotion_description || ''}
-                          onChange={(e) => handleFieldChange('promotion_description', e.target.value)}
-                          disabled={mode === 'readonly'}
-                          rows={2}
-                          className="w-full text-xs p-2 border border-gray-300 rounded focus:ring-1 focus:ring-orange-400 focus:border-orange-400"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="text-xs font-bold text-gray-700 mb-1 block">
-                          📅 Date de fin de promotion
-                        </label>
-                        <input
-                          type="date"
-                          value={valeursFormulaire.promotion_date_fin || ''}
-                          onChange={(e) => handleFieldChange('promotion_date_fin', e.target.value)}
-                          disabled={mode === 'readonly'}
-                          min={new Date().toISOString().split('T')[0]}
-                          className="w-full text-xs p-2 border border-gray-300 rounded focus:ring-1 focus:ring-orange-400 focus:border-orange-400"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="text-xs font-bold text-gray-700 mb-1 block">
-                          ⚠️ Conditions (optionnel)
-                        </label>
-                        <textarea
-                          placeholder="Conditions spéciales, limitations..."
-                          value={valeursFormulaire.promotion_conditions || ''}
-                          onChange={(e) => handleFieldChange('promotion_conditions', e.target.value)}
-                          disabled={mode === 'readonly'}
-                          rows={2}
-                          className="w-full text-xs p-2 border border-gray-300 rounded focus:ring-1 focus:ring-orange-400 focus:border-orange-400"
-                        />
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="mt-2 text-xs text-gray-600 bg-gray-50 p-2 rounded">
-                    💡 <strong>Conseil :</strong> Les promotions attirent l'attention et peuvent augmenter vos chances d'être contacté.
-                    Pensez à des offres attractives comme des réductions, des services gratuits ou des bonus.
-                  </div>
-                </div>
-              </div>
-            </div>
 
             {composants.length > 0 && (
               <div className="flex justify-center pt-4">

@@ -14,7 +14,9 @@ import {
     View,
 } from 'react-native';
 import ChatModalMobile from '../components/ChatModalMobile';
+import ProductCard from '../components/ProductCard';
 import ResultsHeader from '../components/ResultsHeader';
+import SafeIcon from '../components/SafeIcon';
 import ServiceGalleryModal from '../components/ServiceGalleryModal';
 import UltraModernServiceCard from '../components/UltraModernServiceCard';
 import { useAuth } from '../contexts/AuthContext';
@@ -67,6 +69,7 @@ const ResultatBesoinScreen: React.FC = () => {
 
     // États
     const [services, setServices] = useState<Service[]>([]);
+    const [products, setProducts] = useState<any[]>([]); // Tous les produits extraits
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -75,7 +78,9 @@ const ResultatBesoinScreen: React.FC = () => {
     const [showChatModal, setShowChatModal] = useState(false);
     const [showGalleryModal, setShowGalleryModal] = useState(false);
     const [selectedService, setSelectedService] = useState<Service | null>(null);
+    const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
     const [selectedPrestataire, setSelectedPrestataire] = useState<Prestataire | null>(null);
+    const [displayMode, setDisplayMode] = useState<'products' | 'services'>('products'); // Mode d'affichage
 
     // États pour le filtre par prix
     const [priceFilter, setPriceFilter] = useState<{
@@ -265,6 +270,26 @@ const ResultatBesoinScreen: React.FC = () => {
             setLoading(true);
             setError(null);
 
+            // Fonction helper pour calculer la distance GPS
+            const calculateDistance = (gps1: string, gps2: string): number => {
+                if (!gps1 || !gps2) return 0;
+
+                const [lat1, lon1] = gps1.split(',').map(Number);
+                const [lat2, lon2] = gps2.split(',').map(Number);
+
+                if (isNaN(lat1) || isNaN(lon1) || isNaN(lat2) || isNaN(lon2)) return 0;
+
+                const R = 6371; // Rayon de la Terre en km
+                const dLat = (lat2 - lat1) * Math.PI / 180;
+                const dLon = (lon2 - lon1) * Math.PI / 180;
+                const a =
+                    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+                const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+                return R * c;
+            };
+
             const servicePromises = serviceIds.map(async (serviceId, index) => {
                 try {
                     console.log(`🔍 [ResultatBesoinScreen] Récupération du service ${serviceId}...`);
@@ -324,6 +349,43 @@ const ResultatBesoinScreen: React.FC = () => {
                 setServices([]);
             } else {
                 setServices(validServices);
+
+                // Extraire tous les produits de tous les services
+                const extractedProducts: any[] = [];
+                const userGPS = location?.coords ? `${location.coords.latitude},${location.coords.longitude}` : null;
+
+                validServices.forEach((service) => {
+                    const serviceProduits = service.data?.produits || [];
+                    if (Array.isArray(serviceProduits)) {
+                        serviceProduits.forEach((product: any) => {
+                            // GPS prioritaire : produit > service gps_fixe > service gps
+                            const productGPS = product.gps || product.gpsFixe;
+                            const serviceGPSFixe = service.data?.gps_fixe?.valeur || service.data?.gps_fixe;
+                            const serviceGPSRealtime = service.gps;
+                            const bestGPS = productGPS || serviceGPSFixe || serviceGPSRealtime;
+
+                            // Calculer la distance si GPS disponible
+                            let distance = undefined;
+                            if (userGPS && bestGPS) {
+                                distance = calculateDistance(userGPS, bestGPS);
+                            }
+
+                            extractedProducts.push({
+                                ...product,
+                                _serviceId: service.id,
+                                _service: service,
+                                _prestataire: prestataires.get(service.user_id),
+                                _gps: bestGPS,
+                                _gpsSource: productGPS ? 'product' : (serviceGPSFixe ? 'service_fixe' : 'service_realtime'),
+                                distance: distance,
+                                score: service.score || 0
+                            });
+                        });
+                    }
+                });
+
+                console.log(`📦 [ResultatBesoinScreen] ${extractedProducts.length} produits extraits de ${validServices.length} services`);
+                setProducts(extractedProducts);
 
                 // Récupérer les informations des prestataires
                 const userIds = validServices.map(service => service.user_id).filter(id => id);
@@ -716,6 +778,32 @@ const ResultatBesoinScreen: React.FC = () => {
     };
 
     // Composant ServiceResultCard amélioré
+    // Composant de rendu pour chaque produit
+    const ProductCardComponent = ({ product }: { product: any }) => {
+        const service = product._service;
+        const prestataire = product._prestataire || prestataires.get(service.user_id) || null;
+
+        return (
+            <ProductCard
+                product={product}
+                service={service}
+                prestataire={prestataire}
+                onPress={() => {
+                    setSelectedProduct(product);
+                    setSelectedService(service);
+                    setSelectedPrestataire(prestataire);
+                }}
+                onChatPress={() => {
+                    setSelectedProduct(product);
+                    setSelectedService(service);
+                    setSelectedPrestataire(prestataire);
+                    setShowChatModal(true);
+                }}
+            />
+        );
+    };
+
+    // Composant de rendu pour chaque service
     const ServiceCardComponent = ({ service }: { service: Service }) => {
         const prestataire = prestataires.get(service.user_id);
         const isOnline = prestataire?.isOnline || false;
@@ -976,11 +1064,47 @@ const ResultatBesoinScreen: React.FC = () => {
                         </View>
                     </View>
 
-                    {/* Liste des services */}
+                    {/* Toggle mode d'affichage */}
+                    <View style={styles.displayModeToggle}>
+                        <TouchableOpacity
+                            style={[styles.modeButton, displayMode === 'products' && styles.modeButtonActive]}
+                            onPress={() => setDisplayMode('products')}
+                        >
+                            <SafeIcon name="package" size={18} color={displayMode === 'products' ? '#FFFFFF' : '#6B7280'} />
+                            <Text style={[styles.modeButtonText, displayMode === 'products' && styles.modeButtonTextActive]}>
+                                Produits ({products.length})
+                            </Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={[styles.modeButton, displayMode === 'services' && styles.modeButtonActive]}
+                            onPress={() => setDisplayMode('services')}
+                        >
+                            <SafeIcon name="briefcase" size={18} color={displayMode === 'services' ? '#FFFFFF' : '#6B7280'} />
+                            <Text style={[styles.modeButtonText, displayMode === 'services' && styles.modeButtonTextActive]}>
+                                Services ({services.length})
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
+
+                    {/* Liste des produits ou services */}
                     <View style={styles.servicesContainer}>
-                        {filterAndSortServices(services).map((service) => (
-                            <ServiceCardComponent key={service.id} service={service} />
-                        ))}
+                        {displayMode === 'products' ? (
+                            products.length > 0 ? (
+                                products.map((product, index) => (
+                                    <ProductCardComponent key={`product-${index}-${product.nom}`} product={product} />
+                                ))
+                            ) : (
+                                <View style={styles.emptyState}>
+                                    <SafeIcon name="package" size={48} color="#D1D5DB" />
+                                    <Text style={styles.emptyStateText}>Aucun produit trouvé</Text>
+                                    <Text style={styles.emptyStateSubtext}>Essayez de basculer en mode Services</Text>
+                                </View>
+                            )
+                        ) : (
+                            filterAndSortServices(services).map((service) => (
+                                <ServiceCardComponent key={service.id} service={service} />
+                            ))
+                        )}
                     </View>
 
                     {/* Footer informatif */}
@@ -1099,6 +1223,54 @@ const styles = StyleSheet.create({
         marginLeft: 8,
         fontSize: 14,
         color: theme.colors.text,
+    },
+    displayModeToggle: {
+        flexDirection: 'row',
+        gap: 12,
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        backgroundColor: '#F9FAFB',
+    },
+    modeButton: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        borderRadius: 12,
+        backgroundColor: '#FFFFFF',
+        borderWidth: 2,
+        borderColor: '#E5E7EB',
+    },
+    modeButtonActive: {
+        backgroundColor: '#3B82F6',
+        borderColor: '#3B82F6',
+    },
+    modeButtonText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#6B7280',
+    },
+    modeButtonTextActive: {
+        color: '#FFFFFF',
+    },
+    emptyState: {
+        padding: 48,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    emptyStateText: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#9CA3AF',
+        marginTop: 16,
+    },
+    emptyStateSubtext: {
+        fontSize: 13,
+        color: '#D1D5DB',
+        marginTop: 8,
     },
     geoButton: {
         marginTop: 8,

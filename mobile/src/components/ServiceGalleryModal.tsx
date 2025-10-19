@@ -31,6 +31,15 @@ const ServiceGalleryModal: React.FC<ServiceGalleryModalProps> = ({
     const [selectedImageIndex, setSelectedImageIndex] = useState(0);
     const [images, setImages] = useState<string[]>([]);
     const [videos, setVideos] = useState<string[]>([]);
+    const [categorizedMedia, setCategorizedMedia] = useState<{
+        branding: { images: string[], videos: string[] },
+        products: { images: string[], videos: string[], byType: Record<string, { images: string[], videos: string[] }> },
+        realisations: { images: string[], videos: string[] }
+    }>({
+        branding: { images: [], videos: [] },
+        products: { images: [], videos: [], byType: {} },
+        realisations: { images: [], videos: [] }
+    });
 
     React.useEffect(() => {
         if (visible && service) {
@@ -41,12 +50,92 @@ const ServiceGalleryModal: React.FC<ServiceGalleryModalProps> = ({
     const loadMedia = () => {
         if (!service) return;
 
-        // Extraire les images et vidéos depuis les données du service
+        // Catégories de médias
+        const branding: { images: string[], videos: string[] } = { images: [], videos: [] };
+        const products: { images: string[], videos: string[], byType: Record<string, { images: string[], videos: string[] }> } = {
+            images: [],
+            videos: [],
+            byType: {}
+        };
+        const realisations: { images: string[], videos: string[] } = { images: [], videos: [] };
+
+        // 1. Logo et bannière (Branding/Identité visuelle)
+        const logo = extractMediaFromField(service.data?.logo);
+        const banner = extractMediaFromField(service.data?.banner) || extractMediaFromField(service.data?.banniere);
+        if (logo.length > 0) branding.images.push(...logo);
+        if (banner.length > 0) branding.images.push(...banner);
+
+        // 2. Réalisations générales du service
         const serviceImages = extractMediaFromField(service.data?.images_realisations) || [];
         const serviceVideos = extractMediaFromField(service.data?.videos) || [];
+        realisations.images.push(...serviceImages);
+        realisations.videos.push(...serviceVideos);
 
-        setImages(serviceImages);
-        setVideos(serviceVideos);
+        // 3. Médias des produits (organisés par type de produit)
+        const productsList = service.data?.produits || [];
+        if (Array.isArray(productsList)) {
+            productsList.forEach((product: any) => {
+                const productType = product.type || 'autre';
+                const productTypeLabel = getProductTypeLabel(productType);
+
+                // Initialiser la catégorie si elle n'existe pas
+                if (!products.byType[productTypeLabel]) {
+                    products.byType[productTypeLabel] = { images: [], videos: [] };
+                }
+
+                // Images du produit
+                if (product.images && Array.isArray(product.images)) {
+                    products.images.push(...product.images);
+                    products.byType[productTypeLabel].images.push(...product.images);
+                }
+
+                // Vidéos du produit
+                if (product.videos && Array.isArray(product.videos)) {
+                    products.videos.push(...product.videos);
+                    products.byType[productTypeLabel].videos.push(...product.videos);
+                }
+
+                // Images de réalisations (pour prestations de service)
+                if (product.imagesRealisations && Array.isArray(product.imagesRealisations)) {
+                    products.images.push(...product.imagesRealisations);
+                    products.byType[productTypeLabel].images.push(...product.imagesRealisations);
+                }
+
+                // Vidéos de réalisations (pour prestations de service)
+                if (product.videosRealisations && Array.isArray(product.videosRealisations)) {
+                    products.videos.push(...product.videosRealisations);
+                    products.byType[productTypeLabel].videos.push(...product.videosRealisations);
+                }
+            });
+        }
+
+        // Combiner toutes les images et vidéos pour l'affichage global
+        const allImages = [...branding.images, ...products.images, ...realisations.images];
+        const allVideos = [...branding.videos, ...products.videos, ...realisations.videos];
+
+        setImages(allImages);
+        setVideos(allVideos);
+        setCategorizedMedia({ branding, products, realisations });
+    };
+
+    const getProductTypeLabel = (type: string): string => {
+        const labels: Record<string, string> = {
+            'immobilier_batiment': '🏢 Immobilier Bâtiment',
+            'immobilier_terrain': '🏞️ Immobilier Terrain',
+            'automobile': '🚗 Automobile',
+            'ticket_voyage': '🚌 Tickets de Voyage',
+            'covoiturage': '🚕 Covoiturage',
+            'vetement': '👔 Vêtements',
+            'chaussure': '👟 Chaussures',
+            'electromenager': '📱 Électroménager',
+            'mobilier': '🪑 Mobilier',
+            'aliments': '🍕 Alimentation',
+            'livres_fournitures': '📚 Livres & Fournitures',
+            'quincaillerie': '🔧 Quincaillerie',
+            'prestation_service': '💼 Prestations de Service',
+            'autre': '📦 Autres Produits'
+        };
+        return labels[type] || '📦 Autres Produits';
     };
 
     const extractMediaFromField = (field: any): string[] => {
@@ -165,7 +254,7 @@ const ServiceGalleryModal: React.FC<ServiceGalleryModalProps> = ({
                         </Paragraph>
                     </View>
                 ) : (
-                    <View style={styles.content}>
+                    <ScrollView style={styles.content}>
                         {/* Main image/video display */}
                         <View style={styles.mainMediaContainer}>
                             {allMedia[selectedImageIndex] && (
@@ -192,37 +281,126 @@ const ServiceGalleryModal: React.FC<ServiceGalleryModalProps> = ({
                             )}
                         </View>
 
-                        {/* Thumbnail strip */}
-                        {allMedia.length > 1 && (
-                            <ScrollView
-                                horizontal
-                                style={styles.thumbnailContainer}
-                                showsHorizontalScrollIndicator={false}
-                                contentContainerStyle={styles.thumbnailContent}
-                            >
-                                {allMedia.map((media, index) => (
-                                    <TouchableOpacity
-                                        key={index}
-                                        style={[
-                                            styles.thumbnail,
-                                            index === selectedImageIndex && styles.selectedThumbnail
-                                        ]}
-                                        onPress={() => handleImagePress(index)}
-                                    >
-                                        <Image
-                                            source={{ uri: media }}
-                                            style={styles.thumbnailImage}
-                                            resizeMode="cover"
-                                        />
-                                        {index >= images.length && (
-                                            <View style={styles.thumbnailVideoIcon}>
-                                                <Video size={16} color="white" />
+                        {/* Organized sections */}
+                        <View style={styles.sectionsContainer}>
+                            {/* Section: Identité Visuelle */}
+                            {(categorizedMedia.branding.images.length > 0 || categorizedMedia.branding.videos.length > 0) && (
+                                <View style={styles.section}>
+                                    <View style={styles.sectionHeader}>
+                                        <Text style={styles.sectionIcon}>🎨</Text>
+                                        <Text style={styles.sectionTitle}>Identité Visuelle</Text>
+                                        <Text style={styles.sectionCount}>
+                                            {categorizedMedia.branding.images.length + categorizedMedia.branding.videos.length}
+                                        </Text>
+                                    </View>
+                                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.mediaThumbnails}>
+                                        {categorizedMedia.branding.images.map((uri, idx) => (
+                                            <TouchableOpacity
+                                                key={`branding-img-${idx}`}
+                                                style={styles.thumbnail}
+                                                onPress={() => handleImagePress(allMedia.indexOf(uri))}
+                                            >
+                                                <Image source={{ uri }} style={styles.thumbnailImage} resizeMode="cover" />
+                                            </TouchableOpacity>
+                                        ))}
+                                        {categorizedMedia.branding.videos.map((uri, idx) => (
+                                            <TouchableOpacity
+                                                key={`branding-vid-${idx}`}
+                                                style={styles.thumbnail}
+                                                onPress={() => handleImagePress(allMedia.indexOf(uri))}
+                                            >
+                                                <Image source={{ uri }} style={styles.thumbnailImage} resizeMode="cover" />
+                                                <View style={styles.thumbnailVideoIcon}>
+                                                    <Video size={16} color="white" />
+                                                </View>
+                                            </TouchableOpacity>
+                                        ))}
+                                    </ScrollView>
+                                </View>
+                            )}
+
+                            {/* Section: Produits (par type) */}
+                            {Object.keys(categorizedMedia.products.byType).length > 0 && (
+                                <View style={styles.section}>
+                                    <View style={styles.sectionHeader}>
+                                        <Text style={styles.sectionIcon}>📦</Text>
+                                        <Text style={styles.sectionTitle}>Produits</Text>
+                                        <Text style={styles.sectionCount}>
+                                            {categorizedMedia.products.images.length + categorizedMedia.products.videos.length}
+                                        </Text>
+                                    </View>
+                                    {Object.entries(categorizedMedia.products.byType).map(([typeLabel, media]) => {
+                                        const totalMedia = media.images.length + media.videos.length;
+                                        if (totalMedia === 0) return null;
+
+                                        return (
+                                            <View key={typeLabel} style={styles.subSection}>
+                                                <Text style={styles.subSectionTitle}>{typeLabel}</Text>
+                                                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.mediaThumbnails}>
+                                                    {media.images.map((uri, idx) => (
+                                                        <TouchableOpacity
+                                                            key={`${typeLabel}-img-${idx}`}
+                                                            style={styles.thumbnail}
+                                                            onPress={() => handleImagePress(allMedia.indexOf(uri))}
+                                                        >
+                                                            <Image source={{ uri }} style={styles.thumbnailImage} resizeMode="cover" />
+                                                        </TouchableOpacity>
+                                                    ))}
+                                                    {media.videos.map((uri, idx) => (
+                                                        <TouchableOpacity
+                                                            key={`${typeLabel}-vid-${idx}`}
+                                                            style={styles.thumbnail}
+                                                            onPress={() => handleImagePress(allMedia.indexOf(uri))}
+                                                        >
+                                                            <Image source={{ uri }} style={styles.thumbnailImage} resizeMode="cover" />
+                                                            <View style={styles.thumbnailVideoIcon}>
+                                                                <Video size={16} color="white" />
+                                                            </View>
+                                                        </TouchableOpacity>
+                                                    ))}
+                                                </ScrollView>
                                             </View>
-                                        )}
-                                    </TouchableOpacity>
-                                ))}
-                            </ScrollView>
-                        )}
+                                        );
+                                    })}
+                                </View>
+                            )}
+
+                            {/* Section: Réalisations */}
+                            {(categorizedMedia.realisations.images.length > 0 || categorizedMedia.realisations.videos.length > 0) && (
+                                <View style={styles.section}>
+                                    <View style={styles.sectionHeader}>
+                                        <Text style={styles.sectionIcon}>🖼️</Text>
+                                        <Text style={styles.sectionTitle}>Réalisations</Text>
+                                        <Text style={styles.sectionCount}>
+                                            {categorizedMedia.realisations.images.length + categorizedMedia.realisations.videos.length}
+                                        </Text>
+                                    </View>
+                                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.mediaThumbnails}>
+                                        {categorizedMedia.realisations.images.map((uri, idx) => (
+                                            <TouchableOpacity
+                                                key={`real-img-${idx}`}
+                                                style={styles.thumbnail}
+                                                onPress={() => handleImagePress(allMedia.indexOf(uri))}
+                                            >
+                                                <Image source={{ uri }} style={styles.thumbnailImage} resizeMode="cover" />
+                                            </TouchableOpacity>
+                                        ))}
+                                        {categorizedMedia.realisations.videos.map((uri, idx) => (
+                                            <TouchableOpacity
+                                                key={`real-vid-${idx}`}
+                                                style={styles.thumbnail}
+                                                onPress={() => handleImagePress(allMedia.indexOf(uri))}
+                                            >
+                                                <Image source={{ uri }} style={styles.thumbnailImage} resizeMode="cover" />
+                                                <View style={styles.thumbnailVideoIcon}>
+                                                    <Video size={16} color="white" />
+                                                </View>
+                                            </TouchableOpacity>
+                                        ))}
+                                    </ScrollView>
+                                </View>
+                            )}
+                        </View>
 
                         {/* Service info */}
                         <Card style={styles.serviceInfoCard}>
@@ -244,7 +422,7 @@ const ServiceGalleryModal: React.FC<ServiceGalleryModalProps> = ({
                                 </View>
                             </Card.Content>
                         </Card>
-                    </View>
+                    </ScrollView>
                 )}
             </View>
         </Modal>
@@ -424,6 +602,53 @@ const styles = StyleSheet.create({
         marginLeft: 4,
         fontSize: 12,
         color: theme.colors.textSecondary,
+    },
+    sectionsContainer: {
+        padding: 16,
+        gap: 20,
+    },
+    section: {
+        marginBottom: 16,
+    },
+    sectionHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 12,
+        paddingBottom: 8,
+        borderBottomWidth: 2,
+        borderBottomColor: theme.colors.primary,
+    },
+    sectionIcon: {
+        fontSize: 20,
+        marginRight: 8,
+    },
+    sectionTitle: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: theme.colors.text,
+        flex: 1,
+    },
+    sectionCount: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: theme.colors.primary,
+        backgroundColor: theme.colors.surface,
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 12,
+    },
+    subSection: {
+        marginBottom: 12,
+        paddingLeft: 8,
+    },
+    subSectionTitle: {
+        fontSize: 13,
+        fontWeight: '500',
+        color: theme.colors.textSecondary,
+        marginBottom: 8,
+    },
+    mediaThumbnails: {
+        maxHeight: 80,
     },
 });
 

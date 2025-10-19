@@ -19,9 +19,10 @@ import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 // Composants modulaires
-import ChatModal from '@/components/chat/ChatModal';
+import { GlobalChat } from '@/components/chat/GlobalChat';
 import ContactModal from '@/components/contact/ContactModal';
 import GalleryModal from '@/components/gallery/GalleryModal';
+import ProductCard from '@/components/products/ProductCard';
 import ServiceCard from '@/components/services/ServiceCard';
 
 // Hooks et services
@@ -45,12 +46,15 @@ export const ResultatBesoin: React.FC = () => {
   const { toast } = useToast();
 
   const [services, setServices] = useState<Service[]>([]);
+  const [products, setProducts] = useState<any[]>([]); // Tous les produits extraits
   const [loading, setLoading] = useState(true);
   const [selectedService, setSelectedService] = useState<Service | null>(null);
+  const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
   const [showContactModal, setShowContactModal] = useState(false);
   const [showChatModal, setShowChatModal] = useState(false);
   const [showGalleryModal, setShowGalleryModal] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [displayMode, setDisplayMode] = useState<'products' | 'services'>('products'); // Mode d'affichage
 
   // États pour le filtre par prix
   const [priceFilter, setPriceFilter] = useState<{
@@ -134,6 +138,67 @@ export const ResultatBesoin: React.FC = () => {
       }
     }
   }, [services, fetchPrestatairesBatch]);
+
+  // Extraire les produits des services
+  useEffect(() => {
+    if (services.length > 0) {
+      const extractedProducts: any[] = [];
+      const userGPS = (location.state as any)?.userLocation;
+
+      // Fonction helper pour calculer la distance
+      const calculateDistance = (gps1: string, gps2: string): number => {
+        if (!gps1 || !gps2) return 0;
+
+        const [lat1, lon1] = gps1.split(',').map(Number);
+        const [lat2, lon2] = gps2.split(',').map(Number);
+
+        if (isNaN(lat1) || isNaN(lon1) || isNaN(lat2) || isNaN(lon2)) return 0;
+
+        const R = 6371;
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLon = (lon2 - lon1) * Math.PI / 180;
+        const a =
+          Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+          Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+          Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return R * c;
+      };
+
+      services.forEach((service) => {
+        const serviceProduits = service.data?.produits || [];
+        if (Array.isArray(serviceProduits)) {
+          serviceProduits.forEach((product: any) => {
+            // GPS prioritaire : produit > service gps_fixe > service gps
+            const productGPS = product.gps || product.gpsFixe;
+            const serviceGPSFixe = service.data?.gps_fixe?.valeur || service.data?.gps_fixe;
+            const serviceGPSRealtime = service.gps;
+            const bestGPS = productGPS || serviceGPSFixe || serviceGPSRealtime;
+
+            // Calculer la distance si GPS disponible
+            let distance = undefined;
+            if (userGPS && bestGPS) {
+              distance = calculateDistance(userGPS, bestGPS);
+            }
+
+            extractedProducts.push({
+              ...product,
+              _serviceId: service.id,
+              _service: service,
+              _prestataire: prestataires.get(service.user_id),
+              _gps: bestGPS,
+              _gpsSource: productGPS ? 'product' : (serviceGPSFixe ? 'service_fixe' : 'service_realtime'),
+              distance: distance,
+              score: service.score || 0
+            });
+          });
+        }
+      });
+
+      console.log(`📦 [ResultatBesoin] ${extractedProducts.length} produits extraits de ${services.length} services`);
+      setProducts(extractedProducts);
+    }
+  }, [services, prestataires, location.state]);
 
   useEffect(() => {
     const processResults = async () => {
@@ -686,24 +751,72 @@ export const ResultatBesoin: React.FC = () => {
           <div className="flex justify-center">
             <div className={`grid gap-6 ${(() => {
               const filteredServices = filterAndSortServices(services);
-              return filteredServices.length === 1 ? 'grid-cols-1 max-w-md' :
-                filteredServices.length === 2 ? 'grid-cols-1 md:grid-cols-2 max-w-4xl' :
-                  filteredServices.length <= 4 ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 max-w-5xl' :
+              const count = displayMode === 'products' ? products.length : filteredServices.length;
+              return count === 1 ? 'grid-cols-1 max-w-md' :
+                count === 2 ? 'grid-cols-1 md:grid-cols-2 max-w-4xl' :
+                  count <= 4 ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 max-w-5xl' :
                     'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 max-w-7xl';
             })()}`}>
-              {Array.isArray(services) && filterAndSortServices(services).map((service) => (
-                <ServiceCard
-                  key={service.id}
-                  service={service}
-                  prestataires={prestataires}
-                  user={user}
-                  wsConnected={wsConnected}
-                  userStatus={userStatus}
-                  onContact={handleContact}
-                  onChat={handleChat}
-                  onGallery={handleGallery}
-                />
-              ))}
+
+              {/* Toggle mode d'affichage */}
+              <div className="col-span-full mb-6">
+                <div className="flex gap-3 justify-center">
+                  <Button
+                    onClick={() => setDisplayMode('products')}
+                    variant={displayMode === 'products' ? 'default' : 'outline'}
+                    className="flex items-center gap-2"
+                  >
+                    📦 Produits ({products.length})
+                  </Button>
+                  <Button
+                    onClick={() => setDisplayMode('services')}
+                    variant={displayMode === 'services' ? 'default' : 'outline'}
+                    className="flex items-center gap-2"
+                  >
+                    💼 Services ({services.length})
+                  </Button>
+                </div>
+              </div>
+
+              {/* Affichage conditionnel */}
+              {displayMode === 'products' ? (
+                products.length > 0 ? (
+                  products.map((product, index) => (
+                    <ProductCard
+                      key={`product-${index}-${product.nom}`}
+                      product={product}
+                      service={product._service}
+                      prestataire={product._prestataire}
+                      onChatPress={() => handleChat(product._service)}
+                      onCallPress={() => handleContact(product._service)}
+                    />
+                  ))
+                ) : (
+                  <div className="col-span-full text-center py-12">
+                    <div className="inline-flex flex-col items-center gap-3">
+                      <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center text-4xl">
+                        📦
+                      </div>
+                      <p className="text-gray-600 font-medium">Aucun produit trouvé</p>
+                      <p className="text-sm text-gray-400">Essayez de basculer en mode Services</p>
+                    </div>
+                  </div>
+                )
+              ) : (
+                Array.isArray(services) && filterAndSortServices(services).map((service) => (
+                  <ServiceCard
+                    key={service.id}
+                    service={service}
+                    prestataires={prestataires}
+                    user={user}
+                    wsConnected={wsConnected}
+                    userStatus={userStatus}
+                    onContact={handleContact}
+                    onChat={handleChat}
+                    onGallery={handleGallery}
+                  />
+                ))
+              )}
             </div>
           </div>
         )}
@@ -744,11 +857,10 @@ export const ResultatBesoin: React.FC = () => {
         )}
 
         {selectedService && showChatModal && (
-          <ChatModal
-            service={selectedService}
-            prestataires={prestataires}
-            user={user}
-            wsConnected={wsConnected}
+          <GlobalChat
+            serviceId={selectedService.id}
+            prestataireId={selectedService.user_id}
+            isOpen={showChatModal}
             onClose={() => setShowChatModal(false)}
           />
         )}

@@ -226,6 +226,19 @@ SELECT DISTINCT
                         ts_rank(to_tsvector('french', COALESCE(s.data->'description'->>'valeur', '')), plainto_tsquery('french', $1)) * 3.0 +
                         ts_rank(to_tsvector('french', COALESCE(s.data->'category'->>'valeur', '')), plainto_tsquery('french', $1)) * 4.0
                     ) +
+                    -- Score pour les produits (recherche dans tous les champs)
+                    (
+                        SELECT COALESCE(SUM(
+                            ts_rank(to_tsvector('french', product::text), plainto_tsquery('french', $1)) * 2.0
+                        ), 0.0)
+                        FROM jsonb_array_elements(
+                            CASE 
+                                WHEN jsonb_typeof(s.data->'produits') = 'array' 
+                                THEN s.data->'produits'
+                                ELSE '[]'::jsonb
+                            END
+                        ) AS product
+                    ) +
                     -- Score avec unaccent pour gestion des accents
                     (
                         ts_rank(to_tsvector('french', unaccent(COALESCE(s.data->'titre_service'->>'valeur', ''))), plainto_tsquery('french', unaccent($1))) * 5.0 +
@@ -239,6 +252,29 @@ SELECT DISTINCT
                         WHEN s.data->'category'->>'valeur' ILIKE '%' || $1 || '%' THEN 5.0
                         ELSE 0.0
                     END +
+                    -- Bonus pour correspondances dans les produits (champs spécifiques)
+                    (
+                        SELECT COALESCE(SUM(
+                            CASE 
+                                WHEN product->>'nom' ILIKE '%' || $1 || '%' THEN 5.0
+                                WHEN product->>'description' ILIKE '%' || $1 || '%' THEN 3.0
+                                WHEN product->>'type' ILIKE '%' || $1 || '%' THEN 4.0
+                                WHEN product->>'marque' ILIKE '%' || $1 || '%' THEN 3.0
+                                WHEN product->>'modele' ILIKE '%' || $1 || '%' THEN 3.0
+                                WHEN product->>'titre' ILIKE '%' || $1 || '%' THEN 3.0
+                                WHEN product->>'quartier' ILIKE '%' || $1 || '%' THEN 2.5
+                                WHEN product->>'ville' ILIKE '%' || $1 || '%' THEN 2.5
+                                ELSE 0.0
+                            END
+                        ), 0.0)
+                        FROM jsonb_array_elements(
+                            CASE 
+                                WHEN jsonb_typeof(s.data->'produits') = 'array' 
+                                THEN s.data->'produits'
+                                ELSE '[]'::jsonb
+                            END
+                        ) AS product
+                    ) +
                     -- Bonus pour correspondances sans accents
                     CASE 
                         WHEN unaccent(s.data->'titre_service'->>'valeur') ILIKE '%' || unaccent($1) || '%' THEN 6.0

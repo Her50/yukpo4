@@ -70,7 +70,20 @@ async fn search_services_fallback(
                             ELSE '[]'::jsonb
                         END
                     ) AS product
-                    WHERE product->>'name' ILIKE $1
+                    WHERE 
+                        product->>'name' ILIKE $1
+                        OR product->>'nom' ILIKE $1
+                        OR product->>'description' ILIKE $1
+                        OR product->>'type' ILIKE $1
+                        OR product->>'marque' ILIKE $1
+                        OR product->>'modele' ILIKE $1
+                        OR product->>'titre' ILIKE $1
+                        OR product->>'quartier' ILIKE $1
+                        OR product->>'ville' ILIKE $1
+                        OR product->>'categorieQuincaillerie' ILIKE $1
+                        OR product->>'categorieElectromenager' ILIKE $1
+                        OR product->>'matiere' ILIKE $1
+                        OR product->>'couleur' ILIKE $1
                 )
             )
             ORDER BY s.created_at DESC
@@ -106,6 +119,44 @@ async fn search_services_fallback(
                 if let Some(cat_str) = cat.as_str() {
                     if cat_str.to_lowercase().contains(&term) {
                         score += 0.2;
+                    }
+                }
+            }
+            
+            // Bonus pour correspondance dans les produits
+            if let Some(produits) = data.get("produits") {
+                if let Some(produits_array) = produits.as_array() {
+                    for product in produits_array {
+                        // Nom du produit (poids élevé)
+                        if let Some(nom) = product.get("nom").and_then(|v| v.as_str()) {
+                            if nom.to_lowercase().contains(&term) {
+                                score += 0.4;
+                            }
+                        }
+                        // Description du produit
+                        if let Some(desc) = product.get("description").and_then(|v| v.as_str()) {
+                            if desc.to_lowercase().contains(&term) {
+                                score += 0.25;
+                            }
+                        }
+                        // Type de produit
+                        if let Some(ptype) = product.get("type").and_then(|v| v.as_str()) {
+                            if ptype.to_lowercase().contains(&term) {
+                                score += 0.3;
+                            }
+                        }
+                        // Marque
+                        if let Some(marque) = product.get("marque").and_then(|v| v.as_str()) {
+                            if marque.to_lowercase().contains(&term) {
+                                score += 0.25;
+                            }
+                        }
+                        // Modèle
+                        if let Some(modele) = product.get("modele").and_then(|v| v.as_str()) {
+                            if modele.to_lowercase().contains(&term) {
+                                score += 0.25;
+                            }
+                        }
                     }
                 }
             }
@@ -149,7 +200,8 @@ async fn search_services_fallback(
         }
     }
     
-    Ok(unique_results.into_iter().take(10).collect())
+    // Ne pas limiter les résultats, laisser le frontend/mobile gérer la pagination
+    Ok(unique_results)
 }
 
 /// Validation du JSON de besoin selon le schéma besoin_schema.json
@@ -278,16 +330,28 @@ pub async fn rechercher_besoin_direct(
     };
     
     // Convertir les résultats natifs en format MatchedService pour compatibilité
-    let matches: Vec<crate::services::matching_pipeline::MatchedService> = native_results.into_iter().map(|result| {
+    let mut matches: Vec<crate::services::matching_pipeline::MatchedService> = native_results.into_iter().map(|result| {
+        // Extraire le GPS (priorité: gps_fixe du service)
+        let gps = result.data.get("gps_fixe")
+            .and_then(|v| v.get("valeur"))
+            .and_then(|v| v.as_str())
+            .or_else(|| result.data.get("gps_fixe").and_then(|v| v.as_str()))
+            .map(|s| s.to_string());
+            
         crate::services::matching_pipeline::MatchedService {
             service_id: result.service_id,
             data: result.data,
             score: result.total_score as f64,
             semantic_score: result.fulltext_score as f64,
             interaction_score: result.recency_score as f64,
-            gps: None,
+            gps,
         }
     }).collect();
+    
+    // Trier par score total décroissant (pertinence + proximité déjà inclus dans total_score)
+    matches.sort_by(|a, b| {
+        b.score.partial_cmp(&a.score).unwrap_or(std::cmp::Ordering::Equal)
+    });
     
     // Convertir en format de réponse
     let results_array: Vec<Value> = matches.into_iter().map(|matched_service| {
@@ -796,8 +860,8 @@ pub async fn rechercher_besoin(
     // Tracker la complexit? du matching
     token_consumption.add_matching_complexity(matches.len(), champs_embeddes.len());
     
-    // Limiter à 5 résultats maximum pour la réponse
-    let resultats: Vec<_> = matches.into_iter().map(|m| {
+    // Trier par score total (pertinence + proximité) et ne PAS limiter
+    let mut resultats: Vec<_> = matches.into_iter().map(|m| {
         serde_json::json!({
             "service_id": m.service_id,
             "data": m.data,
@@ -806,7 +870,14 @@ pub async fn rechercher_besoin(
             "interaction_score": m.interaction_score,
             "gps": m.gps
         })
-    }).take(5).collect();
+    }).collect();
+    
+    // Trier par score décroissant (meilleurs résultats en premier)
+    resultats.sort_by(|a, b| {
+        b.get("score").and_then(|v| v.as_f64()).unwrap_or(0.0)
+            .partial_cmp(&a.get("score").and_then(|v| v.as_f64()).unwrap_or(0.0))
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
 
     // VALIDATION CRITIQUE: Filtrer les services inexistants en base de données
     let resultats_valides = validate_services_exist(&pool, &resultats).await?;

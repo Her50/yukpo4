@@ -18,6 +18,7 @@ pub mod intelligent_service_controller;
 pub mod notification_controller; // ✅ Contrôleur de notifications
 pub mod push_controller; // ✅ Contrôleur de push notifications
 pub mod webrtc_controller; // ✅ NOUVEAU: Contrôleur WebRTC pour appels
+pub mod product_lifecycle_controller; // ✅ Contrôleur de gestion du cycle de vie des produits
 
 // pub use service_controller::update_token_debit;
 

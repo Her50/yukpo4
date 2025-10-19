@@ -48,10 +48,10 @@ const ServiceMediaGallery: React.FC<ServiceMediaGalleryProps> = ({
 
             // Images du service
             if (service.data?.images) {
-                const images = Array.isArray(service.data.images) 
-                    ? service.data.images 
+                const images = Array.isArray(service.data.images)
+                    ? service.data.images
                     : [service.data.images];
-                
+
                 images.forEach((img: any) => {
                     if (img.valeur || img) {
                         mediaList.push({
@@ -83,16 +83,73 @@ const ServiceMediaGallery: React.FC<ServiceMediaGalleryProps> = ({
 
             // Vidéos
             if (service.data?.videos) {
-                const videos = Array.isArray(service.data.videos) 
-                    ? service.data.videos 
+                const videos = Array.isArray(service.data.videos)
+                    ? service.data.videos
                     : [service.data.videos];
-                
+
                 videos.forEach((vid: any) => {
                     if (vid.valeur || vid) {
                         mediaList.push({
                             type: 'video',
                             url: vid.valeur || vid,
                             description: 'Vidéo du service'
+                        });
+                    }
+                });
+            }
+
+            // Médias des produits
+            const products = service.data?.produits || [];
+            if (Array.isArray(products)) {
+                products.forEach((product: any, index: number) => {
+                    const productType = product.type || 'autre';
+                    const productName = product.nom || `Produit ${index + 1}`;
+
+                    // Images du produit
+                    if (product.images && Array.isArray(product.images)) {
+                        product.images.forEach((img: string) => {
+                            mediaList.push({
+                                type: 'image',
+                                url: img,
+                                description: `📦 ${productName}`,
+                                category: productType
+                            });
+                        });
+                    }
+
+                    // Vidéos du produit
+                    if (product.videos && Array.isArray(product.videos)) {
+                        product.videos.forEach((vid: string) => {
+                            mediaList.push({
+                                type: 'video',
+                                url: vid,
+                                description: `🎬 ${productName}`,
+                                category: productType
+                            });
+                        });
+                    }
+
+                    // Images de réalisations (pour prestations de service)
+                    if (product.imagesRealisations && Array.isArray(product.imagesRealisations)) {
+                        product.imagesRealisations.forEach((img: string) => {
+                            mediaList.push({
+                                type: 'image',
+                                url: img,
+                                description: `💼 Réalisation - ${productName}`,
+                                category: 'prestation_service'
+                            });
+                        });
+                    }
+
+                    // Vidéos de réalisations (pour prestations de service)
+                    if (product.videosRealisations && Array.isArray(product.videosRealisations)) {
+                        product.videosRealisations.forEach((vid: string) => {
+                            mediaList.push({
+                                type: 'video',
+                                url: vid,
+                                description: `💼 Réalisation - ${productName}`,
+                                category: 'prestation_service'
+                            });
                         });
                     }
                 });
@@ -209,16 +266,16 @@ const ServiceMediaGallery: React.FC<ServiceMediaGalleryProps> = ({
                 {selectedMedia && (
                     <Modal visible={true} transparent onRequestClose={() => setSelectedMedia(null)}>
                         <View style={styles.fullScreenContainer}>
-                            <TouchableOpacity 
+                            <TouchableOpacity
                                 style={styles.fullScreenClose}
                                 onPress={() => setSelectedMedia(null)}
                             >
                                 <SafeIcon name="x" size={32} color="#FFFFFF" />
                             </TouchableOpacity>
-                            
+
                             {selectedMedia.type === 'image' ? (
-                                <Image 
-                                    source={{ uri: selectedMedia.url }} 
+                                <Image
+                                    source={{ uri: selectedMedia.url }}
                                     style={styles.fullScreenImage}
                                     resizeMode="contain"
                                 />

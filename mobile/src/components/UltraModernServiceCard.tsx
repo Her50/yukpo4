@@ -148,6 +148,62 @@ const UltraModernServiceCard: React.FC<UltraModernServiceCardProps> = ({
         }
     };
 
+    // Obtenir l'icône selon la catégorie
+    const getCategoryIcon = (category: string): string => {
+        const categoryLower = category?.toLowerCase() || '';
+
+        // Immobilier
+        if (categoryLower.includes('immo') || categoryLower.includes('logement') || categoryLower.includes('habitation')) {
+            return 'home';
+        }
+        // Transport
+        if (categoryLower.includes('voyage') || categoryLower.includes('transport') || categoryLower.includes('covoiturage')) {
+            return 'map';
+        }
+        // Automobile
+        if (categoryLower.includes('auto') || categoryLower.includes('véhicule') || categoryLower.includes('voiture')) {
+            return 'car';
+        }
+        // Livraison
+        if (categoryLower.includes('livraison') || categoryLower.includes('colis') || categoryLower.includes('fret')) {
+            return 'truck';
+        }
+        // Commerce
+        if (categoryLower.includes('commerce') || categoryLower.includes('bayam') || categoryLower.includes('vente')) {
+            return 'trending-down';
+        }
+        // Santé
+        if (categoryLower.includes('santé') || categoryLower.includes('sante') || categoryLower.includes('médical') || categoryLower.includes('pharmacie') || categoryLower.includes('hôpital')) {
+            return 'heart';
+        }
+        // Éducation
+        if (categoryLower.includes('éducation') || categoryLower.includes('education') || categoryLower.includes('étude') || categoryLower.includes('formation') || categoryLower.includes('scolaire')) {
+            return 'book-open';
+        }
+        // Assurance
+        if (categoryLower.includes('assurance') || categoryLower.includes('protection')) {
+            return 'shield';
+        }
+        // Électronique/Tech
+        if (categoryLower.includes('électro') || categoryLower.includes('tech') || categoryLower.includes('informatique')) {
+            return 'smartphone';
+        }
+        // Alimentation
+        if (categoryLower.includes('aliment') || categoryLower.includes('restaurant') || categoryLower.includes('cuisine')) {
+            return 'coffee';
+        }
+        // Construction
+        if (categoryLower.includes('construction') || categoryLower.includes('bâtiment') || categoryLower.includes('travaux')) {
+            return 'tool';
+        }
+        // Beauté/Bien-être
+        if (categoryLower.includes('beauté') || categoryLower.includes('coiffure') || categoryLower.includes('esthétique')) {
+            return 'scissors';
+        }
+        // Défaut
+        return 'package';
+    };
+
     const formatNumber = (num: number) => {
         if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
         if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
@@ -256,6 +312,7 @@ const UltraModernServiceCard: React.FC<UltraModernServiceCardProps> = ({
                 {/* Catégorie et date */}
                 <View style={styles.metaContainer}>
                     <View style={styles.categoryBadge}>
+                        <SafeIcon name={getCategoryIcon(normalizedService.categorie)} size={12} color="#4F46E5" />
                         <Text style={styles.categoryText}>{normalizedService.categorie}</Text>
                     </View>
                     <Text style={styles.dateText}>{formatDate(normalizedService.date_creation)}</Text>
@@ -469,6 +526,9 @@ const styles = StyleSheet.create({
         gap: 12,
     },
     categoryBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
         backgroundColor: '#E0E7FF',
         paddingHorizontal: 8,
         paddingVertical: 4,

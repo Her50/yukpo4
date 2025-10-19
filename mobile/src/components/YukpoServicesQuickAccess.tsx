@@ -106,22 +106,24 @@ const YukpoServicesQuickAccess: React.FC<YukpoServicesQuickAccessProps> = ({
                             colors={service.gradient}
                             style={styles.cardGradient}
                         >
-                            {/* Yukpo sur une ligne avec icône */}
+                            {/* Ligne 1 : Icône + Yukpo ensemble */}
                             <View style={styles.yukpoRow}>
-                                <SafeIcon name={service.icon} size={12} color="#FFFFFF" />
+                                <SafeIcon name={service.icon} size={14} color="#FFFFFF" />
                                 <Text style={styles.yukpoText}>
                                     <Text style={styles.yukpoYukWhite}>Yuk</Text>
                                     <Text style={styles.yukpoPoWhite}>po</Text>
                                 </Text>
                             </View>
 
-                            {/* Titre du service sur la ligne suivante */}
+                            {/* Ligne 2 : Nom du service centré, proche de Yukpo */}
                             <Text style={styles.serviceTitle} numberOfLines={1}>
                                 {service.title}
                             </Text>
 
-                            {/* Description rapprochée */}
-                            <Text style={styles.serviceDescription} numberOfLines={2}>{service.description}</Text>
+                            {/* Ligne 3 : Description */}
+                            <Text style={styles.serviceDescription} numberOfLines={2}>
+                                {service.description}
+                            </Text>
                         </LinearGradient>
                     </TouchableOpacity>
                 ))}
@@ -132,16 +134,8 @@ const YukpoServicesQuickAccess: React.FC<YukpoServicesQuickAccessProps> = ({
 
 const styles = StyleSheet.create({
     container: {
-        marginVertical: 32, // Augmenté pour faire descendre le bloc et combler le vide
+        marginVertical: 32,
         paddingHorizontal: 0,
-    },
-    yukpoYukWhite: {
-        color: '#FEF3C7',
-        fontWeight: '800',
-    },
-    yukpoPoWhite: {
-        color: '#FEE2E2',
-        fontWeight: '800',
     },
     gridContainer: {
         flexDirection: 'row',
@@ -162,32 +156,48 @@ const styles = StyleSheet.create({
         marginBottom: 4,
     },
     cardGradient: {
-        padding: 6,
-        minHeight: 85, // Augmenté pour avoir plus d'espace pour les 3 lignes
-        justifyContent: 'space-between',
+        padding: 8,
+        minHeight: 90,
+        justifyContent: 'flex-start',
+        alignItems: 'center',
     },
-    // Ligne pour Yukpo avec icône
+    // Ligne 1 : Icône + Yukpo
     yukpoRow: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 3,
-        marginBottom: 2,
+        marginBottom: 2, // Très proche du titre
     },
     yukpoText: {
-        fontSize: 9,
-        lineHeight: 11,
+        fontSize: 10,
+        lineHeight: 12,
     },
+    yukpoYukWhite: {
+        color: '#FEF3C7',
+        fontWeight: '800',
+        fontSize: 10,
+    },
+    yukpoPoWhite: {
+        color: '#FEE2E2',
+        fontWeight: '800',
+        fontSize: 10,
+    },
+    // Ligne 2 : Nom du service (centré, proche de Yukpo)
     serviceTitle: {
-        fontSize: 11,
+        fontSize: 12,
         fontWeight: '700',
         color: '#FFFFFF',
-        marginBottom: 3, // Petit espace avant la description
-        lineHeight: 13,
+        textAlign: 'center',
+        lineHeight: 14,
+        marginBottom: 3, // Espace avant description
     },
+    // Ligne 3 : Description
     serviceDescription: {
         fontSize: 7.5,
         color: 'rgba(255, 255, 255, 0.9)',
-        lineHeight: 10,
+        lineHeight: 9,
+        textAlign: 'center',
+        paddingHorizontal: 2,
     },
     badgeContainer: {
         alignSelf: 'flex-start',

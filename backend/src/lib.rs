@@ -41,6 +41,7 @@ use crate::routes::{
     webrtc_routes::webrtc_routes, // ✅ NOUVEAU : Routes WebRTC
     notification_routes, // ✅ NOUVEAU : Routes de notifications
     push_routes, // ✅ NOUVEAU : Routes push
+    product_lifecycle_routes, // ✅ Routes de gestion du cycle de vie des produits
     ia_routes::ia_routes,
     history_routes::history_routes,
     payment_routes::payment_routes,
@@ -153,6 +154,9 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
     let notifications = notification_routes::notification_routes(state.clone());
     let push_notifs = push_routes::push_routes(state.clone());
     
+    // ✅ Routes de gestion du cycle de vie des produits
+    let product_lifecycle = product_lifecycle_routes::product_lifecycle_routes(state.clone());
+    
     let app = Router::new()
         .route("/", get(|| async { "Yukpomnang Backend API - Service actif" }))
         .route("/healthz", get(healthz))
@@ -175,6 +179,7 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .merge(webrtc_http)  // ✅ NOUVEAU : Routes WebRTC HTTP
         .merge(notifications)  // ✅ NOUVEAU : Routes de notifications
         .merge(push_notifs)  // ✅ NOUVEAU : Routes push notifications
+        .merge(product_lifecycle)  // ✅ Routes de gestion du cycle de vie des produits
         .route("/fournitures/gestion", axum::routing::post(fournitures_axum_handler))
         .layer(axum::middleware::from_fn(cors_middleware))  // ← AJOUTER CETTE LIGNE
         .with_state(state);    // Ajouter les routes WebSocket s?par?ment

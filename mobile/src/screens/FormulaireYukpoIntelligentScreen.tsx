@@ -15,7 +15,7 @@ import {
   View
 } from 'react-native';
 // @ts-ignore
-import MediaManagerMobile from '../components/MediaManagerMobile';
+import BrandingManagerMobile from '../components/BrandingManagerMobile';
 // @ts-ignore
 import ModernGPSModal from '../components/ModernGPSModal';
 // @ts-ignore
@@ -54,6 +54,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
   const navigation = useNavigation();
   const route = useRoute();
   const { user, logout } = useAuth();
+  const blockScrollViewRef = React.useRef<any>(null);
 
   // État des données reçues
   const suggestion = (route.params as any)?.suggestion || {};
@@ -143,14 +144,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       },
       {
         id: 'media',
-        title: 'Médias',
-        icon: '📁',
-        fields: [] as DynamicField[]
-      },
-      {
-        id: 'promotion',
-        title: 'Promotion et Offres',
-        icon: '🎉',
+        title: 'Identité Visuelle',
+        icon: '🎨',
         fields: [] as DynamicField[]
       },
       {
@@ -184,17 +179,13 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       else if (['images', 'videos', 'audios', 'documents', 'logo', 'banner', 'banniere'].includes(fieldName)) {
         blocks[4].fields.push(field);
       }
-      // Bloc Promotion
-      else if (fieldName.startsWith('promotion_')) {
-        blocks[5].fields.push(field);
-      }
       // Autres
       else {
-        blocks[6].fields.push(field);
+        blocks[5].fields.push(field);
       }
     });
 
-    // Ajouter les blocs fixes (produits, médias, promotion) même s'ils n'ont pas de champs dynamiques
+    // Ajouter les blocs fixes (produits, médias) même s'ils n'ont pas de champs dynamiques
     // Car ils utilisent des composants spécialisés
     const blocksWithFixedOnes = [...blocks];
 
@@ -218,15 +209,6 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       } as any);
     }
 
-    // S'assurer que le bloc promotion est toujours présent
-    if (!blocksWithFixedOnes.find(b => b.id === 'promotion').fields.length) {
-      blocksWithFixedOnes.find(b => b.id === 'promotion')!.fields.push({
-        name: '_promotion_block',
-        type: 'custom',
-        label: 'Promotions',
-        required: false
-      } as any);
-    }
 
     // S'assurer que le bloc localisation a toujours un champ GPS fixe
     const locationBlock = blocksWithFixedOnes.find(b => b.id === 'location');
@@ -377,14 +359,14 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           // ✅ CORRIGÉ: Utilise apiGet
           const response = await apiGet(`/api/services/${serviceId}`);
 
-          if (response.ok) {
-            const serviceData = await response.json();
+          if (response.success && response.data) {
+            const serviceData: any = response.data;
             console.log('[FormulaireYukpoIntelligentScreen] ✅ Service chargé:', serviceData);
 
             // Extraire et pré-remplir TOUS les champs du service
             const formValues: Record<string, any> = {};
 
-            if (serviceData.data) {
+            if (serviceData?.data) {
               Object.keys(serviceData.data).forEach(key => {
                 const value = serviceData.data[key];
                 formValues[key] = value?.valeur !== undefined ? value.valeur : value;
@@ -423,14 +405,14 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         // ✅ CORRIGÉ: Utilise apiGet
         const response = await apiGet('/api/services/last');
 
-        if (response.ok) {
-          const data = await response.json();
+        if (response.success && response.data) {
+          const data: any = response.data;
           if (data && Object.keys(data).length > 0) {
             const contactData = {
-              whatsapp: data.whatsapp?.valeur || data.whatsapp || '',
-              telephone: data.telephone?.valeur || data.telephone || '',
-              email: data.email?.valeur || data.email || '',
-              website: data.website?.valeur || data.website || data.siteweb?.valeur || data.siteweb || ''
+              whatsapp: data?.whatsapp?.valeur || data?.whatsapp || '',
+              telephone: data?.telephone?.valeur || data?.telephone || '',
+              email: data?.email?.valeur || data?.email || '',
+              website: data?.website?.valeur || data?.website || data?.siteweb?.valeur || data?.siteweb || ''
             };
 
             // Pré-remplir les champs de contact s'ils ne sont pas déjà remplis
@@ -522,6 +504,16 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       console.log('[FormulaireYukpoIntelligentScreen] Blocs organisés:', organizedBlocks);
     }
   }, [composants]);
+
+  // ✅ NOUVEAU : Scroll automatique vers le bloc courant
+  useEffect(() => {
+    if (blockScrollViewRef.current && blocks.length > 0) {
+      // Calculer la position du bloc (environ 130px par onglet)
+      const blockWidth = 130;
+      const scrollPosition = currentBlock * blockWidth;
+      blockScrollViewRef.current.scrollTo({ x: scrollPosition, animated: true });
+    }
+  }, [currentBlock, blocks]);
 
   // Générer le formulaire à partir des données IA (comme le frontend)
   const genererFormulaire = async () => {
@@ -632,6 +624,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
             products={products}
             onProductsChange={setProducts}
             readonly={isReadonly}
+            titreService={valeursFormulaire.titre_service}
+            descriptionService={valeursFormulaire.description}
           />
         </View>
       );
@@ -640,9 +634,11 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     if (field.name === '_media_manager') {
       return (
         <View key={field.name}>
-          <MediaManagerMobile
-            mediaFiles={mediaFiles}
-            onMediaChange={handleMediaChange}
+          <BrandingManagerMobile
+            logo={mediaFiles.logo}
+            banner={mediaFiles.banner}
+            onLogoChange={(logo) => handleMediaChange({ ...mediaFiles, logo })}
+            onBannerChange={(banner) => handleMediaChange({ ...mediaFiles, banner })}
             readonly={isReadonly}
           />
         </View>
@@ -688,107 +684,6 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       );
     }
 
-    if (field.name === '_promotion_block') {
-      return (
-        <View key={field.name} style={styles.promotionBlock}>
-          {/* Checkbox pour activer/désactiver la promotion */}
-          <TouchableOpacity
-            style={styles.checkboxContainer}
-            onPress={() => handleFieldChange('promotion_active', !valeursFormulaire.promotion_active)}
-            disabled={isReadonly}
-          >
-            <View style={[
-              styles.checkbox,
-              valeursFormulaire.promotion_active && styles.checkboxChecked
-            ]}>
-              {valeursFormulaire.promotion_active && (
-                <SafeIcon name="check" size={16} color="#FFFFFF" />
-              )}
-            </View>
-            <Text style={styles.checkboxLabel}>Activer une promotion pour ce service</Text>
-          </TouchableOpacity>
-
-          {/* Champs de promotion (affichés seulement si activé) */}
-          {valeursFormulaire.promotion_active && (
-            <View style={styles.promotionFields}>
-              <View style={styles.fieldContainer}>
-                <Text style={styles.fieldLabel}>🏷️ Type de promotion</Text>
-                <View style={styles.pickerButtons}>
-                  {['reduction', 'offre', 'bon_plan', 'flash'].map((type) => (
-                    <TouchableOpacity
-                      key={type}
-                      style={[
-                        styles.pickerButton,
-                        valeursFormulaire.promotion_type === type && styles.pickerButtonActive
-                      ]}
-                      onPress={() => handleFieldChange('promotion_type', type)}
-                      disabled={isReadonly}
-                    >
-                      <Text style={[
-                        styles.pickerButtonText,
-                        valeursFormulaire.promotion_type === type && styles.pickerButtonTextActive
-                      ]}>
-                        {type === 'reduction' ? 'Réduction' :
-                          type === 'offre' ? 'Offre spéciale' :
-                            type === 'bon_plan' ? 'Bon plan' : 'Offre flash'}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-
-              <View style={styles.fieldContainer}>
-                <Text style={styles.fieldLabel}>💰 Valeur de la promotion</Text>
-                <NativeInput
-                  placeholder="ex: 20%, 50€, Gratuit"
-                  value={valeursFormulaire.promotion_valeur || ''}
-                  onChangeText={(text) => handleFieldChange('promotion_valeur', text)}
-                  style={styles.fieldInput}
-                />
-              </View>
-
-              <View style={styles.fieldContainer}>
-                <Text style={styles.fieldLabel}>📝 Description de la promotion</Text>
-                <NativeInput
-                  placeholder="Décrivez votre offre promotionnelle..."
-                  value={valeursFormulaire.promotion_description || ''}
-                  onChangeText={(text) => handleFieldChange('promotion_description', text)}
-                  multiline
-                  style={[styles.fieldInput, styles.textareaInput]}
-                />
-              </View>
-
-              <View style={styles.fieldContainer}>
-                <Text style={styles.fieldLabel}>📅 Date de fin de promotion</Text>
-                <NativeInput
-                  placeholder="JJ/MM/AAAA"
-                  value={valeursFormulaire.promotion_date_fin || ''}
-                  onChangeText={(text) => handleFieldChange('promotion_date_fin', text)}
-                  style={styles.fieldInput}
-                />
-              </View>
-
-              <View style={styles.fieldContainer}>
-                <Text style={styles.fieldLabel}>⚠️ Conditions (optionnel)</Text>
-                <NativeInput
-                  placeholder="Conditions spéciales, limitations..."
-                  value={valeursFormulaire.promotion_conditions || ''}
-                  onChangeText={(text) => handleFieldChange('promotion_conditions', text)}
-                  multiline
-                  style={[styles.fieldInput, styles.textareaInput]}
-                />
-              </View>
-            </View>
-          )}
-
-          <View style={styles.hintBox}>
-            <Text style={styles.hintText}>
-              💡 <Text style={styles.hintBold}>Conseil :</Text> Les promotions attirent l'attention et peuvent augmenter vos chances d'être contacté.
-            </Text>
-          </View>
-        </View>
-      );
-    }
 
     // Champs standards
     switch (field.type) {
@@ -976,11 +871,11 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         throw new Error(`Erreur IA: ${iaResponse.error || 'Erreur inconnue'}`);
       }
 
-      const iaData = iaResponse.data;
+      const iaData: any = iaResponse.data;
       console.log('[FormulaireYukpoIntelligentScreen] Réponse IA reçue:', iaData);
 
       // 💰 ÉTAPE 2 : Calculer le coût réel avec le multiplier x100 pour création de service
-      const tokensIAExterne = iaData.tokens_consumed || iaData.tokens_used || iaData.tokens || 0;
+      const tokensIAExterne = iaData?.tokens_consumed || iaData?.tokens_used || iaData?.tokens || 0;
       const coutTokenOpenAIFCFA = 0.004;
       const coutReel = Math.round(tokensIAExterne * coutTokenOpenAIFCFA * 100); // x100 pour création de service
       console.log('💰 [FormulaireYukpoIntelligentScreen] Coût RÉEL calculé:', coutReel, 'FCFA pour', tokensIAExterne, 'tokens');
@@ -989,16 +884,16 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       // ✅ CORRIGÉ: Utilise apiGet avec nouvelle structure ApiResponse
       console.log('💰 [FormulaireYukpoIntelligentScreen] Vérification du solde...');
       console.log('💰 [FormulaireYukpoIntelligentScreen] Token actuel:', user?.token ? 'Présent' : 'ABSENT');
-      
-      const balanceResponse = await apiGet<{tokens_balance: number}>('/api/users/balance');
-      
+
+      const balanceResponse = await apiGet<{ tokens_balance: number }>('/api/users/balance');
+
       console.log('💰 [FormulaireYukpoIntelligentScreen] Réponse balance complète:', JSON.stringify(balanceResponse, null, 2));
 
       if (!balanceResponse.success) {
         const errorMsg = balanceResponse.error || 'Impossible de vérifier votre solde';
         console.error('💰 [FormulaireYukpoIntelligentScreen] ❌ Erreur vérification solde:', errorMsg);
         console.error('💰 [FormulaireYukpoIntelligentScreen] ❌ Data reçue:', balanceResponse.data);
-        
+
         // Si problème d'authentification, rediriger vers login
         if (errorMsg.includes('401') || errorMsg.includes('Unauthorized') || errorMsg.includes('authentification')) {
           Alert.alert(
@@ -1008,7 +903,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           );
           return;
         }
-        
+
         throw new Error(errorMsg);
       }
 
@@ -1056,11 +951,11 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                 console.log('[FormulaireYukpoIntelligentScreen] Création du service en cours...');
 
                 // 🔧 ÉTAPE 3 : Extraire le JSON structuré de la réponse IA (comme le frontend)
-                let finalServiceData = iaData;
-                if (iaData.service_data && iaData.service_data.data) {
+                let finalServiceData: any = iaData;
+                if (iaData?.service_data && iaData.service_data.data) {
                   finalServiceData = iaData.service_data.data;
                   console.log('[FormulaireYukpoIntelligentScreen] Données extraites depuis service_data.data:', finalServiceData);
-                } else if (iaData.data) {
+                } else if (iaData?.data) {
                   finalServiceData = iaData.data;
                   console.log('[FormulaireYukpoIntelligentScreen] Données extraites depuis data:', finalServiceData);
                 }
@@ -1162,7 +1057,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                   throw new Error(`Erreur création service: ${errorMessage}`);
                 }
 
-                const result = response.data;
+                const result: any = response.data;
                 console.log('[FormulaireYukpoIntelligentScreen] ✅ Service créé avec succès:', result);
 
                 // ✅ NOTE : Le nouveau JWT est automatiquement géré par apiCall
@@ -1170,7 +1065,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                 // Voir mobile/src/services/api.ts lignes 102-105
                 // Le solde de tokens est aussi mis à jour automatiquement
 
-                setSuccessData({ serviceId: result.id || result.service_id || 'nouveau', cout: coutReel });
+                setSuccessData({ serviceId: result?.id || result?.service_id || 'nouveau', cout: coutReel });
                 setShowSuccessToast(true);
 
                 // ✅ Marquer la soumission comme terminée
@@ -1238,241 +1133,256 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         </View>
       </LinearGradient>
 
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.contentContainer}
-        showsVerticalScrollIndicator={false}
-      >
+      <View style={styles.scrollView}>
         {/* Étape 1: Génération du formulaire */}
         {activeStep === 1 && (
-          <View style={styles.stepContainer}>
-            {/* Card d'introduction */}
-            <NativeCard style={styles.introCard}>
-              <View style={styles.iconCircle}>
-                <SafeIcon name="star" size={32} color={modernColors.primary} />
-              </View>
-              <Text style={styles.introTitle}>Formulaire Yukpo Intelligent</Text>
-              <Text style={styles.introDescription}>
-                Notre IA va analyser vos données et générer un formulaire personnalisé adapté à votre besoin
-              </Text>
-            </NativeCard>
+          <ScrollView
+            contentContainerStyle={styles.contentContainer}
+            showsVerticalScrollIndicator={false}
+          >
+            <View style={styles.stepContainer}>
+              {/* Card d'introduction */}
+              <NativeCard style={styles.introCard}>
+                <View style={styles.iconCircle}>
+                  <SafeIcon name="star" size={32} color={modernColors.primary} />
+                </View>
+                <Text style={styles.introTitle}>Formulaire Yukpo Intelligent</Text>
+                <Text style={styles.introDescription}>
+                  Notre IA va analyser vos données et générer un formulaire personnalisé adapté à votre besoin
+                </Text>
+              </NativeCard>
 
-            {/* Card des données analysées */}
-            <NativeCard style={styles.dataCard}>
-              <View style={styles.cardHeader}>
-                <SafeIcon name="file" size={20} color={modernColors.primary} />
-                <Text style={styles.cardTitle}>Données à analyser</Text>
-              </View>
-              <NativeDivider style={styles.divider} />
+              {/* Card des données analysées */}
+              <NativeCard style={styles.dataCard}>
+                <View style={styles.cardHeader}>
+                  <SafeIcon name="file" size={20} color={modernColors.primary} />
+                  <Text style={styles.cardTitle}>Données à analyser</Text>
+                </View>
+                <NativeDivider style={styles.divider} />
 
-              {/* Affichage des données du backend */}
-              {suggestion.data && Object.keys(suggestion.data).length > 0 ? (
-                <View style={styles.dataContainer}>
-                  {Object.entries(suggestion.data).map(([key, value], index) => {
-                    const fieldValue = typeof value === 'object' && value !== null ? (value as any).valeur || JSON.stringify(value) : value;
-                    const fieldLabel = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                {/* Affichage des données du backend */}
+                {suggestion.data && Object.keys(suggestion.data).length > 0 ? (
+                  <View style={styles.dataContainer}>
+                    {Object.entries(suggestion.data).map(([key, value], index) => {
+                      const fieldValue = typeof value === 'object' && value !== null ? (value as any).valeur || JSON.stringify(value) : value;
+                      const fieldLabel = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
 
-                    return (
-                      <View key={index} style={styles.dataItem}>
-                        <View style={styles.dataIcon}>
-                          <SafeIcon name="check-circle" size={18} color={modernColors.success} />
+                      return (
+                        <View key={index} style={styles.dataItem}>
+                          <View style={styles.dataIcon}>
+                            <SafeIcon name="check-circle" size={18} color={modernColors.success} />
+                          </View>
+                          <View style={styles.dataContent}>
+                            <Text style={styles.dataLabel}>{fieldLabel}</Text>
+                            <Text style={styles.dataText} numberOfLines={2}>
+                              {String(fieldValue).substring(0, 100)}
+                              {String(fieldValue).length > 100 ? '...' : ''}
+                            </Text>
+                          </View>
                         </View>
-                        <View style={styles.dataContent}>
-                          <Text style={styles.dataLabel}>{fieldLabel}</Text>
-                          <Text style={styles.dataText} numberOfLines={2}>
-                            {String(fieldValue).substring(0, 100)}
-                            {String(fieldValue).length > 100 ? '...' : ''}
-                          </Text>
-                        </View>
-                      </View>
-                    );
-                  })}
-                </View>
-              ) : suggestion.texte ? (
-                <View style={styles.dataItem}>
-                  <View style={styles.dataIcon}>
-                    <SafeIcon name="message" size={18} color={modernColors.info} />
+                      );
+                    })}
                   </View>
-                  <View style={styles.dataContent}>
-                    <Text style={styles.dataLabel}>Texte</Text>
-                    <Text style={styles.dataText} numberOfLines={2}>
-                      {suggestion.texte.substring(0, 100)}...
-                    </Text>
+                ) : suggestion.texte ? (
+                  <View style={styles.dataItem}>
+                    <View style={styles.dataIcon}>
+                      <SafeIcon name="message" size={18} color={modernColors.info} />
+                    </View>
+                    <View style={styles.dataContent}>
+                      <Text style={styles.dataLabel}>Texte</Text>
+                      <Text style={styles.dataText} numberOfLines={2}>
+                        {suggestion.texte.substring(0, 100)}...
+                      </Text>
+                    </View>
                   </View>
-                </View>
-              ) : null}
+                ) : null}
 
-              {/* Affichage des médias */}
-              {mediaFiles.images.length > 0 && (
-                <View style={styles.dataItem}>
-                  <View style={styles.dataIcon}>
-                    <SafeIcon name="image" size={18} color={modernColors.success} />
+                {/* Affichage des médias */}
+                {mediaFiles.images.length > 0 && (
+                  <View style={styles.dataItem}>
+                    <View style={styles.dataIcon}>
+                      <SafeIcon name="image" size={18} color={modernColors.success} />
+                    </View>
+                    <View style={styles.dataContent}>
+                      <Text style={styles.dataLabel}>Images</Text>
+                      <Text style={styles.dataText}>{mediaFiles.images.length} image(s)</Text>
+                    </View>
                   </View>
-                  <View style={styles.dataContent}>
-                    <Text style={styles.dataLabel}>Images</Text>
-                    <Text style={styles.dataText}>{mediaFiles.images.length} image(s)</Text>
-                  </View>
-                </View>
-              )}
+                )}
 
-              {mediaFiles.audios.length > 0 && (
-                <View style={styles.dataItem}>
-                  <View style={styles.dataIcon}>
-                    <SafeIcon name="mic" size={18} color={modernColors.warning} />
+                {mediaFiles.audios.length > 0 && (
+                  <View style={styles.dataItem}>
+                    <View style={styles.dataIcon}>
+                      <SafeIcon name="mic" size={18} color={modernColors.warning} />
+                    </View>
+                    <View style={styles.dataContent}>
+                      <Text style={styles.dataLabel}>Audio</Text>
+                      <Text style={styles.dataText}>{mediaFiles.audios.length} fichier(s) audio</Text>
+                    </View>
                   </View>
-                  <View style={styles.dataContent}>
-                    <Text style={styles.dataLabel}>Audio</Text>
-                    <Text style={styles.dataText}>{mediaFiles.audios.length} fichier(s) audio</Text>
-                  </View>
-                </View>
-              )}
+                )}
 
-              {gps && (
-                <View style={styles.dataItem}>
-                  <View style={styles.dataIcon}>
-                    <SafeIcon name="map-pin" size={18} color={modernColors.error} />
+                {gps && (
+                  <View style={styles.dataItem}>
+                    <View style={styles.dataIcon}>
+                      <SafeIcon name="map-pin" size={18} color={modernColors.error} />
+                    </View>
+                    <View style={styles.dataContent}>
+                      <Text style={styles.dataLabel}>Position GPS</Text>
+                      <Text style={styles.dataText}>{gps}</Text>
+                    </View>
                   </View>
-                  <View style={styles.dataContent}>
-                    <Text style={styles.dataLabel}>Position GPS</Text>
-                    <Text style={styles.dataText}>{gps}</Text>
+                )}
+
+                {/* Message si aucune donnée */}
+                {!suggestion.data && !suggestion.texte && mediaFiles.images.length === 0 && mediaFiles.audios.length === 0 && !gps && (
+                  <View style={styles.noDataContainer}>
+                    <SafeIcon name="info" size={40} color={modernColors.textSecondary} />
+                    <Text style={styles.noDataText}>Aucune donnée à analyser</Text>
                   </View>
-                </View>
-              )}
+                )}
+              </NativeCard>
 
-              {/* Message si aucune donnée */}
-              {!suggestion.data && !suggestion.texte && mediaFiles.images.length === 0 && mediaFiles.audios.length === 0 && !gps && (
-                <View style={styles.noDataContainer}>
-                  <SafeIcon name="info" size={40} color={modernColors.textSecondary} />
-                  <Text style={styles.noDataText}>Aucune donnée à analyser</Text>
-                </View>
-              )}
-            </NativeCard>
-
-            {/* Bouton de génération */}
-            <NativeButton
-              title={loading ? "⏳ Génération..." : "✨ Générer le formulaire"}
-              onPress={genererFormulaire}
-              variant="primary"
-              size="large"
-              style={styles.generateButton}
-              disabled={loading}
-            />
-          </View>
+              {/* Bouton de génération */}
+              <NativeButton
+                title={loading ? "⏳ Génération..." : "✨ Générer le formulaire"}
+                onPress={genererFormulaire}
+                variant="primary"
+                size="large"
+                style={styles.generateButton}
+                disabled={loading}
+              />
+            </View>
+          </ScrollView>
         )}
 
         {/* Étape 2: Formulaire avec navigation par blocs */}
         {activeStep === 2 && (
-          <View style={styles.stepContainer}>
-            {/* Navigation par blocs */}
+          <View style={{ flex: 1 }}>
+            {/* Navigation par blocs - Sticky */}
             {blocks.length > 0 && (
               <>
-                {/* Indicateur de progression */}
-                <View style={styles.progressContainer}>
-                  <View style={styles.progressBar}>
-                    <View
-                      style={[
-                        styles.progressFill,
-                        { width: `${((currentBlock + 1) / blocks.length) * 100}%` }
-                      ]}
-                    />
+                <View style={styles.stickyNavigation}>
+                  {/* Indicateur de progression */}
+                  <View style={styles.progressContainer}>
+                    <View style={styles.progressBar}>
+                      <View
+                        style={[
+                          styles.progressFill,
+                          { width: `${((currentBlock + 1) / blocks.length) * 100}%` }
+                        ]}
+                      />
+                    </View>
+                    <Text style={styles.progressText}>
+                      {currentBlock + 1} / {blocks.length}
+                    </Text>
                   </View>
-                  <Text style={styles.progressText}>
-                    {currentBlock + 1} / {blocks.length}
-                  </Text>
+
+                  {/* Navigation entre blocs (tabs horizontales scrollables) */}
+                  <ScrollView
+                    ref={blockScrollViewRef}
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    style={styles.blockNavigationScrollView}
+                  >
+                    <View style={styles.blockNavigation}>
+                      {blocks.map((block, index) => (
+                        <TouchableOpacity
+                          key={block.id}
+                          style={[
+                            styles.blockTab,
+                            currentBlock === index && styles.blockTabActive
+                          ]}
+                          onPress={() => goToBlock(index)}
+                        >
+                          <Text style={styles.blockTabIcon}>{block.icon}</Text>
+                          <Text style={[
+                            styles.blockTabText,
+                            currentBlock === index && styles.blockTabTextActive
+                          ]}>
+                            {block.title}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </ScrollView>
                 </View>
 
-                {/* Navigation entre blocs (tabs horizontales scrollables) */}
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.blockNavigationScrollView}>
-                  <View style={styles.blockNavigation}>
-                    {blocks.map((block, index) => (
-                      <TouchableOpacity
-                        key={block.id}
-                        style={[
-                          styles.blockTab,
-                          currentBlock === index && styles.blockTabActive
-                        ]}
-                        onPress={() => goToBlock(index)}
+                {/* Contenu scrollable */}
+                <ScrollView
+                  style={styles.contentScrollView}
+                  contentContainerStyle={styles.contentContainer}
+                  showsVerticalScrollIndicator={false}
+                >
+                  {/* Affichage du bloc actuel uniquement */}
+                  {blocks[currentBlock] && (
+                    <View style={styles.sectionContainer}>
+                      <LinearGradient
+                        colors={['#3B82F6', '#1D4ED8']}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 0 }}
+                        style={styles.sectionHeader}
                       >
-                        <Text style={styles.blockTabIcon}>{block.icon}</Text>
-                        <Text style={[
-                          styles.blockTabText,
-                          currentBlock === index && styles.blockTabTextActive
-                        ]}>
-                          {block.title}
+                        <Text style={styles.sectionHeaderText}>
+                          {blocks[currentBlock].icon} {blocks[currentBlock].title}
                         </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                </ScrollView>
+                      </LinearGradient>
 
-                {/* Affichage du bloc actuel uniquement */}
-                {blocks[currentBlock] && (
-                  <View style={styles.sectionContainer}>
-                    <LinearGradient
-                      colors={['#3B82F6', '#1D4ED8']}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 0 }}
-                      style={styles.sectionHeader}
-                    >
-                      <Text style={styles.sectionHeaderText}>
-                        {blocks[currentBlock].icon} {blocks[currentBlock].title}
-                      </Text>
-                    </LinearGradient>
+                      <NativeCard style={styles.sectionContent}>
+                        {blocks[currentBlock].fields.map((field, index) => renderField(field))}
+                      </NativeCard>
+                    </View>
+                  )}
 
-                    <NativeCard style={styles.sectionContent}>
-                      {blocks[currentBlock].fields.map((field, index) => renderField(field))}
-                    </NativeCard>
-                  </View>
-                )}
-
-                {/* Boutons de navigation */}
-                <View style={styles.navigationButtons}>
-                  <TouchableOpacity
-                    style={[
-                      styles.navButton,
-                      styles.navButtonSecondary,
-                      currentBlock === 0 && styles.navButtonDisabled
-                    ]}
-                    onPress={goToPreviousBlock}
-                    disabled={currentBlock === 0}
-                  >
-                    <SafeIcon name="chevron-left" size={20} color="#6B7280" />
-                    <Text style={styles.navButtonTextSecondary}>Précédent</Text>
-                  </TouchableOpacity>
-
-                  {currentBlock < blocks.length - 1 ? (
-                    <TouchableOpacity
-                      style={[styles.navButton, styles.navButtonPrimary]}
-                      onPress={goToNextBlock}
-                    >
-                      <Text style={styles.navButtonTextPrimary}>Suivant</Text>
-                      <SafeIcon name="chevron-right" size={20} color="#FFFFFF" />
-                    </TouchableOpacity>
-                  ) : !isReadonly ? (
+                  {/* Boutons de navigation */}
+                  <View style={styles.navigationButtons}>
                     <TouchableOpacity
                       style={[
                         styles.navButton,
-                        styles.navButtonSuccess,
-                        (loading || isSubmitting) && styles.navButtonDisabled // ✅ Désactiver visuellement pendant soumission
+                        styles.navButtonSecondary,
+                        currentBlock === 0 && styles.navButtonDisabled
                       ]}
-                      onPress={soumettreFormulaire}
-                      disabled={loading || isSubmitting} // ✅ Désactiver pendant loading OU soumission
+                      onPress={goToPreviousBlock}
+                      disabled={currentBlock === 0}
                     >
-                      <Text style={styles.navButtonTextSuccess}>
-                        {(loading || isSubmitting)
-                          ? (mode === 'edit' ? 'Modification...' : 'Création...')
-                          : (mode === 'edit' ? 'Modifier le service' : 'Créer le service')
-                        }
-                      </Text>
-                      <SafeIcon name="check" size={20} color="#FFFFFF" />
+                      <SafeIcon name="chevron-left" size={20} color="#6B7280" />
+                      <Text style={styles.navButtonTextSecondary}>Précédent</Text>
                     </TouchableOpacity>
-                  ) : null}
-                </View>
+
+                    {currentBlock < blocks.length - 1 ? (
+                      <TouchableOpacity
+                        style={[styles.navButton, styles.navButtonPrimary]}
+                        onPress={goToNextBlock}
+                      >
+                        <Text style={styles.navButtonTextPrimary}>Suivant</Text>
+                        <SafeIcon name="chevron-right" size={20} color="#FFFFFF" />
+                      </TouchableOpacity>
+                    ) : !isReadonly ? (
+                      <TouchableOpacity
+                        style={[
+                          styles.navButton,
+                          styles.navButtonSuccess,
+                          (loading || isSubmitting) && styles.navButtonDisabled // ✅ Désactiver visuellement pendant soumission
+                        ]}
+                        onPress={soumettreFormulaire}
+                        disabled={loading || isSubmitting} // ✅ Désactiver pendant loading OU soumission
+                      >
+                        <Text style={styles.navButtonTextSuccess}>
+                          {(loading || isSubmitting)
+                            ? (mode === 'edit' ? 'Modification...' : 'Création...')
+                            : (mode === 'edit' ? 'Modifier le service' : 'Créer le service')
+                          }
+                        </Text>
+                        <SafeIcon name="check" size={20} color="#FFFFFF" />
+                      </TouchableOpacity>
+                    ) : null}
+                  </View>
+                </ScrollView>
               </>
             )}
           </View>
         )}
-      </ScrollView>
+      </View>
 
       {/* Toast de succès */}
       {showSuccessToast && (
@@ -1564,6 +1474,22 @@ const styles = StyleSheet.create({
     width: 40,
   },
   scrollView: {
+    flex: 1,
+  },
+  stickyNavigation: {
+    backgroundColor: modernColors.background,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+  },
+  contentScrollView: {
     flex: 1,
   },
   contentContainer: {

@@ -18,6 +18,7 @@ pub mod notification_routes; // ✅ Routes de notifications
 pub mod push_routes; // ✅ Routes de push notifications
 pub mod webrtc_routes; // ✅ Routes WebRTC pour appels
 pub mod chat_routes; // ✅ NOUVEAU: Routes de chat avec push notifications
+pub mod product_lifecycle_routes; // ✅ Routes de gestion du cycle de vie des produits
 
 // === Routes d'Optimisation IA ===
 // pub mod ia_routes_optimized; // Temporairement d?sactiv?

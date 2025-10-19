@@ -2,37 +2,14 @@ use chrono::Utc;
 use sqlx::PgPool;
 use log::{info};
 
-/// ?? D?sactive automatiquement les services tarissables en fonction de leur vitesse de tarissement
+/// ⚠️ DÉSACTIVÉ - La logique de désactivation automatique a été déplacée vers les PRODUITS
+/// Les services ne sont plus désactivés automatiquement
+/// Voir: backend/src/tasks/product_deactivation.rs pour la nouvelle logique
+#[deprecated(note = "Logique de désactivation déplacée vers les produits. Utiliser product_deactivation::deactivate_expired_products()")]
 pub async fn desactiver_services_tarissables(pool: &PgPool) -> Result<(), sqlx::Error> {
-    let maintenant = Utc::now();
-    let il_y_a_7_jours = maintenant - chrono::Duration::days(7);
-    let il_y_a_14_jours = maintenant - chrono::Duration::days(14);
-    let il_y_a_30_jours = maintenant - chrono::Duration::days(30);
-
-    // D?sactivation des services ? tarissement rapide (1 semaine)
-    sqlx::query!(
-        "UPDATE services SET is_active = FALSE WHERE is_tarissable = TRUE AND vitesse_tarissement = 'rapide' AND updated_at < $1",
-        il_y_a_7_jours
-    )
-    .execute(pool)
-    .await?;
-
-    // D?sactivation des services ? tarissement moyen (2 semaines)
-    sqlx::query!(
-        "UPDATE services SET is_active = FALSE WHERE is_tarissable = TRUE AND vitesse_tarissement = 'moyenne' AND updated_at < $1",
-        il_y_a_14_jours
-    )
-    .execute(pool)
-    .await?;
-
-    // D?sactivation des services ? tarissement lent (1 mois)
-    sqlx::query!(
-        "UPDATE services SET is_active = FALSE WHERE is_tarissable = TRUE AND vitesse_tarissement = 'lente' AND updated_at < $1",
-        il_y_a_30_jours
-    )
-    .execute(pool)
-    .await?;
-
+    // Cette fonction est maintenant un no-op (ne fait rien)
+    // La désactivation automatique est gérée au niveau des PRODUITS, pas des SERVICES
+    log::info!("⚠️ [ServiceDeactivation] DEPRECATED - Utiliser product_deactivation pour désactiver les produits");
     Ok(())
 }
 

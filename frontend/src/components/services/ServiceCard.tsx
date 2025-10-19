@@ -103,7 +103,61 @@ const formatDate = (dateString: string): string => {
   }
 };
 
+// Obtenir l'icône selon la catégorie
+const getCategoryIcon = (category: string): string => {
+  const categoryLower = category?.toLowerCase() || '';
 
+  // Immobilier
+  if (categoryLower.includes('immo') || categoryLower.includes('logement') || categoryLower.includes('habitation')) {
+    return '🏠';
+  }
+  // Transport
+  if (categoryLower.includes('voyage') || categoryLower.includes('transport') || categoryLower.includes('covoiturage')) {
+    return '🗺️';
+  }
+  // Automobile
+  if (categoryLower.includes('auto') || categoryLower.includes('véhicule') || categoryLower.includes('voiture')) {
+    return '🚗';
+  }
+  // Livraison
+  if (categoryLower.includes('livraison') || categoryLower.includes('colis') || categoryLower.includes('fret')) {
+    return '🚛';
+  }
+  // Commerce
+  if (categoryLower.includes('commerce') || categoryLower.includes('bayam') || categoryLower.includes('vente')) {
+    return '📉';
+  }
+  // Santé
+  if (categoryLower.includes('santé') || categoryLower.includes('sante') || categoryLower.includes('médical') || categoryLower.includes('pharmacie') || categoryLower.includes('hôpital')) {
+    return '❤️';
+  }
+  // Éducation
+  if (categoryLower.includes('éducation') || categoryLower.includes('education') || categoryLower.includes('étude') || categoryLower.includes('formation') || categoryLower.includes('scolaire')) {
+    return '📚';
+  }
+  // Assurance
+  if (categoryLower.includes('assurance') || categoryLower.includes('protection')) {
+    return '🛡️';
+  }
+  // Électronique/Tech
+  if (categoryLower.includes('électro') || categoryLower.includes('tech') || categoryLower.includes('informatique')) {
+    return '📱';
+  }
+  // Alimentation
+  if (categoryLower.includes('aliment') || categoryLower.includes('restaurant') || categoryLower.includes('cuisine')) {
+    return '☕';
+  }
+  // Construction
+  if (categoryLower.includes('construction') || categoryLower.includes('bâtiment') || categoryLower.includes('travaux')) {
+    return '🔧';
+  }
+  // Beauté/Bien-être
+  if (categoryLower.includes('beauté') || categoryLower.includes('coiffure') || categoryLower.includes('esthétique')) {
+    return '✂️';
+  }
+  // Défaut
+  return '📦';
+};
 
 // ?? NOUVEAU : Fonction pour vérifier le statut en ligne réel
 const useOnlineStatus = (userId: number, wsConnected: boolean, userStatus: any, serviceCreatedAt: string) => {
@@ -306,7 +360,8 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
 
           {/* Catégorie simple */}
           <div className="flex items-center gap-2 mb-2">
-            <Badge className="bg-blue-500 text-white text-xs font-medium px-3 py-1">
+            <Badge className="bg-blue-500 text-white text-xs font-medium px-3 py-1 flex items-center gap-1.5">
+              <span>{getCategoryIcon(getServiceFieldValue(service.data?.category))}</span>
               {getServiceFieldValue(service.data?.category)}
             </Badge>
             <span className="text-xs text-gray-500 font-medium ml-auto">
@@ -402,6 +457,7 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
                 banniere={undefined}
                 images_realisations={displayMedia.images}
                 videos={displayMedia.videos}
+                products={service.data?.produits || []}
                 className="bg-gray-50 rounded-lg p-3 border border-gray-100"
               />
             </div>

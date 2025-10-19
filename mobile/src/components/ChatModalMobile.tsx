@@ -418,7 +418,12 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
             documents: selectedDocuments.length > 0 ? selectedDocuments : undefined,
         };
 
-        await sendMessage(newMessage.trim(), 'text', messageData);
+        // ✅ CORRIGÉ: Détecter automatiquement le type de message
+        const messageType = selectedImages.length > 0 ? 'image' :
+            selectedAudio ? 'audio' :
+                selectedDocuments.length > 0 ? 'file' : 'text';
+
+        await sendMessage(newMessage.trim() || '', messageType, messageData);
 
         // Nettoyer l'audio si présent
         if (audioSound) {
