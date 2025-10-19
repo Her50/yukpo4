@@ -91,7 +91,7 @@ interface Product {
     dateDepart?: string;
     heureDepart?: string;
     numeroPlace?: string;
-    compagnie?: string;
+    compagnieTransport?: string;
 
     // Covoiturage
     pointDepart?: string;
@@ -162,7 +162,7 @@ interface Product {
 
     // Assurance
     typeAssurance?: string; // Auto, Santé, Habitation, Vie, etc.
-    compagnie?: string; // Nom de la compagnie d'assurance
+    compagnieAssurance?: string; // Nom de la compagnie d'assurance
     couverture?: string; // Étendue de la couverture
     franchise?: string; // Montant de la franchise
     dureeContrat?: string; // 1 an, 2 ans, etc.
@@ -577,7 +577,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 dateDepart: columns[6],
                                 heureDepart: columns[7],
                                 numeroPlace: columns[8],
-                                compagnie: columns[9]
+                                compagnieTransport: columns[9]
                             } as Product;
                             break;
 
@@ -1122,8 +1122,8 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             <Text style={styles.fieldLabel}>Compagnie</Text>
                             <NativeInput
                                 placeholder="Ex: Central Voyages"
-                                value={newProduct.compagnie || ''}
-                                onChangeText={(text) => setNewProduct({ ...newProduct, compagnie: text })}
+                                value={newProduct.compagnieTransport || ''}
+                                onChangeText={(text) => setNewProduct({ ...newProduct, compagnieTransport: text })}
                                 style={styles.fieldInput}
                             />
                         </View>
