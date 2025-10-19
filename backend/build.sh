@@ -5,6 +5,12 @@
 
 echo "=== Build Yukpomnang Backend ==="
 
+# Installer sqlx-cli si nécessaire
+if ! command -v sqlx &> /dev/null; then
+    echo "Installation de sqlx-cli..."
+    cargo install sqlx-cli --no-default-features --features postgres
+fi
+
 # Étape 1: Configuration de la base de données
 echo "1. Configuration de la base de données..."
 if [ -f "scripts/setup-database.sh" ]; then
@@ -18,10 +24,10 @@ else
     echo "Script de configuration de base de données non trouvé"
 fi
 
-# Étape 2: Compilation avec Cargo
+# Étape 2: Compilation avec Cargo en mode offline SQLx
 echo "2. Compilation de l'application..."
-echo "Mode SQLx: En ligne (vérification de la base de données)"
-# Désactivation de SQLX_OFFLINE pour permettre la vérification des migrations
+echo "Mode SQLx: OFFLINE (pas de vérification DB à la compilation)"
+export SQLX_OFFLINE=true
 cargo build --release
 
 if [ $? -eq 0 ]; then

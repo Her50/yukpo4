@@ -124,4 +124,15 @@ else
     exit 1
 fi
 
+# Exécuter les migrations SQLx pour créer toutes les tables et fonctions
+echo "Exécution des migrations SQLx..."
+sqlx migrate run
+
+if [ $? -eq 0 ]; then
+    echo "✓ Migrations SQLx exécutées avec succès"
+else
+    echo "✗ Erreur lors de l'exécution des migrations"
+    exit 1
+fi
+
 echo "=== Configuration de la base de données terminée ==="

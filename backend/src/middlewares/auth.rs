@@ -1,8 +1,10 @@
-use axum::{async_trait, extract::{FromRequestParts, RequestParts}, http::{StatusCode, request::Parts}, response::IntoResponse};
+use async_trait::async_trait;
+use axum::{extract::FromRequestParts, http::{StatusCode, request::Parts}};
 use jsonwebtoken::{decode, DecodingKey, Validation, Algorithm, TokenData};
-use serde::{Deserialize};
+use serde::Deserialize;
 use std::sync::Arc;
 use crate::state::AppState;
+use base64::{Engine as _, engine::general_purpose};
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct Claims {
@@ -37,7 +39,7 @@ where
             let parts: Vec<&str> = token.split('.').collect();
             if parts.len() == 3 {
                 // Décoder le payload
-                if let Ok(payload_str) = base64::decode(parts[1]) {
+                if let Ok(payload_str) = general_purpose::STANDARD.decode(parts[1]) {
                     if let Ok(payload) = serde_json::from_slice::<serde_json::Value>(&payload_str) {
                         return Ok(AuthUser {
                             user_id: payload["sub"].as_str().unwrap_or("dev-user-id").to_string(),

@@ -1,4 +1,4 @@
-use sqlx::PgPool;
+use sqlx::{PgPool, Row};
 use log::{info, error};
 
 /// Désactive automatiquement les produits expirés (30 jours)
@@ -124,20 +124,18 @@ pub async fn reactivate_single_product(
         service_id, product_index, user_id);
     
     // Appeler la fonction PostgreSQL
-    let result = sqlx::query!(
-        r#"
-        SELECT reactivate_product($1, $2, $3) AS "result!: sqlx::types::JsonValue"
-        "#,
-        service_id,
-        product_index,
-        user_id
-    )
-    .fetch_one(pool)
-    .await
-    .map_err(|e| format!("Erreur DB: {}", e))?;
+    let row = sqlx::query("SELECT reactivate_product($1, $2, $3) AS result")
+        .bind(service_id)
+        .bind(product_index)
+        .bind(user_id)
+        .fetch_one(pool)
+        .await
+        .map_err(|e| format!("Erreur DB: {}", e))?;
     
     // Parser le résultat JSON
-    let response: ReactivationResult = serde_json::from_value(result.result.clone())
+    let json_value: sqlx::types::JsonValue = row.try_get("result")
+        .map_err(|e| format!("Erreur extraction result: {}", e))?;
+    let response: ReactivationResult = serde_json::from_value(json_value)
         .map_err(|e| format!("Erreur parsing: {}", e))?;
     
     if response.success {
@@ -161,20 +159,18 @@ pub async fn reactivate_multiple_products(
     info!("🔄 [ProductReactivation] Réactivation multiple - {} produits", product_indices.len());
     
     // Appeler la fonction PostgreSQL
-    let result = sqlx::query!(
-        r#"
-        SELECT reactivate_multiple_products($1, $2, $3) AS "result!: sqlx::types::JsonValue"
-        "#,
-        service_id,
-        &product_indices,
-        user_id
-    )
-    .fetch_one(pool)
-    .await
-    .map_err(|e| format!("Erreur DB: {}", e))?;
+    let row = sqlx::query("SELECT reactivate_multiple_products($1, $2, $3) AS result")
+        .bind(service_id)
+        .bind(&product_indices)
+        .bind(user_id)
+        .fetch_one(pool)
+        .await
+        .map_err(|e| format!("Erreur DB: {}", e))?;
     
     // Parser le résultat JSON
-    let response: MultipleReactivationResult = serde_json::from_value(result.result.clone())
+    let json_value: sqlx::types::JsonValue = row.try_get("result")
+        .map_err(|e| format!("Erreur extraction result: {}", e))?;
+    let response: MultipleReactivationResult = serde_json::from_value(json_value)
         .map_err(|e| format!("Erreur parsing: {}", e))?;
     
     if response.success {
