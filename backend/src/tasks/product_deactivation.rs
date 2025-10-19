@@ -192,7 +192,7 @@ pub async fn reactivate_multiple_products(
 }
 
 // Structures de données
-#[derive(Debug, sqlx::FromRow)]
+#[derive(Debug, sqlx::FromRow, serde::Serialize)]
 pub struct InactiveProduct {
     pub id: i32,
     pub service_id: i32,

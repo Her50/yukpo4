@@ -1,21 +1,27 @@
-use actix_web::web;
+use std::sync::Arc;
+use axum::{
+    Router,
+    routing::{get, post},
+};
 use crate::controllers::product_lifecycle_controller;
+use crate::state::AppState;
 
-pub fn configure_product_lifecycle_routes(cfg: &mut web::ServiceConfig) {
-    cfg
+pub fn product_lifecycle_routes(state: Arc<AppState>) -> Router {
+    Router::new()
         // Récupérer les produits désactivés du prestataire
-        .route("/products/inactive", web::get().to(product_lifecycle_controller::get_inactive_products))
+        .route("/products/inactive", get(product_lifecycle_controller::get_inactive_products))
         
         // Récupérer le statut des produits d'un service
-        .route("/products/{service_id}/status", web::get().to(product_lifecycle_controller::get_products_status))
+        .route("/products/:service_id/status", get(product_lifecycle_controller::get_products_status))
         
         // Réactiver un seul produit
-        .route("/products/reactivate", web::post().to(product_lifecycle_controller::reactivate_product))
+        .route("/products/reactivate", post(product_lifecycle_controller::reactivate_product))
         
         // Réactiver plusieurs produits en une fois
-        .route("/products/reactivate-multiple", web::post().to(product_lifecycle_controller::reactivate_multiple))
+        .route("/products/reactivate-multiple", post(product_lifecycle_controller::reactivate_multiple))
         
         // Obtenir le coût de réactivation
-        .route("/products/reactivation-cost", web::get().to(product_lifecycle_controller::get_reactivation_cost));
+        .route("/products/reactivation-cost", get(product_lifecycle_controller::get_reactivation_cost))
+        
+        .with_state(state)
 }
-

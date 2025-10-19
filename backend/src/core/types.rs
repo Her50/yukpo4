@@ -21,6 +21,9 @@ pub enum AppError {
     #[error("? Unauthorized: {0}")]
     Unauthorized(String),
 
+    #[error("?? Forbidden: {0}")]
+    Forbidden(String),
+
     #[error("?? Not Found: {0}")]
     NotFound(String),
 
@@ -48,6 +51,7 @@ impl IntoResponse for AppError {
     fn into_response(self) -> Response {
         let status = match self {
             AppError::Unauthorized(_) => StatusCode::UNAUTHORIZED,
+            AppError::Forbidden(_)    => StatusCode::FORBIDDEN,
             AppError::NotFound(_)     => StatusCode::NOT_FOUND,
             AppError::Conflict(_)     => StatusCode::CONFLICT,
             AppError::BadRequest(_)   => StatusCode::BAD_REQUEST,

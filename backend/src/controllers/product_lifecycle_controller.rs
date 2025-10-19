@@ -1,14 +1,18 @@
-use actix_web::{web, HttpRequest, HttpResponse};
+use std::sync::Arc;
+use axum::{
+    extract::{State, Path, Query},
+    response::Json,
+};
 use serde::{Deserialize, Serialize};
-use sqlx::PgPool;
-use crate::core::types::AppError;
+use crate::core::types::{AppError, AppResult};
 use crate::tasks::product_deactivation::{
     get_inactive_products_for_user,
     reactivate_single_product,
     reactivate_multiple_products,
     InactiveProduct,
 };
-use crate::utils::auth::get_user_id_from_request;
+use crate::middlewares::auth::AuthUser;
+use crate::state::AppState;
 
 #[derive(Debug, Deserialize)]
 pub struct ReactivateProductRequest {
@@ -29,20 +33,26 @@ pub struct ProductLifecycleResponse {
     pub data: Option<serde_json::Value>,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct ReactivationCostQuery {
+    pub count: Option<i32>,
+}
+
 /// GET /api/products/inactive - Récupère les produits désactivés du prestataire
 pub async fn get_inactive_products(
-    pool: web::Data<PgPool>,
-    req: HttpRequest,
-) -> Result<HttpResponse, AppError> {
+    State(state): State<Arc<AppState>>,
+    auth: AuthUser,
+) -> AppResult<Json<serde_json::Value>> {
     // Extraire le user_id depuis le token JWT
-    let user_id = get_user_id_from_request(&req)?;
+    let user_id: i32 = auth.user_id.parse()
+        .map_err(|_| AppError::BadRequest("Invalid user_id format".to_string()))?;
     
     // Récupérer les produits désactivés
-    let inactive_products = get_inactive_products_for_user(&pool, user_id)
+    let inactive_products = get_inactive_products_for_user(&state.pg, user_id)
         .await
         .map_err(|e| AppError::Internal(format!("Erreur récupération produits inactifs: {}", e)))?;
     
-    Ok(HttpResponse::Ok().json(serde_json::json!({
+    Ok(Json(serde_json::json!({
         "success": true,
         "products": inactive_products,
         "count": inactive_products.len(),
@@ -52,19 +62,19 @@ pub async fn get_inactive_products(
 
 /// GET /api/products/:service_id/status - Statut des produits d'un service
 pub async fn get_products_status(
-    pool: web::Data<PgPool>,
-    req: HttpRequest,
-    path: web::Path<i32>,
-) -> Result<HttpResponse, AppError> {
-    let service_id = path.into_inner();
-    let user_id = get_user_id_from_request(&req)?;
+    State(state): State<Arc<AppState>>,
+    auth: AuthUser,
+    Path(service_id): Path<i32>,
+) -> AppResult<Json<serde_json::Value>> {
+    let user_id: i32 = auth.user_id.parse()
+        .map_err(|_| AppError::BadRequest("Invalid user_id format".to_string()))?;
     
     // Vérifier que le service appartient à l'utilisateur
     let service = sqlx::query!(
         "SELECT user_id FROM services WHERE id = $1",
         service_id
     )
-    .fetch_optional(pool.get_ref())
+    .fetch_optional(&state.pg)
     .await
     .map_err(|e| AppError::Internal(format!("Erreur DB: {}", e)))?;
     
@@ -77,11 +87,11 @@ pub async fn get_products_status(
                 "#,
                 service_id
             )
-            .fetch_all(pool.get_ref())
+            .fetch_all(&state.pg)
             .await
             .map_err(|e| AppError::Internal(format!("Erreur récupération statut: {}", e)))?;
             
-            Ok(HttpResponse::Ok().json(serde_json::json!({
+            Ok(Json(serde_json::json!({
                 "success": true,
                 "service_id": service_id,
                 "products": products_status,
@@ -97,15 +107,16 @@ pub async fn get_products_status(
 
 /// POST /api/products/reactivate - Réactive un produit
 pub async fn reactivate_product(
-    pool: web::Data<PgPool>,
-    req: HttpRequest,
-    body: web::Json<ReactivateProductRequest>,
-) -> Result<HttpResponse, AppError> {
-    let user_id = get_user_id_from_request(&req)?;
+    State(state): State<Arc<AppState>>,
+    auth: AuthUser,
+    Json(body): Json<ReactivateProductRequest>,
+) -> AppResult<Json<serde_json::Value>> {
+    let user_id: i32 = auth.user_id.parse()
+        .map_err(|_| AppError::BadRequest("Invalid user_id format".to_string()))?;
     
     // Appeler la fonction de réactivation
     let result = reactivate_single_product(
-        pool.get_ref(),
+        &state.pg,
         body.service_id,
         body.product_index,
         user_id,
@@ -113,20 +124,20 @@ pub async fn reactivate_product(
     .await
     .map_err(|e| AppError::Internal(e))?;
     
-    if result.success {
-        Ok(HttpResponse::Ok().json(result))
-    } else {
-        Ok(HttpResponse::BadRequest().json(result))
-    }
+    Ok(Json(serde_json::to_value(result).unwrap_or_else(|_| serde_json::json!({
+        "success": false,
+        "error": "Erreur de sérialisation"
+    }))))
 }
 
 /// POST /api/products/reactivate-multiple - Réactive plusieurs produits
 pub async fn reactivate_multiple(
-    pool: web::Data<PgPool>,
-    req: HttpRequest,
-    body: web::Json<ReactivateMultipleProductsRequest>,
-) -> Result<HttpResponse, AppError> {
-    let user_id = get_user_id_from_request(&req)?;
+    State(state): State<Arc<AppState>>,
+    auth: AuthUser,
+    Json(body): Json<ReactivateMultipleProductsRequest>,
+) -> AppResult<Json<serde_json::Value>> {
+    let user_id: i32 = auth.user_id.parse()
+        .map_err(|_| AppError::BadRequest("Invalid user_id format".to_string()))?;
     
     // Vérifier que l'utilisateur a des produits à réactiver
     if body.product_indices.is_empty() {
@@ -135,7 +146,7 @@ pub async fn reactivate_multiple(
     
     // Appeler la fonction de réactivation multiple
     let result = reactivate_multiple_products(
-        pool.get_ref(),
+        &state.pg,
         body.service_id,
         body.product_indices.clone(),
         user_id,
@@ -143,25 +154,22 @@ pub async fn reactivate_multiple(
     .await
     .map_err(|e| AppError::Internal(e))?;
     
-    if result.success {
-        Ok(HttpResponse::Ok().json(result))
-    } else {
-        Ok(HttpResponse::BadRequest().json(result))
-    }
+    Ok(Json(serde_json::to_value(result).unwrap_or_else(|_| serde_json::json!({
+        "success": false,
+        "error": "Erreur de sérialisation"
+    }))))
 }
 
 /// GET /api/products/reactivation-cost - Obtient le coût de réactivation
 pub async fn get_reactivation_cost(
-    req: HttpRequest,
-    query: web::Query<ReactivationCostQuery>,
-) -> Result<HttpResponse, AppError> {
-    let _user_id = get_user_id_from_request(&req)?;
-    
+    _auth: AuthUser,
+    Query(query): Query<ReactivationCostQuery>,
+) -> AppResult<Json<serde_json::Value>> {
     let product_count = query.count.unwrap_or(1);
     let cost_per_product = 1000; // 1000 FCFA
     let total_cost = cost_per_product * product_count;
     
-    Ok(HttpResponse::Ok().json(serde_json::json!({
+    Ok(Json(serde_json::json!({
         "success": true,
         "cost_per_product": cost_per_product,
         "product_count": product_count,
@@ -169,9 +177,3 @@ pub async fn get_reactivation_cost(
         "currency": "FCFA"
     })))
 }
-
-#[derive(Debug, Deserialize)]
-pub struct ReactivationCostQuery {
-    pub count: Option<i32>,
-}
-
