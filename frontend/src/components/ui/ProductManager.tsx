@@ -18,7 +18,12 @@ type ProductType =
     | 'vetement'
     | 'chaussure'
     | 'electromenager'
+    | 'image_son'
+    | 'telephone'
+    | 'ordinateur'
     | 'mobilier'
+    | 'decoration'
+    | 'ustensiles_cuisine'
     | 'aliments'
     | 'livres_fournitures'
     | 'quincaillerie'
@@ -68,22 +73,27 @@ interface ProductManagerProps {
 }
 
 const PRODUCT_TYPES = [
-    { value: 'immobilier_batiment', label: 'Biens Immobiliers - Bâtiment', icon: '🏢', description: 'Appartements, villas, maisons' },
-    { value: 'immobilier_terrain', label: 'Biens Immobiliers - Terrain', icon: '🏞️', description: 'Terrains, parcelles' },
-    { value: 'automobile', label: 'Véhicules Automobiles', icon: '🚗', description: 'Voitures, motos' },
-    { value: 'ticket_voyage', label: 'Billets de Transport', icon: '🎫', description: 'Tickets de bus, train' },
-    { value: 'covoiturage', label: 'Services de Covoiturage', icon: '🚙', description: 'Trajets partagés' },
-    { value: 'vetement', label: 'Articles Vestimentaires', icon: '👕', description: 'Vêtements' },
-    { value: 'chaussure', label: 'Chaussures', icon: '👟', description: 'Chaussures' },
-    { value: 'electromenager', label: 'Électroménager', icon: '🔌', description: 'Appareils électriques' },
-    { value: 'mobilier', label: 'Mobilier et Décoration', icon: '🪑', description: 'Meubles' },
-    { value: 'aliments', label: 'Produits Alimentaires', icon: '🍎', description: 'Aliments frais et secs' },
-    { value: 'livres_fournitures', label: 'Livres et Articles Scolaires', icon: '📚', description: 'Livres, fournitures' },
-    { value: 'quincaillerie', label: 'Quincaillerie et Matériaux de Construction', icon: '🔨', description: 'Outils, matériaux, peintures' },
-    { value: 'prestation_service', label: 'Portfolio de Réalisations', icon: '🎨', description: 'Galerie de vos réalisations professionnelles' },
-    { value: 'pharmacie', label: 'Pharmacies', icon: '💊', description: 'Pharmacies' },
-    { value: 'hopital_clinique', label: 'Établissements de Santé', icon: '🏥', description: 'Hôpitaux, cliniques' },
-    { value: 'autre', label: 'Autres Produits', icon: '📦', description: 'Autres' },
+    { value: 'aliments', label: 'Aliments et Produits Frais', icon: '🍎', description: 'Fruits, légumes, viandes, poissons, produits frais et secs' },
+    { value: 'automobile', label: 'Automobiles et Véhicules', icon: '🚗', description: 'Voitures, motos, camions, véhicules utilitaires' },
+    { value: 'chaussure', label: 'Chaussures et Accessoires', icon: '👟', description: 'Chaussures, baskets, sandales, bottes' },
+    { value: 'covoiturage', label: 'Covoiturage et Trajets', icon: '🚙', description: 'Trajets partagés, carpooling, transport collectif' },
+    { value: 'decoration', label: 'Décoration Intérieure', icon: '🖼️', description: 'Tableaux, luminaires, tapis, accessoires déco' },
+    { value: 'electromenager', label: 'Électroménager Domestique', icon: '🔌', description: 'Frigos, fours, machines à laver, micro-ondes' },
+    { value: 'hopital_clinique', label: 'Établissements de Santé', icon: '🏥', description: 'Hôpitaux, cliniques, centres médicaux, spécialités' },
+    { value: 'image_son', label: 'Image et Son', icon: '📺', description: 'TV, home cinéma, enceintes, projecteurs, systèmes audio' },
+    { value: 'immobilier_batiment', label: 'Immobilier - Bâtiments', icon: '🏢', description: 'Appartements, villas, maisons, immeubles' },
+    { value: 'immobilier_terrain', label: 'Immobilier - Terrains', icon: '🏞️', description: 'Terrains constructibles, parcelles, lots' },
+    { value: 'livres_fournitures', label: 'Livres et Fournitures Scolaires', icon: '📚', description: 'Manuels, livres, cahiers, stylos, fournitures' },
+    { value: 'mobilier', label: 'Mobilier et Ameublement', icon: '🪑', description: 'Meubles salon, chambre, bureau, rangement' },
+    { value: 'ordinateur', label: 'Ordinateurs et Informatique', icon: '💻', description: 'PC portables, bureaux, tablettes, accessoires' },
+    { value: 'pharmacie', label: 'Pharmacies et Gardes', icon: '💊', description: 'Pharmacies, planning de garde, services pharmaceutiques' },
+    { value: 'prestation_service', label: 'Portfolio de Réalisations', icon: '🎯', description: 'Galerie de vos prestations professionnelles' },
+    { value: 'quincaillerie', label: 'Quincaillerie et Matériaux', icon: '🔨', description: 'Outils, matériaux, peintures, construction' },
+    { value: 'telephone', label: 'Téléphones et Accessoires', icon: '📱', description: 'Smartphones, accessoires, coques, écouteurs' },
+    { value: 'ticket_voyage', label: 'Tickets et Billets de Transport', icon: '🎫', description: 'Bus, train, avion avec sélection de place' },
+    { value: 'ustensiles_cuisine', label: 'Ustensiles de Cuisine', icon: '🍴', description: 'Casseroles, poêles, couteaux, mixers, batterie cuisine' },
+    { value: 'vetement', label: 'Vêtements et Prêt-à-Porter', icon: '👕', description: 'Vêtements, habits, articles de mode' },
+    { value: 'autre', label: 'Autres Produits', icon: '📦', description: 'Autres types de produits et services' },
 ] as const;
 
 const CURRENCIES = [
@@ -128,6 +138,7 @@ const ProductManager: React.FC<ProductManagerProps> = ({
     const [showCurrencyDropdown, setShowCurrencyDropdown] = useState(false);
     const [dragActive, setDragActive] = useState(false);
     const [showGPSModal, setShowGPSModal] = useState(false);
+    const [searchQuery, setSearchQuery] = useState(''); // Recherche textuelle pour types
     const [showSeatSelector, setShowSeatSelector] = useState(false);
     const [selectedGPSLocation, setSelectedGPSLocation] = useState<{ lat: number; lng: number } | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -394,8 +405,33 @@ const ProductManager: React.FC<ProductManagerProps> = ({
                                     <h3 className="text-lg font-semibold">✨ Sélectionnez le type de produit <span className="text-red-600">*</span></h3>
                                     <p className="text-sm text-gray-600">Choisissez la catégorie qui correspond le mieux à votre produit</p>
 
-                                    <div className="space-y-2">
-                                        {PRODUCT_TYPES.map((type) => (
+                                    {/* Champ de recherche textuelle */}
+                                    <div className="relative">
+                                        <input
+                                            type="text"
+                                            placeholder="🔍 Rechercher une catégorie..."
+                                            value={searchQuery}
+                                            onChange={(e) => setSearchQuery(e.target.value)}
+                                            className="w-full px-4 py-2 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                        />
+                                        {searchQuery && (
+                                            <button
+                                                onClick={() => setSearchQuery('')}
+                                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                                            >
+                                                <X className="w-4 h-4" />
+                                            </button>
+                                        )}
+                                    </div>
+
+                                    <div className="space-y-2 max-h-96 overflow-y-auto">
+                                        {PRODUCT_TYPES
+                                            .filter(type => 
+                                                searchQuery.length === 0 || 
+                                                type.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                                                type.description.toLowerCase().includes(searchQuery.toLowerCase())
+                                            )
+                                            .map((type) => (
                                             <button
                                                 key={type.value}
                                                 onClick={() => handleSelectType(type.value as ProductType)}
