@@ -366,6 +366,133 @@ const ProductCard: React.FC<ProductCardProps> = ({
                     </View>
                 );
 
+            case 'image_son':
+                return (
+                    <View style={styles.detailsGrid}>
+                        {product.marqueImageSon && (
+                            <View style={styles.detailChip}>
+                                <Text style={styles.detailText}>🏷️ {product.marqueImageSon}</Text>
+                            </View>
+                        )}
+                        {product.typeImageSon && (
+                            <View style={styles.detailChip}>
+                                <Text style={styles.detailText}>📺 {product.typeImageSon}</Text>
+                            </View>
+                        )}
+                        {product.diagonaleEcran && (
+                            <View style={styles.detailChip}>
+                                <SafeIcon name="maximize-2" size={14} color="#6B7280" />
+                                <Text style={styles.detailText}>{product.diagonaleEcran}"</Text>
+                            </View>
+                        )}
+                        {product.resolution && (
+                            <View style={styles.detailChip}>
+                                <Text style={styles.detailText}>🎬 {product.resolution}</Text>
+                            </View>
+                        )}
+                    </View>
+                );
+
+            case 'telephone':
+                return (
+                    <View style={styles.detailsGrid}>
+                        {product.marqueTelephone && (
+                            <View style={styles.detailChip}>
+                                <Text style={styles.detailText}>🏷️ {product.marqueTelephone}</Text>
+                            </View>
+                        )}
+                        {product.modeleTelephone && (
+                            <View style={styles.detailChip}>
+                                <Text style={styles.detailText}>📱 {product.modeleTelephone}</Text>
+                            </View>
+                        )}
+                        {product.stockage && (
+                            <View style={styles.detailChip}>
+                                <SafeIcon name="hard-drive" size={14} color="#6B7280" />
+                                <Text style={styles.detailText}>{product.stockage}</Text>
+                            </View>
+                        )}
+                        {product.ram && (
+                            <View style={styles.detailChip}>
+                                <SafeIcon name="cpu" size={14} color="#6B7280" />
+                                <Text style={styles.detailText}>RAM: {product.ram}</Text>
+                            </View>
+                        )}
+                    </View>
+                );
+
+            case 'ordinateur':
+                return (
+                    <View style={styles.detailsGrid}>
+                        {product.marqueOrdinateur && (
+                            <View style={styles.detailChip}>
+                                <Text style={styles.detailText}>🏷️ {product.marqueOrdinateur}</Text>
+                            </View>
+                        )}
+                        {product.processeur && (
+                            <View style={styles.detailChip}>
+                                <SafeIcon name="cpu" size={14} color="#6B7280" />
+                                <Text style={styles.detailText}>{product.processeur}</Text>
+                            </View>
+                        )}
+                        {product.ramOrdinateur && (
+                            <View style={styles.detailChip}>
+                                <Text style={styles.detailText}>RAM: {product.ramOrdinateur}</Text>
+                            </View>
+                        )}
+                        {product.stockageOrdinateur && (
+                            <View style={styles.detailChip}>
+                                <SafeIcon name="hard-drive" size={14} color="#6B7280" />
+                                <Text style={styles.detailText}>{product.stockageOrdinateur}</Text>
+                            </View>
+                        )}
+                    </View>
+                );
+
+            case 'decoration':
+                return (
+                    <View style={styles.detailsGrid}>
+                        {product.typeDecoration && (
+                            <View style={styles.detailChip}>
+                                <Text style={styles.detailText}>🖼️ {product.typeDecoration}</Text>
+                            </View>
+                        )}
+                        {product.style && (
+                            <View style={styles.detailChip}>
+                                <Text style={styles.detailText}>✨ {product.style}</Text>
+                            </View>
+                        )}
+                        {product.couleurDecoration && (
+                            <View style={styles.detailChip}>
+                                <SafeIcon name="droplet" size={14} color="#6B7280" />
+                                <Text style={styles.detailText}>{product.couleurDecoration}</Text>
+                            </View>
+                        )}
+                    </View>
+                );
+
+            case 'ustensiles_cuisine':
+                return (
+                    <View style={styles.detailsGrid}>
+                        {product.typeUstensile && (
+                            <View style={styles.detailChip}>
+                                <Text style={styles.detailText}>🍴 {product.typeUstensile}</Text>
+                            </View>
+                        )}
+                        {product.materiauUstensile && (
+                            <View style={styles.detailChip}>
+                                <Text style={styles.detailText}>📦 {product.materiauUstensile}</Text>
+                            </View>
+                        )}
+                        {product.marqueUstensile && (
+                            <View style={styles.detailChip}>
+                                <SafeIcon name="tag" size={14} color="#6B7280" />
+                                <Text style={styles.detailText}>{product.marqueUstensile}</Text>
+                            </View>
+                        )}
+                    </View>
+                );
+
             case 'prestation_service':
                 return (
                     <View style={styles.detailsGrid}>

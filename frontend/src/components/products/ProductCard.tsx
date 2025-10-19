@@ -361,6 +361,131 @@ const ProductCard: React.FC<ProductCardProps> = ({
                     </div>
                 );
 
+            case 'image_son':
+                return (
+                    <div className="flex flex-wrap gap-2 mt-2">
+                        {product.marqueImageSon && (
+                            <Badge variant="secondary" className="text-xs">
+                                <Tag className="w-3 h-3 mr-1" />
+                                {product.marqueImageSon}
+                            </Badge>
+                        )}
+                        {product.typeImageSon && (
+                            <Badge variant="secondary" className="text-xs">
+                                📺 {product.typeImageSon}
+                            </Badge>
+                        )}
+                        {product.diagonaleEcran && (
+                            <Badge variant="secondary" className="text-xs">
+                                📐 {product.diagonaleEcran}"
+                            </Badge>
+                        )}
+                        {product.resolution && (
+                            <Badge variant="default" className="text-xs bg-purple-50 text-purple-700">
+                                🎬 {product.resolution}
+                            </Badge>
+                        )}
+                    </div>
+                );
+
+            case 'telephone':
+                return (
+                    <div className="flex flex-wrap gap-2 mt-2">
+                        {product.marqueTelephone && (
+                            <Badge variant="secondary" className="text-xs">
+                                <Tag className="w-3 h-3 mr-1" />
+                                {product.marqueTelephone}
+                            </Badge>
+                        )}
+                        {product.modeleTelephone && (
+                            <Badge variant="secondary" className="text-xs">
+                                📱 {product.modeleTelephone}
+                            </Badge>
+                        )}
+                        {product.stockage && (
+                            <Badge variant="default" className="text-xs bg-orange-50 text-orange-700">
+                                💾 {product.stockage}
+                            </Badge>
+                        )}
+                        {product.ram && (
+                            <Badge variant="secondary" className="text-xs">
+                                RAM: {product.ram}
+                            </Badge>
+                        )}
+                    </div>
+                );
+
+            case 'ordinateur':
+                return (
+                    <div className="flex flex-wrap gap-2 mt-2">
+                        {product.marqueOrdinateur && (
+                            <Badge variant="secondary" className="text-xs">
+                                <Tag className="w-3 h-3 mr-1" />
+                                {product.marqueOrdinateur}
+                            </Badge>
+                        )}
+                        {product.processeur && (
+                            <Badge variant="default" className="text-xs bg-cyan-50 text-cyan-700">
+                                🖥️ {product.processeur}
+                            </Badge>
+                        )}
+                        {product.ramOrdinateur && (
+                            <Badge variant="secondary" className="text-xs">
+                                RAM: {product.ramOrdinateur}
+                            </Badge>
+                        )}
+                        {product.stockageOrdinateur && (
+                            <Badge variant="secondary" className="text-xs">
+                                💾 {product.stockageOrdinateur}
+                            </Badge>
+                        )}
+                    </div>
+                );
+
+            case 'decoration':
+                return (
+                    <div className="flex flex-wrap gap-2 mt-2">
+                        {product.typeDecoration && (
+                            <Badge variant="secondary" className="text-xs">
+                                🖼️ {product.typeDecoration}
+                            </Badge>
+                        )}
+                        {product.style && (
+                            <Badge variant="default" className="text-xs bg-pink-50 text-pink-700">
+                                ✨ {product.style}
+                            </Badge>
+                        )}
+                        {product.couleurDecoration && (
+                            <Badge variant="secondary" className="text-xs">
+                                <Droplet className="w-3 h-3 mr-1" />
+                                {product.couleurDecoration}
+                            </Badge>
+                        )}
+                    </div>
+                );
+
+            case 'ustensiles_cuisine':
+                return (
+                    <div className="flex flex-wrap gap-2 mt-2">
+                        {product.typeUstensile && (
+                            <Badge variant="secondary" className="text-xs">
+                                🍴 {product.typeUstensile}
+                            </Badge>
+                        )}
+                        {product.materiauUstensile && (
+                            <Badge variant="secondary" className="text-xs">
+                                📦 {product.materiauUstensile}
+                            </Badge>
+                        )}
+                        {product.marqueUstensile && (
+                            <Badge variant="secondary" className="text-xs">
+                                <Tag className="w-3 h-3 mr-1" />
+                                {product.marqueUstensile}
+                            </Badge>
+                        )}
+                    </div>
+                );
+
             case 'prestation_service':
                 return (
                     <div className="flex flex-wrap gap-2 mt-2">
