@@ -185,7 +185,7 @@ pub async fn get_reactivation_cost(
     Query(query): Query<ReactivationCostQuery>,
 ) -> AppResult<Json<serde_json::Value>> {
     let _auth = extract_auth_user(&headers)
-        .map_err(|(status, msg)| AppError::Unauthorized(msg))?;
+        .map_err(|(_status, msg)| AppError::Unauthorized(msg))?;
     let product_count = query.count.unwrap_or(1);
     let cost_per_product = 1000; // 1000 FCFA
     let total_cost = cost_per_product * product_count;
