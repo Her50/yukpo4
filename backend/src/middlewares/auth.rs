@@ -1,4 +1,3 @@
-use async_trait::async_trait;
 use axum::{extract::FromRequestParts, http::{StatusCode, request::Parts}};
 use jsonwebtoken::{decode, DecodingKey, Validation, Algorithm, TokenData};
 use serde::Deserialize;
@@ -18,15 +17,22 @@ pub struct AuthUser {
     pub role: String,
 }
 
-#[async_trait]
 impl<S> FromRequestParts<S> for AuthUser
 where
-    Arc<AppState>: Send + Sync,
     S: Send + Sync,
 {
     type Rejection = (StatusCode, String);
 
-    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
+    fn from_request_parts<'life0, 'life1, 'async_trait>(
+        parts: &'life0 mut Parts,
+        _state: &'life1 S,
+    ) -> ::core::pin::Pin<Box<dyn ::core::future::Future<Output = Result<Self, Self::Rejection>> + ::core::marker::Send + 'async_trait>>
+    where
+        'life0: 'async_trait,
+        'life1: 'async_trait,
+        Self: 'async_trait,
+    {
+        Box::pin(async move {
         let auth_header = parts.headers.get("Authorization")
             .and_then(|h| h.to_str().ok())
             .ok_or((StatusCode::UNAUTHORIZED, "Missing Authorization header".to_string()))?;
@@ -65,6 +71,7 @@ where
         Ok(AuthUser {
             user_id: token_data.claims.sub,
             role: token_data.claims.role,
+        })
         })
     }
 }
