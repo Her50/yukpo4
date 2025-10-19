@@ -1,4 +1,4 @@
-use axum::{extract::FromRequestParts, http::{StatusCode, request::Parts}};
+use axum::{async_trait, extract::FromRequestParts, http::{StatusCode, request::Parts}};
 use jsonwebtoken::{decode, DecodingKey, Validation, Algorithm, TokenData};
 use serde::Deserialize;
 use base64::{Engine as _, engine::general_purpose};
@@ -15,6 +15,7 @@ pub struct AuthUser {
     pub role: String,
 }
 
+#[async_trait]
 impl<S> FromRequestParts<S> for AuthUser
 where
     S: Send + Sync,
