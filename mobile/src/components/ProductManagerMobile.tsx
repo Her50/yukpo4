@@ -41,11 +41,12 @@ type ProductType =
     | 'vetement'
     | 'chaussure'
     | 'electromenager'
-    | 'electronique'
+    | 'image_son'
     | 'telephone'
     | 'ordinateur'
     | 'mobilier'
     | 'decoration'
+    | 'ustensiles_cuisine'
     | 'aliments'
     | 'livres_fournitures'
     | 'quincaillerie'
@@ -115,13 +116,14 @@ interface Product {
     etat?: string;
     garantie?: string;
 
-    // Électronique (TV, Audio, etc.)
-    marqueElectronique?: string;
-    modeleElectronique?: string;
-    typeElectronique?: string; // TV, Audio, Vidéo, etc.
+    // Image et Son (TV, Audio, etc.)
+    marqueImageSon?: string;
+    modeleImageSon?: string;
+    typeImageSon?: string; // TV, Home cinéma, Enceintes, Projecteur, etc.
     diagonaleEcran?: string; // Pour TV
     resolution?: string; // HD, 4K, 8K
-    etatElectronique?: string;
+    etatImageSon?: string;
+    garantieImageSon?: string;
 
     // Téléphones et Accessoires
     marqueTelephone?: string;
@@ -148,6 +150,14 @@ interface Product {
     style?: string; // Moderne, Classique, Vintage, etc.
     couleurDecoration?: string;
     dimensionsDecoration?: string;
+
+    // Ustensiles de Cuisine
+    typeUstensile?: string; // Casserole, Poêle, Couteau, Mixer, etc.
+    materiauUstensile?: string; // Inox, Aluminium, Plastique, Bois
+    marqueUstensile?: string;
+    capacite?: string; // Pour casseroles, mixers, etc.
+    piecesDansSet?: string; // Nombre de pièces si set
+    etatUstensile?: string;
 
     // Mobilier
     typeMobilier?: string; // Salon, Chambre, Bureau, etc.
@@ -226,20 +236,21 @@ const PRODUCT_TYPES = [
     { value: 'automobile', label: 'Automobiles et Véhicules', icon: '🚗', color: '#EF4444', description: 'Voitures, motos, camions, véhicules utilitaires' },
     { value: 'chaussure', label: 'Chaussures et Accessoires', icon: '👟', color: '#6366F1', description: 'Chaussures, baskets, sandales, bottes' },
     { value: 'covoiturage', label: 'Covoiturage et Trajets', icon: '🚙', color: '#F59E0B', description: 'Trajets partagés, carpooling, transport collectif' },
-    { value: 'decoration', label: 'Décoration Intérieure', icon: '🎨', color: '#E91E63', description: 'Tableaux, luminaires, tapis, accessoires déco' },
+    { value: 'decoration', label: 'Décoration Intérieure', icon: '🖼️', color: '#E91E63', description: 'Tableaux, luminaires, tapis, accessoires déco' },
     { value: 'electromenager', label: 'Électroménager Domestique', icon: '🔌', color: '#14B8A6', description: 'Frigos, fours, machines à laver, micro-ondes' },
-    { value: 'electronique', label: 'Électronique Audio/Vidéo', icon: '📺', color: '#9C27B0', description: 'TV, home cinéma, enceintes, systèmes audio' },
     { value: 'hopital_clinique', label: 'Établissements de Santé', icon: '🏥', color: '#DC2626', description: 'Hôpitaux, cliniques, centres médicaux, spécialités' },
+    { value: 'image_son', label: 'Image et Son', icon: '📺', color: '#9C27B0', description: 'TV, home cinéma, enceintes, projecteurs, systèmes audio' },
     { value: 'immobilier_batiment', label: 'Immobilier - Bâtiments', icon: '🏢', color: '#3B82F6', description: 'Appartements, villas, maisons, immeubles' },
     { value: 'immobilier_terrain', label: 'Immobilier - Terrains', icon: '🏞️', color: '#10B981', description: 'Terrains constructibles, parcelles, lots' },
     { value: 'livres_fournitures', label: 'Livres et Fournitures Scolaires', icon: '📚', color: '#7C3AED', description: 'Manuels, livres, cahiers, stylos, fournitures' },
     { value: 'mobilier', label: 'Mobilier et Ameublement', icon: '🪑', color: '#F97316', description: 'Meubles salon, chambre, bureau, rangement' },
     { value: 'ordinateur', label: 'Ordinateurs et Informatique', icon: '💻', color: '#00BCD4', description: 'PC portables, bureaux, tablettes, accessoires' },
     { value: 'pharmacie', label: 'Pharmacies et Gardes', icon: '💊', color: '#059669', description: 'Pharmacies, planning de garde, services pharmaceutiques' },
-    { value: 'prestation_service', label: 'Portfolio de Réalisations', icon: '🎨', color: '#8B5CF6', description: 'Galerie de vos prestations professionnelles' },
+    { value: 'prestation_service', label: 'Portfolio de Réalisations', icon: '🎯', color: '#8B5CF6', description: 'Galerie de vos prestations professionnelles' },
     { value: 'quincaillerie', label: 'Quincaillerie et Matériaux', icon: '🔨', color: '#F59E0B', description: 'Outils, matériaux, peintures, construction' },
     { value: 'telephone', label: 'Téléphones et Accessoires', icon: '📱', color: '#FF9800', description: 'Smartphones, accessoires, coques, écouteurs' },
     { value: 'ticket_voyage', label: 'Tickets et Billets de Transport', icon: '🎫', color: '#8B5CF6', description: 'Bus, train, avion avec sélection de place' },
+    { value: 'ustensiles_cuisine', label: 'Ustensiles de Cuisine', icon: '🍴', color: '#FF5722', description: 'Casseroles, poêles, couteaux, mixers, batterie cuisine' },
     { value: 'vetement', label: 'Vêtements et Prêt-à-Porter', icon: '👕', color: '#EC4899', description: 'Vêtements, habits, articles de mode' },
     { value: 'autre', label: 'Autres Produits', icon: '📦', color: '#6B7280', description: 'Autres types de produits et services' },
 ] as const;
@@ -2081,35 +2092,35 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                                 <View style={styles.dropdownContainer}>
                                     {PRODUCT_TYPES
-                                        .filter(type => 
-                                            searchQuery.length === 0 || 
+                                        .filter(type =>
+                                            searchQuery.length === 0 ||
                                             type.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
                                             type.description.toLowerCase().includes(searchQuery.toLowerCase())
                                         )
                                         .map((type) => (
-                                        <TouchableOpacity
-                                            key={type.value}
-                                            style={[
-                                                styles.dropdownItem,
-                                                selectedType === type.value && styles.dropdownItemActive
-                                            ]}
-                                            onPress={() => handleSelectType(type.value as ProductType)}
-                                        >
-                                            <View style={styles.dropdownItemLeft}>
-                                                <Text style={styles.dropdownIcon}>{type.icon}</Text>
-                                                <View style={{ flex: 1 }}>
-                                                    <Text style={[
-                                                        styles.dropdownLabel,
-                                                        selectedType === type.value && styles.dropdownLabelActive
-                                                    ]}>{type.label}</Text>
-                                                    <Text style={styles.dropdownDescription}>{type.description}</Text>
+                                            <TouchableOpacity
+                                                key={type.value}
+                                                style={[
+                                                    styles.dropdownItem,
+                                                    selectedType === type.value && styles.dropdownItemActive
+                                                ]}
+                                                onPress={() => handleSelectType(type.value as ProductType)}
+                                            >
+                                                <View style={styles.dropdownItemLeft}>
+                                                    <Text style={styles.dropdownIcon}>{type.icon}</Text>
+                                                    <View style={{ flex: 1 }}>
+                                                        <Text style={[
+                                                            styles.dropdownLabel,
+                                                            selectedType === type.value && styles.dropdownLabelActive
+                                                        ]}>{type.label}</Text>
+                                                        <Text style={styles.dropdownDescription}>{type.description}</Text>
+                                                    </View>
                                                 </View>
-                                            </View>
-                                            {selectedType === type.value && (
-                                                <SafeIcon name="check" size={20} color={modernColors.primary} />
-                                            )}
-                                        </TouchableOpacity>
-                                    ))}
+                                                {selectedType === type.value && (
+                                                    <SafeIcon name="check" size={20} color={modernColors.primary} />
+                                                )}
+                                            </TouchableOpacity>
+                                        ))}
                                 </View>
                             </View>
                         )}
