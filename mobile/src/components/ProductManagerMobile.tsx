@@ -51,6 +51,7 @@ type ProductType =
     | 'livres_fournitures'
     | 'quincaillerie'
     | 'prestation_service'
+    | 'assurance'
     | 'pharmacie'
     | 'hopital_clinique'
     | 'autre';
@@ -159,6 +160,15 @@ interface Product {
     piecesDansSet?: string; // Nombre de pièces si set
     etatUstensile?: string;
 
+    // Assurance
+    typeAssurance?: string; // Auto, Santé, Habitation, Vie, etc.
+    compagnie?: string; // Nom de la compagnie d'assurance
+    couverture?: string; // Étendue de la couverture
+    franchise?: string; // Montant de la franchise
+    dureeContrat?: string; // 1 an, 2 ans, etc.
+    primeAnnuelle?: string; // Prime annuelle
+    benefices?: string; // Principaux bénéfices
+
     // Mobilier
     typeMobilier?: string; // Salon, Chambre, Bureau, etc.
     materiau?: string; // Bois, Métal, Tissu, etc.
@@ -233,6 +243,7 @@ interface ProductManagerMobileProps {
 // Configuration des types de produits avec noms adaptés
 const PRODUCT_TYPES = [
     { value: 'aliments', label: 'Aliments et Produits Frais', icon: '🍎', color: '#84CC16', description: 'Fruits, légumes, viandes, poissons, produits frais et secs' },
+    { value: 'assurance', label: 'Assurance et Protection', icon: '🛡️', color: '#14B8A6', description: 'Assurance auto, santé, habitation, vie, protection sociale' },
     { value: 'automobile', label: 'Automobiles et Véhicules', icon: '🚗', color: '#EF4444', description: 'Voitures, motos, camions, véhicules utilitaires' },
     { value: 'chaussure', label: 'Chaussures et Accessoires', icon: '👟', color: '#6366F1', description: 'Chaussures, baskets, sandales, bottes' },
     { value: 'covoiturage', label: 'Covoiturage et Trajets', icon: '🚙', color: '#F59E0B', description: 'Trajets partagés, carpooling, transport collectif' },
@@ -2588,6 +2599,23 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: modernColors.textSecondary,
         marginBottom: 16,
+    },
+    searchContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: modernColors.surface,
+        borderRadius: 10,
+        borderWidth: 1,
+        borderColor: modernColors.border,
+        paddingHorizontal: 12,
+        marginBottom: 16,
+        gap: 8,
+    },
+    searchInput: {
+        flex: 1,
+        paddingVertical: 10,
+        fontSize: 14,
+        color: modernColors.text,
     },
     dropdownContainer: {
         backgroundColor: modernColors.surface,

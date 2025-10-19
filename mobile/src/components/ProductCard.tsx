@@ -59,6 +59,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
             decoration: { icon: 'image', color: '#E91E63', bg: '#FCE4EC', label: 'Déco' },
             ustensiles_cuisine: { icon: 'coffee', color: '#FF5722', bg: '#FFEBEE', label: 'Ustensiles' },
             aliments: { icon: 'pizza', color: '#84CC16', bg: '#ECFCCB', label: 'Aliment' },
+            assurance: { icon: 'shield', color: '#14B8A6', bg: '#CCFBF1', label: 'Assurance' },
             livres_fournitures: { icon: 'book', color: '#6366F1', bg: '#E0E7FF', label: 'Livre' },
             quincaillerie: { icon: 'tool', color: '#64748B', bg: '#F1F5F9', label: 'Quincaillerie' },
             pharmacie: { icon: 'activity', color: '#059669', bg: '#D1FAE5', label: 'Pharmacie' },
@@ -488,6 +489,30 @@ const ProductCard: React.FC<ProductCardProps> = ({
                             <View style={styles.detailChip}>
                                 <SafeIcon name="tag" size={14} color="#6B7280" />
                                 <Text style={styles.detailText}>{product.marqueUstensile}</Text>
+                            </View>
+                        )}
+                    </View>
+                );
+
+            case 'assurance':
+                return (
+                    <View style={styles.detailsGrid}>
+                        {product.typeAssurance && (
+                            <View style={styles.detailChip}>
+                                <SafeIcon name="shield" size={14} color="#14B8A6" />
+                                <Text style={styles.detailText}>{product.typeAssurance}</Text>
+                            </View>
+                        )}
+                        {product.compagnie && (
+                            <View style={styles.detailChip}>
+                                <SafeIcon name="briefcase" size={14} color="#6B7280" />
+                                <Text style={styles.detailText}>{product.compagnie}</Text>
+                            </View>
+                        )}
+                        {product.couverture && (
+                            <View style={styles.detailChip}>
+                                <SafeIcon name="check-circle" size={14} color="#10B981" />
+                                <Text style={styles.detailText}>{product.couverture}</Text>
                             </View>
                         )}
                     </View>

@@ -28,6 +28,7 @@ type ProductType =
     | 'livres_fournitures'
     | 'quincaillerie'
     | 'prestation_service'
+    | 'assurance'
     | 'pharmacie'
     | 'hopital_clinique'
     | 'autre';
