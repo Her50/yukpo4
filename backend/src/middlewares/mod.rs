@@ -2,6 +2,7 @@
 pub mod check_tokens;
 pub mod service_interaction;
 pub mod jwt;
+pub mod auth;
 pub mod request_size_limit;
 pub mod hide_headers;
 pub mod anti_bruteforce;

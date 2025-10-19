@@ -11,8 +11,6 @@ services:
         value: info
       - key: LOG_FORMAT
         value: json
-      - key: SQLX_OFFLINE
-        value: true
     healthCheckPath: /healthz
     autoDeploy: true
     branch: master

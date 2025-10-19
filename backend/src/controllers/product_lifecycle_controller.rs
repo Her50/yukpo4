@@ -9,7 +9,6 @@ use crate::tasks::product_deactivation::{
     get_inactive_products_for_user,
     reactivate_single_product,
     reactivate_multiple_products,
-    InactiveProduct,
 };
 use crate::middlewares::auth::AuthUser;
 use crate::state::AppState;
