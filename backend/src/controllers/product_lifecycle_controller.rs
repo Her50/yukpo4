@@ -45,7 +45,7 @@ pub async fn get_inactive_products(
 ) -> AppResult<Json<serde_json::Value>> {
     // Extraire le user_id depuis le token JWT
     let auth = extract_auth_user(&headers)
-        .map_err(|(status, msg)| AppError::Unauthorized(msg))?;
+        .map_err(|(_status, msg)| AppError::Unauthorized(msg))?;
     let user_id: i32 = auth.user_id.parse()
         .map_err(|_| AppError::BadRequest("Invalid user_id format".to_string()))?;
     
@@ -69,7 +69,7 @@ pub async fn get_products_status(
     Path(service_id): Path<i32>,
 ) -> AppResult<Json<serde_json::Value>> {
     let auth = extract_auth_user(&headers)
-        .map_err(|(status, msg)| AppError::Unauthorized(msg))?;
+        .map_err(|(_status, msg)| AppError::Unauthorized(msg))?;
     let user_id: i32 = auth.user_id.parse()
         .map_err(|_| AppError::BadRequest("Invalid user_id format".to_string()))?;
     
@@ -127,7 +127,7 @@ pub async fn reactivate_product(
     Json(body): Json<ReactivateProductRequest>,
 ) -> AppResult<Json<serde_json::Value>> {
     let auth = extract_auth_user(&headers)
-        .map_err(|(status, msg)| AppError::Unauthorized(msg))?;
+        .map_err(|(_status, msg)| AppError::Unauthorized(msg))?;
     let user_id: i32 = auth.user_id.parse()
         .map_err(|_| AppError::BadRequest("Invalid user_id format".to_string()))?;
     
@@ -154,7 +154,7 @@ pub async fn reactivate_multiple(
     Json(body): Json<ReactivateMultipleProductsRequest>,
 ) -> AppResult<Json<serde_json::Value>> {
     let auth = extract_auth_user(&headers)
-        .map_err(|(status, msg)| AppError::Unauthorized(msg))?;
+        .map_err(|(_status, msg)| AppError::Unauthorized(msg))?;
     let user_id: i32 = auth.user_id.parse()
         .map_err(|_| AppError::BadRequest("Invalid user_id format".to_string()))?;
     
