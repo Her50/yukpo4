@@ -6,30 +6,23 @@ pub async fn deactivate_expired_products(pool: &PgPool) -> Result<usize, sqlx::E
     info!("🔄 [ProductDeactivation] Début de la désactivation automatique des produits expirés");
     
     // Appeler la fonction PostgreSQL qui désactive les produits
-    let deactivated_products = sqlx::query!(
-        r#"
-        SELECT * FROM deactivate_expired_products()
-        "#
-    )
-    .fetch_all(pool)
-    .await?;
+    let rows = sqlx::query("SELECT * FROM deactivate_expired_products()")
+        .fetch_all(pool)
+        .await?;
     
-    let count = deactivated_products.len();
+    let count = rows.len();
     info!("✅ [ProductDeactivation] {} produit(s) désactivé(s)", count);
     
     // Envoyer des notifications aux prestataires
-    for product in &deactivated_products {
-        if let (Some(service_id), Some(user_id), Some(product_nom)) = 
-            (product.service_id, product.user_id, product.product_nom.as_ref()) {
-            
+    for row in &rows {
+        let service_id: Option<i32> = row.try_get("service_id").ok();
+        let user_id: Option<i32> = row.try_get("user_id").ok();
+        let product_nom: Option<String> = row.try_get("product_nom").ok();
+        
+        if let (Some(sid), Some(uid), Some(pnom)) = (service_id, user_id, product_nom) {
             // Envoyer notification au prestataire
-            match send_product_deactivation_notification(
-                pool, 
-                service_id, 
-                user_id, 
-                product_nom
-            ).await {
-                Ok(_) => info!("📧 Notification envoyée pour produit: {}", product_nom),
+            match send_product_deactivation_notification(pool, sid, uid, &pnom).await {
+                Ok(_) => info!("📧 Notification envoyée pour produit: {}", pnom),
                 Err(e) => error!("❌ Erreur envoi notification: {}", e),
             }
         }
@@ -46,34 +39,35 @@ async fn send_product_deactivation_notification(
     product_nom: &str,
 ) -> Result<(), sqlx::Error> {
     // Créer une notification dans la table notifications
-    sqlx::query!(
+    sqlx::query(
         r#"
         INSERT INTO notifications (
             user_id,
             type,
             title,
             message,
-            related_id,
+            data,
             is_read,
             created_at
         ) VALUES (
             $1,
-            'product_deactivated',
             $2,
             $3,
             $4,
+            $5,
             FALSE,
             NOW()
         )
-        "#,
-        user_id,
-        format!("Produit désactivé: {}", product_nom),
-        format!(
-            "Votre produit '{}' a été automatiquement désactivé après 30 jours. Réactivez-le pour 1000 FCFA pour le rendre visible à nouveau.",
-            product_nom
-        ),
-        service_id
+        "#
     )
+    .bind(user_id)
+    .bind("product_deactivated")
+    .bind(format!("Produit désactivé: {}", product_nom))
+    .bind(format!(
+        "Votre produit '{}' a été automatiquement désactivé après 30 jours. Réactivez-le pour 1000 FCFA pour le rendre visible à nouveau.",
+        product_nom
+    ))
+    .bind(serde_json::json!({"service_id": service_id}))
     .execute(pool)
     .await?;
     
@@ -86,8 +80,7 @@ pub async fn get_inactive_products_for_user(
     pool: &PgPool,
     user_id: i32,
 ) -> Result<Vec<InactiveProduct>, sqlx::Error> {
-    let products = sqlx::query_as!(
-        InactiveProduct,
+    let products = sqlx::query_as::<_, InactiveProduct>(
         r#"
         SELECT 
             pl.id,
@@ -98,15 +91,15 @@ pub async fn get_inactive_products_for_user(
             pl.auto_deactivate_at,
             pl.reactivation_cost,
             pl.deactivation_count,
-            s.data->'produits'->pl.product_index AS "product_data: sqlx::types::JsonValue"
+            s.data->'produits'->pl.product_index AS product_data
         FROM products_lifecycle pl
         JOIN services s ON s.id = pl.service_id
         WHERE s.user_id = $1
             AND pl.is_active = FALSE
         ORDER BY pl.auto_deactivate_at DESC
-        "#,
-        user_id
+        "#
     )
+    .bind(user_id)
     .fetch_all(pool)
     .await?;
     

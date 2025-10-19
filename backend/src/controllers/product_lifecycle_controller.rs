@@ -69,37 +69,48 @@ pub async fn get_products_status(
         .map_err(|_| AppError::BadRequest("Invalid user_id format".to_string()))?;
     
     // Vérifier que le service appartient à l'utilisateur
-    let service = sqlx::query!(
-        "SELECT user_id FROM services WHERE id = $1",
-        service_id
-    )
-    .fetch_optional(&state.pg)
-    .await
-    .map_err(|e| AppError::Internal(format!("Erreur DB: {}", e)))?;
+    use sqlx::Row;
+    let service = sqlx::query("SELECT user_id FROM services WHERE id = $1")
+        .bind(service_id)
+        .fetch_optional(&state.pg)
+        .await
+        .map_err(|e| AppError::Internal(format!("Erreur DB: {}", e)))?;
     
     match service {
-        Some(s) if s.user_id == user_id => {
+        Some(row) => {
+            let owner_id: i32 = row.try_get("user_id")
+                .map_err(|e| AppError::Internal(format!("Erreur lecture user_id: {}", e)))?;
+            
+            if owner_id != user_id {
+                return Err(AppError::Forbidden("Accès refusé à ce service".to_string()));
+            }
+            
             // Récupérer le statut des produits
-            let products_status = sqlx::query!(
-                r#"
-                SELECT * FROM get_service_products_status($1)
-                "#,
-                service_id
-            )
-            .fetch_all(&state.pg)
-            .await
-            .map_err(|e| AppError::Internal(format!("Erreur récupération statut: {}", e)))?;
+            let rows = sqlx::query("SELECT * FROM get_service_products_status($1)")
+                .bind(service_id)
+                .fetch_all(&state.pg)
+                .await
+                .map_err(|e| AppError::Internal(format!("Erreur récupération statut: {}", e)))?;
+            
+            let mut products = Vec::new();
+            for row in rows {
+                products.push(serde_json::json!({
+                    "product_index": row.try_get::<i32, _>("product_index").ok(),
+                    "product_nom": row.try_get::<String, _>("product_nom").ok(),
+                    "product_type": row.try_get::<String, _>("product_type").ok(),
+                    "is_active": row.try_get::<bool, _>("is_active").ok(),
+                    "days_until_deactivation": row.try_get::<i32, _>("days_until_deactivation").ok(),
+                    "reactivation_cost": row.try_get::<i32, _>("reactivation_cost").ok(),
+                }));
+            }
             
             Ok(Json(serde_json::json!({
                 "success": true,
                 "service_id": service_id,
-                "products": products_status,
-                "total_products": products_status.len(),
-                "active_products": products_status.iter().filter(|p| p.is_active.unwrap_or(false)).count(),
-                "inactive_products": products_status.iter().filter(|p| !p.is_active.unwrap_or(true)).count(),
+                "products": products,
+                "total_products": products.len(),
             })))
         },
-        Some(_) => Err(AppError::Forbidden("Accès refusé à ce service".to_string())),
         None => Err(AppError::NotFound("Service non trouvé".to_string())),
     }
 }
