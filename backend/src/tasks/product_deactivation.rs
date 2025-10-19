@@ -1,7 +1,5 @@
-use chrono::Utc;
 use sqlx::PgPool;
 use log::{info, error};
-use crate::services::notification_service;
 
 /// Désactive automatiquement les produits expirés (30 jours)
 pub async fn deactivate_expired_products(pool: &PgPool) -> Result<usize, sqlx::Error> {

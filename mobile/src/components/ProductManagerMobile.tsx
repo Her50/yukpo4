@@ -41,7 +41,11 @@ type ProductType =
     | 'vetement'
     | 'chaussure'
     | 'electromenager'
+    | 'electronique'
+    | 'telephone'
+    | 'ordinateur'
     | 'mobilier'
+    | 'decoration'
     | 'aliments'
     | 'livres_fournitures'
     | 'quincaillerie'
@@ -110,6 +114,40 @@ interface Product {
     modeleElectro?: string;
     etat?: string;
     garantie?: string;
+
+    // Électronique (TV, Audio, etc.)
+    marqueElectronique?: string;
+    modeleElectronique?: string;
+    typeElectronique?: string; // TV, Audio, Vidéo, etc.
+    diagonaleEcran?: string; // Pour TV
+    resolution?: string; // HD, 4K, 8K
+    etatElectronique?: string;
+
+    // Téléphones et Accessoires
+    marqueTelephone?: string;
+    modeleTelephone?: string;
+    stockage?: string; // 64GB, 128GB, etc.
+    ram?: string;
+    etatTelephone?: string;
+    couleurTelephone?: string;
+    operateur?: string; // Débloqué, Orange, MTN, etc.
+
+    // Ordinateurs et Informatique
+    marqueOrdinateur?: string;
+    modeleOrdinateur?: string;
+    typeOrdinateur?: string; // Portable, Bureau, Tablette
+    processeur?: string;
+    ramOrdinateur?: string;
+    stockageOrdinateur?: string;
+    carteGraphique?: string;
+    systemeExploitation?: string; // Windows, macOS, Linux
+    etatOrdinateur?: string;
+
+    // Décoration d'Intérieur
+    typeDecoration?: string; // Tableau, Luminaire, Tapis, etc.
+    style?: string; // Moderne, Classique, Vintage, etc.
+    couleurDecoration?: string;
+    dimensionsDecoration?: string;
 
     // Mobilier
     typeMobilier?: string; // Salon, Chambre, Bureau, etc.
@@ -184,21 +222,25 @@ interface ProductManagerMobileProps {
 
 // Configuration des types de produits avec noms adaptés
 const PRODUCT_TYPES = [
-    { value: 'immobilier_batiment', label: 'Biens Immobiliers - Bâtiment', icon: '🏢', color: '#3B82F6', description: 'Appartements, villas, maisons, immeubles' },
-    { value: 'immobilier_terrain', label: 'Biens Immobiliers - Terrain', icon: '🏞️', color: '#10B981', description: 'Terrains constructibles, parcelles, lots' },
-    { value: 'automobile', label: 'Véhicules Automobiles', icon: '🚗', color: '#EF4444', description: 'Voitures, motos, camions, véhicules utilitaires' },
-    { value: 'ticket_voyage', label: 'Billets de Transport', icon: '🎫', color: '#8B5CF6', description: 'Tickets de bus, train, avion avec sélection de place' },
-    { value: 'covoiturage', label: 'Services de Covoiturage', icon: '🚙', color: '#F59E0B', description: 'Trajets partagés, carpooling, transport collectif' },
-    { value: 'vetement', label: 'Articles Vestimentaires', icon: '👕', color: '#EC4899', description: 'Vêtements, habits, prêt-à-porter' },
+    { value: 'aliments', label: 'Aliments et Produits Frais', icon: '🍎', color: '#84CC16', description: 'Fruits, légumes, viandes, poissons, produits frais et secs' },
+    { value: 'automobile', label: 'Automobiles et Véhicules', icon: '🚗', color: '#EF4444', description: 'Voitures, motos, camions, véhicules utilitaires' },
     { value: 'chaussure', label: 'Chaussures et Accessoires', icon: '👟', color: '#6366F1', description: 'Chaussures, baskets, sandales, bottes' },
-    { value: 'electromenager', label: 'Électroménager et Équipements', icon: '🔌', color: '#14B8A6', description: 'Appareils électriques, équipements domestiques' },
-    { value: 'mobilier', label: 'Mobilier et Décoration', icon: '🪑', color: '#F97316', description: 'Meubles, décoration, ameublement, accessoires maison' },
-    { value: 'aliments', label: 'Produits Alimentaires', icon: '🍎', color: '#84CC16', description: 'Fruits, légumes, viandes, poissons, produits frais et secs' },
-    { value: 'livres_fournitures', label: 'Livres et Articles Scolaires', icon: '📚', color: '#7C3AED', description: 'Manuels, livres, cahiers, stylos, fournitures scolaires' },
-    { value: 'quincaillerie', label: 'Quincaillerie et Matériaux de Construction', icon: '🔨', color: '#F59E0B', description: 'Outils, matériaux, peintures, équipements de construction' },
-    { value: 'prestation_service', label: 'Portfolio de Réalisations', icon: '🎨', color: '#8B5CF6', description: 'Galerie de vos prestations et réalisations professionnelles' },
-    { value: 'pharmacie', label: 'Pharmacies et Garde', icon: '💊', color: '#059669', description: 'Pharmacies, planning de garde, services pharmaceutiques' },
+    { value: 'covoiturage', label: 'Covoiturage et Trajets', icon: '🚙', color: '#F59E0B', description: 'Trajets partagés, carpooling, transport collectif' },
+    { value: 'decoration', label: 'Décoration Intérieure', icon: '🎨', color: '#E91E63', description: 'Tableaux, luminaires, tapis, accessoires déco' },
+    { value: 'electromenager', label: 'Électroménager Domestique', icon: '🔌', color: '#14B8A6', description: 'Frigos, fours, machines à laver, micro-ondes' },
+    { value: 'electronique', label: 'Électronique Audio/Vidéo', icon: '📺', color: '#9C27B0', description: 'TV, home cinéma, enceintes, systèmes audio' },
     { value: 'hopital_clinique', label: 'Établissements de Santé', icon: '🏥', color: '#DC2626', description: 'Hôpitaux, cliniques, centres médicaux, spécialités' },
+    { value: 'immobilier_batiment', label: 'Immobilier - Bâtiments', icon: '🏢', color: '#3B82F6', description: 'Appartements, villas, maisons, immeubles' },
+    { value: 'immobilier_terrain', label: 'Immobilier - Terrains', icon: '🏞️', color: '#10B981', description: 'Terrains constructibles, parcelles, lots' },
+    { value: 'livres_fournitures', label: 'Livres et Fournitures Scolaires', icon: '📚', color: '#7C3AED', description: 'Manuels, livres, cahiers, stylos, fournitures' },
+    { value: 'mobilier', label: 'Mobilier et Ameublement', icon: '🪑', color: '#F97316', description: 'Meubles salon, chambre, bureau, rangement' },
+    { value: 'ordinateur', label: 'Ordinateurs et Informatique', icon: '💻', color: '#00BCD4', description: 'PC portables, bureaux, tablettes, accessoires' },
+    { value: 'pharmacie', label: 'Pharmacies et Gardes', icon: '💊', color: '#059669', description: 'Pharmacies, planning de garde, services pharmaceutiques' },
+    { value: 'prestation_service', label: 'Portfolio de Réalisations', icon: '🎨', color: '#8B5CF6', description: 'Galerie de vos prestations professionnelles' },
+    { value: 'quincaillerie', label: 'Quincaillerie et Matériaux', icon: '🔨', color: '#F59E0B', description: 'Outils, matériaux, peintures, construction' },
+    { value: 'telephone', label: 'Téléphones et Accessoires', icon: '📱', color: '#FF9800', description: 'Smartphones, accessoires, coques, écouteurs' },
+    { value: 'ticket_voyage', label: 'Tickets et Billets de Transport', icon: '🎫', color: '#8B5CF6', description: 'Bus, train, avion avec sélection de place' },
+    { value: 'vetement', label: 'Vêtements et Prêt-à-Porter', icon: '👕', color: '#EC4899', description: 'Vêtements, habits, articles de mode' },
     { value: 'autre', label: 'Autres Produits', icon: '📦', color: '#6B7280', description: 'Autres types de produits et services' },
 ] as const;
 
@@ -288,6 +330,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
     const [editingProductId, setEditingProductId] = useState<string | null>(null);
     const [currentStep, setCurrentStep] = useState<'type' | 'form'>('type');
     const [showSeatSelector, setShowSeatSelector] = useState(false);
+    const [searchQuery, setSearchQuery] = useState(''); // Recherche textuelle dans dropdown
     const [showGPSModal, setShowGPSModal] = useState(false);
     const [selectedGPSLocation, setSelectedGPSLocation] = useState<{ lat: number; lng: number } | null>(null);
 
@@ -2020,8 +2063,30 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                     Choisissez la catégorie qui correspond le mieux à votre produit
                                 </Text>
 
+                                {/* Champ de recherche textuelle */}
+                                <View style={styles.searchContainer}>
+                                    <SafeIcon name="search" size={18} color={modernColors.textSecondary} />
+                                    <NativeInput
+                                        placeholder="Rechercher une catégorie..."
+                                        value={searchQuery}
+                                        onChangeText={setSearchQuery}
+                                        style={styles.searchInput}
+                                    />
+                                    {searchQuery.length > 0 && (
+                                        <TouchableOpacity onPress={() => setSearchQuery('')}>
+                                            <SafeIcon name="x" size={18} color={modernColors.textSecondary} />
+                                        </TouchableOpacity>
+                                    )}
+                                </View>
+
                                 <View style={styles.dropdownContainer}>
-                                    {PRODUCT_TYPES.map((type) => (
+                                    {PRODUCT_TYPES
+                                        .filter(type => 
+                                            searchQuery.length === 0 || 
+                                            type.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                                            type.description.toLowerCase().includes(searchQuery.toLowerCase())
+                                        )
+                                        .map((type) => (
                                         <TouchableOpacity
                                             key={type.value}
                                             style={[

@@ -39,9 +39,9 @@ use crate::routes::{
     media_routes::media_routes,
     chat_routes::chat_routes, // ✅ NOUVEAU : Routes de chat
     webrtc_routes::webrtc_routes, // ✅ NOUVEAU : Routes WebRTC
-    notification_routes, // ✅ NOUVEAU : Routes de notifications
-    push_routes, // ✅ NOUVEAU : Routes push
-    product_lifecycle_routes, // ✅ Routes de gestion du cycle de vie des produits
+    notification_routes::notification_routes, // ✅ NOUVEAU : Routes de notifications
+    push_routes::push_routes, // ✅ NOUVEAU : Routes push
+    product_lifecycle_routes::product_lifecycle_routes, // ✅ Routes de gestion du cycle de vie des produits
     ia_routes::ia_routes,
     history_routes::history_routes,
     payment_routes::payment_routes,
@@ -151,11 +151,11 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
     let webrtc_http = webrtc_routes(state.clone());
     
     // ✅ NOUVEAU : Routes de notifications (si pas déjà ajoutées)
-    let notifications = notification_routes::notification_routes(state.clone());
-    let push_notifs = push_routes::push_routes(state.clone());
+    let notifications = notification_routes(state.clone());
+    let push_notifs = push_routes(state.clone());
     
     // ✅ Routes de gestion du cycle de vie des produits
-    let product_lifecycle = product_lifecycle_routes::product_lifecycle_routes(state.clone());
+    let product_lifecycle = product_lifecycle_routes(state.clone());
     
     let app = Router::new()
         .route("/", get(|| async { "Yukpomnang Backend API - Service actif" }))

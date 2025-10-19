@@ -36,10 +36,10 @@ pub async fn run_complete_service_processing(pool: &PgPool) {
     // 1. Exécuter le système intelligent (priorité)
     run_intelligent_service_processing(pool).await;
     
-    // 2. Exécuter l'ancien système pour les services tarissables (fallback)
-    match crate::tasks::service_deactivation::desactiver_services_tarissables(pool).await {
-        Ok(_) => info!("✅ Traitement des services tarissables terminé"),
-        Err(e) => error!("❌ Erreur traitement services tarissables: {}", e),
+    // 2. Désactiver les produits expirés (nouveau système basé sur les produits)
+    match crate::tasks::product_deactivation::deactivate_expired_products(pool).await {
+        Ok(count) => info!("✅ Désactivation automatique: {} produits désactivés", count),
+        Err(e) => error!("❌ Erreur désactivation produits: {}", e),
     }
     
     // 3. Envoyer les alertes aux prestataires

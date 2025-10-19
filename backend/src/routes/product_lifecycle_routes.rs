@@ -6,7 +6,7 @@ use axum::{
 use crate::controllers::product_lifecycle_controller;
 use crate::state::AppState;
 
-pub fn product_lifecycle_routes(state: Arc<AppState>) -> Router {
+pub fn product_lifecycle_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
     Router::new()
         // Récupérer les produits désactivés du prestataire
         .route("/products/inactive", get(product_lifecycle_controller::get_inactive_products))

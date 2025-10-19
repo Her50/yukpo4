@@ -6,7 +6,7 @@ use log::{info};
 /// Les services ne sont plus désactivés automatiquement
 /// Voir: backend/src/tasks/product_deactivation.rs pour la nouvelle logique
 #[deprecated(note = "Logique de désactivation déplacée vers les produits. Utiliser product_deactivation::deactivate_expired_products()")]
-pub async fn desactiver_services_tarissables(pool: &PgPool) -> Result<(), sqlx::Error> {
+pub async fn desactiver_services_tarissables(_pool: &PgPool) -> Result<(), sqlx::Error> {
     // Cette fonction est maintenant un no-op (ne fait rien)
     // La désactivation automatique est gérée au niveau des PRODUITS, pas des SERVICES
     log::info!("⚠️ [ServiceDeactivation] DEPRECATED - Utiliser product_deactivation pour désactiver les produits");
