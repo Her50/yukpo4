@@ -2,6 +2,7 @@ use std::sync::Arc;
 use axum::{
     extract::{State, Path, Query},
     response::Json,
+    http::HeaderMap,
 };
 use serde::{Deserialize, Serialize};
 use crate::core::types::{AppError, AppResult};
@@ -10,7 +11,7 @@ use crate::tasks::product_deactivation::{
     reactivate_single_product,
     reactivate_multiple_products,
 };
-use crate::middlewares::auth::AuthUser;
+use crate::middlewares::auth::extract_auth_user;
 use crate::state::AppState;
 
 #[derive(Debug, Deserialize)]
@@ -40,9 +41,11 @@ pub struct ReactivationCostQuery {
 /// GET /api/products/inactive - Récupère les produits désactivés du prestataire
 pub async fn get_inactive_products(
     State(state): State<Arc<AppState>>,
-    auth: AuthUser,
+    headers: HeaderMap,
 ) -> AppResult<Json<serde_json::Value>> {
     // Extraire le user_id depuis le token JWT
+    let auth = extract_auth_user(&headers)
+        .map_err(|(status, msg)| AppError::Unauthorized(msg))?;
     let user_id: i32 = auth.user_id.parse()
         .map_err(|_| AppError::BadRequest("Invalid user_id format".to_string()))?;
     
@@ -62,9 +65,11 @@ pub async fn get_inactive_products(
 /// GET /api/products/:service_id/status - Statut des produits d'un service
 pub async fn get_products_status(
     State(state): State<Arc<AppState>>,
-    auth: AuthUser,
+    headers: HeaderMap,
     Path(service_id): Path<i32>,
 ) -> AppResult<Json<serde_json::Value>> {
+    let auth = extract_auth_user(&headers)
+        .map_err(|(status, msg)| AppError::Unauthorized(msg))?;
     let user_id: i32 = auth.user_id.parse()
         .map_err(|_| AppError::BadRequest("Invalid user_id format".to_string()))?;
     
@@ -118,9 +123,11 @@ pub async fn get_products_status(
 /// POST /api/products/reactivate - Réactive un produit
 pub async fn reactivate_product(
     State(state): State<Arc<AppState>>,
-    auth: AuthUser,
+    headers: HeaderMap,
     Json(body): Json<ReactivateProductRequest>,
 ) -> AppResult<Json<serde_json::Value>> {
+    let auth = extract_auth_user(&headers)
+        .map_err(|(status, msg)| AppError::Unauthorized(msg))?;
     let user_id: i32 = auth.user_id.parse()
         .map_err(|_| AppError::BadRequest("Invalid user_id format".to_string()))?;
     
@@ -143,9 +150,11 @@ pub async fn reactivate_product(
 /// POST /api/products/reactivate-multiple - Réactive plusieurs produits
 pub async fn reactivate_multiple(
     State(state): State<Arc<AppState>>,
-    auth: AuthUser,
+    headers: HeaderMap,
     Json(body): Json<ReactivateMultipleProductsRequest>,
 ) -> AppResult<Json<serde_json::Value>> {
+    let auth = extract_auth_user(&headers)
+        .map_err(|(status, msg)| AppError::Unauthorized(msg))?;
     let user_id: i32 = auth.user_id.parse()
         .map_err(|_| AppError::BadRequest("Invalid user_id format".to_string()))?;
     
@@ -172,9 +181,11 @@ pub async fn reactivate_multiple(
 
 /// GET /api/products/reactivation-cost - Obtient le coût de réactivation
 pub async fn get_reactivation_cost(
-    _auth: AuthUser,
+    headers: HeaderMap,
     Query(query): Query<ReactivationCostQuery>,
 ) -> AppResult<Json<serde_json::Value>> {
+    let _auth = extract_auth_user(&headers)
+        .map_err(|(status, msg)| AppError::Unauthorized(msg))?;
     let product_count = query.count.unwrap_or(1);
     let cost_per_product = 1000; // 1000 FCFA
     let total_cost = cost_per_product * product_count;
