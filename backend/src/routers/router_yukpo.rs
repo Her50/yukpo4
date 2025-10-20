@@ -182,7 +182,6 @@ async fn handle_direct_search(
     Json(input): Json<MultiModalInput>,
 ) -> AppResult<impl IntoResponse> {
     use crate::services::rechercher_besoin::rechercher_besoin_direct;
-    use crate::services::image_search_service::ImageSearchService;
     use crate::utils::log::log_info;
     
     log_info(&format!("[DIRECT_SEARCH] Recherche directe pour utilisateur {} (GPS: {:?})", 
@@ -197,9 +196,7 @@ async fn handle_direct_search(
     
     // ✅ NOUVELLE LOGIQUE: Si image présente (avec ou sans texte), utiliser analyse IA
     if has_images {
-        use crate::services::intelligent_image_analysis_service::{
-            IntelligentImageAnalysisService, ImageAnalysis, AICost
-        };
+        use crate::services::intelligent_image_analysis_service::IntelligentImageAnalysisService;
         
         log_info("[DIRECT_SEARCH] 🖼️ Image détectée - Analyse IA activée");
         

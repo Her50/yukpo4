@@ -2,7 +2,7 @@
 // Utilise les signatures vectorielles stockées dans la table media
 
 use crate::core::types::{AppError, AppResult};
-use crate::utils::logger::{log_error, log_info, log_warn};
+use crate::utils::log::{log_error, log_info, log_warn};
 use serde::{Deserialize, Serialize};
 use sqlx::{PgPool, Row};
 use std::sync::Arc;
@@ -254,7 +254,7 @@ impl ImageSearchService {
 
     /// Calculer le hash MD5 d'une image pour détection de doublons
     pub fn calculate_image_hash(image_data: &[u8]) -> String {
-        use md5::Md5;
+        use md5::{Md5, Digest};
         let mut hasher = Md5::new();
         hasher.update(image_data);
         format!("{:x}", hasher.finalize())

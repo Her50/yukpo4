@@ -10,7 +10,7 @@ use std::sync::Arc;
 
 use crate::services::image_search_service::{ImageSearchService, ImageSearchResult};
 use crate::state::AppState;
-use crate::utils::logger::{log_error, log_info};
+use crate::utils::log::{log_error, log_info};
 
 #[derive(Debug, Deserialize)]
 pub struct ImageSearchRequest {
