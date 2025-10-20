@@ -174,3 +174,4 @@ pub fn weather_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route("/weather/config", get(get_weather_config))
         .with_state(state)
 }
+

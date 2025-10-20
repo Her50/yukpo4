@@ -11,3 +11,4 @@ pub fn token_pack_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route("/token_packs", post(create_token_pack))
         .with_state(state)
 }
+

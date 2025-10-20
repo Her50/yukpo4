@@ -24,3 +24,4 @@ pub fn history_routes() -> Router<Arc<AppState>> {
         .route("/stats/global/{days}", get(history_controller::get_global_consultation_stats))
         .route("/stats/global", get(history_controller::get_global_consultation_stats))
 }
+

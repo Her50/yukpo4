@@ -10,3 +10,4 @@ pub fn echange_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route("/echanges/relancer-matching", post(relancer_matching))
         .with_state(state)
 }
+

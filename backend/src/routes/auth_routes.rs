@@ -22,3 +22,4 @@ pub fn auth_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .layer(middleware::from_fn(crate::middlewares::request_size_limit::request_size_limit))
         .with_state(state)
 }
+

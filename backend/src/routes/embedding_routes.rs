@@ -26,3 +26,4 @@ pub fn embedding_routes() -> Router<Arc<AppState>> {
                 .layer(axum::middleware::from_fn(jwt_auth)),
         )
 } 
+

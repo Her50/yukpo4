@@ -37,3 +37,4 @@ pub fn service_team_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route("/api/services/team/invitations/{token}/accept", post(accept_invitation))
         .with_state(state)
 }
+

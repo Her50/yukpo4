@@ -13,3 +13,4 @@ pub fn media_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         // Les layers globaux CORS/TraceLayer sont appliqu?s dans lib.rs uniquement
         .with_state(state)
 }
+

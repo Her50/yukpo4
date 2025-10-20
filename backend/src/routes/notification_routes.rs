@@ -29,3 +29,4 @@ pub fn notification_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .with_state(state)
 }
 
+

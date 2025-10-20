@@ -27,3 +27,4 @@ pub mod signalement_routes; // ✅ NOUVEAU: Routes pour signalements
 // === Routes d'Optimisation IA ===
 // pub mod ia_routes_optimized; // Temporairement d?sactiv?
 
+

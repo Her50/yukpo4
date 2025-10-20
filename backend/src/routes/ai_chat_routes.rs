@@ -195,3 +195,4 @@ pub fn ai_chat_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route("/ai/analyze", post(analyze_text))
         .with_state(state)
 }
+

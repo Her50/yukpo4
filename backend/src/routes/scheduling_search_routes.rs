@@ -27,3 +27,4 @@ pub fn scheduling_search_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route("/api/admin/refresh-pharmacies", get(refresh_pharmacies_on_duty))
         .with_state(state)
 }
+

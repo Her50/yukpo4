@@ -120,3 +120,4 @@ pub fn nearby_services_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route("/services/nearby", get(get_nearby_services))
         .with_state(state)
 }
+

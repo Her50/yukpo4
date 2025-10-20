@@ -30,3 +30,4 @@ pub fn user_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .layer(middleware::from_fn(jwt_auth))
         .with_state(state)
 }
+

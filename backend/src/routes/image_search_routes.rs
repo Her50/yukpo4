@@ -11,3 +11,4 @@ pub fn image_search_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route("/api/search/product-images", post(image_search_controller::search_product_images))
         .with_state(state)
 }
+
