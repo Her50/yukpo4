@@ -21,7 +21,7 @@ pub mod chat_routes; // ✅ NOUVEAU: Routes de chat avec push notifications
 pub mod product_lifecycle_routes; // ✅ Routes de gestion du cycle de vie des produits
 pub mod conversation_routes; // ✅ NOUVEAU: Routes pour @mentions et multi-participants
 pub mod scheduling_search_routes; // ✅ NOUVEAU: Routes pour recherche avec planifications
-pub mod service_team_routes; // ✅ NOUVEAU: Routes pour gestion d'équipe des services
+// pub mod service_team_routes; // ⚠️ TEMPORAIREMENT DÉSACTIVÉ - Nécessite réécriture complète avec sqlx::Row
 pub mod signalement_routes; // ✅ NOUVEAU: Routes pour signalements
 
 // === Routes d'Optimisation IA ===

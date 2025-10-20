@@ -7,6 +7,7 @@ use axum::{
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use uuid::Uuid;
+use sqlx::Row; // ✅ Import nécessaire pour .try_get()
 
 use crate::state::AppState;
 
@@ -85,7 +86,8 @@ pub async fn get_team_members(
     State(state): State<Arc<AppState>>,
 ) -> Result<Json<serde_json::Value>, StatusCode> {
     let pool = &state.pg;
-    let query = if let Some(service_id) = service_id {
+    
+    let members = if let Some(sid) = service_id {
         sqlx::query(
             r#"
             SELECT 
@@ -111,9 +113,12 @@ pub async fn get_team_members(
             LEFT JOIN users added_by_user ON stm.added_by = added_by_user.id
             WHERE stm.service_id = $1 AND stm.is_active = TRUE
             ORDER BY str.level ASC, stm.added_at ASC
-            "#,
-            service_id
+            "#
         )
+        .bind(sid)
+        .fetch_all(pool)
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
     } else {
         sqlx::query(
             r#"
@@ -142,39 +147,43 @@ pub async fn get_team_members(
             ORDER BY str.level ASC, stm.added_at ASC
             "#
         )
-    };
-
-    let members = query
         .fetch_all(pool)
         .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+    };
 
-    let team_members: Vec<ServiceTeamMember> = members
+    let team_members: Result<Vec<ServiceTeamMember>, StatusCode> = members
         .into_iter()
-        .map(|row| ServiceTeamMember {
-            id: row.id.to_string(),
-            service_id: row.service_id,
-            user_id: row.user_id,
-            username: row.username,
-            email: row.email,
-            avatar_url: row.avatar_url,
-            role: ServiceTeamRole {
-                id: row.role_id,
-                name: row.role_name,
-                description: row.role_description,
-                level: row.role_level,
-                color: row.role_color,
-                icon: row.role_icon,
-            },
-            added_by: row.added_by,
-            added_by_username: row.added_by_username,
-            added_at: row.added_at.to_rfc3339(),
-            is_active: row.is_active,
+        .map(|row| {
+            Ok(ServiceTeamMember {
+                id: row.try_get::<Uuid, _>("id").map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?.to_string(),
+                service_id: row.try_get("service_id").ok(),
+                user_id: row.try_get("user_id").map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?,
+                username: row.try_get("username").map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?,
+                email: row.try_get("email").map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?,
+                avatar_url: row.try_get("avatar_url").ok(),
+                role: ServiceTeamRole {
+                    id: row.try_get("role_id").map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?,
+                    name: row.try_get("role_name").map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?,
+                    description: row.try_get("role_description").map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?,
+                    level: row.try_get("role_level").map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?,
+                    color: row.try_get("role_color").map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?,
+                    icon: row.try_get("role_icon").map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?,
+                },
+                added_by: row.try_get("added_by").ok(),
+                added_by_username: row.try_get("added_by_username").ok(),
+                added_at: row.try_get::<chrono::DateTime<chrono::Utc>, _>("added_at")
+                    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+                    .to_rfc3339(),
+                is_active: row.try_get("is_active").map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?,
+            })
         })
         .collect();
 
+    let team_members = team_members?;
+
     // Obtenir les invitations
-    let invitations_query = if let Some(service_id) = service_id {
+    let invitations = if let Some(sid) = service_id {
         sqlx::query(
             r#"
             SELECT 
@@ -199,9 +208,12 @@ pub async fn get_team_members(
             LEFT JOIN users u ON sti.invited_by = u.id
             WHERE sti.service_id = $1 AND sti.status = 'pending'
             ORDER BY sti.invited_at DESC
-            "#,
-            service_id
+            "#
         )
+        .bind(sid)
+        .fetch_all(pool)
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
     } else {
         sqlx::query(
             r#"
@@ -229,36 +241,45 @@ pub async fn get_team_members(
             ORDER BY sti.invited_at DESC
             "#
         )
+        .fetch_all(pool)
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
     };
 
-    let invitations = invitations_query
-        .fetch_all(&state.pg)
-        .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-
-    let team_invitations: Vec<ServiceTeamInvitation> = invitations
+    let team_invitations: Result<Vec<ServiceTeamInvitation>, StatusCode> = invitations
         .into_iter()
-        .map(|row| ServiceTeamInvitation {
-            id: row.id.to_string(),
-            service_id: row.service_id,
-            email: row.email,
-            role: ServiceTeamRole {
-                id: row.role_id,
-                name: row.role_name,
-                description: row.role_description,
-                level: row.role_level,
-                color: row.role_color,
-                icon: row.role_icon,
-            },
-            invited_by: row.invited_by,
-            invited_by_username: row.invited_by_username,
-            invited_at: row.invited_at.to_rfc3339(),
-            expires_at: row.expires_at.to_rfc3339(),
-            status: row.status,
-            token: row.token,
-            accepted_at: row.accepted_at.map(|t| t.to_rfc3339()),
+        .map(|row| {
+            Ok(ServiceTeamInvitation {
+                id: row.try_get::<Uuid, _>("id").map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?.to_string(),
+                service_id: row.try_get("service_id").ok(),
+                email: row.try_get("email").map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?,
+                role: ServiceTeamRole {
+                    id: row.try_get("role_id").map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?,
+                    name: row.try_get("role_name").map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?,
+                    description: row.try_get("role_description").map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?,
+                    level: row.try_get("role_level").map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?,
+                    color: row.try_get("role_color").map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?,
+                    icon: row.try_get("role_icon").map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?,
+                },
+                invited_by: row.try_get("invited_by").ok(),
+                invited_by_username: row.try_get("invited_by_username").ok(),
+                invited_at: row.try_get::<chrono::DateTime<chrono::Utc>, _>("invited_at")
+                    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+                    .to_rfc3339(),
+                expires_at: row.try_get::<chrono::DateTime<chrono::Utc>, _>("expires_at")
+                    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+                    .to_rfc3339(),
+                status: row.try_get("status").map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?,
+                token: row.try_get("token").map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?,
+                accepted_at: row.try_get::<Option<chrono::DateTime<chrono::Utc>>, _>("accepted_at")
+                    .ok()
+                    .flatten()
+                    .map(|t| t.to_rfc3339()),
+            })
         })
         .collect();
+
+    let team_invitations = team_invitations?;
 
     Ok(Json(serde_json::json!({
         "success": true,
@@ -371,10 +392,10 @@ pub async fn update_member_role(
         UPDATE service_team_members 
         SET role_id = $1
         WHERE id = $2
-        "#,
-        request.role,
-        member_uuid
+        "#
     )
+    .bind(&request.role)
+    .bind(member_uuid)
     .execute(&state.pg)
     .await
     .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
@@ -394,9 +415,9 @@ pub async fn remove_member(
         .map_err(|_| StatusCode::BAD_REQUEST)?;
 
     sqlx::query(
-        "UPDATE service_team_members SET is_active = FALSE WHERE id = $1",
-        member_uuid
+        "UPDATE service_team_members SET is_active = FALSE WHERE id = $1"
     )
+    .bind(member_uuid)
     .execute(&state.pg)
     .await
     .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
@@ -411,24 +432,28 @@ pub async fn remove_member(
 pub async fn get_available_roles(
     State(state): State<Arc<AppState>>,
 ) -> Result<Json<serde_json::Value>, StatusCode> {
-      let roles = sqlx::query(
+    let roles = sqlx::query(
         "SELECT id, name, description, level, color, icon FROM service_team_roles ORDER BY level ASC"
     )
     .fetch_all(&state.pg)
     .await
     .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
-    let team_roles: Vec<ServiceTeamRole> = roles
+    let team_roles: Result<Vec<ServiceTeamRole>, StatusCode> = roles
         .into_iter()
-        .map(|row| ServiceTeamRole {
-            id: row.id,
-            name: row.name,
-            description: row.description,
-            level: row.level,
-            color: row.color,
-            icon: row.icon,
+        .map(|row| {
+            Ok(ServiceTeamRole {
+                id: row.try_get("id").map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?,
+                name: row.try_get("name").map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?,
+                description: row.try_get("description").map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?,
+                level: row.try_get("level").map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?,
+                color: row.try_get("color").map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?,
+                icon: row.try_get("icon").map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?,
+            })
         })
         .collect();
+
+    let team_roles = team_roles?;
 
     Ok(Json(serde_json::json!({
         "success": true,
@@ -440,22 +465,26 @@ pub async fn get_available_roles(
 pub async fn get_available_permissions(
     State(state): State<Arc<AppState>>,
 ) -> Result<Json<serde_json::Value>, StatusCode> {
-      let permissions = sqlx::query(
+    let permissions = sqlx::query(
         "SELECT id, name, description, category FROM service_permissions ORDER BY category, name"
     )
     .fetch_all(&state.pg)
     .await
     .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
-    let team_permissions: Vec<ServicePermission> = permissions
+    let team_permissions: Result<Vec<ServicePermission>, StatusCode> = permissions
         .into_iter()
-        .map(|row| ServicePermission {
-            id: row.id,
-            name: row.name,
-            description: row.description,
-            category: row.category,
+        .map(|row| {
+            Ok(ServicePermission {
+                id: row.try_get("id").map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?,
+                name: row.try_get("name").map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?,
+                description: row.try_get("description").map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?,
+                category: row.try_get("category").map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?,
+            })
         })
         .collect();
+
+    let team_permissions = team_permissions?;
 
     Ok(Json(serde_json::json!({
         "success": true,
@@ -468,16 +497,19 @@ pub async fn get_team_stats(
     Path(service_id): Path<Option<i32>>,
     State(state): State<Arc<AppState>>,
 ) -> Result<Json<serde_json::Value>, StatusCode> {
-    let stats = if let Some(service_id) = service_id {
+    let stats_row = if let Some(sid) = service_id {
         sqlx::query(
             r#"
             SELECT 
                 (SELECT COUNT(*) FROM service_team_members WHERE service_id = $1 AND is_active = TRUE) as total_members,
                 (SELECT COUNT(*) FROM service_team_invitations WHERE service_id = $1 AND status = 'pending') as pending_invitations,
                 (SELECT COUNT(*) FROM services WHERE id = $1 AND is_active = TRUE) as active_services
-            "#,
-            service_id
+            "#
         )
+        .bind(sid)
+        .fetch_one(&state.pg)
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
     } else {
         sqlx::query(
             r#"
@@ -487,17 +519,15 @@ pub async fn get_team_stats(
                 (SELECT COUNT(*) FROM services WHERE is_active = TRUE) as active_services
             "#
         )
-    };
-
-    let stats_row = stats
         .fetch_one(&state.pg)
         .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+    };
 
     let team_stats = TeamStats {
-        total_members: stats_row.total_members.unwrap_or(0),
-        pending_invitations: stats_row.pending_invitations.unwrap_or(0),
-        active_services: stats_row.active_services.unwrap_or(0),
+        total_members: stats_row.try_get::<i64, _>("total_members").unwrap_or(0),
+        pending_invitations: stats_row.try_get::<i64, _>("pending_invitations").unwrap_or(0),
+        active_services: stats_row.try_get::<i64, _>("active_services").unwrap_or(0),
     };
 
     Ok(Json(serde_json::json!({
