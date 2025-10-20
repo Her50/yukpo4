@@ -11,6 +11,7 @@ use serde_json::{json, Value};
 use log::{info, error, warn};
 use tokio::fs::File;
 use tokio::io::AsyncReadExt;
+use crate::utils::log::log_error;
 
 use crate::{
     controllers::{

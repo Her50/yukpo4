@@ -156,7 +156,7 @@ pub async fn search_product_images(
         request.image_base64.clone()
     };
 
-    let image_data = match base64::decode(&image_base64) {
+    let image_data = match general_purpose::STANDARD.decode(&image_base64) {
         Ok(data) => data,
         Err(e) => {
             log_error(&format!("[ImageSearchController] Erreur décodage base64: {}", e));

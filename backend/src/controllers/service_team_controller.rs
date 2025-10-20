@@ -374,7 +374,7 @@ pub async fn update_member_role(
         request.role,
         member_uuid
     )
-    .execute(&pool)
+    .execute(&state.pg)
     .await
     .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
@@ -396,7 +396,7 @@ pub async fn remove_member(
         "UPDATE service_team_members SET is_active = FALSE WHERE id = $1",
         member_uuid
     )
-    .execute(&pool)
+    .execute(&state.pg)
     .await
     .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
@@ -565,7 +565,7 @@ pub async fn accept_invitation(
         invitation.role_id,
         user_id
     )
-    .execute(&pool)
+    .execute(&state.pg)
     .await
     .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
@@ -578,7 +578,7 @@ pub async fn accept_invitation(
         "#,
         invitation.id
     )
-    .execute(&pool)
+    .execute(&state.pg)
     .await
     .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
