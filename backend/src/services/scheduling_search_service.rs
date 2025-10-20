@@ -4,7 +4,7 @@
 use sqlx::PgPool;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use sqlx::{Row, FromRow};
+use sqlx::Row;
 use std::collections::HashMap;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

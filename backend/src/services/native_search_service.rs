@@ -1,7 +1,7 @@
 use crate::core::types::AppResult;
 use crate::utils::log::{log_info, log_error};
 use crate::config::search_config::SearchConfig;
-use crate::services::scheduling_search_service::{SchedulingSearchService, SearchIntent};
+use crate::services::scheduling_search_service::SchedulingSearchService;
 use serde_json::Value;
 use sqlx::{PgPool, Row};
 

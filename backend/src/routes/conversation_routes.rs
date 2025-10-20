@@ -15,7 +15,6 @@ use crate::{
         get_conversation_participants,
         search_users_for_invitation,
         get_tag_history,
-        get_visible_messages_for_participant,
     },
     middlewares::jwt::jwt_auth,
     state::AppState,
@@ -27,7 +26,6 @@ pub fn conversation_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route("/conversations/:conversation_id/participants", get(get_conversation_participants))
         .route("/conversations/:conversation_id/invite", post(invite_user_to_conversation))
         .route("/conversations/:conversation_id/participants/:user_id", delete(remove_participant_from_conversation))
-        .route("/conversations/:conversation_id/messages", get(get_visible_messages_for_participant))
         
         // Recherche et historique
         .route("/conversations/search-users", get(search_users_for_invitation))

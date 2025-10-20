@@ -2,7 +2,7 @@
 // Utilise OpenAI Whisper API ou une alternative pour transcrire l'audio en texte
 
 use crate::core::types::{AppError, AppResult};
-use crate::utils::logger::{log_error, log_info, log_warn};
+use crate::utils::log::{log_error, log_info, log_warn};
 use base64::{Engine as _, engine::general_purpose};
 use serde::{Deserialize, Serialize};
 use std::env;

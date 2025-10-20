@@ -1,12 +1,11 @@
 // Contrôleur pour la gestion d'équipe des services
 use axum::{
-    extract::{Path, Query, State},
+    extract::{Path, State},
     http::StatusCode,
     Json,
 };
 use serde::{Deserialize, Serialize};
-use sqlx::Row;
-use std::{collections::HashMap, sync::Arc};
+use std::sync::Arc;
 use uuid::Uuid;
 
 use crate::state::AppState;
@@ -283,7 +282,7 @@ pub async fn invite_member(
         "SELECT id, username, email FROM users WHERE email = $1 OR username = $1",
         request.email
     )
-    .fetch_optional(&pool)
+    .fetch_optional(&state.pg)
     .await
     .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
@@ -413,7 +412,7 @@ pub async fn get_available_roles(
     let roles = sqlx::query!(
         "SELECT id, name, description, level, color, icon FROM service_team_roles ORDER BY level ASC"
     )
-    .fetch_all(&pool)
+    .fetch_all(&state.pg)
     .await
     .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
@@ -442,7 +441,7 @@ pub async fn get_available_permissions(
     let permissions = sqlx::query!(
         "SELECT id, name, description, category FROM service_permissions ORDER BY category, name"
     )
-    .fetch_all(&pool)
+    .fetch_all(&state.pg)
     .await
     .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
@@ -519,7 +518,7 @@ pub async fn accept_invitation(
         "#,
         token
     )
-    .fetch_optional(&pool)
+    .fetch_optional(&state.pg)
     .await
     .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 

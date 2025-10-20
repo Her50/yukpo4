@@ -3,7 +3,7 @@
 
 use crate::core::types::{AppError, AppResult};
 use crate::services::app_ia::{AppIA, ModelConfig};
-use crate::utils::logger::{log_error, log_info, log_warn};
+use crate::utils::log::{log_error, log_info, log_warn};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::collections::HashMap;
