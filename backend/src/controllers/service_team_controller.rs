@@ -278,10 +278,10 @@ pub async fn invite_member(
     let invitation_token = Uuid::new_v4().to_string();
 
     // Vérifier si l'utilisateur existe
-      let user = sqlx::query(
-        "SELECT id, username, email FROM users WHERE email = $1 OR username = $1",
-        request.email
+    let user = sqlx::query(
+        "SELECT id, username, email FROM users WHERE email = $1 OR username = $1"
     )
+    .bind(&request.email)
     .fetch_optional(&state.pg)
     .await
     .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
@@ -289,6 +289,8 @@ pub async fn invite_member(
     if let Some(user) = user {
         // L'utilisateur existe, l'ajouter directement à l'équipe
         let member_id = Uuid::new_v4();
+        let user_id = user.try_get::<i32, _>("id").map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+        let username = user.try_get::<String, _>("username").map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
         
         sqlx::query(
             r#"
@@ -297,13 +299,13 @@ pub async fn invite_member(
             ON CONFLICT (service_id, user_id) DO UPDATE SET
                 role_id = EXCLUDED.role_id,
                 is_active = TRUE
-            "#,
-            member_id,
-            request.service_id,
-            user.id,
-            request.role,
-            1 // TODO: Récupérer l'ID de l'utilisateur connecté
+            "#
         )
+        .bind(member_id)
+        .bind(request.service_id)
+        .bind(user_id)
+        .bind(&request.role)
+        .bind(1) // TODO: Récupérer l'ID de l'utilisateur connecté
         .execute(&state.pg)
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
@@ -313,8 +315,8 @@ pub async fn invite_member(
             "message": "Membre ajouté à l'équipe avec succès",
             "data": {
                 "member_id": member_id,
-                "user_id": user.id,
-                "username": user.username
+                "user_id": user_id,
+                "username": username
             }
         })))
     } else {
@@ -330,14 +332,14 @@ pub async fn invite_member(
                 token = EXCLUDED.token,
                 expires_at = NOW() + INTERVAL '7 days',
                 status = 'pending'
-            "#,
-            invitation_id,
-            request.service_id,
-            request.email,
-            request.role,
-            1, // TODO: Récupérer l'ID de l'utilisateur connecté
-            invitation_token
+            "#
         )
+        .bind(invitation_id)
+        .bind(request.service_id)
+        .bind(&request.email)
+        .bind(&request.role)
+        .bind(1) // TODO: Récupérer l'ID de l'utilisateur connecté
+        .bind(&invitation_token)
         .execute(&state.pg)
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
@@ -510,14 +512,14 @@ pub async fn accept_invitation(
     State(state): State<Arc<AppState>>,
 ) -> Result<Json<serde_json::Value>, StatusCode> {
     // Vérifier l'invitation
-      let invitation = sqlx::query(
+    let invitation = sqlx::query(
         r#"
         SELECT id, service_id, email, role_id, expires_at, status
         FROM service_team_invitations
         WHERE token = $1
-        "#,
-        token
+        "#
     )
+    .bind(&token)
     .fetch_optional(&state.pg)
     .await
     .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
@@ -530,14 +532,20 @@ pub async fn accept_invitation(
         }))),
     };
 
-    if invitation.status != "pending" {
+    let invitation_id = invitation.try_get::<Uuid, _>("id").map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    let service_id = invitation.try_get::<Option<i32>, _>("service_id").map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    let role_id = invitation.try_get::<String, _>("role_id").map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    let status = invitation.try_get::<String, _>("status").map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    let expires_at = invitation.try_get::<chrono::DateTime<chrono::Utc>, _>("expires_at").map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    if status != "pending" {
         return Ok(Json(serde_json::json!({
             "success": false,
             "message": "Invitation déjà traitée"
         })));
     }
 
-    if invitation.expires_at < chrono::Utc::now() {
+    if expires_at < chrono::Utc::now() {
         return Ok(Json(serde_json::json!({
             "success": false,
             "message": "Invitation expirée"
@@ -557,13 +565,13 @@ pub async fn accept_invitation(
         ON CONFLICT (service_id, user_id) DO UPDATE SET
             role_id = EXCLUDED.role_id,
             is_active = TRUE
-        "#,
-        member_id,
-        invitation.service_id,
-        user_id,
-        invitation.role_id,
-        user_id
+        "#
     )
+    .bind(member_id)
+    .bind(service_id)
+    .bind(user_id)
+    .bind(&role_id)
+    .bind(user_id)
     .execute(&state.pg)
     .await
     .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
@@ -574,9 +582,9 @@ pub async fn accept_invitation(
         UPDATE service_team_invitations 
         SET status = 'accepted', accepted_at = NOW()
         WHERE id = $1
-        "#,
-        invitation.id
+        "#
     )
+    .bind(invitation_id)
     .execute(&state.pg)
     .await
     .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
