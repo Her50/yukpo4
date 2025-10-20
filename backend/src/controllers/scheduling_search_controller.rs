@@ -76,9 +76,11 @@ pub async fn search_with_scheduling(
         availability_info: r.availability_info,
     }).collect();
 
+    let total = search_results.len();
+
     Ok(Json(SchedulingSearchResponse {
         results: search_results,
-        total: search_results.len(),
+        total,
         search_intent: format!("{:?}", intent),
     }))
 }

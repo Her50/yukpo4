@@ -4,7 +4,7 @@
 use crate::core::types::{AppError, AppResult};
 use crate::utils::logger::{log_error, log_info, log_warn};
 use serde::{Deserialize, Serialize};
-use sqlx::PgPool;
+use sqlx::{PgPool, Row};
 use std::sync::Arc;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

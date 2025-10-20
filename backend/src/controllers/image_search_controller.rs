@@ -4,6 +4,7 @@ use axum::{
     http::StatusCode,
     response::IntoResponse,
 };
+use base64::{Engine as _, engine::general_purpose};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
@@ -68,7 +69,7 @@ pub async fn search_by_image(
     };
 
     // Décoder l'image base64
-    let image_data = match base64::decode(&image_base64) {
+    let image_data = match general_purpose::STANDARD.decode(&image_base64) {
         Ok(data) => data,
         Err(e) => {
             log_error(&format!("[ImageSearchController] Erreur décodage base64: {}", e));

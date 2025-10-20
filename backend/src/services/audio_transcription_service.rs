@@ -3,6 +3,7 @@
 
 use crate::core::types::{AppError, AppResult};
 use crate::utils::logger::{log_error, log_info, log_warn};
+use base64::{Engine as _, engine::general_purpose};
 use serde::{Deserialize, Serialize};
 use std::env;
 
@@ -31,7 +32,7 @@ impl AudioTranscriptionService {
             audio_base64
         };
 
-        let audio_bytes = base64::decode(audio_data).map_err(|e| {
+        let audio_bytes = general_purpose::STANDARD.decode(audio_data).map_err(|e| {
             log_error(&format!("[AudioTranscription] Erreur décodage base64: {}", e));
             AppError::Internal(format!("Erreur décodage audio: {}", e))
         })?;

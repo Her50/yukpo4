@@ -36,7 +36,7 @@ pub struct SignalementResponse {
     pub reference: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct RisquePrestataire {
     pub risque: String,
     pub signalements_actifs: i64,
