@@ -23,9 +23,9 @@ use crate::{
 pub fn conversation_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
     Router::new()
         // Gestion des participants
-        .route("/conversations/:conversation_id/participants", get(get_conversation_participants))
-        .route("/conversations/:conversation_id/invite", post(invite_user_to_conversation))
-        .route("/conversations/:conversation_id/participants/:user_id", delete(remove_participant_from_conversation))
+        .route("/conversations/{conversation_id}/participants", get(get_conversation_participants))
+        .route("/conversations/{conversation_id}/invite", post(invite_user_to_conversation))
+        .route("/conversations/{conversation_id}/participants/{user_id}", delete(remove_participant_from_conversation))
         
         // Recherche et historique
         .route("/conversations/search-users", get(search_users_for_invitation))
