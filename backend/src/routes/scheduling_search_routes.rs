@@ -5,14 +5,14 @@ use crate::controllers::scheduling_search_controller::{
     refresh_pharmacies_on_duty,
     search_with_scheduling,
 };
+use crate::state::AppState;
 use axum::{
     routing::get,
     Router,
 };
 use std::sync::Arc;
-use sqlx::PgPool;
 
-pub fn scheduling_search_routes() -> Router<Arc<PgPool>> {
+pub fn scheduling_search_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
     Router::new()
         // Recherche avancée avec planifications
         .route("/api/search/scheduling", get(search_with_scheduling))
@@ -25,4 +25,5 @@ pub fn scheduling_search_routes() -> Router<Arc<PgPool>> {
         
         // Rafraîchissement de la vue matérialisée
         .route("/api/admin/refresh-pharmacies", get(refresh_pharmacies_on_duty))
+        .with_state(state)
 }

@@ -13,8 +13,10 @@ use crate::controllers::service_team_controller::{
     get_team_stats,
     accept_invitation,
 };
+use crate::state::AppState;
+use std::sync::Arc;
 
-pub fn service_team_routes() -> Router {
+pub fn service_team_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
     Router::new()
         // Gestion des membres d'équipe
         .route("/api/services/:service_id/team", get(get_team_members))
@@ -33,4 +35,5 @@ pub fn service_team_routes() -> Router {
         
         // Invitations
         .route("/api/services/team/invitations/:token/accept", post(accept_invitation))
+        .with_state(state)
 }

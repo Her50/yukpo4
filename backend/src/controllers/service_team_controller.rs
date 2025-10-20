@@ -5,9 +5,11 @@ use axum::{
     Json,
 };
 use serde::{Deserialize, Serialize};
-use sqlx::{PgPool, Row};
-use std::collections::HashMap;
+use sqlx::Row;
+use std::{collections::HashMap, sync::Arc};
 use uuid::Uuid;
+
+use crate::state::AppState;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ServiceTeamMember {
@@ -81,8 +83,9 @@ pub struct TeamStats {
 /// Obtenir les membres d'équipe d'un service ou globalement
 pub async fn get_team_members(
     Path(service_id): Path<Option<i32>>,
-    State(pool): State<PgPool>,
+    State(state): State<Arc<AppState>>,
 ) -> Result<Json<serde_json::Value>, StatusCode> {
+    let pool = &state.pg;
     let query = if let Some(service_id) = service_id {
         sqlx::query!(
             r#"
@@ -143,7 +146,7 @@ pub async fn get_team_members(
     };
 
     let members = query
-        .fetch_all(&pool)
+        .fetch_all(pool)
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
@@ -230,7 +233,7 @@ pub async fn get_team_members(
     };
 
     let invitations = invitations_query
-        .fetch_all(&pool)
+        .fetch_all(&state.pg)
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
@@ -269,7 +272,7 @@ pub async fn get_team_members(
 
 /// Inviter un membre à rejoindre l'équipe
 pub async fn invite_member(
-    State(pool): State<PgPool>,
+    State(state): State<Arc<AppState>>,
     Json(request): Json<InviteMemberRequest>,
 ) -> Result<Json<serde_json::Value>, StatusCode> {
     // Générer un token d'invitation
@@ -302,7 +305,7 @@ pub async fn invite_member(
             request.role,
             1 // TODO: Récupérer l'ID de l'utilisateur connecté
         )
-        .execute(&pool)
+        .execute(&state.pg)
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
@@ -336,7 +339,7 @@ pub async fn invite_member(
             1, // TODO: Récupérer l'ID de l'utilisateur connecté
             invitation_token
         )
-        .execute(&pool)
+        .execute(&state.pg)
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
@@ -356,7 +359,7 @@ pub async fn invite_member(
 /// Mettre à jour le rôle d'un membre
 pub async fn update_member_role(
     Path(member_id): Path<String>,
-    State(pool): State<PgPool>,
+    State(state): State<Arc<AppState>>,
     Json(request): Json<UpdateMemberRequest>,
 ) -> Result<Json<serde_json::Value>, StatusCode> {
     let member_uuid = Uuid::parse_str(&member_id)
@@ -384,7 +387,7 @@ pub async fn update_member_role(
 /// Retirer un membre de l'équipe
 pub async fn remove_member(
     Path(member_id): Path<String>,
-    State(pool): State<PgPool>,
+    State(state): State<Arc<AppState>>,
 ) -> Result<Json<serde_json::Value>, StatusCode> {
     let member_uuid = Uuid::parse_str(&member_id)
         .map_err(|_| StatusCode::BAD_REQUEST)?;
@@ -405,7 +408,7 @@ pub async fn remove_member(
 
 /// Obtenir les rôles disponibles
 pub async fn get_available_roles(
-    State(pool): State<PgPool>,
+    State(state): State<Arc<AppState>>,
 ) -> Result<Json<serde_json::Value>, StatusCode> {
     let roles = sqlx::query!(
         "SELECT id, name, description, level, color, icon FROM service_team_roles ORDER BY level ASC"
@@ -434,7 +437,7 @@ pub async fn get_available_roles(
 
 /// Obtenir les permissions disponibles
 pub async fn get_available_permissions(
-    State(pool): State<PgPool>,
+    State(state): State<Arc<AppState>>,
 ) -> Result<Json<serde_json::Value>, StatusCode> {
     let permissions = sqlx::query!(
         "SELECT id, name, description, category FROM service_permissions ORDER BY category, name"
@@ -462,7 +465,7 @@ pub async fn get_available_permissions(
 /// Obtenir les statistiques de l'équipe
 pub async fn get_team_stats(
     Path(service_id): Path<Option<i32>>,
-    State(pool): State<PgPool>,
+    State(state): State<Arc<AppState>>,
 ) -> Result<Json<serde_json::Value>, StatusCode> {
     let stats = if let Some(service_id) = service_id {
         sqlx::query!(
@@ -486,7 +489,7 @@ pub async fn get_team_stats(
     };
 
     let stats_row = stats
-        .fetch_one(&pool)
+        .fetch_one(&state.pg)
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
@@ -505,7 +508,7 @@ pub async fn get_team_stats(
 /// Accepter une invitation
 pub async fn accept_invitation(
     Path(token): Path<String>,
-    State(pool): State<PgPool>,
+    State(state): State<Arc<AppState>>,
 ) -> Result<Json<serde_json::Value>, StatusCode> {
     // Vérifier l'invitation
     let invitation = sqlx::query!(

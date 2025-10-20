@@ -1,6 +1,6 @@
 // Contrôleur pour la recherche avec planifications
-use sqlx::PgPool;
 use crate::services::scheduling_search_service::{SchedulingSearchService, PharmacyOnDuty, MedicalServiceAvailability};
+use crate::state::AppState;
 use axum::{
     extract::{Query, State},
     http::StatusCode,
@@ -52,9 +52,9 @@ pub struct SchedulingSearchResult {
 /// Recherche avancée avec planifications
 pub async fn search_with_scheduling(
     Query(params): Query<SchedulingSearchParams>,
-    State(pool): State<Arc<PgPool>>,
+    State(state): State<Arc<AppState>>,
 ) -> Result<Json<SchedulingSearchResponse>, StatusCode> {
-    let scheduling_service = SchedulingSearchService::new((*pool).clone());
+    let scheduling_service = SchedulingSearchService::new(state.pg.clone());
     
     // Analyser l'intention de recherche
     let intent = scheduling_service.analyze_search_intent(&params.query);
@@ -86,9 +86,9 @@ pub async fn search_with_scheduling(
 /// Recherche de pharmacies de garde
 pub async fn get_pharmacies_on_duty(
     Query(params): Query<PharmacySearchParams>,
-    State(pool): State<Arc<PgPool>>,
+    State(state): State<Arc<AppState>>,
 ) -> Result<Json<Vec<PharmacyOnDuty>>, StatusCode> {
-    let scheduling_service = SchedulingSearchService::new((*pool).clone());
+    let scheduling_service = SchedulingSearchService::new(state.pg.clone());
     
     let results = scheduling_service.search_pharmacies_on_duty(
         params.lat,
@@ -102,9 +102,9 @@ pub async fn get_pharmacies_on_duty(
 /// Recherche de services médicaux disponibles
 pub async fn get_available_medical_services(
     Query(params): Query<MedicalSearchParams>,
-    State(pool): State<Arc<PgPool>>,
+    State(state): State<Arc<AppState>>,
 ) -> Result<Json<Vec<MedicalServiceAvailability>>, StatusCode> {
-    let scheduling_service = SchedulingSearchService::new((*pool).clone());
+    let scheduling_service = SchedulingSearchService::new(state.pg.clone());
     
     let results = scheduling_service.search_available_medical_services(
         params.service.as_deref(),
@@ -118,9 +118,9 @@ pub async fn get_available_medical_services(
 
 /// Rafraîchir la vue matérialisée des pharmacies de garde
 pub async fn refresh_pharmacies_on_duty(
-    State(pool): State<Arc<PgPool>>,
+    State(state): State<Arc<AppState>>,
 ) -> Result<Json<serde_json::Value>, StatusCode> {
-    let scheduling_service = SchedulingSearchService::new((*pool).clone());
+    let scheduling_service = SchedulingSearchService::new(state.pg.clone());
     
     scheduling_service.refresh_pharmacies_on_duty()
         .await

@@ -152,13 +152,13 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
     let signalement_routes_merged = crate::routes::signalement_routes::signalement_routes(state.clone());
     
     // ✅ NOUVEAU: Routes pour recherche avec planifications
-    let scheduling_search_routes_merged = crate::routes::scheduling_search_routes::scheduling_search_routes().with_state(state.db.clone());
+    let scheduling_search_routes_merged = crate::routes::scheduling_search_routes::scheduling_search_routes(state.clone());
     
     // ✅ NOUVEAU: Routes pour gestion d'équipe des services
-    let service_team_routes_merged = crate::routes::service_team_routes::service_team_routes().with_state(state.db.clone());
+    let service_team_routes_merged = crate::routes::service_team_routes::service_team_routes(state.clone());
     
     // ✅ NOUVEAU: Routes pour recherche par image
-    let image_search_routes_merged = crate::routes::image_search_routes::image_search_routes(state.db.clone());
+    let image_search_routes_merged = crate::routes::image_search_routes::image_search_routes(state.clone());
     
     // Combinaison des routes
     public_routes

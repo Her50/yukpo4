@@ -5,10 +5,10 @@ use axum::{
     response::IntoResponse,
 };
 use serde::{Deserialize, Serialize};
-use sqlx::PgPool;
 use std::sync::Arc;
 
 use crate::services::image_search_service::{ImageSearchService, ImageSearchResult};
+use crate::state::AppState;
 use crate::utils::logger::{log_error, log_info};
 
 #[derive(Debug, Deserialize)]
@@ -48,7 +48,7 @@ pub struct ImageSearchResponse {
 
 /// Rechercher des produits/services similaires par image
 pub async fn search_by_image(
-    State(pool): State<Arc<PgPool>>,
+    State(state): State<Arc<AppState>>,
     Json(request): Json<ImageSearchRequest>,
 ) -> impl IntoResponse {
     log_info(&format!(
@@ -87,7 +87,7 @@ pub async fn search_by_image(
 
     log_info(&format!("[ImageSearchController] Image décodée: {} octets", image_data.len()));
 
-    let search_service = ImageSearchService::new(pool);
+    let search_service = ImageSearchService::new(Arc::new(state.pg.clone()));
 
     // Recherche selon le type
     let results = match request.search_type.as_str() {
@@ -140,7 +140,7 @@ pub async fn search_by_image(
 
 /// Rechercher spécifiquement dans les images de produits
 pub async fn search_product_images(
-    State(pool): State<Arc<PgPool>>,
+    State(state): State<Arc<AppState>>,
     Json(request): Json<ImageSearchRequest>,
 ) -> impl IntoResponse {
     log_info("[ImageSearchController] Recherche dans images de produits");
@@ -172,7 +172,7 @@ pub async fn search_product_images(
         }
     };
 
-    let search_service = ImageSearchService::new(pool);
+    let search_service = ImageSearchService::new(Arc::new(state.pg.clone()));
     let signature = match ImageSearchService::generate_image_signature(&image_data) {
         Ok(sig) => sig,
         Err(e) => {
