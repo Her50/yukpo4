@@ -86,7 +86,7 @@ pub async fn get_team_members(
 ) -> Result<Json<serde_json::Value>, StatusCode> {
     let pool = &state.pg;
     let query = if let Some(service_id) = service_id {
-        sqlx::query!(
+        sqlx::query(
             r#"
             SELECT 
                 stm.id,
@@ -115,7 +115,7 @@ pub async fn get_team_members(
             service_id
         )
     } else {
-        sqlx::query!(
+        sqlx::query(
             r#"
             SELECT 
                 stm.id,
@@ -175,7 +175,7 @@ pub async fn get_team_members(
 
     // Obtenir les invitations
     let invitations_query = if let Some(service_id) = service_id {
-        sqlx::query!(
+        sqlx::query(
             r#"
             SELECT 
                 sti.id,
@@ -203,7 +203,7 @@ pub async fn get_team_members(
             service_id
         )
     } else {
-        sqlx::query!(
+        sqlx::query(
             r#"
             SELECT 
                 sti.id,
@@ -278,7 +278,7 @@ pub async fn invite_member(
     let invitation_token = Uuid::new_v4().to_string();
 
     // Vérifier si l'utilisateur existe
-    let user = sqlx::query!(
+      let user = sqlx::query(
         "SELECT id, username, email FROM users WHERE email = $1 OR username = $1",
         request.email
     )
@@ -290,7 +290,7 @@ pub async fn invite_member(
         // L'utilisateur existe, l'ajouter directement à l'équipe
         let member_id = Uuid::new_v4();
         
-        sqlx::query!(
+        sqlx::query(
             r#"
             INSERT INTO service_team_members (id, service_id, user_id, role_id, added_by)
             VALUES ($1, $2, $3, $4, $5)
@@ -321,7 +321,7 @@ pub async fn invite_member(
         // L'utilisateur n'existe pas, créer une invitation
         let invitation_id = Uuid::new_v4();
         
-        sqlx::query!(
+        sqlx::query(
             r#"
             INSERT INTO service_team_invitations (id, service_id, email, role_id, invited_by, token)
             VALUES ($1, $2, $3, $4, $5, $6)
@@ -364,7 +364,7 @@ pub async fn update_member_role(
     let member_uuid = Uuid::parse_str(&member_id)
         .map_err(|_| StatusCode::BAD_REQUEST)?;
 
-    sqlx::query!(
+    sqlx::query(
         r#"
         UPDATE service_team_members 
         SET role_id = $1
@@ -391,7 +391,7 @@ pub async fn remove_member(
     let member_uuid = Uuid::parse_str(&member_id)
         .map_err(|_| StatusCode::BAD_REQUEST)?;
 
-    sqlx::query!(
+    sqlx::query(
         "UPDATE service_team_members SET is_active = FALSE WHERE id = $1",
         member_uuid
     )
@@ -409,7 +409,7 @@ pub async fn remove_member(
 pub async fn get_available_roles(
     State(state): State<Arc<AppState>>,
 ) -> Result<Json<serde_json::Value>, StatusCode> {
-    let roles = sqlx::query!(
+      let roles = sqlx::query(
         "SELECT id, name, description, level, color, icon FROM service_team_roles ORDER BY level ASC"
     )
     .fetch_all(&state.pg)
@@ -438,7 +438,7 @@ pub async fn get_available_roles(
 pub async fn get_available_permissions(
     State(state): State<Arc<AppState>>,
 ) -> Result<Json<serde_json::Value>, StatusCode> {
-    let permissions = sqlx::query!(
+      let permissions = sqlx::query(
         "SELECT id, name, description, category FROM service_permissions ORDER BY category, name"
     )
     .fetch_all(&state.pg)
@@ -467,7 +467,7 @@ pub async fn get_team_stats(
     State(state): State<Arc<AppState>>,
 ) -> Result<Json<serde_json::Value>, StatusCode> {
     let stats = if let Some(service_id) = service_id {
-        sqlx::query!(
+        sqlx::query(
             r#"
             SELECT 
                 (SELECT COUNT(*) FROM service_team_members WHERE service_id = $1 AND is_active = TRUE) as total_members,
@@ -477,7 +477,7 @@ pub async fn get_team_stats(
             service_id
         )
     } else {
-        sqlx::query!(
+        sqlx::query(
             r#"
             SELECT 
                 (SELECT COUNT(*) FROM service_team_members WHERE is_active = TRUE) as total_members,
@@ -510,7 +510,7 @@ pub async fn accept_invitation(
     State(state): State<Arc<AppState>>,
 ) -> Result<Json<serde_json::Value>, StatusCode> {
     // Vérifier l'invitation
-    let invitation = sqlx::query!(
+      let invitation = sqlx::query(
         r#"
         SELECT id, service_id, email, role_id, expires_at, status
         FROM service_team_invitations
@@ -550,7 +550,7 @@ pub async fn accept_invitation(
     // Ajouter l'utilisateur à l'équipe
     let member_id = Uuid::new_v4();
     
-    sqlx::query!(
+    sqlx::query(
         r#"
         INSERT INTO service_team_members (id, service_id, user_id, role_id, added_by)
         VALUES ($1, $2, $3, $4, $5)
@@ -569,7 +569,7 @@ pub async fn accept_invitation(
     .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
     // Marquer l'invitation comme acceptée
-    sqlx::query!(
+    sqlx::query(
         r#"
         UPDATE service_team_invitations 
         SET status = 'accepted', accepted_at = NOW()

@@ -31,7 +31,7 @@ reqwest = { version = "0.11", features = ["json", "multipart"] }
 http-body = "1.0.1"
 
 # ðŸ›¢ Base de donnÃ©es
-sqlx = { version = "0.8", features = ["postgres", "runtime-tokio-rustls", "uuid", "chrono", "bigdecimal"] }
+sqlx = { version = "0.8", features = ["postgres", "runtime-tokio-rustls", "uuid", "chrono", "bigdecimal", "offline"] }
 mongodb = { version = "2.8", features = ["tokio-runtime"] }
 redis = { version = "0.26", features = ["tokio-comp", "aio"] }
 
