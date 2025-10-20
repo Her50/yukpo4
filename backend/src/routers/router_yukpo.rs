@@ -217,7 +217,7 @@ async fn handle_direct_search(
                     "SELECT credits, devise FROM users WHERE id = $1"
                 )
                 .bind(user.id)
-                .fetch_one(&*_state.pg)
+                .fetch_one(&_state.pg)
                 .await;
         
         match user_balance_result {
@@ -309,7 +309,7 @@ async fn handle_direct_search(
                         .bind(gps_lng)
                         .bind(search_radius_km.unwrap_or(50) as i32)
                         .bind(20i32)
-                        .fetch_all(&*_state.pg)
+                        .fetch_all(&_state.pg)
                         .await;
                         
                         match search_results {
@@ -342,7 +342,7 @@ async fn handle_direct_search(
                                     )
                                     .bind(user_cost)
                                     .bind(user.id)
-                                    .fetch_optional(&*_state.pg)
+                                    .fetch_optional(&_state.pg)
                                     .await;
                                     
                                     match debit_result {

@@ -332,7 +332,7 @@ impl SchedulingSearchService {
     /// Rafraîchit la vue matérialisée des pharmacies de garde
     pub async fn refresh_pharmacies_on_duty(&self) -> Result<(), String> {
         sqlx::query("SELECT refresh_pharmacies_on_duty()")
-            .execute(&self.db.pool)
+            .execute(&self.pool)
             .await
             .map_err(|e| format!("Erreur rafraîchissement pharmacies de garde: {}", e))?;
 
