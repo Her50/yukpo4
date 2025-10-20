@@ -34,6 +34,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .connect(&db_url)
         .await?;
 
+    // 🔄 Exécuter les migrations automatiques au démarrage
+    yukpomnang_backend::migrations::auto_migrate::run_auto_migrations(&pg_pool).await;
+
     let mongo_url = env::var("MONGODB_URL")
         .unwrap_or_else(|_| "mongodb://localhost:27017".to_string());
     let mongo_client = MongoClient::with_uri_str(&mongo_url).await?;
