@@ -184,6 +184,11 @@ export default function FormulaireDemandeOuService() {
   const validateRequiredFields = () => {
     const errors: string[] = [];
 
+    // ✅ NOUVEAU : Vérifier qu'au moins 1 produit est ajouté
+    if (products.length === 0) {
+      errors.push('⚠️ Vous devez ajouter au moins 1 produit');
+    }
+
     // Vérifier les champs obligatoires selon les composants générés
     composants.forEach(composant => {
       if (composant.obligatoire) {
@@ -343,8 +348,18 @@ export default function FormulaireDemandeOuService() {
 
         // 🔧 ÉTAPE 4 : Ajouter les produits aux données de service
         if (products.length > 0) {
-          serviceData.produits = products;
-          console.log('[FormulaireYukpoIntelligent] Produits ajoutés aux données de service:', products);
+          // Nettoyer les produits : supprimer les champs undefined/null/vides
+          const cleanedProducts = products.map(product => {
+            const cleaned: any = {};
+            Object.keys(product).forEach(key => {
+              if (product[key] !== undefined && product[key] !== null && product[key] !== '') {
+                cleaned[key] = product[key];
+              }
+            });
+            return cleaned;
+          });
+          serviceData.produits = cleanedProducts;
+          console.log('[FormulaireYukpoIntelligent] Produits ajoutés (nettoyés):', cleanedProducts);
         }
 
         // ✅ CORRECTION CRITIQUE : Ajouter le GPS fixe si présent (évite GPS Nigeria)

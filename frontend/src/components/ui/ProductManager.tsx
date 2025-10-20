@@ -88,7 +88,7 @@ const PRODUCT_TYPES = [
     { value: 'mobilier', label: 'Mobilier et Ameublement', icon: '🪑', description: 'Meubles salon, chambre, bureau, rangement' },
     { value: 'ordinateur', label: 'Ordinateurs et Informatique', icon: '💻', description: 'PC portables, bureaux, tablettes, accessoires' },
     { value: 'pharmacie', label: 'Pharmacies et Gardes', icon: '💊', description: 'Pharmacies, planning de garde, services pharmaceutiques' },
-    { value: 'prestation_service', label: 'Portfolio de Réalisations', icon: '🎯', description: 'Galerie de vos prestations professionnelles' },
+    { value: 'prestation_service', label: 'Prestation de Service', icon: '🎯', description: 'Plombier, électricien, mécanicien, coiffeur, développeur...', keywords: ['plombier', 'électricien', 'mécanicien', 'menuisier', 'peintre', 'maçon', 'carreleur', 'soudeur', 'serrurier', 'vitrier', 'plâtrier', 'couvreur', 'charpentier', 'ébéniste', 'tapissier', 'décorateur', 'jardinier', 'paysagiste', 'élagueur', 'coiffeur', 'barbier', 'esthéticienne', 'manucure', 'massage', 'spa', 'kinésithérapeute', 'ostéopathe', 'infirmier', 'sage-femme', 'aide-soignant', 'auxiliaire', 'photographe', 'vidéaste', 'graphiste', 'designer', 'développeur', 'programmeur', 'webmaster', 'informaticien', 'technicien', 'réparateur', 'dépanneur', 'installateur', 'monteur', 'agent', 'nettoyage', 'entretien', 'ménage', 'repassage', 'cuisinier', 'traiteur', 'pâtissier', 'boulanger', 'serveur', 'barman', 'chauffeur', 'livreur', 'coursier', 'déménageur', 'manutentionnaire', 'gardien', 'vigile', 'agent de sécurité', 'coach', 'formateur', 'professeur', 'enseignant', 'répétiteur', 'tuteur', 'traducteur', 'interprète', 'rédacteur', 'correcteur', 'secrétaire', 'assistant', 'comptable', 'auditeur', 'consultant', 'conseiller', 'expert', 'avocat', 'juriste', 'notaire', 'huissier', 'architecte', 'ingénieur', 'géomètre', 'topographe', 'vétérinaire', 'dresseur', 'toiletteur', 'DJ', 'musicien', 'animateur', 'présentateur', 'artiste', 'comédien', 'danseur', 'maquilleur', 'styliste', 'couturier', 'tailleur', 'cordonnier', 'tapissier', 'sellier', 'bijoutier', 'horloger', 'opticien', 'prothésiste', 'dentiste', 'orthodontiste', 'pédicure', 'podologue', 'sophrologue', 'psychologue', 'psychiatre', 'nutritionniste', 'diététicien', 'coach sportif', 'personal trainer', 'yoga', 'pilates', 'danse', 'sport', 'guide', 'accompagnateur', 'moniteur', 'instructeur', 'analyste', 'data scientist', 'statisticien', 'économiste', 'chercheur', 'scientifique', 'laborantin', 'pharmacien', 'préparateur', 'radiologiste', 'échographiste', 'technicien médical', 'ambulancier', 'secouriste', 'pompier', 'agent immobilier', 'promoteur', 'syndic', 'gestionnaire', 'administrateur', 'directeur', 'manager', 'chef de projet', 'coordinateur', 'superviseur', 'contrôleur', 'inspecteur', 'évaluateur', 'expert-comptable', 'fiscaliste', 'commissaire aux comptes', 'assureur', 'courtier', 'agent général', 'banquier', 'conseiller financier', 'trader', 'cambiste', 'caissier', 'guichetier', 'vendeur', 'commercial', 'télévendeur', 'VRP', 'représentant', 'agent commercial', 'négociateur', 'acheteur', 'approvisionneur', 'logisticien', 'magasinier', 'gestionnaire de stock', 'préparateur de commandes', 'cariste', 'grutier', 'conducteur', 'opérateur', 'machiniste', 'usineur', 'tourneur', 'fraiseur', 'ajusteur', 'monteur', 'assembleur', 'câbleur', 'électronicien', 'automaticien', 'roboticien', 'mécanicien auto', 'mécanicien moto', 'carrossier', 'peintre auto', 'tôlier', 'mécanicien poids lourds', 'mécanicien agricole', 'dépanneur auto', 'garagiste', 'vulcanisateur', 'climaticien', 'frigoriste', 'chauffagiste', 'sanitaire', 'zingueur'] },
     { value: 'quincaillerie', label: 'Quincaillerie et Matériaux', icon: '🔨', description: 'Outils, matériaux, peintures, construction' },
     { value: 'telephone', label: 'Téléphones et Accessoires', icon: '📱', description: 'Smartphones, accessoires, coques, écouteurs' },
     { value: 'ticket_voyage', label: 'Tickets et Billets de Transport', icon: '🎫', description: 'Bus, train, avion avec sélection de place' },
@@ -427,11 +427,13 @@ const ProductManager: React.FC<ProductManagerProps> = ({
 
                                     <div className="space-y-2 max-h-96 overflow-y-auto">
                                         {PRODUCT_TYPES
-                                            .filter(type => 
-                                                searchQuery.length === 0 || 
-                                                type.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                                                type.description.toLowerCase().includes(searchQuery.toLowerCase())
-                                            )
+                                            .filter(type => {
+                                                if (searchQuery.length === 0) return true;
+                                                const query = searchQuery.toLowerCase();
+                                                return type.label.toLowerCase().includes(query) ||
+                                                       type.description.toLowerCase().includes(query) ||
+                                                       (type.keywords && type.keywords.some(kw => kw.toLowerCase().includes(query)));
+                                            })
                                             .map((type) => (
                                             <button
                                                 key={type.value}

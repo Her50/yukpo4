@@ -299,6 +299,14 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     const errors: string[] = [];
     const newFieldErrors: Record<string, string> = {};
 
+    // ✅ NOUVEAU : Validation spéciale pour le bloc produits
+    if (currentBlockData.id === 'products') {
+      if (products.length === 0) {
+        errors.push('⚠️ Vous devez ajouter au moins 1 produit avant de continuer');
+        return { isValid: false, errors, fieldErrors: {} };
+      }
+    }
+
     currentBlockData.fields.forEach(field => {
       const value = valeursFormulaire[field.name];
       const validation = validateField(field, value);
@@ -980,10 +988,20 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                 });
                 console.log('[FormulaireYukpoIntelligentScreen] ✅ Données fusionnées avec le formulaire:', finalServiceData);
 
-                // 🔧 ÉTAPE 4 : Ajouter les produits aux données de service
+                // 🔧 ÉTAPE 4 : Ajouter les produits aux données de service (avec nettoyage)
                 if (products.length > 0) {
-                  finalServiceData.produits = products;
-                  console.log('[FormulaireYukpoIntelligentScreen] Produits ajoutés:', products);
+                  // Nettoyer les produits : supprimer les champs undefined/null
+                  const cleanedProducts = products.map(product => {
+                    const cleaned: any = {};
+                    Object.keys(product).forEach(key => {
+                      if (product[key] !== undefined && product[key] !== null && product[key] !== '') {
+                        cleaned[key] = product[key];
+                      }
+                    });
+                    return cleaned;
+                  });
+                  finalServiceData.produits = cleanedProducts;
+                  console.log('[FormulaireYukpoIntelligentScreen] Produits ajoutés (nettoyés):', cleanedProducts);
                 }
 
                 // ✅ CORRECTION CRITIQUE : Ajouter le GPS fixe si présent (évite GPS Nigeria)
@@ -1046,15 +1064,21 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                   const errorMessage = response.error || 'Erreur inconnue';
                   console.error('[FormulaireYukpoIntelligentScreen] ❌ Erreur API:', errorMessage);
                   console.error('[FormulaireYukpoIntelligentScreen] ❌ Data:', response.data);
+                  console.error('[FormulaireYukpoIntelligentScreen] ❌ Response complet:', JSON.stringify(response, null, 2));
                   console.error('[FormulaireYukpoIntelligentScreen] ❌ Payload qui a causé l\'erreur:', JSON.stringify(servicePayload, null, 2));
 
-                  // Afficher une alerte plus détaillée
+                  // ✅ AMÉLIORATION : Afficher le message d'erreur complet du backend
+                  const detailedError = response.error || response.message || 'Erreur inconnue du serveur';
+
                   Alert.alert(
                     'Erreur de création',
-                    errorMessage.substring(0, 200),
-                    [{ text: 'OK' }]
+                    `${detailedError}\n\nVérifiez les logs de la console pour plus de détails.`,
+                    [
+                      { text: 'Voir Console', onPress: () => console.log('ERREUR COMPLÈTE:', response) },
+                      { text: 'OK', style: 'cancel' }
+                    ]
                   );
-                  throw new Error(`Erreur création service: ${errorMessage}`);
+                  throw new Error(`Erreur création service: ${detailedError}`);
                 }
 
                 const result: any = response.data;

@@ -47,6 +47,11 @@ type ProductType =
     | 'mobilier'
     | 'decoration'
     | 'ustensiles_cuisine'
+    | 'sanitaire'
+    | 'electricite'
+    | 'pieces_auto'
+    | 'pieces_industrielles'
+    | 'jouets_enfants'
     | 'aliments'
     | 'livres_fournitures'
     | 'quincaillerie'
@@ -169,6 +174,40 @@ interface Product {
     primeAnnuelle?: string; // Prime annuelle
     benefices?: string; // Principaux bénéfices
 
+    // Sanitaire (Plomberie, Salle de bain)
+    typeSanitaire?: string; // Robinetterie, WC, Lavabo, Baignoire, Douche
+    marqueSanitaire?: string;
+    materielSanitaire?: string; // Céramique, Inox, Plastique
+    couleurSanitaire?: string;
+
+    // Électricité
+    typeElectricite?: string; // Câbles, Interrupteurs, Prises, Disjoncteurs, Lampes
+    marqueElectricite?: string;
+    puissance?: string; // Watt, Ampère
+    voltage?: string; // 220V, 12V, etc.
+    norme?: string; // CE, NF, etc.
+
+    // Pièces Détachées Automobile
+    typePieceAuto?: string; // Moteur, Freins, Suspension, Carrosserie, etc.
+    marquePieceAuto?: string;
+    reference?: string;
+    compatibilite?: string; // Modèles compatibles
+    etatPieceAuto?: string; // Neuf, Occasion, Reconditionné
+
+    // Pièces Détachées Industrielles
+    typePieceIndustrielle?: string; // Roulement, Courroie, Moteur, Pompe, etc.
+    marquePieceIndustrielle?: string;
+    referencePiece?: string;
+    applicationIndustrielle?: string; // Type de machine/industrie
+    materielPiece?: string;
+
+    // Jouets pour Enfants
+    typeJouet?: string; // Éducatif, Peluche, Jeu de société, Puzzle, etc.
+    ageRecommande?: string; // 0-3 ans, 3-6 ans, 6+, etc.
+    marqueJouet?: string;
+    materielJouet?: string; // Plastique, Bois, Tissu, etc.
+    normeSecurite?: string; // CE, EN71, etc.
+
     // Mobilier
     typeMobilier?: string; // Salon, Chambre, Bureau, etc.
     materiau?: string; // Bois, Métal, Tissu, etc.
@@ -248,17 +287,22 @@ const PRODUCT_TYPES = [
     { value: 'chaussure', label: 'Chaussures et Accessoires', icon: '👟', color: '#6366F1', description: 'Chaussures, baskets, sandales, bottes' },
     { value: 'covoiturage', label: 'Covoiturage et Trajets', icon: '🚙', color: '#F59E0B', description: 'Trajets partagés, carpooling, transport collectif' },
     { value: 'decoration', label: 'Décoration Intérieure', icon: '🖼️', color: '#E91E63', description: 'Tableaux, luminaires, tapis, accessoires déco' },
+    { value: 'electricite', label: 'Électricité et Éclairage', icon: '⚡', color: '#FFC107', description: 'Câbles, prises, interrupteurs, lampes, disjoncteurs' },
     { value: 'electromenager', label: 'Électroménager Domestique', icon: '🔌', color: '#14B8A6', description: 'Frigos, fours, machines à laver, micro-ondes' },
     { value: 'hopital_clinique', label: 'Établissements de Santé', icon: '🏥', color: '#DC2626', description: 'Hôpitaux, cliniques, centres médicaux, spécialités' },
     { value: 'image_son', label: 'Image et Son', icon: '📺', color: '#9C27B0', description: 'TV, home cinéma, enceintes, projecteurs, systèmes audio' },
     { value: 'immobilier_batiment', label: 'Immobilier - Bâtiments', icon: '🏢', color: '#3B82F6', description: 'Appartements, villas, maisons, immeubles' },
     { value: 'immobilier_terrain', label: 'Immobilier - Terrains', icon: '🏞️', color: '#10B981', description: 'Terrains constructibles, parcelles, lots' },
+    { value: 'jouets_enfants', label: 'Jouets et Articles pour Enfants', icon: '🧸', color: '#FF69B4', description: 'Jouets éducatifs, peluches, jeux, puzzles, livres enfants' },
     { value: 'livres_fournitures', label: 'Livres et Fournitures Scolaires', icon: '📚', color: '#7C3AED', description: 'Manuels, livres, cahiers, stylos, fournitures' },
     { value: 'mobilier', label: 'Mobilier et Ameublement', icon: '🪑', color: '#F97316', description: 'Meubles salon, chambre, bureau, rangement' },
     { value: 'ordinateur', label: 'Ordinateurs et Informatique', icon: '💻', color: '#00BCD4', description: 'PC portables, bureaux, tablettes, accessoires' },
     { value: 'pharmacie', label: 'Pharmacies et Gardes', icon: '💊', color: '#059669', description: 'Pharmacies, planning de garde, services pharmaceutiques' },
-    { value: 'prestation_service', label: 'Portfolio de Réalisations', icon: '🎯', color: '#8B5CF6', description: 'Galerie de vos prestations professionnelles' },
+    { value: 'pieces_auto', label: 'Pièces Détachées Auto', icon: '🔧', color: '#607D8B', description: 'Pièces moteur, freins, carrosserie, filtres, batteries' },
+    { value: 'pieces_industrielles', label: 'Pièces Industrielles', icon: '⚙️', color: '#455A64', description: 'Roulements, courroies, moteurs, pompes, pièces machines' },
+    { value: 'prestation_service', label: 'Prestation de Service', icon: '🎯', color: '#8B5CF6', description: 'Plombier, électricien, mécanicien, coiffeur, développeur...', keywords: ['plombier', 'électricien', 'mécanicien', 'menuisier', 'peintre', 'maçon', 'carreleur', 'soudeur', 'serrurier', 'vitrier', 'plâtrier', 'couvreur', 'charpentier', 'ébéniste', 'tapissier', 'décorateur', 'jardinier', 'paysagiste', 'élagueur', 'coiffeur', 'barbier', 'esthéticienne', 'manucure', 'massage', 'spa', 'kinésithérapeute', 'ostéopathe', 'infirmier', 'sage-femme', 'aide-soignant', 'auxiliaire', 'photographe', 'vidéaste', 'graphiste', 'designer', 'développeur', 'programmeur', 'webmaster', 'informaticien', 'technicien', 'réparateur', 'dépanneur', 'installateur', 'monteur', 'agent', 'nettoyage', 'entretien', 'ménage', 'repassage', 'cuisinier', 'traiteur', 'pâtissier', 'boulanger', 'serveur', 'barman', 'chauffeur', 'livreur', 'coursier', 'déménageur', 'manutentionnaire', 'gardien', 'vigile', 'agent de sécurité', 'coach', 'formateur', 'professeur', 'enseignant', 'répétiteur', 'tuteur', 'traducteur', 'interprète', 'rédacteur', 'correcteur', 'secrétaire', 'assistant', 'comptable', 'auditeur', 'consultant', 'conseiller', 'expert', 'avocat', 'juriste', 'notaire', 'huissier', 'architecte', 'ingénieur', 'géomètre', 'topographe', 'vétérinaire', 'dresseur', 'toiletteur', 'DJ', 'musicien', 'animateur', 'présentateur', 'artiste', 'comédien', 'danseur', 'maquilleur', 'styliste', 'couturier', 'tailleur', 'cordonnier', 'tapissier', 'sellier', 'bijoutier', 'horloger', 'opticien', 'prothésiste', 'dentiste', 'orthodontiste', 'pédicure', 'podologue', 'sophrologue', 'psychologue', 'psychiatre', 'nutritionniste', 'diététicien', 'coach sportif', 'personal trainer', 'yoga', 'pilates', 'danse', 'sport', 'guide', 'accompagnateur', 'moniteur', 'instructeur', 'analyste', 'data scientist', 'statisticien', 'économiste', 'chercheur', 'scientifique', 'laborantin', 'pharmacien', 'préparateur', 'radiologiste', 'échographiste', 'technicien médical', 'ambulancier', 'secouriste', 'pompier', 'agent immobilier', 'promoteur', 'syndic', 'gestionnaire', 'administrateur', 'directeur', 'manager', 'chef de projet', 'coordinateur', 'superviseur', 'contrôleur', 'inspecteur', 'évaluateur', 'expert-comptable', 'fiscaliste', 'commissaire aux comptes', 'assureur', 'courtier', 'agent général', 'banquier', 'conseiller financier', 'trader', 'cambiste', 'caissier', 'guichetier', 'vendeur', 'commercial', 'télévendeur', 'VRP', 'représentant', 'agent commercial', 'négociateur', 'acheteur', 'approvisionneur', 'logisticien', 'magasinier', 'gestionnaire de stock', 'préparateur de commandes', 'cariste', 'grutier', 'conducteur', 'opérateur', 'machiniste', 'usineur', 'tourneur', 'fraiseur', 'ajusteur', 'monteur', 'assembleur', 'câbleur', 'électronicien', 'automaticien', 'roboticien', 'mécanicien auto', 'mécanicien moto', 'carrossier', 'peintre auto', 'tôlier', 'mécanicien poids lourds', 'mécanicien agricole', 'dépanneur auto', 'garagiste', 'vulcanisateur', 'climaticien', 'frigoriste', 'chauffagiste', 'sanitaire', 'zingueur'] },
     { value: 'quincaillerie', label: 'Quincaillerie et Matériaux', icon: '🔨', color: '#F59E0B', description: 'Outils, matériaux, peintures, construction' },
+    { value: 'sanitaire', label: 'Sanitaire et Plomberie', icon: '🚰', color: '#0288D1', description: 'Robinetterie, WC, lavabos, douches, baignoires' },
     { value: 'telephone', label: 'Téléphones et Accessoires', icon: '📱', color: '#FF9800', description: 'Smartphones, accessoires, coques, écouteurs' },
     { value: 'ticket_voyage', label: 'Tickets et Billets de Transport', icon: '🎫', color: '#8B5CF6', description: 'Bus, train, avion avec sélection de place' },
     { value: 'ustensiles_cuisine', label: 'Ustensiles de Cuisine', icon: '🍴', color: '#FF5722', description: 'Casseroles, poêles, couteaux, mixers, batterie cuisine' },
@@ -2103,11 +2147,13 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                                 <View style={styles.dropdownContainer}>
                                     {PRODUCT_TYPES
-                                        .filter(type =>
-                                            searchQuery.length === 0 ||
-                                            type.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                                            type.description.toLowerCase().includes(searchQuery.toLowerCase())
-                                        )
+                                        .filter(type => {
+                                            if (searchQuery.length === 0) return true;
+                                            const query = searchQuery.toLowerCase();
+                                            return type.label.toLowerCase().includes(query) ||
+                                                type.description.toLowerCase().includes(query) ||
+                                                (type.keywords && type.keywords.some(kw => kw.toLowerCase().includes(query)));
+                                        })
                                         .map((type) => (
                                             <TouchableOpacity
                                                 key={type.value}
@@ -2180,38 +2226,42 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                     <View style={styles.dividerLine} />
                                 </View>
 
-                                {/* Champs communs - Cachés pour Prestation de Service */}
-                                {selectedType !== 'prestation_service' && (
-                                    <>
-                                        <View style={styles.fieldContainer}>
-                                            <Text style={styles.fieldLabel}>
-                                                Nom du produit <Text style={styles.required}>*</Text>
-                                            </Text>
-                                            <NativeInput
-                                                placeholder="Ex: Appartement F4"
-                                                value={newProduct.nom || ''}
-                                                onChangeText={(text) => setNewProduct({ ...newProduct, nom: text })}
-                                                style={styles.fieldInput}
-                                            />
-                                        </View>
+                                {/* Champs communs - Toujours visibles, pré-remplis pour Prestation de Service */}
+                                <View style={styles.fieldContainer}>
+                                    <Text style={styles.fieldLabel}>
+                                        Nom du produit <Text style={styles.required}>*</Text>
+                                        {selectedType === 'prestation_service' && (
+                                            <Text style={styles.autoFilledHint}> (pré-rempli automatiquement)</Text>
+                                        )}
+                                    </Text>
+                                    <NativeInput
+                                        placeholder="Ex: Appartement F4"
+                                        value={newProduct.nom || ''}
+                                        onChangeText={(text) => setNewProduct({ ...newProduct, nom: text })}
+                                        style={styles.fieldInput}
+                                    />
+                                </View>
 
-                                        <View style={styles.fieldContainer}>
-                                            <Text style={styles.fieldLabel}>Description</Text>
-                                            <NativeInput
-                                                placeholder="Décrivez ce produit..."
-                                                value={newProduct.description || ''}
-                                                onChangeText={(text) => setNewProduct({ ...newProduct, description: text })}
-                                                multiline
-                                                style={[styles.fieldInput, styles.textareaInput]}
-                                            />
-                                        </View>
-                                    </>
-                                )}
+                                <View style={styles.fieldContainer}>
+                                    <Text style={styles.fieldLabel}>
+                                        Description
+                                        {selectedType === 'prestation_service' && (
+                                            <Text style={styles.autoFilledHint}> (pré-remplie automatiquement)</Text>
+                                        )}
+                                    </Text>
+                                    <NativeInput
+                                        placeholder="Décrivez ce produit..."
+                                        value={newProduct.description || ''}
+                                        onChangeText={(text) => setNewProduct({ ...newProduct, description: text })}
+                                        multiline
+                                        style={[styles.fieldInput, styles.textareaInput]}
+                                    />
+                                </View>
 
                                 <View style={styles.fieldRow}>
                                     <View style={[styles.fieldContainer, { flex: 1 }]}>
                                         <Text style={styles.fieldLabel}>
-                                            Prix {selectedType !== 'prestation_service' && <Text style={styles.required}>*</Text>}
+                                            {selectedType === 'prestation_service' ? 'À partir de' : 'Prix'} {selectedType !== 'prestation_service' && <Text style={styles.required}>*</Text>}
                                         </Text>
                                         <NativeInput
                                             placeholder={selectedType === 'prestation_service' ? 'Prix (optionnel)' : '0'}
@@ -2750,6 +2800,12 @@ const styles = StyleSheet.create({
     },
     required: {
         color: modernColors.error,
+    },
+    autoFilledHint: {
+        fontSize: 11,
+        color: modernColors.success,
+        fontStyle: 'italic',
+        fontWeight: '400',
     },
     fieldInput: {
         backgroundColor: modernColors.surface,
