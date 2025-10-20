@@ -254,10 +254,8 @@ impl ImageSearchService {
 
     /// Calculer le hash MD5 d'une image pour détection de doublons
     pub fn calculate_image_hash(image_data: &[u8]) -> String {
-        use md5::{Md5, Digest};
-        let mut hasher = Md5::new();
-        hasher.update(image_data);
-        format!("{:x}", hasher.finalize())
+        let digest = md5::compute(image_data);
+        format!("{:x}", digest)
     }
 
     /// Extraire les métadonnées d'une image
