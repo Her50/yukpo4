@@ -53,7 +53,7 @@ docx-rs = "0.4.1"
 
 # ðŸ–¼ï¸ Optimisation d'Images (pour GPU)
 image = { version = "0.24", features = ["jpeg", "png", "gif", "webp"], optional = true }
-md5 = "0.10"
+md5 = "0.7"
 futures = "0.3"
 
 # ðŸ§° Utilitaires
