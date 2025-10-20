@@ -47,8 +47,6 @@ type ProductType =
     | 'mobilier'
     | 'decoration'
     | 'ustensiles_cuisine'
-    | 'sanitaire'
-    | 'electricite'
     | 'pieces_auto'
     | 'pieces_industrielles'
     | 'jouets_enfants'
@@ -59,6 +57,10 @@ type ProductType =
     | 'assurance'
     | 'pharmacie'
     | 'hopital_clinique'
+    | 'demenagement'
+    | 'cosmetique_parfum'
+    | 'bijoux'
+    | 'coiffure_beaute'
     | 'autre';
 
 interface Product {
@@ -70,6 +72,8 @@ interface Product {
     description?: string;
     images?: string[]; // Tableau d'images en Base64
     videos?: string[]; // Tableau de vidéos en Base64
+    logo?: string; // Logo du produit/marque
+    banner?: string; // Bannière promotionnelle
 
     // Champs spécifiques par type
     // Immobilier
@@ -117,6 +121,7 @@ interface Product {
     marqueChaussure?: string;
 
     // Électroménager
+    typeElectro?: string; // Réfrigérateur, Cuisinière, Four, etc.
     marqueElectro?: string;
     modeleElectro?: string;
     etat?: string;
@@ -156,6 +161,7 @@ interface Product {
     style?: string; // Moderne, Classique, Vintage, etc.
     couleurDecoration?: string;
     dimensionsDecoration?: string;
+    materiauDecoration?: string; // Toile, Bois, Métal, etc.
 
     // Ustensiles de Cuisine
     typeUstensile?: string; // Casserole, Poêle, Couteau, Mixer, etc.
@@ -166,7 +172,8 @@ interface Product {
     etatUstensile?: string;
 
     // Assurance
-    typeAssurance?: string; // Auto, Santé, Habitation, Vie, etc.
+    categorieAssurance?: string; // Vie ou Non-Vie
+    typeAssurance?: string; // Auto, Santé, Habitation, Vie entière, etc.
     compagnieAssurance?: string; // Nom de la compagnie d'assurance
     couverture?: string; // Étendue de la couverture
     franchise?: string; // Montant de la franchise
@@ -190,7 +197,7 @@ interface Product {
     // Pièces Détachées Automobile
     typePieceAuto?: string; // Moteur, Freins, Suspension, Carrosserie, etc.
     marquePieceAuto?: string;
-    reference?: string;
+    referenceAuto?: string;
     compatibilite?: string; // Modèles compatibles
     etatPieceAuto?: string; // Neuf, Occasion, Reconditionné
 
@@ -236,7 +243,7 @@ interface Product {
     // Quincaillerie et Matériaux
     categorieQuincaillerie?: string; // Outils, Matériaux, Peinture, etc.
     marqueQuincaillerie?: string;
-    reference?: string;
+    referenceQuincaillerie?: string;
     unite?: string; // Pièce, Sac, Litre, etc.
     stockDisponible?: string;
 
@@ -245,6 +252,11 @@ interface Product {
     videosRealisations?: string[]; // Vidéos de réalisations
     titreService?: string; // Rempli automatiquement depuis bloc info générale
     descriptionService?: string; // Rempli automatiquement depuis bloc info générale
+    prestations?: Array<{
+        nom: string;
+        prixAPartirDe: string;
+        description?: string;
+    }>; // Liste des prestations possibles pour ce service
 
     // Promotion (pour tous les types de produits)
     promotionActive?: boolean;
@@ -269,6 +281,53 @@ interface Product {
     horairesConsultation?: string;
     urgencesDisponible?: boolean;
     rdvEnLigne?: boolean;
+    banqueSang?: boolean; // Disponibilité d'une banque de sang
+    prestationsMedicales?: string[]; // Liste des prestations médicales disponibles
+    planningHebdomadaire?: { [key: string]: { debut: string; fin: string; permanent: boolean } }; // Planning par prestation
+
+    // Déménagement
+    typeDemenagement?: string; // Local, National, International
+    volumeEstime?: string; // En m³
+    typeVehicule?: string; // Camionnette, Camion 20m³, etc.
+    distanceKm?: string;
+    nbDemenageurs?: string;
+    assuranceMarchandise?: boolean;
+    serviceManutention?: boolean;
+    montageDemontage?: boolean;
+    emballageCartons?: boolean;
+    gardeMeuble?: boolean;
+    debarras?: boolean;
+    dateDemenagementDisponible?: string;
+    // Champs cosmétique & parfum
+    typeCosmetique?: string;
+    marqueCosmetique?: string;
+    volumeCosmetique?: string;
+    uniteCosmetique?: string;
+    typePeau?: string;
+    ageRecommandé?: string;
+    ingredientsCosmetique?: string;
+    origineCosmetique?: string;
+    // Champs bijoux
+    typeBijou?: string;
+    matiereBijou?: string;
+    poidsBijou?: string;
+    unitePoids?: string;
+    tailleBijou?: string;
+    styleBijou?: string;
+    origineBijou?: string;
+    certificatBijou?: string;
+
+    // Champs coiffure_beaute
+    typeCoiffure?: string; // mèches, extensions, perruques, accessoires
+    longueurMech?: string; // longueur des mèches/extensions
+    couleurMech?: string; // couleur des mèches
+    textureMech?: string; // texture (lisse, bouclée, ondulée)
+    typePose?: string; // type de pose (clip, collé, tissé, etc.)
+    marqueCoiffure?: string; // marque du produit
+    origineMech?: string; // origine des cheveux
+    entretienMech?: string; // conseils d'entretien
+    dureeVie?: string; // durée de vie du produit
+    typeCheveux?: string; // type de cheveux (naturel, synthétique, mixte)
 }
 
 interface ProductManagerMobileProps {
@@ -298,11 +357,14 @@ const PRODUCT_TYPES = [
     { value: 'mobilier', label: 'Mobilier et Ameublement', icon: '🪑', color: '#F97316', description: 'Meubles salon, chambre, bureau, rangement' },
     { value: 'ordinateur', label: 'Ordinateurs et Informatique', icon: '💻', color: '#00BCD4', description: 'PC portables, bureaux, tablettes, accessoires' },
     { value: 'pharmacie', label: 'Pharmacies et Gardes', icon: '💊', color: '#059669', description: 'Pharmacies, planning de garde, services pharmaceutiques' },
+    { value: 'demenagement', label: 'Déménagement et Transport', icon: '📦', color: '#F97316', description: 'Services de déménagement local, national et international' },
+    { value: 'cosmetique_parfum', label: 'Cosmétique & Parfum', icon: '✨', color: '#E91E63', description: 'Parfums, maquillage, soins beauté, huiles, crèmes' },
+    { value: 'bijoux', label: 'Bijoux & Accessoires', icon: '💎', color: '#FFD700', description: 'Colliers, bagues, bracelets, montres, pierres précieuses' },
+    { value: 'coiffure_beaute', label: 'Coiffure & Beauté', icon: '💇‍♀️', color: '#E91E63', description: 'Mèches, extensions, perruques, accessoires de coiffure, soins cheveux' },
     { value: 'pieces_auto', label: 'Pièces Détachées Auto', icon: '🔧', color: '#607D8B', description: 'Pièces moteur, freins, carrosserie, filtres, batteries' },
     { value: 'pieces_industrielles', label: 'Pièces Industrielles', icon: '⚙️', color: '#455A64', description: 'Roulements, courroies, moteurs, pompes, pièces machines' },
     { value: 'prestation_service', label: 'Prestation de Service', icon: '🎯', color: '#8B5CF6', description: 'Plombier, électricien, mécanicien, coiffeur, développeur...', keywords: ['plombier', 'électricien', 'mécanicien', 'menuisier', 'peintre', 'maçon', 'carreleur', 'soudeur', 'serrurier', 'vitrier', 'plâtrier', 'couvreur', 'charpentier', 'ébéniste', 'tapissier', 'décorateur', 'jardinier', 'paysagiste', 'élagueur', 'coiffeur', 'barbier', 'esthéticienne', 'manucure', 'massage', 'spa', 'kinésithérapeute', 'ostéopathe', 'infirmier', 'sage-femme', 'aide-soignant', 'auxiliaire', 'photographe', 'vidéaste', 'graphiste', 'designer', 'développeur', 'programmeur', 'webmaster', 'informaticien', 'technicien', 'réparateur', 'dépanneur', 'installateur', 'monteur', 'agent', 'nettoyage', 'entretien', 'ménage', 'repassage', 'cuisinier', 'traiteur', 'pâtissier', 'boulanger', 'serveur', 'barman', 'chauffeur', 'livreur', 'coursier', 'déménageur', 'manutentionnaire', 'gardien', 'vigile', 'agent de sécurité', 'coach', 'formateur', 'professeur', 'enseignant', 'répétiteur', 'tuteur', 'traducteur', 'interprète', 'rédacteur', 'correcteur', 'secrétaire', 'assistant', 'comptable', 'auditeur', 'consultant', 'conseiller', 'expert', 'avocat', 'juriste', 'notaire', 'huissier', 'architecte', 'ingénieur', 'géomètre', 'topographe', 'vétérinaire', 'dresseur', 'toiletteur', 'DJ', 'musicien', 'animateur', 'présentateur', 'artiste', 'comédien', 'danseur', 'maquilleur', 'styliste', 'couturier', 'tailleur', 'cordonnier', 'tapissier', 'sellier', 'bijoutier', 'horloger', 'opticien', 'prothésiste', 'dentiste', 'orthodontiste', 'pédicure', 'podologue', 'sophrologue', 'psychologue', 'psychiatre', 'nutritionniste', 'diététicien', 'coach sportif', 'personal trainer', 'yoga', 'pilates', 'danse', 'sport', 'guide', 'accompagnateur', 'moniteur', 'instructeur', 'analyste', 'data scientist', 'statisticien', 'économiste', 'chercheur', 'scientifique', 'laborantin', 'pharmacien', 'préparateur', 'radiologiste', 'échographiste', 'technicien médical', 'ambulancier', 'secouriste', 'pompier', 'agent immobilier', 'promoteur', 'syndic', 'gestionnaire', 'administrateur', 'directeur', 'manager', 'chef de projet', 'coordinateur', 'superviseur', 'contrôleur', 'inspecteur', 'évaluateur', 'expert-comptable', 'fiscaliste', 'commissaire aux comptes', 'assureur', 'courtier', 'agent général', 'banquier', 'conseiller financier', 'trader', 'cambiste', 'caissier', 'guichetier', 'vendeur', 'commercial', 'télévendeur', 'VRP', 'représentant', 'agent commercial', 'négociateur', 'acheteur', 'approvisionneur', 'logisticien', 'magasinier', 'gestionnaire de stock', 'préparateur de commandes', 'cariste', 'grutier', 'conducteur', 'opérateur', 'machiniste', 'usineur', 'tourneur', 'fraiseur', 'ajusteur', 'monteur', 'assembleur', 'câbleur', 'électronicien', 'automaticien', 'roboticien', 'mécanicien auto', 'mécanicien moto', 'carrossier', 'peintre auto', 'tôlier', 'mécanicien poids lourds', 'mécanicien agricole', 'dépanneur auto', 'garagiste', 'vulcanisateur', 'climaticien', 'frigoriste', 'chauffagiste', 'sanitaire', 'zingueur'] },
-    { value: 'quincaillerie', label: 'Quincaillerie et Matériaux', icon: '🔨', color: '#F59E0B', description: 'Outils, matériaux, peintures, construction' },
-    { value: 'sanitaire', label: 'Sanitaire et Plomberie', icon: '🚰', color: '#0288D1', description: 'Robinetterie, WC, lavabos, douches, baignoires' },
+    { value: 'quincaillerie', label: 'Quincaillerie, Sanitaire & Électricité', icon: '🔨', color: '#F59E0B', description: 'Outils, matériaux, plomberie, électricité, construction', keywords: ['quincaillerie', 'outil', 'marteau', 'tournevis', 'clé', 'pince', 'scie', 'perceuse', 'visseuse', 'meuleuse', 'ponceuse', 'raboteuse', 'tronçonneuse', 'matériaux', 'ciment', 'sable', 'gravier', 'brique', 'parpaing', 'fer', 'acier', 'béton', 'mortier', 'chaux', 'plâtre', 'peinture', 'vernis', 'colle', 'mastic', 'silicone', 'joint', 'sanitaire', 'plomberie', 'robinet', 'robinetterie', 'mitigeur', 'mélangeur', 'douche', 'baignoire', 'lavabo', 'évier', 'WC', 'toilette', 'chasse', 'tuyau', 'canalisation', 'raccord', 'coude', 'té', 'vanne', 'électricité', 'électrique', 'câble', 'fil', 'interrupteur', 'prise', 'disjoncteur', 'tableau', 'lampe', 'ampoule', 'LED', 'néon', 'spot', 'applique', 'lustre', 'plafonnier', 'variateur', 'minuterie', 'détecteur', 'sonnette', 'multiprise', 'rallonge', 'domino', 'gaine', 'conduit'] },
     { value: 'telephone', label: 'Téléphones et Accessoires', icon: '📱', color: '#FF9800', description: 'Smartphones, accessoires, coques, écouteurs' },
     { value: 'ticket_voyage', label: 'Tickets et Billets de Transport', icon: '🎫', color: '#8B5CF6', description: 'Bus, train, avion avec sélection de place' },
     { value: 'ustensiles_cuisine', label: 'Ustensiles de Cuisine', icon: '🍴', color: '#FF5722', description: 'Casseroles, poêles, couteaux, mixers, batterie cuisine' },
@@ -314,58 +376,120 @@ const PRODUCT_TYPES = [
 const EXCEL_TEMPLATES = {
     immobilier_batiment: `Nom,Prix,Devise,Description,Superficie,Chambres,Salles de bain,Adresse,Quartier,Ville,GPS
 Appartement F4,50000000,XAF,Bel appartement moderne avec balcon,120,4,2,Rue des Jardins,Bonanjo,Douala,4.0511°N 9.7679°E
-Villa R+2,150000000,XAF,Villa spacieuse avec piscine et jardin,300,6,4,Avenue Kennedy,Bonapriso,Douala,4.0604°N 9.7135°E`,
+Villa R+2,150000000,XAF,Villa spacieuse avec piscine et jardin,300,6,4,Avenue Kennedy,Bonapriso,Douala,4.0604°N 9.7135°E
+Studio meublé,20000,EUR,Studio moderne tout équipé centre-ville,35,1,1,Av. de Gaulle,Akwa,Douala,4.0490°N 9.6976°E`,
 
     immobilier_terrain: `Nom,Prix,Devise,Description,Superficie,Adresse,Quartier,Ville,GPS
 Terrain 500m²,25000000,XAF,Terrain viabilisé prêt à construire,500,Zone industrielle,Logpom,Douala,4.0881°N 9.7043°E
-Parcelle 1000m²,45000000,XAF,Terrain constructible bien situé,1000,Rue des Cocotiers,Akwa,Douala,4.0490°N 9.6976°E`,
+Parcelle 1000m²,45000000,XAF,Terrain constructible bien situé,1000,Rue des Cocotiers,Akwa,Douala,4.0490°N 9.6976°E
+Terrain agricole 2ha,15000,USD,Terrain fertile zone rurale irrigation possible,20000,Route agricole,Ndogpassi,Douala,4.0792°N 9.7311°E`,
 
     automobile: `Nom,Prix,Devise,Description,Marque,Modèle,Année,Kilométrage,Couleur,Carburant,Transmission
 Toyota Corolla,8500000,XAF,Voiture en excellent état avec révision complète,Toyota,Corolla,2018,65000,Blanche,Essence,Automatique
-Honda Civic,7500000,XAF,Véhicule bien entretenu avec historique complet,Honda,Civic,2017,75000,Grise,Essence,Manuelle`,
+Honda Civic,7500000,XAF,Véhicule bien entretenu avec historique complet,Honda,Civic,2017,75000,Grise,Essence,Manuelle
+Mercedes Classe E,25000,EUR,Berline luxe full options cuir GPS,Mercedes,Classe E,2019,45000,Noire,Diesel,Automatique`,
 
     ticket_voyage: `Nom,Prix,Devise,Description,Départ,Destination,Date,Heure,Place,Compagnie
 Douala-Yaoundé,3500,XAF,Trajet direct avec arrêt climatisation,Douala,Yaoundé,2024-01-15,08:00,A12,Touristique Express
-Yaoundé-Bafoussam,5000,XAF,Bus VIP grand confort avec collation,Yaoundé,Bafoussam,2024-01-16,14:00,B05,Central Voyages`,
+Yaoundé-Bafoussam,5000,XAF,Bus VIP grand confort avec collation,Yaoundé,Bafoussam,2024-01-16,14:00,B05,Central Voyages
+Paris-Londres,150,EUR,Train Eurostar confort 1ère classe,Paris,Londres,2024-02-10,10:30,12,Eurostar`,
 
     covoiturage: `Nom,Prix,Devise,Description,Départ,Arrivée,Date,Heure,Places disponibles
 Trajet Douala-Yaoundé,2500,XAF,Voiture confortable et sécurisée avec climatisation,Bonanjo,Centre-ville Yaoundé,2024-01-15,06:00,3
-Trajet Yaoundé-Bafoussam,3500,XAF,SUV climatisé spacieux avec bagages,Yaoundé,Bafoussam,2024-01-16,10:00,4`,
+Trajet Yaoundé-Bafoussam,3500,XAF,SUV climatisé spacieux avec bagages,Yaoundé,Bafoussam,2024-01-16,10:00,4
+Trajet aéroport,15,USD,Transport aéroport vers centre-ville,Aéroport Douala,Bonanjo,2024-01-20,14:00,2`,
 
     vetement: `Nom,Prix,Devise,Description,Taille,Couleur,Matière,Marque
 T-shirt casual,5000,XAF,T-shirt confortable pour usage quotidien,L,Bleu,Coton,Nike
-Robe élégante,25000,XAF,Robe de soirée élégante et raffinée,M,Rouge,Soie,Zara`,
+Robe élégante,25000,XAF,Robe de soirée élégante et raffinée,M,Rouge,Soie,Zara
+Chemise business,45,EUR,Chemise homme coupe slim 100% coton,M,Blanc,Coton,Hugo Boss`,
 
     chaussure: `Nom,Prix,Devise,Description,Pointure,Couleur,Marque
 Baskets sport,35000,XAF,Chaussures de running haute performance,42,Noire,Adidas
-Sandales,15000,XAF,Sandales d'été confortables et légères,38,Marron,Clarks`,
+Sandales,15000,XAF,Sandales d'été confortables et légères,38,Marron,Clarks
+Chaussures ville cuir,85,USD,Souliers cuir véritable homme élégant,43,Marron,Clarks`,
 
-    electromenager: `Nom,Prix,Devise,Description,Marque,Modèle,État,Garantie
-Réfrigérateur,250000,XAF,Grand réfrigérateur double porte avec congélateur,Samsung,RT50,Neuf,2 ans
-Micro-ondes,45000,XAF,Micro-ondes 800W avec grill et minuteur,LG,MS2535,Occasion,6 mois`,
+    electromenager: `Nom,Prix,Devise,Description,Type,Marque,Modèle,État,Garantie
+Réfrigérateur Samsung RT50,250000,XAF,Grand réfrigérateur double porte avec congélateur,Réfrigérateur,Samsung,RT50K6000S8,Neuf,2 ans
+Cuisinière 4 feux,125000,EUR,Cuisinière à gaz 4 feux avec four,Cuisinière,Beko,FSG62000DW,Neuf,1 an
+Micro-ondes LG,45000,XAF,Micro-ondes 800W avec grill et minuteur,Micro-ondes,LG,MS2535,Bon état,6 mois`,
 
     mobilier: `Nom,Prix,Devise,Description,Type,Matériau,Dimensions,Couleur,État
 Canapé 3 places,85000,XAF,Canapé confortable avec coussins moelleux,Salon,Tissu,200x90x85,Gris,Neuf
-Table à manger,65000,XAF,Table élégante pour 6 personnes,Salle à manger,Bois massif,180x90x75,Marron,Bon état
+Table à manger,65000,EUR,Table élégante pour 6 personnes,Salle à manger,Bois massif,180x90x75,Marron,Bon état
 Bureau moderne,45000,XAF,Bureau spacieux avec tiroirs de rangement,Bureau,Bois/Métal,120x60x75,Blanc,Neuf`,
+
+    decoration: `Nom,Prix,Devise,Description,Type,Style,Couleur,Dimensions,Matériau
+Tableau abstrait moderne,25000,XAF,Tableau peint à la main style contemporain,Tableau,Moderne,Multicolore,80x60 cm,Toile
+Lampe design scandinave,15000,EUR,Luminaire minimaliste avec abat-jour tissu,Luminaire,Scandinave,Blanc et bois,45 cm,Bois/Tissu
+Tapis berbère artisanal,45000,XAF,Tapis fait main motifs traditionnels,Tapis,Bohème,Beige et rouge,200x150 cm,Laine`,
+
+    assurance: `Nom,Prix,Devise,Description,Catégorie,Type,Compagnie,Couverture,Prime annuelle,Franchise,Durée,Bénéfices
+Assurance auto tous risques,180000,XAF,Protection complète pour véhicule,Non-Vie,Auto,AXA Cameroun,Dommages + Vol + Incendie + RC,180000,100000,1 an,Assistance 24h|Véhicule remplacement|Protection juridique
+Assurance vie temporaire,120000,USD,Assurance décès avec capital garanti,Vie,Temporaire décès,NSIA Assurances,Capital décès 50M|Invalidité permanente,120000,0,5 ans,Capital décès|Rente conjoint|Protection famille
+Assurance habitation,95000,XAF,Protection logement et responsabilité civile,Non-Vie,Habitation,Activa Assurance,Incendie|Dégâts eaux|Vol|RC,95000,50000,2 ans,Relogement|Assistance juridique|Remplacement`,
 
     aliments: `Nom,Prix,Devise,Description,Catégorie,Origine,Date expiration,Poids/Quantité,Conservation,Certification
 Tomates fraîches,500,XAF,Tomates rouges mûres et juteuses du terroir,Légumes,Locale,2024-02-01,1kg,Frais,Bio
 Poulet fermier,3500,XAF,Poulet élevé en plein air nourri au grain,Viande,Locale,2024-01-25,1.5kg,Frais,Halal
 Mangues Kent,1500,XAF,Mangues sucrées et parfumées de saison,Fruits,Locale,2024-02-05,2kg,Frais,Bio
-Riz parfumé,15000,XAF,Riz basmati de qualité supérieure importé,Céréales,Importée,2025-12-31,25kg,Sec,Standard`,
+Riz basmati premium,12,USD,Riz basmati qualité supérieure grain long,Céréales,Importée,2025-12-31,25kg,Sec,Standard
+Fromage Emmental,8,EUR,Fromage suisse qualité AOP,Produits laitiers,Importée,2024-03-15,500g,Frais,AOC`,
+
+    telephone: `Nom,Prix,Devise,Description,Marque,Modèle,Stockage,RAM,État,Couleur,Opérateur
+iPhone 13 Pro,450000,XAF,iPhone excellent état boîte complète,Apple,iPhone 13 Pro,256GB,6GB,Bon état,Graphite,Débloqué
+Samsung Galaxy S22,380000,XAF,Samsung dernière génération garantie,Samsung,Galaxy S22,128GB,8GB,Neuf,Blanc,Débloqué
+Google Pixel 7,550,USD,Pixel 7 photo exceptionnelle Android pur,Google,Pixel 7,256GB,8GB,Neuf,Noir,Débloqué`,
+
+    ordinateur: `Nom,Prix,Devise,Description,Type,Marque,Modèle,Processeur,RAM,Stockage,Carte graphique,OS,État
+MacBook Pro M2,1200,EUR,MacBook Pro puce M2 parfait état,Portable,Apple,MacBook Pro 14,M2 Pro,16GB,512GB SSD,Intégrée,macOS,Neuf
+Dell XPS 15,950000,XAF,PC portable puissant développement gaming,Portable,Dell,XPS 15,Intel i7-12700H,32GB,1TB SSD,RTX 3050,Windows 11,Neuf
+PC Gamer Desktop,1800,USD,Tour gaming RGB watercooling,Bureau,Custom,RGB Gaming,AMD Ryzen 9,64GB,2TB NVMe,RTX 4080,Windows 11,Neuf`,
+
+    image_son: `Nom,Prix,Devise,Description,Marque,Modèle,Type,Diagonale,Résolution,État,Garantie
+TV Samsung 55 pouces,350000,XAF,Smart TV 4K HDR apps intégrées,Samsung,QE55Q80B,TV,55 pouces,4K UHD,Neuf,2 ans
+Home Cinéma Sony,180000,XAF,Système 5.1 Bluetooth Dolby Atmos,Sony,HT-S40R,Home cinéma,N/A,N/A,Neuf,1 an
+Barre de son LG,95,EUR,Barre son Dolby Atmos wireless,LG,SP9YA,Barre de son,N/A,N/A,Bon état,6 mois`,
 
     livres_fournitures: `Nom,Prix,Devise,Description,Catégorie,Niveau,Matière,Auteur,Éditeur,ISBN,Année édition,État
 Mathématiques Terminale C,8500,XAF,Manuel complet avec exercices corrigés et cours détaillés,Livre scolaire,Secondaire,Mathématiques,Collection CIAM,Edicef,978-2-7531-0584-3,2023,Neuf
 Cahier grand format,500,XAF,Cahier 200 pages grands carreaux de qualité supérieure,Cahier,Primaire,Tous,N/A,Oxford,N/A,2024,Neuf
 Pack stylos BIC,2000,XAF,Lot de 10 stylos à bille bleus et noirs longue durée,Stylos,Tous,Tous,N/A,BIC,N/A,2024,Neuf
-Histoire du Cameroun,12000,XAF,Ouvrage de référence sur l'histoire précoloniale à nos jours,Livre,Université,Histoire,Prof. Mveng,Clé,978-2-35191-045-7,2022,Bon état`,
+Histoire du Cameroun,12000,XAF,Ouvrage de référence sur l'histoire précoloniale à nos jours,Livre,Université,Histoire,Prof. Mveng,Clé,978-2-35191-045-7,2022,Bon état
+Roman Le Vieux Nègre,6,EUR,Roman classique littérature africaine,Roman,Tous,Français,Ferdinand Oyono,Pocket,978-2-266-14563-2,2006,Bon état`,
+
+    pieces_auto: `Nom,Prix,Devise,Description,Type,Marque,Référence,Compatibilité,État
+Pneu Michelin 205/55 R16,45000,XAF,Pneu toutes saisons excellent grip,Pneumatiques,Michelin,205/55R16 91V,Toyota Corolla|Honda Civic,Neuf
+Batterie Varta 12V 60Ah,35000,XAF,Batterie démarrage forte puissance,Batterie,Varta,D59,Universel,Neuf
+Plaquettes de frein Bosch,18000,XAF,Plaquettes avant céramique,Freins,Bosch,0986494XXX,Mercedes Classe C,Neuf
+Filtre à huile Mann,2500,XAF,Filtre huile moteur haute filtration,Filtres,Mann-Filter,HU 819 x,BMW Série 3,Neuf
+Amortisseur avant Bilstein,125,EUR,Amortisseur gaz haute performance,Suspension,Bilstein,B4,Audi A4,Neuf`,
+
+    pieces_industrielles: `Nom,Prix,Devise,Description,Type,Marque,Référence,Application,Matériel
+Roulement SKF 6205,8500,XAF,Roulement à billes étanche haute vitesse,Roulement,SKF,6205-2RS,Machines outils|Pompes,Acier
+Courroie trapézoïdale,4500,XAF,Courroie transmission résistante chaleur,Courroie,Gates,XPZ1120,Compresseurs|Ventilateurs,Caoutchouc
+Moteur électrique 5.5kW,285000,XAF,Moteur asynchrone triphasé rendement,Moteur,ABB,M2QA 132M,Machines diverses,Fonte/Cuivre
+Pompe centrifuge,95,USD,Pompe eau centrifuge débit 50m³/h,Pompe,Grundfos,CR 5-11,Irrigation|Industrie,Fonte/Inox`,
+
+    jouets_enfants: `Nom,Prix,Devise,Description,Type,Âge recommandé,Marque,Matériel,Norme
+Puzzle éducatif 100 pièces,3500,XAF,Puzzle animaux Afrique éducatif,Éducatif,6-10 ans,Ravensburger,Carton,CE
+Peluche lion,8500,XAF,Peluche douce lavable hypoallergénique,Peluche,0-3 ans,Jellycat,Tissu,EN71
+Jeu de société Monopoly,15000,XAF,Monopoly édition camerounaise famille,Jeu de société,8+ ans,Hasbro,Plastique/Carton,CE
+LEGO Classic 900 pièces,45,EUR,Briques construction créativité infinie,Construction,4-99 ans,LEGO,Plastique,EN71`,
+
+    ustensiles_cuisine: `Nom,Prix,Devise,Description,Type,Matériau,Marque,Capacité,Pièces,État
+Batterie cuisine 12 pièces,55000,XAF,Set complet casseroles poêles couvercles,Set,Inox,Tefal,Mixte,12,Neuf
+Poêle antiadhésive 28cm,12000,XAF,Poêle professionnelle revêtement titanium,Poêle,Aluminium,Tefal,N/A,1,Neuf
+Mixer plongeant Bosch,25000,XAF,Mixeur puissant 800W accessoires,Mixer,Plastique/Inox,Bosch,N/A,1,Neuf
+Set couteaux céramique,35,USD,Set 5 couteaux céramique ultra-tranchant,Couteaux,Céramique,Kyocera,N/A,5,Neuf`,
 
     quincaillerie: `Nom,Prix,Devise,Description,Catégorie,Marque,Référence,Unité,Stock disponible
 Marteau menuisier,5000,XAF,Marteau professionnel manche bois robuste et tête acier,Outils,Stanley,STHT0-51309,Pièce,50
 Peinture blanche 25L,35000,XAF,Peinture acrylique mat lessivable pour intérieur et extérieur,Peinture,Dulux,25L-BL-MAT,Seau,20
 Ciment gris,4500,XAF,Ciment Portland haute résistance qualité premium,Matériaux,Cimencam,CEM-II-42.5,Sac 50kg,100
-Perceuse électrique,45000,XAF,Perceuse à percussion 650W avec coffret et accessoires,Outils électriques,Bosch,GSB-13-RE,Pièce,15`,
+Robinet mitigeur,12000,XAF,Mitigeur lavabo chromé avec aérateur économique,Sanitaire,Grohe,32467001,Pièce,30
+Câble électrique 2.5mm,8500,XAF,Câble souple 2.5mm² pour installation électrique domestique,Électricité,Nexans,H07V-U,Mètre,500
+Interrupteur double,1500,XAF,Interrupteur va-et-vient double commande blanc,Électricité,Legrand,099520,Pièce,100`,
 
     prestation_service: `Nom,Prix,Devise
 Portfolio Réalisation 1,0,XAF
@@ -375,9 +499,31 @@ Portfolio Réalisation 2,0,XAF`,
 Pharmacie Centrale,0,XAF,Pharmacie de garde disponible 24h/24 pour urgences médicales,Garde,00:00,23:59,Lundi-Dimanche,+237 6XX XX XX XX,Garde|Délivrance|Conseil
 Pharmacie du Marché,0,XAF,Pharmacie de proximité avec conseil pharmaceutique gratuit,Normale,08:00,20:00,Lundi-Samedi,+237 6XX XX XX XX,Délivrance|Conseil`,
 
-    hopital_clinique: `Nom,Prix,Devise,Description,Type,Spécialités,Médecins disponibles,Horaires consultation,Urgences,RDV en ligne
-Hôpital Général,0,XAF,Établissement public avec service d'urgences 24h/24,Hôpital,Chirurgie|Pédiatrie|Cardiologie,Dr. A|Dr. B|Dr. C,08:00-17:00,Oui,Non
-Clinique Saint-Joseph,0,XAF,Clinique privée moderne avec prise de rendez-vous en ligne,Clinique,Gynécologie|Ophtalmologie,Dr. D|Dr. E,09:00-18:00,Oui,Oui`,
+    hopital_clinique: `Nom,Prix,Devise,Description,Type,Banque de sang,Prestations médicales,Planning,Urgences 24h/24,RDV en ligne
+Hôpital Général,0,XAF,Établissement public avec service d'urgences et banque de sang,Hôpital,Oui,Chirurgie|Consultation générale|Radiologie|Laboratoire,Lun-Ven 08:00-18:00,Oui,Non
+Clinique Saint-Joseph,0,XAF,Clinique privée spécialisée avec RDV en ligne,Clinique,Non,Gynécologie|Ophtalmologie|Pédiatrie,Lun-Sam 09:00-19:00,Non,Oui`,
+
+    demenagement: `Nom,Prix,Devise,Description,Type,Volume m³,Type véhicule,Distance km,Nb déménageurs,Assurance,Manutention,Montage/Démontage,Emballage,Garde-meuble,Débarras
+Déménagement Express,50000,XAF,Déménagement local rapide avec équipe professionnelle,Local,20,Camion 20m³,50,3,Oui,Oui,Oui,Non,Non,Non
+Trans-Afrique Déménagement,150000,XAF,Déménagement international avec assurance tous risques,International,40,Camion 40m³,1500,5,Oui,Oui,Oui,Oui,Oui,Non`,
+
+    cosmetique_parfum: `Nom,Prix,Devise,Description,Type,Marque,Volume,Concentration,Peau,Âge,Ingrédients,Origine
+Crème Hydratante Nivea,15000,XAF,Crème hydratante pour peau normale,Soin visage,Nivea,50ml,24h,Toutes,18+,Vitamine E,France
+Parfum Chanel N°5,85000,XAF,Parfum féminin iconique aux notes florales,Parfum,Chanel,50ml,EDP,Femme,18+,Rose jasmin,France
+Huile d'Argan Bio,25000,XAF,Huile d'argan pure 100% bio pour cheveux et corps,Soin corps,Argania,100ml,100%,Toutes,16+,Argan pur,Maroc
+Rouge à Lèvres MAC,18000,XAF,Rouge à lèvres mat longue tenue,Maquillage,MAC,3g,Mat,Femme,16+,Cire d'abeille,Canada`,
+
+    bijoux: `Nom,Prix,Devise,Description,Type,Matière,Poids,Carat,Taille,Style,Origine,Certificat
+Collier Or 18 carats,450000,XAF,Collier en or jaune 18 carats avec pendentif,Collier,Or,15g,18,16 pouces,Classique,Italie,Oui
+Bague Diamant,750000,XAF,Bague de fiançailles diamant solitaire,Bague,Or blanc,8g,1 carat,54,Moderne,Belgique,GIA
+Bracelet Argent,35000,XAF,Bracelet en argent sterling avec perles,Bracelet,Argent,12g,925,18 cm,Bohemian,Mexique,Non
+Montre Rolex Submariner,25000,USD,Montre de plongée automatique étanche,Montre,Acier,150g,0,40mm,Sport,Suisse,Oui`,
+
+    coiffure_beaute: `Nom,Prix,Devise,Description,Type,Longueur,Couleur,Texture,Type pose,Marque,Origine,Entretien,Durée vie,Type cheveux
+Mèches Brésiliennes 50cm,85000,XAF,Mèches naturelles brésiliennes de qualité premium,Mèches,50cm,Châtain,Brésilienne,Clip,Remy Hair,Brésil,Shampooing doux,6 mois,Naturel
+Extensions Indiennes 60cm,120000,XAF,Extensions de cheveux indiens remy 100% naturels,Extensions,60cm,Noir,Indienne,Tissé,Indian Hair,Inde,Produits sans sulfate,8 mois,Naturel
+Perruque Synthétique,45000,XAF,Perruque synthétique résistante à la chaleur,Perruque,40cm,Blond,Synthétique,Clip,Beauty World,Chine,Shampooing froid,3 mois,Synthétique
+Accessoires Coiffure,15000,XAF,Lot d'accessoires pour coiffure professionnelle,Accessoires,Variable,Variable,Variable,Variable,Pro Style,Chine,Nettoyage régulier,1 an,Variable`,
 
     autre: `Nom,Prix,Devise,Description
 Produit 1,10000,XAF,Description détaillée du produit 1 avec ses caractéristiques
@@ -410,7 +556,46 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
         videos: []
     });
 
-    const devises = ['XAF', 'EUR', 'USD', 'GBP'];
+    const devises = ['XAF', 'EUR', 'USD']; // ✅ Devises principales : FCFA, Euro, Dollar
+
+    // Fonction pour obtenir un exemple de nom de produit selon le type
+    const getProductNamePlaceholder = (type: ProductType | null): string => {
+        if (!type) return 'Ex: Nom du produit';
+
+        const placeholders: Record<ProductType, string> = {
+            immobilier_batiment: 'Ex: Appartement F4',
+            immobilier_terrain: 'Ex: Terrain 500m²',
+            automobile: 'Ex: Toyota Corolla 2018',
+            ticket_voyage: 'Ex: Douala-Yaoundé',
+            covoiturage: 'Ex: Trajet Douala-Yaoundé',
+            vetement: 'Ex: T-shirt casual homme',
+            chaussure: 'Ex: Baskets sport Adidas',
+            electromenager: 'Ex: Réfrigérateur Samsung',
+            image_son: 'Ex: TV Samsung 55 pouces',
+            telephone: 'Ex: iPhone 13 Pro',
+            ordinateur: 'Ex: MacBook Pro M2',
+            mobilier: 'Ex: Canapé 3 places',
+            decoration: 'Ex: Tableau moderne',
+            ustensiles_cuisine: 'Ex: Batterie cuisine 12 pièces',
+            pieces_auto: 'Ex: Pneu Michelin 205/55 R16',
+            pieces_industrielles: 'Ex: Roulement SKF',
+            jouets_enfants: 'Ex: Puzzle éducatif 100 pièces',
+            aliments: 'Ex: Tomates fraîches',
+            livres_fournitures: 'Ex: Manuel Mathématiques Term C',
+            quincaillerie: 'Ex: Marteau menuisier',
+            prestation_service: 'Ex: Installation électrique',
+            assurance: 'Ex: Assurance auto tous risques',
+            pharmacie: 'Ex: Pharmacie Centrale',
+            hopital_clinique: 'Ex: Clinique Saint-Joseph',
+            demenagement: 'Ex: Déménagement Express',
+            cosmetique_parfum: 'Ex: Crème hydratante Nivea',
+            bijoux: 'Ex: Collier en or 18 carats',
+            coiffure_beaute: 'Ex: Mèches brésiliennes 30cm',
+            autre: 'Ex: Nom du produit'
+        };
+
+        return placeholders[type] || 'Ex: Nom du produit';
+    };
 
     // Fonction pour télécharger le modèle Excel
     const downloadExcelTemplate = (type: ProductType) => {
@@ -435,15 +620,38 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                 return;
             }
 
+            // ✅ Vérifier le nombre d'images déjà ajoutées (limite: 5 images max pour éviter payload trop gros)
+            const currentImagesCount = (newProduct.images || []).length;
+            if (currentImagesCount >= 5) {
+                Alert.alert(
+                    'Limite atteinte',
+                    'Vous pouvez ajouter maximum 5 images par produit pour éviter l\'erreur 413 (payload trop volumineux).\n\nConseils : Privilégiez la qualité sur la quantité !',
+                    [{ text: 'OK' }]
+                );
+                return;
+            }
+
             const result = await ImagePicker.launchImageLibraryAsync({
                 mediaTypes: ImagePicker.MediaTypeOptions.Images,
                 allowsMultipleSelection: true,
-                quality: 0.8,
+                quality: 0.3, // ✅ Qualité réduite à 30% pour garantir payload < 100MB
                 base64: true
             });
 
             if (!result.canceled && result.assets && result.assets.length > 0) {
-                const base64Images = result.assets.map(asset =>
+                // ✅ Limiter le nombre total d'images à 5
+                const remainingSlots = 5 - currentImagesCount;
+                const assetsToAdd = result.assets.slice(0, remainingSlots);
+
+                if (result.assets.length > remainingSlots) {
+                    Alert.alert(
+                        'Images limitées',
+                        `Seulement ${remainingSlots} image(s) ajoutée(s). Maximum 5 images par produit.`,
+                        [{ text: 'OK' }]
+                    );
+                }
+
+                const base64Images = assetsToAdd.map(asset =>
                     `data:image/jpeg;base64,${asset.base64}`
                 );
 
@@ -468,36 +676,68 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                 return;
             }
 
+            // ✅ Vérifier le nombre de vidéos déjà ajoutées (limite: 1 vidéo max pour éviter payload énorme)
+            const currentVideosCount = (newProduct.videos || []).length;
+            if (currentVideosCount >= 1) {
+                Alert.alert(
+                    'Limite atteinte',
+                    'Vous pouvez ajouter maximum 1 vidéo par produit pour éviter l\'erreur 413 (payload trop volumineux).\n\nConseils : Privilégiez une vidéo courte et de qualité !',
+                    [{ text: 'OK' }]
+                );
+                return;
+            }
+
             const result = await ImagePicker.launchImageLibraryAsync({
                 mediaTypes: ImagePicker.MediaTypeOptions.Videos,
-                allowsMultipleSelection: true,
-                quality: 0.7
+                allowsMultipleSelection: false,
+                quality: 0.2, // ✅ Compression TRÈS forte (20%) pour vidéos
+                videoMaxDuration: 30 // ✅ Limiter à 30 secondes max (au lieu de 60)
             });
 
             if (!result.canceled && result.assets && result.assets.length > 0) {
-                const videoUris = result.assets.map(asset => asset.uri);
+                const asset = result.assets[0];
 
-                // Convertir les vidéos en base64 (limiter la taille)
-                const base64Videos = await Promise.all(
-                    videoUris.map(async (uri) => {
-                        try {
-                            const base64 = await FileSystem.readAsStringAsync(uri, {
-                                encoding: FileSystem.EncodingType.Base64
-                            });
-                            return `data:video/mp4;base64,${base64}`;
-                        } catch (err) {
-                            console.error('Erreur conversion vidéo:', err);
-                            return null;
-                        }
-                    })
-                );
+                // ✅ Vérifier la taille du fichier vidéo (max 20MB au lieu de 50MB)
+                const fileInfo = await FileSystem.getInfoAsync(asset.uri);
+                let videoSizeMB = 0;
 
-                const validVideos = base64Videos.filter(v => v !== null) as string[];
+                if (fileInfo.exists && 'size' in fileInfo && fileInfo.size) {
+                    videoSizeMB = fileInfo.size / (1024 * 1024);
+                    if (videoSizeMB > 20) {
+                        Alert.alert(
+                            'Vidéo trop volumineuse',
+                            `La vidéo fait ${videoSizeMB.toFixed(2)} MB. Veuillez sélectionner une vidéo de moins de 20 MB et max 30 secondes.\n\nConseils : Filmez en résolution réduite ou raccourcissez la vidéo.`,
+                            [{ text: 'OK' }]
+                        );
+                        return;
+                    }
+                }
 
-                setNewProduct({
-                    ...newProduct,
-                    videos: [...(newProduct.videos || []), ...validVideos]
-                });
+                try {
+                    const base64 = await FileSystem.readAsStringAsync(asset.uri, {
+                        encoding: FileSystem.EncodingType.Base64
+                    });
+
+                    const videoData = `data:video/mp4;base64,${base64}`;
+
+                    setNewProduct({
+                        ...newProduct,
+                        videos: [...(newProduct.videos || []), videoData]
+                    });
+
+                    Alert.alert(
+                        'Vidéo ajoutée',
+                        `Vidéo ajoutée avec succès${videoSizeMB > 0 ? ` (${videoSizeMB.toFixed(2)} MB)` : ''}.\n\n⚠️ Limite atteinte : 1 vidéo maximum par produit.`,
+                        [{ text: 'OK' }]
+                    );
+                } catch (err) {
+                    console.error('Erreur conversion vidéo:', err);
+                    Alert.alert(
+                        'Erreur de conversion',
+                        'Impossible de convertir la vidéo. Essayez une vidéo plus courte ou de taille réduite.',
+                        [{ text: 'OK' }]
+                    );
+                }
             }
         } catch (error) {
             console.error('Erreur sélection vidéos:', error);
@@ -658,10 +898,36 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         case 'electromenager':
                             specificProduct = {
                                 ...baseProduct,
-                                marqueElectro: columns[4],
-                                modeleElectro: columns[5],
-                                etat: columns[6],
-                                garantie: columns[7]
+                                typeElectro: columns[4],
+                                marqueElectro: columns[5],
+                                modeleElectro: columns[6],
+                                etat: columns[7],
+                                garantie: columns[8]
+                            } as Product;
+                            break;
+
+                        case 'decoration':
+                            specificProduct = {
+                                ...baseProduct,
+                                typeDecoration: columns[4],
+                                style: columns[5],
+                                couleurDecoration: columns[6],
+                                dimensionsDecoration: columns[7],
+                                materiauDecoration: columns[8]
+                            } as Product;
+                            break;
+
+                        case 'assurance':
+                            specificProduct = {
+                                ...baseProduct,
+                                categorieAssurance: columns[4],
+                                typeAssurance: columns[5],
+                                compagnieAssurance: columns[6],
+                                couverture: columns[7],
+                                primeAnnuelle: columns[8],
+                                franchise: columns[9],
+                                dureeContrat: columns[10],
+                                benefices: columns[11]
                             } as Product;
                             break;
 
@@ -735,11 +1001,158 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             specificProduct = {
                                 ...baseProduct,
                                 typeEtablissement: columns[4],
-                                specialites: columns[5]?.split('|').map(s => s.trim()).filter(s => s),
-                                medecinsDisponibles: columns[6],
+                                banqueSang: columns[5]?.toLowerCase() === 'oui',
+                                prestationsMedicales: columns[6]?.split('|').map(s => s.trim()).filter(s => s),
                                 horairesConsultation: columns[7],
                                 urgencesDisponible: columns[8]?.toLowerCase() === 'oui',
                                 rdvEnLigne: columns[9]?.toLowerCase() === 'oui'
+                            } as Product;
+                            break;
+
+                        case 'demenagement':
+                            specificProduct = {
+                                ...baseProduct,
+                                typeDemenagement: columns[4],
+                                volumeEstime: columns[5],
+                                typeVehicule: columns[6],
+                                distanceKm: columns[7],
+                                nbDemenageurs: columns[8],
+                                assuranceMarchandise: columns[9]?.toLowerCase() === 'oui',
+                                serviceManutention: columns[10]?.toLowerCase() === 'oui',
+                                montageDemontage: columns[11]?.toLowerCase() === 'oui',
+                                emballageCartons: columns[12]?.toLowerCase() === 'oui',
+                                gardeMeuble: columns[13]?.toLowerCase() === 'oui',
+                                debarras: columns[14]?.toLowerCase() === 'oui'
+                            } as Product;
+                            break;
+
+                        case 'cosmetique_parfum':
+                            specificProduct = {
+                                ...baseProduct,
+                                typeCosmetique: columns[4],
+                                marqueCosmetique: columns[5],
+                                volumeCosmetique: columns[6],
+                                uniteCosmetique: columns[7],
+                                typePeau: columns[8],
+                                ageRecommandé: columns[9],
+                                ingredientsCosmetique: columns[10],
+                                origineCosmetique: columns[11]
+                            } as Product;
+                            break;
+
+                        case 'bijoux':
+                            specificProduct = {
+                                ...baseProduct,
+                                typeBijou: columns[4],
+                                matiereBijou: columns[5],
+                                poidsBijou: columns[6],
+                                unitePoids: columns[7],
+                                tailleBijou: columns[8],
+                                styleBijou: columns[9],
+                                origineBijou: columns[10],
+                                certificatBijou: columns[11]
+                            } as Product;
+                            break;
+
+                        case 'coiffure_beaute':
+                            specificProduct = {
+                                ...baseProduct,
+                                typeCoiffure: columns[4],
+                                longueurMech: columns[5],
+                                couleurMech: columns[6],
+                                textureMech: columns[7],
+                                typePose: columns[8],
+                                marqueCoiffure: columns[9],
+                                origineMech: columns[10],
+                                entretienMech: columns[11],
+                                dureeVie: columns[12],
+                                typeCheveux: columns[13]
+                            } as Product;
+                            break;
+
+                        case 'telephone':
+                            specificProduct = {
+                                ...baseProduct,
+                                marqueTelephone: columns[4],
+                                modeleTelephone: columns[5],
+                                stockage: columns[6],
+                                ram: columns[7],
+                                etatTelephone: columns[8],
+                                couleurTelephone: columns[9],
+                                operateur: columns[10]
+                            } as Product;
+                            break;
+
+                        case 'ordinateur':
+                            specificProduct = {
+                                ...baseProduct,
+                                typeOrdinateur: columns[4],
+                                marqueOrdinateur: columns[5],
+                                modeleOrdinateur: columns[6],
+                                processeur: columns[7],
+                                ramOrdinateur: columns[8],
+                                stockageOrdinateur: columns[9],
+                                carteGraphique: columns[10],
+                                systemeExploitation: columns[11],
+                                etatOrdinateur: columns[12]
+                            } as Product;
+                            break;
+
+                        case 'image_son':
+                            specificProduct = {
+                                ...baseProduct,
+                                marqueImageSon: columns[4],
+                                modeleImageSon: columns[5],
+                                typeImageSon: columns[6],
+                                diagonaleEcran: columns[7],
+                                resolution: columns[8],
+                                etatImageSon: columns[9],
+                                garantieImageSon: columns[10]
+                            } as Product;
+                            break;
+
+                        case 'pieces_auto':
+                            specificProduct = {
+                                ...baseProduct,
+                                typePieceAuto: columns[4],
+                                marquePieceAuto: columns[5],
+                                referenceAuto: columns[6],
+                                compatibilite: columns[7],
+                                etatPieceAuto: columns[8]
+                            } as Product;
+                            break;
+
+                        case 'pieces_industrielles':
+                            specificProduct = {
+                                ...baseProduct,
+                                typePieceIndustrielle: columns[4],
+                                marquePieceIndustrielle: columns[5],
+                                referencePiece: columns[6],
+                                applicationIndustrielle: columns[7],
+                                materielPiece: columns[8]
+                            } as Product;
+                            break;
+
+                        case 'jouets_enfants':
+                            specificProduct = {
+                                ...baseProduct,
+                                typeJouet: columns[4],
+                                ageRecommande: columns[5],
+                                marqueJouet: columns[6],
+                                materielJouet: columns[7],
+                                normeSecurite: columns[8]
+                            } as Product;
+                            break;
+
+                        case 'ustensiles_cuisine':
+                            specificProduct = {
+                                ...baseProduct,
+                                typeUstensile: columns[4],
+                                materiauUstensile: columns[5],
+                                marqueUstensile: columns[6],
+                                capacite: columns[7],
+                                piecesDansSet: columns[8],
+                                etatUstensile: columns[9]
                             } as Product;
                             break;
 
@@ -1320,6 +1733,29 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
             case 'electromenager':
                 return (
                     <>
+                        <View style={styles.fieldContainer}>
+                            <Text style={styles.fieldLabel}>Type d'appareil <Text style={styles.required}>*</Text></Text>
+                            <View style={styles.pickerButtons}>
+                                {['Réfrigérateur', 'Cuisinière', 'Four', 'Micro-ondes', 'Lave-linge', 'Lave-vaisselle', 'Climatiseur', 'Ventilateur', 'Autre'].map((type) => (
+                                    <TouchableOpacity
+                                        key={type}
+                                        style={[
+                                            styles.pickerButton,
+                                            newProduct.typeElectro === type && styles.pickerButtonActive
+                                        ]}
+                                        onPress={() => setNewProduct({ ...newProduct, typeElectro: type })}
+                                    >
+                                        <Text style={[
+                                            styles.pickerButtonText,
+                                            newProduct.typeElectro === type && styles.pickerButtonTextActive
+                                        ]}>
+                                            {type}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        </View>
+
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <Text style={styles.fieldLabel}>Marque</Text>
@@ -1333,32 +1769,66 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <Text style={styles.fieldLabel}>Modèle</Text>
                                 <NativeInput
-                                    placeholder="Ex: RT50"
+                                    placeholder="Ex: RT50K6000S8"
                                     value={newProduct.modeleElectro || ''}
                                     onChangeText={(text) => setNewProduct({ ...newProduct, modeleElectro: text })}
                                     style={styles.fieldInput}
                                 />
                             </View>
                         </View>
+
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <Text style={styles.fieldLabel}>État</Text>
-                                <NativeInput
-                                    placeholder="Ex: Neuf"
-                                    value={newProduct.etat || ''}
-                                    onChangeText={(text) => setNewProduct({ ...newProduct, etat: text })}
-                                    style={styles.fieldInput}
-                                />
+                                <View style={styles.pickerButtons}>
+                                    {['Neuf', 'Bon état', 'Occasion'].map((etat) => (
+                                        <TouchableOpacity
+                                            key={etat}
+                                            style={[
+                                                styles.pickerButton,
+                                                newProduct.etat === etat && styles.pickerButtonActive
+                                            ]}
+                                            onPress={() => setNewProduct({ ...newProduct, etat })}
+                                        >
+                                            <Text style={[
+                                                styles.pickerButtonText,
+                                                newProduct.etat === etat && styles.pickerButtonTextActive
+                                            ]}>
+                                                {etat}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    ))}
+                                </View>
                             </View>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Garantie</Text>
-                                <NativeInput
-                                    placeholder="Ex: 2 ans"
-                                    value={newProduct.garantie || ''}
-                                    onChangeText={(text) => setNewProduct({ ...newProduct, garantie: text })}
-                                    style={styles.fieldInput}
-                                />
+                        </View>
+
+                        <View style={styles.fieldContainer}>
+                            <Text style={styles.fieldLabel}>Garantie</Text>
+                            <View style={styles.pickerButtons}>
+                                {['6 mois', '1 an', '2 ans', '5 ans', 'Aucune'].map((garantie) => (
+                                    <TouchableOpacity
+                                        key={garantie}
+                                        style={[
+                                            styles.pickerButton,
+                                            newProduct.garantie === garantie && styles.pickerButtonActive
+                                        ]}
+                                        onPress={() => setNewProduct({ ...newProduct, garantie })}
+                                    >
+                                        <Text style={[
+                                            styles.pickerButtonText,
+                                            newProduct.garantie === garantie && styles.pickerButtonTextActive
+                                        ]}>
+                                            {garantie}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
                             </View>
+                        </View>
+
+                        <View style={styles.hintBox}>
+                            <Text style={styles.hintText}>
+                                💡 Précisez le type d'appareil pour aider les clients à trouver exactement ce qu'ils cherchent
+                            </Text>
                         </View>
                     </>
                 );
@@ -1442,6 +1912,107 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         <View style={styles.hintBox}>
                             <Text style={styles.hintText}>
                                 💡 Précisez les dimensions et l'état pour faciliter l'évaluation par les acheteurs
+                            </Text>
+                        </View>
+                    </>
+                );
+
+            case 'decoration':
+                return (
+                    <>
+                        <View style={styles.fieldContainer}>
+                            <Text style={styles.fieldLabel}>Type de décoration <Text style={styles.required}>*</Text></Text>
+                            <View style={styles.pickerButtons}>
+                                {['Tableau', 'Luminaire', 'Tapis', 'Coussin', 'Vase', 'Miroir', 'Horloge', 'Rideau', 'Plante déco', 'Sculpture', 'Autre'].map((type) => (
+                                    <TouchableOpacity
+                                        key={type}
+                                        style={[
+                                            styles.pickerButton,
+                                            newProduct.typeDecoration === type && styles.pickerButtonActive
+                                        ]}
+                                        onPress={() => setNewProduct({ ...newProduct, typeDecoration: type })}
+                                    >
+                                        <Text style={[
+                                            styles.pickerButtonText,
+                                            newProduct.typeDecoration === type && styles.pickerButtonTextActive
+                                        ]}>
+                                            {type}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        </View>
+
+                        <View style={styles.fieldContainer}>
+                            <Text style={styles.fieldLabel}>Style décoratif</Text>
+                            <View style={styles.pickerButtons}>
+                                {['Moderne', 'Classique', 'Vintage', 'Industriel', 'Scandinave', 'Bohème', 'Minimaliste', 'Africain'].map((styleType) => (
+                                    <TouchableOpacity
+                                        key={styleType}
+                                        style={[
+                                            styles.pickerButton,
+                                            newProduct.style === styleType && styles.pickerButtonActive
+                                        ]}
+                                        onPress={() => setNewProduct({ ...newProduct, style: styleType })}
+                                    >
+                                        <Text style={[
+                                            styles.pickerButtonText,
+                                            newProduct.style === styleType && styles.pickerButtonTextActive
+                                        ]}>
+                                            {styleType}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        </View>
+
+                        <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <Text style={styles.fieldLabel}>Couleur principale</Text>
+                                <NativeInput
+                                    placeholder="Ex: Beige et or"
+                                    value={newProduct.couleurDecoration || ''}
+                                    onChangeText={(text) => setNewProduct({ ...newProduct, couleurDecoration: text })}
+                                    style={styles.fieldInput}
+                                />
+                            </View>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <Text style={styles.fieldLabel}>Dimensions</Text>
+                                <NativeInput
+                                    placeholder="Ex: 80x60 cm"
+                                    value={newProduct.dimensionsDecoration || ''}
+                                    onChangeText={(text) => setNewProduct({ ...newProduct, dimensionsDecoration: text })}
+                                    style={styles.fieldInput}
+                                />
+                            </View>
+                        </View>
+
+                        <View style={styles.fieldContainer}>
+                            <Text style={styles.fieldLabel}>Matériau / Matière</Text>
+                            <View style={styles.pickerButtons}>
+                                {['Toile', 'Bois', 'Métal', 'Verre', 'Céramique', 'Tissu', 'Plastique', 'Rotin'].map((mat) => (
+                                    <TouchableOpacity
+                                        key={mat}
+                                        style={[
+                                            styles.pickerButton,
+                                            newProduct.materiauDecoration === mat && styles.pickerButtonActive
+                                        ]}
+                                        onPress={() => setNewProduct({ ...newProduct, materiauDecoration: mat })}
+                                    >
+                                        <Text style={[
+                                            styles.pickerButtonText,
+                                            newProduct.materiauDecoration === mat && styles.pickerButtonTextActive
+                                        ]}>
+                                            {mat}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        </View>
+
+                        <View style={styles.hintBox}>
+                            <Text style={styles.hintText}>
+                                💡 <Text style={styles.hintBold}>Conseil :</Text> Ajoutez de belles photos pour montrer comment votre article s'intègre dans un intérieur
                             </Text>
                         </View>
                     </>
@@ -1574,7 +2145,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         <View style={styles.fieldContainer}>
                             <Text style={styles.fieldLabel}>Catégorie</Text>
                             <View style={styles.pickerButtons}>
-                                {['Outils', 'Matériaux', 'Peinture', 'Outils électriques', 'Plomberie', 'Électricité'].map((cat) => (
+                                {['Outils', 'Matériaux', 'Peinture', 'Plomberie', 'Sanitaire', 'Électricité'].map((cat) => (
                                     <TouchableOpacity
                                         key={cat}
                                         style={[
@@ -1607,8 +2178,8 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 <Text style={styles.fieldLabel}>Référence</Text>
                                 <NativeInput
                                     placeholder="Ex: STHT0-51309"
-                                    value={newProduct.reference || ''}
-                                    onChangeText={(text) => setNewProduct({ ...newProduct, reference: text })}
+                                    value={newProduct.referenceQuincaillerie || ''}
+                                    onChangeText={(text) => setNewProduct({ ...newProduct, referenceQuincaillerie: text })}
                                     style={styles.fieldInput}
                                 />
                             </View>
@@ -1617,7 +2188,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <Text style={styles.fieldLabel}>Unité</Text>
                                 <View style={styles.pickerButtons}>
-                                    {['Pièce', 'Sac', 'Seau', 'Litre', 'm²', 'Lot'].map((unite) => (
+                                    {['Pièce', 'Sac', 'Seau', 'Litre', 'm', 'm²', 'Lot'].map((unite) => (
                                         <TouchableOpacity
                                             key={unite}
                                             style={[
@@ -1663,17 +2234,107 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 💡 <Text style={styles.hintBold}>Portfolio de Réalisations :</Text> Ajoutez des images et vidéos de vos meilleures réalisations pour montrer votre savoir-faire. Le titre et la description sont automatiquement repris du service principal.
                             </Text>
                         </View>
+
+                        {/* Gestion des offres de service */}
                         <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Prix de cette réalisation (optionnel)</Text>
-                            <NativeInput
-                                placeholder="Ex: 50000"
-                                value={newProduct.prix || ''}
-                                onChangeText={(text) => setNewProduct({ ...newProduct, prix: text })}
-                                style={styles.fieldInput}
-                                keyboardType="numeric"
-                            />
+                            <View style={styles.prestationHeader}>
+                                <Text style={styles.fieldLabel}>Offres de service proposées</Text>
+                                <TouchableOpacity
+                                    style={styles.addPrestationButton}
+                                    onPress={() => {
+                                        const prestations = newProduct.prestations || [];
+                                        prestations.push({ nom: '', prixAPartirDe: '', description: '' });
+                                        setNewProduct({ ...newProduct, prestations });
+                                    }}
+                                >
+                                    <SafeIcon name="plus-circle" size={20} color={modernColors.primary} />
+                                    <Text style={styles.addPrestationText}>Ajouter une offre</Text>
+                                </TouchableOpacity>
+                            </View>
+
+                            {(newProduct.prestations || []).map((prestation, index) => (
+                                <View key={index} style={styles.prestationCard}>
+                                    <View style={styles.prestationCardHeader}>
+                                        <Text style={styles.prestationCardTitle}>Offre {index + 1}</Text>
+                                        <TouchableOpacity
+                                            style={styles.deletePrestationButton}
+                                            onPress={() => {
+                                                const prestations = [...(newProduct.prestations || [])];
+                                                prestations.splice(index, 1);
+                                                setNewProduct({ ...newProduct, prestations });
+                                            }}
+                                        >
+                                            <SafeIcon name="trash-2" size={18} color={modernColors.error} />
+                                        </TouchableOpacity>
+                                    </View>
+
+                                    <View style={styles.prestationFieldContainer}>
+                                        <Text style={styles.prestationFieldLabel}>Nom de l'offre *</Text>
+                                        <NativeInput
+                                            placeholder="Ex: Traitement de données, Analyse statistique, Rédaction de rapport..."
+                                            value={prestation.nom}
+                                            onChangeText={(text) => {
+                                                const prestations = [...(newProduct.prestations || [])];
+                                                prestations[index].nom = text;
+                                                setNewProduct({ ...newProduct, prestations });
+                                            }}
+                                            style={styles.fieldInput}
+                                        />
+                                    </View>
+
+                                    <View style={styles.prestationFieldRow}>
+                                        <View style={[styles.prestationFieldContainer, { flex: 1 }]}>
+                                            <Text style={styles.prestationFieldLabel}>Montant minimum *</Text>
+                                            <NativeInput
+                                                placeholder="50000"
+                                                value={prestation.prixAPartirDe}
+                                                onChangeText={(text) => {
+                                                    const prestations = [...(newProduct.prestations || [])];
+                                                    prestations[index].prixAPartirDe = text;
+                                                    setNewProduct({ ...newProduct, prestations });
+                                                }}
+                                                style={styles.fieldInput}
+                                                keyboardType="numeric"
+                                            />
+                                        </View>
+                                        <View style={styles.xafLabel}>
+                                            <Text style={styles.xafText}>XAF</Text>
+                                        </View>
+                                    </View>
+
+                                    <View style={styles.prestationFieldContainer}>
+                                        <Text style={styles.prestationFieldLabel}>Description de l'offre (optionnelle)</Text>
+                                        <NativeInput
+                                            placeholder="Ex: Comprend l'analyse complète des données, visualisations, et recommandations..."
+                                            value={prestation.description}
+                                            onChangeText={(text) => {
+                                                const prestations = [...(newProduct.prestations || [])];
+                                                prestations[index].description = text;
+                                                setNewProduct({ ...newProduct, prestations });
+                                            }}
+                                            style={[styles.fieldInput, styles.textareaInput]}
+                                            multiline
+                                        />
+                                    </View>
+                                </View>
+                            ))}
+
+                            {(!newProduct.prestations || newProduct.prestations.length === 0) && (
+                                <View style={styles.emptyPrestationState}>
+                                    <SafeIcon name="info" size={32} color={modernColors.textSecondary} />
+                                    <Text style={styles.emptyPrestationText}>
+                                        Aucune offre ajoutée
+                                    </Text>
+                                    <Text style={styles.emptyPrestationSubtext}>
+                                        Cliquez sur "Ajouter une offre" pour commencer
+                                    </Text>
+                                </View>
+                            )}
+                        </View>
+
+                        <View style={styles.hintBox}>
                             <Text style={styles.hintText}>
-                                Laissez vide (0) si vous préférez ne pas afficher de prix
+                                💰 <Text style={styles.hintBold}>Conseil :</Text> Listez toutes vos offres de service avec leur montant minimum. Cela permet aux clients d'évaluer rapidement si votre offre correspond à leur budget.
                             </Text>
                         </View>
                     </>
@@ -1893,13 +2554,27 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                     </>
                 );
 
-            case 'hopital_clinique':
+            case 'hopital_clinique': {
+                // Listes de prestations médicales disponibles
+                const prestationsMedicalesOptions = [
+                    'Consultation générale', 'Consultation spécialisée', 'Chirurgie',
+                    'Maternité / Accouchement', 'Pédiatrie', 'Cardiologie',
+                    'Radiologie', 'Échographie', 'Scanner', 'IRM',
+                    'Laboratoire', 'Analyses médicales', 'Pharmacie',
+                    'Urgences 24h/24', 'Hospitalisation', 'Soins intensifs',
+                    'Dialyse', 'Dentaire', 'Ophtalmologie', 'ORL',
+                    'Kinésithérapie', 'Radiothérapie', 'Chimiothérapie'
+                ];
+
+                const jours = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
+
                 return (
                     <>
+                        {/* Type d'établissement */}
                         <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Type d'établissement</Text>
+                            <Text style={styles.fieldLabel}>Type d'établissement médical</Text>
                             <View style={styles.pickerButtons}>
-                                {['Hôpital', 'Clinique', 'Centre de santé'].map((type) => (
+                                {['Hôpital', 'Clinique', 'Centre de santé', 'Dispensaire'].map((type) => (
                                     <TouchableOpacity
                                         key={type}
                                         style={[
@@ -1918,55 +2593,131 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 ))}
                             </View>
                         </View>
-                        <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Spécialités médicales</Text>
-                            <NativeInput
-                                placeholder="Ex: Chirurgie, Pédiatrie, Cardiologie (séparés par des virgules)"
-                                value={newProduct.specialites?.join(', ') || ''}
-                                onChangeText={(text) => setNewProduct({
-                                    ...newProduct,
-                                    specialites: text.split(',').map(s => s.trim()).filter(s => s)
-                                })}
-                                multiline
-                                style={[styles.fieldInput, styles.textareaInput]}
-                            />
-                        </View>
-                        <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Médecins disponibles</Text>
-                            <NativeInput
-                                placeholder="Ex: Dr. Dupont, Dr. Martin, Dr. Nguema"
-                                value={newProduct.medecinsDisponibles || ''}
-                                onChangeText={(text) => setNewProduct({ ...newProduct, medecinsDisponibles: text })}
-                                multiline
-                                style={[styles.fieldInput, styles.textareaInput]}
-                            />
-                        </View>
-                        <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Horaires de consultation</Text>
-                            <NativeInput
-                                placeholder="Ex: Lundi-Vendredi 08:00-17:00, Samedi 09:00-13:00"
-                                value={newProduct.horairesConsultation || ''}
-                                onChangeText={(text) => setNewProduct({ ...newProduct, horairesConsultation: text })}
-                                multiline
-                                style={[styles.fieldInput, styles.textareaInput]}
-                            />
-                        </View>
+
+                        {/* Banque de sang */}
                         <View style={styles.fieldContainer}>
                             <TouchableOpacity
                                 style={styles.checkboxContainer}
-                                onPress={() => setNewProduct({ ...newProduct, urgencesDisponible: !newProduct.urgencesDisponible })}
+                                onPress={() => setNewProduct({ ...newProduct, banqueSang: !newProduct.banqueSang })}
                             >
                                 <View style={[
                                     styles.checkbox,
-                                    newProduct.urgencesDisponible && styles.checkboxChecked
+                                    newProduct.banqueSang && styles.checkboxChecked
                                 ]}>
-                                    {newProduct.urgencesDisponible && (
+                                    {newProduct.banqueSang && (
                                         <SafeIcon name="check" size={16} color="#FFFFFF" />
                                     )}
                                 </View>
-                                <Text style={styles.checkboxLabel}>Service des urgences disponible 24h/24</Text>
+                                <Text style={styles.checkboxLabel}>🩸 Banque de sang disponible</Text>
                             </TouchableOpacity>
                         </View>
+
+                        {/* Prestations médicales disponibles */}
+                        <View style={styles.fieldContainer}>
+                            <Text style={styles.fieldLabel}>Prestations médicales disponibles</Text>
+                            <Text style={styles.fieldHint}>Cochez toutes les prestations offertes par votre établissement</Text>
+                            <ScrollView style={styles.checkboxList} nestedScrollEnabled>
+                                {prestationsMedicalesOptions.map((prestation) => (
+                                    <TouchableOpacity
+                                        key={prestation}
+                                        style={styles.checkboxItem}
+                                        onPress={() => {
+                                            const current = newProduct.prestationsMedicales || [];
+                                            if (current.includes(prestation)) {
+                                                setNewProduct({
+                                                    ...newProduct,
+                                                    prestationsMedicales: current.filter(p => p !== prestation)
+                                                });
+                                            } else {
+                                                setNewProduct({
+                                                    ...newProduct,
+                                                    prestationsMedicales: [...current, prestation]
+                                                });
+                                            }
+                                        }}
+                                    >
+                                        <View style={[
+                                            styles.checkbox,
+                                            (newProduct.prestationsMedicales || []).includes(prestation) && styles.checkboxChecked
+                                        ]}>
+                                            {(newProduct.prestationsMedicales || []).includes(prestation) && (
+                                                <SafeIcon name="check" size={14} color="#FFFFFF" />
+                                            )}
+                                        </View>
+                                        <Text style={styles.checkboxLabel}>{prestation}</Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </ScrollView>
+                        </View>
+
+                        {/* Planning hebdomadaire */}
+                        <View style={styles.fieldContainer}>
+                            <Text style={styles.fieldLabel}>Horaires de disponibilité</Text>
+                            <Text style={styles.fieldHint}>Précisez les horaires d'ouverture pour chaque jour</Text>
+                            {jours.map((jour) => (
+                                <View key={jour} style={styles.planningRow}>
+                                    <Text style={styles.planningJour}>{jour}</Text>
+                                    <View style={styles.planningInputs}>
+                                        <NativeInput
+                                            placeholder="08:00"
+                                            value={newProduct.planningHebdomadaire?.[jour]?.debut || ''}
+                                            onChangeText={(text) => setNewProduct({
+                                                ...newProduct,
+                                                planningHebdomadaire: {
+                                                    ...newProduct.planningHebdomadaire,
+                                                    [jour]: {
+                                                        ...newProduct.planningHebdomadaire?.[jour],
+                                                        debut: text
+                                                    }
+                                                }
+                                            })}
+                                            style={styles.planningInput}
+                                        />
+                                        <Text style={styles.planningDivider}>à</Text>
+                                        <NativeInput
+                                            placeholder="18:00"
+                                            value={newProduct.planningHebdomadaire?.[jour]?.fin || ''}
+                                            onChangeText={(text) => setNewProduct({
+                                                ...newProduct,
+                                                planningHebdomadaire: {
+                                                    ...newProduct.planningHebdomadaire,
+                                                    [jour]: {
+                                                        ...newProduct.planningHebdomadaire?.[jour],
+                                                        fin: text
+                                                    }
+                                                }
+                                            })}
+                                            style={styles.planningInput}
+                                        />
+                                        <TouchableOpacity
+                                            style={styles.checkboxSmall}
+                                            onPress={() => setNewProduct({
+                                                ...newProduct,
+                                                planningHebdomadaire: {
+                                                    ...newProduct.planningHebdomadaire,
+                                                    [jour]: {
+                                                        ...newProduct.planningHebdomadaire?.[jour],
+                                                        permanent: !newProduct.planningHebdomadaire?.[jour]?.permanent
+                                                    }
+                                                }
+                                            })}
+                                        >
+                                            <View style={[
+                                                styles.checkbox,
+                                                newProduct.planningHebdomadaire?.[jour]?.permanent && styles.checkboxChecked
+                                            ]}>
+                                                {newProduct.planningHebdomadaire?.[jour]?.permanent && (
+                                                    <SafeIcon name="check" size={12} color="#FFFFFF" />
+                                                )}
+                                            </View>
+                                            <Text style={styles.checkboxLabelSmall}>24h</Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                </View>
+                            ))}
+                        </View>
+
+                        {/* RDV en ligne */}
                         <View style={styles.fieldContainer}>
                             <TouchableOpacity
                                 style={styles.checkboxContainer}
@@ -1980,12 +2731,885 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                         <SafeIcon name="check" size={16} color="#FFFFFF" />
                                     )}
                                 </View>
-                                <Text style={styles.checkboxLabel}>Prise de rendez-vous en ligne disponible</Text>
+                                <Text style={styles.checkboxLabel}>📅 Prise de rendez-vous en ligne disponible</Text>
                             </TouchableOpacity>
                         </View>
+
                         <View style={styles.hintBox}>
                             <Text style={styles.hintText}>
-                                💡 Précisez les spécialités et horaires pour aider les patients à trouver le bon service
+                                💡 Renseignez précisément vos prestations et horaires pour aider les patients à trouver le bon service médical
+                            </Text>
+                        </View>
+                    </>
+                );
+            }
+
+            case 'demenagement':
+                return (
+                    <>
+                        {/* Type de déménagement */}
+                        <View style={styles.fieldContainer}>
+                            <Text style={styles.fieldLabel}>Type de déménagement</Text>
+                            <View style={styles.pickerButtons}>
+                                {['Local', 'National', 'International'].map((type) => (
+                                    <TouchableOpacity
+                                        key={type}
+                                        style={[
+                                            styles.pickerButton,
+                                            newProduct.typeDemenagement === type && styles.pickerButtonActive
+                                        ]}
+                                        onPress={() => setNewProduct({ ...newProduct, typeDemenagement: type })}
+                                    >
+                                        <Text style={[
+                                            styles.pickerButtonText,
+                                            newProduct.typeDemenagement === type && styles.pickerButtonTextActive
+                                        ]}>
+                                            {type}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        </View>
+
+                        {/* Volume estimé */}
+                        <View style={styles.fieldContainer}>
+                            <Text style={styles.fieldLabel}>Volume estimé (m³)</Text>
+                            <NativeInput
+                                placeholder="Ex: 20, 30, 40"
+                                value={newProduct.volumeEstime || ''}
+                                onChangeText={(text) => setNewProduct({ ...newProduct, volumeEstime: text })}
+                                keyboardType="numeric"
+                                style={styles.fieldInput}
+                            />
+                            <Text style={styles.fieldHint}>Volume maximal que vous pouvez transporter</Text>
+                        </View>
+
+                        {/* Type de véhicule */}
+                        <View style={styles.fieldContainer}>
+                            <Text style={styles.fieldLabel}>Type de véhicule disponible</Text>
+                            <View style={styles.pickerButtons}>
+                                {['Camionnette 10m³', 'Camion 20m³', 'Camion 30m³', 'Camion 40m³+'].map((type) => (
+                                    <TouchableOpacity
+                                        key={type}
+                                        style={[
+                                            styles.pickerButton,
+                                            newProduct.typeVehicule === type && styles.pickerButtonActive
+                                        ]}
+                                        onPress={() => setNewProduct({ ...newProduct, typeVehicule: type })}
+                                    >
+                                        <Text style={[
+                                            styles.pickerButtonText,
+                                            newProduct.typeVehicule === type && styles.pickerButtonTextActive
+                                        ]}>
+                                            {type}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        </View>
+
+                        {/* Distance maximale */}
+                        <View style={styles.fieldContainer}>
+                            <Text style={styles.fieldLabel}>Distance maximale (km)</Text>
+                            <NativeInput
+                                placeholder="Ex: 50, 500, 2000"
+                                value={newProduct.distanceKm || ''}
+                                onChangeText={(text) => setNewProduct({ ...newProduct, distanceKm: text })}
+                                keyboardType="numeric"
+                                style={styles.fieldInput}
+                            />
+                            <Text style={styles.fieldHint}>Distance maximale que vous couvrez</Text>
+                        </View>
+
+                        {/* Nombre de déménageurs */}
+                        <View style={styles.fieldContainer}>
+                            <Text style={styles.fieldLabel}>Nombre de déménageurs</Text>
+                            <View style={styles.pickerButtons}>
+                                {['1', '2', '3', '4', '5+'].map((nb) => (
+                                    <TouchableOpacity
+                                        key={nb}
+                                        style={[
+                                            styles.pickerButton,
+                                            newProduct.nbDemenageurs === nb && styles.pickerButtonActive
+                                        ]}
+                                        onPress={() => setNewProduct({ ...newProduct, nbDemenageurs: nb })}
+                                    >
+                                        <Text style={[
+                                            styles.pickerButtonText,
+                                            newProduct.nbDemenageurs === nb && styles.pickerButtonTextActive
+                                        ]}>
+                                            {nb}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        </View>
+
+                        {/* Services inclus */}
+                        <View style={styles.fieldContainer}>
+                            <Text style={styles.fieldLabel}>Services inclus</Text>
+                            <Text style={styles.fieldHint}>Cochez tous les services que vous proposez</Text>
+
+                            <TouchableOpacity
+                                style={styles.checkboxContainer}
+                                onPress={() => setNewProduct({ ...newProduct, assuranceMarchandise: !newProduct.assuranceMarchandise })}
+                            >
+                                <View style={[styles.checkbox, newProduct.assuranceMarchandise && styles.checkboxChecked]}>
+                                    {newProduct.assuranceMarchandise && <SafeIcon name="check" size={16} color="#FFFFFF" />}
+                                </View>
+                                <Text style={styles.checkboxLabel}>🛡️ Assurance marchandise</Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                style={styles.checkboxContainer}
+                                onPress={() => setNewProduct({ ...newProduct, serviceManutention: !newProduct.serviceManutention })}
+                            >
+                                <View style={[styles.checkbox, newProduct.serviceManutention && styles.checkboxChecked]}>
+                                    {newProduct.serviceManutention && <SafeIcon name="check" size={16} color="#FFFFFF" />}
+                                </View>
+                                <Text style={styles.checkboxLabel}>💪 Service de manutention</Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                style={styles.checkboxContainer}
+                                onPress={() => setNewProduct({ ...newProduct, montageDemontage: !newProduct.montageDemontage })}
+                            >
+                                <View style={[styles.checkbox, newProduct.montageDemontage && styles.checkboxChecked]}>
+                                    {newProduct.montageDemontage && <SafeIcon name="check" size={16} color="#FFFFFF" />}
+                                </View>
+                                <Text style={styles.checkboxLabel}>🔧 Montage / Démontage meubles</Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                style={styles.checkboxContainer}
+                                onPress={() => setNewProduct({ ...newProduct, emballageCartons: !newProduct.emballageCartons })}
+                            >
+                                <View style={[styles.checkbox, newProduct.emballageCartons && styles.checkboxChecked]}>
+                                    {newProduct.emballageCartons && <SafeIcon name="check" size={16} color="#FFFFFF" />}
+                                </View>
+                                <Text style={styles.checkboxLabel}>📦 Fourniture cartons d'emballage</Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                style={styles.checkboxContainer}
+                                onPress={() => setNewProduct({ ...newProduct, gardeMeuble: !newProduct.gardeMeuble })}
+                            >
+                                <View style={[styles.checkbox, newProduct.gardeMeuble && styles.checkboxChecked]}>
+                                    {newProduct.gardeMeuble && <SafeIcon name="check" size={16} color="#FFFFFF" />}
+                                </View>
+                                <Text style={styles.checkboxLabel}>🏠 Garde-meuble disponible</Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                style={styles.checkboxContainer}
+                                onPress={() => setNewProduct({ ...newProduct, debarras: !newProduct.debarras })}
+                            >
+                                <View style={[styles.checkbox, newProduct.debarras && styles.checkboxChecked]}>
+                                    {newProduct.debarras && <SafeIcon name="check" size={16} color="#FFFFFF" />}
+                                </View>
+                                <Text style={styles.checkboxLabel}>🗑️ Service de débarras</Text>
+                            </TouchableOpacity>
+                        </View>
+
+                        {/* Date de disponibilité */}
+                        <View style={styles.fieldContainer}>
+                            <Text style={styles.fieldLabel}>Première date de disponibilité</Text>
+                            <NativeInput
+                                placeholder="Ex: 2025-01-15"
+                                value={newProduct.dateDemenagementDisponible || ''}
+                                onChangeText={(text) => setNewProduct({ ...newProduct, dateDemenagementDisponible: text })}
+                                style={styles.fieldInput}
+                            />
+                            <Text style={styles.fieldHint}>Format: AAAA-MM-JJ</Text>
+                        </View>
+
+                        <View style={styles.hintBox}>
+                            <Text style={styles.hintText}>
+                                💡 Précisez tous vos services pour que les clients puissent comparer facilement les offres
+                            </Text>
+                        </View>
+                    </>
+                );
+
+            case 'cosmetique_parfum':
+                return (
+                    <>
+                        {/* Type de produit cosmétique */}
+                        <View style={styles.fieldContainer}>
+                            <Text style={styles.fieldLabel}>Type de produit</Text>
+                            <View style={styles.pickerButtons}>
+                                {['Parfum', 'Maquillage', 'Soin visage', 'Soin corps', 'Cheveux', 'Hygiène'].map((type) => (
+                                    <TouchableOpacity
+                                        key={type}
+                                        style={[
+                                            styles.pickerButton,
+                                            newProduct.typeCosmetique === type && styles.pickerButtonActive
+                                        ]}
+                                        onPress={() => setNewProduct({ ...newProduct, typeCosmetique: type })}
+                                    >
+                                        <Text style={[
+                                            styles.pickerButtonText,
+                                            newProduct.typeCosmetique === type && styles.pickerButtonTextActive
+                                        ]}>
+                                            {type}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        </View>
+
+                        {/* Marque */}
+                        <View style={styles.fieldContainer}>
+                            <Text style={styles.fieldLabel}>Marque</Text>
+                            <NativeInput
+                                placeholder="Ex: Chanel, Dior, Nivea, L'Oréal"
+                                value={newProduct.marqueCosmetique || ''}
+                                onChangeText={(text) => setNewProduct({ ...newProduct, marqueCosmetique: text })}
+                                style={styles.fieldInput}
+                            />
+                        </View>
+
+                        {/* Volume */}
+                        <View style={styles.fieldContainer}>
+                            <Text style={styles.fieldLabel}>Volume / Poids</Text>
+                            <View style={styles.inputRow}>
+                                <NativeInput
+                                    placeholder="Ex: 50"
+                                    value={newProduct.volumeCosmetique || ''}
+                                    onChangeText={(text) => setNewProduct({ ...newProduct, volumeCosmetique: text })}
+                                    keyboardType="numeric"
+                                    style={[styles.fieldInput, { flex: 1, marginRight: 8 }]}
+                                />
+                                <View style={styles.pickerButtons}>
+                                    {['ml', 'g', 'unité'].map((unit) => (
+                                        <TouchableOpacity
+                                            key={unit}
+                                            style={[
+                                                styles.pickerButton,
+                                                newProduct.uniteCosmetique === unit && styles.pickerButtonActive
+                                            ]}
+                                            onPress={() => setNewProduct({ ...newProduct, uniteCosmetique: unit })}
+                                        >
+                                            <Text style={[
+                                                styles.pickerButtonText,
+                                                newProduct.uniteCosmetique === unit && styles.pickerButtonTextActive
+                                            ]}>
+                                                {unit}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    ))}
+                                </View>
+                            </View>
+                        </View>
+
+                        {/* Type de peau */}
+                        <View style={styles.fieldContainer}>
+                            <Text style={styles.fieldLabel}>Type de peau / Cible</Text>
+                            <View style={styles.pickerButtons}>
+                                {['Toutes peaux', 'Peau sèche', 'Peau grasse', 'Peau mixte', 'Peau sensible', 'Femme', 'Homme', 'Enfant'].map((type) => (
+                                    <TouchableOpacity
+                                        key={type}
+                                        style={[
+                                            styles.pickerButton,
+                                            newProduct.typePeau === type && styles.pickerButtonActive
+                                        ]}
+                                        onPress={() => setNewProduct({ ...newProduct, typePeau: type })}
+                                    >
+                                        <Text style={[
+                                            styles.pickerButtonText,
+                                            newProduct.typePeau === type && styles.pickerButtonTextActive
+                                        ]}>
+                                            {type}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        </View>
+
+                        {/* Âge recommandé */}
+                        <View style={styles.fieldContainer}>
+                            <Text style={styles.fieldLabel}>Âge recommandé</Text>
+                            <View style={styles.pickerButtons}>
+                                {['Tous âges', '16+', '18+', '25+', '35+', '50+'].map((age) => (
+                                    <TouchableOpacity
+                                        key={age}
+                                        style={[
+                                            styles.pickerButton,
+                                            newProduct.ageRecommandé === age && styles.pickerButtonActive
+                                        ]}
+                                        onPress={() => setNewProduct({ ...newProduct, ageRecommandé: age })}
+                                    >
+                                        <Text style={[
+                                            styles.pickerButtonText,
+                                            newProduct.ageRecommandé === age && styles.pickerButtonTextActive
+                                        ]}>
+                                            {age}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        </View>
+
+                        {/* Ingrédients principaux */}
+                        <View style={styles.fieldContainer}>
+                            <Text style={styles.fieldLabel}>Ingrédients principaux</Text>
+                            <NativeInput
+                                placeholder="Ex: Vitamine E, Argan, Aloe Vera, Collagène"
+                                value={newProduct.ingredientsCosmetique || ''}
+                                onChangeText={(text) => setNewProduct({ ...newProduct, ingredientsCosmetique: text })}
+                                style={styles.fieldInput}
+                            />
+                        </View>
+
+                        {/* Origine */}
+                        <View style={styles.fieldContainer}>
+                            <Text style={styles.fieldLabel}>Origine / Pays</Text>
+                            <NativeInput
+                                placeholder="Ex: France, Corée du Sud, Maroc"
+                                value={newProduct.origineCosmetique || ''}
+                                onChangeText={(text) => setNewProduct({ ...newProduct, origineCosmetique: text })}
+                                style={styles.fieldInput}
+                            />
+                        </View>
+
+                        <View style={styles.hintBox}>
+                            <Text style={styles.hintText}>
+                                ✨ Précisez les caractéristiques pour aider les clients à choisir le bon produit cosmétique
+                            </Text>
+                        </View>
+                    </>
+                );
+
+            case 'bijoux':
+                return (
+                    <>
+                        {/* Type de bijou */}
+                        <View style={styles.fieldContainer}>
+                            <Text style={styles.fieldLabel}>Type de bijou</Text>
+                            <View style={styles.pickerButtons}>
+                                {['Collier', 'Bague', 'Bracelet', 'Boucles d\'oreilles', 'Montre', 'Pierres précieuses'].map((type) => (
+                                    <TouchableOpacity
+                                        key={type}
+                                        style={[
+                                            styles.pickerButton,
+                                            newProduct.typeBijou === type && styles.pickerButtonActive
+                                        ]}
+                                        onPress={() => setNewProduct({ ...newProduct, typeBijou: type })}
+                                    >
+                                        <Text style={[
+                                            styles.pickerButtonText,
+                                            newProduct.typeBijou === type && styles.pickerButtonTextActive
+                                        ]}>
+                                            {type}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        </View>
+
+                        {/* Matière */}
+                        <View style={styles.fieldContainer}>
+                            <Text style={styles.fieldLabel}>Matière principale</Text>
+                            <View style={styles.pickerButtons}>
+                                {['Or jaune', 'Or blanc', 'Or rose', 'Argent', 'Platine', 'Acier', 'Cuir', 'Autre'].map((matiere) => (
+                                    <TouchableOpacity
+                                        key={matiere}
+                                        style={[
+                                            styles.pickerButton,
+                                            newProduct.matiereBijou === matiere && styles.pickerButtonActive
+                                        ]}
+                                        onPress={() => setNewProduct({ ...newProduct, matiereBijou: matiere })}
+                                    >
+                                        <Text style={[
+                                            styles.pickerButtonText,
+                                            newProduct.matiereBijou === matiere && styles.pickerButtonTextActive
+                                        ]}>
+                                            {matiere}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        </View>
+
+                        {/* Poids */}
+                        <View style={styles.fieldContainer}>
+                            <Text style={styles.fieldLabel}>Poids</Text>
+                            <View style={styles.inputRow}>
+                                <NativeInput
+                                    placeholder="Ex: 15"
+                                    value={newProduct.poidsBijou || ''}
+                                    onChangeText={(text) => setNewProduct({ ...newProduct, poidsBijou: text })}
+                                    keyboardType="numeric"
+                                    style={[styles.fieldInput, { flex: 1, marginRight: 8 }]}
+                                />
+                                <View style={styles.pickerButtons}>
+                                    {['g', 'carat', 'oz'].map((unit) => (
+                                        <TouchableOpacity
+                                            key={unit}
+                                            style={[
+                                                styles.pickerButton,
+                                                newProduct.unitePoids === unit && styles.pickerButtonActive
+                                            ]}
+                                            onPress={() => setNewProduct({ ...newProduct, unitePoids: unit })}
+                                        >
+                                            <Text style={[
+                                                styles.pickerButtonText,
+                                                newProduct.unitePoids === unit && styles.pickerButtonTextActive
+                                            ]}>
+                                                {unit}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    ))}
+                                </View>
+                            </View>
+                        </View>
+
+                        {/* Taille */}
+                        <View style={styles.fieldContainer}>
+                            <Text style={styles.fieldLabel}>Taille / Dimensions</Text>
+                            <NativeInput
+                                placeholder="Ex: 54, 16 pouces, 40mm"
+                                value={newProduct.tailleBijou || ''}
+                                onChangeText={(text) => setNewProduct({ ...newProduct, tailleBijou: text })}
+                                style={styles.fieldInput}
+                            />
+                        </View>
+
+                        {/* Style */}
+                        <View style={styles.fieldContainer}>
+                            <Text style={styles.fieldLabel}>Style</Text>
+                            <View style={styles.pickerButtons}>
+                                {['Classique', 'Moderne', 'Vintage', 'Bohemian', 'Luxe', 'Minimaliste', 'Sport'].map((style) => (
+                                    <TouchableOpacity
+                                        key={style}
+                                        style={[
+                                            styles.pickerButton,
+                                            newProduct.styleBijou === style && styles.pickerButtonActive
+                                        ]}
+                                        onPress={() => setNewProduct({ ...newProduct, styleBijou: style })}
+                                    >
+                                        <Text style={[
+                                            styles.pickerButtonText,
+                                            newProduct.styleBijou === style && styles.pickerButtonTextActive
+                                        ]}>
+                                            {style}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        </View>
+
+                        {/* Origine */}
+                        <View style={styles.fieldContainer}>
+                            <Text style={styles.fieldLabel}>Origine / Pays de fabrication</Text>
+                            <NativeInput
+                                placeholder="Ex: Italie, Suisse, France, Thaïlande"
+                                value={newProduct.origineBijou || ''}
+                                onChangeText={(text) => setNewProduct({ ...newProduct, origineBijou: text })}
+                                style={styles.fieldInput}
+                            />
+                        </View>
+
+                        {/* Certificat */}
+                        <View style={styles.fieldContainer}>
+                            <Text style={styles.fieldLabel}>Certificat d'authenticité</Text>
+                            <View style={styles.pickerButtons}>
+                                {['Oui', 'Non'].map((cert) => (
+                                    <TouchableOpacity
+                                        key={cert}
+                                        style={[
+                                            styles.pickerButton,
+                                            newProduct.certificatBijou === cert && styles.pickerButtonActive
+                                        ]}
+                                        onPress={() => setNewProduct({ ...newProduct, certificatBijou: cert })}
+                                    >
+                                        <Text style={[
+                                            styles.pickerButtonText,
+                                            newProduct.certificatBijou === cert && styles.pickerButtonTextActive
+                                        ]}>
+                                            {cert}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        </View>
+
+                        <View style={styles.hintBox}>
+                            <Text style={styles.hintText}>
+                                💎 Précisez tous les détails pour rassurer les clients sur l'authenticité et la qualité
+                            </Text>
+                        </View>
+                    </>
+                );
+
+            case 'coiffure_beaute':
+                return (
+                    <>
+                        {/* Type de coiffure */}
+                        <View style={styles.fieldContainer}>
+                            <Text style={styles.fieldLabel}>Type de produit</Text>
+                            <View style={styles.pickerButtons}>
+                                {['Mèches', 'Extensions', 'Perruque', 'Tissage', 'Closure', 'Frontal', 'Accessoires'].map((type) => (
+                                    <TouchableOpacity
+                                        key={type}
+                                        style={[
+                                            styles.pickerButton,
+                                            newProduct.typeCoiffure === type && styles.pickerButtonActive
+                                        ]}
+                                        onPress={() => setNewProduct({ ...newProduct, typeCoiffure: type })}
+                                    >
+                                        <Text style={[
+                                            styles.pickerButtonText,
+                                            newProduct.typeCoiffure === type && styles.pickerButtonTextActive
+                                        ]}>
+                                            {type}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        </View>
+
+                        {/* Longueur */}
+                        <View style={styles.fieldContainer}>
+                            <Text style={styles.fieldLabel}>Longueur</Text>
+                            <View style={styles.pickerButtons}>
+                                {['10cm', '20cm', '30cm', '40cm', '50cm', '60cm', '70cm+'].map((longueur) => (
+                                    <TouchableOpacity
+                                        key={longueur}
+                                        style={[
+                                            styles.pickerButton,
+                                            newProduct.longueurMech === longueur && styles.pickerButtonActive
+                                        ]}
+                                        onPress={() => setNewProduct({ ...newProduct, longueurMech: longueur })}
+                                    >
+                                        <Text style={[
+                                            styles.pickerButtonText,
+                                            newProduct.longueurMech === longueur && styles.pickerButtonTextActive
+                                        ]}>
+                                            {longueur}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        </View>
+
+                        {/* Couleur */}
+                        <View style={styles.fieldContainer}>
+                            <Text style={styles.fieldLabel}>Couleur</Text>
+                            <NativeInput
+                                placeholder="Ex: Noir naturel, Blond platine, Châtain clair"
+                                value={newProduct.couleurMech || ''}
+                                onChangeText={(text) => setNewProduct({ ...newProduct, couleurMech: text })}
+                                style={styles.fieldInput}
+                            />
+                        </View>
+
+                        {/* Texture */}
+                        <View style={styles.fieldContainer}>
+                            <Text style={styles.fieldLabel}>Texture</Text>
+                            <View style={styles.pickerButtons}>
+                                {['Lisse', 'Ondulée', 'Bouclée', 'Crépue', 'Kinky', 'Afro'].map((texture) => (
+                                    <TouchableOpacity
+                                        key={texture}
+                                        style={[
+                                            styles.pickerButton,
+                                            newProduct.textureMech === texture && styles.pickerButtonActive
+                                        ]}
+                                        onPress={() => setNewProduct({ ...newProduct, textureMech: texture })}
+                                    >
+                                        <Text style={[
+                                            styles.pickerButtonText,
+                                            newProduct.textureMech === texture && styles.pickerButtonTextActive
+                                        ]}>
+                                            {texture}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        </View>
+
+                        {/* Type de pose */}
+                        <View style={styles.fieldContainer}>
+                            <Text style={styles.fieldLabel}>Type de pose</Text>
+                            <View style={styles.pickerButtons}>
+                                {['Clip', 'Collage', 'Tissage', 'Tresse', 'Crochet', 'Lace'].map((pose) => (
+                                    <TouchableOpacity
+                                        key={pose}
+                                        style={[
+                                            styles.pickerButton,
+                                            newProduct.typePose === pose && styles.pickerButtonActive
+                                        ]}
+                                        onPress={() => setNewProduct({ ...newProduct, typePose: pose })}
+                                    >
+                                        <Text style={[
+                                            styles.pickerButtonText,
+                                            newProduct.typePose === pose && styles.pickerButtonTextActive
+                                        ]}>
+                                            {pose}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        </View>
+
+                        {/* Marque */}
+                        <View style={styles.fieldContainer}>
+                            <Text style={styles.fieldLabel}>Marque</Text>
+                            <NativeInput
+                                placeholder="Ex: Remy Hair, Virgin Hair, Brazilian Hair"
+                                value={newProduct.marqueCoiffure || ''}
+                                onChangeText={(text) => setNewProduct({ ...newProduct, marqueCoiffure: text })}
+                                style={styles.fieldInput}
+                            />
+                        </View>
+
+                        {/* Origine */}
+                        <View style={styles.fieldContainer}>
+                            <Text style={styles.fieldLabel}>Origine des cheveux</Text>
+                            <View style={styles.pickerButtons}>
+                                {['Brésilien', 'Péruvien', 'Indien', 'Malaisien', 'Cambodgien', 'Européen', 'Synthétique'].map((origine) => (
+                                    <TouchableOpacity
+                                        key={origine}
+                                        style={[
+                                            styles.pickerButton,
+                                            newProduct.origineMech === origine && styles.pickerButtonActive
+                                        ]}
+                                        onPress={() => setNewProduct({ ...newProduct, origineMech: origine })}
+                                    >
+                                        <Text style={[
+                                            styles.pickerButtonText,
+                                            newProduct.origineMech === origine && styles.pickerButtonTextActive
+                                        ]}>
+                                            {origine}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        </View>
+
+                        {/* Type de cheveux */}
+                        <View style={styles.fieldContainer}>
+                            <Text style={styles.fieldLabel}>Type de cheveux</Text>
+                            <View style={styles.pickerButtons}>
+                                {['100% Naturel', 'Remy Hair', 'Virgin Hair', 'Semi-naturel', 'Synthétique'].map((typeChev) => (
+                                    <TouchableOpacity
+                                        key={typeChev}
+                                        style={[
+                                            styles.pickerButton,
+                                            newProduct.typeCheveux === typeChev && styles.pickerButtonActive
+                                        ]}
+                                        onPress={() => setNewProduct({ ...newProduct, typeCheveux: typeChev })}
+                                    >
+                                        <Text style={[
+                                            styles.pickerButtonText,
+                                            newProduct.typeCheveux === typeChev && styles.pickerButtonTextActive
+                                        ]}>
+                                            {typeChev}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        </View>
+
+                        {/* Entretien */}
+                        <View style={styles.fieldContainer}>
+                            <Text style={styles.fieldLabel}>Conseils d'entretien</Text>
+                            <NativeInput
+                                placeholder="Ex: Shampoing doux, Séchage naturel, Éviter chaleur élevée"
+                                value={newProduct.entretienMech || ''}
+                                onChangeText={(text) => setNewProduct({ ...newProduct, entretienMech: text })}
+                                multiline
+                                style={[styles.fieldInput, styles.textareaInput]}
+                            />
+                        </View>
+
+                        {/* Durée de vie */}
+                        <View style={styles.fieldContainer}>
+                            <Text style={styles.fieldLabel}>Durée de vie estimée</Text>
+                            <View style={styles.pickerButtons}>
+                                {['1-3 mois', '3-6 mois', '6-12 mois', '1-2 ans', '2+ ans'].map((duree) => (
+                                    <TouchableOpacity
+                                        key={duree}
+                                        style={[
+                                            styles.pickerButton,
+                                            newProduct.dureeVie === duree && styles.pickerButtonActive
+                                        ]}
+                                        onPress={() => setNewProduct({ ...newProduct, dureeVie: duree })}
+                                    >
+                                        <Text style={[
+                                            styles.pickerButtonText,
+                                            newProduct.dureeVie === duree && styles.pickerButtonTextActive
+                                        ]}>
+                                            {duree}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        </View>
+
+                        <View style={styles.hintBox}>
+                            <Text style={styles.hintText}>
+                                💇‍♀️ Précisez la qualité, l'origine et l'entretien pour aider vos clientes à faire le bon choix
+                            </Text>
+                        </View>
+                    </>
+                );
+
+            case 'assurance':
+                return (
+                    <>
+                        <View style={styles.fieldContainer}>
+                            <Text style={styles.fieldLabel}>Type d'assurance <Text style={styles.required}>*</Text></Text>
+                            <View style={styles.pickerButtons}>
+                                {['Vie', 'Non-Vie'].map((type) => (
+                                    <TouchableOpacity
+                                        key={type}
+                                        style={[
+                                            styles.pickerButton,
+                                            newProduct.categorieAssurance === type && styles.pickerButtonActive
+                                        ]}
+                                        onPress={() => setNewProduct({ ...newProduct, categorieAssurance: type, typeAssurance: '' })}
+                                    >
+                                        <Text style={[
+                                            styles.pickerButtonText,
+                                            newProduct.categorieAssurance === type && styles.pickerButtonTextActive
+                                        ]}>
+                                            {type}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        </View>
+
+                        {/* Sous-catégories selon Vie ou Non-Vie */}
+                        {newProduct.categorieAssurance && (
+                            <View style={styles.fieldContainer}>
+                                <Text style={styles.fieldLabel}>Sous-catégorie <Text style={styles.required}>*</Text></Text>
+                                <View style={styles.pickerButtons}>
+                                    {newProduct.categorieAssurance === 'Vie' ? (
+                                        ['Vie entière', 'Temporaire décès', 'Épargne retraite', 'Prévoyance', 'Obsèques'].map((subtype) => (
+                                            <TouchableOpacity
+                                                key={subtype}
+                                                style={[
+                                                    styles.pickerButton,
+                                                    newProduct.typeAssurance === subtype && styles.pickerButtonActive
+                                                ]}
+                                                onPress={() => setNewProduct({ ...newProduct, typeAssurance: subtype })}
+                                            >
+                                                <Text style={[
+                                                    styles.pickerButtonText,
+                                                    newProduct.typeAssurance === subtype && styles.pickerButtonTextActive
+                                                ]}>
+                                                    {subtype}
+                                                </Text>
+                                            </TouchableOpacity>
+                                        ))
+                                    ) : (
+                                        ['Auto', 'Habitation', 'Santé', 'Voyage', 'Responsabilité civile', 'Entreprise'].map((subtype) => (
+                                            <TouchableOpacity
+                                                key={subtype}
+                                                style={[
+                                                    styles.pickerButton,
+                                                    newProduct.typeAssurance === subtype && styles.pickerButtonActive
+                                                ]}
+                                                onPress={() => setNewProduct({ ...newProduct, typeAssurance: subtype })}
+                                            >
+                                                <Text style={[
+                                                    styles.pickerButtonText,
+                                                    newProduct.typeAssurance === subtype && styles.pickerButtonTextActive
+                                                ]}>
+                                                    {subtype}
+                                                </Text>
+                                            </TouchableOpacity>
+                                        ))
+                                    )}
+                                </View>
+                            </View>
+                        )}
+
+                        <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <Text style={styles.fieldLabel}>Compagnie d'assurance</Text>
+                                <NativeInput
+                                    placeholder="Ex: AXA Assurances"
+                                    value={newProduct.compagnieAssurance || ''}
+                                    onChangeText={(text) => setNewProduct({ ...newProduct, compagnieAssurance: text })}
+                                    style={styles.fieldInput}
+                                />
+                            </View>
+                        </View>
+
+                        <View style={styles.fieldContainer}>
+                            <Text style={styles.fieldLabel}>Couverture / Garanties</Text>
+                            <NativeInput
+                                placeholder="Ex: Tous risques, Protection juridique, Assistance 24h/24"
+                                value={newProduct.couverture || ''}
+                                onChangeText={(text) => setNewProduct({ ...newProduct, couverture: text })}
+                                multiline
+                                style={[styles.fieldInput, styles.textareaInput]}
+                            />
+                        </View>
+
+                        <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <Text style={styles.fieldLabel}>Prime annuelle (FCFA)</Text>
+                                <NativeInput
+                                    placeholder="Ex: 150000"
+                                    value={newProduct.primeAnnuelle || ''}
+                                    onChangeText={(text) => setNewProduct({ ...newProduct, primeAnnuelle: text })}
+                                    style={styles.fieldInput}
+                                    keyboardType="numeric"
+                                />
+                            </View>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <Text style={styles.fieldLabel}>Franchise (FCFA)</Text>
+                                <NativeInput
+                                    placeholder="Ex: 50000"
+                                    value={newProduct.franchise || ''}
+                                    onChangeText={(text) => setNewProduct({ ...newProduct, franchise: text })}
+                                    style={styles.fieldInput}
+                                    keyboardType="numeric"
+                                />
+                            </View>
+                        </View>
+
+                        <View style={styles.fieldContainer}>
+                            <Text style={styles.fieldLabel}>Durée du contrat</Text>
+                            <View style={styles.pickerButtons}>
+                                {['1 an', '2 ans', '5 ans', '10 ans', 'Vie entière'].map((duree) => (
+                                    <TouchableOpacity
+                                        key={duree}
+                                        style={[
+                                            styles.pickerButton,
+                                            newProduct.dureeContrat === duree && styles.pickerButtonActive
+                                        ]}
+                                        onPress={() => setNewProduct({ ...newProduct, dureeContrat: duree })}
+                                    >
+                                        <Text style={[
+                                            styles.pickerButtonText,
+                                            newProduct.dureeContrat === duree && styles.pickerButtonTextActive
+                                        ]}>
+                                            {duree}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        </View>
+
+                        <View style={styles.fieldContainer}>
+                            <Text style={styles.fieldLabel}>Principaux bénéfices</Text>
+                            <NativeInput
+                                placeholder="Ex: Capital décès, Rente invalidité, Assistance rapatriement..."
+                                value={newProduct.benefices || ''}
+                                onChangeText={(text) => setNewProduct({ ...newProduct, benefices: text })}
+                                multiline
+                                style={[styles.fieldInput, styles.textareaInput]}
+                            />
+                        </View>
+
+                        <View style={styles.hintBox}>
+                            <Text style={styles.hintText}>
+                                💡 <Text style={styles.hintBold}>Conseil :</Text> Détaillez bien les garanties et la couverture pour aider vos clients à comparer les offres.
                             </Text>
                         </View>
                     </>
@@ -2152,7 +3776,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                             const query = searchQuery.toLowerCase();
                                             return type.label.toLowerCase().includes(query) ||
                                                 type.description.toLowerCase().includes(query) ||
-                                                (type.keywords && type.keywords.some(kw => kw.toLowerCase().includes(query)));
+                                                ('keywords' in type && type.keywords.some((kw: string) => kw.toLowerCase().includes(query)));
                                         })
                                         .map((type) => (
                                             <TouchableOpacity
@@ -2234,8 +3858,13 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                             <Text style={styles.autoFilledHint}> (pré-rempli automatiquement)</Text>
                                         )}
                                     </Text>
+                                    {selectedType && (
+                                        <Text style={styles.categoryReminder}>
+                                            📦 Catégorie : {PRODUCT_TYPES.find(t => t.value === selectedType)?.label}
+                                        </Text>
+                                    )}
                                     <NativeInput
-                                        placeholder="Ex: Appartement F4"
+                                        placeholder={getProductNamePlaceholder(selectedType)}
                                         value={newProduct.nom || ''}
                                         onChangeText={(text) => setNewProduct({ ...newProduct, nom: text })}
                                         style={styles.fieldInput}
@@ -2439,6 +4068,99 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                             ))}
                                         </View>
                                     )}
+
+                                    {/* Logo et Bannière */}
+                                    <Text style={[styles.sectionTitle, { marginTop: 20 }]}>🎨 Logo et Bannière (optionnel)</Text>
+                                    <Text style={styles.sectionSubtitle}>Ajoutez un logo et une bannière pour personnaliser votre produit</Text>
+
+                                    <View style={styles.logoBannerContainer}>
+                                        {/* Logo */}
+                                        <View style={styles.logoBannerItem}>
+                                            <Text style={styles.logoBannerLabel}>Logo</Text>
+                                            <TouchableOpacity
+                                                style={styles.logoBannerButton}
+                                                onPress={async () => {
+                                                    try {
+                                                        const result = await ImagePicker.launchImageLibraryAsync({
+                                                            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                                                            allowsMultipleSelection: false,
+                                                            quality: 0.6,
+                                                            base64: true,
+                                                            aspect: [1, 1]
+                                                        });
+
+                                                        if (!result.canceled && result.assets && result.assets.length > 0) {
+                                                            const logoData = `data:image/jpeg;base64,${result.assets[0].base64}`;
+                                                            setNewProduct({ ...newProduct, logo: logoData });
+                                                        }
+                                                    } catch (error) {
+                                                        console.error('Erreur sélection logo:', error);
+                                                    }
+                                                }}
+                                            >
+                                                {newProduct.logo ? (
+                                                    <Image source={{ uri: newProduct.logo }} style={styles.logoPreview} />
+                                                ) : (
+                                                    <>
+                                                        <SafeIcon name="image" size={24} color={modernColors.textSecondary} />
+                                                        <Text style={styles.logoBannerButtonText}>Choisir logo</Text>
+                                                    </>
+                                                )}
+                                            </TouchableOpacity>
+                                            {newProduct.logo && (
+                                                <TouchableOpacity
+                                                    style={styles.removeLogoBannerButton}
+                                                    onPress={() => setNewProduct({ ...newProduct, logo: undefined })}
+                                                >
+                                                    <SafeIcon name="trash-2" size={14} color={modernColors.error} />
+                                                    <Text style={styles.removeLogoBannerText}>Supprimer</Text>
+                                                </TouchableOpacity>
+                                            )}
+                                        </View>
+
+                                        {/* Bannière */}
+                                        <View style={styles.logoBannerItem}>
+                                            <Text style={styles.logoBannerLabel}>Bannière</Text>
+                                            <TouchableOpacity
+                                                style={styles.logoBannerButton}
+                                                onPress={async () => {
+                                                    try {
+                                                        const result = await ImagePicker.launchImageLibraryAsync({
+                                                            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                                                            allowsMultipleSelection: false,
+                                                            quality: 0.5,
+                                                            base64: true
+                                                        });
+
+                                                        if (!result.canceled && result.assets && result.assets.length > 0) {
+                                                            const bannerData = `data:image/jpeg;base64,${result.assets[0].base64}`;
+                                                            setNewProduct({ ...newProduct, banner: bannerData });
+                                                        }
+                                                    } catch (error) {
+                                                        console.error('Erreur sélection bannière:', error);
+                                                    }
+                                                }}
+                                            >
+                                                {newProduct.banner ? (
+                                                    <Image source={{ uri: newProduct.banner }} style={styles.bannerPreview} />
+                                                ) : (
+                                                    <>
+                                                        <SafeIcon name="image" size={24} color={modernColors.textSecondary} />
+                                                        <Text style={styles.logoBannerButtonText}>Choisir bannière</Text>
+                                                    </>
+                                                )}
+                                            </TouchableOpacity>
+                                            {newProduct.banner && (
+                                                <TouchableOpacity
+                                                    style={styles.removeLogoBannerButton}
+                                                    onPress={() => setNewProduct({ ...newProduct, banner: undefined })}
+                                                >
+                                                    <SafeIcon name="trash-2" size={14} color={modernColors.error} />
+                                                    <Text style={styles.removeLogoBannerText}>Supprimer</Text>
+                                                </TouchableOpacity>
+                                            )}
+                                        </View>
+                                    </View>
                                 </View>
                             </View>
                         )}
@@ -3037,6 +4759,235 @@ const styles = StyleSheet.create({
     },
     gpsInfoText: {
         flex: 1,
+        fontSize: 12,
+        color: modernColors.text,
+    },
+    // Styles pour les prestations de service
+    prestationHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 16,
+    },
+    addPrestationButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        backgroundColor: modernColors.surface,
+        borderWidth: 1,
+        borderColor: modernColors.primary,
+        borderRadius: 8,
+    },
+    addPrestationText: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: modernColors.primary,
+    },
+    prestationCard: {
+        backgroundColor: modernColors.surface,
+        borderWidth: 1,
+        borderColor: modernColors.border,
+        borderRadius: 12,
+        padding: 16,
+        marginBottom: 12,
+    },
+    prestationCardHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 16,
+        paddingBottom: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: modernColors.border,
+    },
+    prestationCardTitle: {
+        fontSize: 15,
+        fontWeight: '600',
+        color: modernColors.text,
+    },
+    deletePrestationButton: {
+        padding: 6,
+        borderRadius: 6,
+        backgroundColor: '#FEE2E2',
+    },
+    prestationFieldContainer: {
+        marginBottom: 12,
+    },
+    prestationFieldLabel: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: modernColors.text,
+        marginBottom: 6,
+    },
+    prestationFieldRow: {
+        flexDirection: 'row',
+        alignItems: 'flex-end',
+        gap: 8,
+        marginBottom: 12,
+    },
+    xafLabel: {
+        paddingHorizontal: 12,
+        paddingVertical: 10,
+        backgroundColor: '#EFF6FF',
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: modernColors.primary,
+    },
+    xafText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: modernColors.primary,
+    },
+    emptyPrestationState: {
+        alignItems: 'center',
+        padding: 32,
+        backgroundColor: modernColors.background,
+        borderRadius: 12,
+        borderWidth: 2,
+        borderColor: modernColors.border,
+        borderStyle: 'dashed',
+    },
+    emptyPrestationText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: modernColors.textSecondary,
+        marginTop: 12,
+    },
+    emptyPrestationSubtext: {
+        fontSize: 12,
+        color: modernColors.textSecondary,
+        marginTop: 4,
+        textAlign: 'center',
+    },
+    // Style pour le rappel de catégorie
+    categoryReminder: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: modernColors.primary,
+        backgroundColor: '#EFF6FF',
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 6,
+        marginBottom: 8,
+        alignSelf: 'flex-start',
+    },
+    // Styles pour Logo et Bannière
+    logoBannerContainer: {
+        flexDirection: 'row',
+        gap: 12,
+        marginTop: 12,
+    },
+    logoBannerItem: {
+        flex: 1,
+        gap: 8,
+    },
+    logoBannerLabel: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: modernColors.text,
+    },
+    logoBannerButton: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: modernColors.surface,
+        borderWidth: 2,
+        borderColor: modernColors.border,
+        borderStyle: 'dashed',
+        borderRadius: 12,
+        paddingVertical: 20,
+        paddingHorizontal: 16,
+        gap: 8,
+    },
+    logoBannerButtonText: {
+        fontSize: 12,
+        fontWeight: '500',
+        color: modernColors.textSecondary,
+    },
+    logoPreview: {
+        width: 80,
+        height: 80,
+        borderRadius: 40,
+    },
+    bannerPreview: {
+        width: '100%',
+        height: 80,
+        borderRadius: 8,
+    },
+    removeLogoBannerButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 4,
+        paddingVertical: 6,
+        paddingHorizontal: 10,
+        backgroundColor: '#FEE2E2',
+        borderRadius: 6,
+    },
+    removeLogoBannerText: {
+        fontSize: 11,
+        fontWeight: '600',
+        color: modernColors.error,
+    },
+    // ✅ NOUVEAU: Styles pour listes à cocher (prestations médicales)
+    checkboxList: {
+        maxHeight: 300,
+        borderWidth: 1,
+        borderColor: modernColors.border,
+        borderRadius: 8,
+        padding: 8,
+        marginTop: 8,
+        backgroundColor: modernColors.surface,
+    },
+    checkboxItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 8,
+        paddingHorizontal: 4,
+    },
+    // ✅ NOUVEAU: Styles pour planning hebdomadaire
+    planningRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 12,
+        paddingVertical: 8,
+        borderBottomWidth: 1,
+        borderBottomColor: modernColors.border,
+    },
+    planningJour: {
+        width: 80,
+        fontSize: 14,
+        fontWeight: '600',
+        color: modernColors.text,
+    },
+    planningInputs: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    planningInput: {
+        flex: 1,
+        borderWidth: 1,
+        borderColor: modernColors.border,
+        borderRadius: 8,
+        padding: 8,
+        fontSize: 14,
+        color: modernColors.text,
+        backgroundColor: modernColors.surface,
+    },
+    planningDivider: {
+        fontSize: 14,
+        color: modernColors.textSecondary,
+        paddingHorizontal: 4,
+    },
+    checkboxSmall: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+    },
+    checkboxLabelSmall: {
         fontSize: 12,
         color: modernColors.text,
     },

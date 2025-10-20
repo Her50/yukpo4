@@ -1,6 +1,7 @@
 use crate::core::types::AppResult;
 use crate::utils::log::{log_info, log_error};
 use crate::config::search_config::SearchConfig;
+use crate::services::scheduling_search_service::{SchedulingSearchService, SearchIntent};
 use serde_json::Value;
 use sqlx::{PgPool, Row};
 
@@ -129,7 +130,7 @@ impl NativeSearchService {
         self.fulltext_search_with_gps(query, category_filter, location_filter, None, None).await
     }
 
-    /// Recherche full-text intelligente avec filtrage GPS
+    /// Recherche full-text intelligente avec filtrage GPS et planifications
     async fn fulltext_search_with_gps(
         &self,
         query: &str,
@@ -138,6 +139,50 @@ impl NativeSearchService {
         gps_zone: Option<&str>,
         search_radius_km: Option<i32>,
     ) -> AppResult<Vec<SearchResult>> {
+        // Analyser l'intention de recherche pour détecter les planifications
+        let scheduling_service = SchedulingSearchService::new(self.pool.clone());
+        let intent = scheduling_service.analyze_search_intent(query);
+        
+        // Si recherche avec planification, utiliser la fonction spécialisée
+        if intent.should_use_scheduling_search() {
+            log_info(&format!("[NativeSearch] Recherche avec planification détectée: {:?}", intent));
+            
+            // Convertir gps_zone en coordonnées si nécessaire
+            let (user_lat, user_lng) = if let Some(zone) = gps_zone {
+                // Extraire lat/lng de la zone GPS (format: "lat,lng")
+                if let Some((lat_str, lng_str)) = zone.split_once(',') {
+                    (lat_str.parse().ok(), lng_str.parse().ok())
+                } else {
+                    (None, None)
+                }
+            } else {
+                (None, None)
+            };
+            
+            let scheduling_results = scheduling_service.search_with_scheduling(
+                query,
+                None, // Utilise NOW()
+                user_lat,
+                user_lng,
+                search_radius_km.map(|r| r as f64),
+            ).await.map_err(|e| format!("Erreur recherche planifications: {}", e))?;
+            
+            // Convertir en SearchResult
+            let results: Vec<SearchResult> = scheduling_results.into_iter().map(|r| SearchResult {
+                service_id: r.service_id,
+                data: r.product_data,
+                total_score: r.relevance_score as f32,
+                fulltext_score: r.relevance_score as f32,
+                trigram_score: 0.0,
+                recency_score: 0.0,
+                category_score: 0.0,
+                search_method: "scheduling_search".to_string(),
+                matched_fields: vec!["planification".to_string(), "disponibilité".to_string()],
+            }).collect();
+            
+            log_info(&format!("[NativeSearch] {} résultats avec planifications trouvés", results.len()));
+            return Ok(results);
+        }
         // Utiliser notre fonction PostgreSQL optimisée si GPS est fourni
         if let Some(gps_zone) = gps_zone {
             let radius = search_radius_km.unwrap_or(50);

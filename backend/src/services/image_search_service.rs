@@ -1,599 +1,324 @@
-use sqlx::PgPool;
+// 🖼️ Service de recherche par image native avec PostgreSQL
+// Utilise les signatures vectorielles stockées dans la table media
+
+use crate::core::types::{AppError, AppResult};
+use crate::utils::logger::{log_error, log_info, log_warn};
 use serde::{Deserialize, Serialize};
+use sqlx::PgPool;
+use std::sync::Arc;
 
-#[cfg(feature = "image_search")]
-use sqlx::Row;
-#[cfg(feature = "image_search")]
-use std::collections::HashMap;
-#[cfg(feature = "image_search")]
-use std::fs;
-#[cfg(feature = "image_search")]
-use image::GenericImageView;
-#[cfg(feature = "image_search")]
-use image::imageops::resize;
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct ImageSignature {
-    pub media_id: i32,
-    pub service_id: i32,
-    pub image_hash: String,
-    pub image_signature: Vec<f32>,
-    pub image_metadata: ImageMetadata,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct ImageMetadata {
-    pub width: u32,
-    pub height: u32,
-    pub format: String,
-    pub file_size: usize,
-    pub dominant_colors: Vec<[u8; 3]>,
-    pub color_histogram: Vec<f32>, // Histogramme de couleurs amélioré
-    pub edge_density: f32, // Densité de contours
-    pub brightness: f32, // Luminosité moyenne
-    pub contrast: f32, // Contraste
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ImageSearchResult {
-    pub media_id: i32,
     pub service_id: i32,
-    pub path: String,
+    pub media_id: i32,
+    pub media_path: String,
     pub similarity_score: f32,
-    pub image_metadata: ImageMetadata,
-    pub service_data: Option<serde_json::Value>, // Données du service associé
+    pub service_data: serde_json::Value,
+    pub image_metadata: Option<serde_json::Value>,
 }
 
 pub struct ImageSearchService {
-    pool: PgPool,
+    pool: Arc<PgPool>,
 }
 
 impl ImageSearchService {
-    pub fn new(pool: PgPool) -> Self {
+    pub fn new(pool: Arc<PgPool>) -> Self {
         Self { pool }
     }
 
-    /// Retourne une référence au pool de connexions
-    pub fn pool(&self) -> &PgPool {
-        &self.pool
-    }
+    /// Rechercher des images similaires par signature vectorielle
+    pub async fn search_by_image_signature(
+        &self,
+        image_signature: &[f32],
+        similarity_threshold: f32,
+        max_results: i32,
+    ) -> AppResult<Vec<ImageSearchResult>> {
+        log_info(&format!(
+            "[ImageSearch] Recherche par signature: {} dimensions, seuil={}, max={}",
+            image_signature.len(),
+            similarity_threshold,
+            max_results
+        ));
 
-    /// Génère une signature d'image avancée avec plusieurs algorithmes
-    #[cfg(feature = "image_search")]
-    pub async fn generate_image_signature(&self, image_data: &[u8]) -> Result<Vec<f32>, anyhow::Error> {
-        // Charger l'image
-        let img = image::load_from_memory(image_data)?;
-        
-        // Redimensionner à 128x128 pour plus de précision
-        let resized = resize(&img.to_rgb8(), 128, 128, image::imageops::FilterType::Lanczos3);
-        
-        let mut signature = Vec::new();
-        
-        // 1. Signature par blocs de couleurs (16x16 blocs)
-        signature.extend(self.extract_color_block_signature(&resized));
-        
-        // 2. Histogramme de couleurs global
-        signature.extend(self.extract_color_histogram(&resized));
-        
-        // 3. Signature de contours (edge detection simplifiée)
-        signature.extend(self.extract_edge_signature(&resized));
-        
-        // 4. Signature de texture (patterns locaux)
-        signature.extend(self.extract_texture_signature(&resized));
-        
-        Ok(signature)
-    }
+        // Convertir la signature en JSONB pour PostgreSQL
+        let signature_json = serde_json::to_value(image_signature)
+            .map_err(|e| AppError::Internal(format!("Erreur conversion signature: {}", e)))?;
 
-    /// Extrait la signature par blocs de couleurs
-    #[cfg(feature = "image_search")]
-    fn extract_color_block_signature(&self, img: &image::RgbImage) -> Vec<f32> {
-        let mut signature = Vec::new();
-        
-        // Diviser en 16x16 blocs (8x8 pixels chacun)
-        for y in 0..16 {
-            for x in 0..16 {
-                let mut r_sum = 0u32;
-                let mut g_sum = 0u32;
-                let mut b_sum = 0u32;
-                let mut count = 0u32;
-                
-                // Calculer la moyenne des pixels dans ce bloc
-                for py in y * 8..(y + 1) * 8 {
-                    for px in x * 8..(x + 1) * 8 {
-                        if py < 128 && px < 128 {
-                            let pixel = img.get_pixel(px, py);
-                            r_sum += pixel[0] as u32;
-                            g_sum += pixel[1] as u32;
-                            b_sum += pixel[2] as u32;
-                            count += 1;
-                        }
-                    }
-                }
-                
-                if count > 0 {
-                    signature.push((r_sum / count) as f32 / 255.0);
-                    signature.push((g_sum / count) as f32 / 255.0);
-                    signature.push((b_sum / count) as f32 / 255.0);
-                } else {
-                    signature.push(0.0);
-                    signature.push(0.0);
-                    signature.push(0.0);
-                }
-            }
-        }
-        
-        signature
-    }
-
-    /// Extrait l'histogramme de couleurs
-    #[cfg(feature = "image_search")]
-    fn extract_color_histogram(&self, img: &image::RgbImage) -> Vec<f32> {
-        let mut histogram = vec![0u32; 256 * 3]; // R, G, B séparés
-        
-        for pixel in img.pixels() {
-            histogram[pixel[0] as usize] += 1;
-            histogram[pixel[1] as usize + 256] += 1;
-            histogram[pixel[2] as usize + 512] += 1;
-        }
-        
-        // Normaliser
-        let total_pixels = img.width() * img.height();
-        histogram.into_iter()
-            .map(|count| count as f32 / total_pixels as f32)
-            .collect()
-    }
-
-    /// Extrait la signature de contours (simplifiée)
-    #[cfg(feature = "image_search")]
-    fn extract_edge_signature(&self, img: &image::RgbImage) -> Vec<f32> {
-        let mut edge_signature = Vec::new();
-        
-        // Détection de contours simple par différence de pixels
-        for y in 1..127 {
-            for x in 1..127 {
-                let current = img.get_pixel(x, y);
-                let right = img.get_pixel(x + 1, y);
-                let bottom = img.get_pixel(x, y + 1);
-                
-                // Différence horizontale
-                let diff_h = (current[0] as i32 - right[0] as i32).abs() +
-                            (current[1] as i32 - right[1] as i32).abs() +
-                            (current[2] as i32 - right[2] as i32).abs();
-                
-                // Différence verticale
-                let diff_v = (current[0] as i32 - bottom[0] as i32).abs() +
-                            (current[1] as i32 - bottom[1] as i32).abs() +
-                            (current[2] as i32 - bottom[2] as i32).abs();
-                
-                edge_signature.push((diff_h + diff_v) as f32 / (255.0 * 6.0));
-            }
-        }
-        
-        // Réduire à 64 valeurs en moyennant
-        let mut reduced = Vec::new();
-        for chunk in edge_signature.chunks(edge_signature.len() / 64) {
-            let avg = chunk.iter().sum::<f32>() / chunk.len() as f32;
-            reduced.push(avg);
-        }
-        
-        reduced
-    }
-
-    /// Extrait la signature de texture
-    #[cfg(feature = "image_search")]
-    fn extract_texture_signature(&self, img: &image::RgbImage) -> Vec<f32> {
-        let mut texture_signature = Vec::new();
-        
-        // Analyser les patterns locaux (simplifié)
-        for y in 0..16 {
-            for x in 0..16 {
-                let mut variance = 0.0;
-                let mut mean = 0.0;
-                let mut count = 0;
-                
-                // Calculer la variance dans un bloc 8x8
-                for py in y * 8..(y + 1) * 8 {
-                    for px in x * 8..(x + 1) * 8 {
-                        if py < 128 && px < 128 {
-                            let pixel = img.get_pixel(px, py);
-                            let intensity = (pixel[0] as f32 + pixel[1] as f32 + pixel[2] as f32) / 3.0;
-                            mean += intensity;
-                            count += 1;
-                        }
-                    }
-                }
-                
-                if count > 0 {
-                    mean /= count as f32;
-                    
-                    // Calculer la variance
-                    for py in y * 8..(y + 1) * 8 {
-                        for px in x * 8..(x + 1) * 8 {
-                            if py < 128 && px < 128 {
-                                let pixel = img.get_pixel(px, py);
-                                let intensity = (pixel[0] as f32 + pixel[1] as f32 + pixel[2] as f32) / 3.0;
-                                variance += (intensity - mean).powi(2);
-                            }
-                        }
-                    }
-                    
-                    variance /= count as f32;
-                    texture_signature.push(variance / 255.0);
-                } else {
-                    texture_signature.push(0.0);
-                }
-            }
-        }
-        
-        texture_signature
-    }
-
-    /// Calcule la similarité avancée entre deux signatures
-    pub fn calculate_advanced_similarity(&self, sig1: &[f32], sig2: &[f32]) -> f32 {
-        if sig1.len() != sig2.len() {
-            return 0.0;
-        }
-        
-        // Distance euclidienne pondérée
-        let mut weighted_sum = 0.0;
-        let mut total_weight = 0.0;
-        
-        for (i, (a, b)) in sig1.iter().zip(sig2.iter()).enumerate() {
-            let weight = self.get_feature_weight(i, sig1.len());
-            let diff = (a - b).abs();
-            weighted_sum += weight * (1.0 - diff);
-            total_weight += weight;
-        }
-        
-        if total_weight > 0.0 {
-            weighted_sum / total_weight
-        } else {
-            0.0
-        }
-    }
-
-    /// Retourne le poids d'une caractéristique selon sa position
-    fn get_feature_weight(&self, index: usize, total_length: usize) -> f32 {
-        // Les premières caractéristiques (couleurs) ont plus de poids
-        if index < total_length / 4 {
-            2.0
-        } else if index < total_length / 2 {
-            1.5
-        } else {
-            1.0
-        }
-    }
-
-    /// Extrait les métadonnées avancées d'une image
-    #[cfg(feature = "image_search")]
-    pub async fn extract_image_metadata(&self, image_data: &[u8]) -> Result<ImageMetadata, anyhow::Error> {
-        let img = image::load_from_memory(image_data)?;
-        let dimensions = img.dimensions();
-        
-        // Calculer les couleurs dominantes
-        let rgb_img = img.to_rgb8();
-        let mut color_counts: HashMap<[u8; 3], u32> = HashMap::new();
-        
-        // Échantillonner des pixels pour les couleurs dominantes
-        for y in (0..dimensions.1).step_by(10) {
-            for x in (0..dimensions.0).step_by(10) {
-                let pixel = rgb_img.get_pixel(x, y);
-                let color = [pixel[0], pixel[1], pixel[2]];
-                *color_counts.entry(color).or_insert(0) += 1;
-            }
-        }
-        
-        // Prendre les 8 couleurs les plus fréquentes
-        let mut colors: Vec<_> = color_counts.into_iter().collect();
-        colors.sort_by(|a, b| b.1.cmp(&a.1));
-        let dominant_colors: Vec<[u8; 3]> = colors.into_iter().take(8).map(|(color, _)| color).collect();
-        
-        // Calculer l'histogramme de couleurs
-        let color_histogram = self.extract_color_histogram(&rgb_img);
-        
-        // Calculer la densité de contours
-        let edge_density = self.calculate_edge_density(&rgb_img);
-        
-        // Calculer la luminosité et le contraste
-        let (brightness, contrast) = self.calculate_brightness_contrast(&rgb_img);
-        
-        Ok(ImageMetadata {
-            width: dimensions.0,
-            height: dimensions.1,
-            format: "jpeg".to_string(), // Simplifié
-            file_size: image_data.len(),
-            dominant_colors,
-            color_histogram,
-            edge_density,
-            brightness,
-            contrast,
-        })
-    }
-
-    /// Calcule la densité de contours
-    #[cfg(feature = "image_search")]
-    fn calculate_edge_density(&self, img: &image::RgbImage) -> f32 {
-        let mut edge_count = 0;
-        let mut total_pixels = 0;
-        
-        for y in 1..img.height() - 1 {
-            for x in 1..img.width() - 1 {
-                let current = img.get_pixel(x, y);
-                let right = img.get_pixel(x + 1, y);
-                let bottom = img.get_pixel(x, y + 1);
-                
-                let diff_h = (current[0] as i32 - right[0] as i32).abs() +
-                            (current[1] as i32 - right[1] as i32).abs() +
-                            (current[2] as i32 - right[2] as i32).abs();
-                
-                let diff_v = (current[0] as i32 - bottom[0] as i32).abs() +
-                            (current[1] as i32 - bottom[1] as i32).abs() +
-                            (current[2] as i32 - bottom[2] as i32).abs();
-                
-                if (diff_h + diff_v) > 50 {
-                    edge_count += 1;
-                }
-                total_pixels += 1;
-            }
-        }
-        
-        edge_count as f32 / total_pixels as f32
-    }
-
-    /// Calcule la luminosité et le contraste
-    #[cfg(feature = "image_search")]
-    fn calculate_brightness_contrast(&self, img: &image::RgbImage) -> (f32, f32) {
-        let mut brightness_sum = 0.0;
-        let mut brightness_squared_sum = 0.0;
-        let mut pixel_count = 0;
-        
-        for pixel in img.pixels() {
-            let intensity = (pixel[0] as f32 + pixel[1] as f32 + pixel[2] as f32) / 3.0;
-            brightness_sum += intensity;
-            brightness_squared_sum += intensity * intensity;
-            pixel_count += 1;
-        }
-        
-        let brightness = brightness_sum / pixel_count as f32;
-        let variance = (brightness_squared_sum / pixel_count as f32) - (brightness * brightness);
-        let contrast = variance.sqrt();
-        
-        (brightness / 255.0, contrast / 255.0)
-    }
-
-    /// Met à jour la signature d'une image existante dans la table media
-    #[cfg(feature = "image_search")]
-    pub async fn update_media_image_signature(&self, media_id: i32) -> Result<(), anyhow::Error> {
-        // Récupérer le chemin du fichier
-        let media_record = sqlx::query!(
-            "SELECT path FROM media WHERE id = $1 AND type = 'image'",
-            media_id
-        )
-        .fetch_one(&self.pool)
-        .await?;
-        
-        // Lire le fichier
-        let image_data = fs::read(&media_record.path)?;
-        
-        // Générer la signature et les métadonnées
-        let signature = self.generate_image_signature(&image_data).await?;
-        let metadata = self.extract_image_metadata(&image_data).await?;
-        let image_hash = format!("{:x}", md5::compute(&image_data));
-        
-        // Mettre à jour la base de données
-        sqlx::query(
-            r#"
-            UPDATE media 
-            SET image_signature = $1,
-                image_hash = $2,
-                image_metadata = $3
-            WHERE id = $4
-            "#
-        )
-        .bind(serde_json::to_string(&signature)?)
-        .bind(image_hash)
-        .bind(serde_json::to_string(&metadata)?)
-        .bind(media_id)
-        .execute(&self.pool)
-        .await?;
-        
-        Ok(())
-    }
-
-    /// Recherche d'images similaires avec données de service
-    #[cfg(feature = "image_search")]
-    pub async fn search_similar_images_with_service_data(&self, query_image_data: &[u8], limit: i32) -> Result<Vec<ImageSearchResult>, anyhow::Error> {
-        let query_signature = self.generate_image_signature(query_image_data).await?;
-        
-        // Utiliser la fonction PostgreSQL pour la recherche avec jointure sur les services
-        let results = sqlx::query(
-            r#"
+        let sql = r#"
             SELECT 
-                m.media_id,
+                m.id as media_id,
                 m.service_id,
-                m.path,
-                m.similarity_score,
-                m.image_metadata,
-                s.data as service_data
-            FROM search_similar_images($1, 0.3, $2) m
-            LEFT JOIN services s ON m.service_id = s.id
-            ORDER BY m.similarity_score DESC
-            "#
-        )
-        .bind(serde_json::to_value(&query_signature)?)
-        .bind(limit)
-        .fetch_all(&self.pool)
-        .await?;
-        
-        let mut search_results = Vec::new();
-        
-        for row in results {
-            let media_id: i32 = row.try_get("media_id")?;
-            let service_id: i32 = row.try_get("service_id")?;
-            let path: String = row.try_get("path")?;
-            let similarity_score: f64 = row.try_get("similarity_score")?;
-            let image_metadata_str: String = row.try_get("image_metadata")?;
-            let service_data: Option<serde_json::Value> = row.try_get("service_data").ok();
-            
-            let metadata: ImageMetadata = serde_json::from_str(&image_metadata_str)?;
-            search_results.push(ImageSearchResult {
-                media_id,
-                service_id,
-                path,
-                similarity_score: similarity_score as f32,
-                image_metadata: metadata,
-                service_data,
-            });
-        }
-        
-        Ok(search_results)
-    }
-
-    /// Recherche par métadonnées avec données de service et filtrage GPS
-    #[cfg(feature = "image_search")]
-    pub async fn search_by_metadata_with_service_data(&self, metadata: &ImageMetadata, limit: i32) -> Result<Vec<ImageSearchResult>, anyhow::Error> {
-        let results = sqlx::query(
-            r#"
-            SELECT 
-                m.media_id,
-                m.service_id,
-                m.path,
-                m.similarity_score,
-                m.image_metadata,
-                s.data as service_data
-            FROM search_images_by_metadata($1, $2) m
-            LEFT JOIN services s ON m.service_id = s.id
-            ORDER BY m.similarity_score DESC
-            "#
-        )
-        .bind(serde_json::to_string(&metadata)?)
-        .bind(limit)
-        .fetch_all(&self.pool)
-        .await?;
-        
-        let mut search_results = Vec::new();
-        
-        for row in results {
-            let media_id: i32 = row.try_get("media_id")?;
-            let service_id: i32 = row.try_get("service_id")?;
-            let path: String = row.try_get("path")?;
-            let similarity_score: f64 = row.try_get("similarity_score")?;
-            let image_metadata_str: String = row.try_get("image_metadata")?;
-            let service_data: Option<serde_json::Value> = row.try_get("service_data").ok();
-            
-            let metadata: ImageMetadata = serde_json::from_str(&image_metadata_str)?;
-            search_results.push(ImageSearchResult {
-                media_id,
-                service_id,
-                path,
-                similarity_score: similarity_score as f32,
-                image_metadata: metadata,
-                service_data,
-            });
-        }
-        
-        Ok(search_results)
-    }
-
-    /// Recherche par métadonnées avec données de service ET filtrage GPS
-    #[cfg(feature = "image_search")]
-    pub async fn search_by_metadata_with_gps_filter(
-        &self, 
-        metadata: &ImageMetadata, 
-        user_gps_zone: Option<&str>,
-        search_radius_km: Option<i32>,
-        limit: i32
-    ) -> Result<Vec<ImageSearchResult>, anyhow::Error> {
-        // Utiliser la nouvelle fonction PostgreSQL avec filtrage GPS
-        let results = sqlx::query(
-            r#"
-            SELECT 
-                m.media_id,
-                m.service_id,
-                m.path,
-                m.similarity_score,
-                m.image_metadata,
+                m.path as media_path,
+                calculate_image_similarity($1::jsonb, m.image_signature) as similarity_score,
                 s.data as service_data,
-                m.gps_distance_km,
-                m.gps_coords
-            FROM search_images_by_metadata_with_gps($1, $2, $3, $4) m
-            LEFT JOIN services s ON m.service_id = s.id
-            ORDER BY 
-                CASE 
-                    WHEN m.gps_distance_km IS NOT NULL THEN 
-                        (100 - m.gps_distance_km) / 100  -- Priorité à la proximité GPS
-                    ELSE 0 
-                END DESC,
-                m.similarity_score DESC
-            "#
-        )
-        .bind(serde_json::to_string(&metadata)?)
-        .bind(user_gps_zone)
-        .bind(search_radius_km.unwrap_or(50))
-        .bind(limit)
-        .fetch_all(&self.pool)
-        .await?;
-        
+                m.image_metadata
+            FROM media m
+            INNER JOIN services s ON s.id = m.service_id
+            WHERE m.type = 'image'
+            AND m.image_signature IS NOT NULL
+            AND s.is_active = true
+            AND calculate_image_similarity($1::jsonb, m.image_signature) >= $2
+            ORDER BY similarity_score DESC
+            LIMIT $3
+        "#;
+
+        let results = sqlx::query(sql)
+            .bind(&signature_json)
+            .bind(similarity_threshold)
+            .bind(max_results)
+            .fetch_all(&*self.pool)
+            .await
+            .map_err(|e| {
+                log_error(&format!("[ImageSearch] Erreur recherche par signature: {}", e));
+                AppError::Internal(format!("Erreur recherche par signature: {}", e))
+            })?;
+
         let mut search_results = Vec::new();
-        
         for row in results {
-            let media_id: i32 = row.try_get("media_id")?;
-            let service_id: i32 = row.try_get("service_id")?;
-            let path: String = row.try_get("path")?;
-            let similarity_score: f64 = row.try_get("similarity_score")?;
-            let image_metadata_str: String = row.try_get("image_metadata")?;
-            let service_data: Option<serde_json::Value> = row.try_get("service_data").ok();
-            let gps_distance_km: Option<f64> = row.try_get("gps_distance_km").ok();
-            let gps_coords: Option<String> = row.try_get("gps_coords").ok();
-            
-            let metadata: ImageMetadata = serde_json::from_str(&image_metadata_str)?;
-            
-            // Créer un résultat enrichi avec les informations GPS
-            let mut search_result = ImageSearchResult {
-                media_id,
+            let media_id: i32 = row.try_get("media_id").unwrap_or(0);
+            let service_id: i32 = row.try_get("service_id").unwrap_or(0);
+            let media_path: String = row.try_get("media_path").unwrap_or_default();
+            let similarity_score: f32 = row.try_get("similarity_score").unwrap_or(0.0);
+            let service_data: serde_json::Value = row.try_get("service_data").unwrap_or(serde_json::json!({}));
+            let image_metadata: Option<serde_json::Value> = row.try_get("image_metadata").ok();
+
+            search_results.push(ImageSearchResult {
                 service_id,
-                path,
-                similarity_score: similarity_score as f32,
-                image_metadata: metadata,
+                media_id,
+                media_path,
+                similarity_score,
                 service_data,
-            };
-            
-            // Ajouter les informations GPS si disponibles
-            if let Some(distance) = gps_distance_km {
-                // Log pour debug
-                log::info!("[ImageSearch] Service {} à {:.2} km du point GPS utilisateur", service_id, distance);
-            }
-            
-            search_results.push(search_result);
+                image_metadata,
+            });
         }
-        
+
+        log_info(&format!(
+            "[ImageSearch] Trouvé {} résultats similaires",
+            search_results.len()
+        ));
+
         Ok(search_results)
     }
 
-    /// Traite tous les médias d'images existants pour générer leurs signatures
-    #[cfg(feature = "image_search")]
-    pub async fn process_existing_images(&self) -> Result<i32, anyhow::Error> {
-        // Récupérer tous les médias d'images sans signature
-        let media_records = sqlx::query!(
-            "SELECT id FROM media WHERE type = 'image' AND image_signature IS NULL"
-        )
-        .fetch_all(&self.pool)
-        .await?;
-        
-        let mut processed_count = 0;
-        
-        for record in media_records {
-            match self.update_media_image_signature(record.id).await {
-                Ok(_) => {
-                    processed_count += 1;
-                    log::info!("Signature générée pour media_id: {}", record.id);
-                }
-                Err(e) => {
-                    log::error!("Erreur lors du traitement de media_id {}: {}", record.id, e);
-                }
-            }
+    /// Rechercher par hash d'image (détection de doublons exacts)
+    pub async fn search_by_image_hash(&self, image_hash: &str) -> AppResult<Vec<ImageSearchResult>> {
+        log_info(&format!("[ImageSearch] Recherche par hash: {}", image_hash));
+
+        let sql = r#"
+            SELECT 
+                m.id as media_id,
+                m.service_id,
+                m.path as media_path,
+                1.0 as similarity_score,
+                s.data as service_data,
+                m.image_metadata
+            FROM media m
+            INNER JOIN services s ON s.id = m.service_id
+            WHERE m.type = 'image'
+            AND m.image_hash = $1
+            AND s.is_active = true
+            ORDER BY s.created_at DESC
+        "#;
+
+        let results = sqlx::query(sql)
+            .bind(image_hash)
+            .fetch_all(&*self.pool)
+            .await
+            .map_err(|e| {
+                log_error(&format!("[ImageSearch] Erreur recherche par hash: {}", e));
+                AppError::Internal(format!("Erreur recherche par hash: {}", e))
+            })?;
+
+        let mut search_results = Vec::new();
+        for row in results {
+            let media_id: i32 = row.try_get("media_id").unwrap_or(0);
+            let service_id: i32 = row.try_get("service_id").unwrap_or(0);
+            let media_path: String = row.try_get("media_path").unwrap_or_default();
+            let similarity_score: f32 = row.try_get("similarity_score").unwrap_or(1.0);
+            let service_data: serde_json::Value = row.try_get("service_data").unwrap_or(serde_json::json!({}));
+            let image_metadata: Option<serde_json::Value> = row.try_get("image_metadata").ok();
+
+            search_results.push(ImageSearchResult {
+                service_id,
+                media_id,
+                media_path,
+                similarity_score,
+                service_data,
+                image_metadata,
+            });
         }
-        
-        Ok(processed_count)
+
+        log_info(&format!("[ImageSearch] Trouvé {} doublons", search_results.len()));
+
+        Ok(search_results)
     }
-} 
+
+    /// Rechercher dans les images de produits spécifiquement
+    pub async fn search_product_images(
+        &self,
+        image_signature: &[f32],
+        similarity_threshold: f32,
+        max_results: i32,
+    ) -> AppResult<Vec<ImageSearchResult>> {
+        log_info(&format!(
+            "[ImageSearch] Recherche dans images de produits: seuil={}, max={}",
+            similarity_threshold, max_results
+        ));
+
+        let signature_json = serde_json::to_value(image_signature)
+            .map_err(|e| AppError::Internal(format!("Erreur conversion signature: {}", e)))?;
+
+        // Rechercher dans les images des produits (stockées dans data->'produits')
+        let sql = r#"
+            WITH product_images AS (
+                SELECT 
+                    s.id as service_id,
+                    s.data,
+                    product->>'nom' as product_name,
+                    jsonb_array_elements_text(COALESCE(product->'images', '[]'::jsonb)) as image_path
+                FROM services s,
+                jsonb_array_elements(
+                    CASE 
+                        WHEN jsonb_typeof(s.data->'produits') = 'array' 
+                        THEN s.data->'produits'
+                        ELSE '[]'::jsonb
+                    END
+                ) AS product
+                WHERE s.is_active = true
+            )
+            SELECT 
+                m.id as media_id,
+                pi.service_id,
+                m.path as media_path,
+                calculate_image_similarity($1::jsonb, m.image_signature) as similarity_score,
+                pi.data as service_data,
+                m.image_metadata
+            FROM product_images pi
+            INNER JOIN media m ON m.path = pi.image_path AND m.service_id = pi.service_id
+            WHERE m.type = 'image'
+            AND m.image_signature IS NOT NULL
+            AND calculate_image_similarity($1::jsonb, m.image_signature) >= $2
+            ORDER BY similarity_score DESC
+            LIMIT $3
+        "#;
+
+        let results = sqlx::query(sql)
+            .bind(&signature_json)
+            .bind(similarity_threshold)
+            .bind(max_results)
+            .fetch_all(&*self.pool)
+            .await
+            .map_err(|e| {
+                log_error(&format!("[ImageSearch] Erreur recherche images produits: {}", e));
+                AppError::Internal(format!("Erreur recherche images produits: {}", e))
+            })?;
+
+        let mut search_results = Vec::new();
+        for row in results {
+            let media_id: i32 = row.try_get("media_id").unwrap_or(0);
+            let service_id: i32 = row.try_get("service_id").unwrap_or(0);
+            let media_path: String = row.try_get("media_path").unwrap_or_default();
+            let similarity_score: f32 = row.try_get("similarity_score").unwrap_or(0.0);
+            let service_data: serde_json::Value = row.try_get("service_data").unwrap_or(serde_json::json!({}));
+            let image_metadata: Option<serde_json::Value> = row.try_get("image_metadata").ok();
+
+            search_results.push(ImageSearchResult {
+                service_id,
+                media_id,
+                media_path,
+                similarity_score,
+                service_data,
+                image_metadata,
+            });
+        }
+
+        log_info(&format!(
+            "[ImageSearch] Trouvé {} produits avec images similaires",
+            search_results.len()
+        ));
+
+        Ok(search_results)
+    }
+
+    /// Générer une signature vectorielle d'image (192 dimensions)
+    /// Cette fonction devrait être appelée lors de l'upload d'une image
+    pub fn generate_image_signature(image_data: &[u8]) -> AppResult<Vec<f32>> {
+        // TODO: Implémenter la génération de signature avec une bibliothèque comme `image`
+        // Pour l'instant, retourne une signature factice
+        log_warn("[ImageSearch] Génération de signature factice - À implémenter");
+        
+        // Génération basique basée sur les pixels
+        // Dans une vraie implémentation, utiliser un CNN ou un algorithme de hachage perceptuel
+        Ok(vec![0.0; 192])
+    }
+
+    /// Calculer le hash MD5 d'une image pour détection de doublons
+    pub fn calculate_image_hash(image_data: &[u8]) -> String {
+        use md5::{Md5, Digest};
+        let mut hasher = Md5::new();
+        hasher.update(image_data);
+        format!("{:x}", hasher.finalize())
+    }
+
+    /// Extraire les métadonnées d'une image
+    pub fn extract_image_metadata(image_data: &[u8]) -> AppResult<serde_json::Value> {
+        // TODO: Implémenter l'extraction de métadonnées avec `image` crate
+        log_warn("[ImageSearch] Extraction de métadonnées factice - À implémenter");
+        
+        Ok(serde_json::json!({
+            "width": 1920,
+            "height": 1080,
+            "format": "jpeg",
+            "file_size": image_data.len(),
+            "status": "pending_processing"
+        }))
+    }
+
+    /// Recherche hybride: combinant signature, hash et métadonnées
+    pub async fn hybrid_image_search(
+        &self,
+        image_data: &[u8],
+        similarity_threshold: f32,
+        max_results: i32,
+    ) -> AppResult<Vec<ImageSearchResult>> {
+        log_info("[ImageSearch] Recherche hybride par image");
+
+        // 1. Générer le hash pour recherche exacte
+        let image_hash = Self::calculate_image_hash(image_data);
+        
+        // 2. Chercher d'abord les doublons exacts
+        let exact_matches = self.search_by_image_hash(&image_hash).await?;
+        if !exact_matches.is_empty() {
+            log_info(&format!("[ImageSearch] Trouvé {} doublons exacts", exact_matches.len()));
+            return Ok(exact_matches);
+        }
+
+        // 3. Générer la signature vectorielle
+        let signature = Self::generate_image_signature(image_data)?;
+
+        // 4. Rechercher par similarité
+        let similar_images = self.search_by_image_signature(&signature, similarity_threshold, max_results).await?;
+
+        Ok(similar_images)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_image_hash() {
+        let data = b"test image data";
+        let hash = ImageSearchService::calculate_image_hash(data);
+        assert!(!hash.is_empty());
+        assert_eq!(hash.len(), 32); // MD5 hash length
+    }
+
+    #[test]
+    fn test_generate_signature() {
+        let data = b"test image data";
+        let signature = ImageSearchService::generate_image_signature(data).unwrap();
+        assert_eq!(signature.len(), 192);
+    }
+}

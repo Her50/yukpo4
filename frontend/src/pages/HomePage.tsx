@@ -100,6 +100,44 @@ const HomePage: React.FC = () => {
 
       const result = await response.json();
 
+      // ✅ GESTION RECHERCHE PAR IMAGE AVEC FACTURATION
+      if (result?.search_method === 'image_ai' && result?.billing) {
+        const billing = result.billing;
+        console.log('[HomePage] 🖼️ Recherche par image IA détectée:', billing);
+
+        // Si facturation activée, afficher notification
+        if (billing.charged && billing.amount > 0) {
+          toast.success(
+            `🖼️ ${billing.results_found} résultat(s) trouvé(s)!\n` +
+            `💰 Coût: ${billing.amount} ${billing.currency}\n` +
+            `Nouveau solde: ${billing.new_balance} ${billing.currency}`,
+            {
+              autoClose: 8000,
+              position: 'top-center'
+            }
+          );
+        } else if (billing.results_found === 0) {
+          toast.info(
+            '🖼️ Aucun résultat trouvé pour cette image. La recherche est gratuite.',
+            {
+              autoClose: 5000
+            }
+          );
+        }
+      }
+
+      // ✅ GESTION ERREUR SOLDE INSUFFISANT
+      if (result?.status === 'error' && result?.error === 'insufficient_credits') {
+        toast.error(
+          result.message || 'Votre solde est insuffisant pour effectuer une recherche par image.',
+          {
+            autoClose: 8000,
+            onClick: () => navigate('/recharge-tokens')
+          }
+        );
+        return; // Arrêter ici
+      }
+
       // Mettre à jour les statistiques
       const confPercent = 0; // pas de confidence renvoyée par l'API directe
       setConfidence(confPercent);
@@ -117,7 +155,10 @@ const HomePage: React.FC = () => {
         state: {
           results: results,
           type: 'recherche_besoin',
-          suggestion: result
+          suggestion: result,
+          imageSearch: result?.search_method === 'image_ai',
+          imageAnalysis: result?.image_analysis || null,
+          billing: result?.billing || null
         }
       });
     } catch (err: any) {

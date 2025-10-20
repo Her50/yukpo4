@@ -19,6 +19,11 @@ pub mod notification_controller; // ✅ Contrôleur de notifications
 pub mod push_controller; // ✅ Contrôleur de push notifications
 pub mod webrtc_controller; // ✅ NOUVEAU: Contrôleur WebRTC pour appels
 pub mod product_lifecycle_controller; // ✅ Contrôleur de gestion du cycle de vie des produits
+pub mod conversation_controller; // ✅ NOUVEAU: Contrôleur pour @mentions et multi-participants
+pub mod scheduling_search_controller; // ✅ NOUVEAU: Contrôleur pour recherche avec planifications
+pub mod service_team_controller; // ✅ NOUVEAU: Contrôleur pour gestion d'équipe des services
+pub mod signalement_controller; // ✅ NOUVEAU: Contrôleur pour signalements de produits/services
+pub mod image_search_controller; // ✅ NOUVEAU: Contrôleur pour recherche par image
 
 // pub use service_controller::update_token_debit;
 

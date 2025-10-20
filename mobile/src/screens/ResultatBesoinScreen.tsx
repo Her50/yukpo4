@@ -1,6 +1,6 @@
 ﻿// @ts-nocheck
 import { useNavigation, useRoute } from '@react-navigation/native';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -9,16 +9,17 @@ import {
     ScrollView,
     StyleSheet,
     Text,
-    TextInput,
     TouchableOpacity,
-    View,
+    View
 } from 'react-native';
+import CategoryFilters from '../components/CategoryFilters';
 import ChatModalMobile from '../components/ChatModalMobile';
 import ProductCard from '../components/ProductCard';
 import ResultsHeader from '../components/ResultsHeader';
 import SafeIcon from '../components/SafeIcon';
 import ServiceGalleryModal from '../components/ServiceGalleryModal';
 import UltraModernServiceCard from '../components/UltraModernServiceCard';
+import { getCategoryConfig, getCategoryStyle, getCategoryTerminology } from '../config/categoryConfig';
 import { useAuth } from '../contexts/AuthContext';
 import { useLocation } from '../contexts/LocationContext';
 import { apiGet, apiPost } from '../services/api';
@@ -90,10 +91,41 @@ const ResultatBesoinScreen: React.FC = () => {
     }>({ min: null, max: null, currency: 'XAF' });
     const [sortBy, setSortBy] = useState<'relevance' | 'price_asc' | 'price_desc' | 'distance'>('relevance');
     const [showPriceFilter, setShowPriceFilter] = useState(false);
+    const [showCategoryFilters, setShowCategoryFilters] = useState(false);
+    const [categoryFilters, setCategoryFilters] = useState<Record<string, any>>({});
 
     // Récupérer les résultats depuis la navigation
     const routeParams = (route.params as any) || {};
     const initialResults = routeParams.results || [];
+
+    // Déterminer la catégorie dominante des produits
+    const dominantCategory = useMemo(() => {
+        if (products.length === 0) return 'default';
+
+        // Compter les catégories
+        const categoryCount: Record<string, number> = {};
+        products.forEach((product) => {
+            const category = product.type || 'default';
+            categoryCount[category] = (categoryCount[category] || 0) + 1;
+        });
+
+        // Trouver la catégorie la plus fréquente
+        let maxCount = 0;
+        let dominant = 'default';
+        Object.entries(categoryCount).forEach(([category, count]) => {
+            if (count > maxCount) {
+                maxCount = count;
+                dominant = category;
+            }
+        });
+
+        return dominant;
+    }, [products]);
+
+    // Récupérer la configuration de la catégorie dominante
+    const categoryConfig = getCategoryConfig(dominantCategory);
+    const categoryStyle = getCategoryStyle(dominantCategory);
+    const terminology = getCategoryTerminology(dominantCategory);
 
     // DEBUG: Afficher les paramètres reçus
     useEffect(() => {
@@ -799,6 +831,12 @@ const ResultatBesoinScreen: React.FC = () => {
                     setSelectedPrestataire(prestataire);
                     setShowChatModal(true);
                 }}
+                onGalleryPress={() => {
+                    setSelectedProduct(product);
+                    setSelectedService(service);
+                    setSelectedPrestataire(prestataire);
+                    setShowGalleryModal(true);
+                }}
             />
         );
     };
@@ -877,16 +915,16 @@ const ResultatBesoinScreen: React.FC = () => {
 
             {/* En-tête avec statistiques */}
             <ResultsHeader
-                title="Services correspondants à votre besoin"
-                resultsCount={services.length}
+                title={`${terminology.productsLabel} correspondants à votre besoin`}
+                resultsCount={displayMode === 'products' ? products.length : services.length}
                 onGeolocationPress={handleGeolocation}
                 onPriceFilterPress={() => {
-                    setShowPriceFilter(!showPriceFilter);
+                    setShowCategoryFilters(true);
                 }}
                 onSortPress={() => {
                     Alert.alert('Tri', 'Options de tri disponibles');
                 }}
-                sortBy={sortBy === 'relevance' ? 'pertinence' : sortBy}
+                sortBy={terminology.sortLabels[sortBy] || sortBy}
             />
 
             {/* Avertissement GPS en temps réel */}
@@ -928,15 +966,17 @@ const ResultatBesoinScreen: React.FC = () => {
                 <View style={styles.emptyCard}>
                     <View style={[styles.cardContent, styles.emptyContent]}>
                         <Text style={styles.emptyIcon}>🔍</Text>
-                        <Text style={styles.emptyTitle}>Aucun service trouvé</Text>
+                        <Text style={styles.emptyTitle}>
+                            {terminology.emptyMessage || 'Aucun résultat trouvé'}
+                        </Text>
                         <Text style={styles.emptyText}>
-                            Aucun prestataire ne correspond à vos critères pour le moment.
+                            Aucun {terminology.providerLabel.toLowerCase()} ne correspond à vos critères pour le moment.
                         </Text>
                         <TouchableOpacity
                             onPress={() => navigation.goBack()}
                             style={styles.emptyButton}
                         >
-                            <Text>Retour aux besoins</Text>
+                            <Text>Retour à la recherche</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -952,117 +992,75 @@ const ResultatBesoinScreen: React.FC = () => {
                 </View>
             ) : (
                 <>
-                    {/* Filtres et tri */}
+                    {/* Filtres et tri avec terminologie adaptée */}
                     <View style={styles.filtersContainer}>
                         <View style={styles.filtersCard}>
                             <View style={styles.cardContent}>
                                 <View style={styles.filtersHeader}>
-                                    <Text style={styles.filtersTitle}>Filtres et tri</Text>
+                                    <View style={styles.filtersTitleContainer}>
+                                        <Text style={[styles.filtersTitle, { color: categoryStyle.primaryColor }]}>
+                                            {categoryStyle.icon} Filtrer & Trier
+                                        </Text>
+                                        <Text style={styles.categoryLabel}>{terminology.productsLabel}</Text>
+                                    </View>
                                     <Text style={styles.resultsCount}>
-                                        {(() => {
-                                            const filteredServices = filterAndSortServices(services);
-                                            return `${filteredServices.length} service${filteredServices.length > 1 ? 's' : ''}`;
-                                        })()}
-                                        {(() => {
-                                            const filteredServices = filterAndSortServices(services);
-                                            if (filteredServices.length !== services.length) {
-                                                return ` (${services.length} au total)`;
-                                            }
-                                            return '';
-                                        })()}
+                                        {displayMode === 'products' ? products.length : services.length} {terminology.productLabel.toLowerCase()}{(displayMode === 'products' ? products.length : services.length) > 1 ? 's' : ''}
                                     </Text>
                                 </View>
 
                                 <View style={styles.filtersButtons}>
+                                    {/* Bouton Filtres avancés */}
                                     <TouchableOpacity
-                                        style={styles.filterButton}
-                                        onPress={() => setShowPriceFilter(!showPriceFilter)}
+                                        style={[styles.filterButton, { borderColor: categoryStyle.primaryColor }]}
+                                        onPress={() => setShowCategoryFilters(true)}
                                     >
-                                        <Text style={styles.filterIcon}>💰</Text>
-                                        <Text style={styles.filterButtonText}>Prix</Text>
+                                        <SafeIcon name="filter" size={18} color={categoryStyle.primaryColor} />
+                                        <Text style={[styles.filterButtonText, { color: categoryStyle.primaryColor }]}>
+                                            Filtres avancés
+                                        </Text>
+                                        {Object.keys(categoryFilters).length > 0 && (
+                                            <View style={[styles.filterCountBadge, { backgroundColor: categoryStyle.primaryColor }]}>
+                                                <Text style={styles.filterCountText}>{Object.keys(categoryFilters).length}</Text>
+                                            </View>
+                                        )}
                                     </TouchableOpacity>
 
+                                    {/* Tri rapide */}
                                     <View style={styles.sortContainer}>
                                         <Text style={styles.sortLabel}>Trier par:</Text>
                                         <View style={styles.sortButtons}>
-                                            <TouchableOpacity
-                                                style={[styles.sortButton, sortBy === 'relevance' && styles.sortButtonActive]}
-                                                onPress={() => setSortBy('relevance')}
-                                            >
-                                                <Text style={[styles.sortButtonText, sortBy === 'relevance' && styles.sortButtonTextActive]}>
-                                                    Pertinence
-                                                </Text>
-                                            </TouchableOpacity>
-                                            <TouchableOpacity
-                                                style={[styles.sortButton, sortBy === 'price_asc' && styles.sortButtonActive]}
-                                                onPress={() => setSortBy('price_asc')}
-                                            >
-                                                <Text style={[styles.sortButtonText, sortBy === 'price_asc' && styles.sortButtonTextActive]}>
-                                                    Prix ↑
-                                                </Text>
-                                            </TouchableOpacity>
-                                            <TouchableOpacity
-                                                style={[styles.sortButton, sortBy === 'price_desc' && styles.sortButtonActive]}
-                                                onPress={() => setSortBy('price_desc')}
-                                            >
-                                                <Text style={[styles.sortButtonText, sortBy === 'price_desc' && styles.sortButtonTextActive]}>
-                                                    Prix ↓
-                                                </Text>
-                                            </TouchableOpacity>
+                                            {Object.entries(terminology.sortLabels).map(([key, label]) => (
+                                                <TouchableOpacity
+                                                    key={key}
+                                                    style={[
+                                                        styles.sortButton,
+                                                        sortBy === key && [styles.sortButtonActive, { backgroundColor: categoryStyle.primaryColor, borderColor: categoryStyle.primaryColor }]
+                                                    ]}
+                                                    onPress={() => setSortBy(key as any)}
+                                                >
+                                                    <Text style={[styles.sortButtonText, sortBy === key && styles.sortButtonTextActive]}>
+                                                        {label}
+                                                    </Text>
+                                                </TouchableOpacity>
+                                            ))}
                                         </View>
                                     </View>
                                 </View>
-
-                                {/* Filtre par prix */}
-                                {showPriceFilter && (
-                                    <View style={styles.priceFilterContainer}>
-                                        <View style={styles.priceFilterRow}>
-                                            <View style={styles.priceInputContainer}>
-                                                <Text style={styles.priceLabel}>Prix min</Text>
-                                                <TextInput
-                                                    style={styles.priceInput}
-                                                    value={priceFilter.min?.toString() || ''}
-                                                    onChangeText={(text) => setPriceFilter(prev => ({
-                                                        ...prev,
-                                                        min: text ? parseFloat(text) : null
-                                                    }))}
-                                                    placeholder="0"
-                                                    keyboardType="numeric"
-                                                />
-                                            </View>
-                                            <View style={styles.priceInputContainer}>
-                                                <Text style={styles.priceLabel}>Prix max</Text>
-                                                <TextInput
-                                                    style={styles.priceInput}
-                                                    value={priceFilter.max?.toString() || ''}
-                                                    onChangeText={(text) => setPriceFilter(prev => ({
-                                                        ...prev,
-                                                        max: text ? parseFloat(text) : null
-                                                    }))}
-                                                    placeholder="100000"
-                                                    keyboardType="numeric"
-                                                />
-                                            </View>
-                                        </View>
-                                        <View style={styles.priceFilterActions}>
-                                            <TouchableOpacity
-                                                style={styles.priceFilterReset}
-                                                onPress={() => setPriceFilter({ min: null, max: null, currency: 'XAF' })}
-                                            >
-                                                <Text style={styles.priceFilterResetText}>Réinitialiser</Text>
-                                            </TouchableOpacity>
-                                            <TouchableOpacity
-                                                style={styles.priceFilterApply}
-                                                onPress={() => setShowPriceFilter(false)}
-                                            >
-                                                <Text style={styles.priceFilterApplyText}>Appliquer</Text>
-                                            </TouchableOpacity>
-                                        </View>
-                                    </View>
-                                )}
                             </View>
                         </View>
                     </View>
+
+                    {/* Modal de filtres de catégorie */}
+                    <CategoryFilters
+                        category={dominantCategory}
+                        visible={showCategoryFilters}
+                        onClose={() => setShowCategoryFilters(false)}
+                        onApply={(filters) => {
+                            setCategoryFilters(filters);
+                            console.log('Filtres appliqués:', filters);
+                        }}
+                        initialFilters={categoryFilters}
+                    />
 
                     {/* Toggle mode d'affichage */}
                     <View style={styles.displayModeToggle}>
@@ -1482,10 +1480,18 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         marginBottom: 16,
     },
+    filtersTitleContainer: {
+        flexDirection: 'column',
+        gap: 4,
+    },
     filtersTitle: {
         fontSize: 18,
         fontWeight: 'bold',
-        color: theme.colors.text,
+    },
+    categoryLabel: {
+        fontSize: 12,
+        color: theme.colors.textSecondary,
+        fontWeight: '500',
     },
     resultsCount: {
         fontSize: 14,
@@ -1498,18 +1504,35 @@ const styles = StyleSheet.create({
     filterButton: {
         flexDirection: 'row',
         alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
         paddingVertical: 12,
         paddingHorizontal: 16,
-        backgroundColor: '#f8f9fa',
-        borderRadius: 8,
-        borderWidth: 1,
-        borderColor: '#e9ecef',
+        backgroundColor: '#FFFFFF',
+        borderRadius: 10,
+        borderWidth: 2,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 4,
+        elevation: 2,
     },
     filterButtonText: {
         fontSize: 14,
-        color: theme.colors.primary,
-        fontWeight: '600',
-        marginLeft: 8,
+        fontWeight: '700',
+    },
+    filterCountBadge: {
+        borderRadius: 10,
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        minWidth: 20,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    filterCountText: {
+        fontSize: 11,
+        fontWeight: '700',
+        color: '#FFFFFF',
     },
     sortContainer: {
         gap: 8,

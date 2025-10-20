@@ -6,6 +6,7 @@ import {
     Alert,
     Image,
     KeyboardAvoidingView,
+    Linking,
     Modal,
     Platform,
     ScrollView,
@@ -16,10 +17,13 @@ import {
     View
 } from 'react-native';
 import { useWebSocketChat } from '../hooks/useWebSocketChat';
+import { apiGet, apiPost } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
 import InAppCallModal from './InAppCallModal';
+import ProductGalleryPickerModal from './ProductGalleryPickerModal';
 import SafeIcon from './SafeIcon';
 import ServiceMediaGallery from './ServiceMediaGallery';
+import UserMentionPicker from './UserMentionPicker';
 
 interface ChatModalMobileProps {
     visible: boolean;
@@ -27,6 +31,17 @@ interface ChatModalMobileProps {
     service: any;
     prestataireInfo: any;
     user: any;
+}
+
+interface Participant {
+    user_id: number;
+    user_name: string;
+    user_email: string;
+    user_avatar?: string;
+    role: string;
+    invited_by?: number;
+    joined_at: string;
+    can_remove: boolean;
 }
 
 const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
@@ -42,6 +57,14 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
     const [editingContent, setEditingContent] = useState('');
     const [showEmojiPicker, setShowEmojiPicker] = useState(false);
 
+    // ✅ NOUVEAU: États pour @mention
+    const [showMentionPicker, setShowMentionPicker] = useState(false);
+    const [mentionQuery, setMentionQuery] = useState('');
+    const [cursorPosition, setCursorPosition] = useState(0);
+    const [mentionedUsers, setMentionedUsers] = useState<number[]>([]);
+    const [participants, setParticipants] = useState<Participant[]>([]);
+    const [showParticipantsList, setShowParticipantsList] = useState(false);
+
     // États pour les médias
     const [selectedImages, setSelectedImages] = useState<string[]>([]);
     const [selectedAudio, setSelectedAudio] = useState<string | null>(null);
@@ -51,8 +74,12 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
     const [recording, setRecording] = useState<Audio.Recording | null>(null);
     const [recordingDuration, setRecordingDuration] = useState(0);
     const [showMediaGallery, setShowMediaGallery] = useState(false);
+    const [showProductGalleryPicker, setShowProductGalleryPicker] = useState(false);
     const [isPlayingAudio, setIsPlayingAudio] = useState(false);
     const [audioSound, setAudioSound] = useState<Audio.Sound | null>(null);
+
+    // ✅ NOUVEAU: États pour le système de réponse/citation
+    const [replyingTo, setReplyingTo] = useState<any | null>(null);
 
     // États pour les appels internes
     const [showCallModal, setShowCallModal] = useState(false);
@@ -110,15 +137,89 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
     useEffect(() => {
         if (visible) {
             markAsRead();
+            loadParticipants();
         }
     }, [visible, markAsRead]);
+
+    // ✅ NOUVEAU: Charger les participants de la conversation
+    const loadParticipants = async () => {
+        if (!service?.id) return;
+
+        try {
+            const response = await apiGet<Participant[]>(`/api/conversations/${service.id}/participants`);
+            if (response.success && response.data) {
+                setParticipants(response.data);
+                console.log('[ChatModalMobile] Participants chargés:', response.data);
+            }
+        } catch (error) {
+            console.error('[ChatModalMobile] Erreur chargement participants:', error);
+        }
+    };
+
+    // ✅ NOUVEAU: Inviter un utilisateur dans la conversation
+    const inviteUser = async (userId: number, context?: string) => {
+        if (!service?.id) return;
+
+        try {
+            const response = await apiPost(`/api/conversations/${service.id}/invite`, {
+                user_id: userId,
+                context
+            });
+
+            if (response.success) {
+                Alert.alert(
+                    'Utilisateur invité',
+                    'L\'utilisateur a été ajouté à la conversation et peut maintenant voir les nouveaux messages.',
+                    [{ text: 'OK' }]
+                );
+                loadParticipants(); // Recharger la liste
+            }
+        } catch (error) {
+            console.error('[ChatModalMobile] Erreur invitation:', error);
+            Alert.alert('Erreur', 'Impossible d\'inviter cet utilisateur');
+        }
+    };
+
+    // ✅ NOUVEAU: Retirer un participant
+    const removeParticipant = async (userId: number) => {
+        if (!service?.id) return;
+
+        Alert.alert(
+            'Retirer le participant',
+            'Êtes-vous sûr de vouloir retirer cette personne de la conversation ?',
+            [
+                { text: 'Annuler', style: 'cancel' },
+                {
+                    text: 'Retirer',
+                    style: 'destructive',
+                    onPress: async () => {
+                        try {
+                            await apiPost(`/api/conversations/${service.id}/participants/${userId}`, {});
+                            loadParticipants();
+                            Alert.alert('Succès', 'Participant retiré de la conversation');
+                        } catch (error) {
+                            console.error('[ChatModalMobile] Erreur retrait participant:', error);
+                            Alert.alert('Erreur', 'Impossible de retirer ce participant');
+                        }
+                    }
+                }
+            ]
+        );
+    };
 
     const handleSendMessage = async () => {
         if (!newMessage.trim()) return;
 
-        await sendMessage(newMessage.trim(), 'text');
+        // ✅ NOUVEAU: Envoyer avec les IDs des utilisateurs mentionnés et le message cité
+        await sendMessage(newMessage.trim(), 'text', {
+            mentioned_users: mentionedUsers.length > 0 ? mentionedUsers : undefined,
+            reply_to_id: replyingTo?.id || undefined
+        });
+
         setNewMessage('');
         setShowEmojiPicker(false);
+        setMentionedUsers([]); // Réinitialiser les mentions
+        setReplyingTo(null); // Réinitialiser la réponse
     };
 
     const handleEditMessage = async () => {
@@ -127,6 +228,15 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
         await editMessage(editingMessageId, editingContent.trim());
         setEditingMessageId(null);
         setEditingContent('');
+    };
+
+    // ✅ NOUVEAU: Handler pour envoyer des médias sélectionnés de la galerie
+    const handleSelectGalleryMedia = (selectedUrls: string[]) => {
+        if (selectedUrls.length === 0) return;
+
+        // Ajouter les URLs sélectionnées aux images
+        setSelectedImages([...selectedImages, ...selectedUrls]);
+        console.log('[ChatModal] Médias de la galerie ajoutés:', selectedUrls.length);
     };
 
     const handleDeleteMessage = async (messageId: string) => {
@@ -179,8 +289,27 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
         }
     };
 
-    const handleTyping = (text: string) => {
+    const handleTyping = (text: string, cursorPos?: number) => {
         setNewMessage(text);
+        if (cursorPos !== undefined) setCursorPosition(cursorPos);
+
+        // ✅ NOUVEAU: Détecter le @ pour ouvrir le mention picker
+        const lastAtIndex = text.lastIndexOf('@');
+        if (lastAtIndex !== -1 && (cursorPos === undefined || cursorPos > lastAtIndex)) {
+            // Extraire le texte après le @
+            const query = text.substring(lastAtIndex + 1, cursorPos || text.length);
+
+            // Si pas d'espace après le @, c'est une mention en cours
+            if (!query.includes(' ')) {
+                setMentionQuery(query);
+                setShowMentionPicker(true);
+                console.log('[ChatModalMobile] @ détecté, query:', query);
+            } else {
+                setShowMentionPicker(false);
+            }
+        } else {
+            setShowMentionPicker(false);
+        }
 
         // Simuler l'indication de frappe
         if (typingTimeoutRef.current) {
@@ -195,6 +324,31 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
         } else {
             setIsTyping(false);
         }
+    };
+
+    // ✅ NOUVEAU: Insérer une mention dans le message
+    const insertMention = (user: any) => {
+        const lastAtIndex = newMessage.lastIndexOf('@');
+        if (lastAtIndex === -1) return;
+
+        // Remplacer le @ et le query par @nom_utilisateur
+        const before = newMessage.substring(0, lastAtIndex);
+        const mention = `@${user.nom_complet} `;
+        const after = newMessage.substring(cursorPosition);
+
+        const newText = before + mention + after;
+        setNewMessage(newText);
+
+        // Ajouter l'ID à la liste des mentions
+        if (!mentionedUsers.includes(user.id)) {
+            setMentionedUsers([...mentionedUsers, user.id]);
+        }
+
+        // Inviter l'utilisateur dans la conversation
+        inviteUser(user.id, 'mention');
+
+        setShowMentionPicker(false);
+        setMentionQuery('');
     };
 
     const handleEmojiClick = (emoji: string) => {
@@ -487,6 +641,59 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                     </View>
 
                     <View style={styles.headerActions}>
+                        {/* ✅ NOUVEAU: Bouton WhatsApp (prioritaire si disponible) */}
+                        {(prestataireInfo?.whatsapp || service?.data?.whatsapp?.valeur || service?.data?.whatsapp || prestataireInfo?.telephone) && (
+                            <TouchableOpacity
+                                style={[styles.actionButton, styles.whatsappButton]}
+                                onPress={async () => {
+                                    const whatsappNumber = prestataireInfo?.whatsapp ||
+                                        service?.data?.whatsapp?.valeur ||
+                                        service?.data?.whatsapp ||
+                                        prestataireInfo?.telephone;
+
+                                    if (!whatsappNumber) {
+                                        Alert.alert('WhatsApp', 'Numéro WhatsApp non disponible');
+                                        return;
+                                    }
+
+                                    try {
+                                        const phoneNumber = whatsappNumber.replace(/\s+/g, '').replace(/\+/g, '');
+                                        const serviceName = titreService || 'votre service';
+                                        const message = encodeURIComponent(`Bonjour ${nomPrestataire}, je souhaite discuter de ${serviceName}.`);
+                                        const whatsappUrl = `whatsapp://send?phone=${phoneNumber}&text=${message}`;
+
+                                        const canOpen = await Linking.canOpenURL(whatsappUrl);
+                                        if (canOpen) {
+                                            await Linking.openURL(whatsappUrl);
+                                        } else {
+                                            Alert.alert('WhatsApp', 'WhatsApp n\'est pas installé sur cet appareil');
+                                        }
+                                    } catch (error) {
+                                        console.error('Erreur ouverture WhatsApp:', error);
+                                        Alert.alert('Erreur', 'Impossible d\'ouvrir WhatsApp');
+                                    }
+                                }}
+                            >
+                                <SafeIcon name="message-circle" size={20} color="#25D366" />
+                                <View style={styles.whatsappBadge}>
+                                    <Text style={styles.whatsappBadgeText}>WA</Text>
+                                </View>
+                            </TouchableOpacity>
+                        )}
+
+                        {/* ✅ Bouton liste des participants */}
+                        <TouchableOpacity
+                            style={[styles.actionButton, participants.length > 2 && styles.actionButtonHighlight]}
+                            onPress={() => setShowParticipantsList(true)}
+                        >
+                            <SafeIcon name="users" size={20} color={participants.length > 2 ? modernColors.primary : modernColors.text} />
+                            {participants.length > 2 && (
+                                <View style={styles.participantsBadge}>
+                                    <Text style={styles.participantsBadgeText}>{participants.length}</Text>
+                                </View>
+                            )}
+                        </TouchableOpacity>
+
                         <TouchableOpacity
                             style={styles.actionButton}
                             onPress={() => {
@@ -589,6 +796,25 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                             </View>
                                         )}
 
+                                        {/* ✅ NOUVEAU: Afficher le message cité si présent */}
+                                        {message.reply_to && (
+                                            <View style={styles.quotedMessage}>
+                                                <View style={styles.quotedMessageBar} />
+                                                <View style={styles.quotedMessageContent}>
+                                                    <Text style={styles.quotedMessageAuthor}>
+                                                        {message.reply_to.sender_name || 'Message'}
+                                                    </Text>
+                                                    <Text style={styles.quotedMessageText} numberOfLines={2}>
+                                                        {message.reply_to.content_type === 'text' && message.reply_to.content}
+                                                        {message.reply_to.content_type === 'audio' && '🎤 Message audio'}
+                                                        {message.reply_to.content_type === 'image' && '🖼️ Image'}
+                                                        {message.reply_to.content_type === 'file' && '📄 Fichier'}
+                                                        {message.reply_to.content_type === 'video' && '🎥 Vidéo'}
+                                                    </Text>
+                                                </View>
+                                            </View>
+                                        )}
+
                                         {/* Afficher le texte pour les messages texte ou avec le texte */}
                                         {(message.type === 'text' || (message.content && !message.content.match(/^[📷🎤📎]/))) && (
                                             <Text style={[
@@ -600,15 +826,34 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                         )}
 
                                         <View style={styles.messageFooter}>
-                                            <Text style={[
-                                                styles.messageTime,
-                                                message.from === 'client' ? styles.messageTimeRight : styles.messageTimeLeft
-                                            ]}>
-                                                {formatMessageTime(message.timestamp)}
-                                                {message.edited && (
-                                                    <Text style={styles.editedIndicator}> (modifié)</Text>
-                                                )}
-                                            </Text>
+                                            <View style={styles.messageFooterLeft}>
+                                                <Text style={[
+                                                    styles.messageTime,
+                                                    message.from === 'client' ? styles.messageTimeRight : styles.messageTimeLeft
+                                                ]}>
+                                                    {formatMessageTime(message.timestamp)}
+                                                    {message.edited && (
+                                                        <Text style={styles.editedIndicator}> (modifié)</Text>
+                                                    )}
+                                                </Text>
+
+                                                {/* ✅ NOUVEAU: Bouton Répondre (toujours visible) */}
+                                                <TouchableOpacity
+                                                    style={styles.replyButton}
+                                                    onPress={() => setReplyingTo({
+                                                        id: message.id,
+                                                        sender_name: message.from === 'client' ? user?.name : nomPrestataire,
+                                                        content: message.content,
+                                                        content_type: message.type || 'text',
+                                                        imageUrl: message.imageUrl,
+                                                        audioUrl: message.audioUrl,
+                                                        fileUrl: message.fileUrl
+                                                    })}
+                                                >
+                                                    <SafeIcon name="corner-down-left" size={14} color={modernColors.textSecondary} />
+                                                    <Text style={styles.replyButtonText}>Répondre</Text>
+                                                </TouchableOpacity>
+                                            </View>
 
                                             {message.from === 'client' && message.editable && (
                                                 <View style={styles.messageActions}>
@@ -738,6 +983,14 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                             <SafeIcon name="image" size={22} color={modernColors.primary} />
                         </TouchableOpacity>
 
+                        {/* ✅ NOUVEAU: Bouton pour ouvrir la galerie de produits */}
+                        <TouchableOpacity
+                            style={styles.mediaButton}
+                            onPress={() => setShowProductGalleryPicker(true)}
+                        >
+                            <SafeIcon name="folder" size={22} color="#8B5CF6" />
+                        </TouchableOpacity>
+
                         <TouchableOpacity
                             style={[styles.mediaButton, isRecording && styles.mediaButtonActive]}
                             onPress={isRecording ? stopAudioRecording : startAudioRecording}
@@ -757,6 +1010,33 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                         </TouchableOpacity>
                     </View>
 
+                    {/* ✅ NOUVEAU: Bandeau de citation quand on répond à un message */}
+                    {replyingTo && (
+                        <View style={styles.replyBanner}>
+                            <View style={styles.replyContent}>
+                                <View style={styles.replyHeader}>
+                                    <SafeIcon name="corner-down-right" size={16} color={modernColors.primary} />
+                                    <Text style={styles.replyLabel}>
+                                        Réponse à {replyingTo.sender_name || 'Message'}
+                                    </Text>
+                                </View>
+                                <Text style={styles.replyText} numberOfLines={2}>
+                                    {replyingTo.content_type === 'text' && replyingTo.content}
+                                    {replyingTo.content_type === 'audio' && '🎤 Message audio'}
+                                    {replyingTo.content_type === 'image' && '🖼️ Image'}
+                                    {replyingTo.content_type === 'file' && '📄 Fichier'}
+                                    {replyingTo.content_type === 'video' && '🎥 Vidéo'}
+                                </Text>
+                            </View>
+                            <TouchableOpacity
+                                onPress={() => setReplyingTo(null)}
+                                style={styles.replyCloseButton}
+                            >
+                                <SafeIcon name="x" size={18} color={modernColors.textSecondary} />
+                            </TouchableOpacity>
+                        </View>
+                    )}
+
                     <View style={styles.inputRow}>
                         <TouchableOpacity
                             style={styles.emojiButton}
@@ -768,8 +1048,13 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                         <TextInput
                             style={styles.textInput}
                             value={newMessage}
-                            onChangeText={handleTyping}
-                            placeholder="Tapez votre message..."
+                            onChangeText={(text) => handleTyping(text, cursorPosition)}
+                            onSelectionChange={(event) => {
+                                const position = event.nativeEvent.selection.start;
+                                setCursorPosition(position);
+                                handleTyping(newMessage, position);
+                            }}
+                            placeholder={replyingTo ? "Tapez votre réponse..." : "Tapez votre message... (@ pour mentionner)"}
                             placeholderTextColor={modernColors.textSecondary}
                             multiline
                             maxLength={500}
@@ -809,6 +1094,14 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                 prestataireInfo={prestataireInfo}
             />
 
+            {/* ✅ NOUVEAU: Modal de sélection de médias de la galerie produit */}
+            <ProductGalleryPickerModal
+                visible={showProductGalleryPicker}
+                onClose={() => setShowProductGalleryPicker(false)}
+                service={service}
+                onSelectMedia={handleSelectGalleryMedia}
+            />
+
             {/* Modal d'appel interne (audio/vidéo) */}
             <InAppCallModal
                 visible={showCallModal}
@@ -819,6 +1112,92 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                 currentUserId={user?.id || ''}
                 serviceId={service?.id}
             />
+
+            {/* ✅ NOUVEAU: Modal pour @mention */}
+            <UserMentionPicker
+                visible={showMentionPicker}
+                onClose={() => setShowMentionPicker(false)}
+                onSelectUser={insertMention}
+                currentQuery={mentionQuery}
+            />
+
+            {/* ✅ NOUVEAU: Modal liste des participants */}
+            <Modal
+                visible={showParticipantsList}
+                animationType="slide"
+                transparent={true}
+                onRequestClose={() => setShowParticipantsList(false)}
+            >
+                <View style={styles.participantsOverlay}>
+                    <View style={styles.participantsContainer}>
+                        <View style={styles.participantsHeader}>
+                            <Text style={styles.participantsTitle}>
+                                👥 Participants ({participants.length})
+                            </Text>
+                            <TouchableOpacity onPress={() => setShowParticipantsList(false)}>
+                                <SafeIcon name="x" size={24} color={modernColors.text} />
+                            </TouchableOpacity>
+                        </View>
+
+                        <ScrollView style={styles.participantsList}>
+                            {participants.map((participant) => (
+                                <View key={participant.user_id} style={styles.participantItem}>
+                                    <View style={styles.participantInfo}>
+                                        <View style={styles.participantAvatar}>
+                                            {participant.user_avatar ? (
+                                                <Image
+                                                    source={{ uri: participant.user_avatar }}
+                                                    style={styles.participantAvatarImage}
+                                                />
+                                            ) : (
+                                                <View style={styles.participantAvatarPlaceholder}>
+                                                    <Text style={styles.participantAvatarText}>
+                                                        {participant.user_name.charAt(0).toUpperCase()}
+                                                    </Text>
+                                                </View>
+                                            )}
+                                            {participant.role === 'owner' && (
+                                                <View style={styles.ownerBadge}>
+                                                    <SafeIcon name="star" size={10} color="#FFD700" />
+                                                </View>
+                                            )}
+                                        </View>
+                                        <View style={styles.participantDetails}>
+                                            <Text style={styles.participantName}>{participant.user_name}</Text>
+                                            <Text style={styles.participantRole}>
+                                                {participant.role === 'owner' ? '👑 Propriétaire' :
+                                                    participant.invited_by ? '👤 Invité' : '👥 Participant'}
+                                            </Text>
+                                        </View>
+                                    </View>
+
+                                    {participant.can_remove && participant.user_id !== user?.id && (
+                                        <TouchableOpacity
+                                            style={styles.removeParticipantButton}
+                                            onPress={() => removeParticipant(participant.user_id)}
+                                        >
+                                            <SafeIcon name="user-minus" size={18} color={modernColors.error} />
+                                        </TouchableOpacity>
+                                    )}
+                                </View>
+                            ))}
+                        </ScrollView>
+
+                        <View style={styles.participantsFooter}>
+                            <TouchableOpacity
+                                style={styles.addParticipantButton}
+                                onPress={() => {
+                                    setShowParticipantsList(false);
+                                    setShowMentionPicker(true);
+                                }}
+                            >
+                                <SafeIcon name="user-plus" size={20} color="#FFFFFF" />
+                                <Text style={styles.addParticipantText}>Inviter quelqu'un</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
         </Modal>
     );
 };
@@ -887,6 +1266,48 @@ const styles = StyleSheet.create({
         padding: 8,
         backgroundColor: modernColors.surfaceVariant,
         borderRadius: 20,
+        position: 'relative',
+    },
+    actionButtonHighlight: {
+        backgroundColor: modernColors.primary + '20', // 20% opacity
+    },
+    participantsBadge: {
+        position: 'absolute',
+        top: -2,
+        right: -2,
+        backgroundColor: modernColors.primary,
+        borderRadius: 10,
+        minWidth: 18,
+        height: 18,
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingHorizontal: 4,
+    },
+    participantsBadgeText: {
+        fontSize: 10,
+        fontWeight: '700',
+        color: '#FFFFFF',
+    },
+    whatsappButton: {
+        backgroundColor: '#E8F5E9',
+    },
+    whatsappBadge: {
+        position: 'absolute',
+        bottom: -2,
+        right: -2,
+        backgroundColor: '#25D366',
+        borderRadius: 8,
+        paddingHorizontal: 4,
+        paddingVertical: 1,
+        minWidth: 18,
+        alignItems: 'center',
+        borderWidth: 1.5,
+        borderColor: '#FFFFFF',
+    },
+    whatsappBadgeText: {
+        fontSize: 8,
+        fontWeight: 'bold',
+        color: '#FFFFFF',
     },
     messagesContainer: {
         flex: 1,
@@ -1217,6 +1638,210 @@ const styles = StyleSheet.create({
     fileText: {
         fontSize: 14,
         fontWeight: '500',
+    },
+    // ✅ NOUVEAU: Styles pour la liste des participants
+    participantsOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        justifyContent: 'flex-end',
+    },
+    participantsContainer: {
+        backgroundColor: modernColors.surface,
+        borderTopLeftRadius: 20,
+        borderTopRightRadius: 20,
+        maxHeight: '70%',
+        paddingBottom: 20,
+    },
+    participantsHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 20,
+        paddingVertical: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: modernColors.border,
+    },
+    participantsTitle: {
+        fontSize: 18,
+        fontWeight: '600',
+        color: modernColors.text,
+    },
+    participantsList: {
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+    },
+    participantItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingVertical: 12,
+        paddingHorizontal: 12,
+        backgroundColor: modernColors.background,
+        borderRadius: 12,
+        marginBottom: 8,
+        borderWidth: 1,
+        borderColor: modernColors.border,
+    },
+    participantInfo: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        flex: 1,
+    },
+    participantAvatar: {
+        position: 'relative',
+        width: 48,
+        height: 48,
+    },
+    participantAvatarImage: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+    },
+    participantAvatarPlaceholder: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        backgroundColor: modernColors.primary,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    participantAvatarText: {
+        fontSize: 20,
+        fontWeight: '600',
+        color: '#FFFFFF',
+    },
+    ownerBadge: {
+        position: 'absolute',
+        bottom: 0,
+        right: 0,
+        width: 18,
+        height: 18,
+        borderRadius: 9,
+        backgroundColor: modernColors.surface,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 2,
+        borderColor: modernColors.surface,
+    },
+    participantDetails: {
+        flex: 1,
+    },
+    participantName: {
+        fontSize: 15,
+        fontWeight: '600',
+        color: modernColors.text,
+        marginBottom: 2,
+    },
+    participantRole: {
+        fontSize: 12,
+        color: modernColors.textSecondary,
+    },
+    removeParticipantButton: {
+        padding: 8,
+        backgroundColor: modernColors.error + '15',
+        borderRadius: 8,
+    },
+    participantsFooter: {
+        paddingHorizontal: 16,
+        paddingTop: 12,
+    },
+    addParticipantButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        paddingVertical: 14,
+        backgroundColor: modernColors.primary,
+        borderRadius: 12,
+    },
+    addParticipantText: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#FFFFFF',
+    },
+    // ✅ NOUVEAU: Styles pour le système de réponse/citation
+    replyBanner: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        backgroundColor: modernColors.primaryLight + '30',
+        borderLeftWidth: 4,
+        borderLeftColor: modernColors.primary,
+        paddingHorizontal: 12,
+        paddingVertical: 10,
+        marginBottom: 8,
+        borderRadius: 8,
+    },
+    replyContent: {
+        flex: 1,
+        marginRight: 8,
+    },
+    replyHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        marginBottom: 4,
+    },
+    replyLabel: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: modernColors.primary,
+    },
+    replyText: {
+        fontSize: 13,
+        color: modernColors.textSecondary,
+        fontStyle: 'italic',
+    },
+    replyCloseButton: {
+        padding: 4,
+    },
+    quotedMessage: {
+        flexDirection: 'row',
+        backgroundColor: 'rgba(0, 0, 0, 0.05)',
+        borderRadius: 8,
+        padding: 8,
+        marginBottom: 8,
+    },
+    quotedMessageBar: {
+        width: 3,
+        backgroundColor: modernColors.primary,
+        borderRadius: 2,
+        marginRight: 8,
+    },
+    quotedMessageContent: {
+        flex: 1,
+    },
+    quotedMessageAuthor: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: modernColors.primary,
+        marginBottom: 2,
+    },
+    quotedMessageText: {
+        fontSize: 12,
+        color: modernColors.textSecondary,
+        fontStyle: 'italic',
+    },
+    messageFooterLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        flex: 1,
+    },
+    replyButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        paddingVertical: 4,
+        paddingHorizontal: 8,
+        borderRadius: 12,
+        backgroundColor: 'rgba(0, 0, 0, 0.05)',
+    },
+    replyButtonText: {
+        fontSize: 11,
+        fontWeight: '500',
+        color: modernColors.textSecondary,
     },
 });
 

@@ -1,7 +1,7 @@
 // Navigation ultra-moderne avec Phosphor Icons et gradients
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
-import { Briefcase, ChartBar, ClockCounterClockwise, House, User } from 'phosphor-react-native';
+import { ChartBar, ClockCounterClockwise, House, User } from 'phosphor-react-native';
 import React from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { modernColors, modernStyles } from '../theme/modernTheme';
@@ -11,7 +11,6 @@ import { useAuth } from '../contexts/AuthContext';
 
 // Screens
 import ContactScreen from '../screens/ContactScreen';
-import DashboardScreen from '../screens/DashboardScreen';
 import HomeScreen from '../screens/HomeScreen'; // HomeScreen amélioré avec avatar 56px, FCFA et fond ultramoderne
 import ProfileScreen from '../screens/ProfileScreen';
 import RechargeTokensScreen from '../screens/RechargeTokensScreen';
@@ -21,9 +20,9 @@ import ServicesScreen from '../screens/ServicesScreen';
 // Autres écrans (pour la navigation secondaire)
 import EnhancedSettingsScreen from '../screens/EnhancedSettingsScreen';
 import FormulaireYukpoIntelligentScreen from '../screens/FormulaireYukpoIntelligentScreen';
+import MesInteractionsScreen from '../screens/MesInteractionsScreen';
 import ResultatBesoinScreen from '../screens/ResultatBesoinScreen';
 import ServiceDetailSharedScreen from '../screens/ServiceDetailSharedScreen';
-import ServicesInteragisScreen from '../screens/ServicesInteragisScreen';
 import SoldeDetailScreen from '../screens/SoldeDetailScreen';
 import YukpoServicePlaceholderScreen from '../screens/YukpoServicePlaceholderScreen';
 
@@ -74,7 +73,7 @@ const AuthStack = () => (
   </Stack.Navigator>
 );
 
-// Tab Navigator moderne avec 5 onglets (aligné sur frontend)
+// Tab Navigator moderne avec 4 onglets (Dashboard intégré dans Mon Activité)
 const MainTabs = () => {
   return (
     <Tab.Navigator
@@ -91,11 +90,9 @@ const MainTabs = () => {
           switch (route.name) {
             case 'Home':
               return <House {...iconProps} />;
-            case 'MesServices':
-              return <Briefcase {...iconProps} />;
-            case 'Dashboard':
+            case 'MonActivite':
               return <ChartBar {...iconProps} />;
-            case 'Historique':
+            case 'MesInteractions':
               return <ClockCounterClockwise {...iconProps} />;
             case 'MonCompte':
               return <User {...iconProps} />;
@@ -135,27 +132,19 @@ const MainTabs = () => {
         }}
       />
       <Tab.Screen
-        name="MesServices"
+        name="MonActivite"
         component={ServicesScreen}
         options={{
-          title: 'Mes Services',
-          tabBarLabel: 'Mes Services'
+          title: 'Mon Activité',
+          tabBarLabel: 'Mon Activité'
         }}
       />
       <Tab.Screen
-        name="Dashboard"
-        component={DashboardScreen}
+        name="MesInteractions"
+        component={MesInteractionsScreen}
         options={{
-          title: 'Dashboard',
-          tabBarLabel: 'Dashboard'
-        }}
-      />
-      <Tab.Screen
-        name="Historique"
-        component={ServicesInteragisScreen}
-        options={{
-          title: 'Mon historique',
-          tabBarLabel: 'Historique'
+          title: 'Mes Interactions',
+          tabBarLabel: 'Interactions'
         }}
       />
       <Tab.Screen

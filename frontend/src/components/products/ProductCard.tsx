@@ -24,6 +24,7 @@ interface ProductCardProps {
     prestataire?: any;
     onChatPress?: () => void;
     onCallPress?: () => void;
+    onGalleryPress?: () => void;
 }
 
 const ProductCard: React.FC<ProductCardProps> = ({
@@ -31,7 +32,8 @@ const ProductCard: React.FC<ProductCardProps> = ({
     service,
     prestataire,
     onChatPress,
-    onCallPress
+    onCallPress,
+    onGalleryPress
 }) => {
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
@@ -75,6 +77,9 @@ const ProductCard: React.FC<ProductCardProps> = ({
             pharmacie: { icon: '💊', color: 'bg-emerald-50 text-emerald-700 border-emerald-200', label: 'Pharmacie' },
             hopital_clinique: { icon: '🏥', color: 'bg-red-50 text-red-700 border-red-200', label: 'Hôpital' },
             prestation_service: { icon: '💼', color: 'bg-violet-50 text-violet-700 border-violet-200', label: 'Service' },
+            demenagement: { icon: '🚚', color: 'bg-orange-50 text-orange-700 border-orange-200', label: 'Déménagement' },
+            cosmetique_parfum: { icon: '✨', color: 'bg-pink-50 text-pink-700 border-pink-200', label: 'Cosmétique' },
+            bijoux: { icon: '💎', color: 'bg-amber-50 text-amber-700 border-amber-200', label: 'Bijoux' },
             autre: { icon: '📦', color: 'bg-gray-50 text-gray-700 border-gray-200', label: 'Produit' }
         };
         return styles[product.type] || styles.autre;
@@ -495,6 +500,206 @@ const ProductCard: React.FC<ProductCardProps> = ({
                     </div>
                 );
 
+            case 'demenagement':
+                return (
+                    <div className="space-y-3 mt-2">
+                        {/* Type de déménagement */}
+                        {product.typeDemenagement && (
+                            <Badge variant="secondary" className="text-xs">
+                                🚚 {product.typeDemenagement}
+                            </Badge>
+                        )}
+
+                        <div className="flex flex-wrap gap-2">
+                            {/* Volume */}
+                            {product.volumeEstime && (
+                                <Badge variant="secondary" className="text-xs">
+                                    📦 {product.volumeEstime} m³
+                                </Badge>
+                            )}
+
+                            {/* Véhicule */}
+                            {product.typeVehicule && (
+                                <Badge variant="secondary" className="text-xs">
+                                    🚛 {product.typeVehicule}
+                                </Badge>
+                            )}
+
+                            {/* Déménageurs */}
+                            {product.nbDemenageurs && (
+                                <Badge variant="secondary" className="text-xs">
+                                    👥 {product.nbDemenageurs} personnes
+                                </Badge>
+                            )}
+
+                            {/* Distance */}
+                            {product.distanceKm && (
+                                <Badge variant="secondary" className="text-xs">
+                                    🗺️ Max {product.distanceKm} km
+                                </Badge>
+                            )}
+                        </div>
+
+                        {/* Services inclus */}
+                        {(product.assuranceMarchandise || product.serviceManutention || product.montageDemontage ||
+                            product.emballageCartons || product.gardeMeuble || product.debarras) && (
+                                <div className="mt-2">
+                                    <p className="text-xs font-medium text-gray-600 mb-1">Services inclus:</p>
+                                    <div className="flex flex-wrap gap-1">
+                                        {product.assuranceMarchandise && (
+                                            <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
+                                                ✓ Assurance
+                                            </Badge>
+                                        )}
+                                        {product.serviceManutention && (
+                                            <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
+                                                ✓ Manutention
+                                            </Badge>
+                                        )}
+                                        {product.montageDemontage && (
+                                            <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
+                                                ✓ Montage
+                                            </Badge>
+                                        )}
+                                        {product.emballageCartons && (
+                                            <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
+                                                ✓ Emballage
+                                            </Badge>
+                                        )}
+                                        {product.gardeMeuble && (
+                                            <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
+                                                ✓ Garde-meuble
+                                            </Badge>
+                                        )}
+                                        {product.debarras && (
+                                            <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
+                                                ✓ Débarras
+                                            </Badge>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+                    </div>
+                );
+
+            case 'cosmetique_parfum':
+                return (
+                    <div className="space-y-3 mt-2">
+                        {/* Type de cosmétique */}
+                        {product.typeCosmetique && (
+                            <Badge variant="secondary" className="text-xs">
+                                ✨ {product.typeCosmetique}
+                            </Badge>
+                        )}
+
+                        <div className="flex flex-wrap gap-2">
+                            {/* Marque */}
+                            {product.marqueCosmetique && (
+                                <Badge variant="secondary" className="text-xs">
+                                    🏷️ {product.marqueCosmetique}
+                                </Badge>
+                            )}
+
+                            {/* Volume */}
+                            {product.volumeCosmetique && product.uniteCosmetique && (
+                                <Badge variant="secondary" className="text-xs">
+                                    <Droplet className="w-3 h-3 mr-1" />
+                                    {product.volumeCosmetique} {product.uniteCosmetique}
+                                </Badge>
+                            )}
+
+                            {/* Type de peau */}
+                            {product.typePeau && (
+                                <Badge variant="secondary" className="text-xs">
+                                    👤 Peau: {product.typePeau}
+                                </Badge>
+                            )}
+
+                            {/* Âge recommandé */}
+                            {product.ageRecommandé && (
+                                <Badge variant="secondary" className="text-xs">
+                                    <Calendar className="w-3 h-3 mr-1" />
+                                    Âge: {product.ageRecommandé}
+                                </Badge>
+                            )}
+                        </div>
+
+                        {/* Origine */}
+                        {product.origineCosmetique && (
+                            <Badge variant="secondary" className="text-xs">
+                                🌍 Origine: {product.origineCosmetique}
+                            </Badge>
+                        )}
+
+                        {/* Ingrédients */}
+                        {product.ingredientsCosmetique && (
+                            <div className="mt-2">
+                                <p className="text-xs font-medium text-gray-600 mb-1">Ingrédients:</p>
+                                <p className="text-xs text-gray-500 italic line-clamp-2">
+                                    {product.ingredientsCosmetique}
+                                </p>
+                            </div>
+                        )}
+                    </div>
+                );
+
+            case 'bijoux':
+                return (
+                    <div className="space-y-3 mt-2">
+                        {/* Type de bijou */}
+                        {product.typeBijou && (
+                            <Badge variant="secondary" className="text-xs">
+                                💎 {product.typeBijou}
+                            </Badge>
+                        )}
+
+                        <div className="flex flex-wrap gap-2">
+                            {/* Matière */}
+                            {product.matiereBijou && (
+                                <Badge variant="secondary" className="text-xs">
+                                    💍 {product.matiereBijou}
+                                </Badge>
+                            )}
+
+                            {/* Poids */}
+                            {product.poidsBijou && product.unitePoids && (
+                                <Badge variant="secondary" className="text-xs">
+                                    ⚖️ {product.poidsBijou} {product.unitePoids}
+                                </Badge>
+                            )}
+
+                            {/* Taille */}
+                            {product.tailleBijou && (
+                                <Badge variant="secondary" className="text-xs">
+                                    <Maximize2 className="w-3 h-3 mr-1" />
+                                    Taille: {product.tailleBijou}
+                                </Badge>
+                            )}
+
+                            {/* Style */}
+                            {product.styleBijou && (
+                                <Badge variant="secondary" className="text-xs">
+                                    ✨ {product.styleBijou}
+                                </Badge>
+                            )}
+                        </div>
+
+                        {/* Origine */}
+                        {product.origineBijou && (
+                            <Badge variant="secondary" className="text-xs">
+                                🌍 Origine: {product.origineBijou}
+                            </Badge>
+                        )}
+
+                        {/* Certificat */}
+                        {product.certificatBijou && (
+                            <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
+                                🏆 Certifié: {product.certificatBijou}
+                            </Badge>
+                        )}
+                    </div>
+                );
+
             default:
                 return null;
         }
@@ -663,7 +868,19 @@ const ProductCard: React.FC<ProductCardProps> = ({
                         </Button>
 
                         {/* Actions secondaires */}
-                        <div className="grid grid-cols-3 gap-2">
+                        <div className="grid grid-cols-4 gap-2">
+                            {/* ✅ NOUVEAU: Bouton Galerie */}
+                            {(images.length > 0 || videos.length > 0) && (
+                                <Button
+                                    onClick={onGalleryPress}
+                                    variant="outline"
+                                    size="sm"
+                                    className="flex items-center justify-center"
+                                >
+                                    <ImageIcon className="w-4 h-4 text-purple-600" />
+                                </Button>
+                            )}
+
                             <Button
                                 onClick={onCallPress}
                                 variant="outline"

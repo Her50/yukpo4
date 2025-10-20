@@ -145,11 +145,35 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .merge(nearby_services_routes(state.clone()))
         .merge(ai_chat_routes(state.clone()));
     
+    // ✅ NOUVEAU: Routes pour @mentions et multi-participants conversations
+    let conversation_routes_merged = crate::routes::conversation_routes::conversation_routes(state.clone());
+    
+    // ✅ NOUVEAU: Routes pour signalements
+    let signalement_routes_merged = crate::routes::signalement_routes::signalement_routes(state.clone());
+    
+    // ✅ NOUVEAU: Routes pour recherche avec planifications
+    let scheduling_search_routes_merged = crate::routes::scheduling_search_routes::scheduling_search_routes().with_state(state.db.clone());
+    
+    // ✅ NOUVEAU: Routes pour gestion d'équipe des services
+    let service_team_routes_merged = crate::routes::service_team_routes::service_team_routes().with_state(state.db.clone());
+    
+    // ✅ NOUVEAU: Routes pour recherche par image
+    let image_search_routes_merged = crate::routes::image_search_routes::image_search_routes(state.db.clone());
+    
     // Combinaison des routes
-    public_routes.merge(protected_routes).merge(mobile_routes).with_state(state)
+    public_routes
+        .merge(protected_routes)
+        .merge(mobile_routes)
+        .merge(conversation_routes_merged)
+        .merge(signalement_routes_merged)
+        .merge(scheduling_search_routes_merged)
+        .merge(service_team_routes_merged)
+        .merge(image_search_routes_merged)
+        .with_state(state)
 }
 
-/// ?? Handler pour la recherche directe (sans détection d'intention)
+/// 🖼️ Handler pour la recherche directe (sans détection d'intention)
+/// Supporte la recherche par texte ET par image
 #[axum::debug_handler]
 async fn handle_direct_search(
     Extension(user): Extension<crate::middlewares::jwt::AuthenticatedUser>,
@@ -157,15 +181,266 @@ async fn handle_direct_search(
     Json(input): Json<MultiModalInput>,
 ) -> AppResult<impl IntoResponse> {
     use crate::services::rechercher_besoin::rechercher_besoin_direct;
+    use crate::services::image_search_service::ImageSearchService;
     use crate::utils::log::log_info;
     
     log_info(&format!("[DIRECT_SEARCH] Recherche directe pour utilisateur {} (GPS: {:?})", 
         user.id, input.gps_mobile));
     
     // Extraire le texte de l'input
-    let user_text = input.texte.unwrap_or_default();
+    let user_text = input.texte.clone().unwrap_or_default();
+    let has_text = !user_text.trim().is_empty();
+    let has_images = input.base64_image.as_ref().map(|imgs| !imgs.is_empty()).unwrap_or(false);
     
-    // Extraire les paramètres GPS
+    log_info(&format!("[DIRECT_SEARCH] Contenu: texte={}, images={}", has_text, has_images));
+    
+    // ✅ NOUVELLE LOGIQUE: Si image présente (avec ou sans texte), utiliser analyse IA
+    if has_images {
+        use crate::services::intelligent_image_analysis_service::{
+            IntelligentImageAnalysisService, ImageAnalysis, AICost
+        };
+        
+        log_info("[DIRECT_SEARCH] 🖼️ Image détectée - Analyse IA activée");
+        
+        let images = input.base64_image.as_ref().unwrap();
+        let first_image = &images[0];
+        
+        // Extraire le base64 pur
+        let image_base64 = if first_image.contains("base64,") {
+            first_image.split("base64,").nth(1).unwrap_or(first_image).to_string()
+        } else {
+            first_image.clone()
+        };
+        
+                // 1️⃣ Vérifier le solde utilisateur AVANT l'analyse (sqlx::query pour offline)
+                let user_balance_result = sqlx::query(
+                    "SELECT credits, devise FROM users WHERE id = $1"
+                )
+                .bind(user.id)
+                .fetch_one(&*_state.pg)
+                .await;
+        
+        match user_balance_result {
+            Ok(user_row) => {
+                use sqlx::Row;
+                
+                let current_balance: i64 = user_row.try_get("credits").unwrap_or(0);
+                let user_devise: String = user_row.try_get("devise").unwrap_or_else(|_| "XAF".to_string());
+                
+                // Coût estimé minimum (sera ajusté après analyse)
+                let estimated_cost = match user_devise.as_str() {
+                    "XAF" | "FCFA" => 50,  // ~50 XAF minimum
+                    "EUR" => 1,             // ~0.10 EUR
+                    "USD" => 10,            // ~0.10 USD (centimes)
+                    _ => 50
+                };
+                
+                if current_balance < estimated_cost {
+                    let response = serde_json::json!({
+                        "status": "error",
+                        "error": "insufficient_credits",
+                        "message": format!("Solde insuffisant pour recherche par image. Requis: {} {}, Disponible: {} {}", 
+                                         estimated_cost, user_devise, current_balance, user_devise),
+                        "required": estimated_cost,
+                        "available": current_balance,
+                        "currency": user_devise
+                    });
+                    return Ok(Json(response));
+                }
+                
+                // 2️⃣ Analyser l'image avec IA multi-modèles
+                log_info("[DIRECT_SEARCH] Analyse IA de l'image...");
+                
+                let analysis_result = IntelligentImageAnalysisService::analyze_image_multimodel(
+                    &_state.ia,
+                    &image_base64,
+                    None,  // Catégorie auto-détectée
+                    true   // Mode recherche
+                ).await;
+                
+                match analysis_result {
+                    Ok((analysis, ai_cost)) => {
+                        log_info(&format!(
+                            "[DIRECT_SEARCH] ✅ Analyse IA réussie: '{}' (confiance: {}, tokens: {})",
+                            &analysis.description.chars().take(50).collect::<String>(),
+                            analysis.confiance,
+                            ai_cost.total_tokens
+                        ));
+                        
+                        // 3️⃣ Rechercher avec l'analyse IA + GPS
+                        let gps_zone = input.gps_mobile.as_deref();
+                        let search_radius_km = Some(50);
+                        
+                        // Extraire lat/lng si GPS disponible
+                        let (gps_lat, gps_lng) = if let Some(gps_str) = gps_zone {
+                            let coords: Vec<&str> = gps_str.split(',').collect();
+                            if coords.len() == 2 {
+                                (
+                                    coords[0].trim().parse::<f64>().ok(),
+                                    coords[1].trim().parse::<f64>().ok()
+                                )
+                            } else {
+                                (None, None)
+                            }
+                        } else {
+                            (None, None)
+                        };
+                        
+                        // Utiliser sqlx::query() pour compatibilité offline
+                        let search_results = sqlx::query(
+                            r#"SELECT * FROM search_images_by_ai_analysis(
+                                $1::TEXT,
+                                $2::TEXT[],
+                                $3::TEXT,
+                                $4::TEXT,
+                                $5::TEXT,
+                                $6::FLOAT,
+                                $7::FLOAT,
+                                $8::INTEGER,
+                                $9::INTEGER
+                            )"#
+                        )
+                        .bind(&analysis.search_query)
+                        .bind(&analysis.tags)
+                        .bind(analysis.category_detected.as_str())
+                        .bind(analysis.marque.as_deref())
+                        .bind(analysis.couleurs.first().map(|s| s.as_str()))
+                        .bind(gps_lat)
+                        .bind(gps_lng)
+                        .bind(search_radius_km.unwrap_or(50) as i32)
+                        .bind(20i32)
+                        .fetch_all(&*_state.pg)
+                        .await;
+                        
+                        match search_results {
+                            Ok(rows) => {
+                                use sqlx::Row;
+                                
+                                let results_count = rows.len();
+                                log_info(&format!("[DIRECT_SEARCH] Trouvé {} résultats", results_count));
+                                
+                                // 4️⃣ FACTURATION CONDITIONNELLE
+                                let mut billing_info = serde_json::json!({
+                                    "charged": false,
+                                    "amount": 0,
+                                    "currency": user_devise,
+                                    "ai_cost_usd": ai_cost.cost_usd,
+                                    "ai_tokens": ai_cost.total_tokens,
+                                    "results_found": results_count
+                                });
+                                
+                                // Facturer UNIQUEMENT si résultats trouvés
+                                if results_count > 0 {
+                                    let user_cost = IntelligentImageAnalysisService::calculate_user_cost(
+                                        &ai_cost,
+                                        &user_devise
+                                    );
+                                    
+                                    // Débiter le solde (sqlx::query pour offline)
+                                    let debit_result = sqlx::query(
+                                        "UPDATE users SET credits = credits - $1 WHERE id = $2 AND credits >= $1 RETURNING credits"
+                                    )
+                                    .bind(user_cost)
+                                    .bind(user.id)
+                                    .fetch_optional(&*_state.pg)
+                                    .await;
+                                    
+                                    match debit_result {
+                                        Ok(Some(updated_row)) => {
+                                            let new_balance: i64 = updated_row.try_get("credits").unwrap_or(0);
+                                            billing_info["charged"] = json!(true);
+                                            billing_info["amount"] = json!(user_cost);
+                                            billing_info["new_balance"] = json!(new_balance);
+                                            billing_info["message"] = json!(format!(
+                                                "{} résultats trouvés - {} {} débités",
+                                                results_count, user_cost, user_devise
+                                            ));
+                                            
+                                            log_info(&format!(
+                                                "[DIRECT_SEARCH] User {} facturé {} {} ({} résultats)",
+                                                user.id, user_cost, user_devise, results_count
+                                            ));
+                                        },
+                                        Ok(None) => {
+                                            // Solde insuffisant au moment du débit
+                                            billing_info["error"] = json!("Solde insuffisant au moment du débit");
+                                        },
+                                        Err(e) => {
+                                            log_error(&format!("[DIRECT_SEARCH] Erreur débit: {}", e));
+                                            billing_info["error"] = json!(format!("Erreur débit: {}", e));
+                                        }
+                                    }
+                                } else {
+                                    billing_info["message"] = json!("Aucun résultat - Recherche gratuite");
+                                    log_info(&format!("[DIRECT_SEARCH] User {} NON facturé (0 résultat)", user.id));
+                                }
+                                
+                                // 5️⃣ Construire la réponse (extraire manuellement les champs)
+                                let results_json: Vec<Value> = rows.iter().map(|row| {
+                                    json!({
+                                        "service_id": row.try_get::<i32, _>("service_id").ok(),
+                                        "data": row.try_get::<Value, _>("service_data").ok(),
+                                        "product_name": row.try_get::<String, _>("product_name").ok(),
+                                        "match_score": row.try_get::<f64, _>("match_score").ok(),
+                                        "distance_km": row.try_get::<Option<f64>, _>("distance_km").ok().flatten(),
+                                        "media_path": row.try_get::<String, _>("media_path").ok(),
+                                        "ai_description": row.try_get::<Option<String>, _>("ai_description").ok().flatten(),
+                                    })
+                                }).collect();
+                                
+                                let response = serde_json::json!({
+                                    "status": "success",
+                                    "intention": "recherche_besoin",
+                                    "resultats": results_json,
+                                    "tokens_consumed": ai_cost.total_tokens,
+                                    "message": format!("Recherche par image: {} résultats", results_count),
+                                    "search_method": "image_ai",
+                                    "image_analysis": {
+                                        "description": analysis.description,
+                                        "tags": analysis.tags,
+                                        "category": analysis.category_detected,
+                                        "marque": analysis.marque,
+                                        "couleurs": analysis.couleurs,
+                                        "confiance": analysis.confiance,
+                                        "search_query": analysis.search_query,
+                                        "model_used": ai_cost.model_used
+                                    },
+                                    "billing": billing_info,
+                                    "gps_filtered": gps_zone.is_some(),
+                                    "search_radius_km": search_radius_km
+                                });
+                                
+                                return Ok(Json(response));
+                            },
+                            Err(e) => {
+                                log_error(&format!("[DIRECT_SEARCH] Erreur recherche SQL: {}", e));
+                                // Continuer vers recherche textuelle en fallback
+                            }
+                        }
+                    },
+                    Err(e) => {
+                        log_error(&format!("[DIRECT_SEARCH] Erreur analyse IA: {:?}", e));
+                        
+                        // Retourner erreur si image sans texte
+                        if !has_text {
+                            let response = serde_json::json!({
+                                "status": "error",
+                                "message": format!("Erreur analyse d'image: {}", e),
+                                "error": "image_analysis_failed"
+                            });
+                            return Ok(Json(response));
+                        }
+                        // Sinon, continuer vers recherche textuelle
+                    }
+                }
+            },
+            Err(e) => {
+                log_error(&format!("[DIRECT_SEARCH] Erreur vérification solde: {}", e));
+            }
+        }
+    }
+    
+    // ✅ Recherche textuelle normale ou fallback
     let gps_zone = input.gps_mobile.as_deref();
     let search_radius_km = Some(50); // Rayon par défaut de 50km
     
@@ -187,7 +462,7 @@ async fn handle_direct_search(
         "resultats": result,
         "tokens_consumed": tokens_consumed,
         "message": "Recherche directe réussie",
-        "search_method": "direct",
+        "search_method": "text",
         "gps_filtered": gps_zone.is_some(),
         "search_radius_km": search_radius_km
     });

@@ -776,7 +776,7 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = ({
                     <TouchableOpacity
                         style={[styles.submitButtonBottom, loading && styles.sendButtonDisabled]}
                         onPress={handleSubmit}
-                        disabled={loading || (!text.trim() && images.length === 0)}
+                        disabled={loading || (!text.trim() && images.length === 0 && videos.length === 0 && audioUri === null && documents.length === 0 && excelFiles.length === 0)}
                     >
                         <Text style={styles.sendIcon}>🚀</Text>
                         <Text style={styles.submitButtonText}>

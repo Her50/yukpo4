@@ -1771,11 +1771,20 @@ pub async fn convert_excel_to_images(_excel_base64: &str) -> Result<Vec<String>,
     Ok(vec!["data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==".to_string()])
 }
 
-/// ?? Transcription audio en texte (optimale)
-async fn transcribe_audio_to_text(_audio_base64: &str) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
-    // TODO: Impl?menter la transcription audio r?elle
-    // Pour l'instant, retourner un texte d'exemple
-    Ok("Transcription audio en cours de d?veloppement...".to_string())
+/// 🎤 Transcription audio en texte (avec Whisper API)
+async fn transcribe_audio_to_text(audio_base64: &str) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
+    use crate::services::audio_transcription_service::AudioTranscriptionService;
+    
+    match AudioTranscriptionService::transcribe_audio_base64(audio_base64).await {
+        Ok(result) => {
+            log::info!("[AudioTranscription] ✅ Audio transcrit: {}", &result.text.chars().take(100).collect::<String>());
+            Ok(result.text)
+        },
+        Err(e) => {
+            log::warn!("[AudioTranscription] Erreur transcription, retour message par défaut: {:?}", e);
+            Ok("[Audio non transcrit]".to_string())
+        }
+    }
 }
 
 /// Conversion texte vers image simple

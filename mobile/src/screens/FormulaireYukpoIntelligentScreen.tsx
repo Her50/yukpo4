@@ -19,6 +19,8 @@ import BrandingManagerMobile from '../components/BrandingManagerMobile';
 // @ts-ignore
 import ModernGPSModal from '../components/ModernGPSModal';
 // @ts-ignore
+import PaymentMethodSelector from '../components/PaymentMethodSelector';
+// @ts-ignore
 import ProductManagerMobile from '../components/ProductManagerMobile';
 // @ts-ignore
 import { NativeButton, NativeCard, NativeDivider, NativeInput } from '../components/NativeDesign';
@@ -90,6 +92,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
   const [showSuccessToast, setShowSuccessToast] = useState(false);
   const [successData, setSuccessData] = useState<ServiceData | null>(null);
   const [products, setProducts] = useState<any[]>([]);
+  const [paymentMethod, setPaymentMethod] = useState<any>(null); // ✅ NOUVEAU: Mode de paiement
 
   // États pour la navigation par blocs
   const [currentBlock, setCurrentBlock] = useState(0);
@@ -149,6 +152,12 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         fields: [] as DynamicField[]
       },
       {
+        id: 'payment',
+        title: 'Paiement',
+        icon: '💳',
+        fields: [] as DynamicField[]
+      },
+      {
         id: 'other',
         title: 'Autres informations',
         icon: 'ℹ️',
@@ -179,9 +188,13 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       else if (['images', 'videos', 'audios', 'documents', 'logo', 'banner', 'banniere'].includes(fieldName)) {
         blocks[4].fields.push(field);
       }
+      // Bloc Paiement (nouveau)
+      else if (['mode_paiement', 'paiement', 'payment'].includes(fieldName)) {
+        blocks[5].fields.push(field);
+      }
       // Autres
       else {
-        blocks[5].fields.push(field);
+        blocks[6].fields.push(field);
       }
     });
 
@@ -209,6 +222,15 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       } as any);
     }
 
+    // ✅ NOUVEAU: S'assurer que le bloc paiement est toujours présent
+    if (!blocksWithFixedOnes.find(b => b.id === 'payment').fields.length) {
+      blocksWithFixedOnes.find(b => b.id === 'payment')!.fields.push({
+        name: '_payment_manager',
+        type: 'custom',
+        label: 'Mode de paiement',
+        required: false
+      } as any);
+    }
 
     // S'assurer que le bloc localisation a toujours un champ GPS fixe
     const locationBlock = blocksWithFixedOnes.find(b => b.id === 'location');
@@ -653,6 +675,18 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       );
     }
 
+    // ✅ NOUVEAU: Gestionnaire de mode de paiement
+    if (field.name === '_payment_manager') {
+      return (
+        <View key={field.name}>
+          <PaymentMethodSelector
+            onPaymentChange={setPaymentMethod}
+            readonly={isReadonly}
+          />
+        </View>
+      );
+    }
+
     // Champ GPS fixe personnalisé
     if (field.name === 'gps_fixe') {
       return (
@@ -988,8 +1022,12 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                 });
                 console.log('[FormulaireYukpoIntelligentScreen] ✅ Données fusionnées avec le formulaire:', finalServiceData);
 
-                // 🔧 ÉTAPE 4 : Ajouter les produits aux données de service (avec nettoyage)
+                // 🔧 ÉTAPE 4 : Ajouter les produits aux données de service (avec nettoyage + optimisation payload)
                 if (products.length > 0) {
+                  // ✅ OPTIMISATION : Calculer la taille totale estimée du payload
+                  let totalPayloadSize = JSON.stringify(finalServiceData).length;
+                  console.log(`[FormulaireYukpoIntelligentScreen] 📊 Taille payload avant produits: ${(totalPayloadSize / 1024).toFixed(2)} KB`);
+
                   // Nettoyer les produits : supprimer les champs undefined/null
                   const cleanedProducts = products.map(product => {
                     const cleaned: any = {};
@@ -1000,8 +1038,30 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                     });
                     return cleaned;
                   });
+
                   finalServiceData.produits = cleanedProducts;
-                  console.log('[FormulaireYukpoIntelligentScreen] Produits ajoutés (nettoyés):', cleanedProducts);
+
+                  // ✅ VÉRIFICATION : Estimer la taille finale du payload
+                  const finalPayloadSize = JSON.stringify(finalServiceData).length;
+                  const finalSizeMB = finalPayloadSize / (1024 * 1024);
+                  console.log(`[FormulaireYukpoIntelligentScreen] 📊 Taille payload finale: ${finalSizeMB.toFixed(2)} MB`);
+                  console.log(`[FormulaireYukpoIntelligentScreen] 📊 Produits ajoutés: ${cleanedProducts.length}`);
+
+                  // ✅ ALERTE si payload trop gros (> 100MB)
+                  if (finalSizeMB > 100) {
+                    console.warn(`[FormulaireYukpoIntelligentScreen] ⚠️ Payload très volumineux: ${finalSizeMB.toFixed(2)} MB - Risque d'erreur 413`);
+                    Alert.alert(
+                      '⚠️ Données volumineuses',
+                      `Votre service contient beaucoup de médias (${finalSizeMB.toFixed(2)} MB).\n\nCela pourrait causer des problèmes d'envoi. Conseils :\n- Réduisez le nombre d'images par produit\n- Raccourcissez les vidéos\n- Supprimez les produits non essentiels`,
+                      [
+                        { text: 'Annuler', style: 'cancel', onPress: () => { setIsSubmitting(false); setLoading(false); return; } },
+                        { text: 'Continuer quand même', onPress: () => { /* Continue */ } }
+                      ]
+                    );
+                    return;
+                  }
+
+                  console.log('[FormulaireYukpoIntelligentScreen] ✅ Produits ajoutés (nettoyés):', cleanedProducts);
                 }
 
                 // ✅ CORRECTION CRITIQUE : Ajouter le GPS fixe si présent (évite GPS Nigeria)
@@ -1043,12 +1103,26 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                   return;
                 }
 
-                // ✅ CORRECTION : Structure exacte comme le frontend
-                // Le backend attend : { user_id: number, data: {...}, tokens_ia_externe?: number }
+                // ✅ CORRECTION CRITIQUE : Ajouter tokens_ia_externe DANS data (pas à la racine)
+                // Le backend cherche tokens_ia_externe dans le champ data après déballage
+                if (tokensIAExterne) {
+                  finalServiceData.tokens_ia_externe = tokensIAExterne;
+                }
+
+                // ✅ NOUVEAU: Ajouter le mode de paiement si présent
+                if (paymentMethod) {
+                  finalServiceData.mode_paiement = {
+                    type_donnee: 'object',
+                    valeur: paymentMethod,
+                    origine_champs: 'formulaire'
+                  };
+                  console.log('[FormulaireYukpoIntelligentScreen] ✅ Mode de paiement ajouté:', paymentMethod);
+                }
+
+                // Le backend attend : { user_id: number, data: {...} }
                 const servicePayload = {
                   user_id: userId,
-                  data: finalServiceData, // Les données sont déjà structurées
-                  ...(tokensIAExterne && { tokens_ia_externe: tokensIAExterne })
+                  data: finalServiceData, // Les données avec tokens_ia_externe inclus
                 };
 
                 console.log('[FormulaireYukpoIntelligentScreen] ✅ Payload envoyé au backend:', JSON.stringify(servicePayload, null, 2));

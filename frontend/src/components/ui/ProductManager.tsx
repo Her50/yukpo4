@@ -31,6 +31,10 @@ type ProductType =
     | 'assurance'
     | 'pharmacie'
     | 'hopital_clinique'
+    | 'demenagement'
+    | 'cosmetique_parfum'
+    | 'bijoux'
+    | 'coiffure_beaute'
     | 'autre';
 
 interface Product {
@@ -42,6 +46,13 @@ interface Product {
     description?: string;
     images: string[];
     videos: string[];
+    logo?: string; // Logo du produit/marque
+    banner?: string; // Bannière promotionnelle
+    prestations?: Array<{ // Pour prestations de service
+        nom: string;
+        prixAPartirDe: string;
+        description?: string;
+    }>;
 
     // Champs immobilier
     superficie?: string;
@@ -60,6 +71,18 @@ interface Product {
     couleur?: string;
     typeCarburant?: string;
     transmission?: string;
+
+    // Champs coiffure_beaute
+    typeCoiffure?: string;
+    longueurMech?: string;
+    couleurMech?: string;
+    textureMech?: string;
+    typePose?: string;
+    marqueCoiffure?: string;
+    origineMech?: string;
+    entretienMech?: string;
+    dureeVie?: string;
+    typeCheveux?: string;
 
     // Champs autres types (simplifié pour le frontend)
     [key: string]: any;
@@ -89,8 +112,12 @@ const PRODUCT_TYPES = [
     { value: 'ordinateur', label: 'Ordinateurs et Informatique', icon: '💻', description: 'PC portables, bureaux, tablettes, accessoires' },
     { value: 'pharmacie', label: 'Pharmacies et Gardes', icon: '💊', description: 'Pharmacies, planning de garde, services pharmaceutiques' },
     { value: 'prestation_service', label: 'Prestation de Service', icon: '🎯', description: 'Plombier, électricien, mécanicien, coiffeur, développeur...', keywords: ['plombier', 'électricien', 'mécanicien', 'menuisier', 'peintre', 'maçon', 'carreleur', 'soudeur', 'serrurier', 'vitrier', 'plâtrier', 'couvreur', 'charpentier', 'ébéniste', 'tapissier', 'décorateur', 'jardinier', 'paysagiste', 'élagueur', 'coiffeur', 'barbier', 'esthéticienne', 'manucure', 'massage', 'spa', 'kinésithérapeute', 'ostéopathe', 'infirmier', 'sage-femme', 'aide-soignant', 'auxiliaire', 'photographe', 'vidéaste', 'graphiste', 'designer', 'développeur', 'programmeur', 'webmaster', 'informaticien', 'technicien', 'réparateur', 'dépanneur', 'installateur', 'monteur', 'agent', 'nettoyage', 'entretien', 'ménage', 'repassage', 'cuisinier', 'traiteur', 'pâtissier', 'boulanger', 'serveur', 'barman', 'chauffeur', 'livreur', 'coursier', 'déménageur', 'manutentionnaire', 'gardien', 'vigile', 'agent de sécurité', 'coach', 'formateur', 'professeur', 'enseignant', 'répétiteur', 'tuteur', 'traducteur', 'interprète', 'rédacteur', 'correcteur', 'secrétaire', 'assistant', 'comptable', 'auditeur', 'consultant', 'conseiller', 'expert', 'avocat', 'juriste', 'notaire', 'huissier', 'architecte', 'ingénieur', 'géomètre', 'topographe', 'vétérinaire', 'dresseur', 'toiletteur', 'DJ', 'musicien', 'animateur', 'présentateur', 'artiste', 'comédien', 'danseur', 'maquilleur', 'styliste', 'couturier', 'tailleur', 'cordonnier', 'tapissier', 'sellier', 'bijoutier', 'horloger', 'opticien', 'prothésiste', 'dentiste', 'orthodontiste', 'pédicure', 'podologue', 'sophrologue', 'psychologue', 'psychiatre', 'nutritionniste', 'diététicien', 'coach sportif', 'personal trainer', 'yoga', 'pilates', 'danse', 'sport', 'guide', 'accompagnateur', 'moniteur', 'instructeur', 'analyste', 'data scientist', 'statisticien', 'économiste', 'chercheur', 'scientifique', 'laborantin', 'pharmacien', 'préparateur', 'radiologiste', 'échographiste', 'technicien médical', 'ambulancier', 'secouriste', 'pompier', 'agent immobilier', 'promoteur', 'syndic', 'gestionnaire', 'administrateur', 'directeur', 'manager', 'chef de projet', 'coordinateur', 'superviseur', 'contrôleur', 'inspecteur', 'évaluateur', 'expert-comptable', 'fiscaliste', 'commissaire aux comptes', 'assureur', 'courtier', 'agent général', 'banquier', 'conseiller financier', 'trader', 'cambiste', 'caissier', 'guichetier', 'vendeur', 'commercial', 'télévendeur', 'VRP', 'représentant', 'agent commercial', 'négociateur', 'acheteur', 'approvisionneur', 'logisticien', 'magasinier', 'gestionnaire de stock', 'préparateur de commandes', 'cariste', 'grutier', 'conducteur', 'opérateur', 'machiniste', 'usineur', 'tourneur', 'fraiseur', 'ajusteur', 'monteur', 'assembleur', 'câbleur', 'électronicien', 'automaticien', 'roboticien', 'mécanicien auto', 'mécanicien moto', 'carrossier', 'peintre auto', 'tôlier', 'mécanicien poids lourds', 'mécanicien agricole', 'dépanneur auto', 'garagiste', 'vulcanisateur', 'climaticien', 'frigoriste', 'chauffagiste', 'sanitaire', 'zingueur'] },
-    { value: 'quincaillerie', label: 'Quincaillerie et Matériaux', icon: '🔨', description: 'Outils, matériaux, peintures, construction' },
+    { value: 'quincaillerie', label: 'Quincaillerie, Sanitaire & Électricité', icon: '🔨', description: 'Outils, matériaux, plomberie, électricité, construction', keywords: ['quincaillerie', 'outil', 'marteau', 'tournevis', 'clé', 'pince', 'scie', 'perceuse', 'visseuse', 'meuleuse', 'ponceuse', 'raboteuse', 'tronçonneuse', 'matériaux', 'ciment', 'sable', 'gravier', 'brique', 'parpaing', 'fer', 'acier', 'béton', 'mortier', 'chaux', 'plâtre', 'peinture', 'vernis', 'colle', 'mastic', 'silicone', 'joint', 'sanitaire', 'plomberie', 'robinet', 'robinetterie', 'mitigeur', 'mélangeur', 'douche', 'baignoire', 'lavabo', 'évier', 'WC', 'toilette', 'chasse', 'tuyau', 'canalisation', 'raccord', 'coude', 'té', 'vanne', 'électricité', 'électrique', 'câble', 'fil', 'interrupteur', 'prise', 'disjoncteur', 'tableau', 'lampe', 'ampoule', 'LED', 'néon', 'spot', 'applique', 'lustre', 'plafonnier', 'variateur', 'minuterie', 'détecteur', 'sonnette', 'multiprise', 'rallonge', 'domino', 'gaine', 'conduit'] },
     { value: 'telephone', label: 'Téléphones et Accessoires', icon: '📱', description: 'Smartphones, accessoires, coques, écouteurs' },
+    { value: 'demenagement', label: 'Déménagement et Transport', icon: '🚚', description: 'Services de déménagement, transport de meubles, garde-meuble' },
+    { value: 'cosmetique_parfum', label: 'Cosmétique et Parfums', icon: '✨', description: 'Parfums, huiles de beauté, produits cosmétiques, soins' },
+    { value: 'bijoux', label: 'Bijoux et Accessoires', icon: '💎', description: 'Bagues, colliers, bracelets, montres, accessoires précieux' },
+    { value: 'coiffure_beaute', label: 'Coiffure et Beauté', icon: '💇‍♀️', description: 'Mèches, extensions, perruques, tissages, accessoires capillaires' },
     { value: 'ticket_voyage', label: 'Tickets et Billets de Transport', icon: '🎫', description: 'Bus, train, avion avec sélection de place' },
     { value: 'ustensiles_cuisine', label: 'Ustensiles de Cuisine', icon: '🍴', description: 'Casseroles, poêles, couteaux, mixers, batterie cuisine' },
     { value: 'vetement', label: 'Vêtements et Prêt-à-Porter', icon: '👕', description: 'Vêtements, habits, articles de mode' },
@@ -99,31 +126,72 @@ const PRODUCT_TYPES = [
 
 const CURRENCIES = [
     { code: 'XAF', name: 'Franc CFA (XAF)', symbol: 'FCFA' },
-    { code: 'USD', name: 'Dollar US (USD)', symbol: '$' },
     { code: 'EUR', name: 'Euro (EUR)', symbol: '€' },
-    { code: 'GBP', name: 'Livre Sterling (GBP)', symbol: '£' },
-];
+    { code: 'USD', name: 'Dollar US (USD)', symbol: '$' },
+]; // ✅ Devises principales seulement
 
 // Modèles Excel par type
 const EXCEL_TEMPLATES: { [key: string]: string } = {
     immobilier_batiment: `Nom,Prix,Devise,Description,Superficie,Chambres,Salles de bain,Adresse,Quartier,Ville,GPS
-Appartement F4,50000000,XAF,Bel appartement moderne avec balcon,120,4,2,Rue des Jardins,Bonanjo,Douala,4.0511°N 9.7679°E`,
+Appartement F4,50000000,XAF,Bel appartement moderne avec balcon,120,4,2,Rue des Jardins,Bonanjo,Douala,4.0511°N 9.7679°E
+Villa R+2,150000000,XAF,Villa spacieuse avec piscine et jardin,300,6,4,Avenue Kennedy,Bonapriso,Douala,4.0604°N 9.7135°E
+Studio meublé,20000,EUR,Studio moderne tout équipé centre-ville,35,1,1,Av. de Gaulle,Akwa,Douala,4.0490°N 9.6976°E`,
+
     immobilier_terrain: `Nom,Prix,Devise,Description,Superficie,Adresse,Quartier,Ville,GPS
-Terrain 500m²,25000000,XAF,Terrain viabilisé prêt à construire,500,Zone industrielle,Logpom,Douala,4.0881°N 9.7043°E`,
+Terrain 500m²,25000000,XAF,Terrain viabilisé prêt à construire,500,Zone industrielle,Logpom,Douala,4.0881°N 9.7043°E
+Parcelle 1000m²,45000000,XAF,Terrain constructible bien situé,1000,Rue des Cocotiers,Akwa,Douala,4.0490°N 9.6976°E
+Terrain agricole 2ha,15000,USD,Terrain fertile zone rurale irrigation possible,20000,Route agricole,Ndogpassi,Douala,4.0792°N 9.7311°E`,
+
     automobile: `Nom,Prix,Devise,Description,Marque,Modèle,Année,Kilométrage,Couleur,Carburant,Transmission
-Toyota Corolla,8500000,XAF,Voiture en excellent état avec révision complète,Toyota,Corolla,2018,65000,Blanche,Essence,Automatique`,
-    aliments: `Nom,Prix,Devise,Description,Catégorie,Origine,Date expiration,Poids/Quantité,Conservation,Certification
-Tomates fraîches,500,XAF,Tomates rouges mûres et juteuses du terroir,Légumes,Locale,2024-02-01,1kg,Frais,Bio`,
+Toyota Corolla,8500000,XAF,Voiture en excellent état avec révision complète,Toyota,Corolla,2018,65000,Blanche,Essence,Automatique
+Honda Civic,7500000,XAF,Véhicule bien entretenu avec historique complet,Honda,Civic,2017,75000,Grise,Essence,Manuelle
+Mercedes Classe E,25000,EUR,Berline luxe full options cuir GPS,Mercedes,Classe E,2019,45000,Noire,Diesel,Automatique`,
+
+    electromenager: `Nom,Prix,Devise,Description,Type,Marque,Modèle,État,Garantie
+Réfrigérateur Samsung RT50,250000,XAF,Grand réfrigérateur double porte avec congélateur,Réfrigérateur,Samsung,RT50K6000S8,Neuf,2 ans
+Cuisinière 4 feux,125000,EUR,Cuisinière à gaz 4 feux avec four,Cuisinière,Beko,FSG62000DW,Neuf,1 an
+Micro-ondes LG,45000,XAF,Micro-ondes 800W avec grill et minuteur,Micro-ondes,LG,MS2535,Bon état,6 mois`,
+
     mobilier: `Nom,Prix,Devise,Description,Type,Matériau,Dimensions,Couleur,État
-Canapé 3 places,85000,XAF,Canapé confortable avec coussins moelleux,Salon,Tissu,200x90x85,Gris,Neuf`,
+Canapé 3 places,85000,XAF,Canapé confortable avec coussins moelleux,Salon,Tissu,200x90x85,Gris,Neuf
+Table à manger,65000,EUR,Table élégante pour 6 personnes,Salle à manger,Bois massif,180x90x75,Marron,Bon état
+Bureau moderne,45000,XAF,Bureau spacieux avec tiroirs de rangement,Bureau,Bois/Métal,120x60x75,Blanc,Neuf`,
+
+    decoration: `Nom,Prix,Devise,Description,Type,Style,Couleur,Dimensions,Matériau
+Tableau abstrait moderne,25000,XAF,Tableau peint à la main style contemporain,Tableau,Moderne,Multicolore,80x60 cm,Toile
+Lampe design scandinave,15000,EUR,Luminaire minimaliste avec abat-jour tissu,Luminaire,Scandinave,Blanc et bois,45 cm,Bois/Tissu
+Tapis berbère artisanal,45000,XAF,Tapis fait main motifs traditionnels,Tapis,Bohème,Beige et rouge,200x150 cm,Laine`,
+
+    assurance: `Nom,Prix,Devise,Description,Catégorie,Type,Compagnie,Couverture,Prime annuelle,Franchise,Durée,Bénéfices
+Assurance auto tous risques,180000,XAF,Protection complète pour véhicule,Non-Vie,Auto,AXA Cameroun,Dommages + Vol + Incendie + RC,180000,100000,1 an,Assistance 24h|Véhicule remplacement|Protection juridique
+Assurance vie temporaire,120000,USD,Assurance décès avec capital garanti,Vie,Temporaire décès,NSIA Assurances,Capital décès 50M|Invalidité permanente,120000,0,5 ans,Capital décès|Rente conjoint|Protection famille`,
+
+    aliments: `Nom,Prix,Devise,Description,Catégorie,Origine,Date expiration,Poids/Quantité,Conservation,Certification
+Tomates fraîches,500,XAF,Tomates rouges mûres et juteuses du terroir,Légumes,Locale,2024-02-01,1kg,Frais,Bio
+Poulet fermier,3500,XAF,Poulet élevé en plein air nourri au grain,Viande,Locale,2024-01-25,1.5kg,Frais,Halal
+Fromage Emmental,8,EUR,Fromage suisse qualité AOP,Produits laitiers,Importée,2024-03-15,500g,Frais,AOC`,
+
     livres_fournitures: `Nom,Prix,Devise,Description,Catégorie,Niveau,Matière,Auteur,Éditeur,ISBN,Année édition,État
-Mathématiques Terminale C,8500,XAF,Manuel complet avec exercices corrigés,Livre scolaire,Secondaire,Mathématiques,CIAM,Edicef,978-2-7531-0584-3,2023,Neuf`,
+Mathématiques Terminale C,8500,XAF,Manuel complet avec exercices corrigés,Livre scolaire,Secondaire,Mathématiques,CIAM,Edicef,978-2-7531-0584-3,2023,Neuf
+Roman Le Vieux Nègre,6,EUR,Roman classique littérature africaine,Roman,Tous,Français,Ferdinand Oyono,Pocket,978-2-266-14563-2,2006,Bon état`,
+
     quincaillerie: `Nom,Prix,Devise,Description,Catégorie,Marque,Référence,Unité,Stock disponible
-Marteau menuisier,5000,XAF,Marteau professionnel manche bois robuste,Outils,Stanley,STHT0-51309,Pièce,50`,
+Marteau menuisier,5000,XAF,Marteau professionnel manche bois robuste,Outils,Stanley,STHT0-51309,Pièce,50
+Peinture blanche 25L,35000,XAF,Peinture acrylique mat lessivable,Peinture,Dulux,25L-BL-MAT,Seau,20
+Câble électrique 2.5mm,8500,XAF,Câble pour installation électrique,Électricité,Nexans,H07V-U,m,500`,
+
     prestation_service: `Nom,Prix,Devise
-Portfolio Réalisation 1,0,XAF`,
+Portfolio Réalisation 1,0,XAF
+Portfolio Réalisation 2,0,XAF`,
+
+    coiffure_beaute: `Nom,Prix,Devise,Description,Type,Longueur,Couleur,Texture,Pose,Marque,Origine,Entretien,Durée,Type cheveux
+Mèches Brésiliennes 30cm,15000,XAF,Mèches naturelles de qualité supérieure,Extensions,30cm,Noir naturel,Lisse,Clip,Brazilian Hair,Brésilien,Shampoing doux,6-12 mois,100% Naturel
+Perruque Afro 40cm,25000,XAF,Perruque afro texture naturelle,Perruque,40cm,Châtain,Afro,Lace,Virgin Hair,Péruvien,Séchage naturel,1-2 ans,Remy Hair
+Tissage Indien 50cm,20000,XAF,Tissage indien remy de qualité,Tissage,50cm,Blond,Crépu,Tissage,Indian Hair,Indien,Éviter chaleur,3-6 mois,Virgin Hair`,
+
     autre: `Nom,Prix,Devise,Description
-Produit 1,10000,XAF,Description détaillée du produit`
+Produit divers,10000,XAF,Description détaillée du produit
+Article standard,50,USD,Description complète de l'article`
 };
 
 const ProductManager: React.FC<ProductManagerProps> = ({
@@ -216,7 +284,6 @@ const ProductManager: React.FC<ProductManagerProps> = ({
             toast({
                 title: "Erreur",
                 description: "Veuillez remplir le nom et le prix du produit",
-                variant: "destructive",
             });
             return;
         }
@@ -241,6 +308,20 @@ const ProductManager: React.FC<ProductManagerProps> = ({
     const handleFileUpload = (files: FileList, type: 'images' | 'videos') => {
         if (!editingProduct) return;
 
+        // ✅ Vérifier les limites AVANT traitement
+        const currentCount = editingProduct[type]?.length || 0;
+        const maxImages = 5; // Max 5 images par produit
+        const maxVideos = 1; // Max 1 vidéo par produit
+        const maxItems = type === 'images' ? maxImages : maxVideos;
+
+        if (currentCount >= maxItems) {
+            toast({
+                title: "Limite atteinte",
+                description: `Maximum ${maxItems} ${type === 'images' ? 'images' : 'vidéo'} par produit pour éviter l'erreur 413`,
+            });
+            return;
+        }
+
         const fileArray = Array.from(files);
         const validFiles = fileArray.filter(file => {
             if (type === 'images') {
@@ -248,13 +329,23 @@ const ProductManager: React.FC<ProductManagerProps> = ({
             } else {
                 return file.type.startsWith('video/');
             }
-        });
+        }).slice(0, maxItems - currentCount); // ✅ Limiter au nombre disponible
 
         if (validFiles.length === 0) {
             toast({
                 title: "Erreur",
                 description: `Aucun fichier ${type === 'images' ? 'image' : 'vidéo'} valide sélectionné`,
-                variant: "destructive",
+            });
+            return;
+        }
+
+        // ✅ Vérifier la taille des fichiers (images max 2MB, vidéos max 20MB)
+        const maxSizeMB = type === 'images' ? 2 : 20;
+        const oversizedFiles = validFiles.filter(file => file.size > maxSizeMB * 1024 * 1024);
+        if (oversizedFiles.length > 0) {
+            toast({
+                title: "Fichiers trop volumineux",
+                description: `Certains fichiers dépassent ${maxSizeMB} MB. Veuillez compresser vos ${type === 'images' ? 'images' : 'vidéos'}.`,
             });
             return;
         }
@@ -276,6 +367,11 @@ const ProductManager: React.FC<ProductManagerProps> = ({
                 ...prev!,
                 [type]: [...(prev![type] || []), ...base64Files]
             }));
+
+            toast({
+                title: `${type === 'images' ? 'Images' : 'Vidéo'} ajoutée(s)`,
+                description: `${validFiles.length} fichier(s) ajouté(s). Maximum ${maxItems} par produit.`,
+            });
         };
 
         processFiles();
@@ -431,32 +527,32 @@ const ProductManager: React.FC<ProductManagerProps> = ({
                                                 if (searchQuery.length === 0) return true;
                                                 const query = searchQuery.toLowerCase();
                                                 return type.label.toLowerCase().includes(query) ||
-                                                       type.description.toLowerCase().includes(query) ||
-                                                       (type.keywords && type.keywords.some(kw => kw.toLowerCase().includes(query)));
+                                                    type.description.toLowerCase().includes(query) ||
+                                                    ((type as any).keywords && (type as any).keywords.some((kw: string) => kw.toLowerCase().includes(query)));
                                             })
                                             .map((type) => (
-                                            <button
-                                                key={type.value}
-                                                onClick={() => handleSelectType(type.value as ProductType)}
-                                                className={`w-full p-4 rounded-lg border-2 text-left transition-all ${selectedType === type.value
-                                                    ? 'border-blue-500 bg-blue-50'
-                                                    : 'border-gray-200 hover:border-gray-300'
-                                                    }`}
-                                            >
-                                                <div className="flex items-center justify-between">
-                                                    <div className="flex items-center gap-3 flex-1">
-                                                        <span className="text-2xl">{type.icon}</span>
-                                                        <div className="flex-1">
-                                                            <div className="font-semibold text-gray-900">{type.label}</div>
-                                                            <div className="text-sm text-gray-600">{type.description}</div>
+                                                <button
+                                                    key={type.value}
+                                                    onClick={() => handleSelectType(type.value as ProductType)}
+                                                    className={`w-full p-4 rounded-lg border-2 text-left transition-all ${selectedType === type.value
+                                                        ? 'border-blue-500 bg-blue-50'
+                                                        : 'border-gray-200 hover:border-gray-300'
+                                                        }`}
+                                                >
+                                                    <div className="flex items-center justify-between">
+                                                        <div className="flex items-center gap-3 flex-1">
+                                                            <span className="text-2xl">{type.icon}</span>
+                                                            <div className="flex-1">
+                                                                <div className="font-semibold text-gray-900">{type.label}</div>
+                                                                <div className="text-sm text-gray-600">{type.description}</div>
+                                                            </div>
                                                         </div>
+                                                        {selectedType === type.value && (
+                                                            <Check className="w-5 h-5 text-blue-600" />
+                                                        )}
                                                     </div>
-                                                    {selectedType === type.value && (
-                                                        <Check className="w-5 h-5 text-blue-600" />
-                                                    )}
-                                                </div>
-                                            </button>
-                                        ))}
+                                                </button>
+                                            ))}
                                     </div>
                                 </div>
                             )}
@@ -532,7 +628,12 @@ const ProductManager: React.FC<ProductManagerProps> = ({
                                                             ...prev!,
                                                             name: e.target.value
                                                         }))}
-                                                        placeholder="Ex: Appartement F4"
+                                                        placeholder={selectedType === 'immobilier_batiment' ? 'Ex: Appartement F4' :
+                                                            selectedType === 'automobile' ? 'Ex: Toyota Corolla 2018' :
+                                                                selectedType === 'electromenager' ? 'Ex: Réfrigérateur Samsung' :
+                                                                    selectedType === 'assurance' ? 'Ex: Assurance auto tous risques' :
+                                                                        selectedType === 'quincaillerie' ? 'Ex: Marteau menuisier' :
+                                                                            'Ex: Nom du produit'}
                                                     />
                                                 </div>
                                                 <div>
@@ -953,9 +1054,6 @@ const ProductManager: React.FC<ProductManagerProps> = ({
                         }
                         setShowGPSModal(false);
                     }}
-                    currentLocation={selectedGPSLocation}
-                    title="Localisation du bien immobilier"
-                    allowZoneSelection={true}
                 />
             )}
 

@@ -11,6 +11,7 @@ import IncomingCallManager from './src/components/IncomingCallManager'; // ✅ N
 import PushNotificationManager from './src/components/PushNotificationManager'; // ✅ NOUVEAU: Gestionnaire de push notifications
 import { GlobalIAStatsProvider } from './src/components/intelligence/GlobalIAStats';
 import { AuthProvider } from './src/contexts/AuthContext';
+import { LanguageProvider } from './src/contexts/LanguageContext'; // ✅ NOUVEAU: Gestion multilingue
 import { LocationProvider } from './src/contexts/LocationContext';
 import { WebSocketProvider } from './src/contexts/WebSocketContext'; // ✅ NOUVEAU: WebSocket pour notifications temps réel
 import { theme } from './src/theme/theme';
@@ -30,24 +31,26 @@ export default function App() {
       <GestureHandlerRootView style={{ flex: 1 }}>
         <SafeAreaProvider>
           <PaperProvider theme={theme}>
-            <AuthProvider>
-              <WebSocketProvider>
-                {/* ✅ NOUVEAU: Gestionnaire d'appels entrants WebRTC */}
-                <IncomingCallManager />
-                <LocationProvider>
-                  <GlobalIAStatsProvider>
-                    {/* Tracking GPS automatique en arrière-plan */}
-                    <GPSTrackingManager />
-                    <StatusBar style="auto" />
-                    <NavigationContainer linking={linking}>
-                      {/* ✅ NOUVEAU: Gestionnaire de push notifications et appels - DÉPLACÉ À L'INTÉRIEUR */}
-                      <PushNotificationManager />
-                      <AppNavigator />
-                    </NavigationContainer>
-                  </GlobalIAStatsProvider>
-                </LocationProvider>
-              </WebSocketProvider>
-            </AuthProvider>
+            <LanguageProvider>
+              <AuthProvider>
+                <WebSocketProvider>
+                  {/* ✅ NOUVEAU: Gestionnaire d'appels entrants WebRTC */}
+                  <IncomingCallManager />
+                  <LocationProvider>
+                    <GlobalIAStatsProvider>
+                      {/* Tracking GPS automatique en arrière-plan */}
+                      <GPSTrackingManager />
+                      <StatusBar style="auto" />
+                      <NavigationContainer linking={linking}>
+                        {/* ✅ NOUVEAU: Gestionnaire de push notifications et appels - DÉPLACÉ À L'INTÉRIEUR */}
+                        <PushNotificationManager />
+                        <AppNavigator />
+                      </NavigationContainer>
+                    </GlobalIAStatsProvider>
+                  </LocationProvider>
+                </WebSocketProvider>
+              </AuthProvider>
+            </LanguageProvider>
           </PaperProvider>
         </SafeAreaProvider>
       </GestureHandlerRootView>

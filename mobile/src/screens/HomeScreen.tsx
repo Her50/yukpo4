@@ -5,23 +5,25 @@ import React, { useState } from 'react';
 import ReactNative from 'react-native';
 import ChatHistoryModal from '../components/ChatHistoryModal';
 import ChatInputMobile from '../components/ChatInputMobile';
+import LanguageSelector from '../components/LanguageSelector';
 import ModernBackground from '../components/ModernBackground';
 import ModernGPSModal from '../components/ModernGPSModal'; // Utiliser ModernGPSModal pour support des zones
 import NotificationHistoryModal from '../components/NotificationHistoryModal';
 import { SafeNativeView } from '../components/SafeNativeView';
 import UserAvatarMenu from '../components/UserAvatarMenu';
-import YukpoServicesQuickAccess from '../components/YukpoServicesQuickAccess';
 import { useAuth } from '../contexts/AuthContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import { apiGet } from '../services/api';
 import { genererSuggestionsService, rechercherServices } from '../services/yukpoclient';
 // @ts-ignore
 const { Alert, Dimensions, ScrollView, StyleSheet, Text, TouchableOpacity, View, KeyboardAvoidingView, Platform } = ReactNative;
 
-const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
 
 const HomeScreen: React.FC = () => {
     const navigation = ReactNavigation.useNavigation();
     const { user, refreshUser } = useAuth(); // ✅ Ajout de refreshUser
+    const { language, setLanguage, t } = useLanguage(); // ✅ Context de langue avec traduction
 
     // Debug pour vérifier les données utilisateur
     React.useEffect(() => {
@@ -42,6 +44,8 @@ const HomeScreen: React.FC = () => {
                     console.error('[HomeScreen] Erreur rafraîchissement solde:', err);
                 });
             }
+            // ✅ Forcer le bouton sur "Rechercher" à chaque retour sur HomeScreen
+            setIsCreateService(false);
         });
 
         return unsubscribe;
@@ -154,6 +158,56 @@ const HomeScreen: React.FC = () => {
             console.log('[HomeScreen] Type de result:', typeof result);
             console.log('[HomeScreen] Clés de result:', result ? Object.keys(result) : 'null');
 
+            // ✅ GESTION RECHERCHE PAR IMAGE AVEC FACTURATION
+            if (result?.search_method === 'image_ai' && result?.billing) {
+                const billing = result.billing;
+                console.log('[HomeScreen] 🖼️ Recherche par image IA détectée:', billing);
+
+                // Si facturation activée, afficher confirmation
+                if (billing.charged && billing.amount > 0) {
+                    Alert.alert(
+                        '🖼️ Recherche par Image',
+                        `${billing.results_found} résultat(s) trouvé(s)!\n\n` +
+                        `💰 Coût: ${billing.amount} ${billing.currency}\n` +
+                        `Nouveau solde: ${billing.new_balance} ${billing.currency}\n\n` +
+                        `${billing.message || ''}`,
+                        [
+                            {
+                                text: 'OK',
+                                onPress: () => {
+                                    console.log('[HomeScreen] Utilisateur a confirmé la facturation');
+                                }
+                            }
+                        ]
+                    );
+                } else if (billing.results_found === 0) {
+                    Alert.alert(
+                        '🖼️ Recherche par Image',
+                        'Aucun résultat trouvé pour cette image.\n\nRe recherche est gratuite.',
+                        [{ text: 'OK' }]
+                    );
+                }
+            }
+
+            // ✅ GESTION ERREUR SOLDE INSUFFISANT
+            if (result?.status === 'error' && result?.error === 'insufficient_credits') {
+                Alert.alert(
+                    '💳 Solde Insuffisant',
+                    result.message || 'Votre solde est insuffisant pour effectuer une recherche par image.',
+                    [
+                        {
+                            text: 'Recharger',
+                            onPress: () => (navigation as any).navigate('RechargeTokens')
+                        },
+                        {
+                            text: 'Annuler',
+                            style: 'cancel'
+                        }
+                    ]
+                );
+                return; // Arrêter ici
+            }
+
             // Rediriger vers ResultatBesoin avec les résultats
             // CORRECTION: Parser correctement la structure de réponse du backend
             let results = [];
@@ -201,13 +255,18 @@ const HomeScreen: React.FC = () => {
                 resultsCount: results.length,
                 type: 'recherche_besoin',
                 hasResults: results.length > 0,
-                firstResult: results[0] || null
+                firstResult: results[0] || null,
+                isImageSearch: result?.search_method === 'image_ai',
+                billing: result?.billing || null
             });
 
             (navigation as any).navigate('ResultatBesoin', {
                 results: results,
                 type: 'recherche_besoin',
-                suggestion: result
+                suggestion: result,
+                imageSearch: result?.search_method === 'image_ai',
+                imageAnalysis: result?.image_analysis || null,
+                billing: result?.billing || null
             });
 
             console.log('[HomeScreen] Navigation déclenchée ✅');
@@ -359,6 +418,13 @@ const HomeScreen: React.FC = () => {
                             />
                         </View>
 
+                        {/* 🌍 Sélecteur de langue (juste après l'avatar) */}
+                        <LanguageSelector
+                            selectedLanguage={language}
+                            onLanguageChange={setLanguage}
+                            compact={true}
+                        />
+
                         {/* Titre principal centré */}
                         <View style={styles.brandTitleContainer}>
                             <Text style={styles.brandTitleCompact}>
@@ -408,7 +474,7 @@ const HomeScreen: React.FC = () => {
                             >
                                 <Text style={[styles.modeButtonIconModern, !isCreateService && styles.modeButtonIconActiveModern]}>🔍</Text>
                                 <Text style={[styles.modeButtonTextModern, !isCreateService && styles.modeButtonTextActiveModern]}>
-                                    Rechercher
+                                    {t('search.find')}
                                 </Text>
                             </TouchableOpacity>
 
@@ -418,7 +484,7 @@ const HomeScreen: React.FC = () => {
                             >
                                 <Text style={[styles.modeButtonIconModern, isCreateService && styles.modeButtonIconActiveModern]}>➕</Text>
                                 <Text style={[styles.modeButtonTextModern, isCreateService && styles.modeButtonTextActiveModern]}>
-                                    Créer un service
+                                    {t('search.create')}
                                 </Text>
                             </TouchableOpacity>
                         </View>
@@ -428,19 +494,12 @@ const HomeScreen: React.FC = () => {
                             onSubmit={handleSubmit}
                             loading={loading}
                             placeholder={isCreateService
-                                ? "Décrivez le service que vous proposez..."
-                                : "Décrivez ce que vous recherchez..."}
+                                ? t('search.create')
+                                : t('search.placeholder')}
                             onGPSPress={() => setShowGPSModal(true)}
                             showSendButton={true}
                         />
 
-                        {/* Services Yukpo - Accès rapide aux fonctionnalités futures */}
-                        <YukpoServicesQuickAccess
-                            onServicePress={(serviceId) => {
-                                // @ts-ignore
-                                navigation.navigate('YukpoService', { serviceId });
-                            }}
-                        />
 
                     </View>
                 </ScrollView>
@@ -523,6 +582,7 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: '#FFFFFF',
+        minHeight: height, // ✅ Assure que le conteneur occupe au moins toute la hauteur de l'écran
     },
     // ✅ ENTÊTE FIXE - Reste visible au scroll
     fixedHeader: {
@@ -566,9 +626,10 @@ const styles = StyleSheet.create({
     },
     scrollContent: {
         flexGrow: 1,
-        paddingHorizontal: 20,
-        paddingTop: 12, // ✅ Réduit pour remonter le contenu
+        paddingHorizontal: width > 400 ? 24 : 16, // ✅ Padding adaptatif selon la largeur
+        paddingTop: 20,
         paddingBottom: 100,
+        minHeight: height * 0.8, // ✅ Hauteur minimale adaptative
     },
     header: {
         marginBottom: 8,
@@ -577,18 +638,19 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        gap: 12,
+        gap: 8,
     },
     avatarContainer: {
         flex: 0,
         width: 44,
         height: 44,
     },
-    // ✅ Conteneur pour le titre centré
+    // ✅ Conteneur pour le titre centré - ÉQUILIBRÉ
     brandTitleContainer: {
         flex: 1,
         alignItems: 'center',
         justifyContent: 'center',
+        marginHorizontal: 8, // Espacement pour équilibrer
     },
     headerTop: {
         flexDirection: 'row',
@@ -663,6 +725,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         gap: 8,
         flex: 0,
+        minWidth: 88, // Largeur fixe pour équilibrer avec l'avatar
     },
     headerButtonCompact: {
         width: 40,
@@ -947,11 +1010,12 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        paddingVertical: 14,
-        paddingHorizontal: 20,
+        paddingVertical: width > 400 ? 18 : 14, // ✅ Padding adaptatif
+        paddingHorizontal: width > 400 ? 28 : 20, // ✅ Padding adaptatif
         borderRadius: 12,
         gap: 8,
         backgroundColor: 'transparent',
+        minHeight: width > 400 ? 60 : 52, // ✅ Hauteur adaptative
     },
     modeButtonActiveModern: {
         backgroundColor: '#10B981', // Vert moderne

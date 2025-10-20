@@ -15,12 +15,20 @@ interface ChatMessage {
     editable: boolean;
     edited?: boolean;
     editedAt?: Date;
+    reply_to?: {
+        id: string;
+        sender_name: string;
+        content: string;
+        content_type: string;
+    };
 }
 
 interface MediaData {
     images?: string[];
     audio?: string;
     documents?: string[];
+    mentioned_users?: number[];
+    reply_to_id?: string;
 }
 
 interface UseWebSocketChatReturn {
@@ -235,7 +243,14 @@ export const useWebSocketChat = (serviceId: number, prestataireId: number, userI
                 timestamp: new Date(),
                 status: 'sent',
                 type,
-                editable: true
+                editable: true,
+                // ✅ NOUVEAU: Inclure la réponse si présente
+                reply_to: mediaData?.reply_to_id ? {
+                    id: mediaData.reply_to_id,
+                    sender_name: '', // Sera rempli par le backend
+                    content: '',
+                    content_type: 'text'
+                } : undefined
             };
             messagesToSend.push(textMessage);
         }
@@ -258,7 +273,10 @@ export const useWebSocketChat = (serviceId: number, prestataireId: number, userI
                     // ✅ NOUVEAU: Inclure les URLs des médias
                     audioUrl: msg.audioUrl,
                     imageUrl: msg.imageUrl,
-                    fileUrl: msg.fileUrl
+                    fileUrl: msg.fileUrl,
+                    // ✅ NOUVEAU: Inclure les mentions et réponses
+                    mentioned_users: mediaData?.mentioned_users,
+                    reply_to_id: mediaData?.reply_to_id
                 }));
             } else {
                 console.warn('⚠️ [useWebSocketChat] WebSocket non connecté, envoi via API REST');
@@ -274,7 +292,10 @@ export const useWebSocketChat = (serviceId: number, prestataireId: number, userI
                         // ✅ NOUVEAU: Inclure les médias
                         audioUrl: msg.audioUrl,
                         imageUrl: msg.imageUrl,
-                        fileUrl: msg.fileUrl
+                        fileUrl: msg.fileUrl,
+                        // ✅ NOUVEAU: Inclure les mentions et réponses
+                        mentioned_users: mediaData?.mentioned_users,
+                        reply_to_id: mediaData?.reply_to_id
                     });
 
                     if (response.success) {
