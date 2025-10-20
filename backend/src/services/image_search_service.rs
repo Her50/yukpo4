@@ -242,7 +242,7 @@ impl ImageSearchService {
 
     /// Générer une signature vectorielle d'image (192 dimensions)
     /// Cette fonction devrait être appelée lors de l'upload d'une image
-    pub fn generate_image_signature(image_data: &[u8]) -> AppResult<Vec<f32>> {
+    pub fn generate_image_signature(_image_data: &[u8]) -> AppResult<Vec<f32>> {
         // TODO: Implémenter la génération de signature avec une bibliothèque comme `image`
         // Pour l'instant, retourne une signature factice
         log_warn("[ImageSearch] Génération de signature factice - À implémenter");
