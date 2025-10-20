@@ -155,8 +155,8 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
     // ✅ NOUVEAU: Routes pour recherche avec planifications
     let scheduling_search_routes_merged = crate::routes::scheduling_search_routes::scheduling_search_routes(state.clone());
     
-    // ⚠️ TEMPORAIREMENT DÉSACTIVÉ - service_team nécessite réécriture complète avec sqlx::Row + .bind()
-    // let service_team_routes_merged = crate::routes::service_team_routes::service_team_routes(state.clone());
+    // ✅ NOUVEAU: Routes pour gestion d'équipe des services
+    let service_team_routes_merged = crate::routes::service_team_routes::service_team_routes(state.clone());
     
     // ✅ NOUVEAU: Routes pour recherche par image
     let image_search_routes_merged = crate::routes::image_search_routes::image_search_routes(state.clone());
