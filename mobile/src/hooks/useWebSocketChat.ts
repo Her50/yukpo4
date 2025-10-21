@@ -29,6 +29,15 @@ interface MediaData {
     documents?: string[];
     mentioned_users?: number[];
     reply_to_id?: string;
+    reply_to?: {
+        id: string;
+        sender_name: string;
+        content: string;
+        content_type: string;
+        imageUrl?: string;
+        audioUrl?: string;
+        fileUrl?: string;
+    };
 }
 
 interface UseWebSocketChatReturn {

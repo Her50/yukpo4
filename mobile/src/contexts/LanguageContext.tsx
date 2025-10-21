@@ -29,19 +29,78 @@ interface LanguageProviderProps {
 export const LanguageProvider: React.FC<LanguageProviderProps> = ({ children }) => {
     const [language, setLanguageState] = useState<string>('fr');
 
-    // Charger la langue sauvegardée au démarrage
+    // Charger la langue sauvegardée au démarrage ou détecter via GPS
     useEffect(() => {
-        loadSavedLanguage();
+        loadOrDetectLanguage();
     }, []);
 
-    const loadSavedLanguage = async () => {
+    const loadOrDetectLanguage = async () => {
         try {
             const savedLanguage = await AsyncStorage.getItem('app_language');
+            const isFirstLaunch = await AsyncStorage.getItem('app_first_launch');
+
             if (savedLanguage) {
+                // Langue déjà sauvegardée
                 setLanguageState(savedLanguage);
+            } else if (isFirstLaunch === null) {
+                // Première installation - Détecter la langue via GPS
+                console.log('[Language] Première installation - Détection langue via GPS...');
+                await detectLanguageFromGPS();
+                await AsyncStorage.setItem('app_first_launch', 'false');
             }
         } catch (error) {
             console.error('Erreur chargement langue:', error);
+        }
+    };
+
+    const detectLanguageFromGPS = async () => {
+        try {
+            const Location = require('expo-location');
+            const { status } = await Location.requestForegroundPermissionsAsync();
+
+            if (status === 'granted') {
+                const location = await Location.getCurrentPositionAsync({
+                    accuracy: Location.Accuracy.High,
+                });
+
+                const { latitude, longitude } = location.coords;
+                console.log('[Language] GPS:', latitude, longitude);
+
+                // Déterminer la langue basée sur la région
+                let detectedLang = 'fr'; // Par défaut français
+
+                // Afrique francophone (Cameroun, Côte d'Ivoire, Sénégal, etc.)
+                if (latitude >= -5 && latitude <= 20 && longitude >= -18 && longitude <= 20) {
+                    detectedLang = 'fr';
+                }
+                // Afrique anglophone (Nigeria, Ghana, Kenya, etc.)
+                else if (latitude >= -5 && latitude <= 15 && longitude >= 0 && longitude <= 45) {
+                    detectedLang = 'en';
+                }
+                // Europe francophone
+                else if (latitude >= 42 && latitude <= 51 && longitude >= -5 && longitude <= 10) {
+                    detectedLang = 'fr';
+                }
+                // Europe anglophone
+                else if (latitude >= 50 && latitude <= 60 && longitude >= -8 && longitude <= 2) {
+                    detectedLang = 'en';
+                }
+                // Amérique du Nord
+                else if (latitude >= 25 && latitude <= 50 && longitude >= -125 && longitude <= -65) {
+                    detectedLang = 'en';
+                }
+                // Amérique Latine
+                else if (latitude >= -55 && latitude <= 25 && longitude >= -120 && longitude <= -35) {
+                    detectedLang = 'es';
+                }
+
+                console.log('[Language] Langue détectée via GPS:', detectedLang);
+                await setLanguage(detectedLang);
+            }
+        } catch (error) {
+            console.error('[Language] Erreur détection GPS:', error);
+            // Langue par défaut si erreur
+            await setLanguage('fr');
         }
     };
 
@@ -76,14 +135,31 @@ const translations: { [lang: string]: { [key: string]: string } } = {
         'home.title': 'Accueil',
         'home.welcome': 'Bienvenue',
         'services.title': 'Mes Services',
-        'activity.title': 'Mon Activité',
+        'activity.title': 'Boutique | Prestations',
+        'activity.list_view': 'Liste',
+        'activity.dashboard_view': 'Dashboard',
+        'activity.all_services': 'Tous mes services',
         'interactions.title': 'Mes Interactions',
         'account.title': 'Mon Compte',
+
+        // Périodes
+        'period.7d': '7j',
+        'period.30d': '30j',
+        'period.90d': '90j',
 
         // Recherche
         'search.placeholder': 'Rechercher un service...',
         'search.create': 'Créer un service',
         'search.find': 'Rechercher',
+        'search.results': 'Résultats de recherche',
+
+        // Pages
+        'settings.title': 'Paramètres',
+        'contact.title': 'Contact',
+        'services.catalog': 'Catalogue Services',
+        'tokens.recharge': 'Recharger Tokens',
+        'tokens.history': 'Historique de Consommation',
+        'service.shared': 'Service partagé',
 
         // Boutons
         'button.create': 'Créer',
@@ -185,20 +261,69 @@ const translations: { [lang: string]: { [key: string]: string } } = {
         'language.hindi': 'हिन्दी',
         'language.arabic': 'العربية',
         'language.russian': 'Русский',
+
+        // Publicité
+        'publicite.create': 'Créer une publicité',
+        'publicite.title': 'Titre de la publicité',
+        'publicite.description': 'Description',
+        'publicite.products': 'Produits à promouvoir',
+        'publicite.videos': 'Vidéos promotionnelles',
+        'publicite.duration': 'Durée (jours)',
+        'publicite.zone': 'Zone géographique',
+        'publicite.zone.select': 'Sélectionner la zone d\'impact',
+        'publicite.zone.local': 'Local (ville)',
+        'publicite.zone.regional': 'Régional (pays)',
+        'publicite.zone.international': 'International',
+        'publicite.pricing': 'Tarification',
+        'publicite.price_per_day': '500 FCFA par jour',
+        'publicite.total_cost': 'Coût total',
+        'publicite.summary': 'Résumé et facturation',
+        'publicite.products_selected': 'Produits sélectionnés',
+        'publicite.videos_added': 'Vidéos ajoutées',
+        'publicite.balance_insufficient': 'Solde insuffisant',
+        'publicite.recharge_account': 'Veuillez recharger votre compte',
+        'publicite.create_success': 'Publicité créée avec succès',
+        'publicite.dashboard': 'Tableau de bord publicité',
+        'publicite.analytics': 'Analytics',
+        'publicite.views': 'Vues',
+        'publicite.clicks': 'Clics',
+        'publicite.conversion_rate': 'Taux de conversion',
+        'publicite.active': 'Active',
+        'publicite.expired': 'Expirée',
+        'publicite.promotions': 'Promotions du moment',
+        'publicite.selected_for_you': 'Sélectionnées pour vous',
+        'publicite.discover_offers': 'Découvrez les offres',
     },
     en: {
         // Navigation
         'home.title': 'Home',
         'home.welcome': 'Welcome',
         'services.title': 'My Services',
-        'activity.title': 'My Activity',
+        'activity.title': 'Shop | Services',
+        'activity.list_view': 'List',
+        'activity.dashboard_view': 'Dashboard',
+        'activity.all_services': 'All my services',
         'interactions.title': 'My Interactions',
         'account.title': 'My Account',
+
+        // Periods
+        'period.7d': '7d',
+        'period.30d': '30d',
+        'period.90d': '90d',
 
         // Search
         'search.placeholder': 'Search for a service...',
         'search.create': 'Create a service',
         'search.find': 'Search',
+        'search.results': 'Search results',
+
+        // Pages
+        'settings.title': 'Settings',
+        'contact.title': 'Contact',
+        'services.catalog': 'Services Catalog',
+        'tokens.recharge': 'Recharge Tokens',
+        'tokens.history': 'Consumption History',
+        'service.shared': 'Shared service',
 
         // Buttons
         'button.create': 'Create',
@@ -300,20 +425,69 @@ const translations: { [lang: string]: { [key: string]: string } } = {
         'language.hindi': 'हिन्दी',
         'language.arabic': 'العربية',
         'language.russian': 'Русский',
+
+        // Advertisement
+        'publicite.create': 'Create advertisement',
+        'publicite.title': 'Advertisement title',
+        'publicite.description': 'Description',
+        'publicite.products': 'Products to promote',
+        'publicite.videos': 'Promotional videos',
+        'publicite.duration': 'Duration (days)',
+        'publicite.zone': 'Geographic zone',
+        'publicite.zone.select': 'Select impact zone',
+        'publicite.zone.local': 'Local (city)',
+        'publicite.zone.regional': 'Regional (country)',
+        'publicite.zone.international': 'International',
+        'publicite.pricing': 'Pricing',
+        'publicite.price_per_day': '500 FCFA per day',
+        'publicite.total_cost': 'Total cost',
+        'publicite.summary': 'Summary and billing',
+        'publicite.products_selected': 'Products selected',
+        'publicite.videos_added': 'Videos added',
+        'publicite.balance_insufficient': 'Insufficient balance',
+        'publicite.recharge_account': 'Please recharge your account',
+        'publicite.create_success': 'Advertisement created successfully',
+        'publicite.dashboard': 'Advertisement dashboard',
+        'publicite.analytics': 'Analytics',
+        'publicite.views': 'Views',
+        'publicite.clicks': 'Clicks',
+        'publicite.conversion_rate': 'Conversion rate',
+        'publicite.active': 'Active',
+        'publicite.expired': 'Expired',
+        'publicite.promotions': 'Current promotions',
+        'publicite.selected_for_you': 'Selected for you',
+        'publicite.discover_offers': 'Discover offers',
     },
     es: {
         // Navigation
         'home.title': 'Inicio',
         'home.welcome': 'Bienvenido',
         'services.title': 'Mis Servicios',
-        'activity.title': 'Mi Actividad',
+        'activity.title': 'Tienda | Servicios',
+        'activity.list_view': 'Lista',
+        'activity.dashboard_view': 'Panel',
+        'activity.all_services': 'Todos mis servicios',
         'interactions.title': 'Mis Interacciones',
         'account.title': 'Mi Cuenta',
+
+        // Períodos
+        'period.7d': '7d',
+        'period.30d': '30d',
+        'period.90d': '90d',
 
         // Search
         'search.placeholder': 'Buscar un servicio...',
         'search.create': 'Crear un servicio',
         'search.find': 'Buscar',
+        'search.results': 'Resultados de búsqueda',
+
+        // Pages
+        'settings.title': 'Configuración',
+        'contact.title': 'Contacto',
+        'services.catalog': 'Catálogo de Servicios',
+        'tokens.recharge': 'Recargar Tokens',
+        'tokens.history': 'Historial de Consumo',
+        'service.shared': 'Servicio compartido',
 
         // Buttons
         'button.create': 'Crear',
@@ -415,13 +589,48 @@ const translations: { [lang: string]: { [key: string]: string } } = {
         'language.hindi': 'हिन्दी',
         'language.arabic': 'العربية',
         'language.russian': 'Русский',
+
+        // Publicidad
+        'publicite.create': 'Crear anuncio',
+        'publicite.title': 'Título del anuncio',
+        'publicite.description': 'Descripción',
+        'publicite.products': 'Productos a promover',
+        'publicite.videos': 'Videos promocionales',
+        'publicite.duration': 'Duración (días)',
+        'publicite.zone': 'Zona geográfica',
+        'publicite.zone.select': 'Seleccionar zona de impacto',
+        'publicite.zone.local': 'Local (ciudad)',
+        'publicite.zone.regional': 'Regional (país)',
+        'publicite.zone.international': 'Internacional',
+        'publicite.pricing': 'Precio',
+        'publicite.price_per_day': '500 FCFA por día',
+        'publicite.total_cost': 'Costo total',
+        'publicite.summary': 'Resumen y facturación',
+        'publicite.products_selected': 'Productos seleccionados',
+        'publicite.videos_added': 'Videos agregados',
+        'publicite.balance_insufficient': 'Saldo insuficiente',
+        'publicite.recharge_account': 'Por favor recargue su cuenta',
+        'publicite.create_success': 'Anuncio creado exitosamente',
+        'publicite.dashboard': 'Panel de anuncios',
+        'publicite.analytics': 'Analíticas',
+        'publicite.views': 'Vistas',
+        'publicite.clicks': 'Clics',
+        'publicite.conversion_rate': 'Tasa de conversión',
+        'publicite.active': 'Activo',
+        'publicite.expired': 'Expirado',
+        'publicite.promotions': 'Promociones actuales',
+        'publicite.selected_for_you': 'Seleccionadas para ti',
+        'publicite.discover_offers': 'Descubre ofertas',
     },
     zh: {
         // Navigation
         'home.title': '首页',
         'home.welcome': '欢迎',
         'services.title': '我的服务',
-        'activity.title': '我的活动',
+        'activity.title': '商店 | 服务',
+        'activity.list_view': '列表',
+        'activity.dashboard_view': '仪表板',
+        'activity.all_services': '所有服务',
         'interactions.title': '我的互动',
         'account.title': '我的账户',
 
@@ -530,13 +739,48 @@ const translations: { [lang: string]: { [key: string]: string } } = {
         'language.hindi': 'हिन्दी',
         'language.arabic': 'العربية',
         'language.russian': 'Русский',
+
+        // Advertisement
+        'publicite.create': '创建广告',
+        'publicite.title': '广告标题',
+        'publicite.description': '描述',
+        'publicite.products': '推广产品',
+        'publicite.videos': '促销视频',
+        'publicite.duration': '持续时间（天）',
+        'publicite.zone': '地理区域',
+        'publicite.zone.select': '选择影响区域',
+        'publicite.zone.local': '本地（城市）',
+        'publicite.zone.regional': '区域（国家）',
+        'publicite.zone.international': '国际',
+        'publicite.pricing': '定价',
+        'publicite.price_per_day': '每天500非洲法郎',
+        'publicite.total_cost': '总成本',
+        'publicite.summary': '摘要和账单',
+        'publicite.products_selected': '已选产品',
+        'publicite.videos_added': '已添加视频',
+        'publicite.balance_insufficient': '余额不足',
+        'publicite.recharge_account': '请充值账户',
+        'publicite.create_success': '广告创建成功',
+        'publicite.dashboard': '广告仪表板',
+        'publicite.analytics': '分析',
+        'publicite.views': '浏览量',
+        'publicite.clicks': '点击',
+        'publicite.conversion_rate': '转化率',
+        'publicite.active': '活跃',
+        'publicite.expired': '已过期',
+        'publicite.promotions': '当前促销',
+        'publicite.selected_for_you': '为您精选',
+        'publicite.discover_offers': '发现优惠',
     },
     hi: {
         // Navigation
         'home.title': 'होम',
         'home.welcome': 'स्वागत',
         'services.title': 'मेरी सेवाएं',
-        'activity.title': 'मेरी गतिविधि',
+        'activity.title': 'दुकान | सेवाएं',
+        'activity.list_view': 'सूची',
+        'activity.dashboard_view': 'डैशबोर्ड',
+        'activity.all_services': 'सभी सेवाएं',
         'interactions.title': 'मेरे इंटरैक्शन',
         'account.title': 'मेरा खाता',
 
@@ -645,13 +889,48 @@ const translations: { [lang: string]: { [key: string]: string } } = {
         'language.hindi': 'हिन्दी',
         'language.arabic': 'العربية',
         'language.russian': 'Русский',
+
+        // Advertisement
+        'publicite.create': 'विज्ञापन बनाएं',
+        'publicite.title': 'विज्ञापन शीर्षक',
+        'publicite.description': 'विवरण',
+        'publicite.products': 'प्रचार उत्पाद',
+        'publicite.videos': 'प्रचार वीडियो',
+        'publicite.duration': 'अवधि (दिन)',
+        'publicite.zone': 'भौगोलिक क्षेत्र',
+        'publicite.zone.select': 'प्रभाव क्षेत्र चुनें',
+        'publicite.zone.local': 'स्थानीय (शहर)',
+        'publicite.zone.regional': 'क्षेत्रीय (देश)',
+        'publicite.zone.international': 'अंतर्राष्ट्रीय',
+        'publicite.pricing': 'मूल्य निर्धारण',
+        'publicite.price_per_day': 'प्रति दिन 500 FCFA',
+        'publicite.total_cost': 'कुल लागत',
+        'publicite.summary': 'सारांश और बिलिंग',
+        'publicite.products_selected': 'चयनित उत्पाद',
+        'publicite.videos_added': 'जोड़े गए वीडियो',
+        'publicite.balance_insufficient': 'अपर्याप्त शेष',
+        'publicite.recharge_account': 'कृपया अपना खाता रिचार्ज करें',
+        'publicite.create_success': 'विज्ञापन सफलतापूर्वक बनाया गया',
+        'publicite.dashboard': 'विज्ञापन डैशबोर्ड',
+        'publicite.analytics': 'विश्लेषण',
+        'publicite.views': 'दृश्य',
+        'publicite.clicks': 'क्लिक',
+        'publicite.conversion_rate': 'रूपांतरण दर',
+        'publicite.active': 'सक्रिय',
+        'publicite.expired': 'समाप्त',
+        'publicite.promotions': 'वर्तमान प्रचार',
+        'publicite.selected_for_you': 'आपके लिए चयनित',
+        'publicite.discover_offers': 'ऑफ़र खोजें',
     },
     ar: {
         // Navigation
         'home.title': 'الرئيسية',
         'home.welcome': 'مرحبا',
         'services.title': 'خدماتي',
-        'activity.title': 'نشاطي',
+        'activity.title': 'متجر | خدمات',
+        'activity.list_view': 'قائمة',
+        'activity.dashboard_view': 'لوحة التحكم',
+        'activity.all_services': 'جميع الخدمات',
         'interactions.title': 'تفاعلاتي',
         'account.title': 'حسابي',
 
@@ -760,13 +1039,48 @@ const translations: { [lang: string]: { [key: string]: string } } = {
         'language.hindi': 'हिन्दी',
         'language.arabic': 'العربية',
         'language.russian': 'Русский',
+
+        // Advertisement
+        'publicite.create': 'إنشاء إعلان',
+        'publicite.title': 'عنوان الإعلان',
+        'publicite.description': 'الوصف',
+        'publicite.products': 'المنتجات للترويج',
+        'publicite.videos': 'فيديوهات ترويجية',
+        'publicite.duration': 'المدة (أيام)',
+        'publicite.zone': 'المنطقة الجغرافية',
+        'publicite.zone.select': 'اختر منطقة التأثير',
+        'publicite.zone.local': 'محلي (مدينة)',
+        'publicite.zone.regional': 'إقليمي (بلد)',
+        'publicite.zone.international': 'دولي',
+        'publicite.pricing': 'التسعير',
+        'publicite.price_per_day': '500 فرنك أفريقي في اليوم',
+        'publicite.total_cost': 'التكلفة الإجمالية',
+        'publicite.summary': 'الملخص والفواتير',
+        'publicite.products_selected': 'المنتجات المحددة',
+        'publicite.videos_added': 'الفيديوهات المضافة',
+        'publicite.balance_insufficient': 'رصيد غير كاف',
+        'publicite.recharge_account': 'يرجى إعادة شحن حسابك',
+        'publicite.create_success': 'تم إنشاء الإعلان بنجاح',
+        'publicite.dashboard': 'لوحة الإعلانات',
+        'publicite.analytics': 'التحليلات',
+        'publicite.views': 'المشاهدات',
+        'publicite.clicks': 'النقرات',
+        'publicite.conversion_rate': 'معدل التحويل',
+        'publicite.active': 'نشط',
+        'publicite.expired': 'منتهي',
+        'publicite.promotions': 'العروض الحالية',
+        'publicite.selected_for_you': 'مختارة لك',
+        'publicite.discover_offers': 'اكتشف العروض',
     },
     ru: {
         // Navigation
         'home.title': 'Главная',
         'home.welcome': 'Добро пожаловать',
         'services.title': 'Мои Услуги',
-        'activity.title': 'Моя Активность',
+        'activity.title': 'Магазин | Услуги',
+        'activity.list_view': 'Список',
+        'activity.dashboard_view': 'Панель',
+        'activity.all_services': 'Все услуги',
         'interactions.title': 'Мои Взаимодействия',
         'account.title': 'Мой Аккаунт',
 
@@ -875,6 +1189,38 @@ const translations: { [lang: string]: { [key: string]: string } } = {
         'language.hindi': 'हिन्दी',
         'language.arabic': 'العربية',
         'language.russian': 'Русский',
+
+        // Advertisement
+        'publicite.create': 'Создать рекламу',
+        'publicite.title': 'Заголовок рекламы',
+        'publicite.description': 'Описание',
+        'publicite.products': 'Продукты для продвижения',
+        'publicite.videos': 'Рекламные видео',
+        'publicite.duration': 'Продолжительность (дни)',
+        'publicite.zone': 'Географическая зона',
+        'publicite.zone.select': 'Выберите зону воздействия',
+        'publicite.zone.local': 'Локальная (город)',
+        'publicite.zone.regional': 'Региональная (страна)',
+        'publicite.zone.international': 'Международная',
+        'publicite.pricing': 'Ценообразование',
+        'publicite.price_per_day': '500 FCFA в день',
+        'publicite.total_cost': 'Общая стоимость',
+        'publicite.summary': 'Резюме и выставление счетов',
+        'publicite.products_selected': 'Выбранные продукты',
+        'publicite.videos_added': 'Добавленные видео',
+        'publicite.balance_insufficient': 'Недостаточно средств',
+        'publicite.recharge_account': 'Пожалуйста, пополните счет',
+        'publicite.create_success': 'Реклама успешно создана',
+        'publicite.dashboard': 'Панель рекламы',
+        'publicite.analytics': 'Аналитика',
+        'publicite.views': 'Просмотры',
+        'publicite.clicks': 'Клики',
+        'publicite.conversion_rate': 'Коэффициент конверсии',
+        'publicite.active': 'Активна',
+        'publicite.expired': 'Истекла',
+        'publicite.promotions': 'Текущие акции',
+        'publicite.selected_for_you': 'Выбрано для вас',
+        'publicite.discover_offers': 'Откройте предложения',
     },
 };
 

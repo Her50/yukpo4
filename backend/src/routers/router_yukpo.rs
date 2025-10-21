@@ -161,6 +161,9 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
     // ✅ NOUVEAU: Routes pour recherche par image
     let image_search_routes_merged = crate::routes::image_search_routes::image_search_routes(state.clone());
     
+    // ✅ NOUVEAU: Routes pour système de publicité
+    let publicite_routes_merged = crate::routes::publicite_routes::publicite_routes(state.pool.clone());
+    
     // Combinaison des routes
     public_routes
         .merge(protected_routes)
@@ -170,6 +173,7 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .merge(scheduling_search_routes_merged)
         .merge(service_team_routes_merged)
         .merge(image_search_routes_merged)
+        .nest("/api/publicites", publicite_routes_merged)
         .with_state(state)
 }
 
@@ -446,12 +450,43 @@ async fn handle_direct_search(
         gps_zone, search_radius_km));
     
     // Recherche directe sans détection d'intention, avec filtrage GPS
-    let (result, tokens_consumed) = rechercher_besoin_direct(
+    let (mut result, tokens_consumed) = rechercher_besoin_direct(
         Some(user.id), 
         &user_text,
         gps_zone,
         search_radius_km
     ).await?;
+    
+    // ✅ ENRICHIR avec données de publicité et booster scores
+    if let Some(resultats) = result.get_mut("resultats").and_then(|r| r.as_array_mut()) {
+        let user_coords = gps_zone.and_then(|gps_str| {
+            let coords: Vec<&str> = gps_str.split(',').collect();
+            if coords.len() == 2 {
+                Some((
+                    coords[0].trim().parse::<f64>().ok()?,
+                    coords[1].trim().parse::<f64>().ok()?
+                ))
+            } else {
+                None
+            }
+        });
+
+        if let Err(e) = crate::services::publicite_search_service::PubliciteSearchService::enrich_search_results_with_promotion(
+            &_state.pg,
+            resultats,
+            user_coords
+        ).await {
+            log_error(&format!("[DIRECT_SEARCH] Erreur enrichissement promotion: {}", e));
+            // Continuer même si erreur
+        }
+
+        // Re-trier les résultats après enrichissement (produits en promo d'abord)
+        resultats.sort_by(|a, b| {
+            let score_a = a.get("score").and_then(|s| s.as_f64()).unwrap_or(0.0);
+            let score_b = b.get("score").and_then(|s| s.as_f64()).unwrap_or(0.0);
+            score_b.partial_cmp(&score_a).unwrap_or(std::cmp::Ordering::Equal)
+        });
+    }
     
     // Construire la réponse
     let response = serde_json::json!({

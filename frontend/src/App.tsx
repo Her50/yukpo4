@@ -31,10 +31,12 @@ import LocationDisplayDemo from '@/components/location/LocationDisplayDemo';
 import ExternalServiceShare from '@/components/sharing/ExternalServiceShare';
 import AboutPage from '@/pages/AboutPage';
 import ContactPage from '@/pages/ContactPage';
+import CreatePublicitePage from '@/pages/CreatePublicitePage';
 import Dashboard from '@/pages/Dashboard';
 import MesServices from '@/pages/dashboard/MesServices';
 import MonProfil from '@/pages/dashboard/MonProfil';
 import DashboardPrestataire from '@/pages/DashboardPrestataire';
+import PubliciteDashboardPage from '@/pages/PubliciteDashboardPage';
 import RechargeTokensPage from '@/pages/RechargeTokensPage';
 import ResultatBesoin from '@/pages/ResultatBesoin';
 import ServicesInteragisPage from '@/pages/ServicesInteragisPage';
@@ -112,6 +114,17 @@ function App() {
                 <Route path="/dashboard/profil" element={
                   <RequireAuth>
                     <MonProfil />
+                  </RequireAuth>
+                } />
+                {/* 📣 Publicité routes */}
+                <Route path="/creer-publicite" element={
+                  <RequireAuth>
+                    <CreatePublicitePage />
+                  </RequireAuth>
+                } />
+                <Route path="/dashboard-publicite" element={
+                  <RequireAuth>
+                    <PubliciteDashboardPage />
                   </RequireAuth>
                 } />
                 {/* ���� R+�sultats de recherche */}

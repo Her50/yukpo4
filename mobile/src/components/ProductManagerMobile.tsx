@@ -31,10 +31,90 @@ import ModernGPSModal from './ModernGPSModal';
 
 const { width } = Dimensions.get('window');
 
+// ✅ Fonction de normalisation sans accents pour la recherche
+const normalizeText = (text: string): string => {
+    return text
+        .toLowerCase()
+        .normalize('NFD') // Décompose les caractères accentués
+        .replace(/[\u0300-\u036f]/g, '') // Supprime les accents
+        .trim();
+};
+
+// ✅ DONNÉES PROFESSIONNELLES POUR LISTES DÉROULANTES
+
+// Marques automobiles professionnelles
+const MARQUES_AUTOMOBILES = [
+    'Toyota', 'Mercedes-Benz', 'BMW', 'Audi', 'Volkswagen', 'Ford', 'Honda',
+    'Nissan', 'Hyundai', 'Kia', 'Peugeot', 'Renault', 'Citroën', 'Mazda',
+    'Chevrolet', 'Jeep', 'Land Rover', 'Porsche', 'Ferrari', 'Lamborghini',
+    'Bentley', 'Rolls-Royce', 'Aston Martin', 'McLaren', 'Bugatti', 'Tesla',
+    'Volvo', 'Subaru', 'Mitsubishi', 'Suzuki', 'Isuzu', 'Daihatsu', 'Fiat',
+    'Alfa Romeo', 'Maserati', 'Jaguar', 'Mini', 'Smart', 'Seat', 'Skoda',
+    '🆕 Autre (ajouter)'
+];
+
+// Types de transmission
+const TYPES_TRANSMISSION = ['Manuelle', 'Automatique', 'Semi-automatique', 'CVT', '🆕 Autre'];
+
+// Types de carburant
+const TYPES_CARBURANT = ['Essence', 'Diesel', 'Hybride', 'Électrique', 'GPL', 'Bioéthanol', '🆕 Autre'];
+
+// États du véhicule
+const ETATS_VEHICULE = ['Neuf', 'Occasion - Excellent état', 'Occasion - Bon état', 'Occasion - État moyen', 'À réparer'];
+
+// Types immobiliers
+const TYPES_IMMOBILIERS = [
+    'Appartement', 'Maison individuelle', 'Villa', 'Studio', 'Duplex', 'Triplex',
+    'Penthouse', 'Loft', 'Chambre', 'Bureau', 'Local commercial', 'Entrepôt',
+    'Terrain nu', 'Terrain viabilisé', 'Immeuble', '🆕 Autre'
+];
+
+// Statuts immobiliers
+const STATUTS_IMMOBILIERS = ['À vendre', 'À louer', 'Location courte durée', 'Colocation'];
+
+// Niveaux d'ameublement
+const NIVEAUX_AMEUBLEMENT = ['Non meublé', 'Semi-meublé', 'Meublé', 'Meublé + équipé'];
+
+// Compagnies de voyage
+const COMPAGNIES_VOYAGE = [
+    'Camair-Co', 'Ethiopian Airlines', 'Kenya Airways', 'Air France', 'Turkish Airlines',
+    'Brussels Airlines', 'Royal Air Maroc', 'Emirates', 'Qatar Airways', 'Asky Airlines',
+    'CEIBA Intercontinental', 'Cronos Airlines', 'Toumai Air Tchad', '🆕 Autre'
+];
+
+// Classes de voyage
+const CLASSES_VOYAGE = ['Économique', 'Économique Premium', 'Affaires', 'Première classe'];
+
+// Types de véhicules de transport
+const TYPES_VEHICULES_TRANSPORT = ['Bus', 'Minibus', 'Van', 'Avion', 'Train', 'Bateau'];
+
+// Catégories hôtelières
+const CATEGORIES_HOTEL = ['Sans étoile', '1 étoile', '2 étoiles', '3 étoiles', '4 étoiles', '5 étoiles', 'Palace'];
+
+// Équipements hôteliers
+const EQUIPEMENTS_HOTEL = [
+    'Wi-Fi gratuit', 'Climatisation', 'Piscine', 'Restaurant', 'Bar', 'Salle de sport',
+    'Spa', 'Parking gratuit', 'Service chambre 24h/24', 'Blanchisserie', 'Navette aéroport',
+    'Salle de conférence', 'Coffre-fort', 'Réception 24h/24'
+];
+
+// Types d'hébergement
+const TYPES_HEBERGEMENT = [
+    'Hôtel', 'Hôtel-Boutique', 'Resort', 'Auberge', 'Motel',
+    'Chambre d\'hôte', 'Gîte', 'Pension', 'Apart-hôtel', '🆕 Autre'
+];
+
+// Types de chambres hôtel
+const TYPES_CHAMBRES_HOTEL = [
+    'Chambre Simple', 'Chambre Double', 'Chambre Twin', 'Suite Junior',
+    'Suite', 'Suite Présidentielle', 'Chambre Familiale', 'Studio'
+];
+
 // Types de produits disponibles
 type ProductType =
     | 'immobilier_batiment'
     | 'immobilier_terrain'
+    | 'hotellerie' // ✅ NOUVEAU : Hôtels, Chambres d'hôtes, Auberges
     | 'automobile'
     | 'ticket_voyage'
     | 'covoiturage'
@@ -72,11 +152,12 @@ interface Product {
     description?: string;
     images?: string[]; // Tableau d'images en Base64
     videos?: string[]; // Tableau de vidéos en Base64
-    logo?: string; // Logo du produit/marque
-    banner?: string; // Bannière promotionnelle
 
     // Champs spécifiques par type
     // Immobilier
+    typeImmobilier?: string; // Type (Appartement, Villa, etc.)
+    statutImmobilier?: string; // À vendre, À louer, etc.
+    ameublement?: string; // Meublé, Semi-meublé, etc.
     superficie?: string;
     nbChambres?: string;
     nbSallesBain?: string;
@@ -88,6 +169,7 @@ interface Product {
     // Automobile
     marque?: string;
     modele?: string;
+    etatVehicule?: string; // Neuf, Occasion, etc.
     annee?: string;
     kilometrage?: string;
     couleur?: string;
@@ -95,12 +177,28 @@ interface Product {
     transmission?: string;
 
     // Ticket de voyage
+    compagnie?: string; // Compagnie de transport
+    typeVehiculeTransport?: string; // Bus, Avion, Train, etc.
+    classeVoyage?: string; // Économique, Affaires, etc.
     depart?: string;
     destination?: string;
     dateDepart?: string;
     heureDepart?: string;
     numeroPlace?: string;
+    escales?: string; // Villes d'escale
     compagnieTransport?: string;
+
+    // Hôtellerie (NOUVEAU)
+    categorieHotel?: string; // 1-5 étoiles, Palace
+    typeHebergement?: string; // Hôtel, Chambre d'hôte, Auberge, etc.
+    nbChambresHotel?: string; // Nombre total de chambres
+    typesChambre?: string[]; // Simple, Double, Suite, etc.
+    prixParNuit?: string; // Prix minimum par nuit
+    equipementsHotel?: string[]; // Wi-Fi, Piscine, Restaurant, etc.
+    servicesHotel?: string; // Petit-déjeuner, Room service, etc.
+    adresseHotel?: string;
+    villeHotel?: string;
+    gpsHotel?: string;
 
     // Covoiturage
     pointDepart?: string;
@@ -283,7 +381,7 @@ interface Product {
     rdvEnLigne?: boolean;
     banqueSang?: boolean; // Disponibilité d'une banque de sang
     prestationsMedicales?: string[]; // Liste des prestations médicales disponibles
-    planningHebdomadaire?: { [key: string]: { debut: string; fin: string; permanent: boolean } }; // Planning par prestation
+    planningHebdomadaire?: { [key: string]: { jours?: string; moment?: string; debut?: string; fin?: string; permanent?: boolean } }; // Planning par prestation avec jours et moment
 
     // Déménagement
     typeDemenagement?: string; // Local, National, International
@@ -349,8 +447,9 @@ const PRODUCT_TYPES = [
     { value: 'electricite', label: 'Électricité et Éclairage', icon: '⚡', color: '#FFC107', description: 'Câbles, prises, interrupteurs, lampes, disjoncteurs' },
     { value: 'electromenager', label: 'Électroménager Domestique', icon: '🔌', color: '#14B8A6', description: 'Frigos, fours, machines à laver, micro-ondes' },
     { value: 'hopital_clinique', label: 'Établissements de Santé', icon: '🏥', color: '#DC2626', description: 'Hôpitaux, cliniques, centres médicaux, spécialités' },
+    { value: 'hotellerie', label: 'Hôtellerie et Hébergement', icon: '🏨', color: '#EC4899', description: 'Hôtels, chambres d\'hôtes, auberges, gîtes, réservations' },
     { value: 'image_son', label: 'Image et Son', icon: '📺', color: '#9C27B0', description: 'TV, home cinéma, enceintes, projecteurs, systèmes audio' },
-    { value: 'immobilier_batiment', label: 'Immobilier - Bâtiments', icon: '🏢', color: '#3B82F6', description: 'Appartements, villas, maisons, immeubles' },
+    { value: 'immobilier_batiment', label: 'Immobilier - Vente/Location', icon: '🏢', color: '#3B82F6', description: 'Appartements, villas, maisons à vendre ou louer (long terme)' },
     { value: 'immobilier_terrain', label: 'Immobilier - Terrains', icon: '🏞️', color: '#10B981', description: 'Terrains constructibles, parcelles, lots' },
     { value: 'jouets_enfants', label: 'Jouets et Articles pour Enfants', icon: '🧸', color: '#FF69B4', description: 'Jouets éducatifs, peluches, jeux, puzzles, livres enfants' },
     { value: 'livres_fournitures', label: 'Livres et Fournitures Scolaires', icon: '📚', color: '#7C3AED', description: 'Manuels, livres, cahiers, stylos, fournitures' },
@@ -393,6 +492,11 @@ Mercedes Classe E,25000,EUR,Berline luxe full options cuir GPS,Mercedes,Classe E
 Douala-Yaoundé,3500,XAF,Trajet direct avec arrêt climatisation,Douala,Yaoundé,2024-01-15,08:00,A12,Touristique Express
 Yaoundé-Bafoussam,5000,XAF,Bus VIP grand confort avec collation,Yaoundé,Bafoussam,2024-01-16,14:00,B05,Central Voyages
 Paris-Londres,150,EUR,Train Eurostar confort 1ère classe,Paris,Londres,2024-02-10,10:30,12,Eurostar`,
+
+    hotellerie: `Nom,Prix par nuit,Devise,Description,Type,Catégorie,Nombre de chambres,Adresse,Ville,GPS
+Hôtel Sawa,45000,XAF,Hôtel moderne centre-ville avec restaurant et piscine,Hôtel,3 étoiles,35,Boulevard de la Liberté,Douala,4.0511°N 9.7679°E
+Auberge du Lac,25000,XAF,Auberge chaleureuse au bord du lac avec vue panoramique,Auberge,2 étoiles,12,Route du Lac,Yaoundé,3.8480°N 11.5021°E
+Resort Paradise,150,EUR,Resort 5 étoiles luxe avec spa et plage privée,Resort,5 étoiles,85,Front de mer,Kribi,2.9483°N 9.9086°E`,
 
     covoiturage: `Nom,Prix,Devise,Description,Départ,Arrivée,Date,Heure,Places disponibles
 Trajet Douala-Yaoundé,2500,XAF,Voiture confortable et sécurisée avec climatisation,Bonanjo,Centre-ville Yaoundé,2024-01-15,06:00,3
@@ -558,6 +662,46 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
     const devises = ['XAF', 'EUR', 'USD']; // ✅ Devises principales : FCFA, Euro, Dollar
 
+    // ✅ Fonction pour obtenir le label adapté selon la catégorie
+    const getProductNameLabel = (type: ProductType | null): string => {
+        if (!type) return 'Nom du produit';
+
+        const labels: Record<ProductType, string> = {
+            immobilier_batiment: 'Titre du bien',
+            immobilier_terrain: 'Titre du terrain',
+            hotellerie: 'Nom de l\'établissement',
+            automobile: 'Désignation du véhicule',
+            ticket_voyage: 'Trajet / Titre du billet',
+            covoiturage: 'Titre du trajet',
+            vetement: 'Nom de l\'article',
+            chaussure: 'Nom de la chaussure',
+            electromenager: 'Nom de l\'appareil',
+            image_son: 'Nom de l\'appareil',
+            telephone: 'Modèle du téléphone',
+            ordinateur: 'Modèle de l\'ordinateur',
+            mobilier: 'Nom du meuble',
+            decoration: 'Nom de l\'article déco',
+            ustensiles_cuisine: 'Nom de l\'ustensile',
+            pieces_auto: 'Référence de la pièce',
+            pieces_industrielles: 'Référence de la pièce',
+            jouets_enfants: 'Nom du jouet',
+            aliments: 'Nom du produit',
+            livres_fournitures: 'Titre / Nom',
+            quincaillerie: 'Nom du produit',
+            prestation_service: 'Nom de la prestation',
+            assurance: 'Type d\'assurance',
+            pharmacie: 'Nom de la pharmacie',
+            hopital_clinique: 'Nom de l\'établissement',
+            demenagement: 'Titre de l\'offre',
+            cosmetique_parfum: 'Nom du produit',
+            bijoux: 'Nom du bijou',
+            coiffure_beaute: 'Nom du produit',
+            autre: 'Nom du produit'
+        };
+
+        return labels[type] || 'Nom du produit';
+    };
+
     // Fonction pour obtenir un exemple de nom de produit selon le type
     const getProductNamePlaceholder = (type: ProductType | null): string => {
         if (!type) return 'Ex: Nom du produit';
@@ -565,6 +709,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
         const placeholders: Record<ProductType, string> = {
             immobilier_batiment: 'Ex: Appartement F4',
             immobilier_terrain: 'Ex: Terrain 500m²',
+            hotellerie: 'Ex: Hôtel Sawa - Chambre Double',
             automobile: 'Ex: Toyota Corolla 2018',
             ticket_voyage: 'Ex: Douala-Yaoundé',
             covoiturage: 'Ex: Trajet Douala-Yaoundé',
@@ -1201,8 +1346,16 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
     };
 
     const handleAddProduct = () => {
-        if (!newProduct.nom?.trim() || !newProduct.prix?.trim()) {
-            Alert.alert('Erreur', 'Veuillez remplir le nom et le prix du produit');
+        // Validation : Nom obligatoire, Prix obligatoire sauf pour pharmacie/hopital_clinique
+        const isPriceRequired = selectedType !== 'pharmacie' && selectedType !== 'hopital_clinique' && selectedType !== 'prestation_service' && selectedType !== 'assurance';
+
+        if (!newProduct.nom?.trim()) {
+            Alert.alert('Erreur', 'Veuillez remplir le nom du produit');
+            return;
+        }
+
+        if (isPriceRequired && !newProduct.prix?.trim()) {
+            Alert.alert('Erreur', 'Veuillez remplir le prix du produit');
             return;
         }
 
@@ -1278,8 +1431,68 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
             case 'immobilier_batiment':
                 return (
                     <>
+                        {/* Type d'immobilier */}
                         <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Superficie (m²)</Text>
+                            <Text style={styles.fieldLabel}>Type d'immobilier <Text style={styles.required}>*</Text></Text>
+                            <View style={styles.pickerButtons}>
+                                {TYPES_IMMOBILIERS.map((type) => (
+                                    <TouchableOpacity
+                                        key={type}
+                                        style={[
+                                            styles.pickerButton,
+                                            newProduct.typeImmobilier === type && styles.pickerButtonActive
+                                        ]}
+                                        onPress={() => {
+                                            if (type === '🆕 Autre') {
+                                                Alert.prompt(
+                                                    'Nouveau type',
+                                                    'Entrez le type d\'immobilier :',
+                                                    (text) => {
+                                                        if (text && text.trim()) {
+                                                            TYPES_IMMOBILIERS.splice(TYPES_IMMOBILIERS.length - 1, 0, text.trim());
+                                                            setNewProduct({ ...newProduct, typeImmobilier: text.trim() });
+                                                        }
+                                                    }
+                                                );
+                                            } else {
+                                                setNewProduct({ ...newProduct, typeImmobilier: type });
+                                            }
+                                        }}
+                                    >
+                                        <Text style={[
+                                            styles.pickerButtonText,
+                                            newProduct.typeImmobilier === type && styles.pickerButtonTextActive
+                                        ]}>{type}</Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        </View>
+
+                        {/* Statut (Vente/Location) */}
+                        <View style={styles.fieldContainer}>
+                            <Text style={styles.fieldLabel}>Statut <Text style={styles.required}>*</Text></Text>
+                            <View style={styles.pickerButtons}>
+                                {STATUTS_IMMOBILIERS.map((statut) => (
+                                    <TouchableOpacity
+                                        key={statut}
+                                        style={[
+                                            styles.pickerButton,
+                                            newProduct.statutImmobilier === statut && styles.pickerButtonActive
+                                        ]}
+                                        onPress={() => setNewProduct({ ...newProduct, statutImmobilier: statut })}
+                                    >
+                                        <Text style={[
+                                            styles.pickerButtonText,
+                                            newProduct.statutImmobilier === statut && styles.pickerButtonTextActive
+                                        ]}>{statut}</Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        </View>
+
+                        {/* Superficie */}
+                        <View style={styles.fieldContainer}>
+                            <Text style={styles.fieldLabel}>Superficie (m²) <Text style={styles.required}>*</Text></Text>
                             <NativeInput
                                 placeholder="Ex: 120"
                                 value={newProduct.superficie || ''}
@@ -1288,9 +1501,11 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 keyboardType="numeric"
                             />
                         </View>
+
+                        {/* Chambres et Salles de bain */}
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Nombre de chambres</Text>
+                                <Text style={styles.fieldLabel}>Chambres <Text style={styles.required}>*</Text></Text>
                                 <NativeInput
                                     placeholder="Ex: 4"
                                     value={newProduct.nbChambres || ''}
@@ -1310,8 +1525,32 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 />
                             </View>
                         </View>
+
+                        {/* Niveau d'ameublement */}
                         <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Adresse</Text>
+                            <Text style={styles.fieldLabel}>Ameublement</Text>
+                            <View style={styles.pickerButtons}>
+                                {NIVEAUX_AMEUBLEMENT.map((niveau) => (
+                                    <TouchableOpacity
+                                        key={niveau}
+                                        style={[
+                                            styles.pickerButton,
+                                            newProduct.ameublement === niveau && styles.pickerButtonActive
+                                        ]}
+                                        onPress={() => setNewProduct({ ...newProduct, ameublement: niveau })}
+                                    >
+                                        <Text style={[
+                                            styles.pickerButtonText,
+                                            newProduct.ameublement === niveau && styles.pickerButtonTextActive
+                                        ]}>{niveau}</Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        </View>
+
+                        {/* Adresse complète */}
+                        <View style={styles.fieldContainer}>
+                            <Text style={styles.fieldLabel}>Adresse <Text style={styles.required}>*</Text></Text>
                             <NativeInput
                                 placeholder="Ex: Rue des Jardins"
                                 value={newProduct.adresse || ''}
@@ -1319,6 +1558,8 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 style={styles.fieldInput}
                             />
                         </View>
+
+                        {/* Quartier et Ville */}
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <Text style={styles.fieldLabel}>Quartier</Text>
@@ -1330,7 +1571,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Ville</Text>
+                                <Text style={styles.fieldLabel}>Ville <Text style={styles.required}>*</Text></Text>
                                 <NativeInput
                                     placeholder="Ex: Douala"
                                     value={newProduct.ville || ''}
@@ -1440,29 +1681,82 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
             case 'automobile':
                 return (
                     <>
-                        <View style={styles.fieldRow}>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Marque</Text>
-                                <NativeInput
-                                    placeholder="Ex: Toyota"
-                                    value={newProduct.marque || ''}
-                                    onChangeText={(text) => setNewProduct({ ...newProduct, marque: text })}
-                                    style={styles.fieldInput}
-                                />
-                            </View>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Modèle</Text>
-                                <NativeInput
-                                    placeholder="Ex: Corolla"
-                                    value={newProduct.modele || ''}
-                                    onChangeText={(text) => setNewProduct({ ...newProduct, modele: text })}
-                                    style={styles.fieldInput}
-                                />
+                        {/* Marque avec liste déroulante */}
+                        <View style={styles.fieldContainer}>
+                            <Text style={styles.fieldLabel}>Marque <Text style={styles.required}>*</Text></Text>
+                            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.scrollablePicker}>
+                                <View style={styles.pickerButtons}>
+                                    {MARQUES_AUTOMOBILES.map((marque) => (
+                                        <TouchableOpacity
+                                            key={marque}
+                                            style={[
+                                                styles.pickerButton,
+                                                newProduct.marque === marque && styles.pickerButtonActive
+                                            ]}
+                                            onPress={() => {
+                                                if (marque === '🆕 Autre (ajouter)') {
+                                                    Alert.prompt(
+                                                        'Nouvelle marque',
+                                                        'Entrez le nom de la marque :',
+                                                        (text) => {
+                                                            if (text && text.trim()) {
+                                                                MARQUES_AUTOMOBILES.splice(MARQUES_AUTOMOBILES.length - 1, 0, text.trim());
+                                                                setNewProduct({ ...newProduct, marque: text.trim() });
+                                                            }
+                                                        }
+                                                    );
+                                                } else {
+                                                    setNewProduct({ ...newProduct, marque });
+                                                }
+                                            }}
+                                        >
+                                            <Text style={[
+                                                styles.pickerButtonText,
+                                                newProduct.marque === marque && styles.pickerButtonTextActive
+                                            ]}>{marque}</Text>
+                                        </TouchableOpacity>
+                                    ))}
+                                </View>
+                            </ScrollView>
+                        </View>
+
+                        {/* Modèle */}
+                        <View style={styles.fieldContainer}>
+                            <Text style={styles.fieldLabel}>Modèle <Text style={styles.required}>*</Text></Text>
+                            <NativeInput
+                                placeholder="Ex: Corolla, Civic, Classe E..."
+                                value={newProduct.modele || ''}
+                                onChangeText={(text) => setNewProduct({ ...newProduct, modele: text })}
+                                style={styles.fieldInput}
+                            />
+                        </View>
+
+                        {/* État du véhicule */}
+                        <View style={styles.fieldContainer}>
+                            <Text style={styles.fieldLabel}>État du véhicule <Text style={styles.required}>*</Text></Text>
+                            <View style={styles.pickerButtons}>
+                                {ETATS_VEHICULE.map((etat) => (
+                                    <TouchableOpacity
+                                        key={etat}
+                                        style={[
+                                            styles.pickerButton,
+                                            newProduct.etatVehicule === etat && styles.pickerButtonActive
+                                        ]}
+                                        onPress={() => setNewProduct({ ...newProduct, etatVehicule: etat })}
+                                    >
+                                        <Text style={[
+                                            styles.pickerButtonText,
+                                            newProduct.etatVehicule === etat && styles.pickerButtonTextActive
+                                        ]}>{etat}</Text>
+                                    </TouchableOpacity>
+                                ))}
                             </View>
                         </View>
+
+                        {/* Année et Kilométrage */}
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Année</Text>
+                                <Text style={styles.fieldLabel}>Année <Text style={styles.required}>*</Text></Text>
                                 <NativeInput
                                     placeholder="Ex: 2018"
                                     value={newProduct.annee || ''}
@@ -1472,7 +1766,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Kilométrage</Text>
+                                <Text style={styles.fieldLabel}>Kilométrage (km)</Text>
                                 <NativeInput
                                     placeholder="Ex: 65000"
                                     value={newProduct.kilometrage || ''}
@@ -1482,34 +1776,90 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 />
                             </View>
                         </View>
+
+                        {/* Type de carburant */}
+                        <View style={styles.fieldContainer}>
+                            <Text style={styles.fieldLabel}>Type de carburant <Text style={styles.required}>*</Text></Text>
+                            <View style={styles.pickerButtons}>
+                                {TYPES_CARBURANT.map((carburant) => (
+                                    <TouchableOpacity
+                                        key={carburant}
+                                        style={[
+                                            styles.pickerButton,
+                                            newProduct.typeCarburant === carburant && styles.pickerButtonActive
+                                        ]}
+                                        onPress={() => {
+                                            if (carburant === '🆕 Autre') {
+                                                Alert.prompt(
+                                                    'Nouveau carburant',
+                                                    'Entrez le type de carburant :',
+                                                    (text) => {
+                                                        if (text && text.trim()) {
+                                                            TYPES_CARBURANT.splice(TYPES_CARBURANT.length - 1, 0, text.trim());
+                                                            setNewProduct({ ...newProduct, typeCarburant: text.trim() });
+                                                        }
+                                                    }
+                                                );
+                                            } else {
+                                                setNewProduct({ ...newProduct, typeCarburant: carburant });
+                                            }
+                                        }}
+                                    >
+                                        <Text style={[
+                                            styles.pickerButtonText,
+                                            newProduct.typeCarburant === carburant && styles.pickerButtonTextActive
+                                        ]}>{carburant}</Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        </View>
+
+                        {/* Transmission */}
+                        <View style={styles.fieldContainer}>
+                            <Text style={styles.fieldLabel}>Transmission <Text style={styles.required}>*</Text></Text>
+                            <View style={styles.pickerButtons}>
+                                {TYPES_TRANSMISSION.map((transmission) => (
+                                    <TouchableOpacity
+                                        key={transmission}
+                                        style={[
+                                            styles.pickerButton,
+                                            newProduct.transmission === transmission && styles.pickerButtonActive
+                                        ]}
+                                        onPress={() => {
+                                            if (transmission === '🆕 Autre') {
+                                                Alert.prompt(
+                                                    'Nouvelle transmission',
+                                                    'Entrez le type de transmission :',
+                                                    (text) => {
+                                                        if (text && text.trim()) {
+                                                            TYPES_TRANSMISSION.splice(TYPES_TRANSMISSION.length - 1, 0, text.trim());
+                                                            setNewProduct({ ...newProduct, transmission: text.trim() });
+                                                        }
+                                                    }
+                                                );
+                                            } else {
+                                                setNewProduct({ ...newProduct, transmission });
+                                            }
+                                        }}
+                                    >
+                                        <Text style={[
+                                            styles.pickerButtonText,
+                                            newProduct.transmission === transmission && styles.pickerButtonTextActive
+                                        ]}>{transmission}</Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        </View>
+
+                        {/* Couleur */}
                         <View style={styles.fieldContainer}>
                             <Text style={styles.fieldLabel}>Couleur</Text>
                             <NativeInput
-                                placeholder="Ex: Blanche"
+                                placeholder="Ex: Blanche, Noire, Grise..."
                                 value={newProduct.couleur || ''}
                                 onChangeText={(text) => setNewProduct({ ...newProduct, couleur: text })}
                                 style={styles.fieldInput}
                             />
-                        </View>
-                        <View style={styles.fieldRow}>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Type de carburant</Text>
-                                <NativeInput
-                                    placeholder="Ex: Essence"
-                                    value={newProduct.typeCarburant || ''}
-                                    onChangeText={(text) => setNewProduct({ ...newProduct, typeCarburant: text })}
-                                    style={styles.fieldInput}
-                                />
-                            </View>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Transmission</Text>
-                                <NativeInput
-                                    placeholder="Ex: Automatique"
-                                    value={newProduct.transmission || ''}
-                                    onChangeText={(text) => setNewProduct({ ...newProduct, transmission: text })}
-                                    style={styles.fieldInput}
-                                />
-                            </View>
                         </View>
                     </>
                 );
@@ -1517,9 +1867,93 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
             case 'ticket_voyage':
                 return (
                     <>
+                        {/* Compagnie de voyage */}
+                        <View style={styles.fieldContainer}>
+                            <Text style={styles.fieldLabel}>Compagnie de transport <Text style={styles.required}>*</Text></Text>
+                            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.scrollablePicker}>
+                                <View style={styles.pickerButtons}>
+                                    {COMPAGNIES_VOYAGE.map((compagnie) => (
+                                        <TouchableOpacity
+                                            key={compagnie}
+                                            style={[
+                                                styles.pickerButton,
+                                                newProduct.compagnie === compagnie && styles.pickerButtonActive
+                                            ]}
+                                            onPress={() => {
+                                                if (compagnie === '🆕 Autre') {
+                                                    Alert.prompt(
+                                                        'Nouvelle compagnie',
+                                                        'Entrez le nom de la compagnie :',
+                                                        (text) => {
+                                                            if (text && text.trim()) {
+                                                                COMPAGNIES_VOYAGE.splice(COMPAGNIES_VOYAGE.length - 1, 0, text.trim());
+                                                                setNewProduct({ ...newProduct, compagnie: text.trim() });
+                                                            }
+                                                        }
+                                                    );
+                                                } else {
+                                                    setNewProduct({ ...newProduct, compagnie });
+                                                }
+                                            }}
+                                        >
+                                            <Text style={[
+                                                styles.pickerButtonText,
+                                                newProduct.compagnie === compagnie && styles.pickerButtonTextActive
+                                            ]}>{compagnie}</Text>
+                                        </TouchableOpacity>
+                                    ))}
+                                </View>
+                            </ScrollView>
+                        </View>
+
+                        {/* Type de véhicule */}
+                        <View style={styles.fieldContainer}>
+                            <Text style={styles.fieldLabel}>Type de véhicule <Text style={styles.required}>*</Text></Text>
+                            <View style={styles.pickerButtons}>
+                                {TYPES_VEHICULES_TRANSPORT.map((typeVehicule) => (
+                                    <TouchableOpacity
+                                        key={typeVehicule}
+                                        style={[
+                                            styles.pickerButton,
+                                            newProduct.typeVehiculeTransport === typeVehicule && styles.pickerButtonActive
+                                        ]}
+                                        onPress={() => setNewProduct({ ...newProduct, typeVehiculeTransport: typeVehicule })}
+                                    >
+                                        <Text style={[
+                                            styles.pickerButtonText,
+                                            newProduct.typeVehiculeTransport === typeVehicule && styles.pickerButtonTextActive
+                                        ]}>{typeVehicule}</Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        </View>
+
+                        {/* Classe de voyage */}
+                        <View style={styles.fieldContainer}>
+                            <Text style={styles.fieldLabel}>Classe <Text style={styles.required}>*</Text></Text>
+                            <View style={styles.pickerButtons}>
+                                {CLASSES_VOYAGE.map((classe) => (
+                                    <TouchableOpacity
+                                        key={classe}
+                                        style={[
+                                            styles.pickerButton,
+                                            newProduct.classeVoyage === classe && styles.pickerButtonActive
+                                        ]}
+                                        onPress={() => setNewProduct({ ...newProduct, classeVoyage: classe })}
+                                    >
+                                        <Text style={[
+                                            styles.pickerButtonText,
+                                            newProduct.classeVoyage === classe && styles.pickerButtonTextActive
+                                        ]}>{classe}</Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        </View>
+
+                        {/* Départ et Destination */}
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Départ</Text>
+                                <Text style={styles.fieldLabel}>Ville de départ <Text style={styles.required}>*</Text></Text>
                                 <NativeInput
                                     placeholder="Ex: Douala"
                                     value={newProduct.depart || ''}
@@ -1528,7 +1962,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Destination</Text>
+                                <Text style={styles.fieldLabel}>Destination <Text style={styles.required}>*</Text></Text>
                                 <NativeInput
                                     placeholder="Ex: Yaoundé"
                                     value={newProduct.destination || ''}
@@ -1537,9 +1971,11 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 />
                             </View>
                         </View>
+
+                        {/* Date et Heure */}
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Date de départ</Text>
+                                <Text style={styles.fieldLabel}>Date de départ <Text style={styles.required}>*</Text></Text>
                                 <NativeInput
                                     placeholder="JJ/MM/AAAA"
                                     value={newProduct.dateDepart || ''}
@@ -1548,7 +1984,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Heure</Text>
+                                <Text style={styles.fieldLabel}>Heure <Text style={styles.required}>*</Text></Text>
                                 <NativeInput
                                     placeholder="HH:MM"
                                     value={newProduct.heureDepart || ''}
@@ -1557,6 +1993,8 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 />
                             </View>
                         </View>
+
+                        {/* Sélection de place */}
                         <View style={styles.fieldContainer}>
                             <Text style={styles.fieldLabel}>Numéro de place</Text>
                             <View style={styles.seatSelectionContainer}>
@@ -1575,19 +2013,252 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 </TouchableOpacity>
                             </View>
                         </View>
+
+                        {/* Nombre de places disponibles */}
                         <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Compagnie</Text>
+                            <Text style={styles.fieldLabel}>Places disponibles</Text>
                             <NativeInput
-                                placeholder="Ex: Central Voyages"
-                                value={newProduct.compagnieTransport || ''}
-                                onChangeText={(text) => setNewProduct({ ...newProduct, compagnieTransport: text })}
+                                placeholder="Ex: 45"
+                                value={newProduct.nbPlacesDisponibles || ''}
+                                onChangeText={(text) => setNewProduct({ ...newProduct, nbPlacesDisponibles: text })}
+                                style={styles.fieldInput}
+                                keyboardType="numeric"
+                            />
+                        </View>
+
+                        {/* Escales (optionnel) */}
+                        <View style={styles.fieldContainer}>
+                            <Text style={styles.fieldLabel}>Escales (optionnel)</Text>
+                            <NativeInput
+                                placeholder="Ex: Bafoussam, Bertoua..."
+                                value={newProduct.escales || ''}
+                                onChangeText={(text) => setNewProduct({ ...newProduct, escales: text })}
+                                style={styles.fieldInput}
+                                multiline
+                            />
+                        </View>
+
+                        <View style={styles.hintBox}>
+                            <Text style={styles.hintText}>
+                                💡 Utilisez le sélecteur de place pour choisir visuellement une place dans le véhicule
+                            </Text>
+                        </View>
+                    </>
+                );
+
+            case 'hotellerie':
+                return (
+                    <>
+                        {/* Type d'hébergement */}
+                        <View style={styles.fieldContainer}>
+                            <Text style={styles.fieldLabel}>Type d'hébergement <Text style={styles.required}>*</Text></Text>
+                            <View style={styles.pickerButtons}>
+                                {TYPES_HEBERGEMENT.map((type) => (
+                                    <TouchableOpacity
+                                        key={type}
+                                        style={[
+                                            styles.pickerButton,
+                                            newProduct.typeHebergement === type && styles.pickerButtonActive
+                                        ]}
+                                        onPress={() => {
+                                            if (type === '🆕 Autre') {
+                                                Alert.prompt(
+                                                    'Nouveau type',
+                                                    'Entrez le type d\'hébergement :',
+                                                    (text) => {
+                                                        if (text && text.trim()) {
+                                                            TYPES_HEBERGEMENT.splice(TYPES_HEBERGEMENT.length - 1, 0, text.trim());
+                                                            setNewProduct({ ...newProduct, typeHebergement: text.trim() });
+                                                        }
+                                                    }
+                                                );
+                                            } else {
+                                                setNewProduct({ ...newProduct, typeHebergement: type });
+                                            }
+                                        }}
+                                    >
+                                        <Text style={[
+                                            styles.pickerButtonText,
+                                            newProduct.typeHebergement === type && styles.pickerButtonTextActive
+                                        ]}>{type}</Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        </View>
+
+                        {/* Catégorie (Étoiles) */}
+                        <View style={styles.fieldContainer}>
+                            <Text style={styles.fieldLabel}>Catégorie <Text style={styles.required}>*</Text></Text>
+                            <View style={styles.pickerButtons}>
+                                {CATEGORIES_HOTEL.map((categorie) => (
+                                    <TouchableOpacity
+                                        key={categorie}
+                                        style={[
+                                            styles.pickerButton,
+                                            newProduct.categorieHotel === categorie && styles.pickerButtonActive
+                                        ]}
+                                        onPress={() => setNewProduct({ ...newProduct, categorieHotel: categorie })}
+                                    >
+                                        <Text style={[
+                                            styles.pickerButtonText,
+                                            newProduct.categorieHotel === categorie && styles.pickerButtonTextActive
+                                        ]}>{categorie}</Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        </View>
+
+                        {/* Prix par nuit */}
+                        <View style={styles.fieldContainer}>
+                            <Text style={styles.fieldLabel}>Prix par nuit (minimum) <Text style={styles.required}>*</Text></Text>
+                            <NativeInput
+                                placeholder="Ex: 35000"
+                                value={newProduct.prixParNuit || ''}
+                                onChangeText={(text) => setNewProduct({ ...newProduct, prixParNuit: text })}
+                                style={styles.fieldInput}
+                                keyboardType="numeric"
+                            />
+                            <Text style={styles.fieldHint}>Prix de la chambre la moins chère</Text>
+                        </View>
+
+                        {/* Nombre de chambres */}
+                        <View style={styles.fieldContainer}>
+                            <Text style={styles.fieldLabel}>Nombre de chambres disponibles</Text>
+                            <NativeInput
+                                placeholder="Ex: 25"
+                                value={newProduct.nbChambresHotel || ''}
+                                onChangeText={(text) => setNewProduct({ ...newProduct, nbChambresHotel: text })}
+                                style={styles.fieldInput}
+                                keyboardType="numeric"
+                            />
+                        </View>
+
+                        {/* Types de chambres disponibles */}
+                        <View style={styles.fieldContainer}>
+                            <Text style={styles.fieldLabel}>Types de chambres disponibles</Text>
+                            <ScrollView style={styles.checkboxList} nestedScrollEnabled>
+                                {TYPES_CHAMBRES_HOTEL.map((typeChambre) => {
+                                    const isSelected = (newProduct.typesChambre || []).includes(typeChambre);
+                                    return (
+                                        <TouchableOpacity
+                                            key={typeChambre}
+                                            style={styles.checkboxContainer}
+                                            onPress={() => {
+                                                const current = newProduct.typesChambre || [];
+                                                if (isSelected) {
+                                                    setNewProduct({
+                                                        ...newProduct,
+                                                        typesChambre: current.filter(p => p !== typeChambre)
+                                                    });
+                                                } else {
+                                                    setNewProduct({
+                                                        ...newProduct,
+                                                        typesChambre: [...current, typeChambre]
+                                                    });
+                                                }
+                                            }}
+                                        >
+                                            <View style={[
+                                                styles.checkbox,
+                                                isSelected && styles.checkboxChecked
+                                            ]}>
+                                                {isSelected && (
+                                                    <SafeIcon name="check" size={14} color="#FFFFFF" />
+                                                )}
+                                            </View>
+                                            <Text style={styles.checkboxLabel}>{typeChambre}</Text>
+                                        </TouchableOpacity>
+                                    );
+                                })}
+                            </ScrollView>
+                        </View>
+
+                        {/* Équipements de l'hôtel */}
+                        <View style={styles.fieldContainer}>
+                            <Text style={styles.fieldLabel}>Équipements et services</Text>
+                            <ScrollView style={styles.checkboxList} nestedScrollEnabled>
+                                {EQUIPEMENTS_HOTEL.map((equipement) => {
+                                    const isSelected = (newProduct.equipementsHotel || []).includes(equipement);
+                                    return (
+                                        <TouchableOpacity
+                                            key={equipement}
+                                            style={styles.checkboxContainer}
+                                            onPress={() => {
+                                                const current = newProduct.equipementsHotel || [];
+                                                if (isSelected) {
+                                                    setNewProduct({
+                                                        ...newProduct,
+                                                        equipementsHotel: current.filter(e => e !== equipement)
+                                                    });
+                                                } else {
+                                                    setNewProduct({
+                                                        ...newProduct,
+                                                        equipementsHotel: [...current, equipement]
+                                                    });
+                                                }
+                                            }}
+                                        >
+                                            <View style={[
+                                                styles.checkbox,
+                                                isSelected && styles.checkboxChecked
+                                            ]}>
+                                                {isSelected && (
+                                                    <SafeIcon name="check" size={14} color="#FFFFFF" />
+                                                )}
+                                            </View>
+                                            <Text style={styles.checkboxLabel}>{equipement}</Text>
+                                        </TouchableOpacity>
+                                    );
+                                })}
+                            </ScrollView>
+                        </View>
+
+                        {/* Adresse et Ville */}
+                        <View style={styles.fieldContainer}>
+                            <Text style={styles.fieldLabel}>Adresse <Text style={styles.required}>*</Text></Text>
+                            <NativeInput
+                                placeholder="Ex: Avenue Kennedy"
+                                value={newProduct.adresseHotel || ''}
+                                onChangeText={(text) => setNewProduct({ ...newProduct, adresseHotel: text })}
                                 style={styles.fieldInput}
                             />
                         </View>
-                        <View style={styles.hintBox}>
-                            <Text style={styles.hintText}>
-                                💡 Utilisez le sélecteur de place pour choisir visuellement une place dans le bus
-                            </Text>
+
+                        <View style={styles.fieldContainer}>
+                            <Text style={styles.fieldLabel}>Ville <Text style={styles.required}>*</Text></Text>
+                            <NativeInput
+                                placeholder="Ex: Douala"
+                                value={newProduct.villeHotel || ''}
+                                onChangeText={(text) => setNewProduct({ ...newProduct, villeHotel: text })}
+                                style={styles.fieldInput}
+                            />
+                        </View>
+
+                        {/* GPS de l'hôtel */}
+                        <View style={styles.fieldContainer}>
+                            <Text style={styles.fieldLabel}>📍 Localisation GPS</Text>
+                            <TouchableOpacity
+                                style={styles.gpsButton}
+                                onPress={() => setShowGPSModal(true)}
+                            >
+                                <SafeIcon name="map-pin" size={16} color={modernColors.primary} />
+                                <Text style={styles.gpsButtonText}>
+                                    {newProduct.gpsHotel ? 'Modifier la localisation' : 'Ajouter la localisation GPS'}
+                                </Text>
+                            </TouchableOpacity>
+                            {newProduct.gpsHotel && (
+                                <View style={styles.gpsInfoCard}>
+                                    <SafeIcon name="check-circle" size={14} color={modernColors.success} />
+                                    <Text style={styles.gpsInfoText}>
+                                        Position enregistrée : {newProduct.gpsHotel}
+                                    </Text>
+                                </View>
+                            )}
+                            <View style={styles.hintBox}>
+                                <Text style={styles.hintText}>
+                                    💡 La localisation GPS facilite la recherche de l'établissement par les clients
+                                </Text>
+                            </View>
                         </View>
                     </>
                 );
@@ -2474,17 +3145,18 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
             case 'pharmacie':
                 return (
                     <>
+                        {/* Planification nuit simplifiée */}
                         <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Type de pharmacie</Text>
+                            <Text style={styles.fieldLabel}>🌙 Fonctionnement la nuit</Text>
                             <View style={styles.pickerButtons}>
-                                {['Garde', 'Normale'].map((type) => (
+                                {['Permanence nuit', 'Planning hebdomadaire'].map((type) => (
                                     <TouchableOpacity
                                         key={type}
                                         style={[
                                             styles.pickerButton,
                                             newProduct.typePharmacie === type && styles.pickerButtonActive
                                         ]}
-                                        onPress={() => setNewProduct({ ...newProduct, typePharmacie: type })}
+                                        onPress={() => setNewProduct({ ...newProduct, typePharmacie: type, joursGarde: type === 'Permanence nuit' ? 'Tous les jours' : undefined })}
                                     >
                                         <Text style={[
                                             styles.pickerButtonText,
@@ -2496,6 +3168,44 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 ))}
                             </View>
                         </View>
+
+                        {/* Planning hebdomadaire de garde */}
+                        {newProduct.typePharmacie === 'Planning hebdomadaire' && (
+                            <View style={styles.fieldContainer}>
+                                <Text style={styles.fieldLabel}>Jours de garde la nuit</Text>
+                                <Text style={styles.fieldHint}>Sélectionnez les jours où votre pharmacie est de garde la nuit</Text>
+                                <View style={styles.weekDaysContainer}>
+                                    {['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'].map((jour, index) => {
+                                        const joursArray = (newProduct.joursGarde || '').split(',').map(j => j.trim());
+                                        const isSelected = joursArray.includes(jour);
+                                        return (
+                                            <TouchableOpacity
+                                                key={jour}
+                                                style={[
+                                                    styles.dayButton,
+                                                    isSelected && styles.dayButtonActive
+                                                ]}
+                                                onPress={() => {
+                                                    const current = (newProduct.joursGarde || '').split(',').map(j => j.trim()).filter(j => j);
+                                                    const updated = isSelected
+                                                        ? current.filter(j => j !== jour)
+                                                        : [...current, jour];
+                                                    setNewProduct({ ...newProduct, joursGarde: updated.join(', ') });
+                                                }}
+                                            >
+                                                <Text style={[
+                                                    styles.dayButtonText,
+                                                    isSelected && styles.dayButtonTextActive
+                                                ]}>
+                                                    {jour}
+                                                </Text>
+                                            </TouchableOpacity>
+                                        );
+                                    })}
+                                </View>
+                            </View>
+                        )}
+
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <Text style={styles.fieldLabel}>Heure d'ouverture</Text>
@@ -2516,17 +3226,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 />
                             </View>
                         </View>
-                        {newProduct.typePharmacie === 'Garde' && (
-                            <View style={styles.fieldContainer}>
-                                <Text style={styles.fieldLabel}>Jours de garde</Text>
-                                <NativeInput
-                                    placeholder="Ex: Lundi, Mercredi, Vendredi"
-                                    value={newProduct.joursGarde || ''}
-                                    onChangeText={(text) => setNewProduct({ ...newProduct, joursGarde: text })}
-                                    style={styles.fieldInput}
-                                />
-                            </View>
-                        )}
+
                         <View style={styles.fieldContainer}>
                             <Text style={styles.fieldLabel}>Téléphone d'urgence</Text>
                             <NativeInput
@@ -2539,7 +3239,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         <View style={styles.fieldContainer}>
                             <Text style={styles.fieldLabel}>Services disponibles</Text>
                             <NativeInput
-                                placeholder="Ex: Garde, Délivrance, Conseil pharmaceutique"
+                                placeholder="Ex: Délivrance, Conseil pharmaceutique, Vaccination"
                                 value={newProduct.services || ''}
                                 onChangeText={(text) => setNewProduct({ ...newProduct, services: text })}
                                 multiline
@@ -2548,7 +3248,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         </View>
                         <View style={styles.hintBox}>
                             <Text style={styles.hintText}>
-                                💡 Les pharmacies de garde sont disponibles 24h/24 pour les urgences
+                                💡 {newProduct.typePharmacie === 'Permanence nuit' ? 'Votre pharmacie est de garde tous les soirs' : 'Sélectionnez les jours de garde hebdomadaire'}
                             </Text>
                         </View>
                     </>
@@ -2615,106 +3315,126 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Prestations médicales disponibles */}
                         <View style={styles.fieldContainer}>
                             <Text style={styles.fieldLabel}>Prestations médicales disponibles</Text>
-                            <Text style={styles.fieldHint}>Cochez toutes les prestations offertes par votre établissement</Text>
+                            <Text style={styles.fieldHint}>Cochez les prestations et configurez leur planning</Text>
                             <ScrollView style={styles.checkboxList} nestedScrollEnabled>
-                                {prestationsMedicalesOptions.map((prestation) => (
-                                    <TouchableOpacity
-                                        key={prestation}
-                                        style={styles.checkboxItem}
-                                        onPress={() => {
-                                            const current = newProduct.prestationsMedicales || [];
-                                            if (current.includes(prestation)) {
-                                                setNewProduct({
-                                                    ...newProduct,
-                                                    prestationsMedicales: current.filter(p => p !== prestation)
-                                                });
-                                            } else {
-                                                setNewProduct({
-                                                    ...newProduct,
-                                                    prestationsMedicales: [...current, prestation]
-                                                });
-                                            }
-                                        }}
-                                    >
-                                        <View style={[
-                                            styles.checkbox,
-                                            (newProduct.prestationsMedicales || []).includes(prestation) && styles.checkboxChecked
-                                        ]}>
-                                            {(newProduct.prestationsMedicales || []).includes(prestation) && (
-                                                <SafeIcon name="check" size={14} color="#FFFFFF" />
+                                {prestationsMedicalesOptions.map((prestation) => {
+                                    const isSelected = (newProduct.prestationsMedicales || []).includes(prestation);
+                                    return (
+                                        <View key={prestation}>
+                                            <TouchableOpacity
+                                                style={styles.checkboxItem}
+                                                onPress={() => {
+                                                    const current = newProduct.prestationsMedicales || [];
+                                                    if (current.includes(prestation)) {
+                                                        setNewProduct({
+                                                            ...newProduct,
+                                                            prestationsMedicales: current.filter(p => p !== prestation),
+                                                            planningHebdomadaire: {
+                                                                ...newProduct.planningHebdomadaire,
+                                                                [prestation]: undefined
+                                                            }
+                                                        });
+                                                    } else {
+                                                        setNewProduct({
+                                                            ...newProduct,
+                                                            prestationsMedicales: [...current, prestation]
+                                                        });
+                                                    }
+                                                }}
+                                            >
+                                                <View style={[
+                                                    styles.checkbox,
+                                                    isSelected && styles.checkboxChecked
+                                                ]}>
+                                                    {isSelected && (
+                                                        <SafeIcon name="check" size={14} color="#FFFFFF" />
+                                                    )}
+                                                </View>
+                                                <Text style={styles.checkboxLabel}>{prestation}</Text>
+                                            </TouchableOpacity>
+
+                                            {/* Planning pour cette prestation si cochée */}
+                                            {isSelected && (
+                                                <View style={styles.prestationPlanningContainer}>
+                                                    <Text style={styles.prestationPlanningTitle}>📅 Planning pour {prestation}</Text>
+
+                                                    {/* Jours disponibles */}
+                                                    <Text style={styles.fieldHint}>Jours disponibles :</Text>
+                                                    <View style={styles.weekDaysContainer}>
+                                                        {['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'].map((jour) => {
+                                                            const joursArray = (newProduct.planningHebdomadaire?.[prestation]?.jours || '').split(',').map(j => j.trim());
+                                                            const isJourSelected = joursArray.includes(jour);
+                                                            return (
+                                                                <TouchableOpacity
+                                                                    key={jour}
+                                                                    style={[
+                                                                        styles.dayButton,
+                                                                        isJourSelected && styles.dayButtonActive
+                                                                    ]}
+                                                                    onPress={() => {
+                                                                        const current = (newProduct.planningHebdomadaire?.[prestation]?.jours || '').split(',').map(j => j.trim()).filter(j => j);
+                                                                        const updated = isJourSelected
+                                                                            ? current.filter(j => j !== jour)
+                                                                            : [...current, jour];
+                                                                        setNewProduct({
+                                                                            ...newProduct,
+                                                                            planningHebdomadaire: {
+                                                                                ...newProduct.planningHebdomadaire,
+                                                                                [prestation]: {
+                                                                                    ...newProduct.planningHebdomadaire?.[prestation],
+                                                                                    jours: updated.join(', ')
+                                                                                }
+                                                                            }
+                                                                        });
+                                                                    }}
+                                                                >
+                                                                    <Text style={[
+                                                                        styles.dayButtonText,
+                                                                        isJourSelected && styles.dayButtonTextActive
+                                                                    ]}>
+                                                                        {jour}
+                                                                    </Text>
+                                                                </TouchableOpacity>
+                                                            );
+                                                        })}
+                                                    </View>
+
+                                                    {/* Moment de disponibilité */}
+                                                    <Text style={styles.fieldHint}>Moment de disponibilité :</Text>
+                                                    <View style={styles.pickerButtons}>
+                                                        {['Journée', 'Nuit', '24h/24'].map((moment) => (
+                                                            <TouchableOpacity
+                                                                key={moment}
+                                                                style={[
+                                                                    styles.pickerButton,
+                                                                    newProduct.planningHebdomadaire?.[prestation]?.moment === moment && styles.pickerButtonActive
+                                                                ]}
+                                                                onPress={() => setNewProduct({
+                                                                    ...newProduct,
+                                                                    planningHebdomadaire: {
+                                                                        ...newProduct.planningHebdomadaire,
+                                                                        [prestation]: {
+                                                                            ...newProduct.planningHebdomadaire?.[prestation],
+                                                                            moment
+                                                                        }
+                                                                    }
+                                                                })}
+                                                            >
+                                                                <Text style={[
+                                                                    styles.pickerButtonText,
+                                                                    newProduct.planningHebdomadaire?.[prestation]?.moment === moment && styles.pickerButtonTextActive
+                                                                ]}>
+                                                                    {moment}
+                                                                </Text>
+                                                            </TouchableOpacity>
+                                                        ))}
+                                                    </View>
+                                                </View>
                                             )}
                                         </View>
-                                        <Text style={styles.checkboxLabel}>{prestation}</Text>
-                                    </TouchableOpacity>
-                                ))}
+                                    );
+                                })}
                             </ScrollView>
-                        </View>
-
-                        {/* Planning hebdomadaire */}
-                        <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Horaires de disponibilité</Text>
-                            <Text style={styles.fieldHint}>Précisez les horaires d'ouverture pour chaque jour</Text>
-                            {jours.map((jour) => (
-                                <View key={jour} style={styles.planningRow}>
-                                    <Text style={styles.planningJour}>{jour}</Text>
-                                    <View style={styles.planningInputs}>
-                                        <NativeInput
-                                            placeholder="08:00"
-                                            value={newProduct.planningHebdomadaire?.[jour]?.debut || ''}
-                                            onChangeText={(text) => setNewProduct({
-                                                ...newProduct,
-                                                planningHebdomadaire: {
-                                                    ...newProduct.planningHebdomadaire,
-                                                    [jour]: {
-                                                        ...newProduct.planningHebdomadaire?.[jour],
-                                                        debut: text
-                                                    }
-                                                }
-                                            })}
-                                            style={styles.planningInput}
-                                        />
-                                        <Text style={styles.planningDivider}>à</Text>
-                                        <NativeInput
-                                            placeholder="18:00"
-                                            value={newProduct.planningHebdomadaire?.[jour]?.fin || ''}
-                                            onChangeText={(text) => setNewProduct({
-                                                ...newProduct,
-                                                planningHebdomadaire: {
-                                                    ...newProduct.planningHebdomadaire,
-                                                    [jour]: {
-                                                        ...newProduct.planningHebdomadaire?.[jour],
-                                                        fin: text
-                                                    }
-                                                }
-                                            })}
-                                            style={styles.planningInput}
-                                        />
-                                        <TouchableOpacity
-                                            style={styles.checkboxSmall}
-                                            onPress={() => setNewProduct({
-                                                ...newProduct,
-                                                planningHebdomadaire: {
-                                                    ...newProduct.planningHebdomadaire,
-                                                    [jour]: {
-                                                        ...newProduct.planningHebdomadaire?.[jour],
-                                                        permanent: !newProduct.planningHebdomadaire?.[jour]?.permanent
-                                                    }
-                                                }
-                                            })}
-                                        >
-                                            <View style={[
-                                                styles.checkbox,
-                                                newProduct.planningHebdomadaire?.[jour]?.permanent && styles.checkboxChecked
-                                            ]}>
-                                                {newProduct.planningHebdomadaire?.[jour]?.permanent && (
-                                                    <SafeIcon name="check" size={12} color="#FFFFFF" />
-                                                )}
-                                            </View>
-                                            <Text style={styles.checkboxLabelSmall}>24h</Text>
-                                        </TouchableOpacity>
-                                    </View>
-                                </View>
-                            ))}
                         </View>
 
                         {/* RDV en ligne */}
@@ -3773,10 +4493,11 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                     {PRODUCT_TYPES
                                         .filter(type => {
                                             if (searchQuery.length === 0) return true;
-                                            const query = searchQuery.toLowerCase();
-                                            return type.label.toLowerCase().includes(query) ||
-                                                type.description.toLowerCase().includes(query) ||
-                                                ('keywords' in type && type.keywords.some((kw: string) => kw.toLowerCase().includes(query)));
+                                            // ✅ Recherche sans sensibilité aux accents
+                                            const normalizedQuery = normalizeText(searchQuery);
+                                            return normalizeText(type.label).includes(normalizedQuery) ||
+                                                normalizeText(type.description).includes(normalizedQuery) ||
+                                                ('keywords' in type && type.keywords.some((kw: string) => normalizeText(kw).includes(normalizedQuery)));
                                         })
                                         .map((type) => (
                                             <TouchableOpacity
@@ -3853,7 +4574,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 {/* Champs communs - Toujours visibles, pré-remplis pour Prestation de Service */}
                                 <View style={styles.fieldContainer}>
                                     <Text style={styles.fieldLabel}>
-                                        Nom du produit <Text style={styles.required}>*</Text>
+                                        {getProductNameLabel(selectedType)} <Text style={styles.required}>*</Text>
                                         {selectedType === 'prestation_service' && (
                                             <Text style={styles.autoFilledHint}> (pré-rempli automatiquement)</Text>
                                         )}
@@ -3887,29 +4608,32 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                     />
                                 </View>
 
-                                <View style={styles.fieldRow}>
-                                    <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                        <Text style={styles.fieldLabel}>
-                                            {selectedType === 'prestation_service' ? 'À partir de' : 'Prix'} {selectedType !== 'prestation_service' && <Text style={styles.required}>*</Text>}
-                                        </Text>
-                                        <NativeInput
-                                            placeholder={selectedType === 'prestation_service' ? 'Prix (optionnel)' : '0'}
-                                            value={newProduct.prix || ''}
-                                            onChangeText={(text) => setNewProduct({ ...newProduct, prix: text })}
-                                            style={styles.fieldInput}
-                                            keyboardType="numeric"
-                                        />
-                                    </View>
+                                {/* Prix et devise - MASQUÉ pour pharmacie et hopital_clinique */}
+                                {selectedType !== 'pharmacie' && selectedType !== 'hopital_clinique' && (
+                                    <View style={styles.fieldRow}>
+                                        <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                            <Text style={styles.fieldLabel}>
+                                                {selectedType === 'assurance' ? 'Prime (à partir de)' :
+                                                    selectedType === 'prestation_service' ? 'À partir de' : 'Prix'}
+                                                {selectedType !== 'prestation_service' && selectedType !== 'assurance' && <Text style={styles.required}>*</Text>}
+                                            </Text>
+                                            <NativeInput
+                                                placeholder={selectedType === 'prestation_service' || selectedType === 'assurance' ? 'Prix (optionnel)' : '0'}
+                                                value={newProduct.prix || ''}
+                                                onChangeText={(text) => setNewProduct({ ...newProduct, prix: text })}
+                                                style={styles.fieldInput}
+                                                keyboardType="numeric"
+                                            />
+                                        </View>
 
-                                    <View style={[styles.fieldContainer, { width: 100 }]}>
-                                        <Text style={styles.fieldLabel}>Devise</Text>
-                                        <View style={styles.pickerContainer}>
-                                            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                                        <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                            <Text style={styles.fieldLabel}>Devise</Text>
+                                            <View style={styles.deviseGridContainer}>
                                                 {devises.map((devise) => (
                                                     <TouchableOpacity
                                                         key={devise}
                                                         style={[
-                                                            styles.deviseButton,
+                                                            styles.deviseButtonGrid,
                                                             newProduct.devise === devise && styles.deviseButtonActive
                                                         ]}
                                                         onPress={() => setNewProduct({ ...newProduct, devise })}
@@ -3922,10 +4646,10 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                                         </Text>
                                                     </TouchableOpacity>
                                                 ))}
-                                            </ScrollView>
+                                            </View>
                                         </View>
                                     </View>
-                                </View>
+                                )}
 
                                 {/* Champs spécifiques */}
                                 {renderSpecificFields()}
@@ -4068,99 +4792,6 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                             ))}
                                         </View>
                                     )}
-
-                                    {/* Logo et Bannière */}
-                                    <Text style={[styles.sectionTitle, { marginTop: 20 }]}>🎨 Logo et Bannière (optionnel)</Text>
-                                    <Text style={styles.sectionSubtitle}>Ajoutez un logo et une bannière pour personnaliser votre produit</Text>
-
-                                    <View style={styles.logoBannerContainer}>
-                                        {/* Logo */}
-                                        <View style={styles.logoBannerItem}>
-                                            <Text style={styles.logoBannerLabel}>Logo</Text>
-                                            <TouchableOpacity
-                                                style={styles.logoBannerButton}
-                                                onPress={async () => {
-                                                    try {
-                                                        const result = await ImagePicker.launchImageLibraryAsync({
-                                                            mediaTypes: ImagePicker.MediaTypeOptions.Images,
-                                                            allowsMultipleSelection: false,
-                                                            quality: 0.6,
-                                                            base64: true,
-                                                            aspect: [1, 1]
-                                                        });
-
-                                                        if (!result.canceled && result.assets && result.assets.length > 0) {
-                                                            const logoData = `data:image/jpeg;base64,${result.assets[0].base64}`;
-                                                            setNewProduct({ ...newProduct, logo: logoData });
-                                                        }
-                                                    } catch (error) {
-                                                        console.error('Erreur sélection logo:', error);
-                                                    }
-                                                }}
-                                            >
-                                                {newProduct.logo ? (
-                                                    <Image source={{ uri: newProduct.logo }} style={styles.logoPreview} />
-                                                ) : (
-                                                    <>
-                                                        <SafeIcon name="image" size={24} color={modernColors.textSecondary} />
-                                                        <Text style={styles.logoBannerButtonText}>Choisir logo</Text>
-                                                    </>
-                                                )}
-                                            </TouchableOpacity>
-                                            {newProduct.logo && (
-                                                <TouchableOpacity
-                                                    style={styles.removeLogoBannerButton}
-                                                    onPress={() => setNewProduct({ ...newProduct, logo: undefined })}
-                                                >
-                                                    <SafeIcon name="trash-2" size={14} color={modernColors.error} />
-                                                    <Text style={styles.removeLogoBannerText}>Supprimer</Text>
-                                                </TouchableOpacity>
-                                            )}
-                                        </View>
-
-                                        {/* Bannière */}
-                                        <View style={styles.logoBannerItem}>
-                                            <Text style={styles.logoBannerLabel}>Bannière</Text>
-                                            <TouchableOpacity
-                                                style={styles.logoBannerButton}
-                                                onPress={async () => {
-                                                    try {
-                                                        const result = await ImagePicker.launchImageLibraryAsync({
-                                                            mediaTypes: ImagePicker.MediaTypeOptions.Images,
-                                                            allowsMultipleSelection: false,
-                                                            quality: 0.5,
-                                                            base64: true
-                                                        });
-
-                                                        if (!result.canceled && result.assets && result.assets.length > 0) {
-                                                            const bannerData = `data:image/jpeg;base64,${result.assets[0].base64}`;
-                                                            setNewProduct({ ...newProduct, banner: bannerData });
-                                                        }
-                                                    } catch (error) {
-                                                        console.error('Erreur sélection bannière:', error);
-                                                    }
-                                                }}
-                                            >
-                                                {newProduct.banner ? (
-                                                    <Image source={{ uri: newProduct.banner }} style={styles.bannerPreview} />
-                                                ) : (
-                                                    <>
-                                                        <SafeIcon name="image" size={24} color={modernColors.textSecondary} />
-                                                        <Text style={styles.logoBannerButtonText}>Choisir bannière</Text>
-                                                    </>
-                                                )}
-                                            </TouchableOpacity>
-                                            {newProduct.banner && (
-                                                <TouchableOpacity
-                                                    style={styles.removeLogoBannerButton}
-                                                    onPress={() => setNewProduct({ ...newProduct, banner: undefined })}
-                                                >
-                                                    <SafeIcon name="trash-2" size={14} color={modernColors.error} />
-                                                    <Text style={styles.removeLogoBannerText}>Supprimer</Text>
-                                                </TouchableOpacity>
-                                            )}
-                                        </View>
-                                    </View>
                                 </View>
                             </View>
                         )}
@@ -4196,7 +4827,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                 busType="standard"
             />
 
-            {/* Modal GPS pour immobilier */}
+            {/* Modal GPS pour immobilier et hôtellerie */}
             <ModernGPSModal
                 visible={showGPSModal}
                 onClose={() => setShowGPSModal(false)}
@@ -4206,7 +4837,16 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         const lat = parseFloat(firstPoint[0]);
                         const lng = parseFloat(firstPoint[1]);
                         setSelectedGPSLocation({ lat, lng });
-                        setNewProduct({ ...newProduct, gpsImmobilier: coordinatesString });
+
+                        // ✅ Déterminer quel champ GPS mettre à jour selon le type
+                        if (selectedType === 'immobilier_batiment' || selectedType === 'immobilier_terrain') {
+                            setNewProduct({ ...newProduct, gpsImmobilier: coordinatesString });
+                        } else if (selectedType === 'hotellerie') {
+                            setNewProduct({ ...newProduct, gpsHotel: coordinatesString });
+                        } else {
+                            // Fallback pour autres types qui pourraient utiliser GPS
+                            setNewProduct({ ...newProduct, gpsImmobilier: coordinatesString });
+                        }
                     }
                     setShowGPSModal(false);
                 }}
@@ -4677,6 +5317,10 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         color: '#FFFFFF',
     },
+    scrollablePicker: {
+        maxHeight: 50,
+        marginBottom: 8,
+    },
     pickerButtons: {
         flexDirection: 'row',
         flexWrap: 'wrap',
@@ -4991,6 +5635,68 @@ const styles = StyleSheet.create({
         fontSize: 12,
         color: modernColors.text,
     },
+    // Styles pour les jours de la semaine (pharmacie)
+    weekDaysContainer: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+        marginTop: 8,
+    },
+    dayButton: {
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 20,
+        backgroundColor: '#F3F4F6',
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+    },
+    dayButtonActive: {
+        backgroundColor: modernColors.primary,
+        borderColor: modernColors.primary,
+    },
+    dayButtonText: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: '#6B7280',
+    },
+    dayButtonTextActive: {
+        color: '#FFFFFF',
+    },
+    // Grille de devises (toutes visibles)
+    deviseGridContainer: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+        marginTop: 8,
+    },
+    deviseButtonGrid: {
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 8,
+        backgroundColor: '#F3F4F6',
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        minWidth: 60,
+        alignItems: 'center',
+    },
+    // Container pour le planning des prestations médicales
+    prestationPlanningContainer: {
+        marginLeft: 32,
+        marginTop: 12,
+        marginBottom: 16,
+        padding: 12,
+        backgroundColor: '#F9FAFB',
+        borderRadius: 12,
+        borderLeftWidth: 3,
+        borderLeftColor: modernColors.primary,
+    },
+    prestationPlanningTitle: {
+        fontSize: 13,
+        fontWeight: '700',
+        color: modernColors.primary,
+        marginBottom: 12,
+    },
 });
 
 export default ProductManagerMobile;
+

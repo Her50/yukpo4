@@ -63,19 +63,60 @@ const UserMentionPicker: React.FC<UserMentionPickerProps> = ({
     };
 
     const searchUsers = async (query: string) => {
-        if (!query || query.trim().length < 2) {
+        if (!query || query.trim().length < 1) {
             setSearchResults([]);
             return;
         }
 
         setLoading(true);
         try {
+            // Recherche améliorée : nom, email, et recherche partielle
             const response = await apiGet<{ success: boolean; data: User[]; count: number }>(
-                `/api/conversations/search-users?query=${encodeURIComponent(query)}&limit=20`
+                `/api/conversations/search-users?query=${encodeURIComponent(query)}&limit=20&search_type=all`
             );
 
             if (response.success && response.data) {
-                setSearchResults(response.data.data || []);
+                const users = response.data.data || [];
+
+                // Tri intelligent : exact matches d'abord, puis partiels
+                const sortedUsers = users.sort((a, b) => {
+                    const queryLower = query.toLowerCase();
+                    const aName = a.nom_complet.toLowerCase();
+                    const bName = b.nom_complet.toLowerCase();
+                    const aEmail = a.email.toLowerCase();
+                    const bEmail = b.email.toLowerCase();
+
+                    // Priorité aux correspondances exactes
+                    const aExactName = aName === queryLower;
+                    const bExactName = bName === queryLower;
+                    const aExactEmail = aEmail === queryLower;
+                    const bExactEmail = bEmail === queryLower;
+
+                    if (aExactName || aExactEmail) return -1;
+                    if (bExactName || bExactEmail) return 1;
+
+                    // Puis aux correspondances qui commencent par la query
+                    const aStartsWithName = aName.startsWith(queryLower);
+                    const bStartsWithName = bName.startsWith(queryLower);
+                    const aStartsWithEmail = aEmail.startsWith(queryLower);
+                    const bStartsWithEmail = bEmail.startsWith(queryLower);
+
+                    if (aStartsWithName || aStartsWithEmail) return -1;
+                    if (bStartsWithName || bStartsWithEmail) return 1;
+
+                    // Enfin les correspondances partielles
+                    const aContainsName = aName.includes(queryLower);
+                    const bContainsName = bName.includes(queryLower);
+                    const aContainsEmail = aEmail.includes(queryLower);
+                    const bContainsEmail = bEmail.includes(queryLower);
+
+                    if (aContainsName || aContainsEmail) return -1;
+                    if (bContainsName || bContainsEmail) return 1;
+
+                    return 0;
+                });
+
+                setSearchResults(sortedUsers);
             }
         } catch (error) {
             console.error('[UserMentionPicker] Erreur recherche:', error);
@@ -101,14 +142,17 @@ const UserMentionPicker: React.FC<UserMentionPickerProps> = ({
         }
     };
 
-    // Recherche automatique quand l'utilisateur tape
+    // Recherche automatique quand l'utilisateur tape (améliorée)
     useEffect(() => {
         const timer = setTimeout(() => {
-            if (searchQuery.trim().length >= 2) {
+            if (searchQuery.trim().length >= 1) {
                 searchUsers(searchQuery);
                 setActiveTab('search');
+            } else {
+                setSearchResults([]);
+                setActiveTab('history');
             }
-        }, 300); // Debounce 300ms
+        }, 200); // Debounce réduit à 200ms pour plus de réactivité
 
         return () => clearTimeout(timer);
     }, [searchQuery]);
@@ -205,8 +249,8 @@ const UserMentionPicker: React.FC<UserMentionPickerProps> = ({
                     <button
                         onClick={() => setActiveTab('history')}
                         className={`flex-1 flex items-center justify-center gap-2 py-2 px-4 rounded-lg font-medium transition-all ${activeTab === 'history'
-                                ? 'bg-indigo-600 text-white shadow-md'
-                                : 'bg-white text-gray-600 hover:bg-gray-100'
+                            ? 'bg-indigo-600 text-white shadow-md'
+                            : 'bg-white text-gray-600 hover:bg-gray-100'
                             }`}
                     >
                         <Clock size={18} />
@@ -215,8 +259,8 @@ const UserMentionPicker: React.FC<UserMentionPickerProps> = ({
                     <button
                         onClick={() => setActiveTab('search')}
                         className={`flex-1 flex items-center justify-center gap-2 py-2 px-4 rounded-lg font-medium transition-all ${activeTab === 'search'
-                                ? 'bg-indigo-600 text-white shadow-md'
-                                : 'bg-white text-gray-600 hover:bg-gray-100'
+                            ? 'bg-indigo-600 text-white shadow-md'
+                            : 'bg-white text-gray-600 hover:bg-gray-100'
                             }`}
                     >
                         <Search size={18} />
@@ -225,8 +269,8 @@ const UserMentionPicker: React.FC<UserMentionPickerProps> = ({
                     <button
                         onClick={() => setActiveTab('category')}
                         className={`flex-1 flex items-center justify-center gap-2 py-2 px-4 rounded-lg font-medium transition-all ${activeTab === 'category'
-                                ? 'bg-indigo-600 text-white shadow-md'
-                                : 'bg-white text-gray-600 hover:bg-gray-100'
+                            ? 'bg-indigo-600 text-white shadow-md'
+                            : 'bg-white text-gray-600 hover:bg-gray-100'
                             }`}
                     >
                         <Grid size={18} />

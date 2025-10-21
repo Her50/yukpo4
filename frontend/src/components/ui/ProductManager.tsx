@@ -6,12 +6,71 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import MapModal from '@/components/ui/MapModal';
 import { useToast } from '@/components/ui/use-toast';
-import { Check, ChevronDown, Download, Edit2, FileText, MapPin, Plus, Trash2, Upload, Video, X } from 'lucide-react';
+import { Check, Download, Edit2, FileText, MapPin, Plus, Trash2, Upload, Video, X } from 'lucide-react';
 import React, { useRef, useState } from 'react';
+
+// ✅ Fonction de normalisation sans accents pour la recherche
+const normalizeText = (text: string): string => {
+    return text
+        .toLowerCase()
+        .normalize('NFD') // Décompose les caractères accentués
+        .replace(/[\u0300-\u036f]/g, '') // Supprime les accents
+        .trim();
+};
+
+// ✅ DONNÉES PROFESSIONNELLES POUR LISTES DÉROULANTES
+const MARQUES_AUTOMOBILES = [
+    'Toyota', 'Mercedes-Benz', 'BMW', 'Audi', 'Volkswagen', 'Ford', 'Honda',
+    'Nissan', 'Hyundai', 'Kia', 'Peugeot', 'Renault', 'Citroën', 'Mazda',
+    'Chevrolet', 'Jeep', 'Land Rover', 'Porsche', 'Ferrari', 'Lamborghini',
+    'Bentley', 'Rolls-Royce', 'Aston Martin', 'McLaren', 'Bugatti', 'Tesla',
+    'Volvo', 'Subaru', 'Mitsubishi', 'Suzuki', 'Isuzu', 'Daihatsu', 'Fiat',
+    'Alfa Romeo', 'Maserati', 'Jaguar', 'Mini', 'Smart', 'Seat', 'Skoda',
+    '🆕 Autre'
+];
+
+const TYPES_TRANSMISSION = ['Manuelle', 'Automatique', 'Semi-automatique', 'CVT', '🆕 Autre'];
+const TYPES_CARBURANT = ['Essence', 'Diesel', 'Hybride', 'Électrique', 'GPL', 'Bioéthanol', '🆕 Autre'];
+const ETATS_VEHICULE = ['Neuf', 'Occasion - Excellent état', 'Occasion - Bon état', 'Occasion - État moyen', 'À réparer'];
+
+const TYPES_IMMOBILIERS = [
+    'Appartement', 'Maison individuelle', 'Villa', 'Studio', 'Duplex', 'Triplex',
+    'Penthouse', 'Loft', 'Chambre', 'Bureau', 'Local commercial', 'Entrepôt',
+    'Terrain nu', 'Terrain viabilisé', 'Immeuble', '🆕 Autre'
+];
+
+const STATUTS_IMMOBILIERS = ['À vendre', 'À louer', 'Location courte durée', 'Colocation'];
+const NIVEAUX_AMEUBLEMENT = ['Non meublé', 'Semi-meublé', 'Meublé', 'Meublé + équipé'];
+
+const COMPAGNIES_VOYAGE = [
+    'Camair-Co', 'Ethiopian Airlines', 'Kenya Airways', 'Air France', 'Turkish Airlines',
+    'Brussels Airlines', 'Royal Air Maroc', 'Emirates', 'Qatar Airways', 'Asky Airlines',
+    'CEIBA Intercontinental', 'Cronos Airlines', 'Toumai Air Tchad', '🆕 Autre'
+];
+
+const CLASSES_VOYAGE = ['Économique', 'Économique Premium', 'Affaires', 'Première classe'];
+const TYPES_VEHICULES_TRANSPORT = ['Bus', 'Minibus', 'Van', 'Avion', 'Train', 'Bateau'];
+
+const TYPES_HEBERGEMENT = [
+    'Hôtel', 'Hôtel-Boutique', 'Resort', 'Auberge', 'Motel',
+    'Chambre d\'hôte', 'Gîte', 'Pension', 'Apart-hôtel', '🆕 Autre'
+];
+
+const TYPES_CHAMBRES_HOTEL = [
+    'Chambre Simple', 'Chambre Double', 'Chambre Twin', 'Suite Junior',
+    'Suite', 'Suite Présidentielle', 'Chambre Familiale', 'Studio'
+];
+
+const EQUIPEMENTS_HOTEL = [
+    'Wi-Fi gratuit', 'Climatisation', 'Piscine', 'Restaurant', 'Bar', 'Salle de sport',
+    'Spa', 'Parking gratuit', 'Service chambre 24h/24', 'Blanchisserie', 'Navette aéroport',
+    'Salle de conférence', 'Coffre-fort', 'Réception 24h/24'
+];
 
 type ProductType =
     | 'immobilier_batiment'
     | 'immobilier_terrain'
+    | 'hotellerie'
     | 'automobile'
     | 'ticket_voyage'
     | 'covoiturage'
@@ -53,6 +112,14 @@ interface Product {
         prixAPartirDe: string;
         description?: string;
     }>;
+
+    // ✅ Promotion (pour tous les types de produits)
+    promotionActive?: boolean;
+    promotionType?: 'reduction' | 'offre' | 'bon_plan' | 'flash';
+    promotionValeur?: string; // ex: "20%", "-5000 FCFA", "1+1 gratuit"
+    promotionDescription?: string;
+    promotionDateFin?: string;
+    promotionConditions?: string;
 
     // Champs immobilier
     superficie?: string;
@@ -104,8 +171,9 @@ const PRODUCT_TYPES = [
     { value: 'decoration', label: 'Décoration Intérieure', icon: '🖼️', description: 'Tableaux, luminaires, tapis, accessoires déco' },
     { value: 'electromenager', label: 'Électroménager Domestique', icon: '🔌', description: 'Frigos, fours, machines à laver, micro-ondes' },
     { value: 'hopital_clinique', label: 'Établissements de Santé', icon: '🏥', description: 'Hôpitaux, cliniques, centres médicaux, spécialités' },
+    { value: 'hotellerie', label: 'Hôtellerie et Hébergement', icon: '🏨', description: 'Hôtels, chambres d\'hôtes, auberges, gîtes, réservations' },
     { value: 'image_son', label: 'Image et Son', icon: '📺', description: 'TV, home cinéma, enceintes, projecteurs, systèmes audio' },
-    { value: 'immobilier_batiment', label: 'Immobilier - Bâtiments', icon: '🏢', description: 'Appartements, villas, maisons, immeubles' },
+    { value: 'immobilier_batiment', label: 'Immobilier - Vente/Location', icon: '🏢', description: 'Appartements, villas, maisons à vendre ou louer (long terme)' },
     { value: 'immobilier_terrain', label: 'Immobilier - Terrains', icon: '🏞️', description: 'Terrains constructibles, parcelles, lots' },
     { value: 'livres_fournitures', label: 'Livres et Fournitures Scolaires', icon: '📚', description: 'Manuels, livres, cahiers, stylos, fournitures' },
     { value: 'mobilier', label: 'Mobilier et Ameublement', icon: '🪑', description: 'Meubles salon, chambre, bureau, rangement' },
@@ -478,8 +546,8 @@ const ProductManager: React.FC<ProductManagerProps> = ({
 
             {/* Modal d'édition de produit */}
             {editingProduct && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                    <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+                    <Card className="w-full max-w-2xl my-8">
                         <CardHeader>
                             <CardTitle className="flex items-center justify-between">
                                 {editingProduct.id ? 'Modifier le produit' : 'Nouveau produit'}
@@ -495,12 +563,23 @@ const ProductManager: React.FC<ProductManagerProps> = ({
                                 </Button>
                             </CardTitle>
                         </CardHeader>
-                        <CardContent className="space-y-6">
+                        <CardContent className="space-y-6 max-h-[75vh] overflow-y-auto">
                             {/* Étape 1: Sélection du type */}
                             {currentStep === 'type' && (
                                 <div className="space-y-4">
                                     <h3 className="text-lg font-semibold">✨ Sélectionnez le type de produit <span className="text-red-600">*</span></h3>
                                     <p className="text-sm text-gray-600">Choisissez la catégorie qui correspond le mieux à votre produit</p>
+
+                                    {/* 🔍 Champ de recherche intelligente */}
+                                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                                        <div className="flex items-start gap-2 mb-2">
+                                            <span className="text-lg">💡</span>
+                                            <div className="flex-1">
+                                                <p className="text-sm font-semibold text-blue-900">Recherche intelligente</p>
+                                                <p className="text-xs text-blue-700">Tapez le nom de votre produit ou service pour une suggestion automatique</p>
+                                            </div>
+                                        </div>
+                                    </div>
 
                                     {/* Champ de recherche textuelle */}
                                     <div className="relative">
@@ -525,10 +604,11 @@ const ProductManager: React.FC<ProductManagerProps> = ({
                                         {PRODUCT_TYPES
                                             .filter(type => {
                                                 if (searchQuery.length === 0) return true;
-                                                const query = searchQuery.toLowerCase();
-                                                return type.label.toLowerCase().includes(query) ||
-                                                    type.description.toLowerCase().includes(query) ||
-                                                    ((type as any).keywords && (type as any).keywords.some((kw: string) => kw.toLowerCase().includes(query)));
+                                                // ✅ Recherche sans sensibilité aux accents
+                                                const normalizedQuery = normalizeText(searchQuery);
+                                                return normalizeText(type.label).includes(normalizedQuery) ||
+                                                    normalizeText(type.description).includes(normalizedQuery) ||
+                                                    ((type as any).keywords && (type as any).keywords.some((kw: string) => normalizeText(kw).includes(normalizedQuery)));
                                             })
                                             .map((type) => (
                                                 <button
@@ -636,19 +716,24 @@ const ProductManager: React.FC<ProductManagerProps> = ({
                                                                             'Ex: Nom du produit'}
                                                     />
                                                 </div>
-                                                <div>
-                                                    <Label htmlFor="product-price">Prix *</Label>
-                                                    <Input
-                                                        id="product-price"
-                                                        type="number"
-                                                        value={editingProduct.price}
-                                                        onChange={(e) => setEditingProduct(prev => ({
-                                                            ...prev!,
-                                                            price: e.target.value
-                                                        }))}
-                                                        placeholder="0"
-                                                    />
-                                                </div>
+                                                {/* Prix - MASQUÉ pour pharmacie et hopital_clinique */}
+                                                {selectedType !== 'pharmacie' && selectedType !== 'hopital_clinique' && (
+                                                    <div>
+                                                        <Label htmlFor="product-price">
+                                                            {selectedType === 'assurance' ? 'Prime (à partir de)' : 'Prix'} *
+                                                        </Label>
+                                                        <Input
+                                                            id="product-price"
+                                                            type="number"
+                                                            value={editingProduct.price}
+                                                            onChange={(e) => setEditingProduct(prev => ({
+                                                                ...prev!,
+                                                                price: e.target.value
+                                                            }))}
+                                                            placeholder={selectedType === 'assurance' ? 'Prime mensuelle/annuelle' : '0'}
+                                                        />
+                                                    </div>
+                                                )}
                                             </div>
 
                                             {/* Description */}
@@ -842,39 +927,116 @@ const ProductManager: React.FC<ProductManagerProps> = ({
                                         </div>
                                     )}
 
-                                    {/* Sélection de devise */}
-                                    <div>
-                                        <Label>Devise</Label>
-                                        <div className="relative">
-                                            <Button
-                                                variant="outline"
-                                                className="w-full justify-between"
-                                                onClick={() => setShowCurrencyDropdown(!showCurrencyDropdown)}
-                                            >
-                                                {CURRENCIES.find(c => c.code === editingProduct.currency)?.name || 'Sélectionner une devise'}
-                                                <ChevronDown className="w-4 h-4" />
-                                            </Button>
-                                            {showCurrencyDropdown && (
-                                                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
-                                                    {CURRENCIES.map((currency) => (
-                                                        <button
-                                                            key={currency.code}
-                                                            className="w-full px-4 py-2 text-left hover:bg-gray-100 flex items-center justify-between"
-                                                            onClick={() => {
-                                                                setEditingProduct(prev => ({
-                                                                    ...prev!,
-                                                                    currency: currency.code
-                                                                }));
-                                                                setShowCurrencyDropdown(false);
-                                                            }}
-                                                        >
-                                                            <div>
-                                                                <div className="font-medium">{currency.code}</div>
-                                                                <div className="text-sm text-gray-600">{currency.name}</div>
-                                                            </div>
-                                                            <div className="text-sm text-gray-500">{currency.symbol}</div>
-                                                        </button>
-                                                    ))}
+                                    {/* Sélection de devise - MASQUÉE pour pharmacie et hopital_clinique */}
+                                    {selectedType !== 'pharmacie' && selectedType !== 'hopital_clinique' && (
+                                        <div>
+                                            <Label>Devise</Label>
+                                            <div className="flex flex-wrap gap-2">
+                                                {CURRENCIES.map((currency) => (
+                                                    <button
+                                                        key={currency.code}
+                                                        className={`px-4 py-2 border rounded-lg text-sm font-medium transition-all ${editingProduct.currency === currency.code
+                                                            ? 'bg-blue-600 text-white border-blue-600'
+                                                            : 'bg-white text-gray-700 border-gray-300 hover:border-blue-500'
+                                                            }`}
+                                                        onClick={() => {
+                                                            setEditingProduct(prev => ({
+                                                                ...prev!,
+                                                                currency: currency.code
+                                                            }));
+                                                        }}
+                                                    >
+                                                        {currency.code} ({currency.symbol})
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* ✅ Section Promotion */}
+                                    <div className="bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-200 rounded-lg p-4">
+                                        <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                                            🎁 Promotion (optionnel)
+                                        </h3>
+
+                                        <div className="space-y-4">
+                                            <div className="flex items-center space-x-2">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={editingProduct.promotionActive || false}
+                                                    onChange={(e) => setEditingProduct(prev => ({
+                                                        ...prev!,
+                                                        promotionActive: e.target.checked
+                                                    }))}
+                                                    className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                                                />
+                                                <label className="text-sm font-medium text-gray-700">
+                                                    Activer une promotion pour ce produit
+                                                </label>
+                                            </div>
+
+                                            {editingProduct.promotionActive && (
+                                                <div className="space-y-3 pl-6 border-l-2 border-yellow-400">
+                                                    <div>
+                                                        <Label>🏷️ Type de promotion</Label>
+                                                        <div className="grid grid-cols-4 gap-2 mt-2">
+                                                            {['reduction', 'offre', 'bon_plan', 'flash'].map((type) => (
+                                                                <button
+                                                                    key={type}
+                                                                    type="button"
+                                                                    onClick={() => setEditingProduct(prev => ({
+                                                                        ...prev!,
+                                                                        promotionType: type as any
+                                                                    }))}
+                                                                    className={`px-3 py-2 rounded-lg text-sm font-medium border-2 transition-colors ${editingProduct.promotionType === type
+                                                                            ? 'bg-yellow-500 text-white border-yellow-500'
+                                                                            : 'bg-white text-gray-700 border-gray-300 hover:border-yellow-400'
+                                                                        }`}
+                                                                >
+                                                                    {type === 'reduction' ? 'Réduction' :
+                                                                        type === 'offre' ? 'Offre' :
+                                                                            type === 'bon_plan' ? 'Bon plan' : 'Flash'}
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+
+                                                    <div>
+                                                        <Label>💰 Valeur</Label>
+                                                        <Input
+                                                            placeholder="Ex: -20%, 1+1 gratuit"
+                                                            value={editingProduct.promotionValeur || ''}
+                                                            onChange={(e) => setEditingProduct(prev => ({
+                                                                ...prev!,
+                                                                promotionValeur: e.target.value
+                                                            }))}
+                                                        />
+                                                    </div>
+
+                                                    <div>
+                                                        <Label>📝 Description</Label>
+                                                        <textarea
+                                                            placeholder="Décrivez l'offre..."
+                                                            value={editingProduct.promotionDescription || ''}
+                                                            onChange={(e) => setEditingProduct(prev => ({
+                                                                ...prev!,
+                                                                promotionDescription: e.target.value
+                                                            }))}
+                                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent min-h-[80px]"
+                                                        />
+                                                    </div>
+
+                                                    <div>
+                                                        <Label>📅 Date de fin</Label>
+                                                        <Input
+                                                            type="date"
+                                                            value={editingProduct.promotionDateFin || ''}
+                                                            onChange={(e) => setEditingProduct(prev => ({
+                                                                ...prev!,
+                                                                promotionDateFin: e.target.value
+                                                            }))}
+                                                        />
+                                                    </div>
                                                 </div>
                                             )}
                                         </div>
@@ -1014,8 +1176,8 @@ const ProductManager: React.FC<ProductManagerProps> = ({
                                         )}
                                     </div>
 
-                                    {/* Actions */}
-                                    <div className="flex justify-end gap-2 pt-4 border-t">
+                                    {/* Actions - TOUJOURS VISIBLES */}
+                                    <div className="sticky bottom-0 bg-white pt-4 border-t mt-6 flex justify-end gap-2 z-10">
                                         <Button
                                             variant="outline"
                                             onClick={() => {
@@ -1025,7 +1187,7 @@ const ProductManager: React.FC<ProductManagerProps> = ({
                                         >
                                             Annuler
                                         </Button>
-                                        <Button onClick={handleSaveProduct}>
+                                        <Button onClick={handleSaveProduct} className="bg-green-600 hover:bg-green-700">
                                             <Check className="w-4 h-4 mr-2" />
                                             Enregistrer
                                         </Button>

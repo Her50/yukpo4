@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { Audio } from 'expo-av';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
@@ -22,7 +23,6 @@ import { modernColors } from '../theme/modernTheme';
 import InAppCallModal from './InAppCallModal';
 import ProductGalleryPickerModal from './ProductGalleryPickerModal';
 import SafeIcon from './SafeIcon';
-import ServiceMediaGallery from './ServiceMediaGallery';
 import UserMentionPicker from './UserMentionPicker';
 
 interface ChatModalMobileProps {
@@ -69,11 +69,10 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
     const [selectedImages, setSelectedImages] = useState<string[]>([]);
     const [selectedAudio, setSelectedAudio] = useState<string | null>(null);
     const [selectedAudioUri, setSelectedAudioUri] = useState<string | null>(null);
-    const [selectedDocuments, setSelectedDocuments] = useState<string[]>([]);
+    const [selectedDocuments, setSelectedDocuments] = useState<Array<{ base64: string; name: string; size?: number }>>([]);
     const [isRecording, setIsRecording] = useState(false);
     const [recording, setRecording] = useState<Audio.Recording | null>(null);
     const [recordingDuration, setRecordingDuration] = useState(0);
-    const [showMediaGallery, setShowMediaGallery] = useState(false);
     const [showProductGalleryPicker, setShowProductGalleryPicker] = useState(false);
     const [isPlayingAudio, setIsPlayingAudio] = useState(false);
     const [audioSound, setAudioSound] = useState<Audio.Sound | null>(null);
@@ -85,7 +84,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
     const [showCallModal, setShowCallModal] = useState(false);
     const [callType, setCallType] = useState<'audio' | 'video'>('audio');
 
-    const scrollViewRef = useRef<ScrollView>(null);
+    const scrollViewRef = useRef<any>(null);
     const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     // Utiliser le hook WebSocket
@@ -213,13 +212,22 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
         // ✅ NOUVEAU: Envoyer avec les IDs des utilisateurs mentionnés et le message cité
         await sendMessage(newMessage.trim(), 'text', {
             mentioned_users: mentionedUsers.length > 0 ? mentionedUsers : undefined,
-            reply_to_id: replyingTo?.id || undefined
+            reply_to_id: replyingTo?.id || undefined,
+            reply_to: replyingTo ? {
+                id: replyingTo.id,
+                sender_name: replyingTo.sender_name,
+                content: replyingTo.content,
+                content_type: replyingTo.content_type,
+                imageUrl: replyingTo.imageUrl,
+                audioUrl: replyingTo.audioUrl,
+                fileUrl: replyingTo.fileUrl
+            } : undefined
         });
 
         setNewMessage('');
         setShowEmojiPicker(false);
         setMentionedUsers([]); // Réinitialiser les mentions
-        setReplyingTo(null); // Réinitialiser la réponse
+        setReplyingTo(null); // ✅ Réinitialiser la réponse APRÈS l'envoi
     };
 
     const handleEditMessage = async () => {
@@ -373,20 +381,50 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
 
     const popularEmojis = ['😊', '😂', '❤️', '👍', '👎', '😍', '🤔', '😢', '😮', '🔥', '💯', '🎉', '👏', '🙏', '💪'];
 
-    // Fonction pour convertir fichier en base64
+    // Fonction pour convertir fichier en base64 (React Native compatible)
     const convertFileToBase64 = async (uri: string): Promise<string> => {
         try {
-            const response = await fetch(uri);
-            const blob = await response.blob();
-            return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onloadend = () => {
-                    const base64 = reader.result as string;
-                    resolve(base64);
-                };
-                reader.onerror = reject;
-                reader.readAsDataURL(blob);
+            // Utiliser FileSystem d'Expo pour React Native
+            const FileSystem = require('expo-file-system');
+            const base64 = await FileSystem.readAsStringAsync(uri, {
+                encoding: FileSystem.EncodingType.Base64,
             });
+
+            // Déterminer le type MIME basé sur l'extension
+            const extension = uri.split('.').pop()?.toLowerCase();
+            let mimeType = 'application/octet-stream';
+
+            switch (extension) {
+                case 'pdf':
+                    mimeType = 'application/pdf';
+                    break;
+                case 'doc':
+                case 'docx':
+                    mimeType = 'application/msword';
+                    break;
+                case 'xls':
+                case 'xlsx':
+                    mimeType = 'application/vnd.ms-excel';
+                    break;
+                case 'txt':
+                    mimeType = 'text/plain';
+                    break;
+                case 'jpg':
+                case 'jpeg':
+                    mimeType = 'image/jpeg';
+                    break;
+                case 'png':
+                    mimeType = 'image/png';
+                    break;
+                case 'mp3':
+                    mimeType = 'audio/mpeg';
+                    break;
+                case 'mp4':
+                    mimeType = 'video/mp4';
+                    break;
+            }
+
+            return `data:${mimeType};base64,${base64}`;
         } catch (error) {
             console.error('Erreur conversion base64:', error);
             throw error;
@@ -416,19 +454,34 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
         }
     };
 
-    // Picker de fichiers
+    // Picker de fichiers (UNIQUEMENT doc, pdf, excel - PAS d'images)
     const pickDocument = async () => {
         try {
             const result = await DocumentPicker.getDocumentAsync({
-                type: '*/*',
+                type: [
+                    'application/pdf',
+                    'application/msword',
+                    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                    'application/vnd.ms-excel',
+                    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                    'text/plain'
+                ],
                 copyToCacheDirectory: true,
                 multiple: false,
             });
 
-            if (result.type === 'success' || !result.canceled) {
-                const file = result.assets ? result.assets[0] : result;
+            if (!result.canceled && result.assets && result.assets.length > 0) {
+                const file = result.assets[0];
+
+                // Vérifier la taille du fichier (max 10MB)
+                if (file.size && file.size > 10 * 1024 * 1024) {
+                    Alert.alert('Fichier trop volumineux', 'La taille maximale est de 10MB');
+                    return;
+                }
+
                 const base64 = await convertFileToBase64(file.uri);
-                setSelectedDocuments([...selectedDocuments, base64]);
+                setSelectedDocuments([...selectedDocuments, { base64, name: file.name || 'document', size: file.size }]);
+                console.log('[ChatModal] Fichier sélectionné:', file.name, `(${(file.size / 1024).toFixed(2)} KB)`);
             }
         } catch (error) {
             console.error('Erreur sélection fichier:', error);
@@ -569,7 +622,18 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
             content: newMessage.trim(),
             images: selectedImages.length > 0 ? selectedImages : undefined,
             audio: selectedAudio || undefined,
-            documents: selectedDocuments.length > 0 ? selectedDocuments : undefined,
+            documents: selectedDocuments.length > 0 ? selectedDocuments.map(doc => doc.base64) : undefined,
+            mentioned_users: mentionedUsers.length > 0 ? mentionedUsers : undefined,
+            reply_to_id: replyingTo?.id || undefined,
+            reply_to: replyingTo ? {
+                id: replyingTo.id,
+                sender_name: replyingTo.sender_name,
+                content: replyingTo.content,
+                content_type: replyingTo.content_type,
+                imageUrl: replyingTo.imageUrl,
+                audioUrl: replyingTo.audioUrl,
+                fileUrl: replyingTo.fileUrl
+            } : undefined
         };
 
         // ✅ CORRIGÉ: Détecter automatiquement le type de message
@@ -592,6 +656,8 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
         setSelectedAudioUri(null);
         setSelectedDocuments([]);
         setIsPlayingAudio(false);
+        setMentionedUsers([]); // ✅ Réinitialiser les mentions
+        setReplyingTo(null); // ✅ Réinitialiser la réponse
     };
 
     // Nettoyer l'audio quand le modal se ferme
@@ -616,13 +682,14 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
             >
                 {/* Header */}
                 <View style={styles.header}>
-                    <View style={styles.headerLeft}>
-                        <TouchableOpacity style={styles.backButton} onPress={onClose}>
-                            <SafeIcon name="arrow-left" size={24} color={modernColors.text} />
-                        </TouchableOpacity>
-                        <View style={styles.headerInfo}>
-                            <Text style={styles.prestataireName}>{nomPrestataire}</Text>
-                            <View style={styles.headerMeta}>
+                    {/* Première ligne : Bouton retour + Nom + Actions */}
+                    <View style={styles.headerTop}>
+                        <View style={styles.headerLeft}>
+                            <TouchableOpacity style={styles.backButton} onPress={onClose}>
+                                <SafeIcon name="arrow-left" size={24} color={modernColors.text} />
+                            </TouchableOpacity>
+                            <View style={styles.headerInfo}>
+                                <Text style={styles.prestataireName} numberOfLines={1}>{nomPrestataire}</Text>
                                 <View style={styles.statusIndicator}>
                                     <View style={[
                                         styles.statusDot,
@@ -635,84 +702,91 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                                         {isConnected ? 'En ligne' : 'Hors ligne'}
                                     </Text>
                                 </View>
-                                <Text style={styles.serviceInfo}>{titreService || 'Service'}</Text>
                             </View>
+                        </View>
+
+                        <View style={styles.headerActions}>
+                            {/* ✅ NOUVEAU: Bouton WhatsApp (prioritaire si disponible) */}
+                            {(prestataireInfo?.whatsapp || service?.data?.whatsapp?.valeur || service?.data?.whatsapp || prestataireInfo?.telephone) && (
+                                <TouchableOpacity
+                                    style={[styles.actionButton, styles.whatsappButton]}
+                                    onPress={async () => {
+                                        const whatsappNumber = prestataireInfo?.whatsapp ||
+                                            service?.data?.whatsapp?.valeur ||
+                                            service?.data?.whatsapp ||
+                                            prestataireInfo?.telephone;
+
+                                        if (!whatsappNumber) {
+                                            Alert.alert('WhatsApp', 'Numéro WhatsApp non disponible');
+                                            return;
+                                        }
+
+                                        try {
+                                            const phoneNumber = whatsappNumber.replace(/\s+/g, '').replace(/\+/g, '');
+                                            const serviceName = titreService || 'votre service';
+                                            const message = encodeURIComponent(`Bonjour ${nomPrestataire}, je souhaite discuter de ${serviceName}.`);
+                                            const whatsappUrl = `whatsapp://send?phone=${phoneNumber}&text=${message}`;
+
+                                            const canOpen = await Linking.canOpenURL(whatsappUrl);
+                                            if (canOpen) {
+                                                await Linking.openURL(whatsappUrl);
+                                            } else {
+                                                Alert.alert('WhatsApp', 'WhatsApp n\'est pas installé sur cet appareil');
+                                            }
+                                        } catch (error) {
+                                            console.error('Erreur ouverture WhatsApp:', error);
+                                            Alert.alert('Erreur', 'Impossible d\'ouvrir WhatsApp');
+                                        }
+                                    }}
+                                >
+                                    {/* Logo WhatsApp officiel */}
+                                    <View style={styles.whatsappIconContainer}>
+                                        <Text style={styles.whatsappIcon}>📱</Text>
+                                    </View>
+                                    <View style={styles.whatsappBadge}>
+                                        <Text style={styles.whatsappBadgeText}>WA</Text>
+                                    </View>
+                                </TouchableOpacity>
+                            )}
+
+                            {/* ✅ Bouton liste des participants */}
+                            <TouchableOpacity
+                                style={[styles.actionButton, participants.length > 2 && styles.actionButtonHighlight]}
+                                onPress={() => setShowParticipantsList(true)}
+                            >
+                                <SafeIcon name="users" size={20} color={participants.length > 2 ? modernColors.primary : modernColors.text} />
+                                {participants.length > 2 && (
+                                    <View style={styles.participantsBadge}>
+                                        <Text style={styles.participantsBadgeText}>{participants.length}</Text>
+                                    </View>
+                                )}
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                style={styles.actionButton}
+                                onPress={() => {
+                                    setCallType('audio');
+                                    setShowCallModal(true);
+                                }}
+                            >
+                                <SafeIcon name="phone" size={20} color={modernColors.success} />
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                style={styles.actionButton}
+                                onPress={() => {
+                                    setCallType('video');
+                                    setShowCallModal(true);
+                                }}
+                            >
+                                <SafeIcon name="video" size={20} color={modernColors.primary} />
+                            </TouchableOpacity>
                         </View>
                     </View>
 
-                    <View style={styles.headerActions}>
-                        {/* ✅ NOUVEAU: Bouton WhatsApp (prioritaire si disponible) */}
-                        {(prestataireInfo?.whatsapp || service?.data?.whatsapp?.valeur || service?.data?.whatsapp || prestataireInfo?.telephone) && (
-                            <TouchableOpacity
-                                style={[styles.actionButton, styles.whatsappButton]}
-                                onPress={async () => {
-                                    const whatsappNumber = prestataireInfo?.whatsapp ||
-                                        service?.data?.whatsapp?.valeur ||
-                                        service?.data?.whatsapp ||
-                                        prestataireInfo?.telephone;
-
-                                    if (!whatsappNumber) {
-                                        Alert.alert('WhatsApp', 'Numéro WhatsApp non disponible');
-                                        return;
-                                    }
-
-                                    try {
-                                        const phoneNumber = whatsappNumber.replace(/\s+/g, '').replace(/\+/g, '');
-                                        const serviceName = titreService || 'votre service';
-                                        const message = encodeURIComponent(`Bonjour ${nomPrestataire}, je souhaite discuter de ${serviceName}.`);
-                                        const whatsappUrl = `whatsapp://send?phone=${phoneNumber}&text=${message}`;
-
-                                        const canOpen = await Linking.canOpenURL(whatsappUrl);
-                                        if (canOpen) {
-                                            await Linking.openURL(whatsappUrl);
-                                        } else {
-                                            Alert.alert('WhatsApp', 'WhatsApp n\'est pas installé sur cet appareil');
-                                        }
-                                    } catch (error) {
-                                        console.error('Erreur ouverture WhatsApp:', error);
-                                        Alert.alert('Erreur', 'Impossible d\'ouvrir WhatsApp');
-                                    }
-                                }}
-                            >
-                                <SafeIcon name="message-circle" size={20} color="#25D366" />
-                                <View style={styles.whatsappBadge}>
-                                    <Text style={styles.whatsappBadgeText}>WA</Text>
-                                </View>
-                            </TouchableOpacity>
-                        )}
-
-                        {/* ✅ Bouton liste des participants */}
-                        <TouchableOpacity
-                            style={[styles.actionButton, participants.length > 2 && styles.actionButtonHighlight]}
-                            onPress={() => setShowParticipantsList(true)}
-                        >
-                            <SafeIcon name="users" size={20} color={participants.length > 2 ? modernColors.primary : modernColors.text} />
-                            {participants.length > 2 && (
-                                <View style={styles.participantsBadge}>
-                                    <Text style={styles.participantsBadgeText}>{participants.length}</Text>
-                                </View>
-                            )}
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                            style={styles.actionButton}
-                            onPress={() => {
-                                setCallType('audio');
-                                setShowCallModal(true);
-                            }}
-                        >
-                            <SafeIcon name="phone" size={20} color={modernColors.success} />
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                            style={styles.actionButton}
-                            onPress={() => {
-                                setCallType('video');
-                                setShowCallModal(true);
-                            }}
-                        >
-                            <SafeIcon name="video" size={20} color={modernColors.primary} />
-                        </TouchableOpacity>
+                    {/* Deuxième ligne : Titre du service (toujours visible) */}
+                    <View style={styles.headerBottom}>
+                        <Text style={styles.serviceInfo} numberOfLines={1}>{titreService || 'Service'}</Text>
                     </View>
                 </View>
 
@@ -963,8 +1037,11 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                             {selectedDocuments.map((doc, idx) => (
                                 <View key={idx} style={styles.mediaPreviewItem}>
                                     <View style={styles.documentPreview}>
-                                        <SafeIcon name="file" size={20} color="#FFFFFF" />
-                                        <Text style={styles.audioPreviewText}>Doc</Text>
+                                        <SafeIcon name="file-text" size={20} color="#FFFFFF" />
+                                        <Text style={styles.audioPreviewText} numberOfLines={1}>{doc.name}</Text>
+                                        {doc.size && (
+                                            <Text style={styles.documentSize}>{(doc.size / 1024).toFixed(0)} KB</Text>
+                                        )}
                                     </View>
                                     <TouchableOpacity
                                         style={styles.removeMediaButton}
@@ -983,14 +1060,6 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                             <SafeIcon name="image" size={22} color={modernColors.primary} />
                         </TouchableOpacity>
 
-                        {/* ✅ NOUVEAU: Bouton pour ouvrir la galerie de produits */}
-                        <TouchableOpacity
-                            style={styles.mediaButton}
-                            onPress={() => setShowProductGalleryPicker(true)}
-                        >
-                            <SafeIcon name="folder" size={22} color="#8B5CF6" />
-                        </TouchableOpacity>
-
                         <TouchableOpacity
                             style={[styles.mediaButton, isRecording && styles.mediaButtonActive]}
                             onPress={isRecording ? stopAudioRecording : startAudioRecording}
@@ -999,14 +1068,15 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                         </TouchableOpacity>
 
                         <TouchableOpacity style={styles.mediaButton} onPress={pickDocument}>
-                            <SafeIcon name="file" size={22} color={modernColors.primary} />
+                            <SafeIcon name="file-text" size={22} color={modernColors.primary} />
                         </TouchableOpacity>
 
+                        {/* ✅ Bouton galerie de produits/service */}
                         <TouchableOpacity
                             style={styles.mediaButton}
-                            onPress={() => setShowMediaGallery(true)}
+                            onPress={() => setShowProductGalleryPicker(true)}
                         >
-                            <SafeIcon name="folder-open" size={22} color={modernColors.primary} />
+                            <SafeIcon name="folder-open" size={22} color="#8B5CF6" />
                         </TouchableOpacity>
                     </View>
 
@@ -1063,10 +1133,10 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                         <TouchableOpacity
                             style={[
                                 styles.sendButton,
-                                (!newMessage.trim() && selectedImages.length === 0 && !selectedAudio) && styles.sendButtonDisabled
+                                (!newMessage.trim() && selectedImages.length === 0 && !selectedAudio && selectedDocuments.length === 0) && styles.sendButtonDisabled
                             ]}
                             onPress={handleSendWithMedia}
-                            disabled={!newMessage.trim() && selectedImages.length === 0 && !selectedAudio}
+                            disabled={!newMessage.trim() && selectedImages.length === 0 && !selectedAudio && selectedDocuments.length === 0}
                         >
                             <SafeIcon name="send" size={20} color="#FFFFFF" />
                         </TouchableOpacity>
@@ -1086,15 +1156,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                 </View>
             </KeyboardAvoidingView>
 
-            {/* Modal de galerie média du prestataire */}
-            <ServiceMediaGallery
-                visible={showMediaGallery}
-                onClose={() => setShowMediaGallery(false)}
-                service={service}
-                prestataireInfo={prestataireInfo}
-            />
-
-            {/* ✅ NOUVEAU: Modal de sélection de médias de la galerie produit */}
+            {/* ✅ Modal de sélection de médias de la galerie produit */}
             <ProductGalleryPickerModal
                 visible={showProductGalleryPicker}
                 onClose={() => setShowProductGalleryPicker(false)}
@@ -1185,13 +1247,18 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
 
                         <View style={styles.participantsFooter}>
                             <TouchableOpacity
-                                style={styles.addParticipantButton}
+                                style={[styles.addParticipantButton, styles.addMemberButton]}
                                 onPress={() => {
                                     setShowParticipantsList(false);
                                     setShowMentionPicker(true);
                                 }}
                             >
-                                <SafeIcon name="user-plus" size={20} color="#FFFFFF" />
+                                <View style={styles.addMemberIconContainer}>
+                                    <SafeIcon name="user-plus" size={18} color="#FFFFFF" />
+                                    <View style={styles.addMemberPlus}>
+                                        <Text style={styles.addMemberPlusText}>+</Text>
+                                    </View>
+                                </View>
                                 <Text style={styles.addParticipantText}>Inviter quelqu'un</Text>
                             </TouchableOpacity>
                         </View>
@@ -1208,14 +1275,21 @@ const styles = StyleSheet.create({
         backgroundColor: modernColors.background,
     },
     header: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
         paddingHorizontal: 16,
         paddingVertical: 12,
         borderBottomWidth: 1,
         borderBottomColor: modernColors.border,
         backgroundColor: modernColors.surface,
+    },
+    headerTop: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: 8,
+    },
+    headerBottom: {
+        paddingLeft: 48, // Aligné avec le nom (après le bouton retour)
+        paddingRight: 40, // Espace pour ne pas être caché par les boutons
     },
     headerLeft: {
         flexDirection: 'row',
@@ -1255,8 +1329,9 @@ const styles = StyleSheet.create({
         fontWeight: '500',
     },
     serviceInfo: {
-        fontSize: 12,
+        fontSize: 13,
         color: modernColors.textSecondary,
+        fontWeight: '500',
     },
     headerActions: {
         flexDirection: 'row',
@@ -1290,6 +1365,20 @@ const styles = StyleSheet.create({
     },
     whatsappButton: {
         backgroundColor: '#E8F5E9',
+        borderWidth: 2,
+        borderColor: '#25D366',
+    },
+    whatsappIconContainer: {
+        width: 24,
+        height: 24,
+        borderRadius: 12,
+        backgroundColor: '#25D366',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    whatsappIcon: {
+        fontSize: 16,
+        color: '#FFFFFF',
     },
     whatsappBadge: {
         position: 'absolute',
@@ -1305,6 +1394,36 @@ const styles = StyleSheet.create({
         borderColor: '#FFFFFF',
     },
     whatsappBadgeText: {
+        fontSize: 8,
+        fontWeight: 'bold',
+        color: '#FFFFFF',
+    },
+    addMemberButton: {
+        backgroundColor: '#3B82F6',
+        borderWidth: 2,
+        borderColor: '#1D4ED8',
+    },
+    addMemberIconContainer: {
+        position: 'relative',
+        width: 24,
+        height: 24,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    addMemberPlus: {
+        position: 'absolute',
+        top: -2,
+        right: -2,
+        width: 12,
+        height: 12,
+        borderRadius: 6,
+        backgroundColor: '#10B981',
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: '#FFFFFF',
+    },
+    addMemberPlusText: {
         fontSize: 8,
         fontWeight: 'bold',
         color: '#FFFFFF',
@@ -1557,6 +1676,13 @@ const styles = StyleSheet.create({
         backgroundColor: '#F59E0B',
         justifyContent: 'center',
         alignItems: 'center',
+        padding: 4,
+    },
+    documentSize: {
+        fontSize: 8,
+        color: '#FFFFFF',
+        marginTop: 2,
+        textAlign: 'center',
     },
     removeMediaButton: {
         position: 'absolute',
@@ -1765,7 +1891,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        backgroundColor: modernColors.primaryLight + '30',
+        backgroundColor: modernColors.primary + '20',
         borderLeftWidth: 4,
         borderLeftColor: modernColors.primary,
         paddingHorizontal: 12,

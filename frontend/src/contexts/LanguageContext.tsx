@@ -28,19 +28,79 @@ interface LanguageProviderProps {
 export const LanguageProvider: React.FC<LanguageProviderProps> = ({ children }) => {
     const [language, setLanguageState] = useState<string>('fr');
 
-    // Charger la langue sauvegardée au démarrage
+    // Charger la langue sauvegardée au démarrage ou détecter via GPS
     useEffect(() => {
-        loadSavedLanguage();
+        loadOrDetectLanguage();
     }, []);
 
-    const loadSavedLanguage = () => {
+    const loadOrDetectLanguage = async () => {
         try {
             const savedLanguage = localStorage.getItem('app_language');
+            const isFirstLaunch = localStorage.getItem('app_first_launch');
+
             if (savedLanguage) {
+                // Langue déjà sauvegardée
                 setLanguageState(savedLanguage);
+            } else if (isFirstLaunch === null) {
+                // Première visite - Détecter la langue via GPS
+                console.log('[Language] Première visite - Détection langue via GPS...');
+                await detectLanguageFromGPS();
+                localStorage.setItem('app_first_launch', 'false');
             }
         } catch (error) {
             console.error('Erreur chargement langue:', error);
+        }
+    };
+
+    const detectLanguageFromGPS = async () => {
+        try {
+            if ('geolocation' in navigator) {
+                const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+                    navigator.geolocation.getCurrentPosition(resolve, reject, {
+                        enableHighAccuracy: true,
+                        timeout: 10000,
+                        maximumAge: 0
+                    });
+                });
+
+                const { latitude, longitude } = position.coords;
+                console.log('[Language] GPS:', latitude, longitude);
+
+                // Déterminer la langue basée sur la région
+                let detectedLang = 'fr'; // Par défaut français
+
+                // Afrique francophone (Cameroun, Côte d'Ivoire, Sénégal, etc.)
+                if (latitude >= -5 && latitude <= 20 && longitude >= -18 && longitude <= 20) {
+                    detectedLang = 'fr';
+                }
+                // Afrique anglophone (Nigeria, Ghana, Kenya, etc.)
+                else if (latitude >= -5 && latitude <= 15 && longitude >= 0 && longitude <= 45) {
+                    detectedLang = 'en';
+                }
+                // Europe francophone
+                else if (latitude >= 42 && latitude <= 51 && longitude >= -5 && longitude <= 10) {
+                    detectedLang = 'fr';
+                }
+                // Europe anglophone
+                else if (latitude >= 50 && latitude <= 60 && longitude >= -8 && longitude <= 2) {
+                    detectedLang = 'en';
+                }
+                // Amérique du Nord
+                else if (latitude >= 25 && latitude <= 50 && longitude >= -125 && longitude <= -65) {
+                    detectedLang = 'en';
+                }
+                // Amérique Latine
+                else if (latitude >= -55 && latitude <= 25 && longitude >= -120 && longitude <= -35) {
+                    detectedLang = 'es';
+                }
+
+                console.log('[Language] Langue détectée via GPS:', detectedLang);
+                setLanguage(detectedLang);
+            }
+        } catch (error) {
+            console.error('[Language] Erreur détection GPS:', error);
+            // Langue par défaut si erreur
+            setLanguage('fr');
         }
     };
 

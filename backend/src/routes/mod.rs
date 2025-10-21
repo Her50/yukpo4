@@ -23,6 +23,7 @@ pub mod conversation_routes; // ✅ NOUVEAU: Routes pour @mentions et multi-part
 pub mod scheduling_search_routes; // ✅ NOUVEAU: Routes pour recherche avec planifications
 pub mod service_team_routes; // ✅ NOUVEAU: Routes pour gestion d'équipe des services
 pub mod signalement_routes; // ✅ NOUVEAU: Routes pour signalements
+pub mod publicite_routes; // ✅ NOUVEAU: Routes pour système de publicité payante
 
 // === Routes d'Optimisation IA ===
 // pub mod ia_routes_optimized; // Temporairement d?sactiv?

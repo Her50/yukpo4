@@ -9,11 +9,13 @@ import LanguageSelector from '../components/LanguageSelector';
 import ModernBackground from '../components/ModernBackground';
 import ModernGPSModal from '../components/ModernGPSModal'; // Utiliser ModernGPSModal pour support des zones
 import NotificationHistoryModal from '../components/NotificationHistoryModal';
+import PublicitesCarousel from '../components/PublicitesCarousel';
 import { SafeNativeView } from '../components/SafeNativeView';
 import UserAvatarMenu from '../components/UserAvatarMenu';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { apiGet } from '../services/api';
+import userBehaviorService from '../services/userBehaviorService';
 import { genererSuggestionsService, rechercherServices } from '../services/yukpoclient';
 // @ts-ignore
 const { Alert, Dimensions, ScrollView, StyleSheet, Text, TouchableOpacity, View, KeyboardAvoidingView, Platform } = ReactNative;
@@ -60,6 +62,7 @@ const HomeScreen: React.FC = () => {
     const [showNotificationModal, setShowNotificationModal] = useState(false);
     const [showChatModal, setShowChatModal] = useState(false);
     const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);
+    const [userBehaviorCategories, setUserBehaviorCategories] = useState<string[]>([]);
 
     // Charger le nombre de notifications non lues
     React.useEffect(() => {
@@ -98,6 +101,20 @@ const HomeScreen: React.FC = () => {
             clearInterval(interval);
         };
     }, [user?.id, showNotificationModal]);
+
+    // Charger le comportement utilisateur au démarrage
+    React.useEffect(() => {
+        const loadUserBehavior = async () => {
+            try {
+                const categories = await userBehaviorService.getPreferredCategories(5);
+                setUserBehaviorCategories(categories);
+                console.log('[HomeScreen] Catégories préférées chargées:', categories);
+            } catch (error) {
+                console.error('[HomeScreen] Erreur chargement comportement:', error);
+            }
+        };
+        loadUserBehavior();
+    }, []);
 
     // Détection GPS automatique au chargement (si activé dans les paramètres)
     React.useEffect(() => {
@@ -150,6 +167,11 @@ const HomeScreen: React.FC = () => {
             setLoading(true);
             console.log('[HomeScreen] Recherche avec:', input);
             console.log('[HomeScreen] Utilisateur authentifié:', user.email);
+
+            // ✅ Tracker la recherche pour le comportement utilisateur
+            if (input.texte) {
+                await userBehaviorService.trackSearch(input.texte);
+            }
 
             // Utiliser yukpoclient (comme le frontend)
             const result = await rechercherServices(input);
@@ -500,6 +522,12 @@ const HomeScreen: React.FC = () => {
                             showSendButton={true}
                         />
 
+                        {/* ✅ Carousel de publicités basées sur le comportement - EN BAS */}
+                        <PublicitesCarousel
+                            userId={user?.id}
+                            userBehavior={userBehaviorCategories}
+                        />
+
 
                     </View>
                 </ScrollView>
@@ -627,9 +655,21 @@ const styles = StyleSheet.create({
     scrollContent: {
         flexGrow: 1,
         paddingHorizontal: width > 400 ? 24 : 16, // ✅ Padding adaptatif selon la largeur
-        paddingTop: 20,
-        paddingBottom: 100,
-        minHeight: height * 0.8, // ✅ Hauteur minimale adaptative
+        paddingTop: height * 0.12, // ✅ Réduit pour faire de la place au texte descriptif
+        paddingBottom: 150, // ✅ Augmenté pour que les onglets ne masquent pas le bouton envoyer
+        minHeight: height * 0.85, // ✅ Hauteur minimale augmentée
+        justifyContent: 'center', // ✅ Centre le contenu verticalement
+    },
+    descriptionContainer: {
+        marginBottom: 16,
+        paddingHorizontal: 8,
+    },
+    descriptionText: {
+        fontSize: 13,
+        color: '#64748b',
+        textAlign: 'center',
+        lineHeight: 18,
+        fontStyle: 'italic',
     },
     header: {
         marginBottom: 8,
@@ -645,12 +685,13 @@ const styles = StyleSheet.create({
         width: 44,
         height: 44,
     },
-    // ✅ Conteneur pour le titre centré - ÉQUILIBRÉ
+    // ✅ Conteneur pour le titre centré - PARFAITEMENT CENTRÉ
     brandTitleContainer: {
         flex: 1,
         alignItems: 'center',
         justifyContent: 'center',
-        marginHorizontal: 8, // Espacement pour équilibrer
+        marginHorizontal: 0, // ✅ Supprimé pour centrage parfait
+        marginLeft: 0, // ✅ Supprimé le décalage
     },
     headerTop: {
         flexDirection: 'row',
@@ -808,9 +849,10 @@ const styles = StyleSheet.create({
         textShadowRadius: 4,
     },
     brandTitleCompact: {
-        fontSize: 28, // ✅ Adapté pour l'entête
+        fontSize: 24, // ✅ Réduit de 28 à 24 pour éviter le retour à la ligne
         fontWeight: '900',
         textAlign: 'center',
+        letterSpacing: -0.5, // Rapproche les lettres
     },
     brandYuk: {
         color: '#EAB308', // text-yellow-500 du frontend

@@ -13,9 +13,9 @@ import {
     View
 } from 'react-native';
 import CategoryFilters from '../components/CategoryFilters';
+import ChatInputMobile from '../components/ChatInputMobile';
 import ChatModalMobile from '../components/ChatModalMobile';
 import ProductCard from '../components/ProductCard';
-import ResultsHeader from '../components/ResultsHeader';
 import SafeIcon from '../components/SafeIcon';
 import ServiceGalleryModal from '../components/ServiceGalleryModal';
 import UltraModernServiceCard from '../components/UltraModernServiceCard';
@@ -81,7 +81,6 @@ const ResultatBesoinScreen: React.FC = () => {
     const [selectedService, setSelectedService] = useState<Service | null>(null);
     const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
     const [selectedPrestataire, setSelectedPrestataire] = useState<Prestataire | null>(null);
-    const [displayMode, setDisplayMode] = useState<'products' | 'services'>('products'); // Mode d'affichage
 
     // États pour le filtre par prix
     const [priceFilter, setPriceFilter] = useState<{
@@ -182,6 +181,72 @@ const ResultatBesoinScreen: React.FC = () => {
         }
 
         return null;
+    };
+
+    // Fonction pour filtrer les produits selon les filtres de catégorie
+    const filterProducts = (productsList: any[]): any[] => {
+        let filtered = [...productsList];
+
+        // Appliquer les filtres de catégorie spécifiques
+        if (Object.keys(categoryFilters).length > 0) {
+            filtered = filtered.filter(product => {
+                // Vérifier chaque filtre
+                for (const [key, value] of Object.entries(categoryFilters)) {
+                    if (value === null || value === undefined || value === '') continue;
+
+                    // Filtres numériques (min/max)
+                    if (key.startsWith('min') && product[key.replace('min', '').toLowerCase()]) {
+                        if (parseFloat(product[key.replace('min', '').toLowerCase()]) < parseFloat(value)) {
+                            return false;
+                        }
+                    }
+                    if (key.startsWith('max') && product[key.replace('max', '').toLowerCase()]) {
+                        if (parseFloat(product[key.replace('max', '').toLowerCase()]) > parseFloat(value)) {
+                            return false;
+                        }
+                    }
+
+                    // Filtres de correspondance directe
+                    if (product[key] && product[key] !== value) {
+                        return false;
+                    }
+                }
+                return true;
+            });
+        }
+
+        // Appliquer le filtre par prix
+        if (priceFilter.min !== null || priceFilter.max !== null) {
+            filtered = filtered.filter(product => {
+                const price = parseFloat(product.prix || product.price);
+                if (isNaN(price)) return false;
+
+                if (priceFilter.min !== null && price < priceFilter.min) return false;
+                if (priceFilter.max !== null && price > priceFilter.max) return false;
+
+                return true;
+            });
+        }
+
+        // ✅ TRI PRIORITAIRE : Produits en promotion d'abord
+        filtered.sort((a, b) => {
+            // 1. Priorité PROMO
+            const promoA = a.en_promotion || a.promotion_active ? 1 : 0;
+            const promoB = b.en_promotion || b.promotion_active ? 1 : 0;
+            if (promoA !== promoB) return promoB - promoA;
+
+            // 2. Score (pertinence)
+            const scoreA = a.score || 0;
+            const scoreB = b.score || 0;
+            if (scoreA !== scoreB) return scoreB - scoreA;
+
+            // 3. Distance (proximité)
+            const distA = a.distance || Infinity;
+            const distB = b.distance || Infinity;
+            return distA - distB;
+        });
+
+        return filtered;
     };
 
     // Fonction pour filtrer et trier les services
@@ -402,6 +467,15 @@ const ResultatBesoinScreen: React.FC = () => {
                                 distance = calculateDistance(userGPS, bestGPS);
                             }
 
+                            // ✅ Calculer le score de priorité pour produits en promotion
+                            let finalScore = service.score || 0;
+                            const isPromo = product.en_promotion || product.promotion_active;
+
+                            if (isPromo) {
+                                // Bonus significatif pour produits en publicité
+                                finalScore += 100; // Forte priorité pour affichage
+                            }
+
                             extractedProducts.push({
                                 ...product,
                                 _serviceId: service.id,
@@ -410,13 +484,34 @@ const ResultatBesoinScreen: React.FC = () => {
                                 _gps: bestGPS,
                                 _gpsSource: productGPS ? 'product' : (serviceGPSFixe ? 'service_fixe' : 'service_realtime'),
                                 distance: distance,
-                                score: service.score || 0
+                                score: finalScore, // ✅ Score ajusté avec bonus promo
+                                en_promotion: isPromo, // Passer le flag
+                                promotion_active: isPromo
                             });
                         });
                     }
                 });
 
                 console.log(`📦 [ResultatBesoinScreen] ${extractedProducts.length} produits extraits de ${validServices.length} services`);
+
+                // ✅ TRI PRIORITAIRE : Produits en promotion d'abord
+                extractedProducts.sort((a, b) => {
+                    // 1. Priorité PROMO
+                    const promoA = a.en_promotion || a.promotion_active ? 1 : 0;
+                    const promoB = b.en_promotion || b.promotion_active ? 1 : 0;
+                    if (promoA !== promoB) return promoB - promoA;
+
+                    // 2. Score (pertinence)
+                    const scoreA = a.score || 0;
+                    const scoreB = b.score || 0;
+                    if (scoreA !== scoreB) return scoreB - scoreA;
+
+                    // 3. Distance (proximité)
+                    const distA = a.distance || Infinity;
+                    const distB = b.distance || Infinity;
+                    return distA - distB;
+                });
+
                 setProducts(extractedProducts);
 
                 // Récupérer les informations des prestataires
@@ -913,19 +1008,63 @@ const ResultatBesoinScreen: React.FC = () => {
                 </TouchableOpacity>
             </View>
 
-            {/* En-tête avec statistiques */}
-            <ResultsHeader
-                title={`${terminology.productsLabel} correspondants à votre besoin`}
-                resultsCount={displayMode === 'products' ? products.length : services.length}
-                onGeolocationPress={handleGeolocation}
-                onPriceFilterPress={() => {
-                    setShowCategoryFilters(true);
-                }}
-                onSortPress={() => {
-                    Alert.alert('Tri', 'Options de tri disponibles');
-                }}
-                sortBy={terminology.sortLabels[sortBy] || sortBy}
-            />
+            {/* 🔍 Champ de recherche - Même fonctionnalité que HomeScreen */}
+            <View style={styles.searchContainer}>
+                <View style={styles.searchBar}>
+                    <SafeIcon name="search" size={20} color="#6B7280" />
+                    <ChatInputMobile
+                        onSubmit={async (input) => {
+                            // Réutiliser la même logique que HomeScreen
+                            try {
+                                setLoading(true);
+                                const rechercherServices = (await import('../lib/yukpoclient')).rechercherServices;
+                                const result = await rechercherServices(input);
+
+                                // Parser les résultats
+                                let newResults = [];
+                                if (result?.resultats?.resultats && Array.isArray(result.resultats.resultats)) {
+                                    newResults = result.resultats.resultats;
+                                }
+
+                                // Recharger avec les nouveaux résultats
+                                if (newResults.length > 0) {
+                                    const serviceIds = newResults.map((r: any) => r.service_id);
+                                    const servicesResponse = await apiPost('/api/services/batch', { service_ids: serviceIds });
+
+                                    if (servicesResponse.success && servicesResponse.data) {
+                                        setServices(servicesResponse.data);
+
+                                        // Extraire les produits
+                                        const allProducts: any[] = [];
+                                        servicesResponse.data.forEach((service: any) => {
+                                            if (service.data?.produits && Array.isArray(service.data.produits)) {
+                                                service.data.produits.forEach((product: any) => {
+                                                    allProducts.push({
+                                                        ...product,
+                                                        serviceId: service.id,
+                                                        service: service
+                                                    });
+                                                });
+                                            }
+                                        });
+                                        setProducts(allProducts);
+                                    }
+                                } else {
+                                    Alert.alert('Aucun résultat', 'Aucun service trouvé pour cette recherche');
+                                }
+                                setLoading(false);
+                            } catch (error) {
+                                console.error('[ResultatBesoin] Erreur recherche:', error);
+                                Alert.alert('Erreur', 'Une erreur est survenue lors de la recherche');
+                                setLoading(false);
+                            }
+                        }}
+                        placeholder="Affiner votre recherche..."
+                        showMediaButtons={true}
+                        showLocationButton={true}
+                    />
+                </View>
+            </View>
 
             {/* Avertissement GPS en temps réel */}
             {services.some(service => !service.data?.gps_fixe && service.gps) && (
@@ -992,62 +1131,66 @@ const ResultatBesoinScreen: React.FC = () => {
                 </View>
             ) : (
                 <>
-                    {/* Filtres et tri avec terminologie adaptée */}
-                    <View style={styles.filtersContainer}>
-                        <View style={styles.filtersCard}>
-                            <View style={styles.cardContent}>
-                                <View style={styles.filtersHeader}>
-                                    <View style={styles.filtersTitleContainer}>
-                                        <Text style={[styles.filtersTitle, { color: categoryStyle.primaryColor }]}>
-                                            {categoryStyle.icon} Filtrer & Trier
-                                        </Text>
-                                        <Text style={styles.categoryLabel}>{terminology.productsLabel}</Text>
-                                    </View>
-                                    <Text style={styles.resultsCount}>
-                                        {displayMode === 'products' ? products.length : services.length} {terminology.productLabel.toLowerCase()}{(displayMode === 'products' ? products.length : services.length) > 1 ? 's' : ''}
+                    {/* 🎨 Section de filtres moderne */}
+                    <View style={styles.modernFiltersContainer}>
+                        {/* En-tête avec compteur */}
+                        <View style={styles.modernFiltersHeader}>
+                            <View style={styles.modernHeaderLeft}>
+                                <Text style={styles.modernHeaderIcon}>{categoryStyle.icon}</Text>
+                                <View style={styles.modernHeaderText}>
+                                    <Text style={styles.modernHeaderTitle} numberOfLines={1} ellipsizeMode="tail">
+                                        {terminology.productsLabel}
+                                    </Text>
+                                    <Text style={styles.modernHeaderSubtitle} numberOfLines={1}>
+                                        {(() => {
+                                            const filtered = filterProducts(products);
+                                            return `${filtered.length} ${terminology.productLabel.toLowerCase()}${filtered.length > 1 ? 's' : ''}`;
+                                        })()}
+                                        {(() => {
+                                            const filtered = filterProducts(products);
+                                            return filtered.length !== products.length ? ` sur ${products.length}` : '';
+                                        })()}
                                     </Text>
                                 </View>
-
-                                <View style={styles.filtersButtons}>
-                                    {/* Bouton Filtres avancés */}
-                                    <TouchableOpacity
-                                        style={[styles.filterButton, { borderColor: categoryStyle.primaryColor }]}
-                                        onPress={() => setShowCategoryFilters(true)}
-                                    >
-                                        <SafeIcon name="filter" size={18} color={categoryStyle.primaryColor} />
-                                        <Text style={[styles.filterButtonText, { color: categoryStyle.primaryColor }]}>
-                                            Filtres avancés
-                                        </Text>
-                                        {Object.keys(categoryFilters).length > 0 && (
-                                            <View style={[styles.filterCountBadge, { backgroundColor: categoryStyle.primaryColor }]}>
-                                                <Text style={styles.filterCountText}>{Object.keys(categoryFilters).length}</Text>
-                                            </View>
-                                        )}
-                                    </TouchableOpacity>
-
-                                    {/* Tri rapide */}
-                                    <View style={styles.sortContainer}>
-                                        <Text style={styles.sortLabel}>Trier par:</Text>
-                                        <View style={styles.sortButtons}>
-                                            {Object.entries(terminology.sortLabels).map(([key, label]) => (
-                                                <TouchableOpacity
-                                                    key={key}
-                                                    style={[
-                                                        styles.sortButton,
-                                                        sortBy === key && [styles.sortButtonActive, { backgroundColor: categoryStyle.primaryColor, borderColor: categoryStyle.primaryColor }]
-                                                    ]}
-                                                    onPress={() => setSortBy(key as any)}
-                                                >
-                                                    <Text style={[styles.sortButtonText, sortBy === key && styles.sortButtonTextActive]}>
-                                                        {label}
-                                                    </Text>
-                                                </TouchableOpacity>
-                                            ))}
-                                        </View>
-                                    </View>
-                                </View>
                             </View>
+                            <TouchableOpacity
+                                style={[styles.modernFilterBadge, { backgroundColor: categoryStyle.primaryColor }]}
+                                onPress={() => setShowCategoryFilters(true)}
+                            >
+                                <SafeIcon name="filter" size={16} color="#FFFFFF" />
+                                {Object.keys(categoryFilters).length > 0 && (
+                                    <View style={styles.modernFilterCount}>
+                                        <Text style={styles.modernFilterCountText}>{Object.keys(categoryFilters).length}</Text>
+                                    </View>
+                                )}
+                            </TouchableOpacity>
                         </View>
+
+                        {/* Boutons de tri horizontal */}
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.modernSortScroll}>
+                            <View style={styles.modernSortButtons}>
+                                {Object.entries(terminology.sortLabels).map(([key, label]) => (
+                                    <TouchableOpacity
+                                        key={key}
+                                        style={[
+                                            styles.modernSortChip,
+                                            sortBy === key && [styles.modernSortChipActive, { backgroundColor: categoryStyle.primaryColor }]
+                                        ]}
+                                        onPress={() => setSortBy(key as any)}
+                                    >
+                                        <Text
+                                            style={[
+                                                styles.modernSortChipText,
+                                                sortBy === key && styles.modernSortChipTextActive
+                                            ]}
+                                            numberOfLines={1}
+                                        >
+                                            {label}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        </ScrollView>
                     </View>
 
                     {/* Modal de filtres de catégorie */}
@@ -1062,47 +1205,26 @@ const ResultatBesoinScreen: React.FC = () => {
                         initialFilters={categoryFilters}
                     />
 
-                    {/* Toggle mode d'affichage */}
-                    <View style={styles.displayModeToggle}>
-                        <TouchableOpacity
-                            style={[styles.modeButton, displayMode === 'products' && styles.modeButtonActive]}
-                            onPress={() => setDisplayMode('products')}
-                        >
-                            <SafeIcon name="package" size={18} color={displayMode === 'products' ? '#FFFFFF' : '#6B7280'} />
-                            <Text style={[styles.modeButtonText, displayMode === 'products' && styles.modeButtonTextActive]}>
-                                Produits ({products.length})
-                            </Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                            style={[styles.modeButton, displayMode === 'services' && styles.modeButtonActive]}
-                            onPress={() => setDisplayMode('services')}
-                        >
-                            <SafeIcon name="briefcase" size={18} color={displayMode === 'services' ? '#FFFFFF' : '#6B7280'} />
-                            <Text style={[styles.modeButtonText, displayMode === 'services' && styles.modeButtonTextActive]}>
-                                Services ({services.length})
-                            </Text>
-                        </TouchableOpacity>
-                    </View>
-
-                    {/* Liste des produits ou services */}
+                    {/* Liste des produits filtrés */}
                     <View style={styles.servicesContainer}>
-                        {displayMode === 'products' ? (
-                            products.length > 0 ? (
-                                products.map((product, index) => (
+                        {(() => {
+                            const filteredProducts = filterProducts(products);
+                            return filteredProducts.length > 0 ? (
+                                filteredProducts.map((product, index) => (
                                     <ProductCardComponent key={`product-${index}-${product.nom}`} product={product} />
                                 ))
                             ) : (
                                 <View style={styles.emptyState}>
                                     <SafeIcon name="package" size={48} color="#D1D5DB" />
                                     <Text style={styles.emptyStateText}>Aucun produit trouvé</Text>
-                                    <Text style={styles.emptyStateSubtext}>Essayez de basculer en mode Services</Text>
+                                    <Text style={styles.emptyStateSubtext}>
+                                        {Object.keys(categoryFilters).length > 0
+                                            ? 'Essayez de modifier vos filtres'
+                                            : 'Essayez de modifier votre recherche'}
+                                    </Text>
                                 </View>
-                            )
-                        ) : (
-                            filterAndSortServices(services).map((service) => (
-                                <ServiceCardComponent key={service.id} service={service} />
-                            ))
-                        )}
+                            );
+                        })()}
                     </View>
 
                     {/* Footer informatif */}
@@ -1194,6 +1316,21 @@ const styles = StyleSheet.create({
         marginLeft: 8,
         fontSize: 16,
         color: theme.colors.primary,
+    },
+    searchContainer: {
+        padding: 16,
+        backgroundColor: 'white',
+        borderBottomWidth: 1,
+        borderBottomColor: theme.colors.border,
+    },
+    searchBar: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#F3F4F6',
+        borderRadius: 12,
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        gap: 8,
     },
     titleContainer: {
         padding: 20,
@@ -1567,6 +1704,105 @@ const styles = StyleSheet.create({
     },
     sortButtonTextActive: {
         color: 'white',
+    },
+    // 🎨 Nouveaux styles modernes pour les filtres
+    modernFiltersContainer: {
+        backgroundColor: '#FFFFFF',
+        marginHorizontal: 16,
+        marginVertical: 12,
+        borderRadius: 16,
+        padding: 16,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 8,
+        elevation: 3,
+    },
+    modernFiltersHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 16,
+    },
+    modernHeaderLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        flex: 1,
+    },
+    modernHeaderIcon: {
+        fontSize: 32,
+    },
+    modernHeaderText: {
+        flex: 1,
+        gap: 2,
+    },
+    modernHeaderTitle: {
+        fontSize: 18,
+        fontWeight: '800',
+        color: '#1F2937',
+        letterSpacing: -0.5,
+        flexShrink: 1,
+    },
+    modernHeaderSubtitle: {
+        fontSize: 13,
+        color: '#6B7280',
+        fontWeight: '500',
+    },
+    modernFilterBadge: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        justifyContent: 'center',
+        alignItems: 'center',
+        position: 'relative',
+    },
+    modernFilterCount: {
+        position: 'absolute',
+        top: -4,
+        right: -4,
+        backgroundColor: '#EF4444',
+        borderRadius: 10,
+        minWidth: 20,
+        height: 20,
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 2,
+        borderColor: '#FFFFFF',
+    },
+    modernFilterCountText: {
+        fontSize: 10,
+        fontWeight: '700',
+        color: '#FFFFFF',
+    },
+    modernSortScroll: {
+        marginTop: 4,
+    },
+    modernSortButtons: {
+        flexDirection: 'row',
+        gap: 8,
+        paddingRight: 16,
+    },
+    modernSortChip: {
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        borderRadius: 20,
+        backgroundColor: '#F3F4F6',
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        flexShrink: 0, // Empêche le rétrécissement
+    },
+    modernSortChipActive: {
+        borderColor: 'transparent',
+    },
+    modernSortChipText: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: '#6B7280',
+        whiteSpace: 'nowrap' as any, // Empêche le retour à la ligne
+    },
+    modernSortChipTextActive: {
+        color: '#FFFFFF',
     },
     priceFilterContainer: {
         marginTop: 16,

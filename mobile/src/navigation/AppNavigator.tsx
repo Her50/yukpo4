@@ -1,13 +1,14 @@
 // Navigation ultra-moderne avec Phosphor Icons et gradients
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
-import { ChartBar, ClockCounterClockwise, House, User } from 'phosphor-react-native';
+import { ChartBar, ChatCircleDots, House, User } from 'phosphor-react-native';
 import React from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { modernColors, modernStyles } from '../theme/modernTheme';
 
 // Contexts
 import { useAuth } from '../contexts/AuthContext';
+import { useLanguage } from '../contexts/LanguageContext';
 
 // Screens
 import ContactScreen from '../screens/ContactScreen';
@@ -18,9 +19,11 @@ import ServicesListScreen from '../screens/ServicesListScreen';
 import ServicesScreen from '../screens/ServicesScreen';
 
 // Autres écrans (pour la navigation secondaire)
+import CreatePubliciteScreen from '../screens/CreatePubliciteScreen';
 import EnhancedSettingsScreen from '../screens/EnhancedSettingsScreen';
 import FormulaireYukpoIntelligentScreen from '../screens/FormulaireYukpoIntelligentScreen';
 import MesInteractionsScreen from '../screens/MesInteractionsScreen';
+import PubliciteDashboardScreen from '../screens/PubliciteDashboardScreen';
 import ResultatBesoinScreen from '../screens/ResultatBesoinScreen';
 import ServiceDetailSharedScreen from '../screens/ServiceDetailSharedScreen';
 import SoldeDetailScreen from '../screens/SoldeDetailScreen';
@@ -75,6 +78,8 @@ const AuthStack = () => (
 
 // Tab Navigator moderne avec 4 onglets (Dashboard intégré dans Mon Activité)
 const MainTabs = () => {
+  const { t } = useLanguage();
+
   return (
     <Tab.Navigator
       screenOptions={({ route }: any) => ({
@@ -93,7 +98,7 @@ const MainTabs = () => {
             case 'MonActivite':
               return <ChartBar {...iconProps} />;
             case 'MesInteractions':
-              return <ClockCounterClockwise {...iconProps} />;
+              return <ChatCircleDots {...iconProps} />;
             case 'MonCompte':
               return <User {...iconProps} />;
             default:
@@ -127,32 +132,32 @@ const MainTabs = () => {
         name="Home"
         component={HomeScreen}
         options={{
-          title: 'Accueil',
-          tabBarLabel: 'Accueil'
+          title: t('home.title'),
+          tabBarLabel: t('home.title')
         }}
       />
       <Tab.Screen
         name="MonActivite"
         component={ServicesScreen}
         options={{
-          title: 'Mon Activité',
-          tabBarLabel: 'Mon Activité'
+          title: t('activity.title'),
+          tabBarLabel: t('activity.title')
         }}
       />
       <Tab.Screen
         name="MesInteractions"
         component={MesInteractionsScreen}
         options={{
-          title: 'Mes Interactions',
-          tabBarLabel: 'Interactions'
+          title: t('interactions.title'),
+          tabBarLabel: t('interactions.title')
         }}
       />
       <Tab.Screen
         name="MonCompte"
         component={ProfileScreen}
         options={{
-          title: 'Mon Compte',
-          tabBarLabel: 'Compte'
+          title: t('account.title'),
+          tabBarLabel: t('account.title')
         }}
       />
     </Tab.Navigator>
@@ -160,82 +165,96 @@ const MainTabs = () => {
 };
 
 // Stack Navigator principal avec toutes les routes
-const MainStack = () => (
-  <Stack.Navigator
-    screenOptions={{
-      headerStyle: {
-        backgroundColor: '#6366F1',
-        elevation: 4,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.2,
-        shadowRadius: 4,
-      },
-      headerTintColor: '#FFF',
-      headerTitleStyle: {
-        fontWeight: 'bold',
-        fontSize: 18,
-      },
-      headerBackTitleVisible: false,
-    }}
-  >
-    <Stack.Screen
-      name="MainTabs"
-      component={MainTabs}
-      options={{ headerShown: false }}
-    />
+const MainStack = () => {
+  const { t } = useLanguage();
 
-    {/* Pages secondaires accessibles depuis la navigation */}
-    <Stack.Screen
-      name="Settings"
-      component={EnhancedSettingsScreen}
-      options={{
-        title: 'Paramètres',
-        headerShown: false // Masquer le header car nous avons notre propre header
+  return (
+    <Stack.Navigator
+      screenOptions={{
+        headerStyle: {
+          backgroundColor: '#6366F1',
+          elevation: 4,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.2,
+          shadowRadius: 4,
+        },
+        headerTintColor: '#FFF',
+        headerTitleStyle: {
+          fontWeight: 'bold',
+          fontSize: 18,
+        },
+        headerBackTitleVisible: false,
       }}
-    />
-    <Stack.Screen
-      name="Contact"
-      component={ContactScreen}
-      options={{ title: 'Contact' }}
-    />
-    <Stack.Screen
-      name="Services"
-      component={ServicesListScreen}
-      options={{ title: 'Catalogue Services' }}
-    />
-    <Stack.Screen
-      name="RechargeTokens"
-      component={RechargeTokensScreen}
-      options={{ title: 'Recharger Tokens' }}
-    />
-    <Stack.Screen
-      name="ResultatBesoin"
-      component={ResultatBesoinScreen}
-      options={{ title: 'Résultats de recherche' }}
-    />
-    <Stack.Screen
-      name="FormulaireYukpoIntelligent"
-      component={FormulaireYukpoIntelligentScreen}
-      options={{ title: 'Création de service' }}
-    />
-    <Stack.Screen
-      name="ServiceDetailShared"
-      component={ServiceDetailSharedScreen}
-      options={{ title: 'Service partagé', headerShown: false }}
-    />
-    <Stack.Screen
-      name="SoldeDetail"
-      component={SoldeDetailScreen}
-      options={{ title: 'Historique de Consommation' }}
-    />
-    <Stack.Screen
-      name="YukpoService"
-      component={YukpoServicePlaceholderScreen}
-      options={{ headerShown: false }}
-    />
-  </Stack.Navigator>
-);
+    >
+      <Stack.Screen
+        name="MainTabs"
+        component={MainTabs}
+        options={{ headerShown: false }}
+      />
+
+      {/* Pages secondaires accessibles depuis la navigation */}
+      <Stack.Screen
+        name="Settings"
+        component={EnhancedSettingsScreen}
+        options={{
+          title: t('settings.title') || 'Paramètres',
+          headerShown: false // Masquer le header car nous avons notre propre header
+        }}
+      />
+      <Stack.Screen
+        name="Contact"
+        component={ContactScreen}
+        options={{ title: t('contact.title') || 'Contact' }}
+      />
+      <Stack.Screen
+        name="Services"
+        component={ServicesListScreen}
+        options={{ title: t('services.catalog') || 'Catalogue Services' }}
+      />
+      <Stack.Screen
+        name="RechargeTokens"
+        component={RechargeTokensScreen}
+        options={{ title: t('tokens.recharge') || 'Recharger Tokens' }}
+      />
+      <Stack.Screen
+        name="ResultatBesoin"
+        component={ResultatBesoinScreen}
+        options={{ title: t('search.results') || 'Résultats de recherche' }}
+      />
+      <Stack.Screen
+        name="FormulaireYukpoIntelligent"
+        component={FormulaireYukpoIntelligentScreen}
+        options={{ title: t('service.create') || 'Création de service' }}
+      />
+      <Stack.Screen
+        name="ServiceDetailShared"
+        component={ServiceDetailSharedScreen}
+        options={{ title: t('service.shared') || 'Service partagé', headerShown: false }}
+      />
+      <Stack.Screen
+        name="SoldeDetail"
+        component={SoldeDetailScreen}
+        options={{ title: t('tokens.history') || 'Historique de Consommation' }}
+      />
+      <Stack.Screen
+        name="YukpoService"
+        component={YukpoServicePlaceholderScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="CreatePublicite"
+        component={CreatePubliciteScreen}
+        options={{ title: t('publicite.create') || 'Créer une publicité', headerShown: false }}
+      />
+      <Stack.Screen
+        name="PubliciteDashboard"
+        component={PubliciteDashboardScreen}
+        options={{ title: t('publicite.dashboard') || 'Dashboard Publicité', headerShown: false }}
+      />
+    </Stack.Navigator>
+  );
+};
 
 // Navigateur principal de l'application - VERSION ROBUSTE
 const AppNavigator = () => {

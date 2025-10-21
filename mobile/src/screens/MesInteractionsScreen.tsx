@@ -1,24 +1,22 @@
 // ✨ MES INTERACTIONS - Dashboard client + Favoris + Historique
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Dimensions,
   RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native';
 import { NativeCard } from '../components/NativeDesign';
 import SafeIcon from '../components/SafeIcon';
 import { useAuth } from '../contexts/AuthContext';
 import { apiGet } from '../services/api';
-import { modernColors, modernStyles } from '../theme/modernTheme';
+import { modernColors } from '../theme/modernTheme';
 
 const { width } = Dimensions.get('window');
 
@@ -49,7 +47,7 @@ const MesInteractionsScreen: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [selectedPeriod, setSelectedPeriod] = useState<'7d' | '30d' | '90d'>('30d');
   const [selectedFilter, setSelectedFilter] = useState<'all' | 'favorites' | 'messages' | 'reviews'>('all');
-  
+
   // États Dashboard
   const [dashboardData, setDashboardData] = useState<any>(null);
   const [interactions, setInteractions] = useState<Interaction[]>([]);
@@ -109,7 +107,7 @@ const MesInteractionsScreen: React.FC = () => {
     const shareCount = interactionsData.filter(i => i.type === 'share').length;
     const reviewCount = interactionsData.filter(i => i.type === 'review').length;
     const viewCount = interactionsData.filter(i => i.type === 'view').length;
-    
+
     const uniqueServices = new Set(interactionsData.map(i => i.serviceId)).size;
     const uniqueProviders = new Set(interactionsData.map(i => i.providerName)).size;
 
@@ -140,7 +138,7 @@ const MesInteractionsScreen: React.FC = () => {
       'chaussure': { icon: 'shoe', color: '#6366F1' },
       'prestation_service': { icon: 'briefcase', color: '#8B5CF6' },
       'hopital_clinique': { icon: 'heart', color: '#DC2626' },
-      'pharmacie': { icon: 'pill', color: '#059669' },
+      'pharmacie': { icon: 'shopping-bag', color: '#059669' },
       'demenagement': { icon: 'truck', color: '#F97316' },
       'assurance': { icon: 'shield', color: '#0891B2' },
       'quincaillerie': { icon: 'hammer', color: '#F59E0B' },
@@ -155,7 +153,7 @@ const MesInteractionsScreen: React.FC = () => {
 
       if (!categoryMap.has(cleanCategory)) {
         const categoryInfo = categoryIcons[categoryKey] || categoryIcons['autre'];
-        
+
         categoryMap.set(cleanCategory, {
           name: cleanCategory,
           count: 0,
@@ -168,7 +166,7 @@ const MesInteractionsScreen: React.FC = () => {
 
       const stat = categoryMap.get(cleanCategory)!;
       stat.count++;
-      
+
       // Compter les types d'interactions
       if (!stat.types[interaction.type]) {
         stat.types[interaction.type] = 0;
@@ -184,7 +182,7 @@ const MesInteractionsScreen: React.FC = () => {
     const stats = Array.from(categoryMap.values())
       .filter(stat => stat.count > 0)
       .sort((a, b) => b.count - a.count);
-    
+
     setCategoryStats(stats);
   };
 
@@ -274,7 +272,7 @@ const MesInteractionsScreen: React.FC = () => {
         <View style={styles.headerContent}>
           <View style={styles.headerTitleRow}>
             <View style={styles.headerIcon}>
-              <SafeIcon name="activity" size={28} color="#fff" />
+              <SafeIcon name="message-circle" size={28} color="#fff" />
             </View>
             <View style={styles.headerTextContainer}>
               <Text style={styles.headerTitle}>Mes Interactions</Text>
@@ -413,7 +411,7 @@ const MesInteractionsScreen: React.FC = () => {
                   </View>
                   <Text style={styles.categoryName}>{category.name}</Text>
                   <Text style={styles.categoryCount}>{category.count} interaction{category.count > 1 ? 's' : ''}</Text>
-                  
+
                   {/* Types d'interactions */}
                   <View style={styles.categoryInteractionTypes}>
                     {Object.entries(category.types).slice(0, 3).map(([type, count]) => (
@@ -501,7 +499,7 @@ const MesInteractionsScreen: React.FC = () => {
                 <View style={[styles.interactionIconBadge, { backgroundColor: getInteractionColor(interaction.type) + '20' }]}>
                   <SafeIcon name={getInteractionIcon(interaction.type)} size={20} color={getInteractionColor(interaction.type)} />
                 </View>
-                
+
                 <View style={styles.interactionContent}>
                   <Text style={styles.interactionTitle}>{interaction.serviceTitle}</Text>
                   <Text style={styles.interactionProvider}>par {interaction.providerName}</Text>

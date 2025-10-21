@@ -5,11 +5,11 @@ import { Button } from "@/components/ui/buttons";
 import ServiceMediaGallery from "@/components/ui/ServiceMediaGallery";
 import { useUser } from "@/hooks/useUser";
 import axios from "axios";
-import { buildUrl, API_ENDPOINTS } from "../../config/api.config";
 import { Edit2, Eye, Power, PowerOff, Share2, Trash2, X } from 'lucide-react';
 import { useEffect, useState } from "react";
 import { toast } from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
+import { API_ENDPOINTS, buildUrl } from "../../config/api.config";
 
 
 const MesServices = () => {
@@ -298,6 +298,14 @@ const MesServices = () => {
           <h1 className="text-3xl font-bold text-primary">🧰 Mes services Yukpo</h1>
           <div className="flex gap-2">
             <Button
+              variant="outline"
+              onClick={() => navigate('/dashboard-prestataire')}
+              className="flex items-center gap-2"
+            >
+              <Eye className="w-4 h-4" />
+              Voir le Dashboard
+            </Button>
+            <Button
               onClick={() => navigate('/')}
               variant="outline"
               size="sm"
@@ -374,7 +382,7 @@ const MesServices = () => {
                 ? "Aucun service créé pour le moment."
                 : `Aucun service ${filter}.`}
             </p>
-            <Button onClick={() => navigate('/formulaire-yukpo-intelligent')}>
+            <Button onClick={() => navigate('/formulaire-yukpo-intelligent', { state: { mode: 'create' } })}>
               ➕ Créer un nouveau service
             </Button>
           </div>
@@ -412,8 +420,8 @@ const MesServices = () => {
                 <div
                   key={s.id}
                   className={`border rounded-lg p-5 space-y-3 shadow-sm hover:shadow-lg transition-all duration-200 relative overflow-hidden group ${(s.is_active !== undefined ? s.is_active : s.actif)
-                      ? 'border-green-200 bg-white'
-                      : 'border-red-200 bg-red-50'
+                    ? 'border-green-200 bg-white'
+                    : 'border-red-200 bg-red-50'
                     }`}
                 >
                   {/* Bannière en arrière-plan */}
@@ -450,8 +458,8 @@ const MesServices = () => {
                       <div className="flex justify-between items-start">
                         <h2 className="text-lg font-semibold flex-1 pr-2">{titre}</h2>
                         <span className={`px-2 py-1 text-xs rounded-full font-medium ${(s.is_active !== undefined ? s.is_active : s.actif)
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-red-100 text-red-800'
+                          ? 'bg-green-100 text-green-800'
+                          : 'bg-red-100 text-red-800'
                           }`}>
                           {(s.is_active !== undefined ? s.is_active : s.actif) ? '● Actif' : '○ Inactif'}
                         </span>
@@ -604,15 +612,37 @@ const MesServices = () => {
           </div>
         )}
 
-        {/* Bouton de retour à l'accueil - toujours visible */}
+        {/* Boutons d'action - toujours visibles */}
         <div className="mt-8 pt-8 border-t border-gray-200">
-          <div className="flex justify-center">
-            <Button
-              onClick={() => navigate('/')}
-              className="bg-blue-600 hover:bg-blue-700 text-white text-lg px-8 py-3 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200"
-            >
-              🏠 Retour à l'accueil
-            </Button>
+          <div className="flex flex-col gap-4">
+            <div className="flex justify-center gap-3 flex-wrap">
+              <Button
+                onClick={() => navigate('/creer-publicite')}
+                className="bg-yellow-600 hover:bg-yellow-700 text-white px-6 py-3 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200"
+              >
+                ⚡ Créer une publicité
+              </Button>
+              <Button
+                onClick={() => navigate('/dashboard-publicite')}
+                className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200"
+              >
+                📊 Analytics Publicité
+              </Button>
+              <Button
+                onClick={() => navigate('/dashboard-prestataire')}
+                className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200"
+              >
+                📈 Dashboard Global
+              </Button>
+            </div>
+            <div className="flex justify-center">
+              <Button
+                onClick={() => navigate('/')}
+                className="bg-blue-600 hover:bg-blue-700 text-white text-lg px-8 py-3 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200"
+              >
+                🏠 Retour à l'accueil
+              </Button>
+            </div>
           </div>
         </div>
       </div>

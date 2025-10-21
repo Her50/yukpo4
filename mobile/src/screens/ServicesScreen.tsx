@@ -69,7 +69,7 @@ const ServicesScreen: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [filter, setFilter] = useState<'tous' | 'actif' | 'inactif'>('tous');
-  const [viewMode, setViewMode] = useState<'list' | 'dashboard'>('dashboard');
+  const [viewMode, setViewMode] = useState<'list' | 'dashboard'>('list');
 
   // Dashboard states
   const [dashboardData, setDashboardData] = useState<any>(null);
@@ -87,7 +87,7 @@ const ServicesScreen: React.FC = () => {
       if (isRefresh) {
         setRefreshing(true);
       } else {
-      setLoading(true);
+        setLoading(true);
       }
 
       const token = await AsyncStorage.getItem('auth_token');
@@ -657,7 +657,7 @@ const ServicesScreen: React.FC = () => {
         <View style={styles.loadingContent}>
           <ActivityIndicator size="large" color="#fff" />
           <Text style={styles.loadingText}>Chargement de votre activité...</Text>
-      </View>
+        </View>
       </LinearGradient>
     );
   }
@@ -677,30 +677,54 @@ const ServicesScreen: React.FC = () => {
               <Text style={styles.headerTitle}>{t('activity.title')}</Text>
               <Text style={styles.headerSubtitle}>
                 {services.length} service{services.length > 1 ? 's' : ''} • {dashboardData?.activeServices || 0} actif{(dashboardData?.activeServices || 0) > 1 ? 's' : ''}
-          </Text>
-        </View>
-      </View>
+              </Text>
+            </View>
+          </View>
 
-          {/* Sélecteur de période */}
-          <View style={styles.periodSelector}>
-            {['7d', '30d', '90d'].map((period) => (
+          {/* Sélecteur Vue Dashboard/Liste */}
+          <View style={styles.viewModeSelector}>
             <TouchableOpacity
-                key={period}
-              style={[
-                  styles.periodButton,
-                  selectedPeriod === period && styles.periodButtonActive
-              ]}
-                onPress={() => setSelectedPeriod(period as any)}
+              style={[styles.viewModeButton, viewMode === 'list' && styles.viewModeButtonActive]}
+              onPress={() => setViewMode('list')}
             >
-              <Text style={[
-                  styles.periodButtonText,
-                  selectedPeriod === period && styles.periodButtonTextActive
-              ]}>
-                  {period === '7d' ? '7j' : period === '30d' ? '30j' : '90j'}
+              <SafeIcon name="list" size={18} color={viewMode === 'list' ? '#fff' : '#fff9'} />
+              <Text style={[styles.viewModeButtonText, viewMode === 'list' && styles.viewModeButtonTextActive]}>
+                {t('activity.list_view') || 'Liste'}
               </Text>
             </TouchableOpacity>
-          ))}
-      </View>
+            <TouchableOpacity
+              style={[styles.viewModeButton, viewMode === 'dashboard' && styles.viewModeButtonActive]}
+              onPress={() => setViewMode('dashboard')}
+            >
+              <SafeIcon name="bar-chart-2" size={18} color={viewMode === 'dashboard' ? '#fff' : '#fff9'} />
+              <Text style={[styles.viewModeButtonText, viewMode === 'dashboard' && styles.viewModeButtonTextActive]}>
+                {t('activity.dashboard_view') || 'Dashboard'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Sélecteur de période (seulement en mode dashboard) */}
+          {viewMode === 'dashboard' && (
+            <View style={styles.periodSelector}>
+              {['7d', '30d', '90d'].map((period) => (
+                <TouchableOpacity
+                  key={period}
+                  style={[
+                    styles.periodButton,
+                    selectedPeriod === period && styles.periodButtonActive
+                  ]}
+                  onPress={() => setSelectedPeriod(period as any)}
+                >
+                  <Text style={[
+                    styles.periodButtonText,
+                    selectedPeriod === period && styles.periodButtonTextActive
+                  ]}>
+                    {period === '7d' ? t('period.7d') || '7j' : period === '30d' ? t('period.30d') || '30j' : t('period.90d') || '90j'}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
         </View>
       </LinearGradient>
 
@@ -713,14 +737,14 @@ const ServicesScreen: React.FC = () => {
         showsVerticalScrollIndicator={false}
       >
         {/* Dashboard Stats - ✅ UNIQUEMENT DONNÉES RÉELLES */}
-        {dashboardData && (
+        {viewMode === 'dashboard' && dashboardData && (
           <View style={styles.dashboardSection}>
             <Text style={styles.sectionTitle}>Vue d'ensemble</Text>
             <View style={styles.statsGrid}>
               <NativeCard style={styles.statCard}>
                 <View style={[styles.statIconContainer, { backgroundColor: '#3B82F620' }]}>
                   <SafeIcon name="eye" size={20} color="#3B82F6" />
-        </View>
+                </View>
                 <Text style={styles.statValue}>
                   {dashboardData.totalViews ? dashboardData.totalViews.toLocaleString('fr-FR') : '0'}
                 </Text>
@@ -730,7 +754,7 @@ const ServicesScreen: React.FC = () => {
               <NativeCard style={styles.statCard}>
                 <View style={[styles.statIconContainer, { backgroundColor: '#10B98120' }]}>
                   <SafeIcon name="message-circle" size={20} color="#10B981" />
-        </View>
+                </View>
                 <Text style={styles.statValue}>
                   {dashboardData.totalInteractions ? dashboardData.totalInteractions.toLocaleString('fr-FR') : '0'}
                 </Text>
@@ -740,7 +764,7 @@ const ServicesScreen: React.FC = () => {
               <NativeCard style={styles.statCard}>
                 <View style={[styles.statIconContainer, { backgroundColor: '#F5990620' }]}>
                   <SafeIcon name="dollar-sign" size={20} color="#F59E0B" />
-        </View>
+                </View>
                 <Text style={styles.statValue}>
                   {dashboardData.budgetRemaining ? dashboardData.budgetRemaining.toLocaleString('fr-FR') : '0'} FCFA
                 </Text>
@@ -753,7 +777,7 @@ const ServicesScreen: React.FC = () => {
                 </View>
                 <Text style={styles.statValue}>
                   {dashboardData.budgetConsumed ? dashboardData.budgetConsumed.toLocaleString('fr-FR') : '0'} FCFA
-        </Text>
+                </Text>
                 <Text style={styles.statLabel}>Consommé</Text>
               </NativeCard>
             </View>
@@ -761,7 +785,7 @@ const ServicesScreen: React.FC = () => {
         )}
 
         {/* Stats par catégorie */}
-        {categoryStats.length > 0 && (
+        {viewMode === 'dashboard' && categoryStats.length > 0 && (
           <View style={styles.categorySection}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Par catégorie</Text>
@@ -786,7 +810,7 @@ const ServicesScreen: React.FC = () => {
                           <SafeIcon name={kpi.icon} size={10} color={category.color} />
                           <Text style={styles.categoryKpiText}>
                             {kpi.value}{kpi.unit ? ` ${kpi.unit}` : ''}
-            </Text>
+                          </Text>
                         </View>
                       ))}
                     </View>
@@ -810,7 +834,7 @@ const ServicesScreen: React.FC = () => {
         )}
 
         {/* Top services */}
-        {dashboardData?.topPerformingServices && dashboardData.topPerformingServices.length > 0 && (
+        {viewMode === 'dashboard' && dashboardData?.topPerformingServices && dashboardData.topPerformingServices.length > 0 && (
           <View style={styles.topServicesSection}>
             <Text style={styles.sectionTitle}>Meilleurs services</Text>
             {dashboardData.topPerformingServices.slice(0, 3).map((service: any, index: number) => (
@@ -842,81 +866,97 @@ const ServicesScreen: React.FC = () => {
         )}
 
         {/* Liste des services */}
-        <View style={styles.servicesSection}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Tous mes services</Text>
-            <View style={styles.headerActions}>
-              <TouchableOpacity
-                style={styles.teamButton}
-                onPress={() => handleManageTeam()}
-              >
-                <SafeIcon name="users" size={16} color="#6366F1" />
-                <Text style={styles.teamButtonText}>Équipe</Text>
-              </TouchableOpacity>
-            <TouchableOpacity 
-              style={styles.createButton}
-                onPress={() => (navigation as any).navigate('FormulaireYukpoIntelligent', { mode: 'create' })}
-            >
-                <SafeIcon name="plus" size={16} color="#fff" />
-                <Text style={styles.createButtonText}>Créer</Text>
-            </TouchableOpacity>
-          </View>
-          </View>
-
-          {/* Filtres */}
-          <View style={styles.filterRow}>
-            {['tous', 'actif', 'inactif'].map((filterOption) => (
-              <TouchableOpacity
-                key={filterOption}
-                style={[
-                  styles.filterButton,
-                  filter === filterOption && styles.filterButtonActive
-                ]}
-                onPress={() => setFilter(filterOption as any)}
-              >
-                <Text style={[
-                  styles.filterButtonText,
-                  filter === filterOption && styles.filterButtonTextActive
-                ]}>
-                  {filterOption.charAt(0).toUpperCase() + filterOption.slice(1)}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          {filteredServices.length === 0 ? (
-            <NativeCard style={styles.emptyCard}>
-              <SafeIcon name="briefcase" size={48} color={modernColors.textSecondary} />
-              <Text style={styles.emptyTitle}>Aucun service</Text>
-              <Text style={styles.emptyText}>
-                {filter === 'tous'
-                  ? 'Créez votre premier service pour commencer'
-                  : `Aucun service ${filter === 'actif' ? 'actif' : 'inactif'} pour le moment`}
-              </Text>
-              {filter === 'tous' && (
-                <NativeButton
-                  title="Créer un service"
+        {viewMode === 'list' && (
+          <View style={styles.servicesSection}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>{t('activity.all_services') || 'Tous mes services'}</Text>
+              <View style={styles.headerActions}>
+                <TouchableOpacity
+                  style={styles.teamButton}
+                  onPress={() => handleManageTeam()}
+                >
+                  <SafeIcon name="users" size={16} color="#6366F1" />
+                  <Text style={styles.teamButtonText}>Équipe</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.pubButton}
+                  onPress={() => (navigation as any).navigate('CreatePublicite')}
+                >
+                  <SafeIcon name="zap" size={16} color="#F59E0B" />
+                  <Text style={styles.pubButtonText}>Créer Pub</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.dashboardButton}
+                  onPress={() => (navigation as any).navigate('PubliciteDashboard')}
+                >
+                  <SafeIcon name="bar-chart" size={16} color="#8B5CF6" />
+                  <Text style={styles.dashboardButtonText}>Analytics</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.createButton}
                   onPress={() => (navigation as any).navigate('FormulaireYukpoIntelligent', { mode: 'create' })}
-                  variant="primary"
-                  style={styles.emptyButton}
+                >
+                  <SafeIcon name="plus" size={16} color="#fff" />
+                  <Text style={styles.createButtonText}>Créer</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Filtres */}
+            <View style={styles.filterRow}>
+              {['tous', 'actif', 'inactif'].map((filterOption) => (
+                <TouchableOpacity
+                  key={filterOption}
+                  style={[
+                    styles.filterButton,
+                    filter === filterOption && styles.filterButtonActive
+                  ]}
+                  onPress={() => setFilter(filterOption as any)}
+                >
+                  <Text style={[
+                    styles.filterButtonText,
+                    filter === filterOption && styles.filterButtonTextActive
+                  ]}>
+                    {filterOption.charAt(0).toUpperCase() + filterOption.slice(1)}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {filteredServices.length === 0 ? (
+              <NativeCard style={styles.emptyCard}>
+                <SafeIcon name="briefcase" size={48} color={modernColors.textSecondary} />
+                <Text style={styles.emptyTitle}>Aucun service</Text>
+                <Text style={styles.emptyText}>
+                  {filter === 'tous'
+                    ? 'Créez votre premier service pour commencer'
+                    : `Aucun service ${filter === 'actif' ? 'actif' : 'inactif'} pour le moment`}
+                </Text>
+                {filter === 'tous' && (
+                  <NativeButton
+                    title="Créer un service"
+                    onPress={() => (navigation as any).navigate('FormulaireYukpoIntelligent', { mode: 'create' })}
+                    variant="primary"
+                    style={styles.emptyButton}
+                  />
+                )}
+              </NativeCard>
+            ) : (
+              filteredServices.map((service) => (
+                <ServiceCardModern
+                  key={service.id}
+                  service={service}
+                  onEdit={() => handleEditService(service)}
+                  onView={() => handleViewService(service)}
+                  onShare={() => handleShareService(service)}
+                  onToggleStatus={() => handleToggleServiceStatus(service)}
+                  onDelete={() => handleDeleteService(service)}
                 />
-              )}
-            </NativeCard>
-        ) : (
-          filteredServices.map((service) => (
-              <ServiceCardModern
-              key={service.id}
-              service={service}
-                onEdit={() => handleEditService(service)}
-                onView={() => handleViewService(service)}
-                onShare={() => handleShareService(service)}
-                onToggleStatus={() => handleToggleServiceStatus(service)}
-                onDelete={() => handleDeleteService(service)}
-            />
-          ))
+              ))
+            )}
+          </View>
         )}
-      </View>
-    </ScrollView>
+      </ScrollView>
 
       {/* Modal de gestion d'équipe */}
       {showTeamManager && (
@@ -998,6 +1038,35 @@ const styles = StyleSheet.create({
     color: 'rgba(255, 255, 255, 0.9)',
     fontWeight: '500',
   },
+  viewModeSelector: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    borderRadius: 12,
+    padding: 4,
+    marginBottom: 12,
+    gap: 4,
+  },
+  viewModeButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    gap: 6,
+  },
+  viewModeButtonActive: {
+    backgroundColor: '#fff',
+  },
+  viewModeButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: 'rgba(255, 255, 255, 0.7)',
+  },
+  viewModeButtonTextActive: {
+    color: modernColors.primary,
+  },
   periodSelector: {
     flexDirection: 'row',
     backgroundColor: 'rgba(255, 255, 255, 0.15)',
@@ -1062,6 +1131,48 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#6366F1',
+  },
+  pubButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: '#FEF3C7',
+    borderRadius: 20,
+    gap: 4,
+  },
+  pubButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#F59E0B',
+  },
+  dashboardButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: '#F3E8FF',
+    borderRadius: 20,
+    gap: 4,
+  },
+  dashboardButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#8B5CF6',
+  },
+  createButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: modernColors.primary,
+    borderRadius: 20,
+    gap: 4,
+  },
+  createButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#fff',
   },
   viewMoreText: {
     fontSize: 14,
@@ -1217,20 +1328,6 @@ const styles = StyleSheet.create({
   },
   servicesSection: {
     marginBottom: 24,
-  },
-  createButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: modernColors.primary,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-  },
-  createButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#fff',
   },
   filterRow: {
     flexDirection: 'row',

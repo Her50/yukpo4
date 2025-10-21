@@ -183,196 +183,120 @@ const ModernGPSSelector: React.FC<ModernGPSSelectorProps> = ({
                 </LinearGradient>
 
                 <View style={styles.content}>
-                    {/* Panel Gauche - Instructions et Contrôles */}
-                    <View style={styles.leftPanel}>
-                        {/* Instructions */}
-                        <NativeCard style={styles.instructionsCard}>
-                            <View style={styles.instructionsHeader}>
-                                <SafeIcon name="check" size={16} color={modernColors.success} />
-                                <SafeIcon name="file-text" size={16} color={modernColors.primary} />
-                                <Text style={styles.instructionsTitle}>Instructions</Text>
-                            </View>
-                            <View style={styles.instructionsList}>
-                                <Text style={styles.instructionItem}>• Cliquez sur la carte pour sélectionner un point</Text>
-                                <Text style={styles.instructionItem}>• Dessinez une zone avec l'outil polygone (icône crayon)</Text>
-                                <Text style={styles.instructionItem}>• Recherchez une adresse dans la barre de recherche</Text>
-                                <Text style={styles.instructionItem}>• Utilisez "Ma Position" pour votre GPS actuel</Text>
-                            </View>
-                        </NativeCard>
-
-                        {/* Bouton Ma Position GPS */}
-                        <NativeButton
-                            title="Ma Position GPS"
-                            onPress={getCurrentLocation}
-                            disabled={loading || !permissionGranted}
-                            variant="primary"
-                            size="large"
-                            style={styles.gpsButton}
-                            icon="target"
-                        />
-
-                        {/* Barre de recherche */}
-                        <View style={styles.searchSection}>
-                            <NativeInput
-                                placeholder="Rechercher une adresse..."
-                                value={searchQuery}
-                                onChangeText={setSearchQuery}
-                                style={styles.searchInput}
-                                icon="search"
-                            />
+                    {/* Contrôles Horizontaux en Haut */}
+                    <View style={styles.topPanel}>
+                        {/* Ligne 1: Bouton GPS + Recherche */}
+                        <View style={styles.topRow}>
                             <NativeButton
-                                title="OK"
-                                onPress={handleSearchAddress}
-                                disabled={loading || !searchQuery.trim()}
+                                title="Ma Position"
+                                onPress={getCurrentLocation}
+                                disabled={loading || !permissionGranted}
                                 variant="primary"
                                 size="small"
-                                style={styles.searchButton}
+                                style={styles.gpsButtonCompact}
+                                icon="target"
                             />
+
+                            <View style={styles.searchSectionCompact}>
+                                <NativeInput
+                                    placeholder="Rechercher une adresse..."
+                                    value={searchQuery}
+                                    onChangeText={setSearchQuery}
+                                    style={styles.searchInputCompact}
+                                    icon="search"
+                                />
+                                <NativeButton
+                                    title="OK"
+                                    onPress={handleSearchAddress}
+                                    disabled={loading || !searchQuery.trim()}
+                                    variant="primary"
+                                    size="small"
+                                    style={styles.searchButtonCompact}
+                                />
+                            </View>
                         </View>
 
-                        {/* Statut de sélection */}
-                        <NativeCard style={styles.statusCard}>
-                            <View style={styles.statusHeader}>
-                                <SafeIcon
-                                    name={selectedLocation ? "check" : "alert-triangle"}
-                                    size={16}
-                                    color={selectedLocation ? modernColors.success : modernColors.warning}
-                                />
-                                <SafeIcon name="map-pin" size={16} color={modernColors.error} />
-                                <Text style={styles.statusTitle}>
-                                    {selectedLocation ? 'Position sélectionnée' : 'Aucune position sélectionnée'}
-                                </Text>
-                            </View>
+                        {/* Ligne 2: Modes de sélection */}
+                        <View style={styles.modesRowCompact}>
+                            <Text style={styles.modesLabelCompact}>Mode:</Text>
+                            {[
+                                { key: 'point', label: 'Point', icon: 'map-pin' },
+                                { key: 'circle', label: 'Zone', icon: 'circle' },
+                                { key: 'rectangle', label: 'Rect', icon: 'square' },
+                                { key: 'polygon', label: 'Poly', icon: 'edit' }
+                            ].map((mode) => (
+                                <TouchableOpacity
+                                    key={mode.key}
+                                    style={[
+                                        styles.modeButtonCompact,
+                                        zoneType === mode.key && styles.modeButtonActiveCompact
+                                    ]}
+                                    onPress={() => setZoneType(mode.key as any)}
+                                >
+                                    <SafeIcon name={mode.icon} size={14} color={zoneType === mode.key ? '#FFF' : modernColors.primary} />
+                                    <Text style={[
+                                        styles.modeButtonTextCompact,
+                                        zoneType === mode.key && styles.modeButtonTextActiveCompact
+                                    ]}>{mode.label}</Text>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
 
-                            {selectedLocation ? (
-                                <View style={styles.selectedLocationInfo}>
-                                    <Text style={styles.coordinatesText}>
-                                        {formatCoordinates(selectedLocation.lat, selectedLocation.lng)}
-                                    </Text>
-                                    {searchQuery && (
-                                        <Text style={styles.addressText}>{searchQuery}</Text>
-                                    )}
-                                </View>
-                            ) : (
-                                <Text style={styles.noSelectionText}>
-                                    Cliquez sur la carte ou utilisez la recherche pour sélectionner une position
-                                </Text>
-                            )}
-                        </NativeCard>
-
-                        {/* Modes de sélection */}
-                        <NativeCard style={styles.modesCard}>
-                            <Text style={styles.modesTitle}>Mode de sélection</Text>
-                            <View style={styles.modesContainer}>
-                                {[
-                                    { key: 'point', label: 'Point', icon: 'map-pin' },
-                                    { key: 'circle', label: 'Cercle', icon: 'circle' },
-                                    { key: 'rectangle', label: 'Rectangle', icon: 'square' },
-                                    { key: 'polygon', label: 'Polygone', icon: 'edit' }
-                                ].map((mode) => (
+                        {/* Ligne 3: Statut de sélection */}
+                        <View style={styles.statusRowCompact}>
+                            <SafeIcon
+                                name={selectedLocation ? "check-circle" : "alert-triangle"}
+                                size={14}
+                                color={selectedLocation ? modernColors.success : modernColors.warning}
+                            />
+                            <Text style={styles.statusTextCompact} numberOfLines={1}>
+                                {selectedLocation
+                                    ? formatCoordinates(selectedLocation.lat, selectedLocation.lng)
+                                    : 'Cliquez sur la carte'}
+                            </Text>
+                            {zoneType === 'circle' && (
+                                <View style={styles.radiusControlsCompact}>
                                     <TouchableOpacity
-                                        key={mode.key}
-                                        style={[
-                                            styles.modeButton,
-                                            zoneType === mode.key && styles.modeButtonActive
-                                        ]}
-                                        onPress={() => setZoneType(mode.key as any)}
-                                    >
-                                        <SafeIcon
-                                            name={mode.icon}
-                                            size={16}
-                                            color={zoneType === mode.key ? '#FFFFFF' : modernColors.textSecondary}
-                                        />
-                                        <Text style={[
-                                            styles.modeButtonText,
-                                            zoneType === mode.key && styles.modeButtonTextActive
-                                        ]}>
-                                            {mode.label}
-                                        </Text>
-                                    </TouchableOpacity>
-                                ))}
-                            </View>
-                        </NativeCard>
-
-                        {/* Contrôles de rayon (pour cercle) */}
-                        {zoneType === 'circle' && (
-                            <NativeCard style={styles.radiusCard}>
-                                <Text style={styles.radiusTitle}>Rayon (mètres)</Text>
-                                <View style={styles.radiusControls}>
-                                    <TouchableOpacity
-                                        style={styles.radiusButton}
+                                        style={styles.radiusButtonCompact}
                                         onPress={() => setRadius(Math.max(10, radius - 10))}
                                     >
-                                        <SafeIcon name="minus" size={16} color={modernColors.primary} />
+                                        <SafeIcon name="minus" size={12} color={modernColors.primary} />
                                     </TouchableOpacity>
-                                    <Text style={styles.radiusValue}>{radius}m</Text>
+                                    <Text style={styles.radiusValueCompact}>{radius}m</Text>
                                     <TouchableOpacity
-                                        style={styles.radiusButton}
+                                        style={styles.radiusButtonCompact}
                                         onPress={() => setRadius(Math.min(1000, radius + 10))}
                                     >
-                                        <SafeIcon name="plus" size={16} color={modernColors.primary} />
+                                        <SafeIcon name="plus" size={12} color={modernColors.primary} />
                                     </TouchableOpacity>
                                 </View>
-                            </NativeCard>
-                        )}
+                            )}
 
-                        {/* Sélecteur de style de carte */}
-                        <NativeCard style={styles.mapStyleCard}>
-                            <Text style={styles.mapStyleTitle}>Style de carte</Text>
-                            <View style={styles.mapStyleContainer}>
-                                {[
-                                    { key: 'standard', label: 'Standard', icon: 'map' },
-                                    { key: 'satellite', label: 'Satellite', icon: 'globe' },
-                                    { key: 'hybrid', label: 'Hybride', icon: 'layers' }
-                                ].map((style) => (
-                                    <TouchableOpacity
-                                        key={style.key}
-                                        style={[
-                                            styles.mapStyleButton,
-                                            mapStyle === style.key && styles.mapStyleButtonActive
-                                        ]}
-                                        onPress={() => setMapStyle(style.key as any)}
-                                    >
-                                        <SafeIcon
-                                            name={style.icon}
-                                            size={14}
-                                            color={mapStyle === style.key ? '#FFFFFF' : modernColors.textSecondary}
-                                        />
-                                        <Text style={[
-                                            styles.mapStyleButtonText,
-                                            mapStyle === style.key && styles.mapStyleButtonTextActive
-                                        ]}>
-                                            {style.label}
-                                        </Text>
-                                    </TouchableOpacity>
-                                ))}
+                            {/* Boutons d'action */}
+                            <View style={styles.actionsCompact}>
+                                <NativeButton
+                                    title="Effacer"
+                                    onPress={handleClearSelection}
+                                    variant="outline"
+                                    size="small"
+                                    style={styles.clearButtonCompact}
+                                    icon="trash-2"
+                                />
+                                <NativeButton
+                                    title="Confirmer"
+                                    onPress={handleConfirmSelection}
+                                    disabled={!selectedLocation}
+                                    variant="primary"
+                                    size="small"
+                                    style={styles.confirmButtonCompact}
+                                    icon="check"
+                                />
                             </View>
-                        </NativeCard>
-
-                        {/* Boutons d'action */}
-                        <View style={styles.actionsContainer}>
-                            <NativeButton
-                                title="Effacer"
-                                onPress={handleClearSelection}
-                                variant="outline"
-                                size="medium"
-                                style={styles.clearButton}
-                                icon="trash-2"
-                            />
-                            <NativeButton
-                                title="Confirmer"
-                                onPress={handleConfirmSelection}
-                                disabled={!selectedLocation}
-                                variant="primary"
-                                size="medium"
-                                style={styles.confirmButton}
-                                icon="check"
-                            />
                         </View>
                     </View>
 
-                    {/* Panel Droit - Carte Interactive */}
-                    <View style={styles.rightPanel}>
+                    {/* Carte Interactive - Pleine largeur en bas */}
+                    <View style={styles.mapContainerFull}>
                         <NativeCard style={styles.mapCard}>
                             <InteractiveMapView
                                 selectedLocation={selectedLocation}
@@ -418,16 +342,129 @@ const styles = StyleSheet.create({
     },
     content: {
         flex: 1,
+        flexDirection: 'column',
+    },
+    topPanel: {
+        padding: 12,
+        backgroundColor: modernColors.surface,
+        borderBottomWidth: 1,
+        borderBottomColor: modernColors.border,
+        gap: 8,
+    },
+    topRow: {
         flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
     },
-    leftPanel: {
-        width: width * 0.4,
-        padding: 16,
-        gap: 16,
+    gpsButtonCompact: {
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        minWidth: 110,
     },
-    rightPanel: {
+    searchSectionCompact: {
         flex: 1,
-        padding: 16,
+        flexDirection: 'row',
+        gap: 6,
+        alignItems: 'center',
+    },
+    searchInputCompact: {
+        flex: 1,
+        height: 36,
+    },
+    searchButtonCompact: {
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        minWidth: 50,
+    },
+    modesRowCompact: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        flexWrap: 'nowrap',
+    },
+    modesLabelCompact: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: modernColors.text,
+        marginRight: 4,
+    },
+    modeButtonCompact: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: modernColors.border,
+        backgroundColor: modernColors.surface,
+    },
+    modeButtonActiveCompact: {
+        backgroundColor: modernColors.primary,
+        borderColor: modernColors.primary,
+    },
+    modeButtonTextCompact: {
+        fontSize: 11,
+        fontWeight: '600',
+        color: modernColors.text,
+    },
+    modeButtonTextActiveCompact: {
+        color: '#FFFFFF',
+    },
+    statusRowCompact: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        paddingVertical: 6,
+        paddingHorizontal: 10,
+        backgroundColor: modernColors.background,
+        borderRadius: 8,
+        flexWrap: 'nowrap',
+    },
+    statusTextCompact: {
+        flex: 1,
+        fontSize: 11,
+        color: modernColors.textSecondary,
+        fontFamily: 'monospace',
+    },
+    radiusControlsCompact: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        marginRight: 8,
+    },
+    radiusButtonCompact: {
+        width: 24,
+        height: 24,
+        borderRadius: 12,
+        backgroundColor: modernColors.surface,
+        borderWidth: 1,
+        borderColor: modernColors.border,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    radiusValueCompact: {
+        fontSize: 11,
+        fontWeight: '600',
+        color: modernColors.primary,
+        minWidth: 35,
+        textAlign: 'center',
+    },
+    actionsCompact: {
+        flexDirection: 'row',
+        gap: 6,
+    },
+    clearButtonCompact: {
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+    },
+    confirmButtonCompact: {
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+    },
+    mapContainerFull: {
+        flex: 1,
+        padding: 12,
     },
     instructionsCard: {
         padding: 16,

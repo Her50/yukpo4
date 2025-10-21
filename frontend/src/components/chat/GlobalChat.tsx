@@ -1,16 +1,15 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useUser } from '@/hooks/useUser';
-import { useToast } from '@/components/ui/use-toast';
-import { Button } from '@/components/ui/buttons';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Phone, Video, Mic, Image, Wifi, WifiOff, Eye, EyeOff } from 'lucide-react';
+import { Button } from '@/components/ui/buttons';
+import { useToast } from '@/components/ui/use-toast';
+import { useUser } from '@/hooks/useUser';
+import { Eye, EyeOff, Image, Mic, Phone, Video } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import MessageEditor from './MessageEditor';
 
 // Import des hooks WebSocket existants
-import { usePrestataireStatus } from '@/hooks/useWebSocket';
-import { useNotificationsWebSocket } from '@/hooks/useWebSocket';
 import { usePrestataireInfo } from '@/hooks/usePrestataireInfo';
+import { useNotificationsWebSocket, usePrestataireStatus } from '@/hooks/useWebSocket';
 
 interface Service {
   id: number;
@@ -26,23 +25,23 @@ interface GlobalChatProps {
   onClose: () => void;
 }
 
-export const GlobalChat: React.FC<GlobalChatProps> = ({ 
-  serviceId, 
-  prestataireId, 
-  isOpen, 
-  onClose 
+export const GlobalChat: React.FC<GlobalChatProps> = ({
+  serviceId,
+  prestataireId,
+  isOpen,
+  onClose
 }) => {
   const navigate = useNavigate();
   const { user } = useUser();
   const { toast } = useToast();
-  
+
   // États du chat (copiés de ResultatBesoin)
   const [chatMessages, setChatMessages] = useState<any[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
-  
+
   // États pour la gestion des fichiers
   const [uploadingFiles, setUploadingFiles] = useState(false);
   const [prestataireGallery, setPrestataireGallery] = useState<any[]>([]);
@@ -104,11 +103,11 @@ export const GlobalChat: React.FC<GlobalChatProps> = ({
   // Initialiser le chat
   const initializeChat = () => {
     if (!prestataireId) return;
-    
+
     // Récupérer les informations du prestataire
     const prestataireInfo = prestataires.get(prestataireId);
     const nomPrestataire = prestataireInfo?.nom_complet || `Prestataire #${prestataireId}`;
-    
+
     // Message de bienvenue
     const welcomeMessage = {
       id: Date.now().toString(),
@@ -118,15 +117,15 @@ export const GlobalChat: React.FC<GlobalChatProps> = ({
       status: 'read',
       type: 'text'
     };
-    
+
     setChatMessages([welcomeMessage]);
-    
+
     // Activer les WebSockets
     if (wsConnected) {
       checkUserStatus(prestataireId);
       handleTypingIndicator(serviceId || 0, true);
       updateWsMetrics('sent');
-      
+
       toast({
         title: "Chat activé",
         description: `Connexion WebSocket établie avec ${nomPrestataire}`,
@@ -174,26 +173,26 @@ export const GlobalChat: React.FC<GlobalChatProps> = ({
   // Démarrer l'enregistrement audio
   const startAudioRecording = () => {
     if (isRecording) return;
-    
+
     setHoldStartTime(Date.now());
-    
+
     const timer = setTimeout(async () => {
       try {
         setRecordingSeconds(0);
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         const recorder = new MediaRecorder(stream);
         const chunks: Blob[] = [];
-        
+
         recorder.ondataavailable = (event) => {
           if (event.data.size > 0) {
             chunks.push(event.data);
           }
         };
-        
+
         recorder.onstop = () => {
           const audioBlob = new Blob(chunks, { type: 'audio/wav' });
           const audioUrl = URL.createObjectURL(audioBlob);
-          
+
           const audioMessage = {
             id: Date.now().toString(),
             type: 'audio',
@@ -205,26 +204,26 @@ export const GlobalChat: React.FC<GlobalChatProps> = ({
             audioBlob: audioBlob,
             audioUrl: audioUrl
           };
-          
+
           setChatMessages(prev => [...prev, audioMessage]);
           setAudioChunks([]);
           stream.getTracks().forEach(track => track.stop());
           setRecordingSeconds(0);
-          
+
           // Envoyer via l'API en arrière-plan
           sendAudioMessageInBackground(audioBlob, audioMessage.id);
         };
-        
+
         recorder.start();
         setMediaRecorder(recorder);
         setIsRecording(true);
-        
+
         // Démarrer le compteur
         const interval = setInterval(() => {
           setRecordingSeconds(prev => prev + 1);
         }, 1000);
         setRecordingTimer(interval);
-        
+
       } catch (error) {
         console.error('Erreur enregistrement audio:', error);
         toast({
@@ -234,7 +233,7 @@ export const GlobalChat: React.FC<GlobalChatProps> = ({
         });
       }
     }, 300);
-    
+
     setHoldStartTime(Date.now());
   };
 
@@ -244,7 +243,7 @@ export const GlobalChat: React.FC<GlobalChatProps> = ({
       mediaRecorder.stop();
       setIsRecording(false);
       setHoldStartTime(null);
-      
+
       if (recordingTimer) {
         clearInterval(recordingTimer);
         setRecordingTimer(null);
@@ -258,12 +257,12 @@ export const GlobalChat: React.FC<GlobalChatProps> = ({
       mediaRecorder.stop();
       setIsRecording(false);
       setHoldStartTime(null);
-      
+
       if (recordingTimer) {
         clearInterval(recordingTimer);
         setRecordingTimer(null);
       }
-      
+
       // Nettoyer le stream
       if (mediaRecorder.stream) {
         mediaRecorder.stream.getTracks().forEach(track => track.stop());
@@ -278,7 +277,7 @@ export const GlobalChat: React.FC<GlobalChatProps> = ({
       const reader = new FileReader();
       reader.onload = async () => {
         const base64Audio = reader.result as string;
-        
+
         // Envoyer via l'API
         const response = await fetch('/api/chat/send-audio', {
           method: 'POST',
@@ -293,12 +292,12 @@ export const GlobalChat: React.FC<GlobalChatProps> = ({
             messageId
           })
         });
-        
+
         if (response.ok) {
           // Marquer comme envoyé
-          setChatMessages(prev => 
-            prev.map(msg => 
-              msg.id === messageId 
+          setChatMessages(prev =>
+            prev.map(msg =>
+              msg.id === messageId
                 ? { ...msg, status: 'sent' }
                 : msg
             )
@@ -307,13 +306,13 @@ export const GlobalChat: React.FC<GlobalChatProps> = ({
         }
       };
       reader.readAsDataURL(audioBlob);
-      
+
     } catch (error) {
       console.error('Erreur envoi audio:', error);
       // Garder le message en local
-      setChatMessages(prev => 
-        prev.map(msg => 
-          msg.id === messageId 
+      setChatMessages(prev =>
+        prev.map(msg =>
+          msg.id === messageId
             ? { ...msg, status: 'error' }
             : msg
         )
@@ -324,7 +323,7 @@ export const GlobalChat: React.FC<GlobalChatProps> = ({
   // Envoyer un message texte
   const sendChatMessage = () => {
     if (!newMessage.trim() || !serviceId || !prestataireId) return;
-    
+
     const message = {
       id: Date.now().toString(),
       from: 'client',
@@ -333,11 +332,11 @@ export const GlobalChat: React.FC<GlobalChatProps> = ({
       status: 'sent',
       type: 'text'
     };
-    
+
     setChatMessages(prev => [...prev, message]);
     setNewMessage('');
     updateWsMetrics('sent');
-    
+
     // Envoyer via l'API
     sendTextMessageInBackground(message);
   };
@@ -358,12 +357,12 @@ export const GlobalChat: React.FC<GlobalChatProps> = ({
           messageId: message.id
         })
       });
-      
+
       if (response.ok) {
         // Marquer comme livré
-        setChatMessages(prev => 
-          prev.map(msg => 
-            msg.id === message.id 
+        setChatMessages(prev =>
+          prev.map(msg =>
+            msg.id === message.id
               ? { ...msg, status: 'delivered' }
               : msg
           )
@@ -372,9 +371,9 @@ export const GlobalChat: React.FC<GlobalChatProps> = ({
     } catch (error) {
       console.error('Erreur envoi message:', error);
       // Garder le message en local
-      setChatMessages(prev => 
-        prev.map(msg => 
-          msg.id === message.id 
+      setChatMessages(prev =>
+        prev.map(msg =>
+          msg.id === message.id
             ? { ...msg, status: 'error' }
             : msg
         )
@@ -386,7 +385,7 @@ export const GlobalChat: React.FC<GlobalChatProps> = ({
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>, type: 'image' | 'document') => {
     const files = Array.from(event.target.files || []);
     if (files.length === 0) return;
-    
+
     files.forEach(file => {
       const reader = new FileReader();
       reader.onload = () => {
@@ -400,16 +399,16 @@ export const GlobalChat: React.FC<GlobalChatProps> = ({
           timestamp: new Date().toISOString(),
           status: 'sent'
         };
-        
+
         setChatMessages(prev => [...prev, fileMessage]);
         updateWsMetrics('sent');
-        
+
         // Envoyer le fichier en arrière-plan
         sendFileInBackground(file, fileMessage);
       };
       reader.readAsDataURL(file);
     });
-    
+
     // Réinitialiser l'input
     event.target.value = '';
   };
@@ -422,7 +421,7 @@ export const GlobalChat: React.FC<GlobalChatProps> = ({
       formData.append('serviceId', serviceId?.toString() || '');
       formData.append('prestataireId', prestataireId?.toString() || '');
       formData.append('messageId', message.id);
-      
+
       const response = await fetch('/api/chat/send-file', {
         method: 'POST',
         headers: {
@@ -430,11 +429,11 @@ export const GlobalChat: React.FC<GlobalChatProps> = ({
         },
         body: formData
       });
-      
+
       if (response.ok) {
-        setChatMessages(prev => 
-          prev.map(msg => 
-            msg.id === message.id 
+        setChatMessages(prev =>
+          prev.map(msg =>
+            msg.id === message.id
               ? { ...msg, status: 'delivered' }
               : msg
           )
@@ -442,9 +441,9 @@ export const GlobalChat: React.FC<GlobalChatProps> = ({
       }
     } catch (error) {
       console.error('Erreur envoi fichier:', error);
-      setChatMessages(prev => 
-        prev.map(msg => 
-          msg.id === message.id 
+      setChatMessages(prev =>
+        prev.map(msg =>
+          msg.id === message.id
             ? { ...msg, status: 'error' }
             : msg
         )
@@ -516,15 +515,15 @@ export const GlobalChat: React.FC<GlobalChatProps> = ({
       });
 
       if (response.ok) {
-        setChatMessages(prev => 
-          prev.map(msg => 
-            msg.id === messageId 
-              ? { 
-                  ...msg, 
-                  content: newContent,
-                  isEdited: true,
-                  editTimestamp: new Date()
-                }
+        setChatMessages(prev =>
+          prev.map(msg =>
+            msg.id === messageId
+              ? {
+                ...msg,
+                content: newContent,
+                isEdited: true,
+                editTimestamp: new Date()
+              }
               : msg
           )
         );
@@ -564,7 +563,7 @@ export const GlobalChat: React.FC<GlobalChatProps> = ({
     const minutes = Math.floor(diff / (1000 * 60));
     const hours = Math.floor(diff / (1000 * 60 * 60));
     const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-    
+
     if (minutes < 1) return 'À l\'instant';
     if (minutes < 60) return `Il y a ${minutes}min`;
     if (hours < 24) return `Il y a ${hours}h`;
@@ -619,7 +618,7 @@ export const GlobalChat: React.FC<GlobalChatProps> = ({
               </div>
             </div>
           </div>
-          
+
           {/* Boutons d'action */}
           <div className="flex items-center gap-2">
             {/* Appel audio */}
@@ -632,7 +631,7 @@ export const GlobalChat: React.FC<GlobalChatProps> = ({
             >
               <Phone className="w-4 h-4" />
             </Button>
-            
+
             {/* Appel vidéo */}
             <Button
               variant="ghost"
@@ -643,7 +642,7 @@ export const GlobalChat: React.FC<GlobalChatProps> = ({
             >
               <Video className="w-4 h-4" />
             </Button>
-            
+
             {/* Fermer */}
             <Button
               variant="ghost"
@@ -655,7 +654,7 @@ export const GlobalChat: React.FC<GlobalChatProps> = ({
             </Button>
           </div>
         </div>
-        
+
         {/* Zone des messages */}
         <div className="flex-1 p-4 bg-gray-50 overflow-y-auto space-y-3">
           {chatMessages.length === 0 ? (
@@ -670,18 +669,17 @@ export const GlobalChat: React.FC<GlobalChatProps> = ({
                 className={`flex ${message.from === 'client' ? 'justify-end' : 'justify-start'}`}
               >
                 <div
-                  className={`max-w-xs px-3 py-2 rounded-lg ${
-                    message.from === 'client'
+                  className={`max-w-xs px-3 py-2 rounded-lg ${message.from === 'client'
                       ? 'bg-blue-600 text-white'
                       : 'bg-white text-gray-800 border'
-                  }`}
+                    }`}
                 >
                   {/* Affichage selon le type de message */}
                   {message.type === 'audio' ? (
                     <div className="flex items-center gap-2">
                       <span className="text-sm">🎵</span>
-                      <audio 
-                        controls 
+                      <audio
+                        controls
                         className="max-w-full"
                         src={message.audioUrl || (message.audioBlob ? URL.createObjectURL(message.audioBlob) : '')}
                       >
@@ -690,8 +688,8 @@ export const GlobalChat: React.FC<GlobalChatProps> = ({
                     </div>
                   ) : message.type === 'image' ? (
                     <div className="space-y-2">
-                      <img 
-                        src={message.fileUrl} 
+                      <img
+                        src={message.fileUrl}
                         alt={message.fileName || 'Image'}
                         className="max-w-full rounded-lg shadow-sm"
                       />
@@ -701,8 +699,8 @@ export const GlobalChat: React.FC<GlobalChatProps> = ({
                     </div>
                   ) : message.type === 'video' ? (
                     <div className="space-y-2">
-                      <video 
-                        controls 
+                      <video
+                        controls
                         className="max-w-full rounded-lg shadow-sm"
                         src={message.fileUrl}
                       >
@@ -735,7 +733,7 @@ export const GlobalChat: React.FC<GlobalChatProps> = ({
                   ) : (
                     <p className="text-sm">{message.content}</p>
                   )}
-                  
+
                   <div className="flex items-center justify-between mt-1">
                     <span className="text-xs opacity-70">
                       {formatMessageTime(message.timestamp)}
@@ -748,7 +746,7 @@ export const GlobalChat: React.FC<GlobalChatProps> = ({
                         {message.status === 'sent' && <Eye className="w-3 h-3" />}
                         {message.status === 'delivered' && <Eye className="w-3 h-3" />}
                         {message.status === 'read' && <EyeOff className="w-3 h-3" />}
-                        
+
                         {/* Éditeur de message */}
                         <MessageEditor
                           message={message}
@@ -780,19 +778,18 @@ export const GlobalChat: React.FC<GlobalChatProps> = ({
               onTouchStart={startAudioRecording}
               onTouchEnd={stopAudioRecording}
               onTouchCancel={cancelRecording}
-              className={`${
-                isRecording 
-                  ? 'bg-red-500 text-white hover:bg-red-600 shadow-lg scale-110' 
+              className={`${isRecording
+                  ? 'bg-red-500 text-white hover:bg-red-600 shadow-lg scale-110'
                   : holdStartTime && !isRecording
-                  ? 'bg-yellow-400 text-white hover:bg-yellow-500 shadow-lg scale-105'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border-0'
-              } transition-all duration-200 rounded-full w-12 h-12 p-0 flex items-center justify-center relative`}
+                    ? 'bg-yellow-400 text-white hover:bg-yellow-500 shadow-lg scale-105'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border-0'
+                } transition-all duration-200 rounded-full w-12 h-12 p-0 flex items-center justify-center relative`}
               title={
-                isRecording 
-                  ? "🎙️ Relâchez pour arrêter et envoyer" 
+                isRecording
+                  ? "🎙️ Relâchez pour arrêter et envoyer"
                   : holdStartTime && !isRecording
-                  ? "🎙️ Continuez à maintenir pour enregistrer..."
-                  : "🎙️ Maintenez enfoncé pour enregistrer, relâchez pour envoyer"
+                    ? "🎙️ Continuez à maintenir pour enregistrer..."
+                    : "🎙️ Maintenez enfoncé pour enregistrer, relâchez pour envoyer"
               }
             >
               {isRecording ? (
@@ -806,21 +803,21 @@ export const GlobalChat: React.FC<GlobalChatProps> = ({
               ) : (
                 <Mic className="w-5 h-5" />
               )}
-              
+
               {/* Compteur de secondes */}
               {isRecording && (
                 <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-red-500 text-white text-xs px-2 py-1 rounded-full whitespace-nowrap">
                   {Math.floor(recordingSeconds / 60)}:{(recordingSeconds % 60).toString().padStart(2, '0')}
                 </div>
               )}
-              
+
               {/* Indicateur "Maintenez enfoncé" */}
               {!isRecording && !holdStartTime && (
                 <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-600 text-white text-xs px-2 py-1 rounded-full whitespace-nowrap opacity-80">
                   Maintenez
                 </div>
               )}
-              
+
               {/* Indicateur "Continuez à maintenir" pendant le délai */}
               {holdStartTime && !isRecording && (
                 <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-yellow-500 text-white text-xs px-2 py-1 rounded-full whitespace-nowrap">
@@ -852,19 +849,19 @@ export const GlobalChat: React.FC<GlobalChatProps> = ({
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
             </Button>
-            
+
             {/* Indicateur d'enregistrement en cours */}
             {isRecording && (
               <div className="flex items-center gap-3 text-red-600 text-sm bg-red-50 px-4 py-2 rounded-full border border-red-200">
                 <div className="flex gap-1">
                   <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
-                  <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" style={{animationDelay: '0.2s'}}></div>
-                  <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" style={{animationDelay: '0.4s'}}></div>
+                  <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
+                  <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
                 </div>
                 <span className="font-medium">🎙️ Enregistrement...</span>
               </div>
             )}
-            
+
             {/* Zone de saisie de texte */}
             <input
               type="text"
@@ -874,9 +871,9 @@ export const GlobalChat: React.FC<GlobalChatProps> = ({
               placeholder="Tapez votre message..."
               className="flex-1 px-4 py-3 border border-gray-200 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-50 focus:bg-white transition-all duration-200"
             />
-            
+
             {/* Bouton d'envoi */}
-            <Button 
+            <Button
               onClick={sendChatMessage}
               disabled={!newMessage.trim()}
               className="bg-blue-600 text-white hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed rounded-full w-12 h-12 p-0 flex items-center justify-center transition-all duration-200"
@@ -900,7 +897,7 @@ export const GlobalChat: React.FC<GlobalChatProps> = ({
         <input
           ref={fileInputDocumentsRef}
           type="file"
-          accept=".pdf,.doc,.docx,.xls,.xlsx,.txt"
+          accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/plain"
           multiple
           onChange={(e) => handleFileUpload(e, 'document')}
           className="hidden"

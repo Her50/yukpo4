@@ -23,7 +23,6 @@ import { GlobalChat } from '@/components/chat/GlobalChat';
 import ContactModal from '@/components/contact/ContactModal';
 import GalleryModal from '@/components/gallery/GalleryModal';
 import ProductCard from '@/components/products/ProductCard';
-import ServiceCard from '@/components/services/ServiceCard';
 
 // Hooks et services
 import { usePrestataireInfo } from '@/hooks/usePrestataireInfo';
@@ -54,7 +53,6 @@ export const ResultatBesoin: React.FC = () => {
   const [showChatModal, setShowChatModal] = useState(false);
   const [showGalleryModal, setShowGalleryModal] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [displayMode, setDisplayMode] = useState<'products' | 'services'>('products'); // Mode d'affichage
 
   // États pour le filtre par prix
   const [priceFilter, setPriceFilter] = useState<{
@@ -64,6 +62,30 @@ export const ResultatBesoin: React.FC = () => {
   }>({ min: null, max: null, currency: 'XAF' });
   const [sortBy, setSortBy] = useState<'relevance' | 'price_asc' | 'price_desc' | 'distance'>('relevance');
   const [showPriceFilter, setShowPriceFilter] = useState(false);
+
+  // Déterminer la catégorie dominante des produits (comme mobile)
+  const dominantCategory = (() => {
+    if (products.length === 0) return 'default';
+
+    // Compter les catégories
+    const categoryCount: Record<string, number> = {};
+    products.forEach((product) => {
+      const category = product.type || 'default';
+      categoryCount[category] = (categoryCount[category] || 0) + 1;
+    });
+
+    // Trouver la catégorie la plus fréquente
+    let maxCount = 0;
+    let dominant = 'default';
+    Object.entries(categoryCount).forEach(([category, count]) => {
+      if (count > maxCount) {
+        maxCount = count;
+        dominant = category;
+      }
+    });
+
+    return dominant;
+  })();
 
   // WebSocket et statut
   const userId = user?.id ? parseInt(user.id, 10) : 0;
@@ -181,6 +203,15 @@ export const ResultatBesoin: React.FC = () => {
               distance = calculateDistance(userGPS, bestGPS);
             }
 
+            // ✅ Calculer le score de priorité pour produits en promotion
+            let finalScore = service.score || 0;
+            const isPromo = product.en_promotion || product.promotion_active;
+
+            if (isPromo) {
+              // Bonus significatif pour produits en publicité
+              finalScore += 100; // Forte priorité pour affichage
+            }
+
             extractedProducts.push({
               ...product,
               _serviceId: service.id,
@@ -189,13 +220,34 @@ export const ResultatBesoin: React.FC = () => {
               _gps: bestGPS,
               _gpsSource: productGPS ? 'product' : (serviceGPSFixe ? 'service_fixe' : 'service_realtime'),
               distance: distance,
-              score: service.score || 0
+              score: finalScore, // ✅ Score ajusté avec bonus promo
+              en_promotion: isPromo, // Passer le flag
+              promotion_active: isPromo
             });
           });
         }
       });
 
       console.log(`📦 [ResultatBesoin] ${extractedProducts.length} produits extraits de ${services.length} services`);
+
+      // ✅ TRI PRIORITAIRE : Produits en promotion d'abord
+      extractedProducts.sort((a, b) => {
+        // 1. Priorité PROMO
+        const promoA = a.en_promotion || a.promotion_active ? 1 : 0;
+        const promoB = b.en_promotion || b.promotion_active ? 1 : 0;
+        if (promoA !== promoB) return promoB - promoA;
+
+        // 2. Score (pertinence)
+        const scoreA = a.score || 0;
+        const scoreB = b.score || 0;
+        if (scoreA !== scoreB) return scoreB - scoreA;
+
+        // 3. Distance (proximité)
+        const distA = a.distance || Infinity;
+        const distB = b.distance || Infinity;
+        return distA - distB;
+      });
+
       setProducts(extractedProducts);
     }
   }, [services, prestataires, location.state]);
@@ -589,59 +641,169 @@ export const ResultatBesoin: React.FC = () => {
             </div>
           )}
 
-          <div className="flex justify-center items-center gap-8 text-gray-600 mb-4">
-            <div className="flex items-center gap-2">
-              <CheckCircle className="w-5 h-5 text-green-500" />
-              <span>
-                {(() => {
-                  const filteredServices = filterAndSortServices(services);
-                  return `${filteredServices.length} service${filteredServices.length > 1 ? 's' : ''} trouvé${filteredServices.length > 1 ? 's' : ''}`;
-                })()}
-                {(() => {
-                  const filteredServices = filterAndSortServices(services);
-                  if (filteredServices.length !== services.length) {
-                    return ` (${services.length} au total)`;
-                  }
-                  return '';
-                })()}
-              </span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Clock className="w-5 h-5 text-blue-500" />
-              <span>Résultats en temps réel</span>
+          {/* 🔍 Champ de recherche - Même fonctionnalité que HomePage */}
+          <div className="max-w-4xl mx-auto mb-6">
+            <div className="bg-white rounded-xl shadow-md border border-gray-200 p-4">
+              <div className="flex items-center gap-3">
+                <div className="flex-1">
+                  <input
+                    type="text"
+                    placeholder="Affiner votre recherche..."
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    onKeyPress={async (e) => {
+                      if (e.key === 'Enter') {
+                        const searchInput = (e.target as HTMLInputElement).value;
+                        if (searchInput.trim()) {
+                          try {
+                            setLoading(true);
+                            const response = await fetch('/api/search/direct', {
+                              method: 'POST',
+                              headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${localStorage.getItem('token')}`
+                              },
+                              body: JSON.stringify({
+                                texte: searchInput,
+                                intention: 'recherche_service',
+                                gps_utilisateur: null
+                              })
+                            });
+
+                            const result = await response.json();
+                            let newResults = [];
+                            if (result?.resultats?.resultats && Array.isArray(result.resultats.resultats)) {
+                              newResults = result.resultats.resultats;
+                            }
+
+                            // Recharger avec les nouveaux résultats
+                            if (newResults.length > 0) {
+                              const serviceIds = newResults.map((r: any) => r.service_id);
+                              fetchServicesByIds(serviceIds, newResults);
+                            } else {
+                              toast({
+                                title: "Aucun résultat",
+                                description: "Aucun service trouvé pour cette recherche",
+                                type: "default"
+                              });
+                            }
+                            setLoading(false);
+                          } catch (error) {
+                            console.error('[ResultatBesoin] Erreur recherche:', error);
+                            toast({
+                              title: "Erreur",
+                              description: "Une erreur est survenue lors de la recherche",
+                              type: "error"
+                            });
+                            setLoading(false);
+                          }
+                        }
+                      }
+                    }}
+                  />
+                </div>
+                <Button
+                  onClick={handleGeolocation}
+                  variant="outline"
+                  size="sm"
+                  className="flex items-center gap-2"
+                >
+                  <MapPin className="w-4 h-4" />
+                  GPS
+                </Button>
+              </div>
             </div>
           </div>
 
-          {/* Filtres et tri */}
-          <div className="flex flex-wrap justify-center gap-4 mb-6">
-            <Button
-              onClick={handleGeolocation}
-              variant="outline"
-              className="bg-gradient-to-r from-blue-500 to-purple-600 text-white border-0 hover:from-blue-600 hover:to-purple-700"
-            >
-              <MapPin className="w-4 h-4 mr-2" />
-              Activer la géolocalisation pour trier par proximité
-            </Button>
+          {/* 🎨 Section de filtres moderne */}
+          <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 mb-6 max-w-4xl mx-auto">
+            {/* En-tête avec compteur */}
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-4">
+                <div className="text-4xl">
+                  {(() => {
+                    const categoryIcons: Record<string, string> = {
+                      'immobilier_batiment': '🏠', 'immobilier_terrain': '🏞️', 'hotellerie': '🏨',
+                      'automobile': '🚗', 'ticket_voyage': '🎫', 'telephone': '📱',
+                      'ordinateur': '💻', 'vetement': '👔', 'chaussure': '👟',
+                      'electromenager': '🔌', 'mobilier': '🪑', 'aliments': '🍎',
+                      'pharmacie': '💊', 'hopital_clinique': '🏥', 'default': '🔍'
+                    };
+                    return categoryIcons[dominantCategory] || '🔍';
+                  })()}
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900 truncate max-w-md">
+                    {(() => {
+                      const categoryLabels: Record<string, string> = {
+                        'immobilier_batiment': 'Immobilier - Vente/Location', 'immobilier_terrain': 'Terrains',
+                        'hotellerie': 'Hôtellerie et Hébergement', 'automobile': 'Automobiles',
+                        'ticket_voyage': 'Billets de Transport', 'telephone': 'Téléphones',
+                        'ordinateur': 'Ordinateurs', 'vetement': 'Vêtements', 'chaussure': 'Chaussures',
+                        'electromenager': 'Électroménager', 'mobilier': 'Mobilier', 'aliments': 'Aliments',
+                        'pharmacie': 'Pharmacies', 'hopital_clinique': 'Santé', 'default': 'Résultats de recherche'
+                      };
+                      return categoryLabels[dominantCategory] || 'Résultats de recherche';
+                    })()}
+                  </h2>
+                  <p className="text-sm text-gray-600 flex items-center gap-2">
+                    <CheckCircle className="w-4 h-4 text-green-500" />
+                    {products.length} produit{products.length > 1 ? 's' : ''} trouvé{products.length > 1 ? 's' : ''}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 bg-blue-50 px-4 py-2 rounded-full">
+                <Clock className="w-4 h-4 text-blue-600" />
+                <span className="text-sm font-medium text-blue-700">Temps réel</span>
+              </div>
+            </div>
 
-            <Button
-              onClick={() => setShowPriceFilter(!showPriceFilter)}
-              variant="outline"
-              className="bg-gradient-to-r from-green-500 to-emerald-600 text-white border-0 hover:from-green-600 hover:to-emerald-700"
-            >
-              <DollarSign className="w-4 h-4 mr-2" />
-              Filtre par prix
-            </Button>
+            {/* Boutons de tri en chips horizontales */}
+            <div className="flex flex-wrap gap-3 mb-4">
+              <span className="text-sm font-semibold text-gray-700 py-2 whitespace-nowrap">Trier par:</span>
+              {[
+                { value: 'relevance', label: '✨ Pertinence', color: 'blue' },
+                { value: 'price_asc', label: '💰 Prix ↑', color: 'green' },
+                { value: 'price_desc', label: '💰 Prix ↓', color: 'purple' },
+                { value: 'distance', label: '📍 Distance', color: 'orange' }
+              ].map(({ value, label, color }) => (
+                <button
+                  key={value}
+                  onClick={() => setSortBy(value as any)}
+                  className={`px-4 py-2 rounded-full text-sm font-semibold transition-all duration-200 whitespace-nowrap flex-shrink-0 ${sortBy === value
+                    ? `bg-${color}-600 text-white shadow-md`
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
 
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as any)}
-              className="px-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="relevance">Trier par pertinence</option>
-              <option value="price_asc">Prix croissant</option>
-              <option value="price_desc">Prix décroissant</option>
-              <option value="distance">Distance</option>
-            </select>
+            {/* Actions secondaires */}
+            <div className="flex flex-wrap gap-3">
+              <Button
+                onClick={handleGeolocation}
+                variant="outline"
+                size="sm"
+                className="bg-gradient-to-r from-blue-500 to-purple-600 text-white border-0 hover:from-blue-600 hover:to-purple-700"
+              >
+                <MapPin className="w-4 h-4 mr-2" />
+                Activer géolocalisation
+              </Button>
+
+              <Button
+                onClick={() => setShowPriceFilter(!showPriceFilter)}
+                variant="outline"
+                size="sm"
+                className={`${showPriceFilter ? 'bg-green-600 text-white' : 'bg-white text-green-600 border-green-600'} hover:bg-green-700 hover:text-white`}
+              >
+                <DollarSign className="w-4 h-4 mr-2" />
+                Filtre par prix
+                {(priceFilter.min !== null || priceFilter.max !== null) && (
+                  <span className="ml-2 bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">1</span>
+                )}
+              </Button>
+            </div>
           </div>
 
           {/* Filtre par prix */}
@@ -750,72 +912,35 @@ export const ResultatBesoin: React.FC = () => {
         ) : (
           <div className="flex justify-center">
             <div className={`grid gap-6 ${(() => {
-              const filteredServices = filterAndSortServices(services);
-              const count = displayMode === 'products' ? products.length : filteredServices.length;
+              const count = products.length;
               return count === 1 ? 'grid-cols-1 max-w-md' :
                 count === 2 ? 'grid-cols-1 md:grid-cols-2 max-w-4xl' :
                   count <= 4 ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 max-w-5xl' :
                     'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 max-w-7xl';
             })()}`}>
 
-              {/* Toggle mode d'affichage */}
-              <div className="col-span-full mb-6">
-                <div className="flex gap-3 justify-center">
-                  <Button
-                    onClick={() => setDisplayMode('products')}
-                    variant={displayMode === 'products' ? 'default' : 'outline'}
-                    className="flex items-center gap-2"
-                  >
-                    📦 Produits ({products.length})
-                  </Button>
-                  <Button
-                    onClick={() => setDisplayMode('services')}
-                    variant={displayMode === 'services' ? 'default' : 'outline'}
-                    className="flex items-center gap-2"
-                  >
-                    💼 Services ({services.length})
-                  </Button>
-                </div>
-              </div>
-
-              {/* Affichage conditionnel */}
-              {displayMode === 'products' ? (
-                products.length > 0 ? (
-                  products.map((product, index) => (
-                    <ProductCard
-                      key={`product-${index}-${product.nom}`}
-                      product={product}
-                      service={product._service}
-                      prestataire={product._prestataire}
-                      onChatPress={() => handleChat(product._service)}
-                      onCallPress={() => handleContact(product._service)}
-                    />
-                  ))
-                ) : (
-                  <div className="col-span-full text-center py-12">
-                    <div className="inline-flex flex-col items-center gap-3">
-                      <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center text-4xl">
-                        📦
-                      </div>
-                      <p className="text-gray-600 font-medium">Aucun produit trouvé</p>
-                      <p className="text-sm text-gray-400">Essayez de basculer en mode Services</p>
-                    </div>
-                  </div>
-                )
-              ) : (
-                Array.isArray(services) && filterAndSortServices(services).map((service) => (
-                  <ServiceCard
-                    key={service.id}
-                    service={service}
-                    prestataires={prestataires}
-                    user={user}
-                    wsConnected={wsConnected}
-                    userStatus={userStatus}
-                    onContact={handleContact}
-                    onChat={handleChat}
-                    onGallery={handleGallery}
+              {/* Affichage des produits */}
+              {products.length > 0 ? (
+                products.map((product, index) => (
+                  <ProductCard
+                    key={`product-${index}-${product.nom}`}
+                    product={product}
+                    service={product._service}
+                    prestataire={product._prestataire}
+                    onChatPress={() => handleChat(product._service)}
+                    onCallPress={() => handleContact(product._service)}
                   />
                 ))
+              ) : (
+                <div className="col-span-full text-center py-12">
+                  <div className="inline-flex flex-col items-center gap-3">
+                    <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center text-4xl">
+                      📦
+                    </div>
+                    <p className="text-gray-600 font-medium">Aucun produit trouvé</p>
+                    <p className="text-sm text-gray-400">Essayez de modifier votre recherche</p>
+                  </div>
+                </div>
               )}
             </div>
           </div>

@@ -106,15 +106,21 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
   // Fonction de gestion du retour
   const handleGoBack = () => {
-    if (fromMesServices) {
-      try {
-        (navigation as any).navigate('MesServices');
-      } catch (error) {
-        console.error('Erreur navigation retour MesServices:', error);
+    // ✅ Si on est au premier bloc, retourner à l'écran précédent
+    if (currentBlock === 0) {
+      if (fromMesServices) {
+        try {
+          (navigation as any).navigate('MesServices');
+        } catch (error) {
+          console.error('Erreur navigation retour MesServices:', error);
+          navigation.goBack();
+        }
+      } else {
         navigation.goBack();
       }
     } else {
-      navigation.goBack();
+      // ✅ Sinon, revenir au bloc précédent
+      setCurrentBlock(currentBlock - 1);
     }
   };
 
@@ -375,6 +381,16 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
   const goToBlock = (blockIndex: number) => {
     if (blockIndex >= 0 && blockIndex < blocks.length) {
+      // ✅ VALIDATION : Bloquer l'accès aux blocs 5 (Identité visuelle) et 6 (Promotion) sans produits
+      const targetBlock = blocks[blockIndex];
+      if ((targetBlock.id === 'branding' || targetBlock.id === 'promotion') && products.length === 0) {
+        Alert.alert(
+          '⚠️ Produit requis',
+          'Vous devez ajouter au moins un produit avant d\'accéder à l\'identité visuelle ou à la promotion.',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
       setCurrentBlock(blockIndex);
     }
   };
@@ -887,10 +903,94 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
     try {
       setLoading(true);
-      console.log('[FormulaireYukpoIntelligentScreen] Soumission du formulaire...');
+      console.log('[FormulaireYukpoIntelligentScreen] Soumission du formulaire...', { mode, serviceId });
+
+      // ✅ SI MODE MODIFICATION : Pas d'appel IA, pas de coût
+      if (mode === 'edit' && serviceId) {
+        console.log('[FormulaireYukpoIntelligentScreen] 📝 MODE MODIFICATION - Pas d\'appel IA');
+
+        // Construire les données de service directement depuis le formulaire
+        const finalServiceData: any = {};
+
+        // Transformer les valeurs du formulaire en structure attendue
+        Object.keys(valeursFormulaire).forEach(key => {
+          const value = valeursFormulaire[key];
+          if (value !== undefined && value !== null && value !== '') {
+            finalServiceData[key] = {
+              type_donnee: typeof value === 'boolean' ? 'boolean' : typeof value === 'number' ? 'number' : 'string',
+              valeur: value,
+              origine_champs: 'formulaire'
+            };
+          }
+        });
+
+        // Ajouter les produits (y compris les nouveaux)
+        if (products.length > 0) {
+          const cleanedProducts = products.map(product => {
+            const cleaned: any = {};
+            Object.keys(product).forEach(key => {
+              if (product[key] !== undefined && product[key] !== null && product[key] !== '') {
+                cleaned[key] = product[key];
+              }
+            });
+            return cleaned;
+          });
+          finalServiceData.produits = cleanedProducts;
+          console.log('[FormulaireYukpoIntelligentScreen] 📦 Produits ajoutés/mis à jour:', cleanedProducts.length);
+        }
+
+        // Ajouter le GPS fixe si présent
+        if (valeursFormulaire.gps_fixe) {
+          finalServiceData.gps_fixe = {
+            type_donnee: 'string',
+            valeur: valeursFormulaire.gps_fixe,
+            origine_champs: 'formulaire'
+          };
+        }
+
+        // Préparer le payload de modification
+        const userId = parseInt(user?.id || '0', 10);
+        const updatePayload = {
+          user_id: userId,
+          data: finalServiceData
+        };
+
+        console.log('[FormulaireYukpoIntelligentScreen] 📝 Mise à jour du service:', serviceId);
+
+        // Appeler l'API de mise à jour
+        const response = await apiPost(`/api/services/${serviceId}/update`, updatePayload);
+
+        if (!response.success) {
+          throw new Error(response.error || 'Erreur lors de la modification');
+        }
+
+        // ✅ Succès modification (pas de coût)
+        Alert.alert(
+          '✅ Service modifié',
+          'Votre service a été mis à jour avec succès.\n\n✅ Modification gratuite - Aucun frais',
+          [
+            {
+              text: 'OK',
+              onPress: () => {
+                setSuccessData({ serviceId, cout: 0 });
+                setShowSuccessToast(true);
+                if (fromMesServices) {
+                  (navigation as any).navigate('MesServices');
+                } else {
+                  navigation.goBack();
+                }
+              }
+            }
+          ]
+        );
+
+        return; // ✅ Sortir ici pour éviter le flux de création
+      }
+
+      // ✅ MODE CRÉATION : Appel IA + Vérification solde + Coût
+      console.log('[FormulaireYukpoIntelligentScreen] 🆕 MODE CRÉATION - Appel IA requis');
 
       // 💰 ÉTAPE 1 : Appeler l'IA externe pour générer le JSON structuré ET obtenir le coût réel
-      // Construire les données brutes pour l'IA (comme le frontend)
       const donneesService = {
         texte: composants.map(c => `${c.name}: ${valeursFormulaire[c.name] || ''}`).join('\n'),
         intention: 'creation_service',
@@ -1141,18 +1241,50 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                   console.error('[FormulaireYukpoIntelligentScreen] ❌ Response complet:', JSON.stringify(response, null, 2));
                   console.error('[FormulaireYukpoIntelligentScreen] ❌ Payload qui a causé l\'erreur:', JSON.stringify(servicePayload, null, 2));
 
-                  // ✅ AMÉLIORATION : Afficher le message d'erreur complet du backend
-                  const detailedError = response.error || response.message || 'Erreur inconnue du serveur';
+                  // ✅ AMÉLIORATION : Construire un log d'erreur détaillé copiable
+                  const errorLog = {
+                    timestamp: new Date().toISOString(),
+                    status: 'ERROR 500',
+                    endpoint: '/api/services/create',
+                    errorMessage: response.error || response.message || 'Erreur inconnue',
+                    responseData: response.data,
+                    responseError: response.error,
+                    payloadSize: `${(JSON.stringify(servicePayload).length / 1024).toFixed(2)} KB`,
+                    userInfo: {
+                      userId: user?.id,
+                      hasToken: !!user?.token
+                    },
+                    // Masquer les données sensibles mais montrer la structure
+                    payloadStructure: {
+                      user_id: servicePayload.user_id,
+                      dataKeys: Object.keys(servicePayload.data || {}),
+                      productsCount: servicePayload.data?.produits?.length || 0,
+                      hasGpsFix: !!servicePayload.data?.gps_fixe
+                    }
+                  };
+
+                  const errorLogString = JSON.stringify(errorLog, null, 2);
+                  console.error('[FormulaireYukpoIntelligentScreen] 📋 LOG ERREUR COMPLET:', errorLogString);
+
+                  // ✅ Copier automatiquement dans le presse-papiers
+                  const Clipboard = require('@react-native-clipboard/clipboard');
+                  Clipboard.setString(errorLogString);
 
                   Alert.alert(
-                    'Erreur de création',
-                    `${detailedError}\n\nVérifiez les logs de la console pour plus de détails.`,
+                    '❌ Erreur 500 - Création échouée',
+                    `${errorMessage}\n\n📋 Le log d'erreur détaillé a été copié dans votre presse-papiers.\n\nVous pouvez le coller pour analyse.`,
                     [
-                      { text: 'Voir Console', onPress: () => console.log('ERREUR COMPLÈTE:', response) },
+                      {
+                        text: 'Copier à nouveau',
+                        onPress: () => {
+                          Clipboard.setString(errorLogString);
+                          Alert.alert('✅ Copié', 'Le log d\'erreur a été copié dans le presse-papiers');
+                        }
+                      },
                       { text: 'OK', style: 'cancel' }
                     ]
                   );
-                  throw new Error(`Erreur création service: ${detailedError}`);
+                  throw new Error(`Erreur création service: ${errorMessage}`);
                 }
 
                 const result: any = response.data;
@@ -1181,10 +1313,42 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
               } catch (innerError: any) {
                 console.error('[FormulaireYukpoIntelligentScreen] ❌ Erreur création:', innerError);
+
+                // ✅ AMÉLIORATION : Log d'erreur détaillé avec copie automatique
+                const errorLog = {
+                  timestamp: new Date().toISOString(),
+                  status: 'ERROR',
+                  phase: 'Service Creation',
+                  errorMessage: innerError.message || 'Erreur inconnue',
+                  errorStack: innerError.stack,
+                  userInfo: {
+                    userId: user?.id,
+                    hasToken: !!user?.token
+                  }
+                };
+
+                const errorLogString = JSON.stringify(errorLog, null, 2);
+                console.error('[FormulaireYukpoIntelligentScreen] 📋 LOG ERREUR:', errorLogString);
+
+                // Copier dans le presse-papiers
+                const Clipboard = require('@react-native-clipboard/clipboard');
+                Clipboard.setString(errorLogString);
+
                 Alert.alert(
-                  'Erreur de création',
-                  innerError.message || 'Impossible de créer le service. Vérifiez vos données et réessayez.'
+                  '❌ Erreur de création',
+                  `${innerError.message || 'Impossible de créer le service'}\n\n📋 Le log d'erreur a été copié dans votre presse-papiers.`,
+                  [
+                    {
+                      text: 'Copier à nouveau',
+                      onPress: () => {
+                        Clipboard.setString(errorLogString);
+                        Alert.alert('✅ Copié', 'Le log d\'erreur a été copié');
+                      }
+                    },
+                    { text: 'OK', style: 'cancel' }
+                  ]
                 );
+
                 // ✅ Remettre les flags à false en cas d'erreur
                 setIsSubmitting(false);
                 setLoading(false);
@@ -1194,9 +1358,43 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         ]
       );
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('[FormulaireYukpoIntelligentScreen] Erreur soumission:', error);
-      Alert.alert('Erreur', error instanceof Error ? error.message : 'Impossible de créer le service');
+
+      // ✅ AMÉLIORATION : Log d'erreur détaillé avec copie automatique
+      const errorLog = {
+        timestamp: new Date().toISOString(),
+        status: 'ERROR',
+        phase: 'Form Submission',
+        errorMessage: error?.message || 'Erreur inconnue',
+        errorStack: error?.stack,
+        userInfo: {
+          userId: user?.id,
+          hasToken: !!user?.token
+        }
+      };
+
+      const errorLogString = JSON.stringify(errorLog, null, 2);
+      console.error('[FormulaireYukpoIntelligentScreen] 📋 LOG ERREUR SOUMISSION:', errorLogString);
+
+      // Copier dans le presse-papiers
+      const Clipboard = require('@react-native-clipboard/clipboard');
+      Clipboard.setString(errorLogString);
+
+      Alert.alert(
+        '❌ Erreur',
+        `${error instanceof Error ? error.message : 'Impossible de créer le service'}\n\n📋 Le log d'erreur a été copié dans votre presse-papiers.`,
+        [
+          {
+            text: 'Copier à nouveau',
+            onPress: () => {
+              Clipboard.setString(errorLogString);
+              Alert.alert('✅ Copié', 'Le log d\'erreur a été copié');
+            }
+          },
+          { text: 'OK', style: 'cancel' }
+        ]
+      );
       // ✅ Remettre les flags à false en cas d'erreur avant l'Alert
       setLoading(false);
       setIsSubmitting(false);

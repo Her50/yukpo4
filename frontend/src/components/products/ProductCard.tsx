@@ -729,6 +729,14 @@ const ProductCard: React.FC<ProductCardProps> = ({
                         <span className="text-xs font-semibold">{typeStyle.label}</span>
                     </div>
 
+                    {/* ✅ Badge PROMOTION si produit en promotion */}
+                    {(product.en_promotion || product.promotion_active) && (
+                        <div className="absolute top-14 left-3 bg-gradient-to-r from-yellow-500 to-red-500 text-white px-3 py-1.5 rounded-lg backdrop-blur-sm shadow-lg flex items-center gap-1">
+                            <span className="text-lg">⚡</span>
+                            <span className="text-xs font-bold">PROMO</span>
+                        </div>
+                    )}
+
                     {/* Indicateur vidéo */}
                     {videos.length > 0 && (
                         <div className="absolute top-3 right-3 bg-black bg-opacity-70 p-2 rounded-full">

@@ -1,7 +1,7 @@
-import { Calendar, Edit2, Eye, Power, PowerOff, Share, Trash2 } from 'phosphor-react-native';
 import React from 'react';
 import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { theme } from '../theme/theme';
+import SafeIcon from './SafeIcon';
 
 interface ServiceCardModernProps {
     service: {
@@ -118,12 +118,12 @@ const ServiceCardModern: React.FC<ServiceCardModernProps> = ({
             {/* Informations du service */}
             <View style={styles.serviceInfo}>
                 <View style={styles.infoRow}>
-                    <Calendar size={14} color="#666" />
+                    <SafeIcon name="calendar" size={14} color="#666" />
                     <Text style={styles.infoText}>Créé le {formatDate(service.createdAt)}</Text>
                 </View>
                 {service.views !== undefined && (
                     <View style={styles.infoRow}>
-                        <Eye size={14} color="#3B82F6" />
+                        <SafeIcon name="eye" size={14} color="#3B82F6" />
                         <Text style={styles.infoText}>{service.views} vues</Text>
                     </View>
                 )}
@@ -142,7 +142,7 @@ const ServiceCardModern: React.FC<ServiceCardModernProps> = ({
                         style={styles.actionIcon}
                         onPress={() => onEdit(service)}
                     >
-                        <Edit2 size={20} color="#6B7280" />
+                        <SafeIcon name="edit" size={20} color="#6B7280" />
                     </TouchableOpacity>
 
                     {/* Voir */}
@@ -150,7 +150,7 @@ const ServiceCardModern: React.FC<ServiceCardModernProps> = ({
                         style={styles.actionIcon}
                         onPress={() => onView(service)}
                     >
-                        <Eye size={20} color="#6B7280" />
+                        <SafeIcon name="eye" size={20} color="#6B7280" />
                     </TouchableOpacity>
 
                     {/* Partager */}
@@ -158,7 +158,7 @@ const ServiceCardModern: React.FC<ServiceCardModernProps> = ({
                         style={styles.actionIcon}
                         onPress={() => onShare(service)}
                     >
-                        <Share size={20} color="#3B82F6" />
+                        <SafeIcon name="share" size={20} color="#3B82F6" />
                     </TouchableOpacity>
 
                     {/* Promotion */}
@@ -177,9 +177,9 @@ const ServiceCardModern: React.FC<ServiceCardModernProps> = ({
                         onPress={handleToggleStatus}
                     >
                         {service.status === 'active' ? (
-                            <PowerOff size={20} color="#EF4444" />
+                            <SafeIcon name="power-off" size={20} color="#EF4444" />
                         ) : (
-                            <Power size={20} color="#10B981" />
+                            <SafeIcon name="power" size={20} color="#10B981" />
                         )}
                     </TouchableOpacity>
 
@@ -188,7 +188,7 @@ const ServiceCardModern: React.FC<ServiceCardModernProps> = ({
                         style={styles.actionIcon}
                         onPress={handleDelete}
                     >
-                        <Trash2 size={20} color="#EF4444" />
+                        <SafeIcon name="trash-2" size={20} color="#EF4444" />
                     </TouchableOpacity>
                 </View>
             </View>

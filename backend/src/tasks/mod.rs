@@ -10,6 +10,7 @@ pub mod reactivate_service;
 pub mod service_deactivation;
 pub mod intelligent_service_task;
 pub mod product_deactivation; // ✅ Tâche de désactivation automatique des produits
+pub mod publicite_expiration; // ✅ Tâche de désactivation des publicités expirées
 
 // ajoute ici d?autres modules de t?ches, par ex.
 // pub mod notification_scheduler;

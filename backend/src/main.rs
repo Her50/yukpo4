@@ -97,6 +97,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     });
 
+    // ✅ Lancer la tâche de désactivation des publicités expirées (toutes les heures)
+    let pool_clone_pub = app_state.pool.clone();
+    tokio::spawn(async move {
+        yukpomnang_backend::tasks::publicite_expiration::start_publicite_expiration_task(pool_clone_pub).await;
+    });
+
     // Construction de l'application avec Extension
     let app = build_app(app_state.clone())
         //.merge(yukpomnang_backend::openapi::swagger_router()) // Swagger d?sactiv? temporairement

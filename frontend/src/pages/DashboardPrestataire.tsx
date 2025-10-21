@@ -201,7 +201,7 @@ const DashboardPrestataire: React.FC = () => {
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
           <div>
             <h1 className="text-3xl font-bold text-gray-900 mb-2">
-              Dashboard Prestataire
+              📊 Dashboard Prestataire
             </h1>
             <p className="text-gray-600">
               Tableau de bord intelligent avec statistiques en temps réel
@@ -209,6 +209,16 @@ const DashboardPrestataire: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-4 mt-4 md:mt-0">
+            <Button
+              onClick={() => window.location.href = '/mes-services'}
+              variant="outline"
+              size="sm"
+              className="flex items-center gap-2"
+            >
+              <Activity className="w-4 h-4" />
+              Gérer mes services
+            </Button>
+
             <select
               value={selectedPeriod}
               onChange={(e) => setSelectedPeriod(e.target.value as any)}

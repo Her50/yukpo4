@@ -6,7 +6,6 @@ import { Service } from '@/types/service';
 import {
   Image,
   Images,
-  MessageCircle,
   Mic,
   Paperclip,
   Phone,
@@ -583,11 +582,14 @@ const ChatModal: React.FC<ChatModalProps> = ({
                   const whatsappUrl = `https://wa.me/${phoneNumber}?text=${message}`;
                   window.open(whatsappUrl, '_blank');
                 }}
-                className="text-white bg-green-600 hover:bg-green-700 hover:text-white rounded-xl relative"
+                className="text-white bg-green-600 hover:bg-green-700 hover:text-white rounded-xl relative border-2 border-green-500"
                 title="Contacter sur WhatsApp"
               >
-                <MessageCircle className="w-5 h-5" />
-                <span className="absolute -bottom-1 -right-1 bg-green-500 text-white text-[8px] font-bold px-1 py-0.5 rounded">
+                {/* Logo WhatsApp officiel */}
+                <div className="w-6 h-6 rounded-full bg-green-500 flex items-center justify-center">
+                  <span className="text-white text-sm">📱</span>
+                </div>
+                <span className="absolute -bottom-1 -right-1 bg-green-500 text-white text-[8px] font-bold px-1 py-0.5 rounded border border-white">
                   WA
                 </span>
               </Button>

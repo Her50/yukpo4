@@ -815,29 +815,34 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = ({
 const styles = StyleSheet.create({
     container: {
         backgroundColor: '#FFFFFF',
-        borderRadius: 12, // ✅ Réduit de 16 à 12
-        padding: 12, // ✅ Réduit de 16 à 12
+        borderRadius: 16, // ✅ Augmenté pour un look plus moderne
+        padding: 16, // ✅ Augmenté pour plus d'espace
         marginHorizontal: 0,
-        marginBottom: 8, // ✅ Réduit de 12 à 8
-        borderWidth: 1.5, // ✅ Réduit de 2 à 1.5
+        marginBottom: 12, // ✅ Augmenté
+        borderWidth: 2, // ✅ Rétabli à 2
         borderColor: '#E5E7EB',
-        minHeight: 110, // ✅ Réduit de 140 à 110
+        minHeight: 160, // ✅ Augmenté de 110 à 160 comme demandé
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+        elevation: 4, // ✅ Ajout d'une ombre pour plus de profondeur
     },
     inputContainer: {
-        borderRadius: 10, // ✅ Réduit de 12 à 10
+        borderRadius: 12, // ✅ Rétabli à 12
         borderWidth: 1,
         borderColor: '#D1D5DB',
         backgroundColor: '#F9FAFB',
-        marginBottom: 8, // ✅ Réduit de 12 à 8
-        minHeight: 65, // ✅ Réduit de 80 à 65
+        marginBottom: 12, // ✅ Rétabli à 12
+        minHeight: 100, // ✅ Augmenté de 65 à 100 pour plus de hauteur
     },
     textInput: {
-        fontSize: 14, // ✅ Réduit de 15 à 14
+        fontSize: 15, // ✅ Rétabli à 15
         color: '#374151',
-        minHeight: 50, // ✅ Réduit de 60 à 50
-        maxHeight: 85, // ✅ Réduit de 100 à 85
+        minHeight: 70, // ✅ Augmenté de 50 à 70 pour plus de hauteur
+        maxHeight: 120, // ✅ Augmenté de 85 à 120
         textAlignVertical: 'top',
-        padding: 10, // ✅ Réduit de 12 à 10
+        padding: 12, // ✅ Rétabli à 12
         fontWeight: '500',
     },
     actionsContainer: {

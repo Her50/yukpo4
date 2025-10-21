@@ -3,6 +3,7 @@ import { YukpoBrand } from '@/components/Footer';
 import ChatInputPanel from '@/components/intelligence/ChatInputPanel';
 import { GlobalIAStatsContext } from '@/components/intelligence/GlobalIAStats';
 import AppLayout from '@/components/layout/AppLayout';
+import PublicitesCarousel from '@/components/PublicitesCarousel';
 import { useUser } from '@/hooks/useUser';
 import type { IAResponseWithHeaders } from '@/lib/yukpoaclient';
 import { genererSuggestionsService } from '@/lib/yukpoaclient';
@@ -301,6 +302,11 @@ const HomePage: React.FC = () => {
               onInputChange={handleInputChange}
               showIASuggestion={true}
             />
+          </div>
+
+          {/* ✅ Carousel de publicités - EN BAS */}
+          <div className="mt-12">
+            <PublicitesCarousel userId={user?.id} />
           </div>
 
           {/* Indicateurs visuels subtils */}

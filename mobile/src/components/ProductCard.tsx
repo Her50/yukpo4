@@ -54,8 +54,9 @@ const ProductCard: React.FC<ProductCardProps> = ({
     // Obtenir l'icône et la couleur par type
     const getTypeStyle = () => {
         const styles = {
-            immobilier_batiment: { icon: 'home', color: '#3B82F6', bg: '#EFF6FF', label: 'Bâtiment' },
+            immobilier_batiment: { icon: 'home', color: '#3B82F6', bg: '#EFF6FF', label: 'Immobilier' },
             immobilier_terrain: { icon: 'map', color: '#10B981', bg: '#D1FAE5', label: 'Terrain' },
+            hotellerie: { icon: 'building', color: '#EC4899', bg: '#FCE7F3', label: 'Hôtel' },
             automobile: { icon: 'car', color: '#F59E0B', bg: '#FEF3C7', label: 'Auto' },
             ticket_voyage: { icon: 'bus', color: '#8B5CF6', bg: '#F3E8FF', label: 'Voyage' },
             covoiturage: { icon: 'users', color: '#EC4899', bg: '#FCE7F3', label: 'Covoiturage' },
@@ -92,16 +93,31 @@ const ProductCard: React.FC<ProductCardProps> = ({
             case 'immobilier_terrain':
                 return (
                     <View style={styles.detailsGrid}>
+                        {product.typeImmobilier && (
+                            <View style={styles.detailChip}>
+                                <Text style={styles.detailText}>🏠 {product.typeImmobilier}</Text>
+                            </View>
+                        )}
+                        {product.statutImmobilier && (
+                            <View style={styles.detailChip}>
+                                <Text style={styles.detailText}>📋 {product.statutImmobilier}</Text>
+                            </View>
+                        )}
                         {product.superficie && (
                             <View style={styles.detailChip}>
                                 <SafeIcon name="maximize-2" size={14} color="#6B7280" />
                                 <Text style={styles.detailText}>{product.superficie} m²</Text>
                             </View>
                         )}
-                        {product.nbPieces && (
+                        {product.nbChambres && (
                             <View style={styles.detailChip}>
                                 <SafeIcon name="grid" size={14} color="#6B7280" />
-                                <Text style={styles.detailText}>{product.nbPieces} pièces</Text>
+                                <Text style={styles.detailText}>{product.nbChambres} ch.</Text>
+                            </View>
+                        )}
+                        {product.ameublement && (
+                            <View style={styles.detailChip}>
+                                <Text style={styles.detailText}>🛋️ {product.ameublement}</Text>
                             </View>
                         )}
                         {product.quartier && (
@@ -126,6 +142,11 @@ const ProductCard: React.FC<ProductCardProps> = ({
                                 <Text style={styles.detailText}>🚗 {product.modele}</Text>
                             </View>
                         )}
+                        {product.etatVehicule && (
+                            <View style={styles.detailChip}>
+                                <Text style={styles.detailText}>{product.etatVehicule === 'Neuf' ? '✨' : '🔧'} {product.etatVehicule}</Text>
+                            </View>
+                        )}
                         {product.annee && (
                             <View style={styles.detailChip}>
                                 <SafeIcon name="calendar" size={14} color="#6B7280" />
@@ -136,6 +157,93 @@ const ProductCard: React.FC<ProductCardProps> = ({
                             <View style={styles.detailChip}>
                                 <SafeIcon name="activity" size={14} color="#6B7280" />
                                 <Text style={styles.detailText}>{product.kilometrage} km</Text>
+                            </View>
+                        )}
+                        {product.typeCarburant && (
+                            <View style={styles.detailChip}>
+                                <Text style={styles.detailText}>⛽ {product.typeCarburant}</Text>
+                            </View>
+                        )}
+                        {product.transmission && (
+                            <View style={styles.detailChip}>
+                                <Text style={styles.detailText}>⚙️ {product.transmission}</Text>
+                            </View>
+                        )}
+                    </View>
+                );
+
+            case 'hotellerie':
+                return (
+                    <View style={styles.detailsGrid}>
+                        {product.typeHebergement && (
+                            <View style={styles.detailChip}>
+                                <Text style={styles.detailText}>🏨 {product.typeHebergement}</Text>
+                            </View>
+                        )}
+                        {product.categorieHotel && (
+                            <View style={styles.detailChip}>
+                                <Text style={styles.detailText}>⭐ {product.categorieHotel}</Text>
+                            </View>
+                        )}
+                        {product.prixParNuit && (
+                            <View style={styles.detailChip}>
+                                <Text style={styles.detailText}>💰 {product.prixParNuit} FCFA/nuit</Text>
+                            </View>
+                        )}
+                        {product.nbChambresHotel && (
+                            <View style={styles.detailChip}>
+                                <SafeIcon name="grid" size={14} color="#6B7280" />
+                                <Text style={styles.detailText}>{product.nbChambresHotel} chambres</Text>
+                            </View>
+                        )}
+                        {product.equipementsHotel && product.equipementsHotel.length > 0 && (
+                            <View style={styles.detailChip}>
+                                <SafeIcon name="check-circle" size={14} color="#10B981" />
+                                <Text style={styles.detailText}>{product.equipementsHotel.length} équipements</Text>
+                            </View>
+                        )}
+                        {product.villeHotel && (
+                            <View style={styles.detailChip}>
+                                <SafeIcon name="map-pin" size={14} color="#6B7280" />
+                                <Text style={styles.detailText}>{product.villeHotel}</Text>
+                            </View>
+                        )}
+                    </View>
+                );
+
+            case 'ticket_voyage':
+                return (
+                    <View style={styles.detailsGrid}>
+                        {product.compagnie && (
+                            <View style={styles.detailChip}>
+                                <Text style={styles.detailText}>✈️ {product.compagnie}</Text>
+                            </View>
+                        )}
+                        {product.typeVehiculeTransport && (
+                            <View style={styles.detailChip}>
+                                <Text style={styles.detailText}>🚌 {product.typeVehiculeTransport}</Text>
+                            </View>
+                        )}
+                        {product.classeVoyage && (
+                            <View style={styles.detailChip}>
+                                <Text style={styles.detailText}>💺 {product.classeVoyage}</Text>
+                            </View>
+                        )}
+                        {product.depart && product.destination && (
+                            <View style={styles.detailChip}>
+                                <SafeIcon name="navigation" size={14} color="#6B7280" />
+                                <Text style={styles.detailText}>{product.depart} → {product.destination}</Text>
+                            </View>
+                        )}
+                        {product.dateDepart && (
+                            <View style={styles.detailChip}>
+                                <SafeIcon name="calendar" size={14} color="#6B7280" />
+                                <Text style={styles.detailText}>{product.dateDepart}</Text>
+                            </View>
+                        )}
+                        {product.numeroPlace && (
+                            <View style={styles.detailChip}>
+                                <Text style={styles.detailText}>🎫 Place {product.numeroPlace}</Text>
                             </View>
                         )}
                     </View>
@@ -898,6 +1006,21 @@ const ProductCard: React.FC<ProductCardProps> = ({
                         <Text style={[styles.typeText, { color: typeStyle.color }]}>{typeStyle.label}</Text>
                     </View>
 
+                    {/* ✅ Badge PROMOTION si produit en promotion */}
+                    {(product.en_promotion || product.promotion_active) && (
+                        <View style={styles.promoBadge}>
+                            <LinearGradient
+                                colors={['#F59E0B', '#EF4444']}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 1, y: 0 }}
+                                style={styles.promoBadgeGradient}
+                            >
+                                <SafeIcon name="zap" size={12} color="#FFFFFF" />
+                                <Text style={styles.promoText}>PROMO</Text>
+                            </LinearGradient>
+                        </View>
+                    )}
+
                     {/* Indicateur vidéo si présente */}
                     {hasVideo && (
                         <View style={styles.videoIndicator}>
@@ -1109,6 +1232,25 @@ const styles = StyleSheet.create({
     typeText: {
         fontSize: 10,
         fontWeight: '600',
+    },
+    promoBadge: {
+        position: 'absolute',
+        top: 42,
+        left: 8,
+        borderRadius: 8,
+        overflow: 'hidden',
+    },
+    promoBadgeGradient: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+    },
+    promoText: {
+        fontSize: 10,
+        fontWeight: '700',
+        color: '#FFFFFF',
     },
     videoIndicator: {
         position: 'absolute',

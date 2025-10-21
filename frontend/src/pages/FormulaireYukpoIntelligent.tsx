@@ -28,7 +28,7 @@ export default function FormulaireDemandeOuService() {
   const mediaData = location.state?.mediaData || {};
   const gpsData = location.state?.gpsData || {}; // ?? NOUVEAU : Récupérer les données GPS
   const type = location.state?.type || '';
-  const mode = location.state?.mode || 'edit';
+  const mode = location.state?.mode || 'create'; // ✅ CORRIGÉ : Par défaut 'create', pas 'edit'
   const serviceId = location.state?.serviceId;
 
   const [activeStep, setActiveStep] = useState(1);
@@ -228,127 +228,27 @@ export default function FormulaireDemandeOuService() {
       let result;
       let iaResponse: any = null; // Pour stocker la réponse de l'IA externe
 
-      if (serviceId) {
-        // ?? CORRECTION : Construire donneesService pour la mise à jour
-        const donneesService = {
-          texte: composants.map(c => `${c.nomChamp}: ${valeursFormulaire[c.nomChamp] || ''}`).join('\n'),
-          intention: 'creation_service',
-          base64_image: mediaFiles.images,
-          audio_base64: mediaFiles.audios,
-          video_base64: mediaFiles.videos,
-          doc_base64: mediaFiles.documents,
-          excel_base64: mediaFiles.excel,
-          logo: mediaFiles.logo,
-          banner: mediaFiles.banner
-        };
+      // ✅ SI MODE MODIFICATION : Pas d'appel IA, pas de coût
+      if (mode === 'edit' && serviceId) {
+        console.log('[FormulaireYukpoIntelligent] 📝 MODE MODIFICATION - Pas d\'appel IA');
 
-        result = await axios.put(`/api/services/${serviceId}`, donneesService, {
-          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-        });
-      } else {
-        // 💰 ÉTAPE 1 : Appeler l'IA externe pour générer le JSON ET obtenir le coût réel
+        // Construire les données de service directement depuis le formulaire
+        const finalServiceData: any = {};
 
-        // Construire les données brutes pour l'IA
-        const donneesService = {
-          texte: composants.map(c => `${c.nomChamp}: ${valeursFormulaire[c.nomChamp] || ''}`).join('\n'),
-          intention: 'creation_service',
-          base64_image: mediaFiles.images,
-          audio_base64: mediaFiles.audios,
-          video_base64: mediaFiles.videos,
-          doc_base64: mediaFiles.documents,
-          excel_base64: mediaFiles.excel,
-          logo: mediaFiles.logo,
-          banner: mediaFiles.banner
-        };
-
-        console.log('[FormulaireYukpoIntelligent] Données brutes pour génération IA:', donneesService);
-
-        // Appeler l'IA pour générer le JSON structuré (comptabilise les tokens)
-        iaResponse = await appelerMoteurIA({
-          texte: donneesService.texte || '',
-          base64_image: donneesService.base64_image || [],
-          audio_base64: donneesService.audio_base64 || [],
-          video_base64: donneesService.video_base64 || [],
-          doc_base64: donneesService.doc_base64 || [],
-          excel_base64: donneesService.excel_base64 || [],
-          logo: donneesService.logo || [],
-          banner: donneesService.banner || []
+        // Transformer les valeurs du formulaire en structure attendue
+        Object.keys(valeursFormulaire).forEach(key => {
+          const value = valeursFormulaire[key];
+          if (value !== undefined && value !== null && value !== '') {
+            finalServiceData[key] = {
+              type_donnee: typeof value === 'boolean' ? 'boolean' : typeof value === 'number' ? 'number' : 'string',
+              valeur: value,
+              origine_champs: 'formulaire'
+            };
+          }
         });
 
-        console.log('[FormulaireYukpoIntelligent] Réponse IA reçue:', iaResponse);
-
-        // 💰 ÉTAPE 2 : Calculer le coût réel et vérifier le solde AVANT création
-        const tokensIAExterne = iaResponse.data.tokens_consumed || iaResponse.data.tokens_used || iaResponse.data.tokens || 0;
-        console.log('[FormulaireYukpoIntelligent] Tokens IA externes consommés:', tokensIAExterne);
-
-        // Calculer le coût réel avec le multiplier x100 pour création de service
-        const coutTokenOpenAIFCFA = 0.004;
-        const coutReel = Math.round(tokensIAExterne * coutTokenOpenAIFCFA * 100); // x100 pour création de service
-        console.log('💰 [FormulaireYukpoIntelligent] Coût RÉEL calculé:', coutReel, 'FCFA pour', tokensIAExterne, 'tokens');
-
-        // Vérifier le solde actuel
-        try {
-          const token = localStorage.getItem('token');
-          if (!token) {
-            toast.error('❌ Vous devez être connecté pour créer un service');
-            return;
-          }
-
-          const balanceResponse = await fetch('/api/users/balance', {
-            headers: { Authorization: `Bearer ${token}` }
-          });
-
-          if (!balanceResponse.ok) {
-            toast.error('❌ Impossible de vérifier votre solde. Veuillez réessayer.');
-            return;
-          }
-
-          const balanceData = await balanceResponse.json();
-          const soldeActuel = balanceData.tokens_balance || 0;
-
-          console.log('💰 [FormulaireYukpoIntelligent] Solde actuel:', soldeActuel);
-
-          // Vérifier si le solde est suffisant avec le coût RÉEL
-          if (soldeActuel < coutReel) {
-            toast.error(
-              `💸 Solde insuffisant !\n\nCoût réel : ${coutReel.toLocaleString()} FCFA\nVotre solde : ${soldeActuel.toLocaleString()} FCFA\n\nVeuillez recharger votre compte avant de créer ce service.`,
-              { duration: 10000 }
-            );
-            return;
-          }
-
-          // Afficher une confirmation avec le coût RÉEL
-          const confirmation = window.confirm(
-            `💰 Création de service\n\nCoût réel : ${coutReel.toLocaleString()} FCFA\nTokens consommés : ${tokensIAExterne.toLocaleString()}\nVotre solde : ${soldeActuel.toLocaleString()} FCFA\nSolde après création : ${(soldeActuel - coutReel).toLocaleString()} FCFA\n\nConfirmez-vous la création de ce service ?`
-          );
-
-          if (!confirmation) {
-            return;
-          }
-
-        } catch (error) {
-          console.error('❌ [FormulaireYukpoIntelligent] Erreur vérification solde:', error);
-          toast.error('❌ Erreur lors de la vérification du solde. Veuillez réessayer.');
-          return;
-        }
-
-        // 🔧 ÉTAPE 3 : Extraire le JSON structuré de la réponse IA
-        const jsonStructure = iaResponse.data;
-        console.log('[FormulaireYukpoIntelligent] JSON structuré généré:', jsonStructure);
-
-        // 🔧 CORRECTION : Extraire les vraies données de service depuis service_data.data
-        let serviceData = jsonStructure;
-        if (jsonStructure.service_data && jsonStructure.service_data.data) {
-          serviceData = jsonStructure.service_data.data;
-          console.log('[FormulaireYukpoIntelligent] Données de service extraites depuis service_data.data:', serviceData);
-        } else if (jsonStructure.data) {
-          serviceData = jsonStructure.data;
-          console.log('[FormulaireYukpoIntelligent] Données de service extraites depuis data:', serviceData);
-        }
-
-        // 🔧 ÉTAPE 4 : Ajouter les produits aux données de service
+        // Ajouter les produits (y compris les nouveaux)
         if (products.length > 0) {
-          // Nettoyer les produits : supprimer les champs undefined/null/vides
           const cleanedProducts = products.map(product => {
             const cleaned: any = {};
             Object.keys(product).forEach(key => {
@@ -358,120 +258,230 @@ export default function FormulaireDemandeOuService() {
             });
             return cleaned;
           });
-          serviceData.produits = cleanedProducts;
-          console.log('[FormulaireYukpoIntelligent] Produits ajoutés (nettoyés):', cleanedProducts);
+          finalServiceData.produits = cleanedProducts;
+          console.log('[FormulaireYukpoIntelligent] 📦 Produits ajoutés/mis à jour:', cleanedProducts.length);
         }
 
-        // ✅ CORRECTION CRITIQUE : Ajouter le GPS fixe si présent (évite GPS Nigeria)
+        // Ajouter le GPS fixe si présent
         if (valeursFormulaire.gps_fixe) {
-          serviceData.gps_fixe = {
+          finalServiceData.gps_fixe = {
+            type_donnee: 'string',
             valeur: valeursFormulaire.gps_fixe,
-            type: 'text'
+            origine_champs: 'formulaire'
           };
-          console.log('[FormulaireYukpoIntelligent] ✅ GPS FIXE ajouté:', valeursFormulaire.gps_fixe);
-        } else if (gpsData.gps_fixe_coords) {
-          // Fallback: utiliser les coords du GPS initial si disponibles
-          try {
-            const coords = JSON.parse(gpsData.gps_fixe_coords);
-            if (Array.isArray(coords) && coords.length > 0) {
-              const { lat, lng } = coords[0];
-              serviceData.gps_fixe = {
-                valeur: `${lat.toFixed(6)}, ${lng.toFixed(6)}`,
-                type: 'text'
-              };
-              console.log('[FormulaireYukpoIntelligent] ✅ GPS FIXE ajouté depuis gpsData:', serviceData.gps_fixe.valeur);
-            }
-          } catch (e) {
-            console.warn('[FormulaireYukpoIntelligent] ⚠️ Erreur parsing gps_fixe_coords');
-          }
         }
 
-        if (!serviceData.gps_fixe) {
-          console.warn('[FormulaireYukpoIntelligent] ⚠️ AUCUN GPS FIXE - Le service utilisera le GPS en temps réel!');
-        }
+        // Préparer le payload de modification
+        const updatePayload = {
+          user_id: parseInt(user?.id || '0', 10),
+          data: finalServiceData
+        };
 
-        // 🔧 ÉTAPE 5 : Appeler l'endpoint approprié selon le mode
-        console.log('[FormulaireYukpoIntelligent] Mode:', mode, 'ServiceId:', serviceId);
-        console.log('[FormulaireYukpoIntelligent] Transmission tokens IA externe au backend:', tokensIAExterne);
+        console.log('[FormulaireYukpoIntelligent] 📝 Mise à jour du service:', serviceId);
 
-        if (mode === 'edit' && serviceId) {
-          // MODE MODIFICATION : Utiliser l'endpoint de mise à jour
-          result = await modifierService(serviceId, serviceData, tokensIAExterne);
-          console.log('[FormulaireYukpoIntelligent] Service modifié avec succès:', result);
-        } else {
-          // MODE CRÉATION : Utiliser l'endpoint de création
-          result = await creerService(serviceData, tokensIAExterne);
-          console.log('[FormulaireYukpoIntelligent] Service créé avec succès:', result);
-        }
-      }
+        // Appeler l'API de mise à jour
+        result = await modifierService(serviceId, updatePayload, 0); // 0 tokens pour modification
 
-      // Dispatcher l'événement approprié selon le mode
-      if (mode === 'edit' && serviceId) {
+        // ✅ Succès modification (pas de coût)
+        toast.success('✅ Service modifié avec succès!\n\n✅ Modification gratuite - Aucun frais', {
+          duration: 5000
+        });
+
+        // Dispatcher l'événement de mise à jour
         window.dispatchEvent(new CustomEvent('service_updated'));
-        console.log('[FormulaireYukpoIntelligent] Événement service_updated dispatché');
-      } else {
-        window.dispatchEvent(new CustomEvent('service_created'));
-        console.log('[FormulaireYukpoIntelligent] Événement service_created dispatché');
+        localStorage.setItem('force_refresh_services', Date.now().toString());
+
+        // Rediriger
+        setTimeout(() => {
+          navigate('/mes-services');
+        }, 1500);
+
+        return; // ✅ Sortir ici pour éviter le flux de création
       }
+
+      // ✅ MODE CRÉATION : Appel IA + Vérification solde + Coût
+      console.log('[FormulaireYukpoIntelligent] 🆕 MODE CRÉATION - Appel IA requis');
+
+      // 💰 ÉTAPE 1 : Appeler l'IA externe pour générer le JSON ET obtenir le coût réel
+
+      // Construire les données brutes pour l'IA
+      const donneesService = {
+        texte: composants.map(c => `${c.nomChamp}: ${valeursFormulaire[c.nomChamp] || ''}`).join('\n'),
+        intention: 'creation_service',
+        base64_image: mediaFiles.images,
+        audio_base64: mediaFiles.audios,
+        video_base64: mediaFiles.videos,
+        doc_base64: mediaFiles.documents,
+        excel_base64: mediaFiles.excel,
+        logo: mediaFiles.logo,
+        banner: mediaFiles.banner
+      };
+
+      console.log('[FormulaireYukpoIntelligent] Données brutes pour génération IA:', donneesService);
+
+      // Appeler l'IA pour générer le JSON structuré (comptabilise les tokens)
+      iaResponse = await appelerMoteurIA({
+        texte: donneesService.texte || '',
+        base64_image: donneesService.base64_image || [],
+        audio_base64: donneesService.audio_base64 || [],
+        video_base64: donneesService.video_base64 || [],
+        doc_base64: donneesService.doc_base64 || [],
+        excel_base64: donneesService.excel_base64 || [],
+        logo: donneesService.logo || [],
+        banner: donneesService.banner || []
+      });
+
+      console.log('[FormulaireYukpoIntelligent] Réponse IA reçue:', iaResponse);
+
+      // 💰 ÉTAPE 2 : Calculer le coût réel et vérifier le solde AVANT création
+      const tokensIAExterne = iaResponse.data.tokens_consumed || iaResponse.data.tokens_used || iaResponse.data.tokens || 0;
+      console.log('[FormulaireYukpoIntelligent] Tokens IA externes consommés:', tokensIAExterne);
+
+      // Calculer le coût réel avec le multiplier x100 pour création de service
+      const coutTokenOpenAIFCFA = 0.004;
+      const coutReel = Math.round(tokensIAExterne * coutTokenOpenAIFCFA * 100); // x100 pour création de service
+      console.log('💰 [FormulaireYukpoIntelligent] Coût RÉEL calculé:', coutReel, 'FCFA pour', tokensIAExterne, 'tokens');
+
+      // Vérifier le solde actuel
+      try {
+        const token = localStorage.getItem('token');
+        if (!token) {
+          toast.error('❌ Vous devez être connecté pour créer un service');
+          return;
+        }
+
+        const balanceResponse = await fetch('/api/users/balance', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+
+        if (!balanceResponse.ok) {
+          toast.error('❌ Impossible de vérifier votre solde. Veuillez réessayer.');
+          return;
+        }
+
+        const balanceData = await balanceResponse.json();
+        const soldeActuel = balanceData.tokens_balance || 0;
+
+        console.log('💰 [FormulaireYukpoIntelligent] Solde actuel:', soldeActuel);
+
+        // Vérifier si le solde est suffisant avec le coût RÉEL
+        if (soldeActuel < coutReel) {
+          toast.error(
+            `💸 Solde insuffisant !\n\nCoût réel : ${coutReel.toLocaleString()} FCFA\nVotre solde : ${soldeActuel.toLocaleString()} FCFA\n\nVeuillez recharger votre compte avant de créer ce service.`,
+            { duration: 10000 }
+          );
+          return;
+        }
+
+        // Afficher une confirmation avec le coût RÉEL
+        const confirmation = window.confirm(
+          `💰 Création de service\n\nCoût réel : ${coutReel.toLocaleString()} FCFA\nTokens consommés : ${tokensIAExterne.toLocaleString()}\nVotre solde : ${soldeActuel.toLocaleString()} FCFA\nSolde après création : ${(soldeActuel - coutReel).toLocaleString()} FCFA\n\nConfirmez-vous la création de ce service ?`
+        );
+
+        if (!confirmation) {
+          return;
+        }
+
+      } catch (error) {
+        console.error('❌ [FormulaireYukpoIntelligent] Erreur vérification solde:', error);
+        toast.error('❌ Erreur lors de la vérification du solde. Veuillez réessayer.');
+        return;
+      }
+
+      // 🔧 ÉTAPE 3 : Extraire le JSON structuré de la réponse IA
+      const jsonStructure = iaResponse.data;
+      console.log('[FormulaireYukpoIntelligent] JSON structuré généré:', jsonStructure);
+
+      // 🔧 CORRECTION : Extraire les vraies données de service depuis service_data.data
+      let serviceData = jsonStructure;
+      if (jsonStructure.service_data && jsonStructure.service_data.data) {
+        serviceData = jsonStructure.service_data.data;
+        console.log('[FormulaireYukpoIntelligent] Données de service extraites depuis service_data.data:', serviceData);
+      } else if (jsonStructure.data) {
+        serviceData = jsonStructure.data;
+        console.log('[FormulaireYukpoIntelligent] Données de service extraites depuis data:', serviceData);
+      }
+
+      // 🔧 ÉTAPE 4 : Ajouter les produits aux données de service
+      if (products.length > 0) {
+        // Nettoyer les produits : supprimer les champs undefined/null/vides
+        const cleanedProducts = products.map(product => {
+          const cleaned: any = {};
+          Object.keys(product).forEach(key => {
+            if (product[key] !== undefined && product[key] !== null && product[key] !== '') {
+              cleaned[key] = product[key];
+            }
+          });
+          return cleaned;
+        });
+        serviceData.produits = cleanedProducts;
+        console.log('[FormulaireYukpoIntelligent] Produits ajoutés (nettoyés):', cleanedProducts);
+      }
+
+      // ✅ CORRECTION CRITIQUE : Ajouter le GPS fixe si présent (évite GPS Nigeria)
+      if (valeursFormulaire.gps_fixe) {
+        serviceData.gps_fixe = {
+          valeur: valeursFormulaire.gps_fixe,
+          type: 'text'
+        };
+        console.log('[FormulaireYukpoIntelligent] ✅ GPS FIXE ajouté:', valeursFormulaire.gps_fixe);
+      } else if (gpsData.gps_fixe_coords) {
+        // Fallback: utiliser les coords du GPS initial si disponibles
+        try {
+          const coords = JSON.parse(gpsData.gps_fixe_coords);
+          if (Array.isArray(coords) && coords.length > 0) {
+            const { lat, lng } = coords[0];
+            serviceData.gps_fixe = {
+              valeur: `${lat.toFixed(6)}, ${lng.toFixed(6)}`,
+              type: 'text'
+            };
+            console.log('[FormulaireYukpoIntelligent] ✅ GPS FIXE ajouté depuis gpsData:', serviceData.gps_fixe.valeur);
+          }
+        } catch (e) {
+          console.warn('[FormulaireYukpoIntelligent] ⚠️ Erreur parsing gps_fixe_coords');
+        }
+      }
+
+      if (!serviceData.gps_fixe) {
+        console.warn('[FormulaireYukpoIntelligent] ⚠️ AUCUN GPS FIXE - Le service utilisera le GPS en temps réel!');
+      }
+
+      // 🔧 ÉTAPE 5 : Créer le service (en mode création uniquement)
+      console.log('[FormulaireYukpoIntelligent] Transmission tokens IA externe au backend:', tokensIAExterne);
+
+      // MODE CRÉATION : Utiliser l'endpoint de création
+      result = await creerService(serviceData, tokensIAExterne);
+      console.log('[FormulaireYukpoIntelligent] Service créé avec succès:', result);
+
+      // Dispatcher l'événement de création
+      window.dispatchEvent(new CustomEvent('service_created'));
+      console.log('[FormulaireYukpoIntelligent] Événement service_created dispatché');
       localStorage.setItem('force_refresh_services', Date.now().toString());
 
-      // 💰 CORRECTION : Utiliser le coût réel calculé précédemment
-      let coutFactureXAF = 0;
-      let tokensConsommes = 0;
-
-      if (iaResponse) {
-        // Cas où l'IA externe a été appelée - utiliser le coût réel calculé
-        tokensConsommes = iaResponse.data.tokens_consumed || iaResponse.data.tokens_used || iaResponse.data.tokens || 0;
-        const coutTokenOpenAIFCFA = 0.004;
-        coutFactureXAF = Math.round(tokensConsommes * coutTokenOpenAIFCFA * 100); // x100 pour création de service
-        console.log('[FormulaireYukpoIntelligent] Coût réel utilisé pour le toast:', coutFactureXAF, 'FCFA');
-      } else {
-        // Cas de modification de service - utiliser les tokens de result
-        if (result.data && typeof result.data === 'object') {
-          tokensConsommes = result.data.tokens_consumed || result.data.tokens_used || result.data.tokens || 0;
-        }
-
-        // Pour les modifications, récupérer le coût depuis les headers backend
-        let costHeader: string | null = null;
-        if (result.headers) {
-          if (typeof result.headers.get === 'function') {
-            costHeader = result.headers.get('x-tokens-cost-xaf');
-          } else {
-            const headers = result.headers as any;
-            costHeader = headers['x-tokens-cost-xaf'] ? String(headers['x-tokens-cost-xaf']) : null;
-          }
-        }
-
-        if (costHeader) {
-          coutFactureXAF = parseInt(costHeader, 10) || 0;
-        } else {
-          // Fallback : calculer localement pour modification (x10)
-          const coutTokenOpenAIFCFA = 0.004;
-          coutFactureXAF = Math.round(tokensConsommes * coutTokenOpenAIFCFA * 10);
-          console.log('[FormulaireYukpoIntelligent] Coût calculé localement (fallback):', coutFactureXAF);
-        }
-      }
+      // 💰 Utiliser le coût réel calculé précédemment (en mode création)
+      const tokensConsommes = tokensIAExterne;
+      const coutFactureXAF = coutReel;
+      console.log('[FormulaireYukpoIntelligent] Coût réel pour le toast:', coutFactureXAF, 'FCFA');
 
       setStats({
         confidence: 95,
         tokensUsed: tokensConsommes,
         tokensFactured: tokensConsommes,
         isProcessing: false,
-        inputLength: composants.map(c => valeursFormulaire[c.nomChamp] || '').join(' ').length || 0, // ?? CORRECTION : Calculer la longueur depuis les composants
+        inputLength: composants.map(c => valeursFormulaire[c.nomChamp] || '').join(' ').length || 0,
         tokensCostXaf: coutFactureXAF,
       });
 
       // Stocker les données de succès pour le toast
-      console.log('[FormulaireYukpoIntelligent] Coût final pour le toast:', coutFactureXAF, 'FCFA');
       setSuccessData({
-        serviceId: result.data?.id || serviceId || 'nouveau',
-        cout: mode === 'edit' ? 0 : coutFactureXAF // Pas de frais pour modification
+        serviceId: result.data?.id || 'nouveau',
+        cout: coutFactureXAF
       });
       setShowSuccessToast(true);
 
       // Redirection automatique après 5 secondes
       setTimeout(() => {
-        navigate('/dashboard/mes-services');
+        navigate('/mes-services');
       }, 5000);
 
     } catch (error: any) {
@@ -892,20 +902,31 @@ export default function FormulaireDemandeOuService() {
                     🔙 Retour à mes services
                   </Button>
                 ) : (
-                  <Button
-                    onClick={handleValidationService}
-                    disabled={chargement}
-                    className="bg-orange-600 hover:bg-orange-700 disabled:bg-gray-400 text-white px-8 py-3 font-semibold shadow-lg"
-                  >
-                    {chargement ? (
-                      <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                        {mode === 'edit' ? 'Modification en cours...' : 'Création en cours...'}
-                      </>
-                    ) : (
-                      mode === 'edit' ? '✏️ Modifier ce service' : '🚀 Créer ce service'
+                  <div className="flex flex-col items-center gap-2">
+                    <Button
+                      onClick={handleValidationService}
+                      disabled={chargement || products.length === 0}
+                      className={`px-8 py-3 font-semibold shadow-lg ${products.length === 0
+                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                        : 'bg-orange-600 hover:bg-orange-700 text-white'
+                        } disabled:bg-gray-400`}
+                    >
+                      {chargement ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                          {mode === 'edit' ? 'Modification en cours...' : 'Création en cours...'}
+                        </>
+                      ) : (
+                        mode === 'edit' ? '✏️ Modifier ce service' : '🚀 Créer ce service'
+                      )}
+                    </Button>
+                    {products.length === 0 && !chargement && (
+                      <p className="text-xs text-red-600 flex items-center gap-1">
+                        <span className="text-red-500">*</span>
+                        Vous devez ajouter au moins 1 produit pour créer le service
+                      </p>
                     )}
-                  </Button>
+                  </div>
                 )}
               </div>
             )}
