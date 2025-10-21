@@ -165,8 +165,8 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
     use crate::controllers::publicite_controller;
     let publicite_routes_inline = Router::new()
         .route("/api/publicites/create", post(publicite_controller::create_publicite))
-        .route("/api/publicites/:id/update", post(publicite_controller::update_publicite))
-        .route("/api/publicites/:id", get(publicite_controller::get_publicite_by_id))
+        .route("/api/publicites/{id}/update", post(publicite_controller::update_publicite))
+        .route("/api/publicites/{id}", get(publicite_controller::get_publicite_by_id))
         .route("/api/publicites/actives", get(publicite_controller::get_active_publicites))
         .route("/api/publicites/dashboard", get(publicite_controller::get_publicite_dashboard))
         .route("/api/publicites/track-click", post(publicite_controller::track_publicite_click))
