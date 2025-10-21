@@ -4490,39 +4490,63 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 </View>
 
                                 <View style={styles.dropdownContainer}>
-                                    {PRODUCT_TYPES
-                                        .filter(type => {
+                                    {(() => {
+                                        // Filtrer les catégories selon la recherche
+                                        let filteredTypes = PRODUCT_TYPES.filter(type => {
                                             if (searchQuery.length === 0) return true;
                                             // ✅ Recherche sans sensibilité aux accents
                                             const normalizedQuery = normalizeText(searchQuery);
                                             return normalizeText(type.label).includes(normalizedQuery) ||
                                                 normalizeText(type.description).includes(normalizedQuery) ||
                                                 ('keywords' in type && type.keywords.some((kw: string) => normalizeText(kw).includes(normalizedQuery)));
-                                        })
-                                        .map((type) => (
-                                            <TouchableOpacity
-                                                key={type.value}
-                                                style={[
-                                                    styles.dropdownItem,
-                                                    selectedType === type.value && styles.dropdownItemActive
-                                                ]}
-                                                onPress={() => handleSelectType(type.value as ProductType)}
-                                            >
-                                                <View style={styles.dropdownItemLeft}>
-                                                    <Text style={styles.dropdownIcon}>{type.icon}</Text>
-                                                    <View style={{ flex: 1 }}>
-                                                        <Text style={[
-                                                            styles.dropdownLabel,
-                                                            selectedType === type.value && styles.dropdownLabelActive
-                                                        ]}>{type.label}</Text>
-                                                        <Text style={styles.dropdownDescription}>{type.description}</Text>
+                                        });
+
+                                        // ✅ Si aucune catégorie ne correspond et qu'il y a une recherche, proposer "Prestation de service" par défaut
+                                        const hasNoResults = filteredTypes.length === 0 && searchQuery.length > 0;
+                                        if (hasNoResults) {
+                                            const prestationService = PRODUCT_TYPES.find(t => t.value === 'prestation_service');
+                                            if (prestationService) {
+                                                filteredTypes = [prestationService];
+                                            }
+                                        }
+
+                                        return (
+                                            <>
+                                                {hasNoResults && filteredTypes.length > 0 && (
+                                                    <View style={styles.noResultsHint}>
+                                                        <SafeIcon name="info" size={16} color={modernColors.primary} />
+                                                        <Text style={styles.noResultsText}>
+                                                            Aucune catégorie ne correspond. Nous vous proposons "Prestation de service" par défaut.
+                                                        </Text>
                                                     </View>
-                                                </View>
-                                                {selectedType === type.value && (
-                                                    <SafeIcon name="check" size={20} color={modernColors.primary} />
                                                 )}
-                                            </TouchableOpacity>
-                                        ))}
+                                                {filteredTypes.map((type) => (
+                                                    <TouchableOpacity
+                                                        key={type.value}
+                                                        style={[
+                                                            styles.dropdownItem,
+                                                            selectedType === type.value && styles.dropdownItemActive
+                                                        ]}
+                                                        onPress={() => handleSelectType(type.value as ProductType)}
+                                                    >
+                                                        <View style={styles.dropdownItemLeft}>
+                                                            <Text style={styles.dropdownIcon}>{type.icon}</Text>
+                                                            <View style={{ flex: 1 }}>
+                                                                <Text style={[
+                                                                    styles.dropdownLabel,
+                                                                    selectedType === type.value && styles.dropdownLabelActive
+                                                                ]}>{type.label}</Text>
+                                                                <Text style={styles.dropdownDescription}>{type.description}</Text>
+                                                            </View>
+                                                        </View>
+                                                        {selectedType === type.value && (
+                                                            <SafeIcon name="check" size={20} color={modernColors.primary} />
+                                                        )}
+                                                    </TouchableOpacity>
+                                                ))}
+                                            </>
+                                        );
+                                    })()}
                                 </View>
                             </View>
                         )}
@@ -5035,6 +5059,22 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: modernColors.border,
         overflow: 'hidden',
+    },
+    noResultsHint: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 12,
+        backgroundColor: '#EEF2FF',
+        borderBottomWidth: 1,
+        borderBottomColor: modernColors.border,
+        gap: 8,
+    },
+    noResultsText: {
+        flex: 1,
+        fontSize: 12,
+        fontWeight: '500',
+        color: modernColors.primary,
+        lineHeight: 18,
     },
     dropdownItem: {
         flexDirection: 'row',

@@ -8,7 +8,7 @@ use sqlx::PgPool;
 use crate::controllers::publicite_controller;
 use crate::state::AppState;
 
-pub fn publicite_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
+pub fn publicite_routes(state: Arc<AppState>) -> Router<Arc<PgPool>> {
     let pool = Arc::new(state.pg.clone());
     
     Router::new()

@@ -601,38 +601,62 @@ const ProductManager: React.FC<ProductManagerProps> = ({
                                     </div>
 
                                     <div className="space-y-2 max-h-96 overflow-y-auto">
-                                        {PRODUCT_TYPES
-                                            .filter(type => {
+                                        {(() => {
+                                            // Filtrer les catégories selon la recherche
+                                            let filteredTypes = PRODUCT_TYPES.filter(type => {
                                                 if (searchQuery.length === 0) return true;
                                                 // ✅ Recherche sans sensibilité aux accents
                                                 const normalizedQuery = normalizeText(searchQuery);
                                                 return normalizeText(type.label).includes(normalizedQuery) ||
                                                     normalizeText(type.description).includes(normalizedQuery) ||
                                                     ((type as any).keywords && (type as any).keywords.some((kw: string) => normalizeText(kw).includes(normalizedQuery)));
-                                            })
-                                            .map((type) => (
-                                                <button
-                                                    key={type.value}
-                                                    onClick={() => handleSelectType(type.value as ProductType)}
-                                                    className={`w-full p-4 rounded-lg border-2 text-left transition-all ${selectedType === type.value
-                                                        ? 'border-blue-500 bg-blue-50'
-                                                        : 'border-gray-200 hover:border-gray-300'
-                                                        }`}
-                                                >
-                                                    <div className="flex items-center justify-between">
-                                                        <div className="flex items-center gap-3 flex-1">
-                                                            <span className="text-2xl">{type.icon}</span>
-                                                            <div className="flex-1">
-                                                                <div className="font-semibold text-gray-900">{type.label}</div>
-                                                                <div className="text-sm text-gray-600">{type.description}</div>
-                                                            </div>
+                                            });
+
+                                            // ✅ Si aucune catégorie ne correspond et qu'il y a une recherche, proposer "Prestation de service" par défaut
+                                            const hasNoResults = filteredTypes.length === 0 && searchQuery.length > 0;
+                                            if (hasNoResults) {
+                                                const prestationService = PRODUCT_TYPES.find(t => t.value === 'prestation_service');
+                                                if (prestationService) {
+                                                    filteredTypes = [prestationService];
+                                                }
+                                            }
+
+                                            return (
+                                                <>
+                                                    {hasNoResults && filteredTypes.length > 0 && (
+                                                        <div className="flex items-start gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700">
+                                                            <svg className="w-4 h-4 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                                                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                                                            </svg>
+                                                            <span>Aucune catégorie ne correspond. Nous vous proposons "Prestation de service" par défaut.</span>
                                                         </div>
-                                                        {selectedType === type.value && (
-                                                            <Check className="w-5 h-5 text-blue-600" />
-                                                        )}
-                                                    </div>
-                                                </button>
-                                            ))}
+                                                    )}
+                                                    {filteredTypes.map((type) => (
+                                                        <button
+                                                            key={type.value}
+                                                            onClick={() => handleSelectType(type.value as ProductType)}
+                                                            className={`w-full p-4 rounded-lg border-2 text-left transition-all ${selectedType === type.value
+                                                                ? 'border-blue-500 bg-blue-50'
+                                                                : 'border-gray-200 hover:border-gray-300'
+                                                                }`}
+                                                        >
+                                                            <div className="flex items-center justify-between">
+                                                                <div className="flex items-center gap-3 flex-1">
+                                                                    <span className="text-2xl">{type.icon}</span>
+                                                                    <div className="flex-1">
+                                                                        <div className="font-semibold text-gray-900">{type.label}</div>
+                                                                        <div className="text-sm text-gray-600">{type.description}</div>
+                                                                    </div>
+                                                                </div>
+                                                                {selectedType === type.value && (
+                                                                    <Check className="w-5 h-5 text-blue-600" />
+                                                                )}
+                                                            </div>
+                                                        </button>
+                                                    ))}
+                                                </>
+                                            );
+                                        })()}
                                     </div>
                                 </div>
                             )}
@@ -989,8 +1013,8 @@ const ProductManager: React.FC<ProductManagerProps> = ({
                                                                         promotionType: type as any
                                                                     }))}
                                                                     className={`px-3 py-2 rounded-lg text-sm font-medium border-2 transition-colors ${editingProduct.promotionType === type
-                                                                            ? 'bg-yellow-500 text-white border-yellow-500'
-                                                                            : 'bg-white text-gray-700 border-gray-300 hover:border-yellow-400'
+                                                                        ? 'bg-yellow-500 text-white border-yellow-500'
+                                                                        : 'bg-white text-gray-700 border-gray-300 hover:border-yellow-400'
                                                                         }`}
                                                                 >
                                                                     {type === 'reduction' ? 'Réduction' :

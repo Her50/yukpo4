@@ -173,7 +173,7 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .merge(scheduling_search_routes_merged)
         .merge(service_team_routes_merged)
         .merge(image_search_routes_merged)
-        .nest("/api/publicites", publicite_routes_merged)
+        .merge(publicite_routes_merged)
         .with_state(state)
 }
 

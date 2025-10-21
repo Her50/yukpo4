@@ -76,7 +76,7 @@ impl PubliciteSearchService {
                                     let mut bonus = 100.0; // Bonus de base pour promotion
 
                                     // Bonus additionnel selon zone et proximité
-                                    if let (Some(user_lat), Some(user_lng)) = user_gps {
+                                    if let Some((user_lat, user_lng)) = user_gps {
                                         if let (Some(pub_lat_val), Some(pub_lng_val)) = (*pub_lat, *pub_lng) {
                                             let distance_km = calculate_distance(
                                                 user_lat,
