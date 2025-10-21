@@ -73,57 +73,45 @@ impl PubliciteSearchService {
                                     prod_obj.insert("en_promotion".to_string(), serde_json::json!(true));
                                     prod_obj.insert("promotion_active".to_string(), serde_json::json!(true));
                                     prod_obj.insert("publicite_zone".to_string(), serde_json::json!(zone));
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
 
-                                    // ✅ BOOSTER LE SCORE
-                                    let current_score = result.get("score")
-                                        .and_then(|v| v.as_f64())
-                                        .unwrap_or(0.0);
+        // ✅ BOOSTER LE SCORE après avoir fini de modifier les produits
+        for result in results.iter_mut() {
+            if let Some(service_id) = result.get("service_id").and_then(|v| v.as_str()) {
+                if let Some(data) = result.get("data").and_then(|v| v.as_object()) {
+                    if let Some(produits) = data.get("produits").and_then(|p| p.as_array()) {
+                        for (idx, product) in produits.iter().enumerate() {
+                            let product_key = format!("{}_{}", service_id, idx);
+                            
+                            if promotion_map.contains_key(&product_key) {
+                                if let Some(prod_obj) = product.as_object() {
+                                    if prod_obj.get("en_promotion").and_then(|v| v.as_bool()).unwrap_or(false) {
+                                        let current_score = result.get("score")
+                                            .and_then(|v| v.as_f64())
+                                            .unwrap_or(0.0);
 
-                                    let mut bonus = 100.0; // Bonus de base pour promotion
-
-                                    // Bonus additionnel selon zone et proximité
-                                    if let Some((user_lat, user_lng)) = user_gps {
-                                        if let (Some(pub_lat_val), Some(pub_lng_val)) = (*pub_lat, *pub_lng) {
-                                            let distance_km = calculate_distance(
-                                                user_lat,
-                                                user_lng,
-                                                pub_lat_val,
-                                                pub_lng_val
-                                            );
-
-                                            match zone.as_str() {
-                                                "local" => {
-                                                    let rayon = rayon_km.unwrap_or(50) as f64;
-                                                    if distance_km <= rayon {
-                                                        bonus += 20.0; // Zone locale pertinente
-                                                    }
-                                                }
-                                                "regional" => {
-                                                    // Vérifier si même pays (simplification: distance < 1000 km)
-                                                    if distance_km < 1000.0 {
-                                                        bonus += 10.0;
-                                                    }
-                                                }
-                                                "international" => {
-                                                    bonus += 5.0;
-                                                }
-                                                _ => {}
-                                            }
+                                        let bonus = 100.0; // Bonus fixe pour promotion
+                                        let new_score = current_score + bonus;
+                                        
+                                        if let Some(score_val) = result.get_mut("score") {
+                                            *score_val = serde_json::json!(new_score);
                                         }
-                                    }
 
-                                    let new_score = current_score + bonus;
-                                    if let Some(score_val) = result.get_mut("score") {
-                                        *score_val = serde_json::json!(new_score);
+                                        log::debug!(
+                                            "🎯 Produit {} en promotion: score {} → {} (+{} bonus)",
+                                            product_key,
+                                            current_score,
+                                            new_score,
+                                            bonus
+                                        );
+                                        break; // Un seul bonus par résultat
                                     }
-
-                                    log::debug!(
-                                        "🎯 Produit {} en promotion: score {} → {} (+{} bonus)",
-                                        product_key,
-                                        current_score,
-                                        new_score,
-                                        bonus
-                                    );
                                 }
                             }
                         }

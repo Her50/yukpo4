@@ -161,8 +161,16 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
     // ✅ NOUVEAU: Routes pour recherche par image
     let image_search_routes_merged = crate::routes::image_search_routes::image_search_routes(state.clone());
     
-    // ✅ NOUVEAU: Routes pour système de publicité
-    let publicite_routes_merged = crate::routes::publicite_routes::publicite_routes(state.clone());
+    // ✅ NOUVEAU: Routes pour système de publicité (intégrées directement)
+    use crate::controllers::publicite_controller;
+    let publicite_routes_inline = Router::new()
+        .route("/api/publicites/create", post(publicite_controller::create_publicite))
+        .route("/api/publicites/:id/update", post(publicite_controller::update_publicite))
+        .route("/api/publicites/:id", get(publicite_controller::get_publicite_by_id))
+        .route("/api/publicites/actives", get(publicite_controller::get_active_publicites))
+        .route("/api/publicites/dashboard", get(publicite_controller::get_publicite_dashboard))
+        .route("/api/publicites/track-click", post(publicite_controller::track_publicite_click))
+        .route("/api/publicites/track-view", post(publicite_controller::track_publicite_view));
     
     // Combinaison des routes
     public_routes
@@ -173,7 +181,7 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .merge(scheduling_search_routes_merged)
         .merge(service_team_routes_merged)
         .merge(image_search_routes_merged)
-        .merge(publicite_routes_merged)
+        .merge(publicite_routes_inline)
         .with_state(state)
 }
 

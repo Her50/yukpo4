@@ -4,9 +4,10 @@ use axum::{
     response::Json,
 };
 use serde::{Deserialize, Serialize};
-use sqlx::{PgPool, Row};
+use sqlx::Row;
 use std::sync::Arc;
 use log;
+use crate::state::AppState;
 
 #[derive(Debug, Deserialize)]
 pub struct CreatePubliciteRequest {
@@ -88,9 +89,10 @@ pub struct TrackClickRequest {
 
 /// Créer une nouvelle publicité
 pub async fn create_publicite(
-    State(pool): State<Arc<PgPool>>,
+    State(state): State<Arc<AppState>>,
     Json(payload): Json<CreatePubliciteRequest>,
 ) -> Result<Json<serde_json::Value>, StatusCode> {
+    let pool = &state.pg;
     log::info!("🎯 [Publicité] Création publicité pour user {}", payload.user_id);
 
     // Valider les données
@@ -126,7 +128,7 @@ pub async fn create_publicite(
         "SELECT tokens_balance FROM users WHERE id = $1"
     )
     .bind(payload.user_id)
-    .fetch_optional(pool.as_ref())
+    .fetch_optional(pool)
     .await
     .map_err(|e| {
         log::error!("Erreur vérification solde: {:?}", e);
@@ -149,7 +151,7 @@ pub async fn create_publicite(
     )
     .bind(payload.cout as i64)
     .bind(payload.user_id)
-    .execute(pool.as_ref())
+    .execute(pool)
     .await
     .map_err(|e| {
         log::error!("Erreur déduction solde: {:?}", e);
@@ -181,7 +183,7 @@ pub async fn create_publicite(
         .bind(payload.cout)
         .bind(&payload.zone_geographique)
         .bind(rayon)
-        .fetch_one(pool.as_ref())
+        .fetch_one(pool)
         .await
     } else {
         // Sans géolocalisation
@@ -206,7 +208,7 @@ pub async fn create_publicite(
         .bind(payload.cout)
         .bind(&payload.zone_geographique)
         .bind(rayon)
-        .fetch_one(pool.as_ref())
+        .fetch_one(pool)
         .await
     };
 
@@ -215,7 +217,7 @@ pub async fn create_publicite(
             let pub_id: i32 = record.try_get("id").unwrap_or(0);
             
             log::info!("✅ Publicité créée: ID {}", pub_id);
-
+            
             Ok(Json(serde_json::json!({
                 "success": true,
                 "publicite_id": pub_id,
@@ -241,9 +243,10 @@ fn parse_gps_point(geo_str: &str) -> Option<(f64, f64)> {
 
 /// Récupérer toutes les publicités actives
 pub async fn get_active_publicites(
-    State(pool): State<Arc<PgPool>>,
+    State(state): State<Arc<AppState>>,
     Query(params): Query<GetPublicitesQuery>,
 ) -> Result<Json<Vec<serde_json::Value>>, StatusCode> {
+    let pool = &state.pg;
     log::info!("📋 [Publicité] Récupération publicités actives");
 
     let mut query_str = r#"
@@ -265,12 +268,12 @@ pub async fn get_active_publicites(
     query_str.push_str(" ORDER BY created_at DESC");
 
     let rows = sqlx::query(&query_str)
-        .fetch_all(pool.as_ref())
-        .await
-        .map_err(|e| {
+        .fetch_all(pool)
+    .await
+    .map_err(|e| {
             log::error!("Erreur récupération publicités: {:?}", e);
-            StatusCode::INTERNAL_SERVER_ERROR
-        })?;
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
 
     let publicites: Vec<serde_json::Value> = rows
         .iter()
@@ -294,9 +297,10 @@ pub async fn get_active_publicites(
 
 /// Dashboard des publicités pour un utilisateur
 pub async fn get_publicite_dashboard(
-    State(pool): State<Arc<PgPool>>,
+    State(state): State<Arc<AppState>>,
     Query(user_query): Query<std::collections::HashMap<String, String>>,
 ) -> Result<Json<PubliciteDashboardResponse>, StatusCode> {
+    let pool = &state.pg;
     let user_id: i32 = user_query
         .get("user_id")
         .and_then(|s| s.parse().ok())
@@ -353,7 +357,7 @@ pub async fn get_publicite_dashboard(
         "#
     )
     .bind(user_id)
-    .fetch_all(pool.as_ref())
+    .fetch_all(pool)
     .await
     .map_err(|e| {
         log::error!("Erreur liste publicités: {:?}", e);
@@ -396,15 +400,16 @@ pub async fn get_publicite_dashboard(
 
 // Autres fonctions simplifiées...
 pub async fn get_publicite_by_id(
-    State(pool): State<Arc<PgPool>>,
+    State(state): State<Arc<AppState>>,
     Path(id): Path<i32>,
 ) -> Result<Json<serde_json::Value>, StatusCode> {
+    let pool = &state.pg;
     log::info!("🔍 [Publicité] Récupération publicité ID {}", id);
 
     let row = sqlx::query("SELECT * FROM publicites WHERE id = $1")
         .bind(id)
-        .fetch_optional(pool.as_ref())
-        .await
+        .fetch_optional(pool)
+    .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
     match row {
@@ -417,10 +422,11 @@ pub async fn get_publicite_by_id(
 }
 
 pub async fn update_publicite(
-    State(pool): State<Arc<PgPool>>,
+    State(state): State<Arc<AppState>>,
     Path(id): Path<i32>,
     Json(payload): Json<CreatePubliciteRequest>,
 ) -> Result<Json<serde_json::Value>, StatusCode> {
+    let pool = &state.pg;
     log::info!("✏️ [Publicité] Mise à jour publicité ID {}", id);
 
     sqlx::query(
@@ -433,48 +439,50 @@ pub async fn update_publicite(
     .bind(id)
     .bind(&payload.titre)
     .bind(&payload.description)
-    .execute(pool.as_ref())
+    .execute(pool)
     .await
     .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
     Ok(Json(serde_json::json!({
-        "success": true,
+            "success": true,
         "message": "Publicité mise à jour"
     })))
 }
 
 pub async fn track_publicite_click(
-    State(pool): State<Arc<PgPool>>,
+    State(state): State<Arc<AppState>>,
     Json(payload): Json<TrackClickRequest>,
 ) -> Result<Json<serde_json::Value>, StatusCode> {
+    let pool = &state.pg;
     log::info!("👆 [Publicité] Tracking clic publicité ID {}", payload.publicite_id);
 
     sqlx::query("UPDATE publicites SET clics = clics + 1 WHERE id = $1")
         .bind(payload.publicite_id)
-        .execute(pool.as_ref())
-        .await
-        .map_err(|e| {
+        .execute(pool)
+    .await
+    .map_err(|e| {
             log::error!("Erreur tracking clic: {:?}", e);
-            StatusCode::INTERNAL_SERVER_ERROR
-        })?;
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
 
     Ok(Json(serde_json::json!({ "success": true })))
 }
 
 pub async fn track_publicite_view(
-    State(pool): State<Arc<PgPool>>,
+    State(state): State<Arc<AppState>>,
     Json(payload): Json<TrackClickRequest>,
 ) -> Result<Json<serde_json::Value>, StatusCode> {
+    let pool = &state.pg;
     log::info!("👁️ [Publicité] Tracking vue publicité ID {}", payload.publicite_id);
 
     sqlx::query("UPDATE publicites SET vues = vues + 1, impressions = impressions + 1 WHERE id = $1")
         .bind(payload.publicite_id)
-        .execute(pool.as_ref())
-        .await
-        .map_err(|e| {
+        .execute(pool)
+    .await
+    .map_err(|e| {
             log::error!("Erreur tracking vue: {:?}", e);
-            StatusCode::INTERNAL_SERVER_ERROR
-        })?;
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
 
     Ok(Json(serde_json::json!({ "success": true })))
 }
