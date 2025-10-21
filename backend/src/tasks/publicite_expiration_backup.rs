@@ -1,4 +1,4 @@
-use sqlx::{PgPool, Row};
+use sqlx::PgPool;
 use std::sync::Arc;
 use tokio::time::{interval, Duration};
 use log;
@@ -44,7 +44,7 @@ pub async fn start_publicite_expiration_task(pool: Arc<PgPool>) {
 
 /// Désactive les publicités expirées
 async fn check_and_deactivate_expired_publicites(pool: &PgPool) -> Result<u64, sqlx::Error> {
-    let result = sqlx::query(
+    let result = sqlx::query!(
         r#"
         UPDATE publicites
         SET status = 'expired'
@@ -58,9 +58,9 @@ async fn check_and_deactivate_expired_publicites(pool: &PgPool) -> Result<u64, s
     Ok(result.rows_affected())
 }
 
-/// Notifie les utilisateurs dont les publicités expirent bientôt
-async fn check_expiring_soon_publicites(pool: &PgPool) -> Result<usize, sqlx::Error> {
-    let expiring_publicites = sqlx::query(
+/// Vérifie les publicités qui expirent bientôt et envoie des notifications
+async fn check_expiring_soon_publicites(pool: &PgPool) -> Result<u64, sqlx::Error> {
+    let expiring_publicites = sqlx::query!(
         r#"
         SELECT id, user_id, titre, date_fin,
                EXTRACT(DAY FROM (date_fin - NOW()))::integer as jours_restants
@@ -68,57 +68,56 @@ async fn check_expiring_soon_publicites(pool: &PgPool) -> Result<usize, sqlx::Er
         WHERE status = 'active'
         AND date_fin > NOW()
         AND date_fin < NOW() + INTERVAL '7 days'
-        AND (
-            NOT EXISTS (
-                SELECT 1 FROM notifications 
-                WHERE user_id = publicites.user_id 
-                AND notification_type = 'publicite_expiring'
-                AND created_at > NOW() - INTERVAL '24 hours'
-            )
+        AND NOT EXISTS (
+            SELECT 1 FROM notifications
+            WHERE user_id = publicites.user_id
+            AND notification_type = 'publicite_expiring'
+            AND metadata->>'publicite_id' = publicites.id::text
+            AND created_at > NOW() - INTERVAL '7 days'
         )
         "#
     )
     .fetch_all(pool)
     .await?;
 
-    let mut notifications_sent = 0;
+    let mut notification_count = 0;
 
-    for pub_row in expiring_publicites {
-        let user_id: i32 = pub_row.try_get("user_id").unwrap_or(0);
-        let titre: String = pub_row.try_get("titre").unwrap_or_default();
-        let jours_restants: i32 = pub_row.try_get("jours_restants").unwrap_or(0);
+    for pub_record in expiring_publicites {
+        let jours_restants = pub_record.jours_restants.unwrap_or(0);
 
+        // Créer une notification
         let message = format!(
-            "⚠️ Votre publicité '{}' expire dans {} jour(s). Pensez à la renouveler.",
-            titre, jours_restants
+            "⚠️ Votre publicité '{}' expire dans {} jour(s). Pensez à la relancer!",
+            pub_record.titre,
+            jours_restants
         );
 
         let metadata = serde_json::json!({
-            "publicite_id": pub_row.try_get::<i32, _>("id").unwrap_or(0),
+            "publicite_id": pub_record.id,
+            "titre": pub_record.titre,
             "jours_restants": jours_restants,
-            "titre": titre
+            "date_fin": pub_record.date_fin
         });
 
-        // Créer une notification (si la table existe)
-        match sqlx::query(
+        match sqlx::query!(
             r#"
             INSERT INTO notifications (user_id, notification_type, message, metadata)
             VALUES ($1, 'publicite_expiring', $2, $3)
-            "#
+            "#,
+            pub_record.user_id,
+            message,
+            metadata
         )
-        .bind(user_id)
-        .bind(&message)
-        .bind(metadata)
         .execute(pool)
         .await
         {
             Ok(_) => {
+                notification_count += 1;
                 log::info!(
-                    "📧 Notification envoyée à l'utilisateur {} pour publicité '{}'",
-                    user_id,
-                    titre
+                    "📧 Notification envoyée pour publicité {} (user {})",
+                    pub_record.id,
+                    pub_record.user_id
                 );
-                notifications_sent += 1;
             }
             Err(e) => {
                 log::warn!("Erreur création notification: {:?}", e);
@@ -126,12 +125,14 @@ async fn check_expiring_soon_publicites(pool: &PgPool) -> Result<usize, sqlx::Er
         }
     }
 
-    Ok(notifications_sent)
+    Ok(notification_count)
 }
 
-/// Fonction publique pour désactivation manuelle (API)
-pub async fn deactivate_expired_publicites_now(pool: &PgPool) -> Result<u64, sqlx::Error> {
+/// Fonction manuelle pour désactiver les publicités expirées
+/// Peut être appelée via un endpoint admin ou un script
+pub async fn manual_deactivate_expired_publicites(pool: &PgPool) -> Result<u64, sqlx::Error> {
     log::info!("🔧 [Manual] Désactivation manuelle des publicités expirées");
     check_and_deactivate_expired_publicites(pool).await
 }
+
 

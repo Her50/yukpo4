@@ -1,6 +1,8 @@
 // @ts-ignore
 import { useNavigation, useRoute } from '@react-navigation/native';
 // @ts-ignore
+import * as Clipboard from 'expo-clipboard';
+// @ts-ignore
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useEffect, useState } from 'react';
 import { apiGet, apiPost } from '../services/api';
@@ -1267,8 +1269,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                   console.error('[FormulaireYukpoIntelligentScreen] 📋 LOG ERREUR COMPLET:', errorLogString);
 
                   // ✅ Copier automatiquement dans le presse-papiers
-                  const Clipboard = require('@react-native-clipboard/clipboard');
-                  Clipboard.setString(errorLogString);
+                  Clipboard.setStringAsync(errorLogString);
 
                   Alert.alert(
                     '❌ Erreur 500 - Création échouée',
@@ -1277,7 +1278,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                       {
                         text: 'Copier à nouveau',
                         onPress: () => {
-                          Clipboard.setString(errorLogString);
+                          Clipboard.setStringAsync(errorLogString);
                           Alert.alert('✅ Copié', 'Le log d\'erreur a été copié dans le presse-papiers');
                         }
                       },
@@ -1331,8 +1332,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                 console.error('[FormulaireYukpoIntelligentScreen] 📋 LOG ERREUR:', errorLogString);
 
                 // Copier dans le presse-papiers
-                const Clipboard = require('@react-native-clipboard/clipboard');
-                Clipboard.setString(errorLogString);
+                Clipboard.setStringAsync(errorLogString);
 
                 Alert.alert(
                   '❌ Erreur de création',
@@ -1341,7 +1341,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                     {
                       text: 'Copier à nouveau',
                       onPress: () => {
-                        Clipboard.setString(errorLogString);
+                        Clipboard.setStringAsync(errorLogString);
                         Alert.alert('✅ Copié', 'Le log d\'erreur a été copié');
                       }
                     },
@@ -1378,8 +1378,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       console.error('[FormulaireYukpoIntelligentScreen] 📋 LOG ERREUR SOUMISSION:', errorLogString);
 
       // Copier dans le presse-papiers
-      const Clipboard = require('@react-native-clipboard/clipboard');
-      Clipboard.setString(errorLogString);
+      Clipboard.setStringAsync(errorLogString);
 
       Alert.alert(
         '❌ Erreur',
@@ -1388,7 +1387,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           {
             text: 'Copier à nouveau',
             onPress: () => {
-              Clipboard.setString(errorLogString);
+              Clipboard.setStringAsync(errorLogString);
               Alert.alert('✅ Copié', 'Le log d\'erreur a été copié');
             }
           },

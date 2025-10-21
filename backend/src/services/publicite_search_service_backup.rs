@@ -1,4 +1,4 @@
-use sqlx::{PgPool, Row};
+use sqlx::PgPool;
 use std::collections::HashMap;
 use log;
 
@@ -18,7 +18,7 @@ impl PubliciteSearchService {
         }
 
         // Récupérer toutes les publicités actives avec leurs produits
-        let active_publicites = sqlx::query(
+        let active_publicites = sqlx::query!(
             r#"
             SELECT 
                 id,
@@ -39,20 +39,14 @@ impl PubliciteSearchService {
         let mut promotion_map: HashMap<String, (String, Option<f64>, Option<f64>, Option<i32>)> = HashMap::new();
         
         for pub_record in active_publicites {
-            let produits_indexes: Vec<String> = pub_record.try_get("produits_indexes").unwrap_or_default();
-            let zone: String = pub_record.try_get("zone_geographique").unwrap_or_default();
-            let pub_lng: Option<f64> = pub_record.try_get("pub_lng").ok();
-            let pub_lat: Option<f64> = pub_record.try_get("pub_lat").ok();
-            let rayon_km: Option<i32> = pub_record.try_get("rayon_km").ok();
-
-            for product_key in produits_indexes {
+            for product_key in pub_record.produits_indexes {
                 promotion_map.insert(
                     product_key,
                     (
-                        zone.clone(),
-                        pub_lng,
-                        pub_lat,
-                        rayon_km
+                        pub_record.zone_geographique.clone(),
+                        pub_record.pub_lng,
+                        pub_record.pub_lat,
+                        pub_record.rayon_km
                     )
                 );
             }
@@ -164,4 +158,5 @@ mod tests {
         assert!((distance - 230.0).abs() < 20.0); // Marge de 20 km
     }
 }
+
 
