@@ -1,7 +1,4 @@
-use axum::{
-    routing::{get, post},
-    Router,
-};
+use axum::Router;
 use std::sync::Arc;
 
 use crate::state::AppState;

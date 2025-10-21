@@ -11,7 +11,7 @@ impl PubliciteSearchService {
     pub async fn enrich_search_results_with_promotion(
         pool: &PgPool,
         results: &mut Vec<serde_json::Value>,
-        user_gps: Option<(f64, f64)>, // (latitude, longitude)
+        _user_gps: Option<(f64, f64)>, // (latitude, longitude)
     ) -> Result<(), sqlx::Error> {
         if results.is_empty() {
             return Ok(());
@@ -60,14 +60,17 @@ impl PubliciteSearchService {
 
         // Enrichir chaque résultat
         for result in results.iter_mut() {
-            if let Some(service_id) = result.get("service_id").and_then(|v| v.as_str()) {
+            // Clone service_id pour éviter le conflit de borrow
+            let service_id = result.get("service_id").and_then(|v| v.as_str()).map(|s| s.to_string());
+            
+            if let Some(service_id_str) = service_id {
                 // Pour chaque produit du service, vérifier s'il est en promotion
                 if let Some(data) = result.get_mut("data").and_then(|v| v.as_object_mut()) {
                     if let Some(produits) = data.get_mut("produits").and_then(|p| p.as_array_mut()) {
                         for (idx, product) in produits.iter_mut().enumerate() {
-                            let product_key = format!("{}_{}", service_id, idx);
+                            let product_key = format!("{}_{}", service_id_str, idx);
                             
-                            if let Some((zone, pub_lng, pub_lat, rayon_km)) = promotion_map.get(&product_key) {
+                            if let Some((zone, _pub_lng, _pub_lat, _rayon_km)) = promotion_map.get(&product_key) {
                                 // Marquer comme en promotion
                                 if let Some(prod_obj) = product.as_object_mut() {
                                     prod_obj.insert("en_promotion".to_string(), serde_json::json!(true));

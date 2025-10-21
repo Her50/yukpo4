@@ -258,11 +258,9 @@ pub async fn get_active_publicites(
         WHERE status = 'active' AND date_fin > NOW()
         "#.to_string();
 
-    let mut bind_values: Vec<Box<dyn sqlx::Encode<'_, sqlx::Postgres> + Send>> = vec![];
-
-    if let Some(user_id) = params.user_id {
-        query_str.push_str(&format!(" AND user_id = ${}", bind_values.len() + 1));
-        // bind_values.push(Box::new(user_id));
+    // Filtrage par user_id désactivé pour le moment
+    if let Some(_user_id) = params.user_id {
+        // query_str.push_str(" AND user_id = $1");
     }
 
     query_str.push_str(" ORDER BY created_at DESC");
@@ -321,7 +319,7 @@ pub async fn get_publicite_dashboard(
         "#
     )
     .bind(user_id)
-    .fetch_one(pool.as_ref())
+    .fetch_one(pool)
     .await
     .map_err(|e| {
         log::error!("Erreur stats publicité: {:?}", e);
