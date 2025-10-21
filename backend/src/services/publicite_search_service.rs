@@ -128,6 +128,7 @@ impl PubliciteSearchService {
 }
 
 /// Calculer la distance entre deux points GPS en km (formule de Haversine)
+#[allow(dead_code)]
 fn calculate_distance(lat1: f64, lng1: f64, lat2: f64, lng2: f64) -> f64 {
     let r = 6371.0; // Rayon de la Terre en km
 
