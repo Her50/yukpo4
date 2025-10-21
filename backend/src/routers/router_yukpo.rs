@@ -162,7 +162,7 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
     let image_search_routes_merged = crate::routes::image_search_routes::image_search_routes(state.clone());
     
     // ✅ NOUVEAU: Routes pour système de publicité
-    let publicite_routes_merged = crate::routes::publicite_routes::publicite_routes(state.pool.clone());
+    let publicite_routes_merged = crate::routes::publicite_routes::publicite_routes(state.clone());
     
     // Combinaison des routes
     public_routes

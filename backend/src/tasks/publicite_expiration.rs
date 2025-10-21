@@ -1,6 +1,7 @@
 use sqlx::PgPool;
 use std::sync::Arc;
 use tokio::time::{interval, Duration};
+use tracing;
 
 /// Tâche périodique pour désactiver les publicités expirées
 /// S'exécute toutes les heures

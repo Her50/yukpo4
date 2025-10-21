@@ -6,6 +6,7 @@ use axum::{
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use std::sync::Arc;
+use tracing;
 
 #[derive(Debug, Deserialize)]
 pub struct CreatePubliciteRequest {
@@ -127,7 +128,7 @@ pub async fn create_publicite(
         "SELECT tokens_balance FROM users WHERE id = $1"
     )
     .bind(payload.user_id)
-    .fetch_optional(&**pool)
+    .fetch_optional(&pool)
     .await
     .map_err(|e| {
         tracing::error!("Erreur vérification solde: {:?}", e);
@@ -147,10 +148,10 @@ pub async fn create_publicite(
     // Déduire le coût du solde
     sqlx::query!(
         "UPDATE users SET tokens_balance = tokens_balance - $1 WHERE id = $2",
-        payload.cout,
+        payload.cout as i64,
         payload.user_id
     )
-    .execute(&**pool)
+    .execute(&pool)
     .await
     .map_err(|e| {
         tracing::error!("Erreur déduction solde: {:?}", e);
@@ -182,7 +183,7 @@ pub async fn create_publicite(
         .bind(payload.cout)
         .bind(&payload.zone_geographique)
         .bind(rayon)
-        .fetch_one(&**pool)
+        .fetch_one(&pool)
         .await
     } else {
         // Sans géolocalisation
@@ -207,7 +208,7 @@ pub async fn create_publicite(
             payload.zone_geographique,
             rayon
         )
-        .fetch_one(&**pool)
+        .fetch_one(&pool)
         .await
     };
 
@@ -253,7 +254,7 @@ pub async fn get_active_publicites(
         LIMIT 50
         "#
     )
-    .fetch_all(&**pool)
+    .fetch_all(&pool)
     .await
     .map_err(|e| {
         tracing::error!("Erreur récupération publicités: {:?}", e);
@@ -274,7 +275,7 @@ pub async fn get_active_publicites(
                         "SELECT data FROM services WHERE id = $1",
                         service_id
                     )
-                    .fetch_optional(&**pool)
+                    .fetch_optional(&pool)
                     .await
                     {
                         if let Some(data) = service.data {
@@ -362,7 +363,7 @@ pub async fn get_publicite_dashboard(
         "#,
         user_id
     )
-    .fetch_all(&**pool)
+    .fetch_all(&pool)
     .await
     .map_err(|e| {
         tracing::error!("Erreur liste publicités: {:?}", e);
@@ -428,7 +429,7 @@ pub async fn get_publicite_by_id(
         "#,
         id
     )
-    .fetch_optional(&**pool)
+    .fetch_optional(&pool)
     .await
     .map_err(|e| {
         tracing::error!("Erreur récupération publicité: {:?}", e);
@@ -473,7 +474,7 @@ pub async fn update_publicite(
         "SELECT user_id FROM publicites WHERE id = $1"
     )
     .bind(id)
-    .fetch_optional(&**pool)
+    .fetch_optional(&pool)
     .await
     .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
@@ -514,7 +515,7 @@ pub async fn update_publicite(
         .bind(&payload.zone_geographique)
         .bind(payload.rayon_km.unwrap_or(50))
         .bind(id)
-        .fetch_one(&**pool)
+        .fetch_one(&pool)
         .await
     } else {
         sqlx::query!(
@@ -537,7 +538,7 @@ pub async fn update_publicite(
             payload.zone_geographique,
             payload.rayon_km.unwrap_or(50)
         )
-        .fetch_one(&**pool)
+        .fetch_one(&pool)
         .await
     };
 
@@ -564,7 +565,7 @@ pub async fn track_publicite_click(
         "UPDATE publicites SET clics = clics + 1 WHERE id = $1",
         payload.publicite_id
     )
-    .execute(&**pool)
+    .execute(&pool)
     .await
     .map_err(|e| {
         tracing::error!("Erreur tracking clic: {:?}", e);
@@ -588,7 +589,7 @@ pub async fn track_publicite_view(
         "UPDATE publicites SET vues = vues + 1, impressions = impressions + 1 WHERE id = $1",
         payload.publicite_id
     )
-    .execute(&**pool)
+    .execute(&pool)
     .await
     .map_err(|e| {
         tracing::error!("Erreur tracking vue: {:?}", e);

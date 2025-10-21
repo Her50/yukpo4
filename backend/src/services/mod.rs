@@ -56,6 +56,7 @@ pub mod geocoding_service;
 pub mod intelligent_service_manager;
 pub mod phone_validation_service;
 pub mod payment_service;
+pub mod publicite_search_service;
 // pub mod payment_service_temporary;
 // pub mod push_notifications;
 // pub mod typing_status;

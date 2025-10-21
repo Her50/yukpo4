@@ -1,5 +1,6 @@
 use sqlx::PgPool;
 use std::collections::HashMap;
+use tracing;
 
 /// Service pour enrichir les résultats de recherche avec les informations de publicité
 pub struct PubliciteSearchService;
