@@ -98,7 +98,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     });
 
     // ✅ Lancer la tâche de désactivation des publicités expirées (toutes les heures)
-    let pool_clone_pub = app_state.pg.clone();
+    let pool_clone_pub = Arc::new(app_state.pg.clone());
     tokio::spawn(async move {
         yukpomnang_backend::tasks::publicite_expiration::start_publicite_expiration_task(pool_clone_pub).await;
     });
