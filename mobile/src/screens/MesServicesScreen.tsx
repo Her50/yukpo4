@@ -1,5 +1,5 @@
 // @ts-nocheck
-// Design moderne inspiré du frontend
+// Design moderne inspirï¿½ du frontend
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -51,17 +51,17 @@ const MesServicesScreen: React.FC = () => {
 
       const token = await AsyncStorage.getItem('auth_token');
 
-      // ? CORRIGÉ: Utilise apiGet
+      // ? CORRIGï¿½: Utilise apiGet
       const response = await apiGet('/api/prestataire/services');
 
       if (response.ok) {
         const data = await response.json();
-        // Trier les services du plus récent au plus ancien
+        // Trier les services du plus rï¿½cent au plus ancien
         const servicesTries = data.sort((a: any, b: any) => {
           return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
         });
 
-        // Transformer les données pour correspondre à notre interface
+        // Transformer les donnï¿½es pour correspondre ï¿½ notre interface
         const transformedServices = servicesTries.map((service: any) => ({
           id: service.id.toString(),
           title: service.data?.titre_service?.valeur || service.data?.titre?.valeur || service.titre || 'Service sans titre',
@@ -114,7 +114,7 @@ const MesServicesScreen: React.FC = () => {
   // Fonctions de gestion des services
   const handleEditService = (service: any) => {
     try {
-      // Navigation vers l'écran de modification avec les données du service
+      // Navigation vers l'ï¿½cran de modification avec les donnï¿½es du service
       (navigation as any).navigate('FormulaireYukpoIntelligent', {
         mode: 'edit',
         serviceId: service.id,
@@ -136,7 +136,7 @@ const MesServicesScreen: React.FC = () => {
 
   const handleViewService = (service: any) => {
     try {
-      // Navigation vers l'écran de visualisation en mode lecture seule
+      // Navigation vers l'ï¿½cran de visualisation en mode lecture seule
       (navigation as any).navigate('FormulaireYukpoIntelligent', {
         mode: 'view',  // ? CORRECTION : Utiliser 'view' au lieu de 'readonly'
         serviceId: service.id,
@@ -158,37 +158,37 @@ const MesServicesScreen: React.FC = () => {
 
   const handleShareService = async (service: any) => {
     try {
-      // Implémentation du partage avec deep linking
+      // Implï¿½mentation du partage avec deep linking
       const titre = service.data?.titre_service?.valeur || service.data?.titre?.valeur || service.title || 'Service Yukpo';
-      const description = service.data?.description?.valeur || service.description || 'Découvrez ce service sur Yukpo';
+      const description = service.data?.description?.valeur || service.description || 'Dï¿½couvrez ce service sur Yukpo';
       const prix = service.data?.prix?.valeur || service.prix;
       const localisation = service.data?.localisation?.valeur || service.localisation;
 
-      // ? AMÉLIORATION : Créer un lien deep link vers le service
+      // ? AMï¿½LIORATION : Crï¿½er un lien deep link vers le service
       const serviceUrl = `https://yukpomnang.com/service/${service.id}`;
 
-      let shareText = `?? ${titre}\n\n${description}`;
+      let shareText = `ðŸ›ï¸ ${titre}\n\n${description}`;
 
       if (prix) {
-        shareText += `\n?? Prix: ${prix} FCFA`;
+        shareText += `\nðŸ’° Prix: ${prix} FCFA`;
       }
 
       if (localisation) {
-        shareText += `\n?? Localisation: ${localisation}`;
+        shareText += `\nðŸ“ Localisation: ${localisation}`;
       }
 
-      shareText += `\n\n?? Voir ce service sur Yukpo :\n?? ${serviceUrl}`;
+      shareText += `\n\nðŸ”— Voir ce service sur Yukpo :\nðŸ“± ${serviceUrl}`;
 
       // Utiliser l'API de partage native React Native
       const result = await Share.share({
         message: shareText,
         title: titre,
-        url: serviceUrl  // ? URL spécifique au service
+        url: serviceUrl  // ? URL spï¿½cifique au service
       });
 
       if (result.action === Share.sharedAction) {
-        console.log('[MesServicesScreen] Service partagé:', serviceUrl);
-        Alert.alert('Succès', 'Service partagé avec succès !');
+        console.log('[MesServicesScreen] Service partagï¿½:', serviceUrl);
+        Alert.alert('Succï¿½s', 'Service partagï¿½ avec succï¿½s !');
       }
     } catch (error) {
       console.error('Erreur lors du partage:', error);
@@ -202,25 +202,25 @@ const MesServicesScreen: React.FC = () => {
       const currentStatus = service.status === 'active';
       const newStatus = !currentStatus;
 
-      // Si on réactive un service (passage de inactif à actif), facturer 1000 FCFA
+      // Si on rï¿½active un service (passage de inactif ï¿½ actif), facturer 1000 FCFA
       if (!currentStatus) {
-        // ? CORRIGÉ: Vérifier le solde avec apiGet
+        // ? CORRIGï¿½: Vï¿½rifier le solde avec apiGet
         const balanceResponse = await apiGet('/api/users/balance');
 
         if (balanceResponse.ok) {
           const balanceData = await balanceResponse.json();
           const currentBalance = balanceData.tokens_balance;
-          const activationCost = 1000; // 1000 FCFA pour réactivation
+          const activationCost = 1000; // 1000 FCFA pour rï¿½activation
 
           if (currentBalance < activationCost) {
             Alert.alert(
               'Solde insuffisant',
-              `Solde actuel: ${currentBalance} FCFA\nCoût de réactivation: ${activationCost} FCFA\n\nVeuillez recharger votre compte.`
+              `Solde actuel: ${currentBalance} FCFA\nCoï¿½t de rï¿½activation: ${activationCost} FCFA\n\nVeuillez recharger votre compte.`
             );
             return;
           }
 
-          // ? CORRIGÉ: Déduire le coût avec apiPost
+          // ? CORRIGï¿½: Dï¿½duire le coï¿½t avec apiPost
           const deductResponse = await apiPost('/api/users/deduct-balance', {
             amount: activationCost,
             reason: 'service_reactivation'
@@ -229,26 +229,26 @@ const MesServicesScreen: React.FC = () => {
           if (deductResponse.success) {
             const newBalance = currentBalance - activationCost;
 
-            // Déclencher un rafraîchissement du solde dans l'interface
-            // Cela mettra à jour le solde affiché dans HomeScreen
+            // Dï¿½clencher un rafraï¿½chissement du solde dans l'interface
+            // Cela mettra ï¿½ jour le solde affichï¿½ dans HomeScreen
             loadServices(true);
 
             Alert.alert(
-              'Service réactivé !',
-              `Coût: ${activationCost} FCFA\nNouveau solde: ${newBalance} FCFA`,
+              'Service rï¿½activï¿½ !',
+              `Coï¿½t: ${activationCost} FCFA\nNouveau solde: ${newBalance} FCFA`,
               [{ text: 'OK' }]
             );
           }
         }
       }
 
-      // ? CORRIGÉ: Changer le statut avec apiPatch
+      // ? CORRIGï¿½: Changer le statut avec apiPatch
       const response = await apiPatch(`/api/services/${service.id}/toggle-status`, {
         actif: newStatus
       });
 
       if (response.success) {
-        // Mettre à jour l'état local
+        // Mettre ï¿½ jour l'ï¿½tat local
         setServices(prevServices =>
           prevServices.map(s =>
             s.id === service.id
@@ -257,13 +257,13 @@ const MesServicesScreen: React.FC = () => {
           )
         );
 
-        // Rafraîchir la liste des services
+        // Rafraï¿½chir la liste des services
         loadServices(true);
 
         if (currentStatus) {
-          Alert.alert('Succès', 'Service désactivé avec succès');
+          Alert.alert('Succï¿½s', 'Service dï¿½sactivï¿½ avec succï¿½s');
         } else {
-          // Message déjà affiché plus haut pour la réactivation
+          // Message dï¿½jï¿½ affichï¿½ plus haut pour la rï¿½activation
         }
       } else {
         const errorText = await response.text();
@@ -280,7 +280,7 @@ const MesServicesScreen: React.FC = () => {
     // Confirmation avant suppression comme dans le frontend
     Alert.alert(
       'Supprimer le service',
-      `Êtes-vous sûr de vouloir supprimer définitivement le service "${service.title}" ?\n\nCette action est irréversible.`,
+      `ï¿½tes-vous sï¿½r de vouloir supprimer dï¿½finitivement le service "${service.title}" ?\n\nCette action est irrï¿½versible.`,
       [
         { text: 'Annuler', style: 'cancel' },
         {
@@ -290,17 +290,17 @@ const MesServicesScreen: React.FC = () => {
             try {
               const token = await AsyncStorage.getItem('auth_token');
 
-              // ? CORRIGÉ: Supprimer avec apiDelete
+              // ? CORRIGï¿½: Supprimer avec apiDelete
               const response = await apiDelete(`/api/services/${service.id}/delete`);
 
               if (response.ok) {
-                // Supprimer de l'état local
+                // Supprimer de l'ï¿½tat local
                 setServices(prevServices => prevServices.filter(s => s.id !== service.id));
 
-                // Déclencher un rafraîchissement pour mettre à jour l'interface
+                // Dï¿½clencher un rafraï¿½chissement pour mettre ï¿½ jour l'interface
                 loadServices(true);
 
-                Alert.alert('Succès', 'Service supprimé avec succès');
+                Alert.alert('Succï¿½s', 'Service supprimï¿½ avec succï¿½s');
               } else {
                 throw new Error('Erreur lors de la suppression');
               }
@@ -319,15 +319,15 @@ const MesServicesScreen: React.FC = () => {
 
     // Afficher un modal de gestion des promotions comme dans le frontend
     Alert.alert(
-      '?? Promotion du service',
+      'ðŸ“¢ Promotion du service',
       `Service: ${titre}\n\nQue souhaitez-vous faire ?`,
       [
         { text: 'Annuler', style: 'cancel' },
         {
-          text: 'Créer une promotion',
+          text: 'Crï¿½er une promotion',
           onPress: () => {
             try {
-              // Navigation vers l'écran de modification pour créer une promotion
+              // Navigation vers l'ï¿½cran de modification pour crï¿½er une promotion
               (navigation as any).navigate('FormulaireYukpoIntelligent', {
                 mode: 'edit',
                 serviceId: service.id,
@@ -351,7 +351,7 @@ const MesServicesScreen: React.FC = () => {
           text: 'Modifier la promotion',
           onPress: () => {
             try {
-              // Navigation vers l'écran de modification pour modifier la promotion
+              // Navigation vers l'ï¿½cran de modification pour modifier la promotion
               (navigation as any).navigate('FormulaireYukpoIntelligent', {
                 mode: 'edit',
                 serviceId: service.id,
@@ -375,7 +375,7 @@ const MesServicesScreen: React.FC = () => {
     );
   };
 
-  // Filtrer les services selon le filtre sélectionné
+  // Filtrer les services selon le filtre sï¿½lectionnï¿½
   const filteredServices = services.filter((service) => {
     if (filter === 'tous') return true;
     if (filter === 'actif') return service.status === 'active';
@@ -443,9 +443,9 @@ const MesServicesScreen: React.FC = () => {
         {/* Bandeau d'information */}
         <NativeCard style={styles.infoBanner}>
           <Text style={styles.infoText}>
-            Vous avez <Text style={styles.infoBold}>{services.length}</Text> service(s) créé(s)
+            Vous avez <Text style={styles.infoBold}>{services.length}</Text> service(s) crï¿½ï¿½(s)
             {refreshing && (
-              <Text style={styles.refreshingText}> ?? Actualisation en cours...</Text>
+              <Text style={styles.refreshingText}> ðŸ”„ Actualisation en cours...</Text>
             )}
           </Text>
         </NativeCard>
@@ -453,21 +453,21 @@ const MesServicesScreen: React.FC = () => {
         {/* Filtres */}
         <View style={styles.filtersContainer}>
           <NativeButton
-            title={`?? Tous (${services.length})`}
+            title={`ðŸ“¦ Tous (${services.length})`}
             onPress={() => setFilter('tous')}
             variant={filter === 'tous' ? 'primary' : 'outline'}
             size="small"
             style={styles.filterButton}
           />
           <NativeButton
-            title={`? Actifs (${services.filter(s => s.status === 'active').length})`}
+            title={`âœ… Actifs (${services.filter(s => s.status === 'active').length})`}
             onPress={() => setFilter('actif')}
             variant={filter === 'actif' ? 'primary' : 'outline'}
             size="small"
             style={styles.filterButton}
           />
           <NativeButton
-            title={`?? Inactifs (${services.filter(s => s.status === 'inactive').length})`}
+            title={`â¸ï¸ Inactifs (${services.filter(s => s.status === 'inactive').length})`}
             onPress={() => setFilter('inactif')}
             variant={filter === 'inactif' ? 'primary' : 'outline'}
             size="small"
@@ -480,16 +480,16 @@ const MesServicesScreen: React.FC = () => {
           <View style={styles.emptyContainer}>
             <SafeIcon name="briefcase" size={64} color={modernColors.textSecondary} />
             <Text style={styles.emptyTitle}>
-              {filter === 'tous' ? 'Aucun service créé' : `Aucun service ${filter}`}
+              {filter === 'tous' ? 'Aucun service crï¿½ï¿½' : `Aucun service ${filter}`}
             </Text>
             <Text style={styles.emptyText}>
               {filter === 'tous'
-                ? 'Créez votre premier service pour commencer à proposer vos services.'
+                ? 'Crï¿½ez votre premier service pour commencer ï¿½ proposer vos services.'
                 : `Aucun service ${filter} pour le moment.`
               }
             </Text>
             <NativeButton
-              title="? Créer un nouveau service"
+              title="âž• Crï¿½er un nouveau service"
               onPress={() => navigation.navigate('CreateService' as never)}
               variant="primary"
               size="medium"
@@ -513,10 +513,10 @@ const MesServicesScreen: React.FC = () => {
           </View>
         )}
 
-        {/* Bouton de retour à l'accueil */}
+        {/* Bouton de retour ï¿½ l'accueil */}
         <View style={styles.footerContainer}>
           <NativeButton
-            title="?? Retour à l'accueil"
+            title="ðŸ  Retour ï¿½ l'accueil"
             onPress={() => navigation.navigate('Home' as never)}
             variant="outline"
             size="large"

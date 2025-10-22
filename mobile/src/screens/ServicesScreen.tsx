@@ -511,8 +511,8 @@ const ServicesScreen: React.FC = () => {
       const description = service.data?.description?.valeur || service.description || 'D�couvrez ce service sur Yukpo';
       const serviceUrl = `https://yukpomnang.com/service/${service.id}`;
 
-      let shareText = `?? ${titre}\n\n${description}`;
-      shareText += `\n\n?? Voir ce service sur Yukpo :\n?? ${serviceUrl}`;
+      let shareText = `🛍️ ${titre}\n\n${description}`;
+      shareText += `\n\n🔗 Voir ce service sur Yukpo :\n📱 ${serviceUrl}`;
 
       const result = await Share.share({
         message: shareText,
