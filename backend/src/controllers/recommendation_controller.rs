@@ -188,7 +188,6 @@ fn mix_content_intelligently(
     organic_products: Vec<serde_json::Value>
 ) -> Vec<serde_json::Value> {
     let mut result: Vec<serde_json::Value> = vec![];
-    let mut paid_index = 0;
     let mut organic_index = 0;
     
     // Grouper les publicités par niveau de boost

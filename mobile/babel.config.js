@@ -19,14 +19,13 @@ module.exports = function(api) {
         },
       ],
     ],
-    // ✅ CORRECTION ENCODAGE: Configuration UTF-8
-    env: {
-      production: {
-        plugins: [
-          // Plugin pour forcer l'encodage UTF-8 en production
-          ['transform-remove-console', { exclude: ['error', 'warn'] }],
-        ],
-      },
-    },
+    // ✅ CORRECTION: Configuration UTF-8 sans plugin externe
+    // env: {
+    //   production: {
+    //     plugins: [
+    //       ['transform-remove-console', { exclude: ['error', 'warn'] }],
+    //     ],
+    //   },
+    // },
   };
 };
