@@ -1,4 +1,5 @@
-ï»¿import * as React from 'react';
+// @ts-nocheck
+import * as React from 'react';
 import { useState } from 'react';
 import { View, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { Text, Card, Button, Chip } from 'react-native-paper';
@@ -11,25 +12,25 @@ const AIHubScreen: React.FC = () => {
     {
       title: 'Chat IA',
       description: 'Discutez avec notre assistant intelligent',
-      icon: 'ðŸ’¬',
+      icon: '??',
       onPress: () => navigation.navigate('AIChat' as never),
     },
     {
       title: 'Recherche Intelligente',
       description: 'Trouvez des services avec l\'IA',
-      icon: 'ðŸ”',
+      icon: '??',
       onPress: () => navigation.navigate('Search' as never),
     },
     {
-      title: 'CrÃ©ation AssistÃ©e',
-      description: 'CrÃ©ez des services avec l\'aide de l\'IA',
-      icon: 'ðŸ¤–',
+      title: 'Création Assistée',
+      description: 'Créez des services avec l\'aide de l\'IA',
+      icon: '??',
       onPress: () => navigation.navigate('CreateService' as never),
     },
     {
-      title: 'Suggestions PersonnalisÃ©es',
-      description: 'Recevez des recommandations adaptÃ©es',
-      icon: 'âœ¨',
+      title: 'Suggestions Personnalisées',
+      description: 'Recevez des recommandations adaptées',
+      icon: '?',
       onPress: () => {},
     },
   ];
@@ -37,20 +38,20 @@ const AIHubScreen: React.FC = () => {
   const quickActions = [
     {
       title: 'Rechercher un coiffeur',
-      description: 'Trouvez un coiffeur prÃ¨s de chez vous',
+      description: 'Trouvez un coiffeur près de chez vous',
       onPress: () => {
-        // Navigation avec paramÃ¨tres de recherche
+        // Navigation avec paramètres de recherche
         navigation.navigate('Search' as never);
       },
     },
     {
-      title: 'CrÃ©er un service de nettoyage',
-      description: 'Proposez vos services de mÃ©nage',
+      title: 'Créer un service de nettoyage',
+      description: 'Proposez vos services de ménage',
       onPress: () => navigation.navigate('CreateService' as never),
     },
     {
       title: 'Demander de l\'aide',
-      description: 'Posez une question Ã  l\'IA',
+      description: 'Posez une question à l\'IA',
       onPress: () => navigation.navigate('AIChat' as never),
     },
   ];
@@ -62,13 +63,13 @@ const AIHubScreen: React.FC = () => {
         <View style={styles.header}>
           <Text style={styles.title}>IA Hub</Text>
           <Text style={styles.subtitle}>
-            DÃ©couvrez la puissance de l'intelligence artificielle
+            Découvrez la puissance de l'intelligence artificielle
           </Text>
         </View>
 
         {/* AI Features */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>FonctionnalitÃ©s IA</Text>
+          <Text style={styles.sectionTitle}>Fonctionnalités IA</Text>
           <View style={styles.featuresGrid}>
             {aiFeatures.map((feature, index) => (
               <TouchableOpacity
@@ -106,11 +107,11 @@ const AIHubScreen: React.FC = () => {
             <View style={styles.statsGrid}>
               <View style={styles.statItem}>
                 <Text style={styles.statNumber}>1,234</Text>
-                <Text style={styles.statLabel}>RequÃªtes traitÃ©es</Text>
+                <Text style={styles.statLabel}>Requêtes traitées</Text>
               </View>
               <View style={styles.statItem}>
                 <Text style={styles.statNumber}>98%</Text>
-                <Text style={styles.statLabel}>PrÃ©cision</Text>
+                <Text style={styles.statLabel}>Précision</Text>
               </View>
               <View style={styles.statItem}>
                 <Text style={styles.statNumber}>2.3s</Text>
@@ -123,12 +124,12 @@ const AIHubScreen: React.FC = () => {
         {/* Tips */}
         <Card style={styles.tipsCard}>
           <Card.Content>
-            <Text style={styles.sectionTitle}>ðŸ’¡ Conseils d'utilisation</Text>
+            <Text style={styles.sectionTitle}>?? Conseils d'utilisation</Text>
             <View style={styles.tipsList}>
-              <Text style={styles.tipItem}>â€¢ Soyez prÃ©cis dans vos demandes</Text>
-              <Text style={styles.tipItem}>â€¢ Utilisez des mots-clÃ©s pertinents</Text>
-              <Text style={styles.tipItem}>â€¢ L'IA apprend de vos interactions</Text>
-              <Text style={styles.tipItem}>â€¢ N'hÃ©sitez pas Ã  reformuler si nÃ©cessaire</Text>
+              <Text style={styles.tipItem}>• Soyez précis dans vos demandes</Text>
+              <Text style={styles.tipItem}>• Utilisez des mots-clés pertinents</Text>
+              <Text style={styles.tipItem}>• L'IA apprend de vos interactions</Text>
+              <Text style={styles.tipItem}>• N'hésitez pas à reformuler si nécessaire</Text>
             </View>
           </Card.Content>
         </Card>
@@ -250,6 +251,7 @@ const styles = StyleSheet.create({
 });
 
 export default AIHubScreen;
+
 
 
 

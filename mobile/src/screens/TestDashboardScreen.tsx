@@ -1,3 +1,4 @@
+// @ts-nocheck
 import React from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { theme } from '../theme/theme';
@@ -82,6 +83,9 @@ const styles = StyleSheet.create({
 });
 
 export default TestDashboardScreen;
+
+
+
 
 
 

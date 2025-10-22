@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Écran pour afficher un service partagé via deep link
  * Gère l'authentification automatique et l'affichage du service
@@ -326,4 +327,5 @@ const styles = StyleSheet.create({
 });
 
 export default ServiceDetailSharedScreen;
+
 

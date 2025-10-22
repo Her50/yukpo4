@@ -1,4 +1,6 @@
-﻿// ✨ MON ACTIVITÉ - Dashboard intégré + Liste de services
+// @ts-nocheck
+// ? MON ACTIVIT� - Dashboard int�gr� + Liste de services
+// @ts-nocheck
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -9,23 +11,19 @@ import {
   Dimensions,
   RefreshControl,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native';
-
-// @ts-ignore - Platform existe bien dans react-native
-const Platform = require('react-native').Platform;
-// @ts-ignore - Share existe bien dans react-native
-const Share = require('react-native').Share;
 
 import { NativeButton, NativeCard } from '../components/NativeDesign';
 import SafeIcon from '../components/SafeIcon';
 import ServiceCardModern from '../components/ServiceCardModern';
 import ServiceTeamManager from '../components/ServiceTeamManager';
 import { useAuth } from '../contexts/AuthContext';
-import { useLanguage } from '../contexts/LanguageContext';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 import { apiDelete, apiGet, apiPatch, apiPost, userApi } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
 
@@ -52,7 +50,7 @@ interface CategoryStats {
   interactions: number;
   icon: string;
   color: string;
-  // KPIs spécifiques par catégorie
+  // KPIs sp�cifiques par cat�gorie
   kpis: {
     label: string;
     value: string | number;
@@ -64,7 +62,7 @@ interface CategoryStats {
 const ServicesScreen: React.FC = () => {
   const navigation = useNavigation();
   const { user } = useAuth();
-  const { t } = useLanguage();
+  const { t } = useLanguageSafe();
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -116,10 +114,10 @@ const ServicesScreen: React.FC = () => {
 
         setServices(transformedServices);
 
-        // Calculer les stats par catégorie
+        // Calculer les stats par cat�gorie
         calculateCategoryStats(transformedServices);
 
-        // Charger les données du dashboard
+        // Charger les donn�es du dashboard
         loadDashboardData(transformedServices);
       } else {
         console.error('Erreur API:', response);
@@ -137,24 +135,24 @@ const ServicesScreen: React.FC = () => {
 
   const loadDashboardData = async (servicesData: Service[]) => {
     try {
-      // ✅ UNIQUEMENT DONNÉES RÉELLES : Charger depuis l'API backend
+      // ? UNIQUEMENT DONN�ES R�ELLES : Charger depuis l'API backend
       const response = await userApi.getDashboardPrestataire(selectedPeriod);
 
       if (response.success && response.data) {
         setDashboardData(response.data);
       } else {
-        // ✅ Calculer à partir des VRAIES données des services (pas de données fictives)
+        // ? Calculer � partir des VRAIES donn�es des services (pas de donn�es fictives)
         const activeServices = servicesData.filter(s => s.status === 'active').length;
         const totalViews = servicesData.reduce((sum, s) => sum + (s.views || 0), 0);
         const totalInteractions = servicesData.reduce((sum, s) => sum + (s.interactions || 0), 0);
 
-        // ✅ Charger le vrai solde depuis l'API
+        // ? Charger le vrai solde depuis l'API
         const budgetResponse = await userApi.getTokensBalance();
         const budgetData = budgetResponse.success ? (budgetResponse.data as any) : { consumed: 0, remaining: 0 };
 
-        // ✅ Calculer les meilleurs services RÉELS (basés sur vraies interactions)
+        // ? Calculer les meilleurs services R�ELS (bas�s sur vraies interactions)
         const topPerformingServices = servicesData
-          .filter(s => s.interactions > 0 || s.views > 0) // Seulement services avec activité réelle
+          .filter(s => s.interactions > 0 || s.views > 0) // Seulement services avec activit� r�elle
           .sort((a, b) => (b.interactions || 0) - (a.interactions || 0))
           .slice(0, 5)
           .map(s => ({
@@ -180,34 +178,34 @@ const ServicesScreen: React.FC = () => {
       }
     } catch (error) {
       console.error('Erreur chargement dashboard:', error);
-      // ✅ En cas d'erreur, ne pas afficher de données fictives
+      // ? En cas d'erreur, ne pas afficher de donn�es fictives
       setDashboardData(null);
     }
   };
 
-  // ✅ Fonction pour extraire la catégorie réelle
+  // ? Fonction pour extraire la cat�gorie r�elle
   const extractCategory = (service: Service): string => {
     if (service.data?.category?.valeur) {
       return service.data.category.valeur;
     } else if (service.data?.produits && Array.isArray(service.data.produits) && service.data.produits.length > 0) {
-      return service.data.produits[0].type || 'Non spécifié';
+      return service.data.produits[0].type || 'Non sp�cifi�';
     }
-    return 'Non spécifié';
+    return 'Non sp�cifi�';
   };
 
-  // ✅ Fonction pour calculer le vrai taux de satisfaction moyen
+  // ? Fonction pour calculer le vrai taux de satisfaction moyen
   const calculateAverageRating = (services: Service[]): number => {
     const servicesWithRating = services.filter(s => s.rating && s.rating > 0);
     if (servicesWithRating.length === 0) return 0;
 
     const total = servicesWithRating.reduce((sum, s) => sum + (s.rating || 0), 0);
-    return Math.round((total / servicesWithRating.length) * 10) / 10; // Arrondi à 1 décimale
+    return Math.round((total / servicesWithRating.length) * 10) / 10; // Arrondi � 1 d�cimale
   };
 
   const calculateCategoryStats = (servicesData: Service[]) => {
     const categoryMap = new Map<string, CategoryStats>();
 
-    // Catégories de produits avec icônes et couleurs
+    // Cat�gories de produits avec ic�nes et couleurs
     const categoryIcons: { [key: string]: { icon: string; color: string } } = {
       'immobilier': { icon: 'home', color: '#3B82F6' },
       'automobile': { icon: 'car', color: '#EF4444' },
@@ -227,11 +225,11 @@ const ServicesScreen: React.FC = () => {
       'autre': { icon: 'grid', color: '#6B7280' }
     };
 
-    // Stockage temporaire pour calculer les KPIs par catégorie
+    // Stockage temporaire pour calculer les KPIs par cat�gorie
     const categoryData: { [key: string]: any[] } = {};
 
     servicesData.forEach(service => {
-      // Extraire la catégorie du service ou de ses produits
+      // Extraire la cat�gorie du service ou de ses produits
       let category = 'autre';
 
       if (service.data?.category?.valeur) {
@@ -243,7 +241,7 @@ const ServicesScreen: React.FC = () => {
         }
       }
 
-      // Nettoyer le nom de la catégorie
+      // Nettoyer le nom de la cat�gorie
       const cleanCategory = category.replace(/[_-]/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase());
       const categoryKey = category.replace(/\s+/g, '_').toLowerCase();
 
@@ -268,11 +266,11 @@ const ServicesScreen: React.FC = () => {
       stat.views += service.views || 0;
       stat.interactions += service.interactions || 0;
 
-      // Stocker les données du service pour calcul des KPIs
+      // Stocker les donn�es du service pour calcul des KPIs
       categoryData[cleanCategory].push(service);
     });
 
-    // Calculer les KPIs spécifiques pour chaque catégorie
+    // Calculer les KPIs sp�cifiques pour chaque cat�gorie
     categoryMap.forEach((stat, categoryName) => {
       const services = categoryData[categoryName];
       const categoryKey = categoryName.toLowerCase().replace(/\s+/g, '_');
@@ -280,15 +278,15 @@ const ServicesScreen: React.FC = () => {
       stat.kpis = calculateCategoryKPIs(categoryKey, services);
     });
 
-    // Convertir en tableau et trier par nombre de services (uniquement catégories avec services)
+    // Convertir en tableau et trier par nombre de services (uniquement cat�gories avec services)
     const stats = Array.from(categoryMap.values())
-      .filter(stat => stat.count > 0)  // ✅ Filtrer les catégories vides
+      .filter(stat => stat.count > 0)  // ? Filtrer les cat�gories vides
       .sort((a, b) => b.count - a.count);
 
     setCategoryStats(stats);
   };
 
-  // Fonction pour calculer les KPIs spécifiques par catégorie
+  // Fonction pour calculer les KPIs sp�cifiques par cat�gorie
   const calculateCategoryKPIs = (categoryKey: string, services: Service[]): CategoryStats['kpis'] => {
     if (services.length === 0) return [];
 
@@ -310,7 +308,7 @@ const ServicesScreen: React.FC = () => {
 
         return [
           { label: 'Prix moyen', value: prix.length > 0 ? Math.round(prix.reduce((a, b) => a + b, 0) / prix.length) : 0, unit: 'FCFA', icon: 'dollar-sign' },
-          { label: 'Superficie moy.', value: superficies.length > 0 ? Math.round(superficies.reduce((a, b) => a + b, 0) / superficies.length) : 0, unit: 'm²', icon: 'maximize' },
+          { label: 'Superficie moy.', value: superficies.length > 0 ? Math.round(superficies.reduce((a, b) => a + b, 0) / superficies.length) : 0, unit: 'm�', icon: 'maximize' },
           { label: 'Chambres moy.', value: nbChambres.length > 0 ? Math.round(nbChambres.reduce((a, b) => a + b, 0) / nbChambres.length) : 0, icon: 'home' }
         ];
 
@@ -328,7 +326,7 @@ const ServicesScreen: React.FC = () => {
         return [
           { label: 'Prix moyen', value: prixAuto.length > 0 ? Math.round(prixAuto.reduce((a, b) => a + b, 0) / prixAuto.length) : 0, unit: 'FCFA', icon: 'dollar-sign' },
           { label: 'Km moyen', value: kilometrages.length > 0 ? Math.round(kilometrages.reduce((a, b) => a + b, 0) / kilometrages.length) : 0, unit: 'km', icon: 'navigation' },
-          { label: 'Année moy.', value: annees.length > 0 ? Math.round(annees.reduce((a, b) => a + b, 0) / annees.length) : 0, icon: 'calendar' }
+          { label: 'Ann�e moy.', value: annees.length > 0 ? Math.round(annees.reduce((a, b) => a + b, 0) / annees.length) : 0, icon: 'calendar' }
         ];
 
       case 'prestation_service':
@@ -352,7 +350,7 @@ const ServicesScreen: React.FC = () => {
         const avecRdvEnLigne = produits.filter(p => p.rdvEnLigne === true).length;
 
         return [
-          { label: 'Spécialités', value: new Set(prestationsMedicales).size, icon: 'heart' },
+          { label: 'Sp�cialit�s', value: new Set(prestationsMedicales).size, icon: 'heart' },
           { label: 'Banque sang', value: avecBanqueSang, unit: `/${produits.length}`, icon: 'droplet' },
           { label: 'RDV en ligne', value: avecRdvEnLigne, unit: `/${produits.length}`, icon: 'calendar' }
         ];
@@ -370,7 +368,7 @@ const ServicesScreen: React.FC = () => {
 
         return [
           { label: 'Prix moyen', value: prixDem.length > 0 ? Math.round(prixDem.reduce((a, b) => a + b, 0) / prixDem.length) : 0, unit: 'FCFA', icon: 'dollar-sign' },
-          { label: 'Volume moy.', value: volumes.length > 0 ? Math.round(volumes.reduce((a, b) => a + b, 0) / volumes.length) : 0, unit: 'm³', icon: 'package' },
+          { label: 'Volume moy.', value: volumes.length > 0 ? Math.round(volumes.reduce((a, b) => a + b, 0) / volumes.length) : 0, unit: 'm�', icon: 'package' },
           { label: 'Distance moy.', value: distances.length > 0 ? Math.round(distances.reduce((a, b) => a + b, 0) / distances.length) : 0, unit: 'km', icon: 'navigation' }
         ];
 
@@ -430,7 +428,7 @@ const ServicesScreen: React.FC = () => {
         ];
 
       default:
-        // KPIs génériques pour les autres catégories
+        // KPIs g�n�riques pour les autres cat�gories
         const prixGeneral = produits
           .map(p => parseFloat(p.prix || '0'))
           .filter(p => p > 0);
@@ -510,11 +508,11 @@ const ServicesScreen: React.FC = () => {
   const handleShareService = async (service: any) => {
     try {
       const titre = service.data?.titre_service?.valeur || service.data?.titre?.valeur || service.title || 'Service Yukpo';
-      const description = service.data?.description?.valeur || service.description || 'Découvrez ce service sur Yukpo';
+      const description = service.data?.description?.valeur || service.description || 'D�couvrez ce service sur Yukpo';
       const serviceUrl = `https://yukpomnang.com/service/${service.id}`;
 
-      let shareText = `🌟 ${titre}\n\n${description}`;
-      shareText += `\n\n📱 Voir ce service sur Yukpo :\n🔗 ${serviceUrl}`;
+      let shareText = `?? ${titre}\n\n${description}`;
+      shareText += `\n\n?? Voir ce service sur Yukpo :\n?? ${serviceUrl}`;
 
       const result = await Share.share({
         message: shareText,
@@ -523,7 +521,7 @@ const ServicesScreen: React.FC = () => {
       });
 
       if (result.action === Share.sharedAction) {
-        Alert.alert('Succès', 'Service partagé avec succès !');
+        Alert.alert('Succ�s', 'Service partag� avec succ�s !');
       }
     } catch (error) {
       console.error('Erreur lors du partage:', error);
@@ -548,7 +546,7 @@ const ServicesScreen: React.FC = () => {
           if (currentBalance < activationCost) {
             Alert.alert(
               'Solde insuffisant',
-              `Solde actuel: ${currentBalance} FCFA\nCoût de réactivation: ${activationCost} FCFA\n\nVeuillez recharger votre compte.`
+              `Solde actuel: ${currentBalance} FCFA\nCo�t de r�activation: ${activationCost} FCFA\n\nVeuillez recharger votre compte.`
             );
             return;
           }
@@ -562,8 +560,8 @@ const ServicesScreen: React.FC = () => {
             const newBalance = currentBalance - activationCost;
             loadServicesAndDashboard(true);
             Alert.alert(
-              'Service réactivé !',
-              `Coût: ${activationCost} FCFA\nNouveau solde: ${newBalance} FCFA`,
+              'Service r�activ� !',
+              `Co�t: ${activationCost} FCFA\nNouveau solde: ${newBalance} FCFA`,
               [{ text: 'OK' }]
             );
           }
@@ -586,7 +584,7 @@ const ServicesScreen: React.FC = () => {
         loadServicesAndDashboard(true);
 
         if (currentStatus) {
-          Alert.alert('Succès', 'Service désactivé avec succès');
+          Alert.alert('Succ�s', 'Service d�sactiv� avec succ�s');
         }
       } else {
         console.error('Erreur API toggle status:', response);
@@ -601,7 +599,7 @@ const ServicesScreen: React.FC = () => {
   const handleDeleteService = async (service: any) => {
     Alert.alert(
       'Supprimer le service',
-      `Êtes-vous sûr de vouloir supprimer définitivement le service "${service.title}" ?\n\nCette action est irréversible.`,
+      `�tes-vous s�r de vouloir supprimer d�finitivement le service "${service.title}" ?\n\nCette action est irr�versible.`,
       [
         { text: 'Annuler', style: 'cancel' },
         {
@@ -616,7 +614,7 @@ const ServicesScreen: React.FC = () => {
               if (response.success) {
                 setServices(prevServices => prevServices.filter(s => s.id !== service.id));
                 loadServicesAndDashboard(true);
-                Alert.alert('Succès', 'Service supprimé avec succès');
+                Alert.alert('Succ�s', 'Service supprim� avec succ�s');
               } else {
                 console.error('Erreur API delete:', response);
                 Alert.alert('Erreur', `Impossible de supprimer le service`);
@@ -656,7 +654,7 @@ const ServicesScreen: React.FC = () => {
       >
         <View style={styles.loadingContent}>
           <ActivityIndicator size="large" color="#fff" />
-          <Text style={styles.loadingText}>Chargement de votre activité...</Text>
+          <Text style={styles.loadingText}>Chargement de votre activit�...</Text>
         </View>
       </LinearGradient>
     );
@@ -676,12 +674,12 @@ const ServicesScreen: React.FC = () => {
             <View style={styles.headerTextContainer}>
               <Text style={styles.headerTitle}>{t('activity.title')}</Text>
               <Text style={styles.headerSubtitle}>
-                {services.length} service{services.length > 1 ? 's' : ''} • {dashboardData?.activeServices || 0} actif{(dashboardData?.activeServices || 0) > 1 ? 's' : ''}
+                {services.length} service{services.length > 1 ? 's' : ''} � {dashboardData?.activeServices || 0} actif{(dashboardData?.activeServices || 0) > 1 ? 's' : ''}
               </Text>
             </View>
           </View>
 
-          {/* Sélecteur Vue Dashboard/Liste */}
+          {/* S�lecteur Vue Dashboard/Liste */}
           <View style={styles.viewModeSelector}>
             <TouchableOpacity
               style={[styles.viewModeButton, viewMode === 'list' && styles.viewModeButtonActive]}
@@ -703,7 +701,7 @@ const ServicesScreen: React.FC = () => {
             </TouchableOpacity>
           </View>
 
-          {/* Sélecteur de période (seulement en mode dashboard) */}
+          {/* S�lecteur de p�riode (seulement en mode dashboard) */}
           {viewMode === 'dashboard' && (
             <View style={styles.periodSelector}>
               {['7d', '30d', '90d'].map((period) => (
@@ -736,7 +734,7 @@ const ServicesScreen: React.FC = () => {
         }
         showsVerticalScrollIndicator={false}
       >
-        {/* Dashboard Stats - ✅ UNIQUEMENT DONNÉES RÉELLES */}
+        {/* Dashboard Stats - ? UNIQUEMENT DONN�ES R�ELLES */}
         {viewMode === 'dashboard' && dashboardData && (
           <View style={styles.dashboardSection}>
             <Text style={styles.sectionTitle}>Vue d'ensemble</Text>
@@ -778,18 +776,18 @@ const ServicesScreen: React.FC = () => {
                 <Text style={styles.statValue}>
                   {dashboardData.budgetConsumed ? dashboardData.budgetConsumed.toLocaleString('fr-FR') : '0'} FCFA
                 </Text>
-                <Text style={styles.statLabel}>Consommé</Text>
+                <Text style={styles.statLabel}>Consomm�</Text>
               </NativeCard>
             </View>
           </View>
         )}
 
-        {/* Stats par catégorie */}
+        {/* Stats par cat�gorie */}
         {viewMode === 'dashboard' && categoryStats.length > 0 && (
           <View style={styles.categorySection}>
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Par catégorie</Text>
-              <TouchableOpacity onPress={() => Alert.alert('Détails', 'Affichage détaillé bientôt disponible')}>
+              <Text style={styles.sectionTitle}>Par cat�gorie</Text>
+              <TouchableOpacity onPress={() => Alert.alert('D�tails', 'Affichage d�taill� bient�t disponible')}>
                 <Text style={styles.viewMoreText}>Voir plus</Text>
               </TouchableOpacity>
             </View>
@@ -802,7 +800,7 @@ const ServicesScreen: React.FC = () => {
                   <Text style={styles.categoryName}>{category.name}</Text>
                   <Text style={styles.categoryCount}>{category.count} service{category.count > 1 ? 's' : ''}</Text>
 
-                  {/* KPIs spécifiques */}
+                  {/* KPIs sp�cifiques */}
                   {category.kpis.length > 0 && (
                     <View style={styles.categoryKpisContainer}>
                       {category.kpis.map((kpi, kpiIndex) => (
@@ -816,7 +814,7 @@ const ServicesScreen: React.FC = () => {
                     </View>
                   )}
 
-                  {/* Stats générales (vues/interactions) */}
+                  {/* Stats g�n�rales (vues/interactions) */}
                   <View style={styles.categoryStats}>
                     <View style={styles.categoryStatItem}>
                       <SafeIcon name="eye" size={12} color={modernColors.textSecondary} />
@@ -876,14 +874,14 @@ const ServicesScreen: React.FC = () => {
                   onPress={() => handleManageTeam()}
                 >
                   <SafeIcon name="users" size={16} color="#6366F1" />
-                  <Text style={styles.teamButtonText}>Équipe</Text>
+                  <Text style={styles.teamButtonText}>�quipe</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={styles.pubButton}
                   onPress={() => (navigation as any).navigate('CreatePublicite')}
                 >
                   <SafeIcon name="zap" size={16} color="#F59E0B" />
-                  <Text style={styles.pubButtonText}>Créer Pub</Text>
+                  <Text style={styles.pubButtonText}>Cr�er Pub</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={styles.dashboardButton}
@@ -897,7 +895,7 @@ const ServicesScreen: React.FC = () => {
                   onPress={() => (navigation as any).navigate('FormulaireYukpoIntelligent', { mode: 'create' })}
                 >
                   <SafeIcon name="plus" size={16} color="#fff" />
-                  <Text style={styles.createButtonText}>Créer</Text>
+                  <Text style={styles.createButtonText}>Cr�er</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -929,12 +927,12 @@ const ServicesScreen: React.FC = () => {
                 <Text style={styles.emptyTitle}>Aucun service</Text>
                 <Text style={styles.emptyText}>
                   {filter === 'tous'
-                    ? 'Créez votre premier service pour commencer'
+                    ? 'Cr�ez votre premier service pour commencer'
                     : `Aucun service ${filter === 'actif' ? 'actif' : 'inactif'} pour le moment`}
                 </Text>
                 {filter === 'tous' && (
                   <NativeButton
-                    title="Créer un service"
+                    title="Cr�er un service"
                     onPress={() => (navigation as any).navigate('FormulaireYukpoIntelligent', { mode: 'create' })}
                     variant="primary"
                     style={styles.emptyButton}
@@ -958,18 +956,18 @@ const ServicesScreen: React.FC = () => {
         )}
       </ScrollView>
 
-      {/* Modal de gestion d'équipe */}
+      {/* Modal de gestion d'�quipe */}
       {showTeamManager && (
         <ServiceTeamManager
           serviceId={selectedServiceForTeam || undefined}
           onClose={handleCloseTeamManager}
           onMemberAdded={(member) => {
-            // Rafraîchir les données si nécessaire
-            console.log('Membre ajouté:', member);
+            // Rafra�chir les donn�es si n�cessaire
+            console.log('Membre ajout�:', member);
           }}
           onMemberRemoved={(memberId) => {
-            // Rafraîchir les données si nécessaire
-            console.log('Membre retiré:', memberId);
+            // Rafra�chir les donn�es si n�cessaire
+            console.log('Membre retir�:', memberId);
           }}
         />
       )}
@@ -1374,3 +1372,4 @@ const styles = StyleSheet.create({
 });
 
 export default ServicesScreen;
+

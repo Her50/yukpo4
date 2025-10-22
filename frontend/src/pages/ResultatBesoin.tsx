@@ -15,10 +15,11 @@ import {
   Filter,
   MapPin
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 // Composants modulaires
+import { CategoryFilters } from '@/components/CategoryFilters';
 import { GlobalChat } from '@/components/chat/GlobalChat';
 import ContactModal from '@/components/contact/ContactModal';
 import GalleryModal from '@/components/gallery/GalleryModal';
@@ -26,6 +27,9 @@ import ProductCard from '@/components/products/ProductCard';
 
 // Hooks et services
 import { usePrestataireInfo } from '@/hooks/usePrestataireInfo';
+
+// Configuration intelligente des catégories
+import { getCategoryConfig, getCategoryStyle, getCategoryTerminology } from '@/config/categoryConfig';
 
 // Types
 interface SearchResult {
@@ -63,8 +67,12 @@ export const ResultatBesoin: React.FC = () => {
   const [sortBy, setSortBy] = useState<'relevance' | 'price_asc' | 'price_desc' | 'distance'>('relevance');
   const [showPriceFilter, setShowPriceFilter] = useState(false);
 
+  // ✅ NOUVEAU: États pour les filtres de catégorie intelligents
+  const [showCategoryFilters, setShowCategoryFilters] = useState(false);
+  const [categoryFilters, setCategoryFilters] = useState<Record<string, any>>({});
+
   // Déterminer la catégorie dominante des produits (comme mobile)
-  const dominantCategory = (() => {
+  const dominantCategory = useMemo(() => {
     if (products.length === 0) return 'default';
 
     // Compter les catégories
@@ -85,7 +93,96 @@ export const ResultatBesoin: React.FC = () => {
     });
 
     return dominant;
-  })();
+  }, [products]);
+
+  // ✅ NOUVEAU: Récupérer la configuration intelligente de la catégorie dominante
+  const categoryConfig = getCategoryConfig(dominantCategory);
+  const categoryStyle = getCategoryStyle(dominantCategory);
+  const terminology = getCategoryTerminology(dominantCategory);
+
+  // ✅ NOUVEAU: Filtrage et tri intelligent des produits
+  const filteredAndSortedProducts = useMemo(() => {
+    let filtered = [...products];
+
+    // 1. Appliquer les filtres de catégorie spécifiques
+    if (Object.keys(categoryFilters).length > 0) {
+      filtered = filtered.filter(product => {
+        for (const [key, value] of Object.entries(categoryFilters)) {
+          if (value === null || value === undefined || value === '') continue;
+
+          // Filtres numériques (min/max)
+          if (key.endsWith('_min') && product[key.replace('_min', '')]) {
+            if (parseFloat(product[key.replace('_min', '')]) < parseFloat(value)) {
+              return false;
+            }
+          }
+          if (key.endsWith('_max') && product[key.replace('_max', '')]) {
+            if (parseFloat(product[key.replace('_max', '')]) > parseFloat(value)) {
+              return false;
+            }
+          }
+
+          // Filtres de correspondance directe
+          if (!key.endsWith('_min') && !key.endsWith('_max') && product[key] && product[key] !== value) {
+            return false;
+          }
+        }
+        return true;
+      });
+    }
+
+    // 2. Appliquer le filtre par prix
+    if (priceFilter.min !== null || priceFilter.max !== null) {
+      filtered = filtered.filter(product => {
+        const price = parseFloat(product.prix || product.price);
+        if (isNaN(price)) return false;
+        if (priceFilter.min !== null && price < priceFilter.min) return false;
+        if (priceFilter.max !== null && price > priceFilter.max) return false;
+        return true;
+      });
+    }
+
+    // 3. ✅ TRI INTELLIGENT : Produits en promotion d'abord, puis score, puis distance
+    filtered.sort((a, b) => {
+      // Priorité 1: PROMO d'abord
+      const promoA = a.en_promotion || a.promotion_active ? 1 : 0;
+      const promoB = b.en_promotion || b.promotion_active ? 1 : 0;
+      if (promoA !== promoB) return promoB - promoA;
+
+      // Priorité 2: Score (pertinence)
+      const scoreA = a.score || 0;
+      const scoreB = b.score || 0;
+      if (scoreA !== scoreB) return scoreB - scoreA;
+
+      // Priorité 3: Distance (proximité)
+      const distA = a.distance || Infinity;
+      const distB = b.distance || Infinity;
+      return distA - distB;
+    });
+
+    // 4. Appliquer le tri supplémentaire si demandé
+    if (sortBy === 'price_asc') {
+      filtered.sort((a, b) => {
+        const priceA = parseFloat(a.prix || a.price || 0);
+        const priceB = parseFloat(b.prix || b.price || 0);
+        return priceA - priceB;
+      });
+    } else if (sortBy === 'price_desc') {
+      filtered.sort((a, b) => {
+        const priceA = parseFloat(a.prix || a.price || 0);
+        const priceB = parseFloat(b.prix || b.price || 0);
+        return priceB - priceA;
+      });
+    } else if (sortBy === 'distance') {
+      filtered.sort((a, b) => {
+        const distA = a.distance || Infinity;
+        const distB = b.distance || Infinity;
+        return distA - distB;
+      });
+    }
+
+    return filtered;
+  }, [products, categoryFilters, priceFilter, sortBy]);
 
   // WebSocket et statut
   const userId = user?.id ? parseInt(user.id, 10) : 0;
@@ -193,8 +290,19 @@ export const ResultatBesoin: React.FC = () => {
           serviceProduits.forEach((product: any) => {
             // GPS prioritaire : produit > service gps_fixe > service gps
             const productGPS = product.gps || product.gpsFixe;
-            const serviceGPSFixe = service.data?.gps_fixe?.valeur || service.data?.gps_fixe;
-            const serviceGPSRealtime = service.gps;
+
+            // ✅ CORRECTION TypeScript: Gérer gps_fixe qui peut être string ou ServiceField
+            let serviceGPSFixe: string | undefined;
+            if (service.data?.gps_fixe) {
+              if (typeof service.data.gps_fixe === 'string') {
+                serviceGPSFixe = service.data.gps_fixe;
+              } else if (typeof service.data.gps_fixe === 'object' && 'valeur' in service.data.gps_fixe) {
+                serviceGPSFixe = String(service.data.gps_fixe.valeur);
+              }
+            }
+
+            // ✅ CORRECTION: service.gps n'existe pas dans l'interface, utiliser (service as any).gps
+            const serviceGPSRealtime = (service as any).gps;
             const bestGPS = productGPS || serviceGPSFixe || serviceGPSRealtime;
 
             // Calculer la distance si GPS disponible
@@ -720,34 +828,15 @@ export const ResultatBesoin: React.FC = () => {
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-4">
                 <div className="text-4xl">
-                  {(() => {
-                    const categoryIcons: Record<string, string> = {
-                      'immobilier_batiment': '🏠', 'immobilier_terrain': '🏞️', 'hotellerie': '🏨',
-                      'automobile': '🚗', 'ticket_voyage': '🎫', 'telephone': '📱',
-                      'ordinateur': '💻', 'vetement': '👔', 'chaussure': '👟',
-                      'electromenager': '🔌', 'mobilier': '🪑', 'aliments': '🍎',
-                      'pharmacie': '💊', 'hopital_clinique': '🏥', 'default': '🔍'
-                    };
-                    return categoryIcons[dominantCategory] || '🔍';
-                  })()}
+                  {categoryStyle.icon}
                 </div>
                 <div>
                   <h2 className="text-xl font-bold text-gray-900 truncate max-w-md">
-                    {(() => {
-                      const categoryLabels: Record<string, string> = {
-                        'immobilier_batiment': 'Immobilier - Vente/Location', 'immobilier_terrain': 'Terrains',
-                        'hotellerie': 'Hôtellerie et Hébergement', 'automobile': 'Automobiles',
-                        'ticket_voyage': 'Billets de Transport', 'telephone': 'Téléphones',
-                        'ordinateur': 'Ordinateurs', 'vetement': 'Vêtements', 'chaussure': 'Chaussures',
-                        'electromenager': 'Électroménager', 'mobilier': 'Mobilier', 'aliments': 'Aliments',
-                        'pharmacie': 'Pharmacies', 'hopital_clinique': 'Santé', 'default': 'Résultats de recherche'
-                      };
-                      return categoryLabels[dominantCategory] || 'Résultats de recherche';
-                    })()}
+                    {terminology.productsLabel}
                   </h2>
                   <p className="text-sm text-gray-600 flex items-center gap-2">
                     <CheckCircle className="w-4 h-4 text-green-500" />
-                    {products.length} produit{products.length > 1 ? 's' : ''} trouvé{products.length > 1 ? 's' : ''}
+                    {filteredAndSortedProducts.length} {filteredAndSortedProducts.length > 1 ? terminology.productsLabel.toLowerCase() : terminology.productLabel.toLowerCase()} trouvé{filteredAndSortedProducts.length > 1 ? 's' : ''}
                   </p>
                 </div>
               </div>
@@ -801,6 +890,27 @@ export const ResultatBesoin: React.FC = () => {
                 Filtre par prix
                 {(priceFilter.min !== null || priceFilter.max !== null) && (
                   <span className="ml-2 bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">1</span>
+                )}
+              </Button>
+
+              {/* ✅ NOUVEAU: Bouton des filtres de catégorie intelligents */}
+              <Button
+                onClick={() => setShowCategoryFilters(true)}
+                variant="outline"
+                size="sm"
+                className={`${Object.keys(categoryFilters).length > 0 ? 'bg-purple-600 text-white' : 'bg-white text-purple-600 border-purple-600'} hover:bg-purple-700 hover:text-white`}
+                style={{
+                  backgroundColor: Object.keys(categoryFilters).length > 0 ? categoryStyle.primaryColor : undefined,
+                  borderColor: Object.keys(categoryFilters).length === 0 ? categoryStyle.primaryColor : undefined,
+                  color: Object.keys(categoryFilters).length === 0 ? categoryStyle.primaryColor : undefined
+                }}
+              >
+                <Filter className="w-4 h-4 mr-2" />
+                Filtres {terminology.productLabel.toLowerCase()}
+                {Object.keys(categoryFilters).length > 0 && (
+                  <span className="ml-2 bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                    {Object.keys(categoryFilters).length}
+                  </span>
                 )}
               </Button>
             </div>
@@ -912,16 +1022,16 @@ export const ResultatBesoin: React.FC = () => {
         ) : (
           <div className="flex justify-center">
             <div className={`grid gap-6 ${(() => {
-              const count = products.length;
+              const count = filteredAndSortedProducts.length;
               return count === 1 ? 'grid-cols-1 max-w-md' :
                 count === 2 ? 'grid-cols-1 md:grid-cols-2 max-w-4xl' :
                   count <= 4 ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 max-w-5xl' :
                     'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 max-w-7xl';
             })()}`}>
 
-              {/* Affichage des produits */}
-              {products.length > 0 ? (
-                products.map((product, index) => (
+              {/* Affichage des produits filtrés et triés intelligemment */}
+              {filteredAndSortedProducts.length > 0 ? (
+                filteredAndSortedProducts.map((product, index) => (
                   <ProductCard
                     key={`product-${index}-${product.nom}`}
                     product={product}
@@ -935,10 +1045,14 @@ export const ResultatBesoin: React.FC = () => {
                 <div className="col-span-full text-center py-12">
                   <div className="inline-flex flex-col items-center gap-3">
                     <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center text-4xl">
-                      📦
+                      {categoryStyle.icon}
                     </div>
-                    <p className="text-gray-600 font-medium">Aucun produit trouvé</p>
-                    <p className="text-sm text-gray-400">Essayez de modifier votre recherche</p>
+                    <p className="text-gray-600 font-medium">{terminology.emptyMessage}</p>
+                    <p className="text-sm text-gray-400">
+                      {Object.keys(categoryFilters).length > 0
+                        ? 'Essayez de modifier vos filtres'
+                        : 'Essayez de modifier votre recherche'}
+                    </p>
                   </div>
                 </div>
               )}
@@ -998,6 +1112,18 @@ export const ResultatBesoin: React.FC = () => {
             onClose={() => setShowGalleryModal(false)}
           />
         )}
+
+        {/* ✅ NOUVEAU: Modal de filtres de catégorie intelligents */}
+        <CategoryFilters
+          category={dominantCategory}
+          open={showCategoryFilters}
+          onOpenChange={setShowCategoryFilters}
+          onApply={(filters) => {
+            setCategoryFilters(filters);
+            console.log('✅ [ResultatBesoin] Filtres appliqués:', filters);
+          }}
+          initialFilters={categoryFilters}
+        />
       </div>
     </AppLayout>
   );

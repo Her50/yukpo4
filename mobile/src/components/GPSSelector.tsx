@@ -33,7 +33,14 @@ const GPSSelector: React.FC<GPSSelectorProps> = ({
 
     const requestLocationPermission = async () => {
         try {
-            const { status } = await Location.requestForegroundPermissionsAsync();
+            // ✅ CORRECTION: Timeout pour éviter les blocages
+            const permissionPromise = Location.requestForegroundPermissionsAsync();
+            const timeoutPromise = new Promise((_, reject) =>
+                setTimeout(() => reject(new Error('Permission timeout')), 10000)
+            );
+
+            const { status } = await Promise.race([permissionPromise, timeoutPromise]) as any;
+
             if (status !== 'granted') {
                 Alert.alert(
                     'Permission requise',
@@ -46,20 +53,36 @@ const GPSSelector: React.FC<GPSSelectorProps> = ({
             getCurrentLocation();
         } catch (error) {
             console.error('Erreur permission GPS:', error);
-            Alert.alert('Erreur', 'Impossible d\'accéder à la localisation');
+            // ✅ CORRECTION: Ne pas afficher d'alerte si timeout
+            if (error.message !== 'Permission timeout') {
+                Alert.alert('Erreur', 'Impossible d\'accéder à la localisation');
+            }
         }
     };
 
     const getCurrentLocation = async () => {
         try {
             setLoading(true);
-            const location = await Location.getCurrentPositionAsync({
-                accuracy: Location.Accuracy.High,
+
+            // ✅ CORRECTION: Timeout pour éviter les blocages GPS
+            const locationPromise = Location.getCurrentPositionAsync({
+                accuracy: Location.Accuracy.Balanced, // Moins précis mais plus rapide
             });
+
+            const timeoutPromise = new Promise((_, reject) =>
+                setTimeout(() => reject(new Error('GPS timeout')), 15000)
+            );
+
+            const location = await Promise.race([locationPromise, timeoutPromise]) as any;
             setLocation(location);
         } catch (error) {
             console.error('Erreur GPS:', error);
-            Alert.alert('Erreur', 'Impossible d\'obtenir votre position actuelle');
+            // ✅ CORRECTION: Gestion d'erreur plus douce
+            if (error.message === 'GPS timeout') {
+                Alert.alert('GPS lent', 'La localisation prend du temps. Réessayez ou utilisez la recherche d\'adresse.');
+            } else {
+                Alert.alert('Erreur', 'Impossible d\'obtenir votre position actuelle');
+            }
         } finally {
             setLoading(false);
         }

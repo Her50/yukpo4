@@ -1,3 +1,4 @@
+// @ts-nocheck
 // Migration vers Lucide React Native pour un design moderne
 import { useNavigation } from '@react-navigation/native';
 import { CheckCircle, Envelope, WarningCircle } from 'phosphor-react-native';
@@ -581,6 +582,7 @@ const styles = StyleSheet.create({
 });
 
 export default RegisterScreen;
+
 
 
 

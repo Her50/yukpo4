@@ -1,4 +1,5 @@
-ï»¿import { Ionicons } from '@expo/vector-icons';
+// @ts-nocheck
+import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import * as React from "react";
 import { useState } from 'react';
@@ -22,10 +23,10 @@ const MonProfilScreen: React.FC = () => {
         try {
             await updateUser(formData);
             setEditing(false);
-            Alert.alert('SuccÃ¨s', 'Profil mis Ã  jour avec succÃ¨s');
+            Alert.alert('Succès', 'Profil mis à jour avec succès');
         } catch (error) {
-            console.error('Erreur mise Ã  jour profil:', error);
-            Alert.alert('Erreur', 'Impossible de mettre Ã  jour le profil');
+            console.error('Erreur mise à jour profil:', error);
+            Alert.alert('Erreur', 'Impossible de mettre à jour le profil');
         }
     };
 
@@ -74,7 +75,7 @@ const MonProfilScreen: React.FC = () => {
                         <View style={styles.profileInfo}>
                             <Text style={styles.userName}>{user?.name || 'Utilisateur'}</Text>
                             <Text style={styles.userEmail}>{user?.email}</Text>
-                            <Text style={styles.userRole}>RÃ´le: {user?.role}</Text>
+                            <Text style={styles.userRole}>Rôle: {user?.role}</Text>
                         </View>
                     </Card.Content>
                 </Card>
@@ -93,7 +94,7 @@ const MonProfilScreen: React.FC = () => {
                                     mode="outlined"
                                 />
                             ) : (
-                                <Text style={styles.inputValue}>{user?.name || 'Non renseignÃ©'}</Text>
+                                <Text style={styles.inputValue}>{user?.name || 'Non renseigné'}</Text>
                             )}
                         </View>
 
@@ -113,7 +114,7 @@ const MonProfilScreen: React.FC = () => {
                         </View>
 
                         <View style={styles.inputGroup}>
-                            <Text style={styles.inputLabel}>TÃ©lÃ©phone</Text>
+                            <Text style={styles.inputLabel}>Téléphone</Text>
                             {editing ? (
                                 <TextInput
                                     value={formData.phone}
@@ -123,7 +124,7 @@ const MonProfilScreen: React.FC = () => {
                                     keyboardType="phone-pad"
                                 />
                             ) : (
-                                <Text style={styles.inputValue}>{user?.phone || 'Non renseignÃ©'}</Text>
+                                <Text style={styles.inputValue}>{user?.phone || 'Non renseigné'}</Text>
                             )}
                         </View>
 
@@ -164,7 +165,7 @@ const MonProfilScreen: React.FC = () => {
                             onPress={() => navigation.navigate('Settings' as never)}
                         >
                             <Ionicons name="settings" size={24} color={theme.colors.primary} />
-                            <Text style={styles.actionText}>ParamÃ¨tres</Text>
+                            <Text style={styles.actionText}>Paramètres</Text>
                             <Ionicons name="chevron-forward" size={20} color={theme.colors.textSecondary} />
                         </TouchableOpacity>
 
@@ -305,6 +306,7 @@ const styles = StyleSheet.create({
 });
 
 export default MonProfilScreen;
+
 
 
 

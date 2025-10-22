@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Contexte WebSocket Global pour les notifications en temps réel
  * Gère la connexion WebSocket persistante et les notifications push
@@ -7,6 +6,7 @@ import React, { createContext, useCallback, useContext, useEffect, useState } fr
 import { Alert } from 'react-native';
 import websocketService, { ChatMessage, NotificationMessage, UserStatusUpdate } from '../services/websocketService';
 import { useAuth } from './AuthContext';
+import { STARTUP_CONFIG } from '../config/startupConfig';
 
 interface WebSocketContextValue {
     isConnected: boolean;
@@ -35,7 +35,14 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     useEffect(() => {
         if (user?.id) {
             console.log('[WebSocketContext] 🔌 Connexion WebSocket pour user:', user.id);
-            websocketService.connect();
+            // DÉLAI AUGMENTÉ pour éviter les blocages au démarrage
+            setTimeout(() => {
+                try {
+                    websocketService.connect();
+                } catch (error) {
+                    console.error('[WebSocketContext] Erreur connexion WebSocket:', error);
+                }
+            }, 2000); // Délai réduit à 2s
 
             // Envoyer le statut en ligne
             setTimeout(() => {
@@ -49,7 +56,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
                         }
                     });
                 }
-            }, 1000);
+            }, 3000); // Délai réduit à 3s
         }
 
         return () => {

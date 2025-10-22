@@ -6,18 +6,19 @@ import ReactNative from 'react-native';
 import ChatHistoryModal from '../components/ChatHistoryModal';
 import ChatInputMobile from '../components/ChatInputMobile';
 import LanguageSelector from '../components/LanguageSelector';
+import MixedContentCarousel from '../components/MixedContentCarousel'; // ✅ NOUVEAU: Carousel mixte
 import ModernBackground from '../components/ModernBackground';
 import ModernGPSModal from '../components/ModernGPSModal'; // Utiliser ModernGPSModal pour support des zones
 import NotificationHistoryModal from '../components/NotificationHistoryModal';
-import PublicitesCarousel from '../components/PublicitesCarousel';
 import { SafeNativeView } from '../components/SafeNativeView';
 import UserAvatarMenu from '../components/UserAvatarMenu';
+import { CRASH_PREVENTION_CONFIG } from '../config/gpsConfig';
 import { useAuth } from '../contexts/AuthContext';
-import { useLanguage } from '../contexts/LanguageContext';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 import { apiGet } from '../services/api';
 import userBehaviorService from '../services/userBehaviorService';
 import { genererSuggestionsService, rechercherServices } from '../services/yukpoclient';
-// @ts-ignore
+
 const { Alert, Dimensions, ScrollView, StyleSheet, Text, TouchableOpacity, View, KeyboardAvoidingView, Platform } = ReactNative;
 
 const { width, height } = Dimensions.get('window');
@@ -25,7 +26,7 @@ const { width, height } = Dimensions.get('window');
 const HomeScreen: React.FC = () => {
     const navigation = ReactNavigation.useNavigation();
     const { user, refreshUser } = useAuth(); // ✅ Ajout de refreshUser
-    const { language, setLanguage, t } = useLanguage(); // ✅ Context de langue avec traduction
+    const { language, setLanguage, t } = useLanguageSafe(); // ✅ SAFE: Context de langue avec traduction (ne crash jamais)
 
     // Debug pour vérifier les données utilisateur
     React.useEffect(() => {
@@ -37,9 +38,9 @@ const HomeScreen: React.FC = () => {
         });
     }, [user]);
 
-    // ✅ NOUVEAU: Rafraîchir le solde quand on revient sur HomeScreen
+    // ✅ CORRECTION CRITIQUE: Stabiliser les dépendances pour éviter memory leak
     React.useEffect(() => {
-        const unsubscribe = navigation.addListener('focus', () => {
+        const handleFocus = () => {
             console.log('[HomeScreen] 🔄 Écran focus - Rafraîchissement du solde...');
             if (user?.id && refreshUser) {
                 refreshUser().catch(err => {
@@ -48,10 +49,14 @@ const HomeScreen: React.FC = () => {
             }
             // ✅ Forcer le bouton sur "Rechercher" à chaque retour sur HomeScreen
             setIsCreateService(false);
-        });
+        };
 
-        return unsubscribe;
-    }, [navigation, user?.id, refreshUser]);
+        const unsubscribe = navigation.addListener('focus', handleFocus);
+
+        return () => {
+            unsubscribe();
+        };
+    }, []); // ✅ CORRECTION: Deps vides pour éviter re-création du listener
 
     const [loading, setLoading] = useState(false);
     const [isCreateService, setIsCreateService] = useState(false);
@@ -116,23 +121,40 @@ const HomeScreen: React.FC = () => {
         loadUserBehavior();
     }, []);
 
-    // Détection GPS automatique au chargement (si activé dans les paramètres)
+    // ✅ CORRECTION: Détection GPS sécurisée avec timeout
     React.useEffect(() => {
         const checkGPSAndActivate = async () => {
             try {
+                // ✅ CORRECTION: Vérifier la configuration de prévention des crashes
+                if (CRASH_PREVENTION_CONFIG.DISABLE_AUTO_GPS) {
+                    console.log('[HomeScreen] GPS automatique désactivé pour éviter les crashes');
+                    return;
+                }
+
                 // Vérifier si le GPS est activé dans les paramètres
                 const gpsEnabled = await AsyncStorage.getItem('gpsEnabled');
                 const isGPSEnabled = gpsEnabled !== null ? JSON.parse(gpsEnabled) : true; // Par défaut activé
 
                 if (isGPSEnabled) {
-                    // Demander les permissions de localisation
-                    const { status } = await Location.requestForegroundPermissionsAsync();
+                    // ✅ CORRECTION: Timeout pour éviter les blocages
+                    const permissionPromise = Location.requestForegroundPermissionsAsync();
+                    const timeoutPromise = new Promise((_, reject) =>
+                        setTimeout(() => reject(new Error('GPS permission timeout')), 10000)
+                    );
+
+                    const { status } = await Promise.race([permissionPromise, timeoutPromise]) as any;
 
                     if (status === 'granted') {
-                        // Obtenir la position actuelle
-                        const location = await Location.getCurrentPositionAsync({
-                            accuracy: Location.Accuracy.High,
+                        // ✅ CORRECTION: Timeout pour la localisation
+                        const locationPromise = Location.getCurrentPositionAsync({
+                            accuracy: Location.Accuracy.Balanced, // Moins précis mais plus rapide
                         });
+
+                        const locationTimeoutPromise = new Promise((_, reject) =>
+                            setTimeout(() => reject(new Error('GPS location timeout')), 15000)
+                        );
+
+                        const location = await Promise.race([locationPromise, locationTimeoutPromise]) as any;
 
                         const coords = {
                             lat: location.coords.latitude,
@@ -148,6 +170,10 @@ const HomeScreen: React.FC = () => {
                 }
             } catch (error) {
                 console.error('[HomeScreen] Erreur lors de la vérification GPS:', error);
+                // ✅ CORRECTION: Ne pas bloquer l'app si GPS échoue
+                if (error.message === 'GPS permission timeout' || error.message === 'GPS location timeout') {
+                    console.warn('[HomeScreen] GPS timeout - continuer sans localisation');
+                }
             }
         };
 
@@ -430,24 +456,23 @@ const HomeScreen: React.FC = () => {
                 {/* ✅ ENTÊTE FIXE - Reste visible au scroll */}
                 <View style={styles.fixedHeader}>
                     <View style={styles.headerRow}>
-                        {/* Avatar utilisateur */}
-                        <View style={styles.avatarContainer}>
-                            <UserAvatarMenu
-                                onNavigate={(route) => (navigation as any).navigate(route)}
-                                // Passer les données de solde et météo
-                                balance={user?.credits || 0}
-                                weatherLocation={selectedLocation}
+                        {/* Colonne gauche: Avatar + Langue */}
+                        <View style={styles.headerLeft}>
+                            <View style={styles.avatarContainer}>
+                                <UserAvatarMenu
+                                    onNavigate={(route) => (navigation as any).navigate(route)}
+                                    balance={user?.credits || 0}
+                                    weatherLocation={selectedLocation}
+                                />
+                            </View>
+                            <LanguageSelector
+                                selectedLanguage={language}
+                                onLanguageChange={setLanguage}
+                                compact={true}
                             />
                         </View>
 
-                        {/* 🌍 Sélecteur de langue (juste après l'avatar) */}
-                        <LanguageSelector
-                            selectedLanguage={language}
-                            onLanguageChange={setLanguage}
-                            compact={true}
-                        />
-
-                        {/* Titre principal centré */}
+                        {/* Titre principal PARFAITEMENT centré */}
                         <View style={styles.brandTitleContainer}>
                             <Text style={styles.brandTitleCompact}>
                                 <Text style={styles.brandYuk}>Yuk</Text>
@@ -455,7 +480,7 @@ const HomeScreen: React.FC = () => {
                             </Text>
                         </View>
 
-                        {/* Actions (notifications et conversation) */}
+                        {/* Colonne droite: Actions */}
                         <View style={styles.headerActionsCompact}>
                             <TouchableOpacity
                                 style={styles.headerButtonCompact}
@@ -480,6 +505,44 @@ const HomeScreen: React.FC = () => {
                     </View>
                 </View>
 
+                {/* ✅ ZONE DE RECHERCHE FIXE - Juste après l'en-tête */}
+                <View style={styles.searchSection}>
+                    {/* Sélecteur de mode moderne */}
+                    <View style={styles.modeSelectorModern}>
+                        <TouchableOpacity
+                            style={[styles.modeButtonModern, !isCreateService && styles.modeButtonActiveModern]}
+                            onPress={() => setIsCreateService(false)}
+                        >
+                            <Text style={[styles.modeButtonIconModern, !isCreateService && styles.modeButtonIconActiveModern]}>🔍</Text>
+                            <Text style={[styles.modeButtonTextModern, !isCreateService && styles.modeButtonTextActiveModern]}>
+                                {t('search.find')}
+                            </Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            style={[styles.modeButtonModern, isCreateService && styles.modeButtonActiveModern]}
+                            onPress={() => setIsCreateService(true)}
+                        >
+                            <Text style={[styles.modeButtonIconModern, isCreateService && styles.modeButtonIconActiveModern]}>➕</Text>
+                            <Text style={[styles.modeButtonTextModern, isCreateService && styles.modeButtonTextActiveModern]}>
+                                {t('search.create')}
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
+
+                    {/* ChatInput optimisé - COMPACT */}
+                    <ChatInputMobile
+                        onSubmit={handleSubmit}
+                        loading={loading}
+                        placeholder={isCreateService
+                            ? t('search.create')
+                            : t('search.placeholder')}
+                        onGPSPress={() => setShowGPSModal(true)}
+                        showSendButton={true}
+                    />
+                </View>
+
+                {/* ✅ ZONE DE CONTENU SCROLLABLE - Contenu mixte intelligent */}
                 <ScrollView
                     style={styles.scrollContainer}
                     contentContainerStyle={styles.scrollContent}
@@ -487,48 +550,12 @@ const HomeScreen: React.FC = () => {
                     keyboardShouldPersistTaps="handled"
                 >
                     <View>
-
-                        {/* Sélecteur de mode moderne - REMONTÉ */}
-                        <View style={styles.modeSelectorModern}>
-                            <TouchableOpacity
-                                style={[styles.modeButtonModern, !isCreateService && styles.modeButtonActiveModern]}
-                                onPress={() => setIsCreateService(false)}
-                            >
-                                <Text style={[styles.modeButtonIconModern, !isCreateService && styles.modeButtonIconActiveModern]}>🔍</Text>
-                                <Text style={[styles.modeButtonTextModern, !isCreateService && styles.modeButtonTextActiveModern]}>
-                                    {t('search.find')}
-                                </Text>
-                            </TouchableOpacity>
-
-                            <TouchableOpacity
-                                style={[styles.modeButtonModern, isCreateService && styles.modeButtonActiveModern]}
-                                onPress={() => setIsCreateService(true)}
-                            >
-                                <Text style={[styles.modeButtonIconModern, isCreateService && styles.modeButtonIconActiveModern]}>➕</Text>
-                                <Text style={[styles.modeButtonTextModern, isCreateService && styles.modeButtonTextActiveModern]}>
-                                    {t('search.create')}
-                                </Text>
-                            </TouchableOpacity>
-                        </View>
-
-                        {/* ChatInput optimisé - COMPACT */}
-                        <ChatInputMobile
-                            onSubmit={handleSubmit}
-                            loading={loading}
-                            placeholder={isCreateService
-                                ? t('search.create')
-                                : t('search.placeholder')}
-                            onGPSPress={() => setShowGPSModal(true)}
-                            showSendButton={true}
-                        />
-
-                        {/* ✅ Carousel de publicités basées sur le comportement - EN BAS */}
-                        <PublicitesCarousel
+                        {/* ✅ NOUVEAU: Carousel mixte (publicités + produits organiques) */}
+                        <MixedContentCarousel
                             userId={user?.id}
                             userBehavior={userBehaviorCategories}
+                            publiciteFrequency={3} // 1 pub toutes les 3 cartes
                         />
-
-
                     </View>
                 </ScrollView>
 
@@ -649,16 +676,29 @@ const styles = StyleSheet.create({
         height: '70%',
         backgroundColor: '#FFFFFF',
     },
+    // ✅ NOUVELLE SECTION DE RECHERCHE FIXE
+    searchSection: {
+        backgroundColor: '#FFFFFF',
+        paddingHorizontal: width > 400 ? 24 : 16,
+        paddingVertical: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: '#E5E7EB',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 3,
+        zIndex: 999,
+    },
     scrollContainer: {
         flex: 1,
     },
     scrollContent: {
         flexGrow: 1,
-        paddingHorizontal: width > 400 ? 24 : 16, // ✅ Padding adaptatif selon la largeur
-        paddingTop: height * 0.12, // ✅ Réduit pour faire de la place au texte descriptif
-        paddingBottom: 150, // ✅ Augmenté pour que les onglets ne masquent pas le bouton envoyer
-        minHeight: height * 0.85, // ✅ Hauteur minimale augmentée
-        justifyContent: 'center', // ✅ Centre le contenu verticalement
+        paddingHorizontal: width > 400 ? 24 : 16,
+        paddingTop: 16, // ✅ Réduit car la recherche est maintenant fixe
+        paddingBottom: 150,
+        minHeight: height * 0.4, // ✅ Réduit car moins de contenu
     },
     descriptionContainer: {
         marginBottom: 16,
@@ -681,17 +721,25 @@ const styles = StyleSheet.create({
         gap: 8,
     },
     avatarContainer: {
-        flex: 0,
         width: 44,
         height: 44,
+        marginRight: 8,
     },
-    // ✅ Conteneur pour le titre centré - PARFAITEMENT CENTRÉ
-    brandTitleContainer: {
+    // ✅ NOUVEAU: Colonne gauche avec avatar + langue
+    headerLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
         flex: 1,
+        minWidth: 120, // ✅ Largeur minimale pour équilibrer
+    },
+    // ✅ Conteneur pour le titre PARFAITEMENT centré au milieu
+    brandTitleContainer: {
+        position: 'absolute',
+        left: 0,
+        right: 0,
         alignItems: 'center',
         justifyContent: 'center',
-        marginHorizontal: 0, // ✅ Supprimé pour centrage parfait
-        marginLeft: 0, // ✅ Supprimé le décalage
+        zIndex: -1, // ✅ En arrière-plan pour ne pas bloquer les clics
     },
     headerTop: {
         flexDirection: 'row',
@@ -765,8 +813,9 @@ const styles = StyleSheet.create({
     headerActionsCompact: {
         flexDirection: 'row',
         gap: 8,
-        flex: 0,
-        minWidth: 88, // Largeur fixe pour équilibrer avec l'avatar
+        flex: 1,
+        justifyContent: 'flex-end', // ✅ Aligner à droite
+        minWidth: 120, // ✅ Même largeur que headerLeft pour équilibrer
     },
     headerButtonCompact: {
         width: 40,

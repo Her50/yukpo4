@@ -1,7 +1,7 @@
 import { ArrowRight, Globe, MapPin, Package, Play } from 'lucide-react';
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { apiGet, apiPost } from '../services/api';
+import { apiGet, apiPost } from '../services/apiService';
 
 interface Publicite {
     id: string;
@@ -65,11 +65,14 @@ const PublicitesCarousel: React.FC<PublicitesCarouselProps> = ({ userId, userBeh
 
             const response = await apiGet(`/api/publicites/actives?${params.toString()}`);
 
-            if (response.success && response.data) {
-                let pubs = response.data;
+            // Parser le JSON de la réponse
+            const jsonData = await response.json();
+
+            if (jsonData && (Array.isArray(jsonData) || jsonData.data)) {
+                let pubs = Array.isArray(jsonData) ? jsonData : jsonData.data;
 
                 // Trier par pertinence si comportement fourni
-                if (userBehavior.length > 0) {
+                if (userBehavior.length > 0 && Array.isArray(pubs)) {
                     pubs = pubs.sort((a: Publicite, b: Publicite) => {
                         const scoreA = a.produits?.filter((p: any) =>
                             userBehavior.includes(p.type)
@@ -81,12 +84,16 @@ const PublicitesCarousel: React.FC<PublicitesCarouselProps> = ({ userId, userBeh
                     });
                 }
 
-                setPublicites(pubs);
+                setPublicites(Array.isArray(pubs) ? pubs : []);
+            } else {
+                setPublicites([]);
             }
 
             setLoading(false);
         } catch (error) {
             console.error('[PublicitesCarousel] Erreur chargement:', error);
+            // Ne plus continuer à essayer en boucle si l'endpoint n'existe pas
+            setPublicites([]);
             setLoading(false);
         }
     };
@@ -249,8 +256,8 @@ const PublicitesCarousel: React.FC<PublicitesCarouselProps> = ({ userId, userBeh
                             key={index}
                             onClick={() => setCurrentIndex(index)}
                             className={`h-2 rounded-full transition-all ${index === currentIndex
-                                    ? 'w-6 bg-blue-600'
-                                    : 'w-2 bg-gray-300 hover:bg-gray-400'
+                                ? 'w-6 bg-blue-600'
+                                : 'w-2 bg-gray-300 hover:bg-gray-400'
                                 }`}
                         />
                     ))}

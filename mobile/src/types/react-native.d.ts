@@ -1,29 +1,23 @@
-// Déclarations de types pour React Native
+// Déclarations de types supplémentaires pour React Native
+// Pour corriger les erreurs "has no exported member"
+
 declare module 'react-native' {
-    import { ComponentType } from 'react';
-
-    export const View: ComponentType<any>;
-    export const Text: ComponentType<any>;
-    export const TouchableOpacity: ComponentType<any>;
-    export const ScrollView: ComponentType<any>;
-    export const ActivityIndicator: ComponentType<any>;
-    export const Alert: any;
-    export const RefreshControl: ComponentType<any>;
-    export const StyleSheet: any;
-    export const Dimensions: any;
+  // Tous les exports standards de React Native
+  export * from 'react-native/types';
+  
+  // Exports qui peuvent être manquants
+  export {
+    Animated,
+    Image,
+    Modal,
+    TextInput,
+    KeyboardAvoidingView,
+    Platform,
+    Switch,
+    ActivityIndicator,
+    FlatList,
+    SectionList,
+    RefreshControl,
+    StatusBar,
+  } from 'react-native/types';
 }
-
-declare module 'expo-linear-gradient' {
-    export const LinearGradient: any;
-}
-
-declare module '@expo/vector-icons/Ionicons' {
-    export const Ionicons: any;
-}
-
-declare module 'lucide-react-native' {
-    export const LucideIcons: any;
-}
-
-
-

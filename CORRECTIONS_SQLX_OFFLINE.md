@@ -315,3 +315,5 @@ Solution: CREATE EXTENSION IF NOT EXISTS postgis;
 Toutes les migrations et le code backend ont été adaptés pour **SQLx mode offline** avec support complet **PostGIS** ! 🎉
 
 
+
+

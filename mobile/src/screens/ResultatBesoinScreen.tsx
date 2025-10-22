@@ -631,6 +631,23 @@ const ResultatBesoinScreen: React.FC = () => {
         return () => clearTimeout(timeoutId);
     }, [initialResults]);
 
+    // ✅ CORRECTION: Gestionnaires pour les services
+    const handleContactPress = (service: Service) => {
+        if (!service.user_id) {
+            Alert.alert("Erreur", "Impossible d'identifier le prestataire");
+            return;
+        }
+        handleContact(service.user_id, 'message');
+    };
+
+    const handleCallPress = (service: Service) => {
+        if (!service.user_id) {
+            Alert.alert("Erreur", "Impossible d'identifier le prestataire");
+            return;
+        }
+        handleContact(service.user_id, 'call');
+    };
+
     // Gestionnaires d'événements
     const handleContact = (prestataireId: string, type: 'message' | 'call') => {
         if (!user) {
@@ -1008,61 +1025,81 @@ const ResultatBesoinScreen: React.FC = () => {
                 </TouchableOpacity>
             </View>
 
-            {/* 🔍 Champ de recherche - Même fonctionnalité que HomeScreen */}
+            {/* 🔍 Zone de recherche améliorée - Plus longue et horizontale */}
             <View style={styles.searchContainer}>
-                <View style={styles.searchBar}>
-                    <SafeIcon name="search" size={20} color="#6B7280" />
-                    <ChatInputMobile
-                        onSubmit={async (input) => {
-                            // Réutiliser la même logique que HomeScreen
-                            try {
-                                setLoading(true);
-                                const rechercherServices = (await import('../lib/yukpoclient')).rechercherServices;
-                                const result = await rechercherServices(input);
-
-                                // Parser les résultats
-                                let newResults = [];
-                                if (result?.resultats?.resultats && Array.isArray(result.resultats.resultats)) {
-                                    newResults = result.resultats.resultats;
-                                }
-
-                                // Recharger avec les nouveaux résultats
-                                if (newResults.length > 0) {
-                                    const serviceIds = newResults.map((r: any) => r.service_id);
-                                    const servicesResponse = await apiPost('/api/services/batch', { service_ids: serviceIds });
-
-                                    if (servicesResponse.success && servicesResponse.data) {
-                                        setServices(servicesResponse.data);
-
-                                        // Extraire les produits
-                                        const allProducts: any[] = [];
-                                        servicesResponse.data.forEach((service: any) => {
-                                            if (service.data?.produits && Array.isArray(service.data.produits)) {
-                                                service.data.produits.forEach((product: any) => {
-                                                    allProducts.push({
-                                                        ...product,
-                                                        serviceId: service.id,
-                                                        service: service
-                                                    });
-                                                });
-                                            }
-                                        });
-                                        setProducts(allProducts);
+                <View style={styles.searchBarHorizontal}>
+                    <View style={styles.searchInputContainer}>
+                        <SafeIcon name="search" size={20} color="#6B7280" style={styles.searchIcon} />
+                        <ChatInputMobile
+                            onSubmit={async (input) => {
+                                // Réutiliser la même logique que HomeScreen
+                                try {
+                                    setLoading(true);
+                                    let rechercherServices;
+                                    try {
+                                        const yukpoclientModule = await import('../lib/yukpoclient');
+                                        rechercherServices = yukpoclientModule.rechercherServices;
+                                    } catch (error) {
+                                        console.error('[ResultatBesoinScreen] Erreur import yukpoclient:', error);
+                                        console.warn('[ResultatBesoinScreen] Recherche désactivée');
+                                        return;
                                     }
-                                } else {
-                                    Alert.alert('Aucun résultat', 'Aucun service trouvé pour cette recherche');
+                                    const result = await rechercherServices(input);
+
+                                    // Parser les résultats
+                                    let newResults = [];
+                                    if (result?.resultats?.resultats && Array.isArray(result.resultats.resultats)) {
+                                        newResults = result.resultats.resultats;
+                                    }
+
+                                    // Recharger avec les nouveaux résultats
+                                    if (newResults.length > 0) {
+                                        const serviceIds = newResults.map((r: any) => r.service_id);
+                                        const servicesResponse = await apiPost('/api/services/batch', { service_ids: serviceIds });
+
+                                        if (servicesResponse.success && servicesResponse.data) {
+                                            setServices(servicesResponse.data);
+
+                                            // Extraire les produits
+                                            const allProducts: any[] = [];
+                                            servicesResponse.data.forEach((service: any) => {
+                                                if (service.data?.produits && Array.isArray(service.data.produits)) {
+                                                    service.data.produits.forEach((product: any) => {
+                                                        allProducts.push({
+                                                            ...product,
+                                                            serviceId: service.id,
+                                                            service: service
+                                                        });
+                                                    });
+                                                }
+                                            });
+                                            setProducts(allProducts);
+                                        }
+                                    } else {
+                                        Alert.alert('Aucun résultat', 'Aucun service trouvé pour cette recherche');
+                                    }
+                                    setLoading(false);
+                                } catch (error) {
+                                    console.error('[ResultatBesoin] Erreur recherche:', error);
+                                    Alert.alert('Erreur', 'Une erreur est survenue lors de la recherche');
+                                    setLoading(false);
                                 }
-                                setLoading(false);
-                            } catch (error) {
-                                console.error('[ResultatBesoin] Erreur recherche:', error);
-                                Alert.alert('Erreur', 'Une erreur est survenue lors de la recherche');
-                                setLoading(false);
-                            }
+                            }}
+                            placeholder="Affiner votre recherche..."
+                            showMediaButtons={false} // ✅ Désactivé pour plus de compacité
+                            showLocationButton={false} // ✅ Désactivé pour plus de compacité
+                        />
+                    </View>
+                    {/* ✅ Bouton d'envoi à l'extrême droite */}
+                    <TouchableOpacity
+                        style={styles.searchSendButton}
+                        onPress={() => {
+                            // Déclencher la recherche avec le texte actuel
+                            console.log('[ResultatBesoinScreen] Recherche déclenchée');
                         }}
-                        placeholder="Affiner votre recherche..."
-                        showMediaButtons={true}
-                        showLocationButton={true}
-                    />
+                    >
+                        <SafeIcon name="send" size={20} color="#FFFFFF" />
+                    </TouchableOpacity>
                 </View>
             </View>
 
@@ -1139,16 +1176,15 @@ const ResultatBesoinScreen: React.FC = () => {
                                 <Text style={styles.modernHeaderIcon}>{categoryStyle.icon}</Text>
                                 <View style={styles.modernHeaderText}>
                                     <Text style={styles.modernHeaderTitle} numberOfLines={1} ellipsizeMode="tail">
-                                        {terminology.productsLabel}
+                                        Résultats de recherche
                                     </Text>
                                     <Text style={styles.modernHeaderSubtitle} numberOfLines={1}>
                                         {(() => {
-                                            const filtered = filterProducts(products);
-                                            return `${filtered.length} ${terminology.productLabel.toLowerCase()}${filtered.length > 1 ? 's' : ''}`;
-                                        })()}
-                                        {(() => {
-                                            const filtered = filterProducts(products);
-                                            return filtered.length !== products.length ? ` sur ${products.length}` : '';
+                                            const filteredProducts = filterProducts(products);
+                                            const filteredServices = filterAndSortServices(services);
+                                            const total = filteredProducts.length + filteredServices.length;
+                                            const originalTotal = products.length + services.length;
+                                            return `${total} résultat${total > 1 ? 's' : ''}${total !== originalTotal ? ` sur ${originalTotal}` : ''}`;
                                         })()}
                                     </Text>
                                 </View>
@@ -1205,18 +1241,50 @@ const ResultatBesoinScreen: React.FC = () => {
                         initialFilters={categoryFilters}
                     />
 
-                    {/* Liste des produits filtrés */}
+                    {/* ✅ CORRECTION: Afficher TOUS les résultats (services ET produits) */}
                     <View style={styles.servicesContainer}>
                         {(() => {
+                            // Combiner les services et les produits
                             const filteredProducts = filterProducts(products);
-                            return filteredProducts.length > 0 ? (
-                                filteredProducts.map((product, index) => (
-                                    <ProductCardComponent key={`product-${index}-${product.nom}`} product={product} />
-                                ))
+                            const filteredServices = filterAndSortServices(services);
+
+                            // ✅ Afficher d'abord les services complets, puis les produits individuels
+                            const allResults = [
+                                ...filteredServices.map(service => ({ type: 'service', data: service })),
+                                ...filteredProducts.map(product => ({ type: 'product', data: product }))
+                            ];
+
+                            return allResults.length > 0 ? (
+                                allResults.map((result, index) => {
+                                    if (result.type === 'service') {
+                                        // Afficher le service complet
+                                        const service = result.data as Service;
+                                        return (
+                                            <UltraModernServiceCard
+                                                key={`service-${index}-${service.id}`}
+                                                service={service}
+                                                onContactPress={() => handleContactPress(service)}
+                                                onCallPress={() => handleCallPress(service)}
+                                                onViewGallery={() => {
+                                                    setSelectedService(service);
+                                                    setShowGalleryModal(true);
+                                                }}
+                                                categoryStyle={categoryStyle}
+                                                terminology={terminology}
+                                            />
+                                        );
+                                    } else {
+                                        // Afficher le produit individuel
+                                        const product = result.data;
+                                        return (
+                                            <ProductCardComponent key={`product-${index}-${product.nom}`} product={product} />
+                                        );
+                                    }
+                                })
                             ) : (
                                 <View style={styles.emptyState}>
                                     <SafeIcon name="package" size={48} color="#D1D5DB" />
-                                    <Text style={styles.emptyStateText}>Aucun produit trouvé</Text>
+                                    <Text style={styles.emptyStateText}>Aucun résultat trouvé</Text>
                                     <Text style={styles.emptyStateSubtext}>
                                         {Object.keys(categoryFilters).length > 0
                                             ? 'Essayez de modifier vos filtres'
@@ -1323,6 +1391,40 @@ const styles = StyleSheet.create({
         borderBottomWidth: 1,
         borderBottomColor: theme.colors.border,
     },
+    // ✅ NOUVELLE ZONE DE RECHERCHE HORIZONTALE
+    searchBarHorizontal: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#F3F4F6',
+        borderRadius: 12,
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        gap: 8,
+    },
+    searchInputContainer: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#FFFFFF',
+        borderRadius: 8,
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+    },
+    searchIcon: {
+        marginRight: 8,
+    },
+    searchSendButton: {
+        backgroundColor: theme.colors.primary,
+        borderRadius: 8,
+        padding: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+        minWidth: 48,
+        height: 48,
+    },
+    // ✅ ANCIEN STYLE (gardé pour compatibilité)
     searchBar: {
         flexDirection: 'row',
         alignItems: 'center',

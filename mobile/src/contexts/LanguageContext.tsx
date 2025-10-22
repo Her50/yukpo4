@@ -1,5 +1,6 @@
 // 🌍 Context de Langue - Gestion globale de la langue de l'application
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Location from 'expo-location';
 import React, { createContext, useContext, useEffect, useState } from 'react';
 
 interface LanguageContextType {
@@ -22,6 +23,30 @@ export const useLanguage = () => {
     return context;
 };
 
+// ✅ HOOK SAFE: Fonctionne avec ou sans provider (ne crash jamais)
+export const useLanguageSafe = () => {
+    try {
+        const context = useContext(LanguageContext);
+        if (context) {
+            return context;
+        }
+    } catch (error) {
+        console.warn('[LanguageContext] Provider non disponible, utilisation du fallback français');
+    }
+
+    // Fallback si le provider n'existe pas
+    return {
+        language: 'fr',
+        setLanguage: (lang: string) => {
+            console.log('[LanguageContext] Fallback: setLanguage appelé mais provider absent:', lang);
+        },
+        t: (key: string) => {
+            // Retourner les traductions françaises par défaut
+            return translations['fr']?.[key] || key;
+        }
+    };
+};
+
 interface LanguageProviderProps {
     children: React.ReactNode;
 }
@@ -29,42 +54,47 @@ interface LanguageProviderProps {
 export const LanguageProvider: React.FC<LanguageProviderProps> = ({ children }) => {
     const [language, setLanguageState] = useState<string>('fr');
 
-    // Charger la langue sauvegardée au démarrage ou détecter via GPS
+    // Charger la langue sauvegardée au démarrage - VERSION SIMPLIFIÉE
     useEffect(() => {
-        loadOrDetectLanguage();
+        loadLanguage();
     }, []);
 
-    const loadOrDetectLanguage = async () => {
+    const loadLanguage = async () => {
         try {
             const savedLanguage = await AsyncStorage.getItem('app_language');
-            const isFirstLaunch = await AsyncStorage.getItem('app_first_launch');
-
             if (savedLanguage) {
-                // Langue déjà sauvegardée
                 setLanguageState(savedLanguage);
-            } else if (isFirstLaunch === null) {
-                // Première installation - Détecter la langue via GPS
-                console.log('[Language] Première installation - Détection langue via GPS...');
-                await detectLanguageFromGPS();
-                await AsyncStorage.setItem('app_first_launch', 'false');
+            } else {
+                // Par défaut français pour éviter les problèmes de GPS
+                setLanguageState('fr');
+                await AsyncStorage.setItem('app_language', 'fr');
             }
         } catch (error) {
             console.error('Erreur chargement langue:', error);
+            // Fallback en cas d'erreur
+            setLanguageState('fr');
         }
     };
 
     const detectLanguageFromGPS = async () => {
         try {
-            const Location = require('expo-location');
+            console.log('[Language] 🛰️ Détection GPS activée - Démarrage...');
+
             const { status } = await Location.requestForegroundPermissionsAsync();
 
             if (status === 'granted') {
-                const location = await Location.getCurrentPositionAsync({
-                    accuracy: Location.Accuracy.High,
+                // ✅ CORRECTION: Timeout réduit pour éviter les blocages
+                const locationPromise = Location.getCurrentPositionAsync({
+                    accuracy: Location.Accuracy.Balanced, // Moins précis mais plus rapide
                 });
 
+                const timeoutPromise = new Promise((_, reject) =>
+                    setTimeout(() => reject(new Error('GPS timeout')), 8000) // Timeout réduit
+                );
+
+                const location = await Promise.race([locationPromise, timeoutPromise]) as any;
                 const { latitude, longitude } = location.coords;
-                console.log('[Language] GPS:', latitude, longitude);
+                console.log('[Language] 🛰️ GPS coordonnées:', latitude, longitude);
 
                 // Déterminer la langue basée sur la région
                 let detectedLang = 'fr'; // Par défaut français
@@ -94,11 +124,14 @@ export const LanguageProvider: React.FC<LanguageProviderProps> = ({ children }) 
                     detectedLang = 'es';
                 }
 
-                console.log('[Language] Langue détectée via GPS:', detectedLang);
+                console.log('[Language] 🌍 Langue détectée via GPS:', detectedLang);
                 await setLanguage(detectedLang);
+            } else {
+                console.log('[Language] ⚠️ Permission GPS refusée, utilisation du français par défaut');
+                await setLanguage('fr');
             }
         } catch (error) {
-            console.error('[Language] Erreur détection GPS:', error);
+            console.error('[Language] ❌ Erreur détection GPS:', error);
             // Langue par défaut si erreur
             await setLanguage('fr');
         }
@@ -134,8 +167,8 @@ const translations: { [lang: string]: { [key: string]: string } } = {
         // Navigation
         'home.title': 'Accueil',
         'home.welcome': 'Bienvenue',
-        'services.title': 'Mes Services',
-        'activity.title': 'Boutique | Prestations',
+        'services.title': 'Boutique | Services', // ✅ Modifié
+        'activity.title': 'Activités',
         'activity.list_view': 'Liste',
         'activity.dashboard_view': 'Dashboard',
         'activity.all_services': 'Tous mes services',
@@ -298,8 +331,8 @@ const translations: { [lang: string]: { [key: string]: string } } = {
         // Navigation
         'home.title': 'Home',
         'home.welcome': 'Welcome',
-        'services.title': 'My Services',
-        'activity.title': 'Shop | Services',
+        'services.title': 'Shop | Services', // ✅ Modifié
+        'activity.title': 'Activity',
         'activity.list_view': 'List',
         'activity.dashboard_view': 'Dashboard',
         'activity.all_services': 'All my services',
@@ -462,8 +495,8 @@ const translations: { [lang: string]: { [key: string]: string } } = {
         // Navigation
         'home.title': 'Inicio',
         'home.welcome': 'Bienvenido',
-        'services.title': 'Mis Servicios',
-        'activity.title': 'Tienda | Servicios',
+        'services.title': 'Tienda | Servicios', // ✅ Modifié
+        'activity.title': 'Actividad',
         'activity.list_view': 'Lista',
         'activity.dashboard_view': 'Panel',
         'activity.all_services': 'Todos mis servicios',

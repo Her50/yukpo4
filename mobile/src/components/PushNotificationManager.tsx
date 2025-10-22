@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Composant global pour gérer les push notifications
  * - Enregistre le token au démarrage si l'utilisateur est connecté

@@ -1,6 +1,5 @@
 // Configuration WebSocket pour l'application mobile
-// @ts-ignore
-
+// TODO: Fix TypeScript type issue
 export const WEBSOCKET_CONFIG = {
   // WebSockets activés
   enabled: true,

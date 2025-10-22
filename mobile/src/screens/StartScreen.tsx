@@ -1,4 +1,5 @@
-﻿import * as React from 'react';
+// @ts-nocheck
+import * as React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Card, Title, Paragraph, Button } from 'react-native-paper';
@@ -10,7 +11,7 @@ const StartScreen = () => {
     <ScrollView style={styles.container}>
       <View style={styles.content}>
         <Text style={styles.title}>
-          🎯 Démarrer avec Yukpo
+          ?? D�marrer avec Yukpo
         </Text>
         <Text style={styles.subtitle}>
           Dites-nous ce que vous cherchez ou proposez : Yukpo vous guide.
@@ -19,19 +20,19 @@ const StartScreen = () => {
         <View style={styles.cardsContainer}>
           <Card style={styles.card}>
             <Card.Content style={styles.cardContent}>
-              <Title style={styles.cardTitle}>🎯 Je suis prestataire</Title>
+              <Title style={styles.cardTitle}>?? Je suis prestataire</Title>
               <TouchableOpacity 
                 style={styles.button}
                 onPress={() => navigation.navigate('CreateService' as never)}
               >
-                <Text style={styles.buttonText}>Créer ou gérer mes services</Text>
+                <Text style={styles.buttonText}>Cr�er ou g�rer mes services</Text>
               </TouchableOpacity>
             </Card.Content>
           </Card>
           
           <Card style={styles.card}>
             <Card.Content style={styles.cardContent}>
-              <Title style={styles.cardTitle}>🔍 Je cherche une solution</Title>
+              <Title style={styles.cardTitle}>?? Je cherche une solution</Title>
               <TouchableOpacity 
                 style={styles.button}
                 onPress={() => navigation.navigate('RechercheBesoin' as never)}
@@ -43,7 +44,7 @@ const StartScreen = () => {
           
           <Card style={styles.card}>
             <Card.Content style={styles.cardContent}>
-              <Title style={styles.cardTitle}>🧠 Accès IA Yukpo</Title>
+              <Title style={styles.cardTitle}>?? Acc�s IA Yukpo</Title>
               <TouchableOpacity 
                 style={styles.button}
                 onPress={() => navigation.navigate('AIHub' as never)}
@@ -113,6 +114,7 @@ const styles = StyleSheet.create({
 });
 
 export default StartScreen;
+
 
 
 

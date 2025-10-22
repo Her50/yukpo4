@@ -1,12 +1,10 @@
 ﻿import React, { useEffect, useState } from 'react';
-// @ts-ignore
 import ReactNative from 'react-native';
 import { API_ENDPOINTS } from '../config/api.config';
 import { useAuth } from '../contexts/AuthContext';
 import { apiDelete, apiGet, apiPatch } from '../services/api';
 import { theme } from '../theme/theme';
 
-// @ts-ignore
 const { Alert, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } = ReactNative;
 
 interface NotificationItem {

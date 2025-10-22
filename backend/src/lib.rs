@@ -43,6 +43,7 @@ use crate::routes::{
     notification_routes::notification_routes, // ✅ NOUVEAU : Routes de notifications
     push_routes::push_routes, // ✅ NOUVEAU : Routes push
     product_lifecycle_routes::product_lifecycle_routes, // ✅ Routes de gestion du cycle de vie des produits
+    recommendation_routes::recommendation_routes, // ✅ NOUVEAU: Routes recommandations
     ia_routes::ia_routes,
     history_routes::history_routes,
     payment_routes::payment_routes,
@@ -181,6 +182,7 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .merge(notifications)  // ✅ NOUVEAU : Routes de notifications
         .merge(push_notifs)  // ✅ NOUVEAU : Routes push notifications
         .merge(product_lifecycle)  // ✅ Routes de gestion du cycle de vie des produits
+        .nest("/api", recommendation_routes())  // ✅ NOUVEAU : Routes recommandations
         .route("/fournitures/gestion", axum::routing::post(fournitures_axum_handler))
         .layer(axum::middleware::from_fn(cors_middleware))  // ← AJOUTER CETTE LIGNE
         .with_state(state);    // Ajouter les routes WebSocket s?par?ment

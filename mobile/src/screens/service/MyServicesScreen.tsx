@@ -1,4 +1,5 @@
-ï»¿import { useNavigation } from '@react-navigation/native';
+// @ts-nocheck
+import { useNavigation } from '@react-navigation/native';
 import React from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -30,31 +31,31 @@ const MyServicesScreen: React.FC = () => {
         <View style={styles.content}>
           {/* Message d'information */}
           <View style={styles.infoCard}>
-            <Text style={styles.infoIcon}>â„¹</Text>
+            <Text style={styles.infoIcon}>?</Text>
             <View style={styles.infoText}>
-              <Text style={styles.infoTitle}>GÃ©rez vos services</Text>
+              <Text style={styles.infoTitle}>Gérez vos services</Text>
               <Text style={styles.infoDescription}>
-                CrÃ©ez et gÃ©rez vos services pour attirer plus de clients
+                Créez et gérez vos services pour attirer plus de clients
               </Text>
             </View>
           </View>
 
-          {/* Bouton de crÃ©ation rapide */}
+          {/* Bouton de création rapide */}
           <TouchableOpacity
             style={styles.createButton}
             onPress={handleCreateService}
           >
             <Text style={styles.createIcon}>+</Text>
-            <Text style={styles.createButtonText}>CrÃ©er un nouveau service</Text>
+            <Text style={styles.createButtonText}>Créer un nouveau service</Text>
           </TouchableOpacity>
 
           {/* Liste des services (vide pour l'instant) */}
           <View style={styles.servicesList}>
             <Text style={styles.emptyText}>
-              Aucun service crÃ©Ã© pour le moment
+              Aucun service créé pour le moment
             </Text>
             <Text style={styles.emptySubtext}>
-              Commencez par crÃ©er votre premier service
+              Commencez par créer votre premier service
             </Text>
           </View>
         </View>

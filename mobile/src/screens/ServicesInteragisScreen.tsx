@@ -1,4 +1,5 @@
-﻿import AsyncStorage from '@react-native-async-storage/async-storage';
+// @ts-nocheck
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { useEffect, useState } from 'react';
 import ReactNative from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
@@ -62,20 +63,20 @@ const ServicesInteragisScreen: React.FC = () => {
                 const servicesData = data.services || [];
                 setServices(servicesData);
 
-                // Extraire les catégories et types disponibles
+                // Extraire les cat�gories et types disponibles
                 const categories = [...new Set(servicesData.map((s: InteractedService) => s.category))];
                 const types = [...new Set(servicesData.map((s: InteractedService) => s.interactionType))];
                 setAvailableCategories(categories);
                 setAvailableTypes(types);
             } else {
-                // Charger depuis AsyncStorage si l'API échoue
+                // Charger depuis AsyncStorage si l'API �choue
                 const savedServices = await AsyncStorage.getItem('interactedServices');
                 if (savedServices) {
                     try {
                         const parsedServices = JSON.parse(savedServices);
                         setServices(parsedServices);
 
-                        // Extraire les catégories et types disponibles
+                        // Extraire les cat�gories et types disponibles
                         const categories = [...new Set(parsedServices.map((s: InteractedService) => s.category))];
                         const types = [...new Set(parsedServices.map((s: InteractedService) => s.interactionType))];
                         setAvailableCategories(categories);
@@ -134,14 +135,14 @@ const ServicesInteragisScreen: React.FC = () => {
 
     const getInteractionIcon = (type: string) => {
         switch (type) {
-            case 'message': return '💬';
-            case 'call': return '📞';
-            case 'video': return '📹';
-            case 'review': return '⭐';
-            case 'favorite': return '❤️';
-            case 'share': return '📤';
-            case 'view': return '👁️';
-            default: return '💬';
+            case 'message': return '??';
+            case 'call': return '??';
+            case 'video': return '??';
+            case 'review': return '?';
+            case 'favorite': return '??';
+            case 'share': return '??';
+            case 'view': return '???';
+            default: return '??';
         }
     };
 
@@ -185,7 +186,7 @@ const ServicesInteragisScreen: React.FC = () => {
                 <View style={styles.header}>
                     <Text style={styles.title}>Mon historique</Text>
                     <Text style={styles.subtitle}>
-                        Retrouvez tous vos échanges et interactions avec les services
+                        Retrouvez tous vos �changes et interactions avec les services
                     </Text>
                 </View>
 
@@ -218,7 +219,7 @@ const ServicesInteragisScreen: React.FC = () => {
                                 <Text style={[styles.filterButtonText, filterType === type && styles.filterButtonTextActive]}>
                                         {type === 'message' ? 'Messages' :
                                             type === 'call' ? 'Appels' :
-                                                type === 'video' ? 'Vidéos' :
+                                                type === 'video' ? 'Vid�os' :
                                                     type === 'review' ? 'Avis' :
                                                         type === 'favorite' ? 'Favoris' :
                                                             type === 'share' ? 'Partages' :
@@ -229,7 +230,7 @@ const ServicesInteragisScreen: React.FC = () => {
                     </View>
 
                     <TouchableOpacity style={styles.refreshButton} onPress={loadInteractedServices}>
-                        <Text style={styles.refreshButtonText}>🔄 Actualiser</Text>
+                        <Text style={styles.refreshButtonText}>?? Actualiser</Text>
                             </TouchableOpacity>
                         </View>
 
@@ -237,10 +238,10 @@ const ServicesInteragisScreen: React.FC = () => {
                 <View style={styles.servicesList}>
                     {filteredServices.length === 0 ? (
                         <View style={styles.emptyState}>
-                            <Text style={styles.emptyIcon}>💬</Text>
+                            <Text style={styles.emptyIcon}>??</Text>
                             <Text style={styles.emptyTitle}>Aucun service interagi</Text>
                             <Text style={styles.emptySubtitle}>
-                                    Commencez à interagir avec des services pour les voir apparaître ici
+                                    Commencez � interagir avec des services pour les voir appara�tre ici
                                 </Text>
                         </View>
                     ) : (
@@ -276,9 +277,9 @@ const ServicesInteragisScreen: React.FC = () => {
                                             <Text style={styles.serviceDescription}>{service.serviceDescription}</Text>
 
                                             <View style={styles.serviceMeta}>
-                                                <Text style={styles.metaItem}>📍 {service.location}</Text>
-                                                <Text style={styles.metaItem}>⭐ {service.prestataireRating}</Text>
-                                                <Text style={styles.metaItem}>🕒 {formatTimeAgo(service.lastInteraction)}</Text>
+                                                <Text style={styles.metaItem}>?? {service.location}</Text>
+                                                <Text style={styles.metaItem}>? {service.prestataireRating}</Text>
+                                                <Text style={styles.metaItem}>?? {formatTimeAgo(service.lastInteraction)}</Text>
                                         </View>
                                         </View>
                                     </View>
@@ -286,11 +287,11 @@ const ServicesInteragisScreen: React.FC = () => {
                                     <View style={styles.serviceActions}>
                                         <TouchableOpacity style={styles.actionButton}>
                                             <Text style={[styles.actionIcon, service.isFavorite && styles.favoriteActive]}>
-                                                {service.isFavorite ? '❤️' : '🤍'}
+                                                {service.isFavorite ? '??' : '??'}
                                                 </Text>
                                         </TouchableOpacity>
                                         <TouchableOpacity style={styles.actionButton}>
-                                            <Text style={styles.actionIcon}>📤</Text>
+                                            <Text style={styles.actionIcon}>??</Text>
                                         </TouchableOpacity>
                                             </View>
                                         </View>
@@ -310,7 +311,7 @@ const ServicesInteragisScreen: React.FC = () => {
                                                 Alert.alert("Chat", `Chat avec ${service.prestataireName}`);
                                             }}
                                         >
-                                            <Text style={styles.chatButtonText}>💬 Chat</Text>
+                                            <Text style={styles.chatButtonText}>?? Chat</Text>
                                             </TouchableOpacity>
                                             <TouchableOpacity
                                             style={styles.callButton}
@@ -318,7 +319,7 @@ const ServicesInteragisScreen: React.FC = () => {
                                                 Alert.alert("Appel", `Appel vers ${service.prestataireName}`);
                                             }}
                                         >
-                                            <Text style={styles.callButtonText}>📞 Appeler</Text>
+                                            <Text style={styles.callButtonText}>?? Appeler</Text>
                                             </TouchableOpacity>
                                         </View>
                                     </View>
@@ -612,6 +613,7 @@ const styles = StyleSheet.create({
         fontWeight: '500',
     },
 });
+
 
 
 

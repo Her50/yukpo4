@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Location from 'expo-location';
 import React, { useEffect, useState } from 'react';
@@ -55,13 +54,23 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
 
     const requestLocationPermission = async () => {
         try {
-            const { status } = await Location.requestForegroundPermissionsAsync();
+            // ✅ CORRECTION CRASH: Timeout pour éviter les blocages
+            const permissionPromise = Location.requestForegroundPermissionsAsync();
+            const timeoutPromise = new Promise<{ status: string }>((_, reject) =>
+                setTimeout(() => reject(new Error('GPS permission timeout')), 10000)
+            );
+
+            const { status } = await Promise.race([permissionPromise, timeoutPromise as Promise<Location.LocationPermissionResponse>]);
             setPermissionGranted(status === 'granted');
             if (status !== 'granted') {
                 Alert.alert('Permission requise', 'Veuillez autoriser l\'accès à la localisation pour utiliser cette fonctionnalité.');
             }
-        } catch (error) {
-            console.error('Erreur permission:', error);
+        } catch (error: any) {
+            console.error('[ModernGPSModal] ❌ Erreur permission:', error);
+            if (error?.message?.includes('timeout')) {
+                console.warn('[ModernGPSModal] ⚠️ Timeout permission GPS');
+                setPermissionGranted(false);
+            }
         }
     };
 
@@ -73,9 +82,15 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
 
         setLoading(true);
         try {
-            const location = await Location.getCurrentPositionAsync({
-                accuracy: Location.Accuracy.High,
+            // ✅ CORRECTION CRASH: Timeout pour éviter les blocages
+            const locationPromise = Location.getCurrentPositionAsync({
+                accuracy: Location.Accuracy.Balanced, // Moins précis mais plus rapide
             });
+            const timeoutPromise = new Promise((_, reject) =>
+                setTimeout(() => reject(new Error('GPS location timeout')), 15000)
+            );
+
+            const location = await Promise.race([locationPromise, timeoutPromise]) as Location.LocationObject;
 
             const newLocation = {
                 lat: location.coords.latitude,
@@ -84,17 +99,33 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
 
             setSelectedLocation(newLocation);
 
-            // Géocodage inverse pour obtenir l'adresse
-            const reverseGeocode = await Location.reverseGeocodeAsync(newLocation);
-            if (reverseGeocode.length > 0) {
-                const addr = reverseGeocode[0];
-                const fullAddress = `${addr.street || ''} ${addr.streetNumber || ''}, ${addr.city || ''}, ${addr.region || ''}`.trim();
-                setAddress(fullAddress);
+            // ✅ CORRECTION CRASH: Timeout pour le géocodage inverse
+            try {
+                const geocodePromise = Location.reverseGeocodeAsync(newLocation);
+                const geocodeTimeout = new Promise((_, reject) =>
+                    setTimeout(() => reject(new Error('Geocoding timeout')), 10000)
+                );
+
+                const reverseGeocode = await Promise.race([geocodePromise, geocodeTimeout]) as Location.LocationGeocodedAddress[];
+
+                if (reverseGeocode && reverseGeocode.length > 0) {
+                    const addr = reverseGeocode[0];
+                    const fullAddress = `${addr.street || ''} ${addr.streetNumber || ''}, ${addr.city || ''}, ${addr.region || ''}`.trim();
+                    setAddress(fullAddress);
+                }
+            } catch (geocodeError: any) {
+                console.warn('[ModernGPSModal] ⚠️ Géocodage échoué:', geocodeError?.message);
+                // Utiliser les coordonnées comme fallback
+                setAddress(`${newLocation.lat.toFixed(6)}, ${newLocation.lng.toFixed(6)}`);
             }
 
-        } catch (error) {
-            console.error('Erreur géolocalisation:', error);
-            Alert.alert('Erreur', 'Impossible d\'obtenir votre position actuelle.');
+        } catch (error: any) {
+            console.error('[ModernGPSModal] ❌ Erreur géolocalisation:', error);
+            if (error?.message?.includes('timeout')) {
+                Alert.alert('Timeout GPS', 'La géolocalisation prend trop de temps. Veuillez réessayer.');
+            } else {
+                Alert.alert('Erreur', 'Impossible d\'obtenir votre position actuelle.');
+            }
         } finally {
             setLoading(false);
         }
@@ -140,11 +171,11 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
             const coordsString = `${selectedLocation.lat},${selectedLocation.lng}`;
             onSelect(coordsString);
         } else {
-            if (selectedPolygon.length < 3) {
+            if ((selectedPolygon || []).length < 3) {
                 Alert.alert('Erreur', 'Veuillez sélectionner au moins 3 points pour créer une zone.');
                 return;
             }
-            const coordsString = selectedPolygon.map(p => `${p.lat},${p.lng}`).join('|');
+            const coordsString = (selectedPolygon || []).map(p => `${p.lat},${p.lng}`).join('|');
             onSelect(coordsString);
         }
         onClose();

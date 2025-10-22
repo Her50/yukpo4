@@ -1,11 +1,9 @@
 import * as ImagePicker from 'expo-image-picker';
 import React, { useState } from 'react';
-// @ts-ignore
 import ReactNative from 'react-native';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
 
-// @ts-ignore
 const { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View, Image: RNImage } = ReactNative;
 
 interface BrandingManagerMobileProps {
@@ -27,7 +25,13 @@ const BrandingManagerMobile: React.FC<BrandingManagerMobileProps> = ({
 
     const pickImage = async (type: 'logo' | 'banner') => {
         try {
-            const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+            // ✅ CORRECTION: Timeout pour les permissions
+            const permissionPromise = ImagePicker.requestMediaLibraryPermissionsAsync();
+            const timeoutPromise = new Promise((_, reject) =>
+                setTimeout(() => reject(new Error('Permission timeout')), 10000)
+            );
+
+            const permissionResult = await Promise.race([permissionPromise, timeoutPromise]) as any;
 
             if (!permissionResult.granted) {
                 Alert.alert(
@@ -59,7 +63,12 @@ const BrandingManagerMobile: React.FC<BrandingManagerMobileProps> = ({
             }
         } catch (error) {
             console.error('Erreur sélection image:', error);
-            Alert.alert('Erreur', 'Impossible de sélectionner l\'image');
+            // ✅ CORRECTION: Gestion d'erreur plus douce
+            if (error.message === 'Permission timeout') {
+                console.warn('Timeout permission galerie - continuer sans image');
+            } else {
+                Alert.alert('Erreur', 'Impossible de sélectionner l\'image');
+            }
         }
     };
 

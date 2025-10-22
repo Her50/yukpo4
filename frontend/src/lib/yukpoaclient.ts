@@ -240,7 +240,7 @@ export async function creerService(donneesStructurees: any, tokensIAExterne?: nu
       },
       body: JSON.stringify({
         user_id: user_id,
-        ...donneesStructurees, // ?? CORRECTION : Étaler les données de service à la racine avec user_id
+        data: donneesStructurees, // ?? CORRECTION : Encapsuler les données dans le champ 'data' comme attendu par le backend
         ...(tokensIAExterne && { tokens_ia_externe: tokensIAExterne }) // ?? NOUVEAU : Transmettre les tokens IA externe
       }),
       signal: controller.signal

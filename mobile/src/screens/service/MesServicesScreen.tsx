@@ -1,5 +1,6 @@
-ï»¿import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect, useNavigation } from '@react-navigation/native'; // âœ… Ajout useFocusEffect
+// @ts-nocheck
+import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect, useNavigation } from '@react-navigation/native'; // ? Ajout useFocusEffect
 import * as React from "react";
 import { useEffect, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -29,10 +30,10 @@ const MesServicesScreen: React.FC = () => {
         loadServices();
     }, []);
 
-    // âœ… NOUVEAU: RafraÃ®chir la liste quand on revient sur l'Ã©cran
+    // ? NOUVEAU: Rafraîchir la liste quand on revient sur l'écran
     useFocusEffect(
         React.useCallback(() => {
-            console.log('[MesServices] ðŸ”„ Ã‰cran focus - RafraÃ®chissement de la liste...');
+            console.log('[MesServices] ?? Écran focus - Rafraîchissement de la liste...');
             loadServices();
         }, [])
     );
@@ -42,10 +43,10 @@ const MesServicesScreen: React.FC = () => {
             setLoading(true);
             console.log('[MesServices] Chargement des services...');
 
-            // Charger les vraies donnÃ©es depuis l'API
+            // Charger les vraies données depuis l'API
             const response = await servicesApi.getUserServices();
 
-            console.log('[MesServices] RÃ©ponse API:', response);
+            console.log('[MesServices] Réponse API:', response);
 
             if (response.success && response.data) {
                 const servicesData = Array.isArray(response.data) ? response.data : [];
@@ -61,15 +62,15 @@ const MesServicesScreen: React.FC = () => {
                     interactions: service.interactions || 0,
                 }));
 
-                console.log('[MesServices] Services formatÃ©s:', formattedServices.length);
+                console.log('[MesServices] Services formatés:', formattedServices.length);
                 setServices(formattedServices);
             } else {
-                console.warn('[MesServices] Aucun service trouvÃ©');
+                console.warn('[MesServices] Aucun service trouvé');
                 setServices([]);
             }
         } catch (error: any) {
             console.error('[MesServices] Erreur chargement services:', error);
-            console.error('[MesServices] DÃ©tails:', error.message);
+            console.error('[MesServices] Détails:', error.message);
             setServices([]);
             // Ne pas afficher d'alerte pour ne pas bloquer l'utilisateur
         } finally {
@@ -125,14 +126,14 @@ const MesServicesScreen: React.FC = () => {
                         <Ionicons name="briefcase-outline" size={64} color="#9E9E9E" />
                         <Text style={styles.emptyTitle}>Aucun service</Text>
                         <Text style={styles.emptyText}>
-                            Vous n'avez pas encore crÃ©Ã© de service. CrÃ©ez votre premier service pour commencer.
+                            Vous n'avez pas encore créé de service. Créez votre premier service pour commencer.
                         </Text>
                         <TouchableOpacity
                             mode="contained"
                             onPress={() => navigation.navigate('CreateService' as never)}
                             style={styles.createButton}
                         >
-                            CrÃ©er un service
+                            Créer un service
                         </TouchableOpacity>
                     </View>
                 ) : (
@@ -176,8 +177,8 @@ const MesServicesScreen: React.FC = () => {
                                     <TouchableOpacity
                                         mode="outlined"
                                         onPress={() => {
-                                            // TODO: ImplÃ©menter l'Ã©dition
-                                            Alert.alert('Ã‰dition', 'FonctionnalitÃ© d\'Ã©dition Ã  implÃ©menter');
+                                            // TODO: Implémenter l'édition
+                                            Alert.alert('Édition', 'Fonctionnalité d\'édition à implémenter');
                                         }}
                                         style={styles.actionButton}
                                     >
@@ -314,6 +315,7 @@ const styles = StyleSheet.create({
 });
 
 export default MesServicesScreen;
+
 
 
 

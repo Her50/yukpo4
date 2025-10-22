@@ -1,4 +1,4 @@
-import { DollarSign, Package, Plus } from 'phosphor-react-native';
+import { DollarSign, Package, Plus } from 'lucide-react-native';
 import React, { useState } from 'react';
 import ReactNative from 'react-native';
 import { Button, Card, IconButton, TextInput } from 'react-native-paper';

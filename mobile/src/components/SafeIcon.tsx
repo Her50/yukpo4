@@ -1,25 +1,22 @@
 // Composant d'icônes sécurisé avec fallbacks
 import * as React from 'react';
-// @ts-ignore
 import { StyleSheet, Text } from 'react-native';
 
-// Import sécurisé de Lucide avec fallback
-let LucideIcons: any = {};
-try {
-    LucideIcons = require('lucide-react-native');
-    console.log('[SafeIcon] ✅ Lucide chargé avec succès');
-} catch (error) {
-    console.warn('[SafeIcon] ❌ Lucide non disponible, utilisation des emojis');
-}
+// Import statique de Lucide
+import * as LucideIconsImport from 'lucide-react-native';
 
-// Import sécurisé d'Ionicons avec fallback
-let Ionicons: any = {};
-try {
-    Ionicons = require('@expo/vector-icons/Ionicons');
-    console.log('[SafeIcon] ✅ Ionicons chargé avec succès');
-} catch (error) {
-    console.warn('[SafeIcon] ❌ Ionicons non disponible');
-}
+// Import sécurisé d'Ionicons avec gestion d'erreur
+import { safeRequire } from '../utils/errorHandler';
+
+const IoniconModule = safeRequire(
+    () => require('@expo/vector-icons/Ionicons'),
+    null,
+    { component: 'SafeIcon', action: 'import_ionicons' }
+);
+
+// Utiliser les imports statiques
+const LucideIcons: any = LucideIconsImport || {};
+const Ionicons: any = IoniconModule || {};
 
 interface SafeIconProps {
     name: string;
@@ -140,6 +137,54 @@ const iconToEmoji: { [key: string]: string } = {
     'video-off': '🚫',
     'volume-2': '🔊',
     'phone-off': '📵',
+
+    // ✅ AJOUTS: Icônes manquantes courantes
+    'filter': '🔽',
+    'send': '📤',
+    'chevron-down': '▼',
+    'chevron-up': '▲',
+    'chevron-left': '◀',
+    'more-vertical': '⋮',
+    'more-horizontal': '⋯',
+    'arrow-up': '↑',
+    'arrow-down': '↓',
+    'external-link': '🔗',
+    'globe': '🌐',
+    'users': '👥',
+    'user-plus': '👤➕',
+    'dollar-sign': '💲',
+    'credit-card': '💳',
+    'gift': '🎁',
+    'tag': '🏷️',
+    'bookmark': '🔖',
+    'flag': '🚩',
+    'percent': '%',
+    'trending-up': '📈',
+    'trending-down': '📉',
+    'pie-chart': '🥧',
+    'bar-chart': '📊',
+    'layers': '📚',
+    'grid': '▦',
+    'list': '☰',
+    'maximize': '⛶',
+    'minimize': '⊟',
+    'zoom-in': '🔍➕',
+    'zoom-out': '🔍➖',
+    'rotate-cw': '↻',
+    'rotate-ccw': '↺',
+    'paperclip': '📎',
+    'printer': '🖨️',
+    'wifi': '📶',
+    'wifi-off': '📵',
+    'bluetooth': '🔵',
+    'battery': '🔋',
+    'cpu': '💻',
+    'hard-drive': '💾',
+    'database': '🗄️',
+    'server': '🖥️',
+    'terminal': '⌨️',
+    'code': '💻',
+    'command': '⌘',
 
     // Défaut
     'default': '📱'

@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Composant de preview de l'icône Yukpomnang avec motif Ndop
  * À utiliser pour visualiser l'icône avant génération finale

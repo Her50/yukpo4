@@ -1,3 +1,4 @@
+// @ts-nocheck
 import React, { useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { theme } from '../theme/theme';
@@ -277,6 +278,9 @@ const styles = StyleSheet.create({
 });
 
 export default TestNotificationScreen;
+
+
+
 
 
 

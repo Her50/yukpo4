@@ -50,7 +50,7 @@ const ChatModalAdvanced: React.FC<ChatModalAdvancedProps> = ({
   const [isRecording, setIsRecording] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
 
-  const scrollViewRef = useRef<ScrollView>(null);
+  const scrollViewRef = useRef<any>(null);
   const wsRef = useRef<WebSocket | null>(null);
 
   // Émojis populaires

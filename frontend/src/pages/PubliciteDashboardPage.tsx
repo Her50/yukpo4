@@ -14,9 +14,9 @@ import {
 } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Button } from '../components/ui/button';
+import { Button } from '../components/ui/buttons/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
-import { apiGet } from '../services/api';
+import { apiGet } from '../services/apiService';
 
 interface PubliciteStats {
     id: string;

@@ -61,7 +61,14 @@ const AdvancedGPSModal: React.FC<AdvancedGPSModalProps> = ({
 
     const requestLocationPermission = async () => {
         try {
-            const { status } = await Location.requestForegroundPermissionsAsync();
+            // ✅ CORRECTION: Timeout pour éviter les blocages
+            const permissionPromise = Location.requestForegroundPermissionsAsync();
+            const timeoutPromise = new Promise((_, reject) =>
+                setTimeout(() => reject(new Error('Permission timeout')), 10000)
+            );
+
+            const { status } = await Promise.race([permissionPromise, timeoutPromise]) as any;
+
             if (status !== 'granted') {
                 Alert.alert(
                     'Permission requise',
@@ -73,16 +80,27 @@ const AdvancedGPSModal: React.FC<AdvancedGPSModalProps> = ({
             setPermissionGranted(true);
         } catch (error) {
             console.error('Erreur permission GPS:', error);
-            Alert.alert('Erreur', 'Impossible d\'accéder à la localisation');
+            // ✅ CORRECTION: Ne pas afficher d'alerte si timeout
+            if (error.message !== 'Permission timeout') {
+                Alert.alert('Erreur', 'Impossible d\'accéder à la localisation');
+            }
         }
     };
 
     const getCurrentLocation = async () => {
         try {
             setLoading(true);
-            const location = await Location.getCurrentPositionAsync({
-                accuracy: Location.Accuracy.High,
+
+            // ✅ CORRECTION: Timeout pour éviter les blocages GPS
+            const locationPromise = Location.getCurrentPositionAsync({
+                accuracy: Location.Accuracy.Balanced, // Moins précis mais plus rapide
             });
+
+            const timeoutPromise = new Promise((_, reject) =>
+                setTimeout(() => reject(new Error('GPS timeout')), 15000)
+            );
+
+            const location = await Promise.race([locationPromise, timeoutPromise]) as any;
 
             const newLocation = {
                 lat: location.coords.latitude,
@@ -93,7 +111,12 @@ const AdvancedGPSModal: React.FC<AdvancedGPSModalProps> = ({
             await geocodeLocation(newLocation);
         } catch (error) {
             console.error('Erreur localisation:', error);
-            Alert.alert('Erreur', 'Impossible d\'obtenir votre position actuelle');
+            // ✅ CORRECTION: Gestion d'erreur plus douce
+            if (error.message === 'GPS timeout') {
+                Alert.alert('GPS lent', 'La localisation prend du temps. Réessayez ou utilisez la recherche d\'adresse.');
+            } else {
+                Alert.alert('Erreur', 'Impossible d\'obtenir votre position actuelle');
+            }
         } finally {
             setLoading(false);
         }
@@ -101,7 +124,10 @@ const AdvancedGPSModal: React.FC<AdvancedGPSModalProps> = ({
 
     const geocodeLocation = async (location: { lat: number; lng: number }) => {
         try {
-            const geocodeResult = await Location.reverseGeocodeAsync(location);
+            const geocodeResult = await Location.reverseGeocodeAsync({
+                latitude: location.lat,
+                longitude: location.lng
+            });
             if (geocodeResult.length > 0) {
                 const addr = geocodeResult[0];
                 const formattedAddress = `${addr.street || ''} ${addr.city || ''} ${addr.region || ''}`.trim();
@@ -203,7 +229,7 @@ const AdvancedGPSModal: React.FC<AdvancedGPSModalProps> = ({
             <View style={styles.container}>
                 {/* Header avec gradient */}
                 <LinearGradient
-                    colors={modernColors.primaryGradient}
+                    colors={modernColors.primaryGradient as unknown as readonly [string, string, ...string[]]}
                     style={styles.header}
                 >
                     <View style={styles.headerContent}>
@@ -242,10 +268,8 @@ const AdvancedGPSModal: React.FC<AdvancedGPSModalProps> = ({
                             title="Ma Position GPS"
                             onPress={getCurrentLocation}
                             disabled={loading || !permissionGranted}
-                            variant="primary"
-                            size="large"
+                            {...({ variant: "primary", size: "large", icon: "navigation" } as any)}
                             style={styles.gpsButton}
-                            icon="navigation"
                         />
 
                         {/* Barre de recherche d'adresse */}
@@ -254,8 +278,8 @@ const AdvancedGPSModal: React.FC<AdvancedGPSModalProps> = ({
                                 placeholder="Rechercher une adresse..."
                                 value={searchQuery}
                                 onChangeText={setSearchQuery}
+                                {...({ icon: "search" } as any)}
                                 style={styles.searchInput}
-                                icon="search"
                             />
                             <NativeButton
                                 title="OK"
@@ -293,7 +317,7 @@ const AdvancedGPSModal: React.FC<AdvancedGPSModalProps> = ({
                         </View>
 
                         {/* Statut de sélection */}
-                        <NativeCard style={styles.statusCard}>
+                        <NativeCard style={[styles.statusCard, selectedLocation && styles.statusCardActive]}>
                             <View style={styles.statusHeader}>
                                 <SafeIcon
                                     name={selectedLocation ? "check" : "alert-triangle"}
@@ -434,19 +458,15 @@ const AdvancedGPSModal: React.FC<AdvancedGPSModalProps> = ({
                             <NativeButton
                                 title="Effacer"
                                 onPress={handleClearSelection}
-                                variant="outline"
-                                size="medium"
+                                {...({ variant: "outline", size: "medium", icon: "trash-2" } as any)}
                                 style={styles.clearButton}
-                                icon="trash-2"
                             />
                             <NativeButton
                                 title="Confirmer"
                                 onPress={handleConfirm}
                                 disabled={!selectedLocation}
-                                variant="primary"
-                                size="medium"
+                                {...({ variant: "primary", size: "medium", icon: "check" } as any)}
                                 style={styles.confirmButton}
-                                icon="check"
                             />
                         </View>
                     </View>
@@ -578,8 +598,12 @@ const styles = StyleSheet.create({
         borderColor: modernColors.border,
     },
     statusCard: {
-        backgroundColor: selectedLocation ? '#f0fdf4' : '#fef3c7',
-        borderColor: selectedLocation ? modernColors.success : modernColors.warning,
+        backgroundColor: '#fef3c7',
+        borderColor: modernColors.warning,
+    },
+    statusCardActive: {
+        backgroundColor: '#f0fdf4',
+        borderColor: modernColors.success,
     },
     statusHeader: {
         flexDirection: 'row',

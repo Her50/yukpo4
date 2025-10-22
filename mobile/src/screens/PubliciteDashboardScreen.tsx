@@ -15,7 +15,7 @@ import {
 import { NativeCard } from '../components/NativeDesign';
 import SafeIcon from '../components/SafeIcon';
 import { useAuth } from '../contexts/AuthContext';
-import { useLanguage } from '../contexts/LanguageContext';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 import { apiGet } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
 
@@ -39,7 +39,7 @@ interface PubliciteStats {
 const PubliciteDashboardScreen: React.FC = () => {
     const navigation = useNavigation();
     const { user } = useAuth();
-    const { t } = useLanguage();
+    const { t } = useLanguageSafe();
 
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
@@ -585,4 +585,5 @@ const styles = StyleSheet.create({
 });
 
 export default PubliciteDashboardScreen;
+
 

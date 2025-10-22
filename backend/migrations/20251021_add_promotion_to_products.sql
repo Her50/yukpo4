@@ -106,3 +106,5 @@ COMMENT ON VIEW products_with_promotion IS 'Vue permettant d''accéder rapidemen
 COMMENT ON FUNCTION refresh_products_promotion_status IS 'Rafraîchit le statut de promotion de tous les produits';
 
 
+
+

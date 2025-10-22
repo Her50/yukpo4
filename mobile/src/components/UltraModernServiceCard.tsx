@@ -1,4 +1,3 @@
-// @ts-nocheck
 import React, { useState } from 'react';
 import {
     Alert,
@@ -8,11 +7,9 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
-// @ts-ignore
 import { LinearGradient } from 'expo-linear-gradient';
-// @ts-ignore
-import SafeIcon from './SafeIcon';
-// @ts-ignore
+// Code corrigé (remplace @ts-ignore)
+import SafeIcon from './SafeIcon'
 import { useLocationDisplay } from '../hooks/useLocationDisplay';
 import { useServiceReviews } from '../hooks/useServiceReviews';
 import { useServiceStats } from '../hooks/useServiceStats';

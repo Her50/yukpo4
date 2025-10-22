@@ -1,4 +1,5 @@
-ï»¿import React, { useState } from 'react';
+// @ts-nocheck
+import React, { useState } from 'react';
 import { 
   Alert, 
   ScrollView, 
@@ -26,19 +27,19 @@ const ContactScreen: React.FC = () => {
 
     setLoading(true);
     try {
-      // TODO: ImplÃ©menter l'envoi du message de contact
+      // TODO: Implémenter l'envoi du message de contact
       await new Promise(resolve => setTimeout(resolve, 1000));
       Alert.alert(
-        'Message envoyÃ©', 
-        'Nous avons bien reÃ§u votre message et vous rÃ©pondrons dans les plus brefs dÃ©lais.'
+        'Message envoyé', 
+        'Nous avons bien reçu votre message et vous répondrons dans les plus brefs délais.'
       );
-      // RÃ©initialiser le formulaire
+      // Réinitialiser le formulaire
       setName('');
       setEmail('');
       setSubject('');
       setMessage('');
     } catch (error) {
-      Alert.alert('Erreur', 'Impossible d\'envoyer le message. Veuillez rÃ©essayer.');
+      Alert.alert('Erreur', 'Impossible d\'envoyer le message. Veuillez réessayer.');
     } finally {
       setLoading(false);
     }
@@ -55,10 +56,10 @@ const ContactScreen: React.FC = () => {
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.title}>ğŸ“ Contactez-nous</Text>
+          <Text style={styles.title}>?? Contactez-nous</Text>
           <Text style={styles.subtitle}>
-            L'Ã©quipe <Text style={styles.brandYuk}>Yuk</Text>
-            <Text style={styles.brandPo}>po</Text> est lÃ  pour vous aider
+            L'équipe <Text style={styles.brandYuk}>Yuk</Text>
+            <Text style={styles.brandPo}>po</Text> est là pour vous aider
           </Text>
         </View>
 
@@ -68,7 +69,7 @@ const ContactScreen: React.FC = () => {
             style={styles.contactCard}
             onPress={() => openLink('mailto:contact@yukpomnang.com')}
           >
-            <Text style={styles.contactIcon}>ğŸ“§</Text>
+            <Text style={styles.contactIcon}>??</Text>
             <Text style={styles.contactLabel}>Email</Text>
             <Text style={styles.contactValue}>contact@yukpomnang.com</Text>
           </TouchableOpacity>
@@ -77,8 +78,8 @@ const ContactScreen: React.FC = () => {
             style={styles.contactCard}
             onPress={() => openLink('tel:+237699999999')}
           >
-            <Text style={styles.contactIcon}>ğŸ“±</Text>
-            <Text style={styles.contactLabel}>TÃ©lÃ©phone</Text>
+            <Text style={styles.contactIcon}>??</Text>
+            <Text style={styles.contactLabel}>Téléphone</Text>
             <Text style={styles.contactValue}>+237 6 99 99 99 99</Text>
           </TouchableOpacity>
 
@@ -86,7 +87,7 @@ const ContactScreen: React.FC = () => {
             style={styles.contactCard}
             onPress={() => openLink('https://wa.me/237699999999')}
           >
-            <Text style={styles.contactIcon}>ğŸ’¬</Text>
+            <Text style={styles.contactIcon}>??</Text>
             <Text style={styles.contactLabel}>WhatsApp</Text>
             <Text style={styles.contactValue}>Chat direct</Text>
           </TouchableOpacity>
@@ -135,7 +136,7 @@ const ContactScreen: React.FC = () => {
             <Text style={styles.label}>Message *</Text>
             <TextInput
               style={[styles.input, styles.textArea]}
-              placeholder="DÃ©crivez votre demande..."
+              placeholder="Décrivez votre demande..."
               placeholderTextColor="#999"
               value={message}
               onChangeText={setMessage}
@@ -156,42 +157,42 @@ const ContactScreen: React.FC = () => {
           </TouchableOpacity>
         </View>
 
-        {/* Informations supplÃ©mentaires */}
+        {/* Informations supplémentaires */}
         <View style={styles.infoSection}>
-          <Text style={styles.infoTitle}>ğŸ• Horaires de disponibilitÃ©</Text>
+          <Text style={styles.infoTitle}>?? Horaires de disponibilité</Text>
           <Text style={styles.infoText}>
             Lundi - Vendredi: 8h00 - 18h00{'\n'}
             Samedi: 9h00 - 13h00{'\n'}
-            Dimanche: FermÃ©
+            Dimanche: Fermé
           </Text>
 
-          <Text style={styles.infoTitle}>ğŸ“ Localisation</Text>
+          <Text style={styles.infoTitle}>?? Localisation</Text>
           <Text style={styles.infoText}>
             Douala, Cameroun{'\n'}
             Akwa - Centre-ville
           </Text>
 
-          <Text style={styles.infoTitle}>âš¡ RÃ©seaux sociaux</Text>
+          <Text style={styles.infoTitle}>? Réseaux sociaux</Text>
           <View style={styles.socialLinks}>
             <TouchableOpacity 
               style={styles.socialButton}
               onPress={() => openLink('https://facebook.com/yukpomnang')}
             >
-              <Text style={styles.socialIcon}>ğŸ“˜</Text>
+              <Text style={styles.socialIcon}>??</Text>
               <Text style={styles.socialText}>Facebook</Text>
             </TouchableOpacity>
             <TouchableOpacity 
               style={styles.socialButton}
               onPress={() => openLink('https://twitter.com/yukpomnang')}
             >
-              <Text style={styles.socialIcon}>ğŸ¦</Text>
+              <Text style={styles.socialIcon}>??</Text>
               <Text style={styles.socialText}>Twitter</Text>
             </TouchableOpacity>
             <TouchableOpacity 
               style={styles.socialButton}
               onPress={() => openLink('https://linkedin.com/company/yukpomnang')}
             >
-              <Text style={styles.socialIcon}>ğŸ’¼</Text>
+              <Text style={styles.socialIcon}>??</Text>
               <Text style={styles.socialText}>LinkedIn</Text>
             </TouchableOpacity>
           </View>
@@ -379,3 +380,4 @@ const styles = StyleSheet.create({
 });
 
 export default ContactScreen;
+

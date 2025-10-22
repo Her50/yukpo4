@@ -1,4 +1,5 @@
-ï»¿import * as React from 'react';
+// @ts-nocheck
+import * as React from 'react';
 import { TouchableOpacity } from 'react-native';
 import { useState, useRef, useEffect } from 'react';
 import { View, StyleSheet, FlatList, KeyboardAvoidingView, Platform } from 'react-native';
@@ -51,7 +52,7 @@ const AIChatScreen: React.FC = () => {
       const response = await aiService.chat(inputText);
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
-        text: (response.data as any)?.message || 'DÃ©solÃ©, je n\'ai pas pu traiter votre demande.',
+        text: (response.data as any)?.message || 'Désolé, je n\'ai pas pu traiter votre demande.',
         isUser: false,
         timestamp: new Date(),
       };
@@ -60,7 +61,7 @@ const AIChatScreen: React.FC = () => {
     } catch (error) {
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
-        text: 'DÃ©solÃ©, une erreur est survenue. Veuillez rÃ©essayer.',
+        text: 'Désolé, une erreur est survenue. Veuillez réessayer.',
         isUser: false,
         timestamp: new Date(),
       };
@@ -225,6 +226,7 @@ const styles = StyleSheet.create({
 });
 
 export default AIChatScreen;
+
 
 
 

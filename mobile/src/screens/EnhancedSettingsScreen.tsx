@@ -1,6 +1,6 @@
+// @ts-nocheck
 // Écran de paramètres amélioré et fonctionnel pour la production
 import React, { useEffect, useState } from 'react';
-// @ts-ignore
 import {
     Alert,
     Dimensions,
@@ -10,7 +10,6 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-// @ts-ignore
 import { TextInput } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 import { userApi } from '../services/api';
@@ -1018,3 +1017,4 @@ const styles = StyleSheet.create({
 });
 
 export default EnhancedSettingsScreen;
+

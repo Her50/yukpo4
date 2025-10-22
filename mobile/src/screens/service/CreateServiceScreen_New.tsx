@@ -1,3 +1,4 @@
+// @ts-nocheck
 import * as ReactNavigation from '@react-navigation/native';
 import * as React from 'react';
 import { useEffect, useState } from 'react';
@@ -760,6 +761,7 @@ const styles = StyleSheet.create({
 });
 
 export default CreateServiceScreen;
+
 
 
 

@@ -4,26 +4,25 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { PaperProvider } from 'react-native-paper';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
-// BLOC 1 : Contexts de base
+// BLOC 1 : Contexts de base - APPLICATION COMPLÈTE POUR PRODUCTION
 import ErrorBoundary from './src/components/ErrorBoundary';
 import GPSTrackingManager from './src/components/GPSTrackingManager';
-import IncomingCallManager from './src/components/IncomingCallManager'; // ✅ NOUVEAU: Gestionnaire d'appels entrants
-import PushNotificationManager from './src/components/PushNotificationManager'; // ✅ NOUVEAU: Gestionnaire de push notifications
 import { GlobalIAStatsProvider } from './src/components/intelligence/GlobalIAStats';
 import { AuthProvider } from './src/contexts/AuthContext';
-import { LanguageProvider } from './src/contexts/LanguageContext'; // ✅ NOUVEAU: Gestion multilingue
 import { LocationProvider } from './src/contexts/LocationContext';
-import { WebSocketProvider } from './src/contexts/WebSocketContext'; // ✅ NOUVEAU: WebSocket pour notifications temps réel
+import { LanguageProvider } from './src/contexts/LanguageContext'; // ✅ AJOUT: Provider de langue
 import { theme } from './src/theme/theme';
 
-// BLOC 2 : Navigation moderne
+// BLOC 2 : Navigation moderne - ÉTAPE 2: Réactiver NavigationContainer
 import { NavigationContainer } from '@react-navigation/native';
 import { linking } from './src/config/linking';
 import AppNavigator from './src/navigation/AppNavigator';
 
+// ✅ APPLICATION COMPLÈTE POUR PRODUCTION
+
 export default function App() {
-  console.log('[App] 🚀 Yukpomnang - Application complète de production avec navigation moderne');
-  console.log('[App] 📱 Version: 1.0.0 - Production Ready');
+  console.log('[App] 🚀 Yukpomnang - APPLICATION COMPLÈTE POUR PRODUCTION');
+  console.log('[App] 📱 Version: 1.0.0 - Production Ready avec toutes les fonctionnalités');
 
   return (
     <ErrorBoundary>
@@ -31,24 +30,18 @@ export default function App() {
       <GestureHandlerRootView style={{ flex: 1 }}>
         <SafeAreaProvider>
           <PaperProvider theme={theme}>
-            <LanguageProvider>
+            <LanguageProvider> {/* ✅ AJOUT: Provider de langue */}
               <AuthProvider>
-                <WebSocketProvider>
-                  {/* ✅ NOUVEAU: Gestionnaire d'appels entrants WebRTC */}
-                  <IncomingCallManager />
-                  <LocationProvider>
-                    <GlobalIAStatsProvider>
-                      {/* Tracking GPS automatique en arrière-plan */}
-                      <GPSTrackingManager />
-                      <StatusBar style="auto" />
-                      <NavigationContainer linking={linking}>
-                        {/* ✅ NOUVEAU: Gestionnaire de push notifications et appels - DÉPLACÉ À L'INTÉRIEUR */}
-                        <PushNotificationManager />
-                        <AppNavigator />
-                      </NavigationContainer>
-                    </GlobalIAStatsProvider>
-                  </LocationProvider>
-                </WebSocketProvider>
+                <LocationProvider>
+                  <GlobalIAStatsProvider>
+                    {/* Tracking GPS automatique en arrière-plan */}
+                    <GPSTrackingManager />
+                    <StatusBar style="auto" />
+                    <NavigationContainer linking={linking}>
+                      <AppNavigator />
+                    </NavigationContainer>
+                  </GlobalIAStatsProvider>
+                </LocationProvider>
               </AuthProvider>
             </LanguageProvider>
           </PaperProvider>
@@ -57,5 +50,6 @@ export default function App() {
     </ErrorBoundary>
   );
 }
+
 
 

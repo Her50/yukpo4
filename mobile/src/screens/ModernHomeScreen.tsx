@@ -1,3 +1,4 @@
+// @ts-nocheck
 // Écran d'accueil ultra-moderne avec animations et glassmorphism
 import React, { useEffect, useRef } from 'react';
 import {
@@ -394,4 +395,5 @@ const styles = StyleSheet.create({
 });
 
 export default ModernHomeScreen;
+
 

@@ -1,32 +1,28 @@
+import { LinearGradient } from 'expo-linear-gradient';
 import React, { useState } from 'react';
 import {
     Alert,
     Dimensions,
+    Image, Modal,
     ScrollView,
     StyleSheet,
     Text,
     TouchableOpacity,
     View
 } from 'react-native';
-// @ts-ignore
-import { Image, Modal } from 'react-native';
-// @ts-ignore
-import { LinearGradient } from 'expo-linear-gradient';
-// @ts-ignore
+// Code corrigé (remplace @ts-ignore)
 import * as ImagePicker from 'expo-image-picker';
-// @ts-ignore
+// Code corrigé (remplace @ts-ignore)
 import * as DocumentPicker from 'expo-document-picker';
-// @ts-ignore
+// Code corrigé (remplace @ts-ignore)
 import * as FileSystem from 'expo-file-system';
-// @ts-ignore
-import SafeIcon from './SafeIcon';
-// @ts-ignore
-import { NativeButton, NativeInput } from './NativeDesign';
-// @ts-ignore
+// Code corrigé (remplace @ts-ignore)
 import { modernColors } from '../theme/modernTheme';
-// @ts-ignore
+import { NativeButton, NativeInput } from './NativeDesign';
+import SafeIcon from './SafeIcon';
+// Code corrigé (remplace @ts-ignore)
 import BusSeatSelector from './BusSeatSelector';
-// @ts-ignore
+// Code corrigé (remplace @ts-ignore)
 import ModernGPSModal from './ModernGPSModal';
 
 const { width } = Dimensions.get('window');
@@ -765,12 +761,12 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                 return;
             }
 
-            // ✅ Vérifier le nombre d'images déjà ajoutées (limite: 5 images max pour éviter payload trop gros)
+            // ✅ CORRECTION: Augmentation limite à 10 images max
             const currentImagesCount = (newProduct.images || []).length;
-            if (currentImagesCount >= 5) {
+            if (currentImagesCount >= 10) {
                 Alert.alert(
                     'Limite atteinte',
-                    'Vous pouvez ajouter maximum 5 images par produit pour éviter l\'erreur 413 (payload trop volumineux).\n\nConseils : Privilégiez la qualité sur la quantité !',
+                    'Vous pouvez ajouter maximum 10 images par produit.\n\nConseils : Privilégiez des images de qualité !',
                     [{ text: 'OK' }]
                 );
                 return;
@@ -779,19 +775,19 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
             const result = await ImagePicker.launchImageLibraryAsync({
                 mediaTypes: ImagePicker.MediaTypeOptions.Images,
                 allowsMultipleSelection: true,
-                quality: 0.3, // ✅ Qualité réduite à 30% pour garantir payload < 100MB
+                quality: 0.5, // ✅ Qualité augmentée à 50% pour meilleures images
                 base64: true
             });
 
             if (!result.canceled && result.assets && result.assets.length > 0) {
-                // ✅ Limiter le nombre total d'images à 5
-                const remainingSlots = 5 - currentImagesCount;
+                // ✅ Limiter le nombre total d'images à 10
+                const remainingSlots = 10 - currentImagesCount;
                 const assetsToAdd = result.assets.slice(0, remainingSlots);
 
                 if (result.assets.length > remainingSlots) {
                     Alert.alert(
                         'Images limitées',
-                        `Seulement ${remainingSlots} image(s) ajoutée(s). Maximum 5 images par produit.`,
+                        `Seulement ${remainingSlots} image(s) ajoutée(s). Maximum 10 images par produit.`,
                         [{ text: 'OK' }]
                     );
                 }
@@ -821,12 +817,12 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                 return;
             }
 
-            // ✅ Vérifier le nombre de vidéos déjà ajoutées (limite: 1 vidéo max pour éviter payload énorme)
+            // ✅ CORRECTION: Augmentation limite à 3 vidéos max
             const currentVideosCount = (newProduct.videos || []).length;
-            if (currentVideosCount >= 1) {
+            if (currentVideosCount >= 3) {
                 Alert.alert(
                     'Limite atteinte',
-                    'Vous pouvez ajouter maximum 1 vidéo par produit pour éviter l\'erreur 413 (payload trop volumineux).\n\nConseils : Privilégiez une vidéo courte et de qualité !',
+                    'Vous pouvez ajouter maximum 3 vidéos par produit.\n\nConseils : Privilégiez des vidéos courtes (<30s) et de qualité !',
                     [{ text: 'OK' }]
                 );
                 return;
@@ -835,23 +831,23 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
             const result = await ImagePicker.launchImageLibraryAsync({
                 mediaTypes: ImagePicker.MediaTypeOptions.Videos,
                 allowsMultipleSelection: false,
-                quality: 0.2, // ✅ Compression TRÈS forte (20%) pour vidéos
-                videoMaxDuration: 30 // ✅ Limiter à 30 secondes max (au lieu de 60)
+                quality: 0.3, // ✅ Compression à 30% pour vidéos (augmentation de qualité)
+                videoMaxDuration: 30 // ✅ Limiter à 30 secondes max
             });
 
             if (!result.canceled && result.assets && result.assets.length > 0) {
                 const asset = result.assets[0];
 
-                // ✅ Vérifier la taille du fichier vidéo (max 20MB au lieu de 50MB)
+                // ✅ CORRECTION: Augmentation taille max à 30MB
                 const fileInfo = await FileSystem.getInfoAsync(asset.uri);
                 let videoSizeMB = 0;
 
                 if (fileInfo.exists && 'size' in fileInfo && fileInfo.size) {
                     videoSizeMB = fileInfo.size / (1024 * 1024);
-                    if (videoSizeMB > 20) {
+                    if (videoSizeMB > 30) {
                         Alert.alert(
                             'Vidéo trop volumineuse',
-                            `La vidéo fait ${videoSizeMB.toFixed(2)} MB. Veuillez sélectionner une vidéo de moins de 20 MB et max 30 secondes.\n\nConseils : Filmez en résolution réduite ou raccourcissez la vidéo.`,
+                            `La vidéo fait ${videoSizeMB.toFixed(2)} MB. Veuillez sélectionner une vidéo de moins de 30 MB et max 30 secondes.\n\nConseils : Filmez en résolution réduite ou raccourcissez la vidéo.`,
                             [{ text: 'OK' }]
                         );
                         return;
@@ -4427,7 +4423,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         }}
                     >
                         <LinearGradient
-                            colors={modernColors.primaryGradient}
+                            colors={modernColors.primaryGradient as unknown as readonly [string, string, ...string[]]}
                             style={styles.addButtonGradient}
                         >
                             <SafeIcon name="plus" size={20} color="#FFFFFF" />
@@ -4447,7 +4443,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                 <View style={styles.modalContainer}>
                     {/* Header */}
                     <LinearGradient
-                        colors={modernColors.primaryGradient}
+                        colors={modernColors.primaryGradient as unknown as readonly [string, string, ...string[]]}
                         style={styles.modalHeaderGradient}
                     >
                         <TouchableOpacity
@@ -5735,6 +5731,35 @@ const styles = StyleSheet.create({
         fontWeight: '700',
         color: modernColors.primary,
         marginBottom: 12,
+    },
+    // Styles manquants
+    fieldHint: {
+        fontSize: 12,
+        color: '#6B7280',
+        marginTop: 4,
+        fontStyle: 'italic',
+    },
+    hintBold: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: '#374151',
+        marginTop: 4,
+    },
+    inputRow: {
+        flexDirection: 'row',
+        gap: 12,
+        marginBottom: 12,
+    },
+    promotionSectionContainer: {
+        marginTop: 16,
+        padding: 16,
+        backgroundColor: '#FFF7ED',
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#FDBA74',
+    },
+    promotionFields: {
+        gap: 12,
     },
 });
 

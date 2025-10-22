@@ -1,4 +1,3 @@
-// @ts-nocheck
 // Remplacement des Ionicons par des emojis pour éviter les crashes
 import { Audio } from 'expo-av';
 import * as DocumentPicker from 'expo-document-picker';
@@ -702,7 +701,7 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = ({
                     value={text}
                     onChangeText={setText}
                     multiline
-                    numberOfLines={3}
+                    numberOfLines={2} // ✅ Réduit de 3 à 2 lignes
                     textAlignVertical="top"
                 />
 
@@ -715,7 +714,7 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = ({
                             onPress={toggleRecording}
                             disabled={loading}
                         >
-                            <Text style={[styles.actionIcon, audioUri && styles.actionIconActive]}>🎤</Text>
+                            <Text style={[styles.actionIcon, audioUri && styles.actionButtonActive]}>🎤</Text>
                             <Text style={[styles.actionButtonText, audioUri && styles.actionButtonTextActive]}>
                                 {audioUri ? '✓ Audio' : 'Audio'}
                             </Text>
@@ -837,12 +836,12 @@ const styles = StyleSheet.create({
         minHeight: 100, // ✅ Augmenté de 65 à 100 pour plus de hauteur
     },
     textInput: {
-        fontSize: 15, // ✅ Rétabli à 15
+        fontSize: 15,
         color: '#374151',
-        minHeight: 70, // ✅ Augmenté de 50 à 70 pour plus de hauteur
-        maxHeight: 120, // ✅ Augmenté de 85 à 120
+        minHeight: 50, // ✅ Réduit de 70 à 50
+        maxHeight: 80, // ✅ Réduit de 120 à 80
         textAlignVertical: 'top',
-        padding: 12, // ✅ Rétabli à 12
+        padding: 12,
         fontWeight: '500',
     },
     actionsContainer: {

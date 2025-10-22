@@ -19,6 +19,8 @@ const normalizeText = (text: string): string => {
 };
 
 // ✅ DONNÉES PROFESSIONNELLES POUR LISTES DÉROULANTES
+
+// Marques automobiles professionnelles
 const MARQUES_AUTOMOBILES = [
     'Toyota', 'Mercedes-Benz', 'BMW', 'Audi', 'Volkswagen', 'Ford', 'Honda',
     'Nissan', 'Hyundai', 'Kia', 'Peugeot', 'Renault', 'Citroën', 'Mazda',
@@ -29,60 +31,76 @@ const MARQUES_AUTOMOBILES = [
     '🆕 Autre'
 ];
 
+// Types de transmission
 const TYPES_TRANSMISSION = ['Manuelle', 'Automatique', 'Semi-automatique', 'CVT', '🆕 Autre'];
+
+// Types de carburant
 const TYPES_CARBURANT = ['Essence', 'Diesel', 'Hybride', 'Électrique', 'GPL', 'Bioéthanol', '🆕 Autre'];
+
+// États du véhicule
 const ETATS_VEHICULE = ['Neuf', 'Occasion - Excellent état', 'Occasion - Bon état', 'Occasion - État moyen', 'À réparer'];
 
+// Types immobiliers
 const TYPES_IMMOBILIERS = [
-    'Appartement', 'Maison individuelle', 'Villa', 'Studio', 'Duplex', 'Triplex',
+    'Appartement', 'Villa', 'Studio', 'Duplex', 'Triplex',
     'Penthouse', 'Loft', 'Chambre', 'Bureau', 'Local commercial', 'Entrepôt',
     'Terrain nu', 'Terrain viabilisé', 'Immeuble', '🆕 Autre'
 ];
 
+// Statuts immobiliers
 const STATUTS_IMMOBILIERS = ['À vendre', 'À louer', 'Location courte durée', 'Colocation'];
+
+// Niveaux d'ameublement
 const NIVEAUX_AMEUBLEMENT = ['Non meublé', 'Semi-meublé', 'Meublé', 'Meublé + équipé'];
 
+// Compagnies de voyage
 const COMPAGNIES_VOYAGE = [
     'Camair-Co', 'Ethiopian Airlines', 'Kenya Airways', 'Air France', 'Turkish Airlines',
     'Brussels Airlines', 'Royal Air Maroc', 'Emirates', 'Qatar Airways', 'Asky Airlines',
     'CEIBA Intercontinental', 'Cronos Airlines', 'Toumai Air Tchad', '🆕 Autre'
 ];
 
+// Classes de voyage
 const CLASSES_VOYAGE = ['Économique', 'Économique Premium', 'Affaires', 'Première classe'];
+
+// Types de véhicules de transport
 const TYPES_VEHICULES_TRANSPORT = ['Bus', 'Minibus', 'Van', 'Avion', 'Train', 'Bateau'];
 
-const TYPES_HEBERGEMENT = [
-    'Hôtel', 'Hôtel-Boutique', 'Resort', 'Auberge', 'Motel',
-    'Chambre d\'hôte', 'Gîte', 'Pension', 'Apart-hôtel', '🆕 Autre'
-];
+// Catégories hôtelières
+const CATEGORIES_HOTEL = ['Sans étoile', '1 étoile', '2 étoiles', '3 étoiles', '4 étoiles', '5 étoiles', 'Palace'];
 
-const TYPES_CHAMBRES_HOTEL = [
-    'Chambre Simple', 'Chambre Double', 'Chambre Twin', 'Suite Junior',
-    'Suite', 'Suite Présidentielle', 'Chambre Familiale', 'Studio'
-];
-
+// Équipements hôteliers
 const EQUIPEMENTS_HOTEL = [
     'Wi-Fi gratuit', 'Climatisation', 'Piscine', 'Restaurant', 'Bar', 'Salle de sport',
     'Spa', 'Parking gratuit', 'Service chambre 24h/24', 'Blanchisserie', 'Navette aéroport',
     'Salle de conférence', 'Coffre-fort', 'Réception 24h/24'
 ];
 
+// Types d'hébergement
+const TYPES_HEBERGEMENT = [
+    'Hôtel', 'Hôtel-Boutique', 'Resort', 'Auberge', 'Motel',
+    'Chambre d\'hôte', 'Gîte', 'Pension', 'Apart-hôtel', '🆕 Autre'
+];
+
 type ProductType =
     | 'immobilier_batiment'
     | 'immobilier_terrain'
-    | 'hotellerie'
+    | 'hotellerie' // ✅ Hôtels, Chambres d'hôtes, Auberges
     | 'automobile'
     | 'ticket_voyage'
-    | 'covoiturage'
-    | 'vetement'
-    | 'chaussure'
+    | 'covoiturage' // ✅ NOUVEAU
+    | 'vetement' // ✅ NOUVEAU
+    | 'chaussure' // ✅ NOUVEAU
     | 'electromenager'
-    | 'image_son'
+    | 'image_son' // ✅ NOUVEAU : TV, Audio, Vidéo
     | 'telephone'
     | 'ordinateur'
     | 'mobilier'
     | 'decoration'
-    | 'ustensiles_cuisine'
+    | 'ustensiles_cuisine' // ✅ NOUVEAU
+    | 'pieces_auto' // ✅ NOUVEAU
+    | 'pieces_industrielles' // ✅ NOUVEAU
+    | 'jouets_enfants' // ✅ NOUVEAU
     | 'aliments'
     | 'livres_fournitures'
     | 'quincaillerie'
@@ -189,6 +207,10 @@ const PRODUCT_TYPES = [
     { value: 'ticket_voyage', label: 'Tickets et Billets de Transport', icon: '🎫', description: 'Bus, train, avion avec sélection de place' },
     { value: 'ustensiles_cuisine', label: 'Ustensiles de Cuisine', icon: '🍴', description: 'Casseroles, poêles, couteaux, mixers, batterie cuisine' },
     { value: 'vetement', label: 'Vêtements et Prêt-à-Porter', icon: '👕', description: 'Vêtements, habits, articles de mode' },
+    { value: 'pieces_auto', label: 'Pièces Détachées Automobile', icon: '🔧', description: 'Pièces de rechange, accessoires auto, pneumatiques' },
+    { value: 'pieces_industrielles', label: 'Pièces Détachées Industrielles', icon: '⚙️', description: 'Roulements, courroies, moteurs, pompes industrielles' },
+    { value: 'jouets_enfants', label: 'Jouets et Articles Enfants', icon: '🧸', description: 'Jouets, peluches, jeux éducatifs, articles pour enfants' },
+    { value: 'assurance', label: 'Assurances et Produits Financiers', icon: '🛡️', description: 'Assurances vie, auto, santé, habitation, produits financiers' },
     { value: 'autre', label: 'Autres Produits', icon: '📦', description: 'Autres types de produits et services' },
 ] as const;
 
@@ -259,7 +281,39 @@ Tissage Indien 50cm,20000,XAF,Tissage indien remy de qualité,Tissage,50cm,Blond
 
     autre: `Nom,Prix,Devise,Description
 Produit divers,10000,XAF,Description détaillée du produit
-Article standard,50,USD,Description complète de l'article`
+Article standard,50,USD,Description complète de l'article`,
+
+    covoiturage: `Nom,Prix,Devise,Description,Départ,Arrivée,Date,Heure,Places disponibles
+Trajet Douala-Yaoundé,2500,XAF,Voiture confortable et sécurisée avec climatisation,Bonanjo,Centre-ville Yaoundé,2024-01-15,06:00,3
+Trajet Yaoundé-Bafoussam,3500,XAF,SUV climatisé spacieux avec bagages,Yaoundé,Bafoussam,2024-01-16,10:00,4`,
+
+    vetement: `Nom,Prix,Devise,Description,Taille,Couleur,Matière,Marque
+T-shirt casual,5000,XAF,T-shirt confortable pour usage quotidien,L,Bleu,Coton,Nike
+Robe élégante,25000,XAF,Robe de soirée élégante et raffinée,M,Rouge,Soie,Zara`,
+
+    chaussure: `Nom,Prix,Devise,Description,Pointure,Couleur,Marque
+Baskets sport,35000,XAF,Chaussures de running haute performance,42,Noire,Adidas
+Sandales,15000,XAF,Sandales d'été confortables et légères,38,Marron,Clarks`,
+
+    image_son: `Nom,Prix,Devise,Description,Marque,Modèle,Type,État
+TV Samsung 55 pouces,350000,XAF,Smart TV 4K HDR apps intégrées,Samsung,QE55Q80B,TV,Neuf
+Home Cinéma Sony,180000,XAF,Système 5.1 Bluetooth Dolby Atmos,Sony,HT-S40R,Home cinéma,Neuf`,
+
+    pieces_auto: `Nom,Prix,Devise,Description,Type,Marque,Référence,État
+Pneu Michelin 205/55 R16,45000,XAF,Pneu toutes saisons excellent grip,Pneumatiques,Michelin,205/55R16 91V,Neuf
+Batterie Varta 12V 60Ah,35000,XAF,Batterie démarrage forte puissance,Batterie,Varta,D59,Neuf`,
+
+    pieces_industrielles: `Nom,Prix,Devise,Description,Type,Marque,Référence,Matériel
+Roulement SKF 6205,8500,XAF,Roulement à billes étanche haute vitesse,Roulement,SKF,6205-2RS,Acier
+Moteur électrique 5.5kW,285000,XAF,Moteur asynchrone triphasé rendement,Moteur,ABB,M2QA 132M,Fonte/Cuivre`,
+
+    jouets_enfants: `Nom,Prix,Devise,Description,Type,Âge recommandé,Marque
+Puzzle éducatif 100 pièces,3500,XAF,Puzzle animaux Afrique éducatif,Éducatif,6-10 ans,Ravensburger
+Peluche lion,8500,XAF,Peluche douce lavable hypoallergénique,Peluche,0-3 ans,Jellycat`,
+
+    hotellerie: `Nom,Prix par nuit,Devise,Description,Catégorie,Type,Services,Adresse
+Hôtel Les Cocotiers,45000,XAF,Hôtel 4 étoiles centre-ville vue mer,4 étoiles,Hôtel,Petit-déjeuner|Piscine|Wi-Fi,Avenue Kennedy Douala
+Chambres d'hôtes Villa,25000,XAF,Chambre d'hôtes familiale calme,Sans étoile,Chambre d'hôte,Petit-déjeuner|Wi-Fi,Bonapriso Douala`
 };
 
 const ProductManager: React.FC<ProductManagerProps> = ({
@@ -376,16 +430,16 @@ const ProductManager: React.FC<ProductManagerProps> = ({
     const handleFileUpload = (files: FileList, type: 'images' | 'videos') => {
         if (!editingProduct) return;
 
-        // ✅ Vérifier les limites AVANT traitement
+        // ✅ CORRECTION: Augmentation des limites
         const currentCount = editingProduct[type]?.length || 0;
-        const maxImages = 5; // Max 5 images par produit
-        const maxVideos = 1; // Max 1 vidéo par produit
+        const maxImages = 10; // Max 10 images par produit (augmenté de 5)
+        const maxVideos = 3; // Max 3 vidéos par produit (augmenté de 1)
         const maxItems = type === 'images' ? maxImages : maxVideos;
 
         if (currentCount >= maxItems) {
             toast({
                 title: "Limite atteinte",
-                description: `Maximum ${maxItems} ${type === 'images' ? 'images' : 'vidéo'} par produit pour éviter l'erreur 413`,
+                description: `Maximum ${maxItems} ${type === 'images' ? 'images' : 'vidéos'} par produit`,
             });
             return;
         }
@@ -463,15 +517,21 @@ const ProductManager: React.FC<ProductManagerProps> = ({
     return (
         <div className="space-y-4">
             {/* En-tête */}
-            <div className="flex items-center justify-between">
-                <div>
-                    <h3 className="text-lg font-semibold text-gray-900">🛍️ Produits</h3>
-                    <p className="text-sm text-gray-600">Gérez les produits de votre service</p>
+            <div className="flex flex-col gap-2">
+                <div className="flex items-center justify-between">
+                    <div>
+                        <h3 className="text-lg font-semibold text-gray-900">🛍️ Produits</h3>
+                        <p className="text-sm text-gray-600">Gérez les produits de votre service</p>
+                    </div>
                 </div>
                 {!readonly && (
-                    <Button onClick={handleAddProduct} size="sm">
-                        <Plus className="w-4 h-4 mr-2" />
-                        Ajouter un produit
+                    <Button
+                        onClick={handleAddProduct}
+                        size="default"
+                        className="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold shadow-sm"
+                    >
+                        <Plus className="w-5 h-5 mr-2" />
+                        <span className="text-white">Ajouter un produit</span>
                     </Button>
                 )}
             </div>
@@ -947,6 +1007,725 @@ const ProductManager: React.FC<ProductManagerProps> = ({
                                                 <p className="text-xs text-gray-500 mt-1">
                                                     💡 La localisation GPS précise augmente la visibilité du terrain
                                                 </p>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Formulaire Automobile */}
+                                    {selectedType === 'automobile' && (
+                                        <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
+                                            <h4 className="font-semibold text-gray-900">🚗 Caractéristiques du véhicule</h4>
+
+                                            {/* Marque */}
+                                            <div>
+                                                <Label>Marque *</Label>
+                                                <div className="flex flex-wrap gap-2 mt-2">
+                                                    {MARQUES_AUTOMOBILES.slice(0, 12).map((marque) => (
+                                                        <button
+                                                            key={marque}
+                                                            type="button"
+                                                            className={`px-3 py-1.5 border rounded-lg text-sm transition-all ${editingProduct.marque === marque
+                                                                ? 'bg-blue-600 text-white border-blue-600'
+                                                                : 'bg-white text-gray-700 border-gray-300 hover:border-blue-500'
+                                                                }`}
+                                                            onClick={() => setEditingProduct(prev => ({ ...prev!, marque }))}
+                                                        >
+                                                            {marque}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                                <Input
+                                                    placeholder="Ou entrez une autre marque..."
+                                                    value={!MARQUES_AUTOMOBILES.includes(editingProduct.marque || '') ? editingProduct.marque : ''}
+                                                    onChange={(e) => setEditingProduct(prev => ({ ...prev!, marque: e.target.value }))}
+                                                    className="mt-2"
+                                                />
+                                            </div>
+
+                                            {/* Modèle */}
+                                            <div>
+                                                <Label>Modèle *</Label>
+                                                <Input
+                                                    placeholder="Ex: Corolla, Civic, Classe E..."
+                                                    value={editingProduct.modele || ''}
+                                                    onChange={(e) => setEditingProduct(prev => ({ ...prev!, modele: e.target.value }))}
+                                                />
+                                            </div>
+
+                                            {/* État véhicule */}
+                                            <div>
+                                                <Label>État du véhicule *</Label>
+                                                <div className="flex flex-wrap gap-2 mt-2">
+                                                    {ETATS_VEHICULE.map((etat) => (
+                                                        <button
+                                                            key={etat}
+                                                            type="button"
+                                                            className={`px-3 py-1.5 border rounded-lg text-sm transition-all ${editingProduct.etatVehicule === etat
+                                                                ? 'bg-green-600 text-white border-green-600'
+                                                                : 'bg-white text-gray-700 border-gray-300 hover:border-green-500'
+                                                                }`}
+                                                            onClick={() => setEditingProduct(prev => ({ ...prev!, etatVehicule: etat }))}
+                                                        >
+                                                            {etat}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+
+                                            {/* Année et Kilométrage */}
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div>
+                                                    <Label>Année *</Label>
+                                                    <Input
+                                                        type="number"
+                                                        placeholder="Ex: 2018"
+                                                        value={editingProduct.annee || ''}
+                                                        onChange={(e) => setEditingProduct(prev => ({ ...prev!, annee: e.target.value }))}
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <Label>Kilométrage (km)</Label>
+                                                    <Input
+                                                        type="number"
+                                                        placeholder="Ex: 65000"
+                                                        value={editingProduct.kilometrage || ''}
+                                                        onChange={(e) => setEditingProduct(prev => ({ ...prev!, kilometrage: e.target.value }))}
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            {/* Carburant */}
+                                            <div>
+                                                <Label>Type de carburant *</Label>
+                                                <div className="flex flex-wrap gap-2 mt-2">
+                                                    {TYPES_CARBURANT.map((carburant) => (
+                                                        <button
+                                                            key={carburant}
+                                                            type="button"
+                                                            className={`px-3 py-1.5 border rounded-lg text-sm transition-all ${editingProduct.typeCarburant === carburant
+                                                                ? 'bg-orange-600 text-white border-orange-600'
+                                                                : 'bg-white text-gray-700 border-gray-300 hover:border-orange-500'
+                                                                }`}
+                                                            onClick={() => setEditingProduct(prev => ({ ...prev!, typeCarburant: carburant }))}
+                                                        >
+                                                            {carburant}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+
+                                            {/* Transmission */}
+                                            <div>
+                                                <Label>Transmission *</Label>
+                                                <div className="flex flex-wrap gap-2 mt-2">
+                                                    {TYPES_TRANSMISSION.map((transmission) => (
+                                                        <button
+                                                            key={transmission}
+                                                            type="button"
+                                                            className={`px-3 py-1.5 border rounded-lg text-sm transition-all ${editingProduct.transmission === transmission
+                                                                ? 'bg-purple-600 text-white border-purple-600'
+                                                                : 'bg-white text-gray-700 border-gray-300 hover:border-purple-500'
+                                                                }`}
+                                                            onClick={() => setEditingProduct(prev => ({ ...prev!, transmission }))}
+                                                        >
+                                                            {transmission}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+
+                                            {/* Couleur */}
+                                            <div>
+                                                <Label>Couleur</Label>
+                                                <Input
+                                                    placeholder="Ex: Blanche, Noire, Grise..."
+                                                    value={editingProduct.couleur || ''}
+                                                    onChange={(e) => setEditingProduct(prev => ({ ...prev!, couleur: e.target.value }))}
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Formulaire Ticket de Voyage */}
+                                    {selectedType === 'ticket_voyage' && (
+                                        <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
+                                            <h4 className="font-semibold text-gray-900">🎫 Informations du billet</h4>
+
+                                            {/* Compagnie */}
+                                            <div>
+                                                <Label>Compagnie de transport *</Label>
+                                                <div className="flex flex-wrap gap-2 mt-2">
+                                                    {COMPAGNIES_VOYAGE.slice(0, 8).map((compagnie) => (
+                                                        <button
+                                                            key={compagnie}
+                                                            type="button"
+                                                            className={`px-3 py-1.5 border rounded-lg text-sm transition-all ${editingProduct.compagnie === compagnie
+                                                                ? 'bg-blue-600 text-white border-blue-600'
+                                                                : 'bg-white text-gray-700 border-gray-300 hover:border-blue-500'
+                                                                }`}
+                                                            onClick={() => setEditingProduct(prev => ({ ...prev!, compagnie }))}
+                                                        >
+                                                            {compagnie}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                                <Input
+                                                    placeholder="Ou entrez une autre compagnie..."
+                                                    value={!COMPAGNIES_VOYAGE.includes(editingProduct.compagnie || '') ? editingProduct.compagnie : ''}
+                                                    onChange={(e) => setEditingProduct(prev => ({ ...prev!, compagnie: e.target.value }))}
+                                                    className="mt-2"
+                                                />
+                                            </div>
+
+                                            {/* Type de véhicule */}
+                                            <div>
+                                                <Label>Type de véhicule *</Label>
+                                                <div className="flex flex-wrap gap-2 mt-2">
+                                                    {TYPES_VEHICULES_TRANSPORT.map((type) => (
+                                                        <button
+                                                            key={type}
+                                                            type="button"
+                                                            className={`px-3 py-1.5 border rounded-lg text-sm transition-all ${editingProduct.typeVehiculeTransport === type
+                                                                ? 'bg-green-600 text-white border-green-600'
+                                                                : 'bg-white text-gray-700 border-gray-300 hover:border-green-500'
+                                                                }`}
+                                                            onClick={() => setEditingProduct(prev => ({ ...prev!, typeVehiculeTransport: type }))}
+                                                        >
+                                                            {type}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+
+                                            {/* Classe de voyage */}
+                                            <div>
+                                                <Label>Classe *</Label>
+                                                <div className="flex flex-wrap gap-2 mt-2">
+                                                    {CLASSES_VOYAGE.map((classe) => (
+                                                        <button
+                                                            key={classe}
+                                                            type="button"
+                                                            className={`px-3 py-1.5 border rounded-lg text-sm transition-all ${editingProduct.classeVoyage === classe
+                                                                ? 'bg-yellow-600 text-white border-yellow-600'
+                                                                : 'bg-white text-gray-700 border-gray-300 hover:border-yellow-500'
+                                                                }`}
+                                                            onClick={() => setEditingProduct(prev => ({ ...prev!, classeVoyage: classe }))}
+                                                        >
+                                                            {classe}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+
+                                            {/* Départ et Destination */}
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div>
+                                                    <Label>Ville de départ *</Label>
+                                                    <Input
+                                                        placeholder="Ex: Douala"
+                                                        value={editingProduct.depart || ''}
+                                                        onChange={(e) => setEditingProduct(prev => ({ ...prev!, depart: e.target.value }))}
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <Label>Destination *</Label>
+                                                    <Input
+                                                        placeholder="Ex: Yaoundé"
+                                                        value={editingProduct.destination || ''}
+                                                        onChange={(e) => setEditingProduct(prev => ({ ...prev!, destination: e.target.value }))}
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            {/* Date et Heure */}
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div>
+                                                    <Label>Date de départ *</Label>
+                                                    <Input
+                                                        type="date"
+                                                        value={editingProduct.dateDepart || ''}
+                                                        onChange={(e) => setEditingProduct(prev => ({ ...prev!, dateDepart: e.target.value }))}
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <Label>Heure *</Label>
+                                                    <Input
+                                                        type="time"
+                                                        value={editingProduct.heureDepart || ''}
+                                                        onChange={(e) => setEditingProduct(prev => ({ ...prev!, heureDepart: e.target.value }))}
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            {/* Sélection de place avec BusSeatSelector */}
+                                            <div>
+                                                <Label>Numéro de place</Label>
+                                                <div className="flex gap-2">
+                                                    <Input
+                                                        placeholder="Ex: A12"
+                                                        value={editingProduct.numeroPlace || ''}
+                                                        onChange={(e) => setEditingProduct(prev => ({ ...prev!, numeroPlace: e.target.value }))}
+                                                        className="flex-1"
+                                                    />
+                                                    <Button
+                                                        variant="outline"
+                                                        onClick={() => setShowSeatSelector(true)}
+                                                        className="flex-shrink-0"
+                                                    >
+                                                        <MapPin className="w-4 h-4 mr-1" />
+                                                        Sélectionner
+                                                    </Button>
+                                                </div>
+                                                <p className="text-xs text-gray-500 mt-1">
+                                                    💡 Utilisez le sélecteur pour choisir visuellement une place
+                                                </p>
+                                            </div>
+
+                                            {/* Nombre de places disponibles */}
+                                            <div>
+                                                <Label>Places disponibles</Label>
+                                                <Input
+                                                    type="number"
+                                                    placeholder="Ex: 45"
+                                                    value={editingProduct.nbPlacesDisponibles || ''}
+                                                    onChange={(e) => setEditingProduct(prev => ({ ...prev!, nbPlacesDisponibles: e.target.value }))}
+                                                />
+                                            </div>
+
+                                            {/* Escales */}
+                                            <div>
+                                                <Label>Escales (optionnel)</Label>
+                                                <textarea
+                                                    placeholder="Ex: Bafoussam, Bertoua..."
+                                                    value={editingProduct.escales || ''}
+                                                    onChange={(e) => setEditingProduct(prev => ({ ...prev!, escales: e.target.value }))}
+                                                    className="w-full p-2 border border-gray-300 rounded-md min-h-[60px]"
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Formulaire Hôtellerie */}
+                                    {selectedType === 'hotellerie' && (
+                                        <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
+                                            <h4 className="font-semibold text-gray-900">🏨 Informations de l'hébergement</h4>
+
+                                            {/* Type */}
+                                            <div>
+                                                <Label>Type d'hébergement *</Label>
+                                                <div className="flex flex-wrap gap-2 mt-2">
+                                                    {TYPES_HEBERGEMENT.map((type) => (
+                                                        <button key={type} type="button"
+                                                            className={`px-3 py-1.5 border rounded-lg text-sm ${editingProduct.typeHebergement === type ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 border-gray-300'}`}
+                                                            onClick={() => setEditingProduct(prev => ({ ...prev!, typeHebergement: type }))}>
+                                                            {type}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+
+                                            {/* Catégorie */}
+                                            <div>
+                                                <Label>Catégorie *</Label>
+                                                <div className="flex flex-wrap gap-2 mt-2">
+                                                    {CATEGORIES_HOTEL.map((cat) => (
+                                                        <button key={cat} type="button"
+                                                            className={`px-3 py-1.5 border rounded-lg text-sm ${editingProduct.categorieHotel === cat ? 'bg-yellow-600 text-white' : 'bg-white text-gray-700 border-gray-300'}`}
+                                                            onClick={() => setEditingProduct(prev => ({ ...prev!, categorieHotel: cat }))}>
+                                                            {cat}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div><Label>Prix par nuit (min) *</Label><Input type="number" placeholder="Ex: 35000" value={editingProduct.prixParNuit || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, prixParNuit: e.target.value }))} /></div>
+                                                <div><Label>Nombre de chambres</Label><Input type="number" placeholder="Ex: 25" value={editingProduct.nbChambresHotel || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, nbChambresHotel: e.target.value }))} /></div>
+                                            </div>
+
+                                            <div><Label>Adresse *</Label><Input placeholder="Ex: Avenue Kennedy" value={editingProduct.adresseHotel || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, adresseHotel: e.target.value }))} /></div>
+                                            <div><Label>Ville *</Label><Input placeholder="Ex: Douala" value={editingProduct.villeHotel || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, villeHotel: e.target.value }))} /></div>
+                                        </div>
+                                    )}
+
+                                    {/* Formulaire Covoiturage */}
+                                    {selectedType === 'covoiturage' && (
+                                        <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
+                                            <h4 className="font-semibold text-gray-900">🚙 Informations du trajet</h4>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div><Label>Point de départ *</Label><Input placeholder="Ex: Bonanjo" value={editingProduct.pointDepart || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, pointDepart: e.target.value }))} /></div>
+                                                <div><Label>Point d'arrivée *</Label><Input placeholder="Ex: Yaoundé" value={editingProduct.pointArrivee || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, pointArrivee: e.target.value }))} /></div>
+                                            </div>
+                                            <div className="grid grid-cols-3 gap-4">
+                                                <div><Label>Date *</Label><Input type="date" value={editingProduct.dateTrajet || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, dateTrajet: e.target.value }))} /></div>
+                                                <div><Label>Heure *</Label><Input type="time" value={editingProduct.heureTrajet || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, heureTrajet: e.target.value }))} /></div>
+                                                <div><Label>Places dispo</Label><Input type="number" placeholder="3" value={editingProduct.nbPlacesDisponibles || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, nbPlacesDisponibles: e.target.value }))} /></div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Formulaire Vêtement */}
+                                    {selectedType === 'vetement' && (
+                                        <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
+                                            <h4 className="font-semibold text-gray-900">👕 Caractéristiques du vêtement</h4>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div><Label>Taille</Label><Input placeholder="S, M, L, XL" value={editingProduct.taille || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, taille: e.target.value }))} /></div>
+                                                <div><Label>Couleur</Label><Input placeholder="Ex: Bleu" value={editingProduct.couleurVetement || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, couleurVetement: e.target.value }))} /></div>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div><Label>Matière</Label><Input placeholder="Ex: Coton" value={editingProduct.matiere || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, matiere: e.target.value }))} /></div>
+                                                <div><Label>Marque</Label><Input placeholder="Ex: Nike" value={editingProduct.marqueVetement || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, marqueVetement: e.target.value }))} /></div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Formulaire Chaussure */}
+                                    {selectedType === 'chaussure' && (
+                                        <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
+                                            <h4 className="font-semibold text-gray-900">👟 Caractéristiques de la chaussure</h4>
+                                            <div className="grid grid-cols-3 gap-4">
+                                                <div><Label>Pointure</Label><Input type="number" placeholder="42" value={editingProduct.pointure || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, pointure: e.target.value }))} /></div>
+                                                <div><Label>Couleur</Label><Input placeholder="Noire" value={editingProduct.couleurChaussure || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, couleurChaussure: e.target.value }))} /></div>
+                                                <div><Label>Marque</Label><Input placeholder="Adidas" value={editingProduct.marqueChaussure || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, marqueChaussure: e.target.value }))} /></div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Formulaire Électroménager */}
+                                    {selectedType === 'electromenager' && (
+                                        <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
+                                            <h4 className="font-semibold text-gray-900">🔌 Caractéristiques de l'appareil</h4>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div><Label>Type d'appareil</Label><Input placeholder="Réfrigérateur, Four..." value={editingProduct.typeElectro || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, typeElectro: e.target.value }))} /></div>
+                                                <div><Label>Marque</Label><Input placeholder="Samsung, LG..." value={editingProduct.marqueElectro || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, marqueElectro: e.target.value }))} /></div>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div><Label>Modèle</Label><Input placeholder="RT50K6000S8" value={editingProduct.modeleElectro || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, modeleElectro: e.target.value }))} /></div>
+                                                <div><Label>État</Label><Input placeholder="Neuf, Bon état" value={editingProduct.etat || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, etat: e.target.value }))} /></div>
+                                            </div>
+                                            <div><Label>Garantie</Label><Input placeholder="2 ans, 1 an..." value={editingProduct.garantie || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, garantie: e.target.value }))} /></div>
+                                        </div>
+                                    )}
+
+                                    {/* Formulaire Image et Son */}
+                                    {selectedType === 'image_son' && (
+                                        <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
+                                            <h4 className="font-semibold text-gray-900">📺 Caractéristiques de l'appareil</h4>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div><Label>Type</Label><Input placeholder="TV, Home cinéma..." value={editingProduct.typeImageSon || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, typeImageSon: e.target.value }))} /></div>
+                                                <div><Label>Marque</Label><Input placeholder="Samsung, Sony..." value={editingProduct.marqueImageSon || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, marqueImageSon: e.target.value }))} /></div>
+                                            </div>
+                                            <div className="grid grid-cols-3 gap-4">
+                                                <div><Label>Modèle</Label><Input placeholder="QE55Q80B" value={editingProduct.modeleImageSon || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, modeleImageSon: e.target.value }))} /></div>
+                                                <div><Label>Diagonale</Label><Input placeholder="55 pouces" value={editingProduct.diagonaleEcran || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, diagonaleEcran: e.target.value }))} /></div>
+                                                <div><Label>Résolution</Label><Input placeholder="4K, HD..." value={editingProduct.resolution || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, resolution: e.target.value }))} /></div>
+                                            </div>
+                                            <div><Label>État</Label><Input placeholder="Neuf, Bon état" value={editingProduct.etatImageSon || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, etatImageSon: e.target.value }))} /></div>
+                                        </div>
+                                    )}
+
+                                    {/* Formulaire Téléphone */}
+                                    {selectedType === 'telephone' && (
+                                        <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
+                                            <h4 className="font-semibold text-gray-900">📱 Caractéristiques du téléphone</h4>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div><Label>Marque</Label><Input placeholder="Apple, Samsung..." value={editingProduct.marqueTelephone || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, marqueTelephone: e.target.value }))} /></div>
+                                                <div><Label>Modèle</Label><Input placeholder="iPhone 13 Pro" value={editingProduct.modeleTelephone || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, modeleTelephone: e.target.value }))} /></div>
+                                            </div>
+                                            <div className="grid grid-cols-3 gap-4">
+                                                <div><Label>Stockage</Label><Input placeholder="256GB" value={editingProduct.stockage || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, stockage: e.target.value }))} /></div>
+                                                <div><Label>RAM</Label><Input placeholder="6GB" value={editingProduct.ram || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, ram: e.target.value }))} /></div>
+                                                <div><Label>Couleur</Label><Input placeholder="Graphite" value={editingProduct.couleurTelephone || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, couleurTelephone: e.target.value }))} /></div>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div><Label>État</Label><Input placeholder="Neuf, Bon état" value={editingProduct.etatTelephone || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, etatTelephone: e.target.value }))} /></div>
+                                                <div><Label>Opérateur</Label><Input placeholder="Débloqué, Orange..." value={editingProduct.operateur || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, operateur: e.target.value }))} /></div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Formulaire Ordinateur */}
+                                    {selectedType === 'ordinateur' && (
+                                        <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
+                                            <h4 className="font-semibold text-gray-900">💻 Caractéristiques de l'ordinateur</h4>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div><Label>Type</Label><Input placeholder="Portable, Bureau..." value={editingProduct.typeOrdinateur || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, typeOrdinateur: e.target.value }))} /></div>
+                                                <div><Label>Marque</Label><Input placeholder="Apple, Dell..." value={editingProduct.marqueOrdinateur || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, marqueOrdinateur: e.target.value }))} /></div>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div><Label>Modèle</Label><Input placeholder="MacBook Pro 14" value={editingProduct.modeleOrdinateur || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, modeleOrdinateur: e.target.value }))} /></div>
+                                                <div><Label>Processeur</Label><Input placeholder="M2 Pro, i7..." value={editingProduct.processeur || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, processeur: e.target.value }))} /></div>
+                                            </div>
+                                            <div className="grid grid-cols-3 gap-4">
+                                                <div><Label>RAM</Label><Input placeholder="16GB" value={editingProduct.ramOrdinateur || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, ramOrdinateur: e.target.value }))} /></div>
+                                                <div><Label>Stockage</Label><Input placeholder="512GB SSD" value={editingProduct.stockageOrdinateur || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, stockageOrdinateur: e.target.value }))} /></div>
+                                                <div><Label>Carte graphique</Label><Input placeholder="Intégrée, RTX..." value={editingProduct.carteGraphique || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, carteGraphique: e.target.value }))} /></div>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div><Label>OS</Label><Input placeholder="macOS, Windows..." value={editingProduct.systemeExploitation || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, systemeExploitation: e.target.value }))} /></div>
+                                                <div><Label>État</Label><Input placeholder="Neuf, Bon état" value={editingProduct.etatOrdinateur || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, etatOrdinateur: e.target.value }))} /></div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Formulaire Mobilier */}
+                                    {selectedType === 'mobilier' && (
+                                        <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
+                                            <h4 className="font-semibold text-gray-900">🪑 Caractéristiques du meuble</h4>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div><Label>Type de meuble</Label><Input placeholder="Canapé, Table..." value={editingProduct.typeMobilier || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, typeMobilier: e.target.value }))} /></div>
+                                                <div><Label>Matériau</Label><Input placeholder="Bois, Métal..." value={editingProduct.materiau || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, materiau: e.target.value }))} /></div>
+                                            </div>
+                                            <div className="grid grid-cols-3 gap-4">
+                                                <div><Label>Dimensions</Label><Input placeholder="LxPxH en cm" value={editingProduct.dimensions || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, dimensions: e.target.value }))} /></div>
+                                                <div><Label>Couleur</Label><Input placeholder="Gris, Marron..." value={editingProduct.couleurMobilier || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, couleurMobilier: e.target.value }))} /></div>
+                                                <div><Label>État</Label><Input placeholder="Neuf, Bon état" value={editingProduct.etatMobilier || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, etatMobilier: e.target.value }))} /></div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Formulaire Décoration */}
+                                    {selectedType === 'decoration' && (
+                                        <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
+                                            <h4 className="font-semibold text-gray-900">🖼️ Caractéristiques de l'article déco</h4>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div><Label>Type</Label><Input placeholder="Tableau, Tapis..." value={editingProduct.typeDecoration || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, typeDecoration: e.target.value }))} /></div>
+                                                <div><Label>Style</Label><Input placeholder="Moderne, Classique..." value={editingProduct.style || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, style: e.target.value }))} /></div>
+                                            </div>
+                                            <div className="grid grid-cols-3 gap-4">
+                                                <div><Label>Couleur</Label><Input placeholder="Multicolore..." value={editingProduct.couleurDecoration || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, couleurDecoration: e.target.value }))} /></div>
+                                                <div><Label>Dimensions</Label><Input placeholder="80x60 cm" value={editingProduct.dimensionsDecoration || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, dimensionsDecoration: e.target.value }))} /></div>
+                                                <div><Label>Matériau</Label><Input placeholder="Toile, Bois..." value={editingProduct.materiauDecoration || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, materiauDecoration: e.target.value }))} /></div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Formulaire Ustensiles de Cuisine */}
+                                    {selectedType === 'ustensiles_cuisine' && (
+                                        <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
+                                            <h4 className="font-semibold text-gray-900">🍴 Caractéristiques de l'ustensile</h4>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div><Label>Type</Label><Input placeholder="Casserole, Poêle..." value={editingProduct.typeUstensile || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, typeUstensile: e.target.value }))} /></div>
+                                                <div><Label>Matériau</Label><Input placeholder="Inox, Aluminium..." value={editingProduct.materiauUstensile || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, materiauUstensile: e.target.value }))} /></div>
+                                            </div>
+                                            <div className="grid grid-cols-3 gap-4">
+                                                <div><Label>Marque</Label><Input placeholder="Tefal" value={editingProduct.marqueUstensile || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, marqueUstensile: e.target.value }))} /></div>
+                                                <div><Label>Capacité</Label><Input placeholder="2L, 28cm..." value={editingProduct.capacite || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, capacite: e.target.value }))} /></div>
+                                                <div><Label>Pièces (si set)</Label><Input type="number" placeholder="12" value={editingProduct.piecesDansSet || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, piecesDansSet: e.target.value }))} /></div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Formulaire Pièces Auto */}
+                                    {selectedType === 'pieces_auto' && (
+                                        <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
+                                            <h4 className="font-semibold text-gray-900">🔧 Caractéristiques de la pièce</h4>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div><Label>Type de pièce</Label><Input placeholder="Pneu, Batterie..." value={editingProduct.typePieceAuto || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, typePieceAuto: e.target.value }))} /></div>
+                                                <div><Label>Marque</Label><Input placeholder="Michelin, Varta..." value={editingProduct.marquePieceAuto || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, marquePieceAuto: e.target.value }))} /></div>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div><Label>Référence</Label><Input placeholder="205/55R16 91V" value={editingProduct.referenceAuto || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, referenceAuto: e.target.value }))} /></div>
+                                                <div><Label>Compatibilité</Label><Input placeholder="Toyota Corolla..." value={editingProduct.compatibilite || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, compatibilite: e.target.value }))} /></div>
+                                            </div>
+                                            <div><Label>État</Label><Input placeholder="Neuf, Reconditionné" value={editingProduct.etatPieceAuto || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, etatPieceAuto: e.target.value }))} /></div>
+                                        </div>
+                                    )}
+
+                                    {/* Formulaire Pièces Industrielles */}
+                                    {selectedType === 'pieces_industrielles' && (
+                                        <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
+                                            <h4 className="font-semibold text-gray-900">⚙️ Caractéristiques de la pièce</h4>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div><Label>Type de pièce</Label><Input placeholder="Roulement, Moteur..." value={editingProduct.typePieceIndustrielle || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, typePieceIndustrielle: e.target.value }))} /></div>
+                                                <div><Label>Marque</Label><Input placeholder="SKF, ABB..." value={editingProduct.marquePieceIndustrielle || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, marquePieceIndustrielle: e.target.value }))} /></div>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div><Label>Référence</Label><Input placeholder="6205-2RS" value={editingProduct.referencePiece || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, referencePiece: e.target.value }))} /></div>
+                                                <div><Label>Application</Label><Input placeholder="Machines outils..." value={editingProduct.applicationIndustrielle || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, applicationIndustrielle: e.target.value }))} /></div>
+                                            </div>
+                                            <div><Label>Matériel</Label><Input placeholder="Acier, Fonte..." value={editingProduct.materielPiece || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, materielPiece: e.target.value }))} /></div>
+                                        </div>
+                                    )}
+
+                                    {/* Formulaire Jouets Enfants */}
+                                    {selectedType === 'jouets_enfants' && (
+                                        <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
+                                            <h4 className="font-semibold text-gray-900">🧸 Caractéristiques du jouet</h4>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div><Label>Type de jouet</Label><Input placeholder="Éducatif, Peluche..." value={editingProduct.typeJouet || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, typeJouet: e.target.value }))} /></div>
+                                                <div><Label>Âge recommandé</Label><Input placeholder="6-10 ans" value={editingProduct.ageRecommande || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, ageRecommande: e.target.value }))} /></div>
+                                            </div>
+                                            <div className="grid grid-cols-3 gap-4">
+                                                <div><Label>Marque</Label><Input placeholder="Ravensburger..." value={editingProduct.marqueJouet || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, marqueJouet: e.target.value }))} /></div>
+                                                <div><Label>Matériel</Label><Input placeholder="Plastique, Bois..." value={editingProduct.materielJouet || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, materielJouet: e.target.value }))} /></div>
+                                                <div><Label>Norme sécurité</Label><Input placeholder="CE, EN71..." value={editingProduct.normeSecurite || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, normeSecurite: e.target.value }))} /></div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Formulaire Aliments */}
+                                    {selectedType === 'aliments' && (
+                                        <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
+                                            <h4 className="font-semibold text-gray-900">🍎 Caractéristiques du produit alimentaire</h4>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div><Label>Catégorie</Label><Input placeholder="Fruits, Légumes..." value={editingProduct.categorieAliment || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, categorieAliment: e.target.value }))} /></div>
+                                                <div><Label>Origine</Label><Input placeholder="Locale, Importée" value={editingProduct.origine || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, origine: e.target.value }))} /></div>
+                                            </div>
+                                            <div className="grid grid-cols-3 gap-4">
+                                                <div><Label>Date expiration</Label><Input type="date" value={editingProduct.dateExpiration || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, dateExpiration: e.target.value }))} /></div>
+                                                <div><Label>Poids/Quantité</Label><Input placeholder="1kg, 2L..." value={editingProduct.poids || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, poids: e.target.value }))} /></div>
+                                                <div><Label>Conservation</Label><Input placeholder="Frais, Surgelé..." value={editingProduct.conservation || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, conservation: e.target.value }))} /></div>
+                                            </div>
+                                            <div><Label>Certification</Label><Input placeholder="Bio, Halal..." value={editingProduct.certification || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, certification: e.target.value }))} /></div>
+                                        </div>
+                                    )}
+
+                                    {/* Formulaire Livres et Fournitures */}
+                                    {selectedType === 'livres_fournitures' && (
+                                        <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
+                                            <h4 className="font-semibold text-gray-900">📚 Caractéristiques</h4>
+                                            <div className="grid grid-cols-3 gap-4">
+                                                <div><Label>Catégorie</Label><Input placeholder="Livre, Cahier..." value={editingProduct.categorieLivre || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, categorieLivre: e.target.value }))} /></div>
+                                                <div><Label>Niveau</Label><Input placeholder="Primaire, Secondaire..." value={editingProduct.niveau || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, niveau: e.target.value }))} /></div>
+                                                <div><Label>Matière</Label><Input placeholder="Mathématiques..." value={editingProduct.matiereScolaire || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, matiereScolaire: e.target.value }))} /></div>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div><Label>Auteur</Label><Input placeholder="Pour livres" value={editingProduct.auteur || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, auteur: e.target.value }))} /></div>
+                                                <div><Label>Éditeur</Label><Input placeholder="Edicef..." value={editingProduct.editeur || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, editeur: e.target.value }))} /></div>
+                                            </div>
+                                            <div className="grid grid-cols-3 gap-4">
+                                                <div><Label>ISBN</Label><Input placeholder="978-X-XXX..." value={editingProduct.isbn || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, isbn: e.target.value }))} /></div>
+                                                <div><Label>Année édition</Label><Input type="number" placeholder="2023" value={editingProduct.anneeEdition || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, anneeEdition: e.target.value }))} /></div>
+                                                <div><Label>État</Label><Input placeholder="Neuf, Bon état" value={editingProduct.etatLivre || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, etatLivre: e.target.value }))} /></div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Formulaire Quincaillerie */}
+                                    {selectedType === 'quincaillerie' && (
+                                        <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
+                                            <h4 className="font-semibold text-gray-900">🔨 Caractéristiques</h4>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div><Label>Catégorie</Label><Input placeholder="Outils, Peinture..." value={editingProduct.categorieQuincaillerie || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, categorieQuincaillerie: e.target.value }))} /></div>
+                                                <div><Label>Marque</Label><Input placeholder="Stanley..." value={editingProduct.marqueQuincaillerie || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, marqueQuincaillerie: e.target.value }))} /></div>
+                                            </div>
+                                            <div className="grid grid-cols-3 gap-4">
+                                                <div><Label>Référence</Label><Input placeholder="STHT0-51309" value={editingProduct.referenceQuincaillerie || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, referenceQuincaillerie: e.target.value }))} /></div>
+                                                <div><Label>Unité</Label><Input placeholder="Pièce, Sac, m..." value={editingProduct.unite || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, unite: e.target.value }))} /></div>
+                                                <div><Label>Stock disponible</Label><Input type="number" placeholder="50" value={editingProduct.stockDisponible || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, stockDisponible: e.target.value }))} /></div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Formulaire Assurance */}
+                                    {selectedType === 'assurance' && (
+                                        <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
+                                            <h4 className="font-semibold text-gray-900">🛡️ Détails de l'assurance</h4>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div><Label>Catégorie</Label><Input placeholder="Vie, Non-Vie" value={editingProduct.categorieAssurance || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, categorieAssurance: e.target.value }))} /></div>
+                                                <div><Label>Type</Label><Input placeholder="Auto, Santé..." value={editingProduct.typeAssurance || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, typeAssurance: e.target.value }))} /></div>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div><Label>Compagnie</Label><Input placeholder="AXA Cameroun..." value={editingProduct.compagnieAssurance || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, compagnieAssurance: e.target.value }))} /></div>
+                                                <div><Label>Prime annuelle</Label><Input type="number" placeholder="180000" value={editingProduct.primeAnnuelle || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, primeAnnuelle: e.target.value }))} /></div>
+                                            </div>
+                                            <div className="grid grid-cols-3 gap-4">
+                                                <div><Label>Franchise</Label><Input type="number" placeholder="100000" value={editingProduct.franchise || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, franchise: e.target.value }))} /></div>
+                                                <div><Label>Durée</Label><Input placeholder="1 an, 2 ans..." value={editingProduct.dureeContrat || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, dureeContrat: e.target.value }))} /></div>
+                                                <div><Label>Couverture</Label><Input placeholder="Dommages, Vol..." value={editingProduct.couverture || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, couverture: e.target.value }))} /></div>
+                                            </div>
+                                            <div><Label>Bénéfices</Label><textarea placeholder="Assistance 24h, Véhicule remplacement..." value={editingProduct.benefices || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, benefices: e.target.value }))} className="w-full p-2 border border-gray-300 rounded-md min-h-[60px]" /></div>
+                                        </div>
+                                    )}
+
+                                    {/* Formulaire Pharmacie */}
+                                    {selectedType === 'pharmacie' && (
+                                        <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
+                                            <h4 className="font-semibold text-gray-900">💊 Informations pharmacie</h4>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div><Label>Heures ouverture</Label><Input type="time" placeholder="08:00" value={editingProduct.heuresOuverture || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, heuresOuverture: e.target.value }))} /></div>
+                                                <div><Label>Heures fermeture</Label><Input type="time" placeholder="20:00" value={editingProduct.heuresFermeture || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, heuresFermeture: e.target.value }))} /></div>
+                                            </div>
+                                            <div><Label>Jours de garde</Label><Input placeholder="Lundi-Samedi" value={editingProduct.joursGarde || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, joursGarde: e.target.value }))} /></div>
+                                            <div><Label>Téléphone urgence</Label><Input type="tel" placeholder="+237 6XX XX XX XX" value={editingProduct.telephoneUrgence || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, telephoneUrgence: e.target.value }))} /></div>
+                                        </div>
+                                    )}
+
+                                    {/* Formulaire Hôpital/Clinique */}
+                                    {selectedType === 'hopital_clinique' && (
+                                        <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
+                                            <h4 className="font-semibold text-gray-900">🏥 Informations établissement</h4>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div><Label>Type</Label><Input placeholder="Hôpital, Clinique..." value={editingProduct.typeEtablissement || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, typeEtablissement: e.target.value }))} /></div>
+                                                <div><Label>Banque de sang</Label><Input placeholder="Oui, Non" value={editingProduct.banqueSang || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, banqueSang: e.target.value }))} /></div>
+                                            </div>
+                                            <div><Label>Prestations médicales</Label><textarea placeholder="Chirurgie, Radiologie..." value={editingProduct.prestationsMedicales || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, prestationsMedicales: e.target.value }))} className="w-full p-2 border border-gray-300 rounded-md min-h-[60px]" /></div>
+                                            <div><Label>Planning</Label><Input placeholder="Lun-Ven 08:00-18:00" value={editingProduct.planning || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, planning: e.target.value }))} /></div>
+                                        </div>
+                                    )}
+
+                                    {/* Formulaire Déménagement */}
+                                    {selectedType === 'demenagement' && (
+                                        <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
+                                            <h4 className="font-semibold text-gray-900">🚚 Détails du déménagement</h4>
+                                            <div className="grid grid-cols-3 gap-4">
+                                                <div><Label>Type</Label><Input placeholder="Local, International" value={editingProduct.typeDemenagement || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, typeDemenagement: e.target.value }))} /></div>
+                                                <div><Label>Volume (m³)</Label><Input type="number" placeholder="20" value={editingProduct.volumeDemenagement || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, volumeDemenagement: e.target.value }))} /></div>
+                                                <div><Label>Nb déménageurs</Label><Input type="number" placeholder="3" value={editingProduct.nbDemenageurs || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, nbDemenageurs: e.target.value }))} /></div>
+                                            </div>
+                                            <div><Label>Services inclus</Label><textarea placeholder="Emballage, Montage/Démontage, Assurance..." value={editingProduct.servicesInclus || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, servicesInclus: e.target.value }))} className="w-full p-2 border border-gray-300 rounded-md min-h-[60px]" /></div>
+                                        </div>
+                                    )}
+
+                                    {/* Formulaire Cosmétique et Parfums */}
+                                    {selectedType === 'cosmetique_parfum' && (
+                                        <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
+                                            <h4 className="font-semibold text-gray-900">✨ Caractéristiques du produit</h4>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div><Label>Type</Label><Input placeholder="Parfum, Crème..." value={editingProduct.typeCosmetique || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, typeCosmetique: e.target.value }))} /></div>
+                                                <div><Label>Marque</Label><Input placeholder="Chanel, Nivea..." value={editingProduct.marqueCosmetique || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, marqueCosmetique: e.target.value }))} /></div>
+                                            </div>
+                                            <div className="grid grid-cols-3 gap-4">
+                                                <div><Label>Volume</Label><Input placeholder="50ml, 100ml" value={editingProduct.volumeCosmetique || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, volumeCosmetique: e.target.value }))} /></div>
+                                                <div><Label>Pour qui</Label><Input placeholder="Homme, Femme..." value={editingProduct.genre || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, genre: e.target.value }))} /></div>
+                                                <div><Label>Type peau</Label><Input placeholder="Toutes, Sèche..." value={editingProduct.typePeau || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, typePeau: e.target.value }))} /></div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Formulaire Bijoux */}
+                                    {selectedType === 'bijoux' && (
+                                        <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
+                                            <h4 className="font-semibold text-gray-900">💎 Caractéristiques du bijou</h4>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div><Label>Type</Label><Input placeholder="Collier, Bague..." value={editingProduct.typeBijou || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, typeBijou: e.target.value }))} /></div>
+                                                <div><Label>Matière</Label><Input placeholder="Or, Argent..." value={editingProduct.matiereBijou || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, matiereBijou: e.target.value }))} /></div>
+                                            </div>
+                                            <div className="grid grid-cols-3 gap-4">
+                                                <div><Label>Poids (g)</Label><Input type="number" placeholder="15" value={editingProduct.poidsBijou || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, poidsBijou: e.target.value }))} /></div>
+                                                <div><Label>Carat</Label><Input placeholder="18, 1 carat..." value={editingProduct.carat || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, carat: e.target.value }))} /></div>
+                                                <div><Label>Certificat</Label><Input placeholder="Oui, Non, GIA..." value={editingProduct.certificat || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, certificat: e.target.value }))} /></div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Formulaire Coiffure et Beauté */}
+                                    {selectedType === 'coiffure_beaute' && (
+                                        <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
+                                            <h4 className="font-semibold text-gray-900">💇‍♀️ Caractéristiques du produit capillaire</h4>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div><Label>Type</Label><Input placeholder="Mèches, Perruque..." value={editingProduct.typeCoiffure || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, typeCoiffure: e.target.value }))} /></div>
+                                                <div><Label>Longueur</Label><Input placeholder="30cm, 50cm..." value={editingProduct.longueurMech || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, longueurMech: e.target.value }))} /></div>
+                                            </div>
+                                            <div className="grid grid-cols-3 gap-4">
+                                                <div><Label>Couleur</Label><Input placeholder="Noir, Châtain..." value={editingProduct.couleurMech || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, couleurMech: e.target.value }))} /></div>
+                                                <div><Label>Texture</Label><Input placeholder="Lisse, Afro..." value={editingProduct.textureMech || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, textureMech: e.target.value }))} /></div>
+                                                <div><Label>Type pose</Label><Input placeholder="Clip, Tissage..." value={editingProduct.typePose || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, typePose: e.target.value }))} /></div>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div><Label>Marque</Label><Input placeholder="Remy Hair..." value={editingProduct.marqueCoiffure || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, marqueCoiffure: e.target.value }))} /></div>
+                                                <div><Label>Origine</Label><Input placeholder="Brésilien, Indien..." value={editingProduct.origineMech || ''} onChange={(e) => setEditingProduct(prev => ({ ...prev!, origineMech: e.target.value }))} /></div>
                                             </div>
                                         </div>
                                     )}

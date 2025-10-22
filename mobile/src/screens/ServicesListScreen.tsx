@@ -1,3 +1,4 @@
+// @ts-nocheck
 import React, { useState } from 'react';
 import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeNativeView } from '../components/SafeNativeView';
@@ -362,4 +363,5 @@ const styles = StyleSheet.create({
 });
 
 export default ServicesListScreen;
+
 

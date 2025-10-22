@@ -1,15 +1,16 @@
-// @ts-nocheck
 import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
-import React, {
+import React, { useEffect, useRef, useState } from 'react';
+import {
     Dimensions,
     Image,
     ScrollView,
     StyleSheet,
     Text,
-    TouchableOpacity, useEffect, useRef, useState, View
-} from 'react';
-import { useLanguage } from '../contexts/LanguageContext';
+    TouchableOpacity,
+    View
+} from 'react-native';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 import { apiGet, apiPost } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
@@ -25,7 +26,7 @@ interface PublicitesCarouselProps {
 
 const PublicitesCarousel: React.FC<PublicitesCarouselProps> = ({ userId, userBehavior = [] }) => {
     const navigation = useNavigation();
-    const { t } = useLanguage();
+    const { t } = useLanguageSafe();
     const scrollViewRef = useRef<ScrollView>(null);
     const [publicites, setPublicites] = useState<any[]>([]);
     const [currentIndex, setCurrentIndex] = useState(0);
@@ -69,9 +70,9 @@ const PublicitesCarousel: React.FC<PublicitesCarouselProps> = ({ userId, userBeh
 
             if (response.success && response.data) {
                 // ✅ Trier par pertinence si comportement fourni
-                let pubs = response.data;
+                let pubs = Array.isArray(response.data) ? response.data : [];
 
-                if (userBehavior.length > 0) {
+                if (userBehavior.length > 0 && pubs.length > 0) {
                     pubs = pubs.sort((a: any, b: any) => {
                         // Calculer score de pertinence
                         const scoreA = a.produits?.filter((p: any) =>
@@ -85,11 +86,16 @@ const PublicitesCarousel: React.FC<PublicitesCarouselProps> = ({ userId, userBeh
                 }
 
                 setPublicites(pubs);
+            } else {
+                // En cas d'erreur ou pas de données, définir un tableau vide
+                setPublicites([]);
             }
 
             setLoading(false);
         } catch (error) {
             console.error('[PublicitesCarousel] Erreur chargement:', error);
+            // Ne plus continuer à essayer en boucle si l'endpoint n'existe pas
+            setPublicites([]);
             setLoading(false);
         }
     };
@@ -147,7 +153,7 @@ const PublicitesCarousel: React.FC<PublicitesCarouselProps> = ({ userId, userBeh
                     setCurrentIndex(newIndex);
                 }}
             >
-                {publicites.map((pub, index) => (
+                {(publicites || []).map((pub, index) => (
                     <TouchableOpacity
                         key={pub.id}
                         style={[styles.card, { width: CARD_WIDTH, marginRight: CARD_MARGIN }]}
@@ -240,9 +246,9 @@ const PublicitesCarousel: React.FC<PublicitesCarouselProps> = ({ userId, userBeh
             </ScrollView>
 
             {/* Indicateurs de pagination */}
-            {publicites.length > 1 && (
+            {(publicites || []).length > 1 && (
                 <View style={styles.pagination}>
-                    {publicites.map((_, index) => (
+                    {(publicites || []).map((_, index) => (
                         <View
                             key={index}
                             style={[

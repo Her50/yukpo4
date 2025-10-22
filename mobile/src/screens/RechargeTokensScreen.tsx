@@ -1,4 +1,5 @@
-Ôªøimport Ionicons from '@expo/vector-icons/Ionicons';
+// @ts-nocheck
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import * as React from 'react';
 import { useState } from 'react';
@@ -39,7 +40,7 @@ const RechargeTokensScreen: React.FC = () => {
   const [showReceiptModal, setShowReceiptModal] = useState(false);
   const [receiptData, setReceiptData] = useState<any>(null);
 
-  // Options de recharge pr√©d√©finies
+  // Options de recharge prÈdÈfinies
   const rechargeOptions: RechargeOption[] = [
     {
       id: 'option1',
@@ -70,13 +71,13 @@ const RechargeTokensScreen: React.FC = () => {
     },
   ];
 
-  // M√©thodes de paiement disponibles
+  // MÈthodes de paiement disponibles
   const paymentMethods: PaymentMethod[] = [
     {
       id: 'mtn_money',
       name: 'MTN Mobile Money',
       type: 'mobile',
-      processingTime: 'Instantan√©',
+      processingTime: 'InstantanÈ',
       fees: 0,
       available: true,
       icon: 'phone-portrait',
@@ -85,7 +86,7 @@ const RechargeTokensScreen: React.FC = () => {
       id: 'orange_money',
       name: 'Orange Money',
       type: 'mobile',
-      processingTime: 'Instantan√©',
+      processingTime: 'InstantanÈ',
       fees: 0,
       available: true,
       icon: 'phone-portrait',
@@ -105,12 +106,12 @@ const RechargeTokensScreen: React.FC = () => {
 
   const handleRecharge = async () => {
     if (!selectedOption && !customAmount) {
-      Alert.alert('Erreur', 'Veuillez s√©lectionner un montant');
+      Alert.alert('Erreur', 'Veuillez sÈlectionner un montant');
       return;
     }
 
     if (!selectedPaymentMethod) {
-      Alert.alert('Erreur', 'Veuillez s√©lectionner une m√©thode de paiement');
+      Alert.alert('Erreur', 'Veuillez sÈlectionner une mÈthode de paiement');
       return;
     }
 
@@ -149,13 +150,13 @@ const RechargeTokensScreen: React.FC = () => {
         amount >= 5000 ? Math.floor(amount * 0.1) :
           amount >= 2000 ? Math.floor(amount * 0.05) : 0;
 
-      // G√©n√©rer le re√ßu
+      // GÈnÈrer le reÁu
       const receipt = {
         id: paymentData.payment_id,
         amount: amount,
         tokens: tokens,
         bonus: bonus,
-        paymentMethod: paymentMethods.find(method => method.id === selectedPaymentMethod)?.name || 'M√©thode de paiement',
+        paymentMethod: paymentMethods.find(method => method.id === selectedPaymentMethod)?.name || 'MÈthode de paiement',
         transactionId: paymentData.payment_id,
         date: new Date().toISOString(),
         status: 'completed' as const,
@@ -165,14 +166,14 @@ const RechargeTokensScreen: React.FC = () => {
       setReceiptData(receipt);
       setShowReceiptModal(true);
 
-      // R√©initialiser le formulaire
+      // RÈinitialiser le formulaire
       setSelectedOption(null);
       setCustomAmount('');
       setSelectedPaymentMethod(null);
       setCurrentStep('amount');
     } catch (error) {
       console.error('Erreur paiement:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Le paiement a √©chou√©. Veuillez r√©essayer.';
+      const errorMessage = error instanceof Error ? error.message : 'Le paiement a ÈchouÈ. Veuillez rÈessayer.';
       Alert.alert('Erreur', errorMessage);
     } finally {
       setLoading(false);
@@ -199,7 +200,7 @@ const RechargeTokensScreen: React.FC = () => {
     <View style={styles.stepContainer}>
       <Title style={styles.stepTitle}>Choisissez le montant</Title>
 
-      {/* Options pr√©d√©finies */}
+      {/* Options prÈdÈfinies */}
       <View style={styles.optionsContainer}>
         {rechargeOptions.map((option) => (
           <TouchableOpacity
@@ -232,7 +233,7 @@ const RechargeTokensScreen: React.FC = () => {
               </Text>
               {option.savings && (
                 <Text style={styles.savingsText}>
-                  √âconomisez {option.savings}%
+                  …conomisez {option.savings}%
                 </Text>
               )}
             </View>
@@ -249,10 +250,10 @@ const RechargeTokensScreen: React.FC = () => {
         ))}
       </View>
 
-      {/* Option personnalis√©e */}
+      {/* Option personnalisÈe */}
       <Card style={styles.customCard}>
         <Card.Content>
-          <Title style={styles.customTitle}>Montant personnalis√©</Title>
+          <Title style={styles.customTitle}>Montant personnalisÈ</Title>
           <TextInput
             style={styles.customInput}
             placeholder="Entrez le montant en XAF"
@@ -279,14 +280,14 @@ const RechargeTokensScreen: React.FC = () => {
           (!selectedOption && !customAmount) && styles.nextButtonDisabled
         ]}
       >
-        <Text style={styles.nextButtonText}>Continuer ‚Üí</Text>
+        <Text style={styles.nextButtonText}>Continuer ?</Text>
       </TouchableOpacity>
     </View>
   );
 
   const renderPaymentStep = () => (
     <View style={styles.stepContainer}>
-      <Title style={styles.stepTitle}>M√©thode de paiement</Title>
+      <Title style={styles.stepTitle}>MÈthode de paiement</Title>
 
       <View style={styles.paymentMethodsContainer}>
         {paymentMethods.map((method) => (
@@ -308,7 +309,7 @@ const RechargeTokensScreen: React.FC = () => {
                 <Text style={styles.paymentName}>{method.name}</Text>
                 <Text style={styles.paymentTime}>
                   {method.processingTime}
-                  {method.fees > 0 && ` ‚Ä¢ Frais: ${method.fees}%`}
+                  {method.fees > 0 && ` ï Frais: ${method.fees}%`}
                 </Text>
               </View>
             </View>
@@ -322,11 +323,11 @@ const RechargeTokensScreen: React.FC = () => {
         ))}
       </View>
 
-      {/* Champ num√©ro de t√©l√©phone pour Mobile Money */}
+      {/* Champ numÈro de tÈlÈphone pour Mobile Money */}
       {(selectedPaymentMethod === 'mtn_money' || selectedPaymentMethod === 'orange_money') && (
         <Card style={styles.phoneCard}>
           <Card.Content>
-            <Text style={styles.phoneLabel}>üì± Num√©ro de t√©l√©phone</Text>
+            <Text style={styles.phoneLabel}>?? NumÈro de tÈlÈphone</Text>
             <TextInput
               style={styles.phoneInput}
               placeholder="Exemple: 699999999"
@@ -337,7 +338,7 @@ const RechargeTokensScreen: React.FC = () => {
               maxLength={9}
             />
             <Text style={styles.phoneHint}>
-              {selectedPaymentMethod === 'mtn_money' ? 'üìû MTN : 67X XXX XXX ou 65X XXX XXX' : 'üìû Orange : 69X XXX XXX'}
+              {selectedPaymentMethod === 'mtn_money' ? '?? MTN : 67X XXX XXX ou 65X XXX XXX' : '?? Orange : 69X XXX XXX'}
             </Text>
           </Card.Content>
         </Card>
@@ -348,7 +349,7 @@ const RechargeTokensScreen: React.FC = () => {
           onPress={() => setCurrentStep('amount')}
           style={styles.backButton}
         >
-          <Text style={styles.backButtonText}>‚Üê Retour</Text>
+          <Text style={styles.backButtonText}>? Retour</Text>
         </TouchableOpacity>
         <TouchableOpacity
           onPress={() => setCurrentStep('confirm')}
@@ -358,7 +359,7 @@ const RechargeTokensScreen: React.FC = () => {
             (!selectedPaymentMethod || ((selectedPaymentMethod === 'mtn_money' || selectedPaymentMethod === 'orange_money') && !phoneNumber)) && styles.nextButtonDisabled
           ]}
         >
-          <Text style={styles.nextButtonText}>Continuer ‚Üí</Text>
+          <Text style={styles.nextButtonText}>Continuer ?</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -378,12 +379,12 @@ const RechargeTokensScreen: React.FC = () => {
           </View>
 
           <View style={styles.confirmRow}>
-            <Text style={styles.confirmLabel}>Tokens √† recevoir:</Text>
+            <Text style={styles.confirmLabel}>Tokens ‡ recevoir:</Text>
             <Text style={styles.confirmValue}>{getSelectedTokens()}</Text>
           </View>
 
           <View style={styles.confirmRow}>
-            <Text style={styles.confirmLabel}>M√©thode de paiement:</Text>
+            <Text style={styles.confirmLabel}>MÈthode de paiement:</Text>
             <Text style={styles.confirmValue}>
               {paymentMethods.find(m => m.id === selectedPaymentMethod)?.name}
             </Text>
@@ -403,7 +404,7 @@ const RechargeTokensScreen: React.FC = () => {
           onPress={() => setCurrentStep('payment')}
           style={styles.backButton}
         >
-          <Text style={styles.backButtonText}>‚Üê Retour</Text>
+          <Text style={styles.backButtonText}>? Retour</Text>
         </TouchableOpacity>
         <TouchableOpacity
           onPress={handleRecharge}
@@ -414,7 +415,7 @@ const RechargeTokensScreen: React.FC = () => {
           ]}
         >
           <Text style={styles.confirmButtonText}>
-            {loading ? 'Traitement...' : '‚úì Confirmer le paiement'}
+            {loading ? 'Traitement...' : '? Confirmer le paiement'}
           </Text>
         </TouchableOpacity>
       </View>
@@ -426,7 +427,7 @@ const RechargeTokensScreen: React.FC = () => {
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {/* Header */}
         <View style={styles.header}>
-          <Title style={styles.title}>üí≥ Recharger mes tokens</Title>
+          <Title style={styles.title}>?? Recharger mes tokens</Title>
           <View style={styles.balanceContainer}>
             <Text style={styles.subtitle}>
               Solde actuel: {user?.credits?.toLocaleString() || '0'} XAF
@@ -435,12 +436,12 @@ const RechargeTokensScreen: React.FC = () => {
               style={styles.historyButton}
               onPress={() => (navigation as any).navigate('SoldeDetail')}
             >
-              <Text style={styles.historyButtonText}>üìä Voir l'historique</Text>
+              <Text style={styles.historyButtonText}>?? Voir l'historique</Text>
             </TouchableOpacity>
           </View>
         </View>
 
-        {/* √âtapes */}
+        {/* …tapes */}
         <View style={styles.stepsIndicator}>
           <View style={[styles.step, currentStep === 'amount' && styles.stepActive]}>
             <Text style={[styles.stepText, currentStep === 'amount' && styles.stepTextActive]}>
@@ -459,13 +460,13 @@ const RechargeTokensScreen: React.FC = () => {
           </View>
         </View>
 
-        {/* Contenu des √©tapes */}
+        {/* Contenu des Ètapes */}
         {currentStep === 'amount' && renderAmountStep()}
         {currentStep === 'payment' && renderPaymentStep()}
         {currentStep === 'confirm' && renderConfirmStep()}
       </ScrollView>
 
-      {/* Modal de re√ßu */}
+      {/* Modal de reÁu */}
       <ReceiptModal
         visible={showReceiptModal}
         onClose={() => setShowReceiptModal(false)}
@@ -771,6 +772,7 @@ const styles = StyleSheet.create({
 });
 
 export default RechargeTokensScreen;
+
 
 
 

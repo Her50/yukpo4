@@ -2,11 +2,11 @@ import { AlertCircle, ArrowLeft, DollarSign, Globe, Info, MapPin, Package, Video
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { Button } from '../components/ui/button';
+import { Button } from '../components/ui/buttons/Button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Input } from '../components/ui/input';
 import { Textarea } from '../components/ui/textarea';
-import { apiGet, apiPost } from '../services/api';
+import { apiGet, apiPost } from '../services/apiService';
 
 // ✅ Taux de conversion des devises (base FCFA = 1)
 const EXCHANGE_RATES: { [key: string]: number } = {
@@ -238,11 +238,20 @@ const CreatePublicitePage: React.FC = () => {
 
             const videoBase64Array = await Promise.all(videoPromises);
 
+            // ✅ CORRECTION 413: Limiter la taille des vidéos
+            console.log('[CreatePublicite] 🔄 Vérification taille vidéos...');
+            const { limitVideos } = await import('../utils/mediaCompression');
+            const limitedVideos = limitVideos(videoBase64Array);
+
+            if (limitedVideos.length < videoBase64Array.length) {
+                toast.warning(`${videoBase64Array.length - limitedVideos.length} vidéo(s) ignorée(s) (trop volumineuse, max 5MB)`);
+            }
+
             const publiciteData = {
                 titre,
                 description,
                 produits_indexes: selectedProduits,
-                videos: videoBase64Array.map(v => v.split(',')[1]), // Retirer le préfixe data:...
+                videos: limitedVideos.map(v => v.split(',')[1]), // Retirer le préfixe data:...
                 duree_jours: parseInt(duree),
                 cout: coutEnFCFA,
                 zone_geographique: zoneGeographique,

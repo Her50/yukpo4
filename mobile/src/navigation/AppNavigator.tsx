@@ -1,37 +1,39 @@
-// Navigation ultra-moderne avec Phosphor Icons et gradients
+// Navigation simplifiée et sécurisée
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
-import { ChartBar, ChatCircleDots, House, User } from 'phosphor-react-native';
 import React from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { modernColors, modernStyles } from '../theme/modernTheme';
 
-// Contexts
+// Contexts - seulement AuthContext pour éviter les conflits
 import { useAuth } from '../contexts/AuthContext';
-import { useLanguage } from '../contexts/LanguageContext';
 
-// Screens
-import ContactScreen from '../screens/ContactScreen';
-import HomeScreen from '../screens/HomeScreen'; // HomeScreen amélioré avec avatar 56px, FCFA et fond ultramoderne
-import ProfileScreen from '../screens/ProfileScreen';
-import RechargeTokensScreen from '../screens/RechargeTokensScreen';
-import ServicesListScreen from '../screens/ServicesListScreen';
-import ServicesScreen from '../screens/ServicesScreen';
+// ✅ CORRECTION: Import de PushNotificationManager (chargé seulement si user connecté)
+import PushNotificationManager from '../components/PushNotificationManager';
 
-// Autres écrans (pour la navigation secondaire)
-import CreatePubliciteScreen from '../screens/CreatePubliciteScreen';
-import EnhancedSettingsScreen from '../screens/EnhancedSettingsScreen';
-import FormulaireYukpoIntelligentScreen from '../screens/FormulaireYukpoIntelligentScreen';
-import MesInteractionsScreen from '../screens/MesInteractionsScreen';
-import PubliciteDashboardScreen from '../screens/PubliciteDashboardScreen';
-import ResultatBesoinScreen from '../screens/ResultatBesoinScreen';
-import ServiceDetailSharedScreen from '../screens/ServiceDetailSharedScreen';
-import SoldeDetailScreen from '../screens/SoldeDetailScreen';
-import YukpoServicePlaceholderScreen from '../screens/YukpoServicePlaceholderScreen';
+// ✅ CORRECTION CRITIQUE: Chargement différé des écrans pour éviter les crashes
+// Screens - Lazy loading pour éviter les imports problématiques
+const ContactScreen = React.lazy(() => import('../screens/ContactScreen'));
+const HomeScreen = React.lazy(() => import('../screens/HomeScreen'));
+const ProfileScreen = React.lazy(() => import('../screens/ProfileScreen'));
+const RechargeTokensScreen = React.lazy(() => import('../screens/RechargeTokensScreen'));
+const ServicesListScreen = React.lazy(() => import('../screens/ServicesListScreen'));
+const ServicesScreen = React.lazy(() => import('../screens/ServicesScreen'));
 
-// Auth screens
-import LoginScreen from '../screens/auth/LoginScreen';
-import RegisterScreen from '../screens/auth/RegisterScreen';
+// Autres écrans (pour la navigation secondaire) - Lazy loading
+const CreatePubliciteScreen = React.lazy(() => import('../screens/CreatePubliciteScreen'));
+const EnhancedSettingsScreen = React.lazy(() => import('../screens/EnhancedSettingsScreen'));
+const FormulaireYukpoIntelligentScreen = React.lazy(() => import('../screens/FormulaireYukpoIntelligentScreen'));
+const MesInteractionsScreen = React.lazy(() => import('../screens/MesInteractionsScreen'));
+const PubliciteDashboardScreen = React.lazy(() => import('../screens/PubliciteDashboardScreen'));
+const ResultatBesoinScreen = React.lazy(() => import('../screens/ResultatBesoinScreen'));
+const ServiceDetailSharedScreen = React.lazy(() => import('../screens/ServiceDetailSharedScreen'));
+const SoldeDetailScreen = React.lazy(() => import('../screens/SoldeDetailScreen'));
+const YukpoServicePlaceholderScreen = React.lazy(() => import('../screens/YukpoServicePlaceholderScreen'));
+
+// Auth screens - Lazy loading
+const LoginScreen = React.lazy(() => import('../screens/auth/LoginScreen'));
+const RegisterScreen = React.lazy(() => import('../screens/auth/RegisterScreen'));
 
 // Theme
 
@@ -64,6 +66,13 @@ const LoadingScreen = () => {
   );
 };
 
+// ✅ CORRECTION CRITIQUE: Wrapper pour écrans avec lazy loading
+const SafeScreen = ({ children }: { children: React.ReactNode }) => (
+  <React.Suspense fallback={<LoadingScreen />}>
+    {children}
+  </React.Suspense>
+);
+
 // Stack Navigator pour l'authentification
 const AuthStack = () => (
   <Stack.Navigator
@@ -71,39 +80,62 @@ const AuthStack = () => (
       headerShown: false,
     }}
   >
-    <Stack.Screen name="Login" component={LoginScreen} />
-    <Stack.Screen name="Register" component={RegisterScreen} />
+    <Stack.Screen name="Login">
+      {() => (
+        <SafeScreen>
+          <LoginScreen />
+        </SafeScreen>
+      )}
+    </Stack.Screen>
+    <Stack.Screen name="Register">
+      {() => (
+        <SafeScreen>
+          <RegisterScreen />
+        </SafeScreen>
+      )}
+    </Stack.Screen>
   </Stack.Navigator>
 );
 
-// Tab Navigator moderne avec 4 onglets (Dashboard intégré dans Mon Activité)
+// Tab Navigator simplifié
 const MainTabs = () => {
-  const { t } = useLanguage();
+  // Fonction de traduction simplifiée
+  const t = (key: string) => {
+    const translations: { [key: string]: string } = {
+      'home.title': 'Accueil',
+      'services.title': 'Boutique | Services', // ✅ Modifié
+      'activity.title': 'Activité',
+      'tokens.history': 'Historique',
+      'tokens.recharge': 'Recharge',
+      'account.title': 'Compte',
+      'settings.title': 'Paramètres',
+    };
+    return translations[key] || key;
+  };
 
   return (
     <Tab.Navigator
       screenOptions={({ route }: any) => ({
         tabBarIcon: ({ focused, color, size }: any) => {
-          // Icônes Phosphor ultra-modernes avec poids dynamique
-          const iconProps = {
-            size: size,
-            color: color,
-            weight: (focused ? 'fill' : 'regular') as any,
-            style: { marginBottom: focused ? 2 : 0 }
+          // Icônes simplifiées avec emojis pour éviter les problèmes d'import
+          const getIcon = (routeName: string) => {
+            switch (routeName) {
+              case 'Home': return '🏠';
+              case 'MesServices': return '🛍️';
+              case 'Dashboard': return '📊';
+              case 'Historique': return '🕒';
+              case 'RechargeTokens': return '💳';
+              case 'MonCompte': return '👤';
+              case 'Settings': return '⚙️';
+              default: return '🏠';
+            }
           };
 
-          switch (route.name) {
-            case 'Home':
-              return <House {...iconProps} />;
-            case 'MonActivite':
-              return <ChartBar {...iconProps} />;
-            case 'MesInteractions':
-              return <ChatCircleDots {...iconProps} />;
-            case 'MonCompte':
-              return <User {...iconProps} />;
-            default:
-              return <House {...iconProps} />;
-          }
+          return (
+            <Text style={{ fontSize: size, color }}>
+              {getIcon(route.name)}
+            </Text>
+          );
         },
         tabBarActiveTintColor: modernColors.primary,
         tabBarInactiveTintColor: modernColors.textTertiary,
@@ -130,129 +162,244 @@ const MainTabs = () => {
     >
       <Tab.Screen
         name="Home"
-        component={HomeScreen}
         options={{
           title: t('home.title'),
           tabBarLabel: t('home.title')
         }}
-      />
+      >
+        {() => {
+          try {
+            return (
+              <SafeScreen>
+                <HomeScreen />
+              </SafeScreen>
+            );
+          } catch (error) {
+            console.error('[AppNavigator] ❌ ERREUR CRITIQUE HomeScreen:', error);
+            return (
+              <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20, backgroundColor: '#FFF' }}>
+                <Text style={{ fontSize: 24, marginBottom: 10 }}>⚠️</Text>
+                <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 10, color: '#1F2937' }}>Erreur de chargement</Text>
+                <Text style={{ fontSize: 14, color: '#6B7280', textAlign: 'center', marginBottom: 20 }}>
+                  L'écran d'accueil ne peut pas être chargé.{'\n'}Veuillez redémarrer l'application.
+                </Text>
+                <Text style={{ fontSize: 12, color: '#9CA3AF', textAlign: 'center' }}>
+                  Erreur: {error?.message || 'Inconnue'}
+                </Text>
+              </View>
+            );
+          }
+        }}
+      </Tab.Screen>
       <Tab.Screen
-        name="MonActivite"
-        component={ServicesScreen}
+        name="MesServices"
+        options={{
+          title: t('services.title'),
+          tabBarLabel: t('services.title')
+        }}
+      >
+        {() => (
+          <SafeScreen>
+            <ServicesScreen />
+          </SafeScreen>
+        )}
+      </Tab.Screen>
+      <Tab.Screen
+        name="Dashboard"
         options={{
           title: t('activity.title'),
           tabBarLabel: t('activity.title')
         }}
-      />
+      >
+        {() => (
+          <SafeScreen>
+            <MesInteractionsScreen />
+          </SafeScreen>
+        )}
+      </Tab.Screen>
+      {/* ✅ SUPPRIMÉ: Onglet Historique */}
       <Tab.Screen
-        name="MesInteractions"
-        component={MesInteractionsScreen}
+        name="RechargeTokens"
         options={{
-          title: t('interactions.title'),
-          tabBarLabel: t('interactions.title')
+          title: t('tokens.recharge'),
+          tabBarLabel: t('tokens.recharge')
         }}
-      />
+      >
+        {() => (
+          <SafeScreen>
+            <RechargeTokensScreen />
+          </SafeScreen>
+        )}
+      </Tab.Screen>
       <Tab.Screen
         name="MonCompte"
-        component={ProfileScreen}
         options={{
           title: t('account.title'),
           tabBarLabel: t('account.title')
         }}
-      />
+      >
+        {() => (
+          <SafeScreen>
+            <ProfileScreen />
+          </SafeScreen>
+        )}
+      </Tab.Screen>
+      <Tab.Screen
+        name="Settings"
+        options={{
+          title: t('settings.title'),
+          tabBarLabel: t('settings.title')
+        }}
+      >
+        {() => (
+          <SafeScreen>
+            <EnhancedSettingsScreen />
+          </SafeScreen>
+        )}
+      </Tab.Screen>
     </Tab.Navigator>
   );
 };
 
-// Stack Navigator principal avec toutes les routes
+// Stack Navigator principal simplifié
 const MainStack = () => {
-  const { t } = useLanguage();
+  // Fonction de traduction simplifiée
+  const t = (key: string) => {
+    const translations: { [key: string]: string } = {
+      'contact.title': 'Contact',
+      'services.catalog': 'Catalogue Services',
+      'search.results': 'Résultats de recherche',
+      'service.create': 'Création de service',
+      'service.shared': 'Service partagé',
+      'tokens.history': 'Historique de Consommation',
+      'publicite.create': 'Créer une publicité',
+      'publicite.dashboard': 'Dashboard Publicité',
+    };
+    return translations[key] || key;
+  };
 
   return (
-    <Stack.Navigator
-      screenOptions={{
-        headerStyle: {
-          backgroundColor: '#6366F1',
-          elevation: 4,
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.2,
-          shadowRadius: 4,
-        },
-        headerTintColor: '#FFF',
-        headerTitleStyle: {
-          fontWeight: 'bold',
-          fontSize: 18,
-        },
-        headerBackTitleVisible: false,
-      }}
-    >
-      <Stack.Screen
-        name="MainTabs"
-        component={MainTabs}
-        options={{ headerShown: false }}
-      />
+    <>
+      {/* ✅ CORRECTION: PushNotificationManager chargé ici, après authentification */}
+      <PushNotificationManager />
 
-      {/* Pages secondaires accessibles depuis la navigation */}
-      <Stack.Screen
-        name="Settings"
-        component={EnhancedSettingsScreen}
-        options={{
-          title: t('settings.title') || 'Paramètres',
-          headerShown: false // Masquer le header car nous avons notre propre header
+      <Stack.Navigator
+        screenOptions={{
+          headerStyle: {
+            backgroundColor: '#6366F1',
+            elevation: 4,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.2,
+            shadowRadius: 4,
+          },
+          headerTintColor: '#FFF',
+          headerTitleStyle: {
+            fontWeight: 'bold',
+            fontSize: 18,
+          },
+          headerBackTitleVisible: false,
         }}
-      />
-      <Stack.Screen
-        name="Contact"
-        component={ContactScreen}
-        options={{ title: t('contact.title') || 'Contact' }}
-      />
-      <Stack.Screen
-        name="Services"
-        component={ServicesListScreen}
-        options={{ title: t('services.catalog') || 'Catalogue Services' }}
-      />
-      <Stack.Screen
-        name="RechargeTokens"
-        component={RechargeTokensScreen}
-        options={{ title: t('tokens.recharge') || 'Recharger Tokens' }}
-      />
-      <Stack.Screen
-        name="ResultatBesoin"
-        component={ResultatBesoinScreen}
-        options={{ title: t('search.results') || 'Résultats de recherche' }}
-      />
-      <Stack.Screen
-        name="FormulaireYukpoIntelligent"
-        component={FormulaireYukpoIntelligentScreen}
-        options={{ title: t('service.create') || 'Création de service' }}
-      />
-      <Stack.Screen
-        name="ServiceDetailShared"
-        component={ServiceDetailSharedScreen}
-        options={{ title: t('service.shared') || 'Service partagé', headerShown: false }}
-      />
-      <Stack.Screen
-        name="SoldeDetail"
-        component={SoldeDetailScreen}
-        options={{ title: t('tokens.history') || 'Historique de Consommation' }}
-      />
-      <Stack.Screen
-        name="YukpoService"
-        component={YukpoServicePlaceholderScreen}
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen
-        name="CreatePublicite"
-        component={CreatePubliciteScreen}
-        options={{ title: t('publicite.create') || 'Créer une publicité', headerShown: false }}
-      />
-      <Stack.Screen
-        name="PubliciteDashboard"
-        component={PubliciteDashboardScreen}
-        options={{ title: t('publicite.dashboard') || 'Dashboard Publicité', headerShown: false }}
-      />
-    </Stack.Navigator>
+      >
+        <Stack.Screen
+          name="MainTabs"
+          component={MainTabs}
+          options={{ headerShown: false }}
+        />
+
+        {/* Pages secondaires accessibles depuis la navigation - Lazy Loading */}
+        <Stack.Screen
+          name="Contact"
+          options={{ title: t('contact.title') || 'Contact' }}
+        >
+          {() => (
+            <SafeScreen>
+              <ContactScreen />
+            </SafeScreen>
+          )}
+        </Stack.Screen>
+        <Stack.Screen
+          name="Services"
+          options={{ title: t('services.catalog') || 'Catalogue Services' }}
+        >
+          {() => (
+            <SafeScreen>
+              <ServicesListScreen />
+            </SafeScreen>
+          )}
+        </Stack.Screen>
+        <Stack.Screen
+          name="ResultatBesoin"
+          options={{ title: t('search.results') || 'Résultats de recherche' }}
+        >
+          {() => (
+            <SafeScreen>
+              <ResultatBesoinScreen />
+            </SafeScreen>
+          )}
+        </Stack.Screen>
+        <Stack.Screen
+          name="FormulaireYukpoIntelligent"
+          options={{ title: t('service.create') || 'Création de service' }}
+        >
+          {() => (
+            <SafeScreen>
+              <FormulaireYukpoIntelligentScreen />
+            </SafeScreen>
+          )}
+        </Stack.Screen>
+        <Stack.Screen
+          name="ServiceDetailShared"
+          options={{ title: t('service.shared') || 'Service partagé', headerShown: false }}
+        >
+          {() => (
+            <SafeScreen>
+              <ServiceDetailSharedScreen />
+            </SafeScreen>
+          )}
+        </Stack.Screen>
+        <Stack.Screen
+          name="SoldeDetail"
+          options={{ title: t('tokens.history') || 'Historique de Consommation' }}
+        >
+          {() => (
+            <SafeScreen>
+              <SoldeDetailScreen />
+            </SafeScreen>
+          )}
+        </Stack.Screen>
+        <Stack.Screen
+          name="YukpoService"
+          options={{ headerShown: false }}
+        >
+          {() => (
+            <SafeScreen>
+              <YukpoServicePlaceholderScreen />
+            </SafeScreen>
+          )}
+        </Stack.Screen>
+        <Stack.Screen
+          name="CreatePublicite"
+          options={{ title: t('publicite.create') || 'Créer une publicité', headerShown: false }}
+        >
+          {() => (
+            <SafeScreen>
+              <CreatePubliciteScreen />
+            </SafeScreen>
+          )}
+        </Stack.Screen>
+        <Stack.Screen
+          name="PubliciteDashboard"
+          options={{ title: t('publicite.dashboard') || 'Dashboard Publicité', headerShown: false }}
+        >
+          {() => (
+            <SafeScreen>
+              <PubliciteDashboardScreen />
+            </SafeScreen>
+          )}
+        </Stack.Screen>
+      </Stack.Navigator>
+    </>
   );
 };
 

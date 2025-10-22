@@ -33,11 +33,19 @@ const base64Decode = (str: string): string => {
     return result;
 };
 
-// Initialisation sécurisée de Buffer
-try {
-    Buffer = require('buffer').Buffer;
+// Initialisation sécurisée de Buffer avec gestion d'erreur
+import { safeRequire } from './errorHandler';
+
+const BufferModule = safeRequire(
+    () => require('buffer').Buffer,
+    null,
+    { component: 'jwtDecode', action: 'import_buffer' }
+);
+
+if (BufferModule) {
+    Buffer = BufferModule;
     console.log('[jwtDecode] Buffer initialisé avec succès');
-} catch (error) {
+} else {
     console.warn('[jwtDecode] Buffer non disponible, utilisation du fallback base64');
     Buffer = {
         from: (str: string, encoding: string) => {

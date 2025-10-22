@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useState } from 'react';
 import { Alert, Dimensions, Image, Linking, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -361,9 +360,9 @@ const ProductCard: React.FC<ProductCardProps> = ({
                             <View style={styles.planningPreview}>
                                 <SafeIcon name="clock" size={14} color="#6B7280" />
                                 <Text style={styles.detailText}>
-                                    Horaires: {Object.values(product.planningHebdomadaire)[0].permanent
+                                    Horaires: {(Object.values(product.planningHebdomadaire)[0] as any)?.permanent
                                         ? '24h/24'
-                                        : `${Object.values(product.planningHebdomadaire)[0].debut}-${Object.values(product.planningHebdomadaire)[0].fin}`}
+                                        : `${(Object.values(product.planningHebdomadaire)[0] as any)?.debut || '08:00'}-${(Object.values(product.planningHebdomadaire)[0] as any)?.fin || '18:00'}`}
                                 </Text>
                             </View>
                         )}
@@ -1511,9 +1510,6 @@ const styles = StyleSheet.create({
     // ✅ NOUVEAU: Styles pour prestations médicales et déménagement
     detailsSection: {
         marginTop: 12,
-    },
-    prestationsContainer: {
-        marginTop: 8,
     },
     prestationLabel: {
         fontSize: 12,

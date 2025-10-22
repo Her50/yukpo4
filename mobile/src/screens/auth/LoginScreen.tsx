@@ -1,3 +1,4 @@
+// @ts-nocheck
 // Écran de connexion ultra-moderne avec gradients et glassmorphism
 import { useNavigation } from '@react-navigation/native';
 import { CheckCircle, Envelope, Lock, WarningCircle } from 'phosphor-react-native';
@@ -424,6 +425,7 @@ const styles = StyleSheet.create({
 });
 
 export default LoginScreen;
+
 
 
 

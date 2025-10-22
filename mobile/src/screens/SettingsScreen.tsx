@@ -1,4 +1,5 @@
-ï»¿// Migration vers des composants React Native natifs pour Ã©viter les crashes
+// @ts-nocheck
+// Migration vers des composants React Native natifs pour éviter les crashes
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as React from 'react';
 import { useState } from 'react';
@@ -24,7 +25,7 @@ interface UserSettings {
   smsNotifications: boolean;
   marketingEmails: boolean;
 
-  // ConfidentialitÃ©
+  // Confidentialité
   profileVisibility: 'public' | 'private' | 'friends';
   showLocation: boolean;
   showOnlineStatus: boolean;
@@ -36,7 +37,7 @@ interface UserSettings {
   fontSize: 'small' | 'medium' | 'large';
   compactMode: boolean;
 
-  // SÃ©curitÃ©
+  // Sécurité
   twoFactorAuth: boolean;
   sessionTimeout: number;
   loginAlerts: boolean;
@@ -60,7 +61,7 @@ const SettingsScreen: React.FC = () => {
     smsNotifications: false,
     marketingEmails: true,
 
-    // ConfidentialitÃ©
+    // Confidentialité
     profileVisibility: 'public',
     showLocation: true,
     showOnlineStatus: true,
@@ -72,13 +73,13 @@ const SettingsScreen: React.FC = () => {
     fontSize: 'medium',
     compactMode: false,
 
-    // SÃ©curitÃ©
+    // Sécurité
     twoFactorAuth: false,
     sessionTimeout: 30,
     loginAlerts: true,
   });
 
-  // VÃ©rification de l'initialisation
+  // Vérification de l'initialisation
   React.useEffect(() => {
     if (user) {
       const nameParts = user.name ? user.name.split(' ') : ['', ''];
@@ -93,7 +94,7 @@ const SettingsScreen: React.FC = () => {
     }
   }, [user]);
 
-  // Charger les paramÃ¨tres GPS au dÃ©marrage
+  // Charger les paramètres GPS au démarrage
   React.useEffect(() => {
     const loadGPSSetting = async () => {
       try {
@@ -104,7 +105,7 @@ const SettingsScreen: React.FC = () => {
             gpsEnabled: JSON.parse(gpsEnabled)
           }));
         } else {
-          // Si aucun paramÃ¨tre GPS n'est dÃ©fini, l'activer par dÃ©faut
+          // Si aucun paramètre GPS n'est défini, l'activer par défaut
           setSettings(prev => ({
             ...prev,
             gpsEnabled: true
@@ -112,7 +113,7 @@ const SettingsScreen: React.FC = () => {
           await AsyncStorage.setItem('gpsEnabled', JSON.stringify(true));
         }
       } catch (error) {
-        console.error('Erreur lors du chargement du paramÃ¨tre GPS:', error);
+        console.error('Erreur lors du chargement du paramètre GPS:', error);
       }
     };
 
@@ -125,7 +126,7 @@ const SettingsScreen: React.FC = () => {
       // Simuler la sauvegarde
       await new Promise(resolve => setTimeout(resolve, 1000));
 
-      // Mettre Ã  jour l'utilisateur
+      // Mettre à jour l'utilisateur
       const fullName = `${settings.firstName} ${settings.lastName}`.trim();
       updateUser({
         name: fullName,
@@ -133,25 +134,25 @@ const SettingsScreen: React.FC = () => {
         phone: settings.phone,
       });
 
-      // CORRECTION: Sauvegarder le paramÃ¨tre GPS dans AsyncStorage ET envoyer au backend
+      // CORRECTION: Sauvegarder le paramètre GPS dans AsyncStorage ET envoyer au backend
       await AsyncStorage.setItem('gpsEnabled', JSON.stringify(settings.gpsEnabled));
 
-      // âœ… CORRIGÃ‰: Envoyer le consentement GPS au backend avec apiPatch
+      // ? CORRIGÉ: Envoyer le consentement GPS au backend avec apiPatch
       try {
         const response = await apiPatch('/api/user/me/gps_consent', {
           gps_consent: settings.gpsEnabled
         });
 
         if (response.success) {
-          console.log('âœ… [SettingsScreen] Consentement GPS envoyÃ© au backend:', settings.gpsEnabled);
+          console.log('? [SettingsScreen] Consentement GPS envoyé au backend:', settings.gpsEnabled);
         } else {
-          console.warn('âš ï¸ [SettingsScreen] Erreur envoi consentement GPS au backend');
+          console.warn('?? [SettingsScreen] Erreur envoi consentement GPS au backend');
         }
       } catch (error) {
-        console.error('âŒ [SettingsScreen] Erreur rÃ©seau consentement GPS:', error);
+        console.error('? [SettingsScreen] Erreur réseau consentement GPS:', error);
       }
 
-      Alert.alert('SuccÃ¨s', 'ParamÃ¨tres sauvegardÃ©s avec succÃ¨s');
+      Alert.alert('Succès', 'Paramètres sauvegardés avec succès');
     } catch (error) {
       Alert.alert('Erreur', 'Erreur lors de la sauvegarde');
     } finally {
@@ -176,22 +177,22 @@ const SettingsScreen: React.FC = () => {
             <Text style={styles.compactAvatarText}>{getInitials(settings.firstName, settings.lastName)}</Text>
           </View>
           <TouchableOpacity
-            onPress={() => Alert.alert('Info', 'FonctionnalitÃ© de changement de photo en cours de dÃ©veloppement')}
+            onPress={() => Alert.alert('Info', 'Fonctionnalité de changement de photo en cours de développement')}
             style={styles.compactChangePhotoButton}
           >
-            <Text style={styles.compactChangePhotoText}>ğŸ“· Changer</Text>
+            <Text style={styles.compactChangePhotoText}>?? Changer</Text>
           </TouchableOpacity>
         </View>
 
-        {/* Champs nom et prÃ©nom cÃ´te Ã  cÃ´te */}
+        {/* Champs nom et prénom côte à côte */}
         <View style={styles.nameRow}>
           <View style={[styles.inputContainer, styles.halfWidth]}>
-            <Text style={styles.inputLabel}>PrÃ©nom</Text>
+            <Text style={styles.inputLabel}>Prénom</Text>
             <TextInput
               value={settings.firstName}
               onChangeText={(text) => setSettings(prev => ({ ...prev, firstName: text }))}
               style={styles.input}
-              placeholder="Votre prÃ©nom"
+              placeholder="Votre prénom"
             />
           </View>
           <View style={[styles.inputContainer, styles.halfWidth]}>
@@ -218,7 +219,7 @@ const SettingsScreen: React.FC = () => {
         </View>
 
         <View style={styles.inputContainer}>
-          <Text style={styles.inputLabel}>TÃ©lÃ©phone</Text>
+          <Text style={styles.inputLabel}>Téléphone</Text>
           <TextInput
             value={settings.phone}
             onChangeText={(text) => setSettings(prev => ({ ...prev, phone: text }))}
@@ -236,7 +237,7 @@ const SettingsScreen: React.FC = () => {
             multiline
             numberOfLines={2}
             style={[styles.input, styles.bioInput]}
-            placeholder="DÃ©crivez-vous en quelques mots..."
+            placeholder="Décrivez-vous en quelques mots..."
           />
         </View>
       </View>
@@ -250,7 +251,7 @@ const SettingsScreen: React.FC = () => {
 
         <View style={styles.settingRow}>
           <View style={styles.settingInfo}>
-            <Text style={styles.iconEmoji}>ğŸ“§</Text>
+            <Text style={styles.iconEmoji}>??</Text>
             <View style={styles.settingText}>
               <Text style={styles.settingLabel}>Notifications email</Text>
               <Text style={styles.settingDescription}>Recevoir des notifications par email</Text>
@@ -264,7 +265,7 @@ const SettingsScreen: React.FC = () => {
 
         <View style={styles.settingRow}>
           <View style={styles.settingInfo}>
-            <Text style={styles.iconEmoji}>ğŸ””</Text>
+            <Text style={styles.iconEmoji}>??</Text>
             <View style={styles.settingText}>
               <Text style={styles.settingLabel}>Notifications push</Text>
               <Text style={styles.settingDescription}>Recevoir des notifications push</Text>
@@ -278,7 +279,7 @@ const SettingsScreen: React.FC = () => {
 
         <View style={styles.settingRow}>
           <View style={styles.settingInfo}>
-            <Text style={styles.iconEmoji}>ğŸ’¬</Text>
+            <Text style={styles.iconEmoji}>??</Text>
             <View style={styles.settingText}>
               <Text style={styles.settingLabel}>Notifications SMS</Text>
               <Text style={styles.settingDescription}>Recevoir des notifications par SMS</Text>
@@ -292,10 +293,10 @@ const SettingsScreen: React.FC = () => {
 
         <View style={styles.settingRow}>
           <View style={styles.settingInfo}>
-            <Text style={styles.iconEmoji}>ğŸ“¢</Text>
+            <Text style={styles.iconEmoji}>??</Text>
             <View style={styles.settingText}>
               <Text style={styles.settingLabel}>Emails marketing</Text>
-              <Text style={styles.settingDescription}>Recevoir des offres et nouveautÃ©s</Text>
+              <Text style={styles.settingDescription}>Recevoir des offres et nouveautés</Text>
             </View>
           </View>
           <Switch
@@ -310,13 +311,13 @@ const SettingsScreen: React.FC = () => {
   const renderPrivacySection = () => (
     <View style={styles.sectionCard}>
       <View style={styles.sectionContent}>
-        <Text style={styles.sectionTitle}>ConfidentialitÃ©</Text>
+        <Text style={styles.sectionTitle}>Confidentialité</Text>
 
         <View style={styles.settingRow}>
           <View style={styles.settingInfo}>
-            <Text style={styles.iconEmoji}>ğŸ‘ï¸</Text>
+            <Text style={styles.iconEmoji}>???</Text>
             <View style={styles.settingText}>
-              <Text style={styles.settingLabel}>VisibilitÃ© du profil</Text>
+              <Text style={styles.settingLabel}>Visibilité du profil</Text>
               <Text style={styles.settingDescription}>Qui peut voir votre profil</Text>
             </View>
           </View>
@@ -335,7 +336,7 @@ const SettingsScreen: React.FC = () => {
 
         <View style={styles.settingRow}>
           <View style={styles.settingInfo}>
-            <Text style={styles.iconEmoji}>ğŸ“</Text>
+            <Text style={styles.iconEmoji}>??</Text>
             <View style={styles.settingText}>
               <Text style={styles.settingLabel}>Afficher la localisation</Text>
               <Text style={styles.settingDescription}>Partager votre position</Text>
@@ -349,10 +350,10 @@ const SettingsScreen: React.FC = () => {
 
         <View style={styles.settingRow}>
           <View style={styles.settingInfo}>
-            <Text style={styles.iconEmoji}>ğŸ“¡</Text>
+            <Text style={styles.iconEmoji}>??</Text>
             <View style={styles.settingText}>
               <Text style={styles.settingLabel}>Statut en ligne</Text>
-              <Text style={styles.settingDescription}>Afficher quand vous Ãªtes en ligne</Text>
+              <Text style={styles.settingDescription}>Afficher quand vous êtes en ligne</Text>
             </View>
           </View>
           <Switch
@@ -363,11 +364,11 @@ const SettingsScreen: React.FC = () => {
 
         <View style={styles.settingRow}>
           <View style={styles.settingInfo}>
-            <Text style={styles.iconEmoji}>ğŸ›°ï¸</Text>
+            <Text style={styles.iconEmoji}>???</Text>
             <View style={styles.settingText}>
-              <Text style={styles.settingLabel}>Localisation en temps rÃ©el</Text>
+              <Text style={styles.settingLabel}>Localisation en temps réel</Text>
               <Text style={styles.settingDescription}>
-                Partager votre position GPS avec vos clients (activÃ© par dÃ©faut)
+                Partager votre position GPS avec vos clients (activé par défaut)
               </Text>
             </View>
           </View>
@@ -375,18 +376,18 @@ const SettingsScreen: React.FC = () => {
             value={settings.gpsEnabled}
             onValueChange={async (value) => {
               setSettings(prev => ({ ...prev, gpsEnabled: value }));
-              // CORRECTION: Sauvegarder immÃ©diatement pour que le hook dÃ©tecte le changement
+              // CORRECTION: Sauvegarder immédiatement pour que le hook détecte le changement
               await AsyncStorage.setItem('gpsEnabled', JSON.stringify(value));
-              console.log('[SettingsScreen] GPS', value ? 'activÃ©' : 'dÃ©sactivÃ©');
+              console.log('[SettingsScreen] GPS', value ? 'activé' : 'désactivé');
             }}
           />
         </View>
 
         <View style={styles.settingRow}>
           <View style={styles.settingInfo}>
-            <Text style={styles.iconEmoji}>ğŸ“Š</Text>
+            <Text style={styles.iconEmoji}>??</Text>
             <View style={styles.settingText}>
-              <Text style={styles.settingLabel}>Collecte de donnÃ©es</Text>
+              <Text style={styles.settingLabel}>Collecte de données</Text>
               <Text style={styles.settingDescription}>Autoriser l'analyse d'usage</Text>
             </View>
           </View>
@@ -402,14 +403,14 @@ const SettingsScreen: React.FC = () => {
   const renderSecuritySection = () => (
     <View style={styles.sectionCard}>
       <View style={styles.sectionContent}>
-        <Text style={styles.sectionTitle}>SÃ©curitÃ©</Text>
+        <Text style={styles.sectionTitle}>Sécurité</Text>
 
         <View style={styles.settingRow}>
           <View style={styles.settingInfo}>
-            <Text style={styles.iconEmoji}>ğŸ›¡ï¸</Text>
+            <Text style={styles.iconEmoji}>???</Text>
             <View style={styles.settingText}>
-              <Text style={styles.settingLabel}>Authentification Ã  deux facteurs</Text>
-              <Text style={styles.settingDescription}>SÃ©curiser votre compte</Text>
+              <Text style={styles.settingLabel}>Authentification à deux facteurs</Text>
+              <Text style={styles.settingDescription}>Sécuriser votre compte</Text>
             </View>
           </View>
           <Switch
@@ -420,10 +421,10 @@ const SettingsScreen: React.FC = () => {
 
         <View style={styles.settingRow}>
           <View style={styles.settingInfo}>
-            <Text style={styles.iconEmoji}>â°</Text>
+            <Text style={styles.iconEmoji}>?</Text>
             <View style={styles.settingText}>
-              <Text style={styles.settingLabel}>DÃ©lai de session</Text>
-              <Text style={styles.settingDescription}>Minutes avant dÃ©connexion automatique</Text>
+              <Text style={styles.settingLabel}>Délai de session</Text>
+              <Text style={styles.settingDescription}>Minutes avant déconnexion automatique</Text>
             </View>
           </View>
           <TouchableOpacity
@@ -441,10 +442,10 @@ const SettingsScreen: React.FC = () => {
 
         <View style={styles.settingRow}>
           <View style={styles.settingInfo}>
-            <Text style={styles.iconEmoji}>âš ï¸</Text>
+            <Text style={styles.iconEmoji}>??</Text>
             <View style={styles.settingText}>
               <Text style={styles.settingLabel}>Alertes de connexion</Text>
-              <Text style={styles.settingDescription}>ÃŠtre notifiÃ© des nouvelles connexions</Text>
+              <Text style={styles.settingDescription}>Être notifié des nouvelles connexions</Text>
             </View>
           </View>
           <Switch
@@ -454,17 +455,17 @@ const SettingsScreen: React.FC = () => {
         </View>
 
         <TouchableOpacity
-          onPress={() => Alert.alert('Info', 'FonctionnalitÃ© de changement de mot de passe en cours de dÃ©veloppement')}
+          onPress={() => Alert.alert('Info', 'Fonctionnalité de changement de mot de passe en cours de développement')}
           style={styles.changePasswordButton}
         >
-          <Text style={styles.changePasswordIcon}>ğŸ”‘</Text>
+          <Text style={styles.changePasswordIcon}>??</Text>
           <Text style={styles.changePasswordText}>Changer le mot de passe</Text>
         </TouchableOpacity>
       </View>
     </View>
   );
 
-  // Gestion d'erreur pour Ã©viter les crashes
+  // Gestion d'erreur pour éviter les crashes
   try {
     return (
       <SafeNativeView style={styles.container}>
@@ -482,15 +483,15 @@ const SettingsScreen: React.FC = () => {
                 style={styles.saveButton}
               >
                 <Text style={styles.saveButtonText}>
-                  {loading ? 'Sauvegarde...' : 'Sauvegarder les paramÃ¨tres'}
+                  {loading ? 'Sauvegarde...' : 'Sauvegarder les paramètres'}
                 </Text>
               </TouchableOpacity>
             </>
           ) : (
             <View style={styles.errorContainer}>
-              <Text style={styles.errorText}>Erreur de chargement des paramÃ¨tres</Text>
+              <Text style={styles.errorText}>Erreur de chargement des paramètres</Text>
               <TouchableOpacity onPress={() => setLoading(false)} style={styles.retryButton}>
-                <Text style={styles.retryButtonText}>RÃ©essayer</Text>
+                <Text style={styles.retryButtonText}>Réessayer</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -502,8 +503,8 @@ const SettingsScreen: React.FC = () => {
     return (
       <SafeNativeView style={styles.container}>
         <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>Erreur d'affichage des paramÃ¨tres</Text>
-          <Text style={styles.errorSubtext}>Veuillez rÃ©essayer plus tard</Text>
+          <Text style={styles.errorText}>Erreur d'affichage des paramètres</Text>
+          <Text style={styles.errorSubtext}>Veuillez réessayer plus tard</Text>
         </View>
       </SafeNativeView>
     );
@@ -731,6 +732,7 @@ const styles = StyleSheet.create({
 });
 
 export default SettingsScreen;
+
 
 
 

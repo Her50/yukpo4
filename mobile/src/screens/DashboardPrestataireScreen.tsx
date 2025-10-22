@@ -1,4 +1,5 @@
-ï»¿// Remplacement des Ionicons par des emojis pour Ã©viter les crashes
+// @ts-nocheck
+// Remplacement des Ionicons par des emojis pour éviter les crashes
 import * as React from 'react';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -56,27 +57,27 @@ const DashboardPrestataireScreen: React.FC = () => {
   const loadDashboardData = async () => {
     setLoading(true);
     try {
-      console.log('[DashboardPrestataireScreen] Chargement des donnÃ©es pour la pÃ©riode:', selectedPeriod);
+      console.log('[DashboardPrestataireScreen] Chargement des données pour la période:', selectedPeriod);
 
-      // Essayer d'abord l'endpoint spÃ©cialisÃ©
+      // Essayer d'abord l'endpoint spécialisé
       const response = await userApi.getDashboardPrestataire(selectedPeriod);
 
       if (response.success && response.data) {
-        console.log('[DashboardPrestataireScreen] DonnÃ©es reÃ§ues:', response.data);
+        console.log('[DashboardPrestataireScreen] Données reçues:', response.data);
         setDashboardData(response.data as DashboardData);
       } else {
-        // Charger les donnÃ©es rÃ©elles depuis l'API des services et du budget
-        console.log('[DashboardPrestataireScreen] Chargement des donnÃ©es alternatives...');
+        // Charger les données réelles depuis l'API des services et du budget
+        console.log('[DashboardPrestataireScreen] Chargement des données alternatives...');
 
         const [servicesResponse, budgetResponse] = await Promise.all([
-          userApi.getUserProfile(), // Utiliser getUserProfile Ã  la place
+          userApi.getUserProfile(), // Utiliser getUserProfile à la place
           userApi.getUserBudget()
         ]);
 
         const services = (servicesResponse.data as any)?.services || [];
         const budgetData = (budgetResponse.data as any) || { consumed: 0, remaining: 0 };
 
-        // Calculer les statistiques rÃ©elles (logique identique au frontend)
+        // Calculer les statistiques réelles (logique identique au frontend)
         const activeServices = services.filter((s: any) => s.is_active).length;
         const totalViews = services.reduce((sum: number, s: any) => sum + (s.views || 0), 0);
         const totalInteractions = services.reduce((sum: number, s: any) => sum + (s.interactions || 0), 0);
@@ -84,7 +85,7 @@ const DashboardPrestataireScreen: React.FC = () => {
           ? services.reduce((sum: number, s: any) => sum + (s.rating || 0), 0) / services.length
           : 0;
 
-        // Utiliser les donnÃ©es rÃ©elles des services
+        // Utiliser les données réelles des services
         const topPerformingServices: ServiceStats[] = services.slice(0, 5).map((service: any) => ({
           id: service.id,
           title: service.nom || service.title || 'Service',
@@ -97,8 +98,8 @@ const DashboardPrestataireScreen: React.FC = () => {
           revenue: service.revenue || 0,
           lastActivity: new Date(service.last_activity || service.created_at),
           status: service.is_active ? 'active' : 'inactive',
-          category: service.categorie || 'GÃ©nÃ©ral',
-          location: service.location || 'Non spÃ©cifiÃ©'
+          category: service.categorie || 'Général',
+          location: service.location || 'Non spécifié'
         }));
 
         const realDashboardData: DashboardData = {
@@ -121,8 +122,8 @@ const DashboardPrestataireScreen: React.FC = () => {
         setDashboardData(realDashboardData);
       }
     } catch (error) {
-      console.error('[DashboardPrestataireScreen] Erreur chargement donnÃ©es:', error);
-      Alert.alert('Erreur', 'Impossible de charger les donnÃ©es du dashboard');
+      console.error('[DashboardPrestataireScreen] Erreur chargement données:', error);
+      Alert.alert('Erreur', 'Impossible de charger les données du dashboard');
     } finally {
       setLoading(false);
     }
@@ -172,10 +173,10 @@ const DashboardPrestataireScreen: React.FC = () => {
   if (!dashboardData) {
     return (
       <View style={styles.errorContainer}>
-        <Text style={styles.errorIcon}>âš ï¸</Text>
-        <Text style={styles.errorText}>Aucune donnÃ©e disponible</Text>
+        <Text style={styles.errorIcon}>??</Text>
+        <Text style={styles.errorText}>Aucune donnée disponible</Text>
         <TouchableOpacity style={styles.retryButton} onPress={loadDashboardData}>
-          <Text style={styles.retryButtonText}>RÃ©essayer</Text>
+          <Text style={styles.retryButtonText}>Réessayer</Text>
         </TouchableOpacity>
       </View>
     );
@@ -183,9 +184,9 @@ const DashboardPrestataireScreen: React.FC = () => {
 
   return (
     <ScrollView style={styles.container}>
-      {/* En-tÃªte avec sÃ©lecteur de pÃ©riode */}
+      {/* En-tête avec sélecteur de période */}
       <View style={styles.header}>
-        <Title style={styles.title}>ğŸ“Š Dashboard Prestataire</Title>
+        <Title style={styles.title}>?? Dashboard Prestataire</Title>
         <Text style={styles.subtitle}>Statistiques et performances de vos services</Text>
 
         <View style={styles.periodSelector}>
@@ -214,7 +215,7 @@ const DashboardPrestataireScreen: React.FC = () => {
         <Card style={styles.statCard}>
           <Card.Content style={styles.statContent}>
             <View style={styles.statIcon}>
-              <Text style={styles.statIconText}>ğŸ“‹</Text>
+              <Text style={styles.statIconText}>??</Text>
             </View>
             <Text style={styles.statNumber}>{dashboardData.totalServices}</Text>
             <Text style={styles.statLabel}>Services totaux</Text>
@@ -224,7 +225,7 @@ const DashboardPrestataireScreen: React.FC = () => {
         <Card style={styles.statCard}>
           <Card.Content style={styles.statContent}>
             <View style={styles.statIcon}>
-              <Text style={styles.statIconText}>âœ…</Text>
+              <Text style={styles.statIconText}>?</Text>
             </View>
             <Text style={styles.statNumber}>{dashboardData.activeServices}</Text>
             <Text style={styles.statLabel}>Services actifs</Text>
@@ -234,7 +235,7 @@ const DashboardPrestataireScreen: React.FC = () => {
         <Card style={styles.statCard}>
           <Card.Content style={styles.statContent}>
             <View style={styles.statIcon}>
-              <Text style={styles.statIconText}>ğŸ‘ï¸</Text>
+              <Text style={styles.statIconText}>???</Text>
             </View>
             <Text style={styles.statNumber}>{formatNumber(dashboardData.totalViews)}</Text>
             <Text style={styles.statLabel}>Vues totales</Text>
@@ -244,7 +245,7 @@ const DashboardPrestataireScreen: React.FC = () => {
         <Card style={styles.statCard}>
           <Card.Content style={styles.statContent}>
             <View style={styles.statIcon}>
-              <Text style={styles.statIconText}>ğŸ’¬</Text>
+              <Text style={styles.statIconText}>??</Text>
             </View>
             <Text style={styles.statNumber}>{formatNumber(dashboardData.totalInteractions)}</Text>
             <Text style={styles.statLabel}>Interactions</Text>
@@ -254,7 +255,7 @@ const DashboardPrestataireScreen: React.FC = () => {
         <Card style={styles.statCard}>
           <Card.Content style={styles.statContent}>
             <View style={styles.statIcon}>
-              <Text style={styles.statIconText}>â­</Text>
+              <Text style={styles.statIconText}>?</Text>
             </View>
             <Text style={styles.statNumber}>{dashboardData.averageRating.toFixed(1)}</Text>
             <Text style={styles.statLabel}>Note moyenne</Text>
@@ -264,10 +265,10 @@ const DashboardPrestataireScreen: React.FC = () => {
         <Card style={styles.statCard}>
           <Card.Content style={styles.statContent}>
             <View style={styles.statIcon}>
-              <Text style={styles.statIconText}>ğŸ’°</Text>
+              <Text style={styles.statIconText}>??</Text>
             </View>
             <Text style={styles.statNumber}>{formatCurrency(dashboardData.budgetConsumed)}</Text>
-            <Text style={styles.statLabel}>Budget utilisÃ©</Text>
+            <Text style={styles.statLabel}>Budget utilisé</Text>
           </Card.Content>
         </Card>
       </View>
@@ -275,7 +276,7 @@ const DashboardPrestataireScreen: React.FC = () => {
       {/* Services les mieux performants */}
       <Card style={styles.sectionCard}>
         <Card.Content>
-          <Title style={styles.sectionTitle}>ğŸ† Services les mieux performants</Title>
+          <Title style={styles.sectionTitle}>?? Services les mieux performants</Title>
 
           {dashboardData.topPerformingServices.map((service, index) => (
             <View key={service.id} style={styles.serviceItem}>
@@ -291,19 +292,19 @@ const DashboardPrestataireScreen: React.FC = () => {
 
               <View style={styles.serviceStats}>
                 <View style={styles.serviceStat}>
-                  <Text style={styles.serviceStatIcon}>ğŸ‘ï¸</Text>
+                  <Text style={styles.serviceStatIcon}>???</Text>
                   <Text style={styles.serviceStatText}>{formatNumber(service.views)}</Text>
                 </View>
                 <View style={styles.serviceStat}>
-                  <Text style={styles.serviceStatIcon}>ğŸ’¬</Text>
+                  <Text style={styles.serviceStatIcon}>??</Text>
                   <Text style={styles.serviceStatText}>{service.messages}</Text>
                 </View>
                 <View style={styles.serviceStat}>
-                  <Text style={styles.serviceStatIcon}>ğŸ“</Text>
+                  <Text style={styles.serviceStatIcon}>??</Text>
                   <Text style={styles.serviceStatText}>{service.calls}</Text>
                 </View>
                 <View style={styles.serviceStat}>
-                  <Text style={[styles.serviceStatIcon, { color: theme.colors.warning }]}>â­</Text>
+                  <Text style={[styles.serviceStatIcon, { color: theme.colors.warning }]}>?</Text>
                   <Text style={styles.serviceStatText}>{service.rating}</Text>
                 </View>
               </View>
@@ -312,26 +313,26 @@ const DashboardPrestataireScreen: React.FC = () => {
         </Card.Content>
       </Card>
 
-      {/* ActivitÃ© rÃ©cente */}
+      {/* Activité récente */}
       <Card style={styles.sectionCard}>
         <Card.Content>
-          <Title style={styles.sectionTitle}>ğŸ•’ ActivitÃ© rÃ©cente</Title>
+          <Title style={styles.sectionTitle}>?? Activité récente</Title>
 
           {dashboardData.recentActivity.map((activity, index) => (
             <View key={index} style={styles.activityItem}>
               <View style={styles.activityIcon}>
                 <Text style={styles.activityIconText}>
-                  {activity.type === 'view' ? 'ğŸ‘ï¸' :
-                    activity.type === 'message' ? 'ğŸ’¬' :
-                      activity.type === 'call' ? 'ğŸ“' :
-                        'ğŸ””'}
+                  {activity.type === 'view' ? '???' :
+                    activity.type === 'message' ? '??' :
+                      activity.type === 'call' ? '??' :
+                        '??'}
                 </Text>
               </View>
               <View style={styles.activityContent}>
                 <Text style={styles.activityText}>
                   {activity.type === 'view' ? 'Vue' :
                     activity.type === 'message' ? 'Message' :
-                      activity.type === 'call' ? 'Appel' : 'ActivitÃ©'} sur {activity.service}
+                      activity.type === 'call' ? 'Appel' : 'Activité'} sur {activity.service}
                 </Text>
                 <Text style={styles.activityTime}>Il y a {activity.time}</Text>
               </View>
@@ -343,21 +344,21 @@ const DashboardPrestataireScreen: React.FC = () => {
       {/* Actions rapides */}
       <Card style={styles.sectionCard}>
         <Card.Content>
-          <Title style={styles.sectionTitle}>âš¡ Actions rapides</Title>
+          <Title style={styles.sectionTitle}>? Actions rapides</Title>
 
           <TouchableOpacity style={styles.actionButton}>
-            <Text style={styles.actionIcon}>ğŸ”„</Text>
-            <Text style={styles.actionButtonText}>Actualiser les donnÃ©es</Text>
+            <Text style={styles.actionIcon}>??</Text>
+            <Text style={styles.actionButtonText}>Actualiser les données</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.actionButton}>
-            <Text style={styles.actionIcon}>â•</Text>
-            <Text style={styles.actionButtonText}>CrÃ©er un nouveau service</Text>
+            <Text style={styles.actionIcon}>?</Text>
+            <Text style={styles.actionButtonText}>Créer un nouveau service</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.actionButton}>
-            <Text style={styles.actionIcon}>ğŸ“Š</Text>
-            <Text style={styles.actionButtonText}>Voir les statistiques dÃ©taillÃ©es</Text>
+            <Text style={styles.actionIcon}>??</Text>
+            <Text style={styles.actionButtonText}>Voir les statistiques détaillées</Text>
           </TouchableOpacity>
         </Card.Content>
       </Card>
@@ -579,6 +580,7 @@ const styles = StyleSheet.create({
 });
 
 export default DashboardPrestataireScreen;
+
 
 
 

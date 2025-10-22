@@ -17,7 +17,6 @@ import { Avatar, IconButton, Title } from 'react-native-paper';
 import { useAuth } from '../contexts/AuthContext';
 import { apiGet } from '../services/api';
 import { theme } from '../theme/theme';
-// @ts-ignore
 import ChatModalMobile from './ChatModalMobile';
 
 interface ChatMessage {

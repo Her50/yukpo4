@@ -1,4 +1,3 @@
-// @ts-nocheck
 // Migration vers Lucide React Native pour un design moderne
 import { Audio } from 'expo-av';
 import * as DocumentPicker from 'expo-document-picker';
@@ -66,7 +65,7 @@ const ChatModal: React.FC<ChatModalProps> = ({
     const [recording, setRecording] = useState<Audio.Recording | null>(null);
     const [isRecording, setIsRecording] = useState(false);
     const [recordingDuration, setRecordingDuration] = useState(0);
-    const scrollViewRef = useRef<ScrollView>(null);
+    const scrollViewRef = useRef<any>(null);
     const timerInterval = useRef<NodeJS.Timeout | null>(null);
 
     // CORRECTION: Normaliser le nom du prestataire (nom_complet au lieu de name)
@@ -96,14 +95,15 @@ const ChatModal: React.FC<ChatModalProps> = ({
                 console.log('[ChatModal] Interactions chargées:', interactions);
 
                 // ✅ CORRIGÉ: Charger tous les types de messages (texte, audio, image, fichier)
-                const loadedMessages: Message[] = (interactions || [])
+                const interactionsArray = Array.isArray(interactions) ? interactions : [];
+                const loadedMessages = interactionsArray
                     .filter((interaction: any) =>
                         interaction.interaction_type === 'message' ||
                         interaction.interaction_type === 'audio' ||
                         interaction.interaction_type === 'image' ||
                         interaction.interaction_type === 'file'
                     )
-                    .map((interaction: any) => {
+                    .map((interaction: any): Message => {
                         const content = interaction.metadata || interaction.content || '';
                         const interactionType = interaction.interaction_type;
 
@@ -134,17 +134,17 @@ const ChatModal: React.FC<ChatModalProps> = ({
                         }
 
                         return {
-                            id: interaction._id || interaction.id || String(Date.now()),
+                            id: String(interaction._id || interaction.id || Date.now()),
                             content: messageType === 'text' ? content : (messageType === 'image' ? '📷 Image' : messageType === 'audio' ? '🎤 Audio' : `📎 ${fileName || 'Fichier'}`),
-                            from: interaction.user_id === parseInt(user.id) ? 'client' : 'prestataire',
+                            from: (interaction.user_id === parseInt(user.id) ? 'client' : 'prestataire') as 'client' | 'prestataire',
                             timestamp: new Date(interaction.created_at || interaction.timestamp || Date.now()),
-                            status: 'read', // Les messages chargés sont considérés comme lus
+                            status: 'read' as 'sent' | 'delivered' | 'read',
                             type: messageType,
                             mediaUrl,
                             fileName
                         };
                     })
-                    .sort((a: Message, b: Message) => a.timestamp.getTime() - b.timestamp.getTime());
+                    .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
 
                 setMessages(loadedMessages);
                 console.log('[ChatModal] ✅ Messages chargés:', loadedMessages.length);
@@ -180,18 +180,18 @@ const ChatModal: React.FC<ChatModalProps> = ({
         try {
             // ✅ CORRECTION: Utiliser le bon endpoint backend
             // ✅ CORRIGÉ: Utilise apiPost
-            const response = await apiPost(`/api/services/${service.id}/message`, {
+            const response: any = await apiPost(`/api/services/${service.id}/message`, {
                 content: messageContent
             });
 
-            if (response.ok) {
-                const data = await response.json();
+            if (response?.ok || response?.success) {
+                const data = response?.data || response;
                 console.log('[ChatModal] ✅ Message envoyé avec succès:', data);
 
                 // Mettre à jour le message avec l'ID réel du serveur
                 setMessages(prev => prev.map(msg =>
                     msg.id === tempId
-                        ? { ...msg, id: data._id || data.id || tempId, status: 'delivered' }
+                        ? { ...msg, id: data?._id || data?.id || tempId, status: 'delivered' }
                         : msg
                 ));
 
@@ -200,8 +200,8 @@ const ChatModal: React.FC<ChatModalProps> = ({
 
             } else {
                 // En cas d'erreur, marquer le message comme non envoyé
-                const errorText = await response.text();
-                console.error('[ChatModal] ❌ Erreur envoi message:', response.status, errorText);
+                const errorText = response?.message || 'Erreur inconnue';
+                console.error('[ChatModal] ❌ Erreur envoi message:', errorText);
                 setMessages(prev => prev.map(msg =>
                     msg.id === tempId
                         ? { ...msg, status: 'sent' }
@@ -428,7 +428,7 @@ const ChatModal: React.FC<ChatModalProps> = ({
 
                 setMessages(prev => prev.map(msg =>
                     msg.id === tempId
-                        ? { ...msg, id: response.data._id || response.data.id || tempId, status: 'delivered' }
+                        ? { ...msg, id: (response.data as any)?._id || (response.data as any)?.id || tempId, status: 'delivered' }
                         : msg
                 ));
 

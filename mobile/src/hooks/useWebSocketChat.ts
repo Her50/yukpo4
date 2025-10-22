@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { API_ENDPOINTS, WS_ENDPOINTS } from '../config/api.config';
 import { apiDelete, apiPost, apiPut } from '../services/api';
@@ -440,7 +441,6 @@ export const useWebSocketChat = (serviceId: number, prestataireId: number, userI
 // Fonction utilitaire pour récupérer le token
 const getToken = async (): Promise<string | null> => {
     try {
-        const AsyncStorage = require('@react-native-async-storage/async-storage').default;
         let token = await AsyncStorage.getItem('auth_token');
         if (!token) {
             token = await AsyncStorage.getItem('token');
@@ -455,7 +455,6 @@ const getToken = async (): Promise<string | null> => {
 // ✅ NOUVEAU: Fonction utilitaire pour récupérer les infos utilisateur
 const getUserInfo = async (): Promise<{ name: string; email: string } | null> => {
     try {
-        const AsyncStorage = require('@react-native-async-storage/async-storage').default;
         const userDataStr = await AsyncStorage.getItem('user');
         if (userDataStr) {
             const userData = JSON.parse(userDataStr);

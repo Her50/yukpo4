@@ -24,6 +24,8 @@ pub mod scheduling_search_routes; // ✅ NOUVEAU: Routes pour recherche avec pla
 pub mod service_team_routes; // ✅ NOUVEAU: Routes pour gestion d'équipe des services
 pub mod signalement_routes; // ✅ NOUVEAU: Routes pour signalements
 pub mod publicite_routes; // ✅ NOUVEAU: Routes pour système de publicité payante
+pub mod recommendation_routes; // ✅ NOUVEAU: Routes pour recommandations et tracking visibilité
+pub mod embedding_routes; // ✅ Routes pour embeddings
 
 // === Routes d'Optimisation IA ===
 // pub mod ia_routes_optimized; // Temporairement d?sactiv?

@@ -1,6 +1,5 @@
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
-// @ts-ignore
 import { Bell, Briefcase, ChartBar, House, MagnifyingGlass } from 'phosphor-react-native';
 import { modernColors, modernStyles } from '../theme/modernTheme';
 
@@ -123,6 +122,8 @@ const TestNavigator = () => {
 };
 
 export default TestNavigator;
+
+
 
 
 

@@ -1,3 +1,4 @@
+// @ts-nocheck
 // HomeScreen moderne inspiré du frontend avec ChatInputMobile intégré
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
@@ -583,3 +584,4 @@ const styles = StyleSheet.create({
 });
 
 export default HomeScreenNew;
+

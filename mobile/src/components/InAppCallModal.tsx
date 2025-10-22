@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Composant de communication interne (appels audio et vidéo)
  * Utilise WebRTC pour les appels internes entre utilisateurs de l'application

@@ -25,6 +25,8 @@ pub mod service_team_controller; // ✅ NOUVEAU: Contrôleur pour gestion d'équ
 pub mod signalement_controller; // ✅ NOUVEAU: Contrôleur pour signalements de produits/services
 pub mod image_search_controller; // ✅ NOUVEAU: Contrôleur pour recherche par image
 pub mod publicite_controller; // ✅ NOUVEAU: Contrôleur pour système de publicité payante
+pub mod recommendation_controller; // ✅ NOUVEAU: Contrôleur pour recommandations et tracking visibilité
+pub mod scoring_controller; // ✅ Contrôleur pour scoring de services
 
 // pub use service_controller::update_token_debit;
 

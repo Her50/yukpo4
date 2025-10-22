@@ -2,6 +2,7 @@
 import * as React from 'react';
 import { createContext, ReactNode, useContext, useEffect, useState } from 'react';
 import { authApi } from '../services/api';
+import { handleError } from '../utils/errorHandler';
 import { jwtDecode } from '../utils/jwtDecode';
 
 interface User {
@@ -50,10 +51,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [forceRender, setForceRender] = useState(0);
 
-  // Debug minimal
-  if (false) { // FORCÉ EN MODE PRODUCTION
-    console.log('[AuthContext] État:', { user: !!user, loading });
-  }
+  // ✅ CORRECTION: Debug désactivé pour éviter les re-renders
+  // Debug minimal - COMPLÈTEMENT DÉSACTIVÉ
+  // if (false) { 
+  //   console.log('[AuthContext] État:', { user: !!user, loading });
+  // }
 
   // Vérifier l'authentification au démarrage avec gestion d'erreur
   useEffect(() => {
@@ -148,14 +150,23 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
           // ✅ NOUVEAU: Enregistrer le token push pour notifications
           try {
-            const { registerForPushNotificationsAsync } = await import('../services/pushNotifications');
+            const pushModule = await import('../services/pushNotifications');
+            if (!pushModule || !pushModule.registerForPushNotificationsAsync) {
+              throw new Error('Module pushNotifications non disponible');
+            }
+            const { registerForPushNotificationsAsync } = pushModule;
             const pushToken = await registerForPushNotificationsAsync(response.data.token);
             if (pushToken) {
               console.log('[AuthContext] ✅ Token push enregistré');
             }
           } catch (pushError) {
-            console.warn('[AuthContext] ⚠️ Erreur enregistrement push token:', pushError);
+            handleError(pushError, {
+              component: 'AuthContext',
+              action: 'register_push_token',
+              details: { userId: userData.id }
+            });
             // Ne pas bloquer le login si push échoue
+            console.warn('[AuthContext] Push notifications désactivées');
           }
           setForceRender(prev => prev + 1);
           console.log('[AuthContext] ✅ setUser() appelé avec:', userData);

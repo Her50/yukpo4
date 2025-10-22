@@ -7,13 +7,9 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
-// @ts-ignore
 import { LinearGradient } from 'expo-linear-gradient';
-// @ts-ignore
 import SafeIcon from './SafeIcon';
-// @ts-ignore
 import { NativeButton } from './NativeDesign';
-// @ts-ignore
 import { modernColors } from '../theme/modernTheme';
 
 interface Seat {

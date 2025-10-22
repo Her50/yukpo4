@@ -1,6 +1,6 @@
-// @ts-nocheck
 import { Audio } from 'expo-av';
 import * as DocumentPicker from 'expo-document-picker';
+import * as FileSystem from 'expo-file-system';
 import * as ImagePicker from 'expo-image-picker';
 import React, { useEffect, useRef, useState } from 'react';
 import {
@@ -385,7 +385,6 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
     const convertFileToBase64 = async (uri: string): Promise<string> => {
         try {
             // Utiliser FileSystem d'Expo pour React Native
-            const FileSystem = require('expo-file-system');
             const base64 = await FileSystem.readAsStringAsync(uri, {
                 encoding: FileSystem.EncodingType.Base64,
             });
@@ -956,9 +955,9 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
                         <View style={styles.typingContainer}>
                             <View style={styles.typingBubble}>
                                 <View style={styles.typingDots}>
-                                    <View style={[styles.typingDot, { animationDelay: '0ms' }]} />
-                                    <View style={[styles.typingDot, { animationDelay: '150ms' }]} />
-                                    <View style={[styles.typingDot, { animationDelay: '300ms' }]} />
+                                    <View style={styles.typingDot} />
+                                    <View style={styles.typingDot} />
+                                    <View style={styles.typingDot} />
                                 </View>
                                 <Text style={styles.typingText}>En train d'écrire...</Text>
                             </View>

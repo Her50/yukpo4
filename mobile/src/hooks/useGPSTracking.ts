@@ -38,7 +38,9 @@ export const useGPSTracking = (): UseGPSTrackingReturn => {
     const intervalRef = useRef<NodeJS.Timeout | null>(null);
     const watchRef = useRef<Location.LocationSubscription | null>(null);
 
-    // Vérifier et démarrer automatiquement si GPS activé
+    // ✅ CORRECTION CRITIQUE: Désactiver le démarrage automatique pour éviter les blocages
+    // Le GPS ne démarre plus automatiquement au lancement de l'app
+    // L'utilisateur doit activer manuellement le GPS dans les paramètres
     useEffect(() => {
         const checkAndStartGPS = async () => {
             if (!user) return;
@@ -46,25 +48,36 @@ export const useGPSTracking = (): UseGPSTrackingReturn => {
             try {
                 // Vérifier si le GPS est activé dans les paramètres
                 const gpsEnabled = await AsyncStorage.getItem('gpsEnabled');
-                const isGPSEnabled = gpsEnabled !== null ? JSON.parse(gpsEnabled) : true; // Par défaut activé
+                const isGPSEnabled = gpsEnabled !== null ? JSON.parse(gpsEnabled) : false; // ✅ Par défaut DÉSACTIVÉ
 
                 console.log('[useGPSTracking] Paramètre GPS:', isGPSEnabled);
 
                 if (isGPSEnabled) {
                     console.log('[useGPSTracking] Démarrage automatique du tracking GPS...');
-                    await startTracking();
+                    // Délai pour éviter les blocages au démarrage - augmenté à 30s
+                    setTimeout(async () => {
+                        try {
+                            await startTracking();
+                        } catch (error) {
+                            console.error('[useGPSTracking] Erreur démarrage différé:', error);
+                            // Ne pas bloquer l'app si le GPS échoue
+                        }
+                    }, 30000); // ✅ Délai augmenté à 30s pour éviter les blocages
                 } else {
-                    console.log('[useGPSTracking] GPS désactivé dans les paramètres');
+                    console.log('[useGPSTracking] GPS désactivé dans les paramètres (par défaut)');
                 }
             } catch (error) {
                 console.error('[useGPSTracking] Erreur lors de la vérification GPS:', error);
+                // Ne pas bloquer l'app si erreur
             }
         };
 
-        checkAndStartGPS();
+        // ✅ Délai augmenté pour éviter les blocages au démarrage de l'app
+        const timeoutId = setTimeout(checkAndStartGPS, 15000); // Délai augmenté à 15s
 
         // Cleanup au démontage
         return () => {
+            clearTimeout(timeoutId);
             if (watchRef.current) {
                 watchRef.current.remove();
             }
@@ -102,8 +115,13 @@ export const useGPSTracking = (): UseGPSTrackingReturn => {
         try {
             console.log('[useGPSTracking] Demande des permissions...');
 
-            // Demander les permissions de localisation
-            const { status } = await Location.requestForegroundPermissionsAsync();
+            // ✅ CORRECTION: Timeout pour les permissions GPS
+            const permissionPromise = Location.requestForegroundPermissionsAsync();
+            const timeoutPromise = new Promise((_, reject) =>
+                setTimeout(() => reject(new Error('Permission timeout')), 10000)
+            );
+
+            const { status } = await Promise.race([permissionPromise, timeoutPromise]) as any;
 
             if (status !== 'granted') {
                 throw new Error('Permission de localisation refusée');
@@ -114,10 +132,10 @@ export const useGPSTracking = (): UseGPSTrackingReturn => {
             // Obtenir la position actuelle immédiatement
             await updateLocation();
 
-            // Démarrer le watch de position (mise à jour continue)
+            // ✅ CORRECTION: Précision équilibrée pour éviter les blocages
             watchRef.current = await Location.watchPositionAsync(
                 {
-                    accuracy: Location.Accuracy.High,
+                    accuracy: Location.Accuracy.Balanced, // Moins précis mais plus rapide
                     timeInterval: 5 * 60 * 1000, // Mise à jour toutes les 5 minutes
                     distanceInterval: 50, // Ou si déplacement de 50 mètres
                 },

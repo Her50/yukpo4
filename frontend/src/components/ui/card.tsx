@@ -5,6 +5,7 @@ export interface CardProps extends React.HTMLAttributes<HTMLDivElement> {}
 export interface CardHeaderProps extends React.HTMLAttributes<HTMLDivElement> {}
 export interface CardContentProps extends React.HTMLAttributes<HTMLDivElement> {}
 export interface CardTitleProps extends React.HTMLAttributes<HTMLHeadingElement> {}
+export interface CardDescriptionProps extends React.HTMLAttributes<HTMLParagraphElement> {}
 
 const Card = React.forwardRef<HTMLDivElement, CardProps>(({ className, ...props }, ref) => (
   <div
@@ -42,5 +43,14 @@ const CardTitle = React.forwardRef<HTMLHeadingElement, CardTitleProps>(({ classN
 ));
 CardTitle.displayName = 'CardTitle';
 
-export { Card, CardHeader, CardContent, CardTitle };
+const CardDescription = React.forwardRef<HTMLParagraphElement, CardDescriptionProps>(({ className, ...props }, ref) => (
+  <p
+    ref={ref}
+    className={cn('text-sm text-muted-foreground', className)}
+    {...props}
+  />
+));
+CardDescription.displayName = 'CardDescription';
+
+export { Card, CardHeader, CardContent, CardTitle, CardDescription };
 export default Card;

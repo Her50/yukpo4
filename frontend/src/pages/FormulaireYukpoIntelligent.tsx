@@ -16,6 +16,7 @@ import { toast } from 'react-hot-toast';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { API_ENDPOINTS, buildUrl } from '../config/api.config';
 
+import PaymentMethodSelector from '@/components/PaymentMethodSelector';
 import BrandingManager from '@/components/ui/BrandingManager';
 import ProductManager from '@/components/ui/ProductManager';
 
@@ -35,6 +36,7 @@ export default function FormulaireDemandeOuService() {
   const [composants, setComposants] = useState<ComposantFrontend[]>([]);
   const [chargement, setChargement] = useState(false);
   const [products, setProducts] = useState<any[]>([]);
+  const [paymentMethod, setPaymentMethod] = useState<any>(null); // ✅ NOUVEAU: Mode de paiement
   const [mediaFiles, setMediaFiles] = useState({
     images: mediaData.base64_image || [],
     audios: mediaData.audio_base64 || [],
@@ -271,6 +273,16 @@ export default function FormulaireDemandeOuService() {
           };
         }
 
+        // ✅ NOUVEAU: Ajouter le mode de paiement si présent
+        if (paymentMethod) {
+          finalServiceData.mode_paiement = {
+            type_donnee: 'object',
+            valeur: paymentMethod,
+            origine_champs: 'formulaire'
+          };
+          console.log('[FormulaireYukpoIntelligent] ✅ Mode de paiement ajouté (modification):', paymentMethod);
+        }
+
         // Préparer le payload de modification
         const updatePayload = {
           user_id: parseInt(user?.id || '0', 10),
@@ -304,20 +316,31 @@ export default function FormulaireDemandeOuService() {
 
       // 💰 ÉTAPE 1 : Appeler l'IA externe pour générer le JSON ET obtenir le coût réel
 
-      // Construire les données brutes pour l'IA
+      // ✅ CORRECTION 413: Compresser les médias AVANT l'envoi
+      console.log('[FormulaireYukpoIntelligent] 🔄 Compression des médias...');
+      const { compressAllMedia } = await import('../utils/mediaCompression');
+      const compressedMedia = await compressAllMedia(mediaFiles);
+
+      console.log('[FormulaireYukpoIntelligent] ✅ Médias compressés:', {
+        before: `${(compressedMedia.totalSizeBefore / (1024 * 1024)).toFixed(2)} MB`,
+        after: `${(compressedMedia.totalSizeAfter / (1024 * 1024)).toFixed(2)} MB`,
+        saved: `${((1 - compressedMedia.totalSizeAfter / compressedMedia.totalSizeBefore) * 100).toFixed(1)}%`
+      });
+
+      // Construire les données brutes pour l'IA avec médias compressés
       const donneesService = {
         texte: composants.map(c => `${c.nomChamp}: ${valeursFormulaire[c.nomChamp] || ''}`).join('\n'),
         intention: 'creation_service',
-        base64_image: mediaFiles.images,
-        audio_base64: mediaFiles.audios,
-        video_base64: mediaFiles.videos,
-        doc_base64: mediaFiles.documents,
-        excel_base64: mediaFiles.excel,
-        logo: mediaFiles.logo,
-        banner: mediaFiles.banner
+        base64_image: compressedMedia.images,
+        audio_base64: compressedMedia.audios,
+        video_base64: compressedMedia.videos,
+        doc_base64: compressedMedia.documents,
+        excel_base64: compressedMedia.excel,
+        logo: compressedMedia.logo,
+        banner: compressedMedia.banner
       };
 
-      console.log('[FormulaireYukpoIntelligent] Données brutes pour génération IA:', donneesService);
+      console.log('[FormulaireYukpoIntelligent] Données brutes pour génération IA (COMPRESSÉES)');
 
       // Appeler l'IA pour générer le JSON structuré (comptabilise les tokens)
       iaResponse = await appelerMoteurIA({
@@ -444,6 +467,16 @@ export default function FormulaireDemandeOuService() {
 
       if (!serviceData.gps_fixe) {
         console.warn('[FormulaireYukpoIntelligent] ⚠️ AUCUN GPS FIXE - Le service utilisera le GPS en temps réel!');
+      }
+
+      // ✅ NOUVEAU: Ajouter le mode de paiement si présent
+      if (paymentMethod) {
+        serviceData.mode_paiement = {
+          type_donnee: 'object',
+          valeur: paymentMethod,
+          origine_champs: 'formulaire'
+        };
+        console.log('[FormulaireYukpoIntelligent] ✅ Mode de paiement ajouté:', paymentMethod);
       }
 
       // 🔧 ÉTAPE 5 : Créer le service (en mode création uniquement)
@@ -891,9 +924,24 @@ export default function FormulaireDemandeOuService() {
               </div>
             </div>
 
+            {/* Bloc Mode de Paiement */}
+            <div className="p-2 space-y-2">
+              <h3 className="font-bold text-sm text-center text-white bg-green-500 rounded py-1 mb-1 max-w-sm mx-auto">
+                💳 Mode de paiement
+              </h3>
+              <div className="space-y-2">
+                <div className="max-w-sm mx-auto">
+                  <PaymentMethodSelector
+                    onPaymentChange={setPaymentMethod}
+                    readonly={mode === 'readonly'}
+                  />
+                </div>
+              </div>
+            </div>
+
 
             {composants.length > 0 && (
-              <div className="flex justify-center pt-4">
+              <div className="flex justify-center pt-6 pb-4">
                 {mode === 'readonly' ? (
                   <Button
                     onClick={() => navigate('/dashboard/mes-services')}

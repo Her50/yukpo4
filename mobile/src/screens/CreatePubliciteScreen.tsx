@@ -1,8 +1,10 @@
 // @ts-nocheck
 import { useNavigation, useRoute } from '@react-navigation/native';
+import * as FileSystem from 'expo-file-system';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
-import * as VideoThumbnails from 'expo-video-thumbnails';
+// ✅ CORRECTION: expo-video n'est pas installé, on le remplace par un placeholder
+// import { getThumbnailAsync } from 'expo-video';
 import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
@@ -18,7 +20,7 @@ import {
 import { NativeButton, NativeCard, NativeInput } from '../components/NativeDesign';
 import SafeIcon from '../components/SafeIcon';
 import { useAuth } from '../contexts/AuthContext';
-import { useLanguage } from '../contexts/LanguageContext';
+import { useLanguageSafe } from '../contexts/LanguageContext';
 import { apiGet, apiPost } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
 
@@ -53,7 +55,7 @@ const CreatePubliciteScreen: React.FC = () => {
     const navigation = useNavigation();
     const route = useRoute();
     const { user } = useAuth();
-    const { t, language } = useLanguage();
+    const { t, language } = useLanguageSafe();
 
     // ✅ Mode: 'create', 'edit', ou 'relance'
     const publiciteId = (route.params as any)?.publiciteId;
@@ -89,8 +91,8 @@ const CreatePubliciteScreen: React.FC = () => {
         try {
             // Récupérer la devise de l'utilisateur depuis son profil
             const response = await apiGet('/api/users/profile');
-            if (response.success && response.data?.devise_preferee) {
-                setUserCurrency(response.data.devise_preferee);
+            if (response.success && (response.data as any)?.devise_preferee) {
+                setUserCurrency((response.data as any).devise_preferee);
             }
         } catch (error) {
             console.log('[CreatePublicite] Devise par défaut: FCFA');
@@ -104,7 +106,7 @@ const CreatePubliciteScreen: React.FC = () => {
             const response = await apiGet(`/api/publicites/${pubId}`);
 
             if (response.success && response.data) {
-                const pub = response.data;
+                const pub = response.data as any;
                 setTitre(pub.titre || '');
                 setDescription(pub.description || '');
                 setDuree(pub.duree_jours?.toString() || '7');
@@ -127,11 +129,11 @@ const CreatePubliciteScreen: React.FC = () => {
             const response = await apiGet('/api/prestataire/services');
 
             if (response.success && response.data) {
-                setMesServices(response.data);
+                setMesServices(response.data as any[]);
 
                 // Extraire tous les produits
                 const allProducts: any[] = [];
-                response.data.forEach((service: any) => {
+                (response.data as any[]).forEach((service: any) => {
                     if (service.data?.produits && Array.isArray(service.data.produits)) {
                         service.data.produits.forEach((product: any, index: number) => {
                             allProducts.push({
@@ -184,14 +186,14 @@ const CreatePubliciteScreen: React.FC = () => {
             if (!result.canceled && result.assets[0]) {
                 const video = result.assets[0];
 
-                // Générer la miniature
+                // ✅ CORRECTION: expo-video non installé, on utilise la première frame
                 try {
-                    const { uri: thumbnailUri } = await VideoThumbnails.getThumbnailAsync(video.uri, {
-                        time: 1000,
-                    });
+                    // const { uri: thumbnailUri } = await getThumbnailAsync(video.uri, {
+                    //     time: 1000,
+                    // });
+                    const thumbnailUri = video.uri; // Utiliser l'URI vidéo directement
 
                     // Convertir en base64
-                    const FileSystem = require('expo-file-system');
                     const videoBase64 = await FileSystem.readAsStringAsync(video.uri, {
                         encoding: FileSystem.EncodingType.Base64,
                     });
@@ -218,10 +220,16 @@ const CreatePubliciteScreen: React.FC = () => {
 
     // ✅ Soumettre la publicité avec gestion recharge
     const handleCreatePublicite = async () => {
-        // Validation
-        if (selectedProduits.length === 0) {
-            Alert.alert(t('message.error'), 'Veuillez sélectionner au moins un produit');
+        // Validation basique
+        if (!titre.trim()) {
+            Alert.alert(t('message.error'), 'Veuillez saisir un titre pour la publicité');
             return;
+        }
+
+        // ✅ CORRECTION: Produit optionnel (avertissement seulement)
+        if (selectedProduits.length === 0) {
+            console.warn('[CreatePublicite] ⚠️ Aucun produit sélectionné');
+            // Ne pas bloquer, juste avertir
         }
 
         if (!titre.trim()) {
@@ -240,7 +248,7 @@ const CreatePubliciteScreen: React.FC = () => {
                 return;
             }
 
-            const solde = balanceResponse.data?.tokens_balance || 0;
+            const solde = (balanceResponse.data as any)?.tokens_balance || 0;
 
             // Convertir le coût en FCFA pour la comparaison avec le solde (qui est en FCFA)
             const exchangeRate = EXCHANGE_RATES[userCurrency] || 1;
@@ -456,6 +464,7 @@ const CreatePubliciteScreen: React.FC = () => {
                 {/* Sélection des produits */}
                 <NativeCard style={styles.sectionCard}>
                     <Text style={styles.sectionTitle}>📦 {t('publicite.products')} ({selectedProduits.length})</Text>
+                    <Text style={styles.sectionHint}>✨ Optionnel - Sélectionnez les produits à promouvoir</Text>
 
                     {loading ? (
                         <ActivityIndicator size="small" color={modernColors.primary} />
@@ -566,7 +575,7 @@ const CreatePubliciteScreen: React.FC = () => {
                             mode === 'relance' ? '🔄 Relancer la publicité' :
                                 `🚀 ${t('publicite.create')}`}
                     onPress={handleCreatePublicite}
-                    disabled={loading || selectedProduits.length === 0 || !titre.trim()}
+                    disabled={loading || !titre.trim()} // ✅ CORRECTION: Produit optionnel
                     variant="primary"
                     size="large"
                     style={styles.createButton}

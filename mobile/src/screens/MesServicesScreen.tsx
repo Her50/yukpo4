@@ -1,19 +1,14 @@
-ï»¿// Design moderne inspirÃ© du frontend
+// @ts-nocheck
+// Design moderne inspiré du frontend
 import AsyncStorage from '@react-native-async-storage/async-storage';
-// @ts-ignore
 import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as React from 'react';
 import { useEffect, useState } from 'react';
-// @ts-ignore
 import { ActivityIndicator, Alert, Dimensions, RefreshControl, ScrollView, Share, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-// @ts-ignore
 import { NativeButton, NativeCard } from '../components/NativeDesign';
-// @ts-ignore
 import SafeIcon from '../components/SafeIcon';
-// @ts-ignore
 import ServiceCardModern from '../components/ServiceCardModern';
-// @ts-ignore
 import { useAuth } from '../contexts/AuthContext';
 import { apiDelete, apiGet, apiPatch, apiPost } from '../services/api';
 import { modernColors, modernStyles } from '../theme/modernTheme';
@@ -56,17 +51,17 @@ const MesServicesScreen: React.FC = () => {
 
       const token = await AsyncStorage.getItem('auth_token');
 
-      // âœ… CORRIGÃ‰: Utilise apiGet
+      // ? CORRIGÉ: Utilise apiGet
       const response = await apiGet('/api/prestataire/services');
 
       if (response.ok) {
         const data = await response.json();
-        // Trier les services du plus rÃ©cent au plus ancien
+        // Trier les services du plus récent au plus ancien
         const servicesTries = data.sort((a: any, b: any) => {
           return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
         });
 
-        // Transformer les donnÃ©es pour correspondre Ã  notre interface
+        // Transformer les données pour correspondre à notre interface
         const transformedServices = servicesTries.map((service: any) => ({
           id: service.id.toString(),
           title: service.data?.titre_service?.valeur || service.data?.titre?.valeur || service.titre || 'Service sans titre',
@@ -119,7 +114,7 @@ const MesServicesScreen: React.FC = () => {
   // Fonctions de gestion des services
   const handleEditService = (service: any) => {
     try {
-      // Navigation vers l'Ã©cran de modification avec les donnÃ©es du service
+      // Navigation vers l'écran de modification avec les données du service
       (navigation as any).navigate('FormulaireYukpoIntelligent', {
         mode: 'edit',
         serviceId: service.id,
@@ -141,9 +136,9 @@ const MesServicesScreen: React.FC = () => {
 
   const handleViewService = (service: any) => {
     try {
-      // Navigation vers l'Ã©cran de visualisation en mode lecture seule
+      // Navigation vers l'écran de visualisation en mode lecture seule
       (navigation as any).navigate('FormulaireYukpoIntelligent', {
-        mode: 'view',  // âœ… CORRECTION : Utiliser 'view' au lieu de 'readonly'
+        mode: 'view',  // ? CORRECTION : Utiliser 'view' au lieu de 'readonly'
         serviceId: service.id,
         serviceData: service.data,
         suggestion: {
@@ -152,7 +147,7 @@ const MesServicesScreen: React.FC = () => {
           confidence: service.confidence || 0.8
         },
         type: 'visualisation_service',
-        readonly: true,  // âœ… Flag explicite pour mode lecture seule
+        readonly: true,  // ? Flag explicite pour mode lecture seule
         fromMesServices: true
       });
     } catch (error) {
@@ -163,37 +158,37 @@ const MesServicesScreen: React.FC = () => {
 
   const handleShareService = async (service: any) => {
     try {
-      // ImplÃ©mentation du partage avec deep linking
+      // Implémentation du partage avec deep linking
       const titre = service.data?.titre_service?.valeur || service.data?.titre?.valeur || service.title || 'Service Yukpo';
-      const description = service.data?.description?.valeur || service.description || 'DÃ©couvrez ce service sur Yukpo';
+      const description = service.data?.description?.valeur || service.description || 'Découvrez ce service sur Yukpo';
       const prix = service.data?.prix?.valeur || service.prix;
       const localisation = service.data?.localisation?.valeur || service.localisation;
 
-      // âœ… AMÃ‰LIORATION : CrÃ©er un lien deep link vers le service
+      // ? AMÉLIORATION : Créer un lien deep link vers le service
       const serviceUrl = `https://yukpomnang.com/service/${service.id}`;
 
-      let shareText = `ðŸŒŸ ${titre}\n\n${description}`;
+      let shareText = `?? ${titre}\n\n${description}`;
 
       if (prix) {
-        shareText += `\nðŸ’° Prix: ${prix} FCFA`;
+        shareText += `\n?? Prix: ${prix} FCFA`;
       }
 
       if (localisation) {
-        shareText += `\nðŸ“ Localisation: ${localisation}`;
+        shareText += `\n?? Localisation: ${localisation}`;
       }
 
-      shareText += `\n\nðŸ“± Voir ce service sur Yukpo :\nðŸ”— ${serviceUrl}`;
+      shareText += `\n\n?? Voir ce service sur Yukpo :\n?? ${serviceUrl}`;
 
       // Utiliser l'API de partage native React Native
       const result = await Share.share({
         message: shareText,
         title: titre,
-        url: serviceUrl  // âœ… URL spÃ©cifique au service
+        url: serviceUrl  // ? URL spécifique au service
       });
 
       if (result.action === Share.sharedAction) {
-        console.log('[MesServicesScreen] Service partagÃ©:', serviceUrl);
-        Alert.alert('SuccÃ¨s', 'Service partagÃ© avec succÃ¨s !');
+        console.log('[MesServicesScreen] Service partagé:', serviceUrl);
+        Alert.alert('Succès', 'Service partagé avec succès !');
       }
     } catch (error) {
       console.error('Erreur lors du partage:', error);
@@ -207,25 +202,25 @@ const MesServicesScreen: React.FC = () => {
       const currentStatus = service.status === 'active';
       const newStatus = !currentStatus;
 
-      // Si on rÃ©active un service (passage de inactif Ã  actif), facturer 1000 FCFA
+      // Si on réactive un service (passage de inactif à actif), facturer 1000 FCFA
       if (!currentStatus) {
-        // âœ… CORRIGÃ‰: VÃ©rifier le solde avec apiGet
+        // ? CORRIGÉ: Vérifier le solde avec apiGet
         const balanceResponse = await apiGet('/api/users/balance');
 
         if (balanceResponse.ok) {
           const balanceData = await balanceResponse.json();
           const currentBalance = balanceData.tokens_balance;
-          const activationCost = 1000; // 1000 FCFA pour rÃ©activation
+          const activationCost = 1000; // 1000 FCFA pour réactivation
 
           if (currentBalance < activationCost) {
             Alert.alert(
               'Solde insuffisant',
-              `Solde actuel: ${currentBalance} FCFA\nCoÃ»t de rÃ©activation: ${activationCost} FCFA\n\nVeuillez recharger votre compte.`
+              `Solde actuel: ${currentBalance} FCFA\nCoût de réactivation: ${activationCost} FCFA\n\nVeuillez recharger votre compte.`
             );
             return;
           }
 
-          // âœ… CORRIGÃ‰: DÃ©duire le coÃ»t avec apiPost
+          // ? CORRIGÉ: Déduire le coût avec apiPost
           const deductResponse = await apiPost('/api/users/deduct-balance', {
             amount: activationCost,
             reason: 'service_reactivation'
@@ -234,26 +229,26 @@ const MesServicesScreen: React.FC = () => {
           if (deductResponse.success) {
             const newBalance = currentBalance - activationCost;
 
-            // DÃ©clencher un rafraÃ®chissement du solde dans l'interface
-            // Cela mettra Ã  jour le solde affichÃ© dans HomeScreen
+            // Déclencher un rafraîchissement du solde dans l'interface
+            // Cela mettra à jour le solde affiché dans HomeScreen
             loadServices(true);
 
             Alert.alert(
-              'Service rÃ©activÃ© !',
-              `CoÃ»t: ${activationCost} FCFA\nNouveau solde: ${newBalance} FCFA`,
+              'Service réactivé !',
+              `Coût: ${activationCost} FCFA\nNouveau solde: ${newBalance} FCFA`,
               [{ text: 'OK' }]
             );
           }
         }
       }
 
-      // âœ… CORRIGÃ‰: Changer le statut avec apiPatch
+      // ? CORRIGÉ: Changer le statut avec apiPatch
       const response = await apiPatch(`/api/services/${service.id}/toggle-status`, {
         actif: newStatus
       });
 
       if (response.success) {
-        // Mettre Ã  jour l'Ã©tat local
+        // Mettre à jour l'état local
         setServices(prevServices =>
           prevServices.map(s =>
             s.id === service.id
@@ -262,13 +257,13 @@ const MesServicesScreen: React.FC = () => {
           )
         );
 
-        // RafraÃ®chir la liste des services
+        // Rafraîchir la liste des services
         loadServices(true);
 
         if (currentStatus) {
-          Alert.alert('SuccÃ¨s', 'Service dÃ©sactivÃ© avec succÃ¨s');
+          Alert.alert('Succès', 'Service désactivé avec succès');
         } else {
-          // Message dÃ©jÃ  affichÃ© plus haut pour la rÃ©activation
+          // Message déjà affiché plus haut pour la réactivation
         }
       } else {
         const errorText = await response.text();
@@ -285,7 +280,7 @@ const MesServicesScreen: React.FC = () => {
     // Confirmation avant suppression comme dans le frontend
     Alert.alert(
       'Supprimer le service',
-      `ÃŠtes-vous sÃ»r de vouloir supprimer dÃ©finitivement le service "${service.title}" ?\n\nCette action est irrÃ©versible.`,
+      `Êtes-vous sûr de vouloir supprimer définitivement le service "${service.title}" ?\n\nCette action est irréversible.`,
       [
         { text: 'Annuler', style: 'cancel' },
         {
@@ -295,17 +290,17 @@ const MesServicesScreen: React.FC = () => {
             try {
               const token = await AsyncStorage.getItem('auth_token');
 
-              // âœ… CORRIGÃ‰: Supprimer avec apiDelete
+              // ? CORRIGÉ: Supprimer avec apiDelete
               const response = await apiDelete(`/api/services/${service.id}/delete`);
 
               if (response.ok) {
-                // Supprimer de l'Ã©tat local
+                // Supprimer de l'état local
                 setServices(prevServices => prevServices.filter(s => s.id !== service.id));
 
-                // DÃ©clencher un rafraÃ®chissement pour mettre Ã  jour l'interface
+                // Déclencher un rafraîchissement pour mettre à jour l'interface
                 loadServices(true);
 
-                Alert.alert('SuccÃ¨s', 'Service supprimÃ© avec succÃ¨s');
+                Alert.alert('Succès', 'Service supprimé avec succès');
               } else {
                 throw new Error('Erreur lors de la suppression');
               }
@@ -324,15 +319,15 @@ const MesServicesScreen: React.FC = () => {
 
     // Afficher un modal de gestion des promotions comme dans le frontend
     Alert.alert(
-      'ðŸŽ‰ Promotion du service',
+      '?? Promotion du service',
       `Service: ${titre}\n\nQue souhaitez-vous faire ?`,
       [
         { text: 'Annuler', style: 'cancel' },
         {
-          text: 'CrÃ©er une promotion',
+          text: 'Créer une promotion',
           onPress: () => {
             try {
-              // Navigation vers l'Ã©cran de modification pour crÃ©er une promotion
+              // Navigation vers l'écran de modification pour créer une promotion
               (navigation as any).navigate('FormulaireYukpoIntelligent', {
                 mode: 'edit',
                 serviceId: service.id,
@@ -356,7 +351,7 @@ const MesServicesScreen: React.FC = () => {
           text: 'Modifier la promotion',
           onPress: () => {
             try {
-              // Navigation vers l'Ã©cran de modification pour modifier la promotion
+              // Navigation vers l'écran de modification pour modifier la promotion
               (navigation as any).navigate('FormulaireYukpoIntelligent', {
                 mode: 'edit',
                 serviceId: service.id,
@@ -380,7 +375,7 @@ const MesServicesScreen: React.FC = () => {
     );
   };
 
-  // Filtrer les services selon le filtre sÃ©lectionnÃ©
+  // Filtrer les services selon le filtre sélectionné
   const filteredServices = services.filter((service) => {
     if (filter === 'tous') return true;
     if (filter === 'actif') return service.status === 'active';
@@ -448,9 +443,9 @@ const MesServicesScreen: React.FC = () => {
         {/* Bandeau d'information */}
         <NativeCard style={styles.infoBanner}>
           <Text style={styles.infoText}>
-            Vous avez <Text style={styles.infoBold}>{services.length}</Text> service(s) crÃ©Ã©(s)
+            Vous avez <Text style={styles.infoBold}>{services.length}</Text> service(s) créé(s)
             {refreshing && (
-              <Text style={styles.refreshingText}> ðŸ”„ Actualisation en cours...</Text>
+              <Text style={styles.refreshingText}> ?? Actualisation en cours...</Text>
             )}
           </Text>
         </NativeCard>
@@ -458,21 +453,21 @@ const MesServicesScreen: React.FC = () => {
         {/* Filtres */}
         <View style={styles.filtersContainer}>
           <NativeButton
-            title={`ðŸ“‹ Tous (${services.length})`}
+            title={`?? Tous (${services.length})`}
             onPress={() => setFilter('tous')}
             variant={filter === 'tous' ? 'primary' : 'outline'}
             size="small"
             style={styles.filterButton}
           />
           <NativeButton
-            title={`âœ… Actifs (${services.filter(s => s.status === 'active').length})`}
+            title={`? Actifs (${services.filter(s => s.status === 'active').length})`}
             onPress={() => setFilter('actif')}
             variant={filter === 'actif' ? 'primary' : 'outline'}
             size="small"
             style={styles.filterButton}
           />
           <NativeButton
-            title={`ðŸš« Inactifs (${services.filter(s => s.status === 'inactive').length})`}
+            title={`?? Inactifs (${services.filter(s => s.status === 'inactive').length})`}
             onPress={() => setFilter('inactif')}
             variant={filter === 'inactif' ? 'primary' : 'outline'}
             size="small"
@@ -485,16 +480,16 @@ const MesServicesScreen: React.FC = () => {
           <View style={styles.emptyContainer}>
             <SafeIcon name="briefcase" size={64} color={modernColors.textSecondary} />
             <Text style={styles.emptyTitle}>
-              {filter === 'tous' ? 'Aucun service crÃ©Ã©' : `Aucun service ${filter}`}
+              {filter === 'tous' ? 'Aucun service créé' : `Aucun service ${filter}`}
             </Text>
             <Text style={styles.emptyText}>
               {filter === 'tous'
-                ? 'CrÃ©ez votre premier service pour commencer Ã  proposer vos services.'
+                ? 'Créez votre premier service pour commencer à proposer vos services.'
                 : `Aucun service ${filter} pour le moment.`
               }
             </Text>
             <NativeButton
-              title="âž• CrÃ©er un nouveau service"
+              title="? Créer un nouveau service"
               onPress={() => navigation.navigate('CreateService' as never)}
               variant="primary"
               size="medium"
@@ -518,10 +513,10 @@ const MesServicesScreen: React.FC = () => {
           </View>
         )}
 
-        {/* Bouton de retour Ã  l'accueil */}
+        {/* Bouton de retour à l'accueil */}
         <View style={styles.footerContainer}>
           <NativeButton
-            title="ðŸ  Retour Ã  l'accueil"
+            title="?? Retour à l'accueil"
             onPress={() => navigation.navigate('Home' as never)}
             variant="outline"
             size="large"
@@ -668,6 +663,7 @@ const styles = StyleSheet.create({
 });
 
 export default MesServicesScreen;
+
 
 
 

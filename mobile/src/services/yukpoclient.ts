@@ -68,7 +68,10 @@ export async function genererSuggestionsService(input: any): Promise<IAResponseW
     });
 
     if (!iaResponse.ok) {
-      const errorData = await iaResponse.json().catch(() => ({}));
+      const errorData = await iaResponse.json().catch((error) => {
+        console.error('Erreur parsing JSON IA response:', error);
+        return {};
+      });
       console.error('[yukpoclient] Erreur IA détaillée:', {
         status: iaResponse.status,
         statusText: iaResponse.statusText,
@@ -192,13 +195,16 @@ export async function creerService(donneesStructurees: any, tokensIAExterne?: nu
       },
       body: JSON.stringify({
         user_id: user_id,
-        ...donneesStructurees,
+        data: donneesStructurees, // ✅ CORRECTION : Encapsuler dans 'data'
         ...(tokensIAExterne && { tokens_ia_externe: tokensIAExterne })
       })
     });
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
+      const errorData = await response.json().catch((error) => {
+        console.error('Erreur parsing JSON response:', error);
+        return {};
+      });
       throw new Error(errorData.message || `Erreur HTTP ${response.status}`);
     }
 

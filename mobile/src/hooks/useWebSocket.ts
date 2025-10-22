@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
-import websocketService, { UserStatusUpdate, ChatMessage, NotificationMessage } from '../services/websocketService';
+import { useCallback, useEffect, useState } from 'react';
+import websocketService, { ChatMessage, NotificationMessage, UserStatusUpdate } from '../services/websocketService';
 
 interface WebSocketState {
   isConnected: boolean;
@@ -40,11 +40,11 @@ export const useWebSocket = (
       setIsConnected(status === 'online');
       setIsConnecting(false);
       setLastError(null);
-      
+
       if (status === 'offline') {
         setLastError('Connexion perdue');
       }
-      
+
       callbacks?.onConnectionChange?.(status === 'online');
     };
 
@@ -64,15 +64,15 @@ export const useWebSocket = (
         case 'user_status':
           callbacks?.onUserStatusUpdate?.(message as UserStatusUpdate);
           break;
-          
+
         case 'chat_message':
           callbacks?.onChatMessage?.(message as ChatMessage);
           break;
-          
+
         case 'notification':
           callbacks?.onNotification?.(message as NotificationMessage);
           break;
-          
+
         default:
           console.log('📨 [useWebSocket] Type de message non géré:', message.type);
       }

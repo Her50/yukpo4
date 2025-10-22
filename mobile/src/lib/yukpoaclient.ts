@@ -177,7 +177,10 @@ export async function genererSuggestionsService(input: any): Promise<IAResponseW
     clearTimeout(timeoutId);
 
     if (!iaResponse.ok) {
-      const errorData = await iaResponse.json().catch(() => ({}));
+      const errorData = await iaResponse.json().catch((error) => {
+        console.error('Erreur parsing JSON IA response:', error);
+        return {};
+      });
       throw new Error(errorData.message || `Erreur IA: ${iaResponse.status}: ${iaResponse.statusText}`);
     }
 
@@ -234,7 +237,7 @@ export async function creerService(donneesStructurees: any, tokensIAExterne?: nu
       },
       body: JSON.stringify({
         user_id: user_id,
-        ...donneesStructurees, // Étaler les données de service à la racine avec user_id
+        data: donneesStructurees, // ✅ CORRECTION : Encapsuler dans 'data' comme attendu par le backend
         ...(tokensIAExterne && { tokens_ia_externe: tokensIAExterne }) // Transmettre les tokens IA externe
       }),
       signal: controller.signal
@@ -243,7 +246,10 @@ export async function creerService(donneesStructurees: any, tokensIAExterne?: nu
     clearTimeout(timeoutId);
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
+      const errorData = await response.json().catch((error) => {
+        console.error('Erreur parsing JSON response:', error);
+        return {};
+      });
       throw new Error(errorData.message || `Erreur HTTP ${response.status}: ${response.statusText}`);
     }
 
@@ -276,7 +282,10 @@ export async function validerBrouillonService(donnees: any): Promise<any> {
   });
 
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
+    const errorData = await response.json().catch((error) => {
+      console.error('Erreur parsing JSON response:', error);
+      return {};
+    });
     throw new Error(errorData.message || `Erreur HTTP ${response.status}: ${response.statusText}`);
   }
 
@@ -325,7 +334,10 @@ export async function modifierService(serviceId: string | number, donneesStructu
     clearTimeout(timeoutId);
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
+      const errorData = await response.json().catch((error) => {
+        console.error('Erreur parsing JSON response:', error);
+        return {};
+      });
       throw new Error(errorData.message || `Erreur HTTP ${response.status}: ${response.statusText}`);
     }
 

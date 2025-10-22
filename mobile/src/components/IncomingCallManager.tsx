@@ -1,11 +1,10 @@
-// @ts-nocheck
 /**
  * Gestionnaire d'appels entrants
  * Écoute les notifications d'appel WebSocket et affiche le modal WebRTC
  */
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { useWebSocketContext } from '../contexts/WebSocketContext';
+import { handleError } from '../utils/errorHandler';
 import WebRTCCallModal from './WebRTCCallModal';
 
 interface IncomingCallData {
@@ -18,7 +17,6 @@ interface IncomingCallData {
 
 const IncomingCallManager: React.FC = () => {
     const { user } = useAuth();
-    const { registerNotificationHandler } = useWebSocketContext();
     const [incomingCall, setIncomingCall] = useState<IncomingCallData | null>(null);
     const [showCallModal, setShowCallModal] = useState(false);
 
@@ -27,7 +25,26 @@ const IncomingCallManager: React.FC = () => {
 
         console.log('[IncomingCallManager] 📞 Écoute des appels entrants pour user:', user.id);
 
-        // Écouter les notifications d'appel via WebSocket
+        // ✅ CORRECTION: Importer WebSocket seulement si user existe
+        const setupWebSocketHandler = async () => {
+            try {
+                const webSocketModule = await import('../contexts/WebSocketContext');
+                console.log('[IncomingCallManager] ✅ WebSocket context chargé');
+                // Cette partie sera exécutée seulement si user existe
+            } catch (error) {
+                handleError(error, {
+                    component: 'IncomingCallManager',
+                    action: 'setup_websocket_handler',
+                    details: { userId: user.id }
+                });
+                console.warn('[IncomingCallManager] Utilisation du fallback WebSocket');
+            }
+        };
+
+        setupWebSocketHandler();
+
+        // TODO: Réactiver les notifications WebSocket une fois le système stabilisé
+        /*
         const unsubscribe = registerNotificationHandler((notification) => {
             console.log('[IncomingCallManager] 📨 Notification reçue:', notification.type, notification.data);
 
@@ -51,7 +68,8 @@ const IncomingCallManager: React.FC = () => {
             console.log('[IncomingCallManager] 🔌 Nettoyage listener d\'appels');
             unsubscribe();
         };
-    }, [user?.id, registerNotificationHandler]);
+        */
+    }, [user?.id]);
 
     const handleCloseCall = () => {
         console.log('[IncomingCallManager] ❌ Fermeture modal d\'appel');

@@ -1,4 +1,5 @@
-Ôªøimport AsyncStorage from '@react-native-async-storage/async-storage';
+// @ts-nocheck
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 import React, { useState } from 'react';
 import {
@@ -41,7 +42,7 @@ const RegisterScreen: React.FC = () => {
     // Validation du mot de passe
     const passwordRegex = /^(?=.*[A-Z])(?=.*\d).{8,}$/;
     if (!passwordRegex.test(form.password)) {
-      setError("Mot de passe trop faible : 8 caract√®res, 1 majuscule, 1 chiffre minimum.");
+      setError("Mot de passe trop faible : 8 caractËres, 1 majuscule, 1 chiffre minimum.");
       setLoading(false);
       return;
     }
@@ -71,14 +72,14 @@ const RegisterScreen: React.FC = () => {
         lang: form.lang,
       };
 
-      console.log('[RegisterScreen] Donn√©es d\'inscription:', { ...userData, password: '***' });
+      console.log('[RegisterScreen] DonnÈes d\'inscription:', { ...userData, password: '***' });
 
       const response = await authApi.register(userData);
 
-      console.log('[RegisterScreen] R√©ponse API:', response);
+      console.log('[RegisterScreen] RÈponse API:', response);
 
       if (response.success && response.data?.token) {
-        console.log('[RegisterScreen] Inscription r√©ussie, token re√ßu');
+        console.log('[RegisterScreen] Inscription rÈussie, token reÁu');
 
         // Sauvegarder le token
         await AsyncStorage.setItem('auth_token', response.data.token);
@@ -86,12 +87,12 @@ const RegisterScreen: React.FC = () => {
         // Sauvegarder le solde de tokens
         if (response.data.tokens_balance !== undefined) {
           await AsyncStorage.setItem('tokens_balance', response.data.tokens_balance.toString());
-          console.log('[RegisterScreen] Solde initial sauvegard√©:', response.data.tokens_balance);
+          console.log('[RegisterScreen] Solde initial sauvegardÈ:', response.data.tokens_balance);
         }
 
         Alert.alert(
-          'Inscription r√©ussie',
-          'Votre compte a √©t√© cr√©√© avec succ√®s !',
+          'Inscription rÈussie',
+          'Votre compte a ÈtÈ crÈÈ avec succËs !',
           [
             {
               text: 'OK',
@@ -109,7 +110,7 @@ const RegisterScreen: React.FC = () => {
       }
     } catch (error: any) {
       console.error('[RegisterScreen] Erreur lors de l\'inscription:', error);
-      setError('Erreur de connexion au serveur. V√©rifiez votre connexion internet.');
+      setError('Erreur de connexion au serveur. VÈrifiez votre connexion internet.');
     } finally {
       setLoading(false);
     }
@@ -126,8 +127,8 @@ const RegisterScreen: React.FC = () => {
     >
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         <View style={styles.content}>
-          <Text style={styles.title}>Cr√©er un compte</Text>
-          <Text style={styles.subtitle}>Rejoignez la communaut√© Yukpo</Text>
+          <Text style={styles.title}>CrÈer un compte</Text>
+          <Text style={styles.subtitle}>Rejoignez la communautÈ Yukpo</Text>
 
           {/* Formulaire d'inscription */}
           <View style={styles.formContainer}>
@@ -143,12 +144,12 @@ const RegisterScreen: React.FC = () => {
             </View>
 
             <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>Pr√©nom</Text>
+              <Text style={styles.inputLabel}>PrÈnom</Text>
               <TextInput
                 style={styles.input}
                 value={form.prenom}
                 onChangeText={(value) => handleChange('prenom', value)}
-                placeholder="Votre pr√©nom"
+                placeholder="Votre prÈnom"
                 autoCapitalize="words"
               />
             </View>
@@ -176,7 +177,7 @@ const RegisterScreen: React.FC = () => {
                 secureTextEntry
               />
               <Text style={styles.passwordHint}>
-                8 caract√®res minimum, 1 majuscule, 1 chiffre
+                8 caractËres minimum, 1 majuscule, 1 chiffre
               </Text>
             </View>
 
@@ -203,14 +204,14 @@ const RegisterScreen: React.FC = () => {
               {loading ? (
                 <ActivityIndicator color="#fff" />
               ) : (
-                <Text style={styles.registerButtonText}>Cr√©er mon compte</Text>
+                <Text style={styles.registerButtonText}>CrÈer mon compte</Text>
               )}
             </TouchableOpacity>
           </View>
 
           <TouchableOpacity onPress={handleLogin} style={styles.loginLink}>
             <Text style={styles.loginText}>
-              D√©j√† un compte ? <Text style={styles.loginLinkText}>Se connecter</Text>
+              DÈj‡ un compte ? <Text style={styles.loginLinkText}>Se connecter</Text>
             </Text>
           </TouchableOpacity>
 

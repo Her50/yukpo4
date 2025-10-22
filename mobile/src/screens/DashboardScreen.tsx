@@ -1,4 +1,5 @@
-ï»¿import { LinearGradient } from 'expo-linear-gradient';
+// @ts-nocheck
+import { LinearGradient } from 'expo-linear-gradient';
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -50,17 +51,17 @@ const DashboardScreen: React.FC = () => {
       '30d': '30 derniers jours',
       '90d': '90 derniers jours',
       '180d': '6 derniers mois',
-      '365d': '1 derniÃ¨re annÃ©e'
+      '365d': '1 dernière année'
     };
     return labels[period as keyof typeof labels] || period;
   };
 
   const getPeriodDescription = (period: string) => {
     const descriptions = {
-      '7d': 'Tendance rÃ©cente',
+      '7d': 'Tendance récente',
       '30d': 'Performance mensuelle',
       '90d': 'Analyse trimestrielle',
-      '180d': 'Ã‰volution semestrielle',
+      '180d': 'Évolution semestrielle',
       '365d': 'Bilan annuel'
     };
     return descriptions[period as keyof typeof descriptions] || 'Analyse';
@@ -80,11 +81,11 @@ const DashboardScreen: React.FC = () => {
         setLoading(true);
       }
 
-      console.log('[DashboardScreen] DÃ©but du chargement des donnÃ©es...');
+      console.log('[DashboardScreen] Début du chargement des données...');
 
       // Appeler l'API dashboard prestataire (comme frontend)
       const response = await userApi.getDashboardPrestataire(selectedPeriod);
-      console.log('[DashboardScreen] RÃ©ponse API dashboard:', response);
+      console.log('[DashboardScreen] Réponse API dashboard:', response);
 
       if (response.success && response.data) {
         const data = response.data as any;
@@ -103,7 +104,7 @@ const DashboardScreen: React.FC = () => {
             ? services.reduce((sum, s) => sum + (s.rating || 0), 0) / services.length
             : 0;
 
-          // RÃ©cupÃ©rer le budget depuis l'API utilisateur
+          // Récupérer le budget depuis l'API utilisateur
           const budgetResponse = await userApi.getTokensBalance();
           const budgetData = budgetResponse.success ? (budgetResponse.data as any) : { consumed: 0, remaining: 0 };
 
@@ -116,7 +117,7 @@ const DashboardScreen: React.FC = () => {
                 return {
                   id: s.id || 'unknown',
                   title: getServiceFieldValue(s.data?.title || s.data?.titre_service) || 'Service sans titre',
-                  category: getServiceFieldValue(s.data?.category) || 'Non spÃ©cifiÃ©',
+                  category: getServiceFieldValue(s.data?.category) || 'Non spécifié',
                   views: Number(s.views) || 0,
                   interactions: Number(s.interactions) || 0,
                   rating: Number(s.rating) || 0,
@@ -127,7 +128,7 @@ const DashboardScreen: React.FC = () => {
                 return {
                   id: s.id || 'unknown',
                   title: 'Service sans titre',
-                  category: 'Non spÃ©cifiÃ©',
+                  category: 'Non spécifié',
                   views: 0,
                   interactions: 0,
                   rating: 0,
@@ -157,11 +158,11 @@ const DashboardScreen: React.FC = () => {
       }
     } catch (error) {
       console.error('[DashboardScreen] Erreur chargement dashboard:', error);
-      Alert.alert('Erreur', 'Impossible de charger les donnÃ©es du dashboard. VÃ©rifiez votre connexion.');
+      Alert.alert('Erreur', 'Impossible de charger les données du dashboard. Vérifiez votre connexion.');
     } finally {
       setLoading(false);
       setRefreshing(false);
-      console.log('[DashboardScreen] Chargement terminÃ©');
+      console.log('[DashboardScreen] Chargement terminé');
     }
   };
 
@@ -171,7 +172,7 @@ const DashboardScreen: React.FC = () => {
 
   // Fonction pour extraire la valeur d'un champ de service
   const getServiceFieldValue = (field: any): string => {
-    if (!field) return 'Non spÃ©cifiÃ©';
+    if (!field) return 'Non spécifié';
 
     if (typeof field === 'string') return field;
 
@@ -201,12 +202,12 @@ const DashboardScreen: React.FC = () => {
     if (typeof field === 'boolean') return field ? 'Oui' : 'Non';
     if (typeof field === 'number') return field.toString();
 
-    // S'assurer que la valeur retournÃ©e est toujours une string
+    // S'assurer que la valeur retournée est toujours une string
     try {
       return String(field);
     } catch (error) {
       console.warn('[DashboardScreen] Erreur conversion field:', field, error);
-      return 'Non spÃ©cifiÃ©';
+      return 'Non spécifié';
     }
   };
 
@@ -237,7 +238,7 @@ const DashboardScreen: React.FC = () => {
       {trend && (
         <View style={styles.trendContainer}>
           <NativeBadge
-            text={`${trend.isPositive ? 'â†—' : 'â†˜'} ${trend.value}%`}
+            text={`${trend.isPositive ? '?' : '?'} ${trend.value}%`}
             variant={trend.isPositive ? 'success' : 'error'}
             size="small"
           />
@@ -353,7 +354,7 @@ const DashboardScreen: React.FC = () => {
       <View style={styles.cardHeader}>
         <View style={styles.cardTitleContainer}>
           <SafeIcon name="clock" size={20} color={modernColors.primary} />
-          <Text style={styles.cardTitle}>ActivitÃ© RÃ©cente</Text>
+          <Text style={styles.cardTitle}>Activité Récente</Text>
         </View>
         <TouchableOpacity onPress={onViewAllPress} style={styles.viewAllButton}>
           <Text style={styles.viewAllText}>Voir tout</Text>
@@ -373,7 +374,7 @@ const DashboardScreen: React.FC = () => {
                 <SafeIcon name="trending-up" size={16} color={modernColors.primary} />
               </View>
               <View style={styles.activityInfo}>
-                <Text style={styles.activityTitle}>{activity.title || 'ActivitÃ© rÃ©cente'}</Text>
+                <Text style={styles.activityTitle}>{activity.title || 'Activité récente'}</Text>
                 <Text style={styles.activityTime}>{activity.time || 'Il y a 2h'}</Text>
               </View>
             </TouchableOpacity>
@@ -381,7 +382,7 @@ const DashboardScreen: React.FC = () => {
         ) : (
           <View style={styles.emptyActivity}>
             <SafeIcon name="clock" size={40} color={modernColors.textSecondary} />
-            <Text style={styles.emptyActivityText}>Aucune activitÃ© rÃ©cente</Text>
+            <Text style={styles.emptyActivityText}>Aucune activité récente</Text>
           </View>
         )}
       </View>
@@ -407,12 +408,12 @@ const DashboardScreen: React.FC = () => {
       <View style={styles.loadingContainer}>
         <View style={styles.emptyContent}>
           <SafeIcon name="bar-chart" size={64} color={modernColors.textSecondary} />
-          <Text style={styles.emptyTitle}>Aucune donnÃ©e disponible</Text>
+          <Text style={styles.emptyTitle}>Aucune donnée disponible</Text>
           <Text style={styles.emptyText}>
-            CrÃ©ez votre premier service pour voir les statistiques
+            Créez votre premier service pour voir les statistiques
           </Text>
           <NativeButton
-            title="RÃ©essayer"
+            title="Réessayer"
             onPress={() => loadDashboardData()}
             variant="primary"
             size="medium"
@@ -423,7 +424,7 @@ const DashboardScreen: React.FC = () => {
     );
   }
 
-  // DonnÃ©es pour les graphiques
+  // Données pour les graphiques
   const performanceData = [
     { label: 'Sem 1', value: Number(dashboardData.monthlyStats.views[0]) || 0, color: '#3B82F6' },
     { label: 'Sem 2', value: Number(dashboardData.monthlyStats.views[1]) || 0, color: '#3B82F6' },
@@ -433,7 +434,7 @@ const DashboardScreen: React.FC = () => {
   const interactionsData = [
     { label: 'Messages', value: Math.floor(Number(dashboardData.totalInteractions) * 0.6), color: '#10B981' },
     { label: 'Appels', value: Math.floor(Number(dashboardData.totalInteractions) * 0.3), color: '#8B5CF6' },
-    { label: 'VidÃ©os', value: Math.floor(Number(dashboardData.totalInteractions) * 0.1), color: '#F59E0B' },
+    { label: 'Vidéos', value: Math.floor(Number(dashboardData.totalInteractions) * 0.1), color: '#F59E0B' },
   ];
 
   return (
@@ -445,10 +446,10 @@ const DashboardScreen: React.FC = () => {
       >
         <View style={styles.headerContent}>
           <Text style={styles.title}>Dashboard Prestataire</Text>
-          <Text style={styles.subtitle}>Tableau de bord intelligent avec statistiques en temps rÃ©el</Text>
+          <Text style={styles.subtitle}>Tableau de bord intelligent avec statistiques en temps réel</Text>
           <View style={styles.periodIndicator}>
             <Text style={styles.periodIndicatorText}>
-              ðŸ“Š {getPeriodDescription(selectedPeriod)} - {getPeriodLabel(selectedPeriod)}
+              ?? {getPeriodDescription(selectedPeriod)} - {getPeriodLabel(selectedPeriod)}
             </Text>
           </View>
         </View>
@@ -461,11 +462,11 @@ const DashboardScreen: React.FC = () => {
               contentContainerStyle={styles.periodScrollContainer}
             >
               {[
-                { key: '7d', label: '7 jours', icon: 'âš¡' },
-                { key: '30d', label: '30 jours', icon: 'ðŸ“ˆ' },
-                { key: '90d', label: '90 jours', icon: 'ðŸ“Š' },
-                { key: '180d', label: '6 mois', icon: 'ðŸ“‹' },
-                { key: '365d', label: '1 an', icon: 'ðŸŽ¯' }
+                { key: '7d', label: '7 jours', icon: '?' },
+                { key: '30d', label: '30 jours', icon: '??' },
+                { key: '90d', label: '90 jours', icon: '??' },
+                { key: '180d', label: '6 mois', icon: '??' },
+                { key: '365d', label: '1 an', icon: '??' }
               ].map((period) => (
                 <TouchableOpacity
                   key={period.key}
@@ -536,7 +537,7 @@ const DashboardScreen: React.FC = () => {
           />
 
           <StatCard
-            title="Budget ConsommÃ©"
+            title="Budget Consommé"
             value={formatCurrency(Number(dashboardData.budgetConsumed) || 0)}
             subtitle={`Restant: ${formatCurrency(Number(dashboardData.budgetRemaining) || 0)}`}
             icon="zap"
@@ -549,7 +550,7 @@ const DashboardScreen: React.FC = () => {
         <View style={styles.chartsContainer}>
           <SimpleChart
             data={performanceData}
-            title="Ã‰volution des Performances"
+            title="Évolution des Performances"
             type="line"
             height={200}
           />
@@ -566,18 +567,18 @@ const DashboardScreen: React.FC = () => {
         <TopServicesCard
           services={dashboardData.topPerformingServices}
           onServicePress={(service: any) => {
-            Alert.alert('Service', `DÃ©tails du service: ${service.title}`);
+            Alert.alert('Service', `Détails du service: ${service.title}`);
           }}
           onViewAllPress={() => {
-            Alert.alert('Info', 'Redirection vers la liste complÃ¨te des services');
+            Alert.alert('Info', 'Redirection vers la liste complète des services');
           }}
         />
 
-        {/* ActivitÃ© rÃ©cente */}
+        {/* Activité récente */}
         <RecentActivityCard
           activities={dashboardData.recentActivity}
           onActivityPress={(activity: any) => {
-            Alert.alert('ActivitÃ©', `DÃ©tails: ${activity.title}`);
+            Alert.alert('Activité', `Détails: ${activity.title}`);
           }}
           onViewAllPress={() => {
             Alert.alert('Info', 'Redirection vers l\'historique complet');

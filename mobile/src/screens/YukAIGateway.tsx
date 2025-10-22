@@ -1,4 +1,5 @@
-﻿import * as React from "react";
+// @ts-nocheck
+import * as React from "react";
 import { useState } from 'react';
 import { Text, TouchableOpacity, View } from 'react-native';
 
@@ -15,13 +16,13 @@ const YukAIGateway: React.FC = () => {
       setResult(JSON.stringify(res.data, null, 2));
     } catch (err) {
       console.error(err);
-      setResult("❌ Une erreur est survenue lors de l'appel à l'API.");
+      setResult("? Une erreur est survenue lors de l'appel � l'API.");
     }
   };
 
   return (
     <View style="">
-      <Text style="text-2xl font-bold mb-4">🔗 YukAI Gateway</Text>
+      <Text style="text-2xl font-bold mb-4">?? YukAI Gateway</Text>
 
       <label style="block mb-2 font-semibold">Service cible :</label>
       <select
@@ -29,25 +30,25 @@ const YukAIGateway: React.FC = () => {
         value={service}
         onChange={(e) => setService(e.target.value)}
       >
-        <option value="gpt">🧠 GPT</option>
-        <option value="dalle">🖼️ DALL·E</option>
-        <option value="translate">🌐 Traduction</option>
+        <option value="gpt">?? GPT</option>
+        <option value="dalle">??? DALL�E</option>
+        <option value="translate">?? Traduction</option>
       </select>
 
-      <label style="block mb-2 font-semibold">Entrée (payload) :</label>
+      <label style="block mb-2 font-semibold">Entr�e (payload) :</label>
       <textarea
         style="border w-full p-2 mb-4"
         rows={4}
         value={payload}
         onChange={(e) => setPayload(e.target.value)}
-        placeholder="Ex : Bonjour, peux-tu me décrire une maison en bord de mer ?"
+        placeholder="Ex : Bonjour, peux-tu me d�crire une maison en bord de mer ?"
       />
 
       <TouchableOpacity
         style=""
         onPress={handleSubmit}
       >
-        🚀 Envoyer
+        ?? Envoyer
       </TouchableOpacity>
 
       {result && (
@@ -60,6 +61,7 @@ const YukAIGateway: React.FC = () => {
 };
 
 export default YukAIGateway;
+
 
 
 
