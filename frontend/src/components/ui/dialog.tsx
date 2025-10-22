@@ -1,41 +1,88 @@
-// 📦 Composant UI : dialog.tsx (Yukpo)
-// Wrapper pour Radix Dialog pour une utilisation simple et typée
-import * as React from "react";
-import * as DialogPrimitive from "@radix-ui/react-dialog";
-import { X } from "lucide-react";
-import { cn } from "@/lib/utils";
+/**
+ * Dialog Component - Version simplifiée sans @radix-ui
+ */
+import * as React from "react"
 
-const DialogRoot = DialogPrimitive.Root;
-const DialogTrigger = DialogPrimitive.Trigger;
-const DialogClose = DialogPrimitive.Close;
-
-export interface DialogContentProps extends React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> {
-  className?: string;
-  children?: React.ReactNode;
+interface DialogProps {
+    open?: boolean;
+    onOpenChange?: (open: boolean) => void;
+    children: React.ReactNode;
 }
 
-const DialogContent = React.forwardRef<HTMLDivElement, DialogContentProps>(
-  ({ className, children, ...props }, ref) => (
-    <DialogPrimitive.Portal>
-      <DialogPrimitive.Overlay className="fixed inset-0 bg-black/30 z-40" />
-      <DialogPrimitive.Content
-        ref={ref}
-        className={cn(
-          "fixed z-50 bg-white shadow-xl rounded-xl p-6 max-w-lg w-full top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2",
-          className
-        )}
-        {...props}
-      >
-        {children}
-        <DialogPrimitive.Close className="absolute top-4 right-4 text-gray-600 hover:text-black">
-          <X className="h-5 w-5" />
-        </DialogPrimitive.Close>
-      </DialogPrimitive.Content>
-    </DialogPrimitive.Portal>
-  )
-);
-DialogContent.displayName = "DialogContent";
+interface DialogContentProps {
+    className?: string;
+    children: React.ReactNode;
+}
 
-const DialogTitle = DialogPrimitive.Title;
+interface DialogHeaderProps {
+    children: React.ReactNode;
+}
 
-export { DialogRoot, DialogTrigger, DialogClose, DialogContent, DialogTitle };
+interface DialogFooterProps {
+    children: React.ReactNode;
+}
+
+interface DialogTitleProps {
+    children: React.ReactNode;
+}
+
+const Dialog: React.FC<DialogProps> = ({ open, onOpenChange, children }) => {
+    if (!open) return null;
+
+    return (
+        <div
+            className="fixed inset-0 z-50 flex items-center justify-center"
+            onClick={() => onOpenChange?.(false)}
+        >
+            {/* Overlay */}
+            <div className="fixed inset-0 bg-black bg-opacity-50" />
+            
+            {/* Content */}
+            <div className="relative z-50" onClick={(e) => e.stopPropagation()}>
+                {children}
+            </div>
+        </div>
+    );
+};
+
+const DialogContent: React.FC<DialogContentProps> = ({ className = "", children }) => {
+    return (
+        <div className={`bg-white rounded-lg shadow-xl p-6 max-w-lg w-full mx-4 ${className}`}>
+            {children}
+        </div>
+    );
+};
+
+const DialogHeader: React.FC<DialogHeaderProps> = ({ children }) => {
+    return (
+        <div className="mb-4">
+            {children}
+        </div>
+    );
+};
+
+const DialogTitle: React.FC<DialogTitleProps> = ({ children }) => {
+    return (
+        <h2 className="text-xl font-bold text-gray-900">
+            {children}
+        </h2>
+    );
+};
+
+const DialogFooter: React.FC<DialogFooterProps> = ({ children }) => {
+    return (
+        <div className="mt-6 flex justify-end gap-3">
+            {children}
+        </div>
+    );
+};
+
+const DialogDescription: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+    return (
+        <p className="text-sm text-gray-600 mt-2">
+            {children}
+        </p>
+    );
+};
+
+export { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription };
