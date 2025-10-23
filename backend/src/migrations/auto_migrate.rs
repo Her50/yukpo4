@@ -279,6 +279,73 @@ pub async fn ensure_publicites_table(pool: &PgPool) -> Result<(), sqlx::Error> {
     Ok(())
 }
 
+/// Vérifie et crée la table notifications si elle n'existe pas
+pub async fn ensure_notifications_table(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification de la table notifications...");
+    
+    // Vérifier si la table existe
+    let exists = sqlx::query_scalar::<_, bool>(
+        "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'notifications')"
+    )
+    .fetch_one(pool)
+    .await?;
+    
+    if exists {
+        info!("✅ Table notifications déjà présente");
+        return Ok(());
+    }
+    
+    warn!("⚠️ Table notifications manquante, création en cours...");
+    
+    // Créer la table notifications avec les colonnes compatibles pour tous les usages
+    sqlx::query(r#"
+        CREATE TABLE IF NOT EXISTS notifications (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            type VARCHAR(50),
+            notification_type VARCHAR(50),
+            title VARCHAR(255),
+            message TEXT NOT NULL,
+            data JSONB,
+            metadata JSONB,
+            is_read BOOLEAN DEFAULT FALSE,
+            created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+            read_at TIMESTAMPTZ
+        )
+    "#)
+    .execute(pool)
+    .await?;
+    
+    // Créer les index pour performances
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id)")
+        .execute(pool)
+        .await?;
+    
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_notifications_is_read ON notifications(is_read)")
+        .execute(pool)
+        .await?;
+    
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_notifications_created_at ON notifications(created_at DESC)")
+        .execute(pool)
+        .await?;
+    
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_notifications_user_unread ON notifications(user_id, is_read) WHERE is_read = FALSE")
+        .execute(pool)
+        .await?;
+    
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_notifications_type ON notifications(type) WHERE type IS NOT NULL")
+        .execute(pool)
+        .await?;
+    
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_notifications_notification_type ON notifications(notification_type) WHERE notification_type IS NOT NULL")
+        .execute(pool)
+        .await?;
+    
+    info!("✅ Table notifications créée avec succès !");
+    
+    Ok(())
+}
+
 /// Exécute toutes les migrations automatiques nécessaires
 pub async fn run_auto_migrations(pool: &PgPool) {
     info!("🚀 Démarrage des migrations automatiques...");
@@ -293,6 +360,12 @@ pub async fn run_auto_migrations(pool: &PgPool) {
     match ensure_publicites_table(pool).await {
         Ok(_) => info!("✅ Migration auto: publicites table OK"),
         Err(e) => error!("❌ Erreur migration auto publicites: {}", e),
+    }
+    
+    // Migration 3: Table notifications
+    match ensure_notifications_table(pool).await {
+        Ok(_) => info!("✅ Migration auto: notifications table OK"),
+        Err(e) => error!("❌ Erreur migration auto notifications: {}", e),
     }
     
     info!("✅ Migrations automatiques terminées");
