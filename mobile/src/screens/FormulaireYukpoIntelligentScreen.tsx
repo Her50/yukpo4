@@ -190,7 +190,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       else if (['images', 'videos', 'audios', 'documents', 'logo', 'banner', 'banniere'].includes(fieldName)) {
         blocks[4].fields.push(field);
       }
-      // Bloc Paiement (nouveau)
+      // Bloc Paiement
       else if (['mode_paiement', 'paiement', 'payment'].includes(fieldName)) {
         blocks[5].fields.push(field);
       }
@@ -223,6 +223,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         required: false
       } as any);
     }
+
 
     // ✅ NOUVEAU: S'assurer que le bloc paiement est toujours présent
     if (!blocksWithFixedOnes.find(b => b.id === 'payment').fields.length) {
@@ -687,6 +688,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       );
     }
 
+
     // ✅ NOUVEAU: Gestionnaire de mode de paiement
     if (field.name === '_payment_manager') {
       return (
@@ -743,10 +745,45 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     switch (field.type) {
       case 'select':
       case 'dropdown':
-        // ✅ CORRECTION : Ne plus traiter category comme un select
-        // Tous les champs select/dropdown autres que category sont ignorés pour l'instant
-        // category est maintenant un simple champ texte (traité dans case 'text')
-        return null;
+        // ✅ NOUVEAU: Composant moderne pour les champs multi-sélection
+        return (
+          <View key={field.name} style={styles.fieldContainer}>
+            <Text style={styles.fieldLabel}>
+              {field.label} {field.required && <Text style={styles.required}>*</Text>}
+            </Text>
+            
+            <TouchableOpacity
+              style={[styles.modernSelect, fieldErrors[field.name] && styles.fieldInputError]}
+              onPress={() => {
+                // Créer une liste d'options depuis field.options ou field.choices
+                const options = field.options || field.choices || [];
+                if (options.length === 0) return;
+                
+                Alert.alert(
+                  field.label,
+                  'Sélectionnez une option :',
+                  options.map(option => ({
+                    text: option.label || option.value || option,
+                    onPress: () => handleFieldChange(field.name, option.value || option)
+                  })).concat([{ text: 'Annuler', style: 'cancel' }])
+                );
+              }}
+              disabled={isReadonly}
+            >
+              <Text style={[
+                styles.selectText,
+                !valeursFormulaire[field.name] && styles.selectPlaceholder
+              ]}>
+                {valeursFormulaire[field.name] || field.placeholder || 'Sélectionner...'}
+              </Text>
+              <SafeIcon name="chevron-down" size={20} color={modernColors.textSecondary} />
+            </TouchableOpacity>
+            
+            {fieldErrors[field.name] && (
+              <Text style={styles.fieldErrorText}>⚠️ {String(fieldErrors[field.name])}</Text>
+            )}
+          </View>
+        );
 
       case 'text':
       case 'email':
@@ -2113,6 +2150,27 @@ const styles = StyleSheet.create({
     gap: 12,
     marginTop: 8,
   },
+  // Styles pour le select moderne
+  modernSelect: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: modernColors.surface,
+    borderWidth: 1,
+    borderColor: modernColors.border,
+    borderRadius: 12,
+    minHeight: 48,
+  },
+  selectText: {
+    fontSize: 16,
+    color: modernColors.text,
+    flex: 1,
+  },
+  selectPlaceholder: {
+    color: modernColors.textSecondary,
+  },
   pickerButtons: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -2191,6 +2249,27 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 12,
     color: modernColors.text,
+  },
+  // Styles pour le select moderne
+  modernSelect: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: modernColors.background,
+    borderWidth: 1,
+    borderColor: modernColors.border,
+    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    marginTop: 8,
+  },
+  selectText: {
+    fontSize: 14,
+    color: modernColors.text,
+    flex: 1,
+  },
+  selectPlaceholder: {
+    color: modernColors.textSecondary,
   },
   // Styles pour les champs readonly
   readonlyCheckboxContainer: {

@@ -899,9 +899,10 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         videos: [...(newProduct.videos || []), videoData]
                     });
 
+                    const remainingVideos = 3 - (newProduct.videos?.length || 0) - 1;
                     Alert.alert(
                         'Vidéo ajoutée',
-                        `Vidéo ajoutée avec succès${videoSizeMB > 0 ? ` (${videoSizeMB.toFixed(2)} MB)` : ''}.\n\n⚠️ Limite atteinte : 1 vidéo maximum par produit.`,
+                        `Vidéo ajoutée avec succès${videoSizeMB > 0 ? ` (${videoSizeMB.toFixed(2)} MB)` : ''}.\n\n📹 ${remainingVideos > 0 ? `Vous pouvez encore ajouter ${remainingVideos} vidéo${remainingVideos > 1 ? 's' : ''}.` : 'Limite atteinte : 3 vidéos maximum par produit.'}`,
                         [{ text: 'OK' }]
                     );
                 } catch (err) {
@@ -4707,7 +4708,67 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 {/* Champs spécifiques */}
                                 {renderSpecificFields()}
 
-                                {/* Section Promotion */}
+                                {/* Section Médias */}
+                                <View style={styles.mediaSectionContainer}>
+                                    <Text style={styles.sectionTitle}>📸 Images du produit</Text>
+
+                                    <TouchableOpacity
+                                        style={styles.mediaButton}
+                                        onPress={handlePickImages}
+                                    >
+                                        <SafeIcon name="image" size={20} color={modernColors.primary} />
+                                        <Text style={styles.mediaButtonText}>
+                                            Ajouter des images
+                                        </Text>
+                                    </TouchableOpacity>
+
+                                    {newProduct.images && newProduct.images.length > 0 && (
+                                        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.mediaPreviewScroll}>
+                                            {newProduct.images.map((image, index) => (
+                                                <View key={index} style={styles.mediaPreviewItem}>
+                                                    <Image source={{ uri: image }} style={styles.mediaPreviewImage} />
+                                                    <TouchableOpacity
+                                                        style={styles.removeMediaButton}
+                                                        onPress={() => removeImage(index)}
+                                                    >
+                                                        <SafeIcon name="x" size={16} color="#FFFFFF" />
+                                                    </TouchableOpacity>
+                                                </View>
+                                            ))}
+                                        </ScrollView>
+                                    )}
+
+                                    <Text style={[styles.sectionTitle, { marginTop: 20 }]}>🎥 Vidéos du produit</Text>
+
+                                    <TouchableOpacity
+                                        style={styles.mediaButton}
+                                        onPress={handlePickVideos}
+                                    >
+                                        <SafeIcon name="video" size={20} color={modernColors.success} />
+                                        <Text style={styles.mediaButtonText}>
+                                            Ajouter des vidéos
+                                        </Text>
+                                    </TouchableOpacity>
+
+                                    {newProduct.videos && newProduct.videos.length > 0 && (
+                                        <View style={styles.videosList}>
+                                            {newProduct.videos.map((video, index) => (
+                                                <View key={index} style={styles.videoItem}>
+                                                    <SafeIcon name="video" size={20} color={modernColors.success} />
+                                                    <Text style={styles.videoText}>Vidéo {index + 1}</Text>
+                                                    <TouchableOpacity
+                                                        style={styles.removeVideoButton}
+                                                        onPress={() => removeVideo(index)}
+                                                    >
+                                                        <SafeIcon name="trash-2" size={16} color={modernColors.error} />
+                                                    </TouchableOpacity>
+                                                </View>
+                                            ))}
+                                        </View>
+                                    )}
+                                </View>
+
+                                {/* Section Promotion - APRÈS les médias */}
                                 <View style={styles.promotionSectionContainer}>
                                     <Text style={styles.sectionTitle}>🎁 Promotion (optionnel)</Text>
 
@@ -4783,66 +4844,6 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                                     style={styles.fieldInput}
                                                 />
                                             </View>
-                                        </View>
-                                    )}
-                                </View>
-
-                                {/* Section Médias */}
-                                <View style={styles.mediaSectionContainer}>
-                                    <Text style={styles.sectionTitle}>📸 Images du produit</Text>
-
-                                    <TouchableOpacity
-                                        style={styles.mediaButton}
-                                        onPress={handlePickImages}
-                                    >
-                                        <SafeIcon name="image" size={20} color={modernColors.primary} />
-                                        <Text style={styles.mediaButtonText}>
-                                            Ajouter des images
-                                        </Text>
-                                    </TouchableOpacity>
-
-                                    {newProduct.images && newProduct.images.length > 0 && (
-                                        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.mediaPreviewScroll}>
-                                            {newProduct.images.map((image, index) => (
-                                                <View key={index} style={styles.mediaPreviewItem}>
-                                                    <Image source={{ uri: image }} style={styles.mediaPreviewImage} />
-                                                    <TouchableOpacity
-                                                        style={styles.removeMediaButton}
-                                                        onPress={() => removeImage(index)}
-                                                    >
-                                                        <SafeIcon name="x" size={16} color="#FFFFFF" />
-                                                    </TouchableOpacity>
-                                                </View>
-                                            ))}
-                                        </ScrollView>
-                                    )}
-
-                                    <Text style={[styles.sectionTitle, { marginTop: 20 }]}>🎥 Vidéos du produit</Text>
-
-                                    <TouchableOpacity
-                                        style={styles.mediaButton}
-                                        onPress={handlePickVideos}
-                                    >
-                                        <SafeIcon name="video" size={20} color={modernColors.success} />
-                                        <Text style={styles.mediaButtonText}>
-                                            Ajouter des vidéos
-                                        </Text>
-                                    </TouchableOpacity>
-
-                                    {newProduct.videos && newProduct.videos.length > 0 && (
-                                        <View style={styles.videosList}>
-                                            {newProduct.videos.map((video, index) => (
-                                                <View key={index} style={styles.videoItem}>
-                                                    <SafeIcon name="video" size={20} color={modernColors.success} />
-                                                    <Text style={styles.videoText}>Vidéo {index + 1}</Text>
-                                                    <TouchableOpacity
-                                                        style={styles.removeVideoButton}
-                                                        onPress={() => removeVideo(index)}
-                                                    >
-                                                        <SafeIcon name="trash-2" size={16} color={modernColors.error} />
-                                                    </TouchableOpacity>
-                                                </View>
-                                            ))}
                                         </View>
                                     )}
                                 </View>
