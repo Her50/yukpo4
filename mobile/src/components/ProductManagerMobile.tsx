@@ -38,6 +38,65 @@ const normalizeText = (text: string): string => {
         .trim();
 };
 
+// ✅ NOUVEAU: Composant moderne pour les champs multi-sélection
+const ModernSelectField = ({ 
+    label, 
+    value, 
+    options, 
+    onSelect, 
+    required = false,
+    allowCustom = false 
+}: {
+    label: string;
+    value: string;
+    options: string[];
+    onSelect: (value: string) => void;
+    required?: boolean;
+    allowCustom?: boolean;
+}) => {
+    return (
+        <View style={styles.fieldContainer}>
+            <Text style={styles.fieldLabel}>
+                {label} {required && <Text style={styles.required}>*</Text>}
+            </Text>
+            
+            <TouchableOpacity
+                style={styles.modernSelect}
+                onPress={() => {
+                    const alertOptions = options.map(option => ({
+                        text: option,
+                        onPress: () => {
+                            if (option.includes('🆕 Autre') && allowCustom) {
+                                Alert.prompt(
+                                    'Nouveau type',
+                                    `Entrez le ${label.toLowerCase()} :`,
+                                    (text) => {
+                                        if (text && text.trim()) {
+                                            onSelect(text.trim());
+                                        }
+                                    }
+                                );
+                            } else {
+                                onSelect(option);
+                            }
+                        }
+                    })).concat([{ text: 'Annuler', style: 'cancel' }]);
+                    
+                    Alert.alert(label, 'Sélectionnez une option :', alertOptions);
+                }}
+            >
+                <Text style={[
+                    styles.selectText,
+                    !value && styles.selectPlaceholder
+                ]}>
+                    {value || 'Sélectionner...'}
+                </Text>
+                <SafeIcon name="chevron-down" size={20} color={modernColors.textSecondary} />
+            </TouchableOpacity>
+        </View>
+    );
+};
+
 // ✅ DONNÉES PROFESSIONNELLES POUR LISTES DÉROULANTES
 
 // Marques automobiles professionnelles
@@ -1461,64 +1520,24 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
             case 'immobilier_batiment':
                 return (
                     <>
-                        {/* Type d'immobilier */}
-                        <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Type d'immobilier <Text style={styles.required}>*</Text></Text>
-                            <View style={styles.pickerButtons}>
-                                {TYPES_IMMOBILIERS.map((type) => (
-                                    <TouchableOpacity
-                                        key={type}
-                                        style={[
-                                            styles.pickerButton,
-                                            newProduct.typeImmobilier === type && styles.pickerButtonActive
-                                        ]}
-                                        onPress={() => {
-                                            if (type === '🆕 Autre') {
-                                                Alert.prompt(
-                                                    'Nouveau type',
-                                                    'Entrez le type d\'immobilier :',
-                                                    (text) => {
-                                                        if (text && text.trim()) {
-                                                            TYPES_IMMOBILIERS.splice(TYPES_IMMOBILIERS.length - 1, 0, text.trim());
-                                                            setNewProduct({ ...newProduct, typeImmobilier: text.trim() });
-                                                        }
-                                                    }
-                                                );
-                                            } else {
-                                                setNewProduct({ ...newProduct, typeImmobilier: type });
-                                            }
-                                        }}
-                                    >
-                                        <Text style={[
-                                            styles.pickerButtonText,
-                                            newProduct.typeImmobilier === type && styles.pickerButtonTextActive
-                                        ]}>{type}</Text>
-                                    </TouchableOpacity>
-                                ))}
-                            </View>
-                        </View>
+                        {/* Type d'immobilier - MODERNE */}
+                        <ModernSelectField
+                            label="Type d'immobilier"
+                            value={newProduct.typeImmobilier || ''}
+                            options={TYPES_IMMOBILIERS}
+                            onSelect={(value) => setNewProduct({ ...newProduct, typeImmobilier: value })}
+                            required={true}
+                            allowCustom={true}
+                        />
 
-                        {/* Statut (Vente/Location) */}
-                        <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Statut <Text style={styles.required}>*</Text></Text>
-                            <View style={styles.pickerButtons}>
-                                {STATUTS_IMMOBILIERS.map((statut) => (
-                                    <TouchableOpacity
-                                        key={statut}
-                                        style={[
-                                            styles.pickerButton,
-                                            newProduct.statutImmobilier === statut && styles.pickerButtonActive
-                                        ]}
-                                        onPress={() => setNewProduct({ ...newProduct, statutImmobilier: statut })}
-                                    >
-                                        <Text style={[
-                                            styles.pickerButtonText,
-                                            newProduct.statutImmobilier === statut && styles.pickerButtonTextActive
-                                        ]}>{statut}</Text>
-                                    </TouchableOpacity>
-                                ))}
-                            </View>
-                        </View>
+                        {/* Statut (Vente/Location) - MODERNE */}
+                        <ModernSelectField
+                            label="Statut"
+                            value={newProduct.statutImmobilier || ''}
+                            options={STATUTS_IMMOBILIERS}
+                            onSelect={(value) => setNewProduct({ ...newProduct, statutImmobilier: value })}
+                            required={true}
+                        />
 
                         {/* Superficie */}
                         <View style={styles.fieldContainer}>
@@ -1556,27 +1575,13 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             </View>
                         </View>
 
-                        {/* Niveau d'ameublement */}
-                        <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Ameublement</Text>
-                            <View style={styles.pickerButtons}>
-                                {NIVEAUX_AMEUBLEMENT.map((niveau) => (
-                                    <TouchableOpacity
-                                        key={niveau}
-                                        style={[
-                                            styles.pickerButton,
-                                            newProduct.ameublement === niveau && styles.pickerButtonActive
-                                        ]}
-                                        onPress={() => setNewProduct({ ...newProduct, ameublement: niveau })}
-                                    >
-                                        <Text style={[
-                                            styles.pickerButtonText,
-                                            newProduct.ameublement === niveau && styles.pickerButtonTextActive
-                                        ]}>{niveau}</Text>
-                                    </TouchableOpacity>
-                                ))}
-                            </View>
-                        </View>
+                        {/* Niveau d'ameublement - MODERNE */}
+                        <ModernSelectField
+                            label="Ameublement"
+                            value={newProduct.ameublement || ''}
+                            options={NIVEAUX_AMEUBLEMENT}
+                            onSelect={(value) => setNewProduct({ ...newProduct, ameublement: value })}
+                        />
 
                         {/* Adresse complète */}
                         <View style={styles.fieldContainer}>
@@ -1712,43 +1717,15 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                 return (
                     <>
                         {/* Marque avec liste déroulante */}
-                        <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Marque <Text style={styles.required}>*</Text></Text>
-                            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.scrollablePicker}>
-                                <View style={styles.pickerButtons}>
-                                    {MARQUES_AUTOMOBILES.map((marque) => (
-                                        <TouchableOpacity
-                                            key={marque}
-                                            style={[
-                                                styles.pickerButton,
-                                                newProduct.marque === marque && styles.pickerButtonActive
-                                            ]}
-                                            onPress={() => {
-                                                if (marque === '🆕 Autre (ajouter)') {
-                                                    Alert.prompt(
-                                                        'Nouvelle marque',
-                                                        'Entrez le nom de la marque :',
-                                                        (text) => {
-                                                            if (text && text.trim()) {
-                                                                MARQUES_AUTOMOBILES.splice(MARQUES_AUTOMOBILES.length - 1, 0, text.trim());
-                                                                setNewProduct({ ...newProduct, marque: text.trim() });
-                                                            }
-                                                        }
-                                                    );
-                                                } else {
-                                                    setNewProduct({ ...newProduct, marque });
-                                                }
-                                            }}
-                                        >
-                                            <Text style={[
-                                                styles.pickerButtonText,
-                                                newProduct.marque === marque && styles.pickerButtonTextActive
-                                            ]}>{marque}</Text>
-                                        </TouchableOpacity>
-                                    ))}
-                                </View>
-                            </ScrollView>
-                        </View>
+                        {/* Marque - MODERNE */}
+                        <ModernSelectField
+                            label="Marque"
+                            value={newProduct.marque || ''}
+                            options={MARQUES_AUTOMOBILES}
+                            onSelect={(value) => setNewProduct({ ...newProduct, marque: value })}
+                            required={true}
+                            allowCustom={true}
+                        />
 
                         {/* Modèle */}
                         <View style={styles.fieldContainer}>
@@ -1761,27 +1738,14 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             />
                         </View>
 
-                        {/* État du véhicule */}
-                        <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>État du véhicule <Text style={styles.required}>*</Text></Text>
-                            <View style={styles.pickerButtons}>
-                                {ETATS_VEHICULE.map((etat) => (
-                                    <TouchableOpacity
-                                        key={etat}
-                                        style={[
-                                            styles.pickerButton,
-                                            newProduct.etatVehicule === etat && styles.pickerButtonActive
-                                        ]}
-                                        onPress={() => setNewProduct({ ...newProduct, etatVehicule: etat })}
-                                    >
-                                        <Text style={[
-                                            styles.pickerButtonText,
-                                            newProduct.etatVehicule === etat && styles.pickerButtonTextActive
-                                        ]}>{etat}</Text>
-                                    </TouchableOpacity>
-                                ))}
-                            </View>
-                        </View>
+                        {/* État du véhicule - MODERNE */}
+                        <ModernSelectField
+                            label="État du véhicule"
+                            value={newProduct.etatVehicule || ''}
+                            options={ETATS_VEHICULE}
+                            onSelect={(value) => setNewProduct({ ...newProduct, etatVehicule: value })}
+                            required={true}
+                        />
 
                         {/* Année et Kilométrage */}
                         <View style={styles.fieldRow}>
@@ -1807,79 +1771,25 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             </View>
                         </View>
 
-                        {/* Type de carburant */}
-                        <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Type de carburant <Text style={styles.required}>*</Text></Text>
-                            <View style={styles.pickerButtons}>
-                                {TYPES_CARBURANT.map((carburant) => (
-                                    <TouchableOpacity
-                                        key={carburant}
-                                        style={[
-                                            styles.pickerButton,
-                                            newProduct.typeCarburant === carburant && styles.pickerButtonActive
-                                        ]}
-                                        onPress={() => {
-                                            if (carburant === '🆕 Autre') {
-                                                Alert.prompt(
-                                                    'Nouveau carburant',
-                                                    'Entrez le type de carburant :',
-                                                    (text) => {
-                                                        if (text && text.trim()) {
-                                                            TYPES_CARBURANT.splice(TYPES_CARBURANT.length - 1, 0, text.trim());
-                                                            setNewProduct({ ...newProduct, typeCarburant: text.trim() });
-                                                        }
-                                                    }
-                                                );
-                                            } else {
-                                                setNewProduct({ ...newProduct, typeCarburant: carburant });
-                                            }
-                                        }}
-                                    >
-                                        <Text style={[
-                                            styles.pickerButtonText,
-                                            newProduct.typeCarburant === carburant && styles.pickerButtonTextActive
-                                        ]}>{carburant}</Text>
-                                    </TouchableOpacity>
-                                ))}
-                            </View>
-                        </View>
+                        {/* Type de carburant - MODERNE */}
+                        <ModernSelectField
+                            label="Type de carburant"
+                            value={newProduct.typeCarburant || ''}
+                            options={TYPES_CARBURANT}
+                            onSelect={(value) => setNewProduct({ ...newProduct, typeCarburant: value })}
+                            required={true}
+                            allowCustom={true}
+                        />
 
-                        {/* Transmission */}
-                        <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Transmission <Text style={styles.required}>*</Text></Text>
-                            <View style={styles.pickerButtons}>
-                                {TYPES_TRANSMISSION.map((transmission) => (
-                                    <TouchableOpacity
-                                        key={transmission}
-                                        style={[
-                                            styles.pickerButton,
-                                            newProduct.transmission === transmission && styles.pickerButtonActive
-                                        ]}
-                                        onPress={() => {
-                                            if (transmission === '🆕 Autre') {
-                                                Alert.prompt(
-                                                    'Nouvelle transmission',
-                                                    'Entrez le type de transmission :',
-                                                    (text) => {
-                                                        if (text && text.trim()) {
-                                                            TYPES_TRANSMISSION.splice(TYPES_TRANSMISSION.length - 1, 0, text.trim());
-                                                            setNewProduct({ ...newProduct, transmission: text.trim() });
-                                                        }
-                                                    }
-                                                );
-                                            } else {
-                                                setNewProduct({ ...newProduct, transmission });
-                                            }
-                                        }}
-                                    >
-                                        <Text style={[
-                                            styles.pickerButtonText,
-                                            newProduct.transmission === transmission && styles.pickerButtonTextActive
-                                        ]}>{transmission}</Text>
-                                    </TouchableOpacity>
-                                ))}
-                            </View>
-                        </View>
+                        {/* Transmission - MODERNE */}
+                        <ModernSelectField
+                            label="Transmission"
+                            value={newProduct.transmission || ''}
+                            options={TYPES_TRANSMISSION}
+                            onSelect={(value) => setNewProduct({ ...newProduct, transmission: value })}
+                            required={true}
+                            allowCustom={true}
+                        />
 
                         {/* Couleur */}
                         <View style={styles.fieldContainer}>
@@ -5794,6 +5704,27 @@ const styles = StyleSheet.create({
     },
     promotionFields: {
         gap: 12,
+    },
+    // Styles pour le select moderne
+    modernSelect: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        backgroundColor: modernColors.background,
+        borderWidth: 1,
+        borderColor: modernColors.border,
+        borderRadius: 8,
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        marginTop: 8,
+    },
+    selectText: {
+        fontSize: 14,
+        color: modernColors.text,
+        flex: 1,
+    },
+    selectPlaceholder: {
+        color: modernColors.textSecondary,
     },
 });
 

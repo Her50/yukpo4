@@ -751,14 +751,14 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
             <Text style={styles.fieldLabel}>
               {field.label} {field.required && <Text style={styles.required}>*</Text>}
             </Text>
-            
+
             <TouchableOpacity
               style={[styles.modernSelect, fieldErrors[field.name] && styles.fieldInputError]}
               onPress={() => {
                 // Créer une liste d'options depuis field.options ou field.choices
                 const options = field.options || field.choices || [];
                 if (options.length === 0) return;
-                
+
                 Alert.alert(
                   field.label,
                   'Sélectionnez une option :',
@@ -778,7 +778,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
               </Text>
               <SafeIcon name="chevron-down" size={20} color={modernColors.textSecondary} />
             </TouchableOpacity>
-            
+
             {fieldErrors[field.name] && (
               <Text style={styles.fieldErrorText}>⚠️ {String(fieldErrors[field.name])}</Text>
             )}
