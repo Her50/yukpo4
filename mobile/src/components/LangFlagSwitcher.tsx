@@ -3,6 +3,7 @@
 import * as React from "react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const LANGUAGES = [
   { code: "fr", label: "🇫🇷" },
@@ -14,7 +15,8 @@ const LANGUAGES = [
 
 const LangFlagSwitcher: React.FC = () => {
   const { i18n } = useTranslation();
-  const browserLang = navigator.language.split("-")[0];
+  // En React Native, nous utilisons une langue par défaut ou récupérons depuis les paramètres système
+  const browserLang = 'fr'; // Par défaut français
   const fallbackLang = LANGUAGES.some(l => l.code === browserLang) ? browserLang : "fr";
 
   const [lang, setLang] = useState(() => {

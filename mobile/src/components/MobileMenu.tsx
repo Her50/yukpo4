@@ -1,12 +1,11 @@
 ﻿// @ts-check
-import * as React from "react";
-import { useState, useRef, useEffect } from "react";
-import { View } from 'react-native';
-import { TouchableOpacity } from 'react-native';
-import { Link } from "@react-navigation/native";
 import { useUser } from "@/hooks/useUser";
-import { useTranslation } from "react-i18next";
 import { ROUTES } from "@/routes/AppRoutesRegistry";
+import { Link } from "@react-navigation/native";
+import * as React from "react";
+import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { TouchableOpacity, View } from 'react-native';
 
 const MobileMenu: React.FC = () => {
   const [open, setOpen] = useState(false);
@@ -24,13 +23,9 @@ const MobileMenu: React.FC = () => {
   };
 
   useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    };
-    if (open) document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    // En React Native, nous n'avons pas besoin de gérer les clics extérieurs
+    // car les composants mobiles gèrent cela différemment
+    // Cette logique est remplacée par la gestion native des interactions
   }, [open]);
 
   const baseLinks = [

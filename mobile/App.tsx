@@ -4,25 +4,26 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { PaperProvider } from 'react-native-paper';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
-// BLOC 1 : Contexts de base - APPLICATION COMPLÈTE POUR PRODUCTION
+// ✅ OPTIMISATION: Providers essentiels uniquement au démarrage
 import ErrorBoundary from './src/components/ErrorBoundary';
-import GPSTrackingManager from './src/components/GPSTrackingManager';
-import { GlobalIAStatsProvider } from './src/components/intelligence/GlobalIAStats';
 import { AuthProvider } from './src/contexts/AuthContext';
-import { LocationProvider } from './src/contexts/LocationContext';
-import { LanguageProvider } from './src/contexts/LanguageContext'; // ✅ AJOUT: Provider de langue
 import { theme } from './src/theme/theme';
 
-// BLOC 2 : Navigation moderne - ÉTAPE 2: Réactiver NavigationContainer
+// Navigation
 import { NavigationContainer } from '@react-navigation/native';
 import { linking } from './src/config/linking';
 import AppNavigator from './src/navigation/AppNavigator';
 
-// ✅ APPLICATION COMPLÈTE POUR PRODUCTION
+// ✅ OPTIMISATION: Providers chargés APRÈS authentification (voir AppNavigator.tsx)
+// - LanguageProvider : Chargé dans MainStack (après login)
+// - LocationProvider : Chargé dans MainStack (après login)
+// - GlobalIAStatsProvider : Chargé dans MainStack (après login)
+// - GPSTrackingManager : Chargé dans MainStack (après login)
 
 export default function App() {
-  console.log('[App] 🚀 Yukpomnang - APPLICATION COMPLÈTE POUR PRODUCTION');
-  console.log('[App] 📱 Version: 1.0.0 - Production Ready avec toutes les fonctionnalités');
+  console.log('[App] 🚀 Yukpomnang - VERSION OPTIMISÉE');
+  console.log('[App] 📱 Version: 1.0.0 - Chargement optimisé pour démarrage rapide');
+  console.log('[App] ⚡ Providers lourds chargés APRÈS authentification');
 
   return (
     <ErrorBoundary>
@@ -30,20 +31,13 @@ export default function App() {
       <GestureHandlerRootView style={{ flex: 1 }}>
         <SafeAreaProvider>
           <PaperProvider theme={theme}>
-            <LanguageProvider> {/* ✅ AJOUT: Provider de langue */}
-              <AuthProvider>
-                <LocationProvider>
-                  <GlobalIAStatsProvider>
-                    {/* Tracking GPS automatique en arrière-plan */}
-                    <GPSTrackingManager />
-                    <StatusBar style="auto" />
-                    <NavigationContainer linking={linking}>
-                      <AppNavigator />
-                    </NavigationContainer>
-                  </GlobalIAStatsProvider>
-                </LocationProvider>
-              </AuthProvider>
-            </LanguageProvider>
+            {/* ✅ OPTIMISATION: Seul AuthProvider au démarrage */}
+            <AuthProvider>
+              <StatusBar style="auto" />
+              <NavigationContainer linking={linking}>
+                <AppNavigator />
+              </NavigationContainer>
+            </AuthProvider>
           </PaperProvider>
         </SafeAreaProvider>
       </GestureHandlerRootView>

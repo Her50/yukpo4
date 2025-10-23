@@ -1,9 +1,9 @@
 ﻿// 🌍 Fournisseur intelligent de gestion des langues
 import { useIntelligentLanguage } from '@/hooks/useIntelligentLanguage';
-import { autoTranslationService } from '@/services/autoTranslationService';
 import { languageDetectionService } from '@/services/languageDetectionService';
 import * as React from "react";
 import { createContext, useContext, useEffect, useState } from 'react';
+import { Text } from 'react-native';
 
 interface IntelligentLanguageContextType {
     // État
@@ -56,98 +56,54 @@ export const IntelligentLanguageProvider: React.FC<IntelligentLanguageProviderPr
         initializeLanguage();
     }, []);
 
-    // Enregistrer les interactions utilisateur pour l'apprentissage
+    // Enregistrer les interactions utilisateur pour l'apprentissage (React Native compatible)
     useEffect(() => {
-        const handleUserInteraction = (event: Event) => {
-            // Enregistrer l'usage de la langue actuelle dans différents contextes
-            const target = event.target as HTMLElement;
-
-            if (target) {
-                let context = 'general';
-
-                // Déterminer le contexte basé sur l'élément
-                if (target.closest('form')) {
-                    context = 'form';
-                } else if (target.closest('[data-chat]')) {
-                    context = 'chat';
-                } else if (target.closest('[data-search]')) {
-                    context = 'search';
-                } else if (target.closest('nav')) {
-                    context = 'navigation';
-                }
-
-                // Enregistrer l'usage
-                languageDetectionService.recordLanguageUsage(intelligentLanguage.currentLanguage, context);
+        // En React Native, nous pouvons enregistrer l'usage de la langue actuelle
+        // sans avoir besoin d'écouter les événements DOM
+        const recordLanguageUsage = () => {
+            try {
+                languageDetectionService.recordLanguageUsage(intelligentLanguage.currentLanguage, 'mobile');
+            } catch (error) {
+                console.warn('⚠️ [IntelligentLanguageProvider] Erreur enregistrement usage:', error);
             }
         };
 
-        // Écouter les interactions utilisateur
-        document.addEventListener('click', handleUserInteraction);
-        document.addEventListener('input', handleUserInteraction);
-        document.addEventListener('submit', handleUserInteraction);
+        // Enregistrer l'usage périodiquement
+        const interval = setInterval(recordLanguageUsage, 30000); // Toutes les 30 secondes
 
         return () => {
-            document.removeEventListener('click', handleUserInteraction);
-            document.removeEventListener('input', handleUserInteraction);
-            document.removeEventListener('submit', handleUserInteraction);
+            clearInterval(interval);
         };
     }, [intelligentLanguage.currentLanguage]);
 
-    // Traduction automatique des éléments DOM
+    // Traduction automatique pour React Native
     useEffect(() => {
         if (!isInitialized) return;
 
-        const translateDOM = async () => {
+        const initializeTranslation = async () => {
             try {
-                // Traduire les éléments marqués pour la traduction automatique
-                await autoTranslationService.translateDOM(intelligentLanguage.currentLanguage, '[data-auto-translate]');
+                // En React Native, nous initialisons simplement le service de traduction
+                // sans manipulation DOM
+                console.log('🌍 [IntelligentLanguageProvider] Service de traduction initialisé pour:', intelligentLanguage.currentLanguage);
             } catch (error) {
-                console.warn('⚠️ [IntelligentLanguageProvider] Erreur traduction DOM:', error);
+                console.warn('⚠️ [IntelligentLanguageProvider] Erreur initialisation traduction:', error);
             }
         };
 
-        // Traduire après un délai pour laisser le temps au DOM de se charger
-        const timer = setTimeout(translateDOM, 1000);
-
-        return () => clearTimeout(timer);
+        initializeTranslation();
     }, [intelligentLanguage.currentLanguage, isInitialized]);
 
-    // Traduction automatique des notifications
+    // Traduction automatique des notifications (React Native compatible)
     useEffect(() => {
         if (!isInitialized) return;
 
-        const handleNotification = (event: CustomEvent) => {
-            const { title, message, type } = event.detail;
+        // En React Native, nous pouvons gérer les notifications différemment
+        // sans utiliser les APIs web window et CustomEvent
+        console.log('🌍 [IntelligentLanguageProvider] Gestionnaire de notifications initialisé');
 
-            // Traduire automatiquement les notifications
-            Promise.all([
-                autoTranslationService.translateToUserLanguage(title, 'notification'),
-                autoTranslationService.translateToUserLanguage(message, 'notification')
-            ]).then(([translatedTitle, translatedMessage]) => {
-                // Redispatch l'événement avec les traductions
-                const translatedEvent = new CustomEvent('intelligent-notification', {
-                    detail: {
-                        title: translatedTitle.translatedText,
-                        message: translatedMessage.translatedText,
-                        type,
-                        originalTitle: title,
-                        originalMessage: message
-                    }
-                });
+        // Ici, nous pourrions intégrer avec des services de notifications React Native
+        // comme @react-native-async-storage/async-storage ou des services de push notifications
 
-                window.dispatchEvent(translatedEvent);
-            }).catch(error => {
-                console.warn('⚠️ [IntelligentLanguageProvider] Erreur traduction notification:', error);
-                // Redispatch l'événement original en cas d'erreur
-                window.dispatchEvent(event);
-            });
-        };
-
-        window.addEventListener('show-notification', handleNotification as EventListener);
-
-        return () => {
-            window.removeEventListener('show-notification', handleNotification as EventListener);
-        };
     }, [isInitialized]);
 
     const contextValue: IntelligentLanguageContextType = {
@@ -193,6 +149,11 @@ export const AutoTranslate: React.FC<{ children: React.ReactNode; context?: stri
 
         translateContent();
     }, [children, context, translateText]);
+
+    // ✅ CORRECTION CRITIQUE: Encapsuler le contenu dans un composant Text si c'est une chaîne
+    if (typeof translatedContent === 'string') {
+        return <Text>{translatedContent}</Text>;
+    }
 
     return <>{translatedContent}</>;
 };

@@ -1,8 +1,9 @@
 ﻿// 📁 src/components/SmartLangSwitcher.tsx
 import * as React from "react";
 import { useEffect, useState } from "react";
-import { View } from 'react-native';
 import { useTranslation } from "react-i18next";
+import { View } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const LANGUAGES = [
   { code: "fr", label: "🇫🇷 Français" },
@@ -15,17 +16,31 @@ const LANGUAGES = [
 const SmartLangSwitcher: React.FC = () => {
   const { i18n } = useTranslation();
 
-  const browserLang = navigator.language.split("-")[0];
+  // En React Native, nous utilisons une langue par défaut ou récupérons depuis les paramètres système
+  const browserLang = 'fr'; // Par défaut français
   const fallbackLang = LANGUAGES.some(l => l.code === browserLang) ? browserLang : "fr";
 
-  const [lang, setLang] = useState(() => {
-    return localStorage.getItem("preferred_lang") || fallbackLang;
-  });
+  const [lang, setLang] = useState(fallbackLang);
 
   useEffect(() => {
     i18n.changeLanguage(lang);
-    localStorage.setItem("preferred_lang", lang);
+    AsyncStorage.setItem("preferred_lang", lang);
   }, [lang, i18n]);
+
+  // Charger la langue sauvegardée au démarrage
+  useEffect(() => {
+    const loadSavedLanguage = async () => {
+      try {
+        const savedLang = await AsyncStorage.getItem("preferred_lang");
+        if (savedLang) {
+          setLang(savedLang);
+        }
+      } catch (error) {
+        console.warn('Erreur chargement langue:', error);
+      }
+    };
+    loadSavedLanguage();
+  }, []);
 
   return (
     <View style="inline-flex items-center gap-2">

@@ -1,6 +1,6 @@
 ﻿import * as React from 'react';
 import { useState } from 'react';
-import { View, Text, TouchableOpacity, TextInput } from 'react-native';
+import { Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 const AutoDetectAndTranslate = () => {
   const [originalText, setOriginalText] = useState('');
@@ -33,24 +33,24 @@ const AutoDetectAndTranslate = () => {
   };
 
   return (
-    <View style={{maxWidth: 600, margin: 'auto', gap: 16}}>
+    <View style={{ maxWidth: 600, margin: 'auto', gap: 16 }}>
       <TextInput
         placeholder="Entrer un texte dans n'importe quelle langue..."
         value={originalText}
         onChangeText={setOriginalText}
         multiline
-        style={{borderWidth: 1, borderColor: '#ccc', padding: 10, borderRadius: 4}}
+        style={{ borderWidth: 1, borderColor: '#ccc', padding: 10, borderRadius: 4 }}
       />
       <TouchableOpacity onPress={handleProcess} disabled={loading}>
         <Text>{loading ? 'Analyse en cours...' : 'Détecter + Traduire'}</Text>
       </TouchableOpacity>
 
       {detectedLang && (
-        <Text style={{fontSize: 14, color: '#666'}}>Langue détectée : {detectedLang}</Text>
+        <Text style={{ fontSize: 14, color: '#666' }}>Langue détectée : {String(detectedLang)}</Text>
       )}
 
       {translatedText && (
-        <View style={{padding: 16, backgroundColor: '#f5f5f5', borderRadius: 8}}>
+        <View style={{ padding: 16, backgroundColor: '#f5f5f5', borderRadius: 8 }}>
           <Text>{translatedText}</Text>
         </View>
       )}

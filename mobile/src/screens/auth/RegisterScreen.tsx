@@ -276,7 +276,7 @@ const RegisterScreen: React.FC = () => {
           <Card style={styles.errorCard}>
             <Card.Content style={styles.errorContent}>
               <WarningCircle size={24} color="#F44336" />
-              <Text style={styles.errorText}>{error}</Text>
+              <Text style={styles.errorText}>{String(error)}</Text>
             </Card.Content>
           </Card>
         )}

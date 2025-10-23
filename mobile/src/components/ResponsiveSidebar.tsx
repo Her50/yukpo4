@@ -3,7 +3,7 @@ import { useState } from "react";
 import { View } from 'react-native';
 import { TouchableOpacity } from 'react-native';
 import { Link, useLocation } from "@react-navigation/native";
-import { Menu, X } from "lucide-react";
+import { Menu, X } from "lucide-react-native";
 
 type SidebarLink = {
   label: string;

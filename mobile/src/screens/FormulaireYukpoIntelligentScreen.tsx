@@ -775,7 +775,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
               style={[styles.fieldInput, hasError && styles.fieldInputError]}
             />
             {hasError && (
-              <Text style={styles.fieldErrorText}>⚠️ {hasError}</Text>
+              <Text style={styles.fieldErrorText}>⚠️ {String(hasError)}</Text>
             )}
           </View>
         );

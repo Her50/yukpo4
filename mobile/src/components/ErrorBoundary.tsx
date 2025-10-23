@@ -52,7 +52,7 @@ class ErrorBoundary extends Component<Props, State> {
                             <View style={styles.debugInfo}>
                                 <Text style={styles.debugTitle}>Debug Info:</Text>
                                 <Text style={styles.debugText}>{this.state.error.message}</Text>
-                                <Text style={styles.debugText}>{this.state.error.stack}</Text>
+                                <Text style={styles.debugText}>{this.state.error.stack || 'No stack trace available'}</Text>
                             </View>
                         )}
 

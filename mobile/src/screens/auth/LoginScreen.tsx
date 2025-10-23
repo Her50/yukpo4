@@ -5,15 +5,15 @@ import { CheckCircle, Envelope, Lock, WarningCircle } from 'phosphor-react-nativ
 import * as React from 'react';
 import { useState } from 'react';
 import {
-    Alert,
-    Dimensions,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
+  Alert,
+  Dimensions,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { Card, Paragraph, TextInput, Title } from 'react-native-paper';
@@ -101,30 +101,30 @@ const LoginScreen: React.FC = () => {
     }
   };
 
-      // Composant OAuth Button ultra-moderne avec gradients
-      const OAuthButton = ({ provider, onPress }: { provider: 'google' | 'facebook'; onPress: () => void }) => {
-        const isGoogle = provider === 'google';
-        const gradientColors = isGoogle ? ['#DB4437', '#EA4335'] : ['#4267B2', '#365899'];
-        const label = isGoogle ? 'Google' : 'Facebook';
+  // Composant OAuth Button ultra-moderne avec gradients
+  const OAuthButton = ({ provider, onPress }: { provider: 'google' | 'facebook'; onPress: () => void }) => {
+    const isGoogle = provider === 'google';
+    const gradientColors = isGoogle ? ['#DB4437', '#EA4335'] : ['#4267B2', '#365899'];
+    const label = isGoogle ? 'Google' : 'Facebook';
 
-        return (
-          <TouchableOpacity
-            onPress={onPress}
-            disabled={formLoading || loading}
-            style={styles.oauthButtonContainer}
-          >
-            <LinearGradient
-              colors={gradientColors}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.oauthButton}
-            >
-              <Envelope size={20} color="white" weight="bold" />
-              <Text style={styles.oauthButtonText}>Continuer avec {label}</Text>
-            </LinearGradient>
-          </TouchableOpacity>
-        );
-      };
+    return (
+      <TouchableOpacity
+        onPress={onPress}
+        disabled={formLoading || loading}
+        style={styles.oauthButtonContainer}
+      >
+        <LinearGradient
+          colors={gradientColors}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.oauthButton}
+        >
+          <Envelope size={20} color="white" weight="bold" />
+          <Text style={styles.oauthButtonText}>Continuer avec {label}</Text>
+        </LinearGradient>
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <LinearGradient
@@ -136,121 +136,121 @@ const LoginScreen: React.FC = () => {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         <ScrollView contentContainerStyle={styles.scrollContent}>
-        <View style={styles.header}>
-          <Title style={styles.title}>
-            Connexion{' '}
-            <Text style={styles.yukpoText}>Yukpo</Text>
-          </Title>
-          <Paragraph style={styles.subtitle}>
-            Connectez-vous avec votre compte{' '}
-            <Text style={styles.bold}>Google</Text> ou{' '}
-            <Text style={styles.bold}>Facebook</Text>
-          </Paragraph>
-        </View>
+          <View style={styles.header}>
+            <Title style={styles.title}>
+              Connexion{' '}
+              <Text style={styles.yukpoText}>Yukpo</Text>
+            </Title>
+            <Paragraph style={styles.subtitle}>
+              Connectez-vous avec votre compte{' '}
+              <Text style={styles.bold}>Google</Text> ou{' '}
+              <Text style={styles.bold}>Facebook</Text>
+            </Paragraph>
+          </View>
 
-            {/* Messages d'état avec glassmorphism */}
-            {showLogoutMessage && (
-              <View style={styles.glassCard}>
-                <Card style={styles.successCard}>
-                  <Card.Content style={styles.successContent}>
-                    <CheckCircle size={24} color={modernColors.success} weight="fill" />
-                    <Text style={styles.successText}>Vous êtes bien déconnecté.</Text>
-                  </Card.Content>
-                </Card>
-              </View>
-            )}
+          {/* Messages d'état avec glassmorphism */}
+          {showLogoutMessage && (
+            <View style={styles.glassCard}>
+              <Card style={styles.successCard}>
+                <Card.Content style={styles.successContent}>
+                  <CheckCircle size={24} color={modernColors.success} weight="fill" />
+                  <Text style={styles.successText}>Vous êtes bien déconnecté.</Text>
+                </Card.Content>
+              </Card>
+            </View>
+          )}
 
-            {error && (
-              <View style={styles.glassCard}>
-                <Card style={styles.errorCard}>
-                  <Card.Content style={styles.errorContent}>
-                    <WarningCircle size={24} color={modernColors.error} weight="fill" />
-                    <Text style={styles.errorText}>{error}</Text>
-                  </Card.Content>
-                </Card>
-              </View>
-            )}
+          {error && (
+            <View style={styles.glassCard}>
+              <Card style={styles.errorCard}>
+                <Card.Content style={styles.errorContent}>
+                  <WarningCircle size={24} color={modernColors.error} weight="fill" />
+                  <Text style={styles.errorText}>{String(error)}</Text>
+                </Card.Content>
+              </Card>
+            </View>
+          )}
 
-        {/* Boutons OAuth */}
-        <View style={styles.oauthContainer}>
-          <OAuthButton
-            provider="google"
-            onPress={() => Alert.alert('OAuth', 'Fonctionnalité Google à implémenter')}
-          />
-          <OAuthButton
-            provider="facebook"
-            onPress={() => Alert.alert('OAuth', 'Fonctionnalité Facebook à implémenter')}
-          />
-        </View>
+          {/* Boutons OAuth */}
+          <View style={styles.oauthContainer}>
+            <OAuthButton
+              provider="google"
+              onPress={() => Alert.alert('OAuth', 'Fonctionnalité Google à implémenter')}
+            />
+            <OAuthButton
+              provider="facebook"
+              onPress={() => Alert.alert('OAuth', 'Fonctionnalité Facebook à implémenter')}
+            />
+          </View>
 
-        <View style={styles.divider}>
-          <View style={styles.dividerLine} />
-          <Text style={styles.dividerText}>ou utilisez vos identifiants :</Text>
-          <View style={styles.dividerLine} />
-        </View>
+          <View style={styles.divider}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>ou utilisez vos identifiants :</Text>
+            <View style={styles.dividerLine} />
+          </View>
 
-        {/* Formulaire de connexion */}
-        <Card style={styles.formCard}>
-          <Card.Content>
-                <TextInput
-                  label="Adresse email"
-                  value={email}
-                  onChangeText={setEmail}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  autoComplete="email"
-                  disabled={formLoading || loading}
-                  style={styles.modernInput}
-                  theme={modernTheme}
-                  left={<TextInput.Icon icon={() => <Envelope size={20} color={modernColors.primary} weight="bold" />} />}
-                />
+          {/* Formulaire de connexion */}
+          <Card style={styles.formCard}>
+            <Card.Content>
+              <TextInput
+                label="Adresse email"
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoComplete="email"
+                disabled={formLoading || loading}
+                style={styles.modernInput}
+                theme={modernTheme}
+                left={<TextInput.Icon icon={() => <Envelope size={20} color={modernColors.primary} weight="bold" />} />}
+              />
 
-                <TextInput
-                  label="Mot de passe"
-                  value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry
-                  autoComplete="password"
-                  disabled={formLoading || loading}
-                  style={styles.modernInput}
-                  theme={modernTheme}
-                  left={<TextInput.Icon icon={() => <Lock size={20} color={modernColors.primary} weight="bold" />} />}
-                />
+              <TextInput
+                label="Mot de passe"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry
+                autoComplete="password"
+                disabled={formLoading || loading}
+                style={styles.modernInput}
+                theme={modernTheme}
+                left={<TextInput.Icon icon={() => <Lock size={20} color={modernColors.primary} weight="bold" />} />}
+              />
 
-            <TouchableOpacity
-              onPress={handleLogin}
-              disabled={formLoading || loading}
-              style={styles.loginButtonContainer}
-            >
-              <LinearGradient
-                colors={modernColors.secondaryGradient}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.loginButton}
+              <TouchableOpacity
+                onPress={handleLogin}
+                disabled={formLoading || loading}
+                style={styles.loginButtonContainer}
               >
-                <Text style={styles.loginButtonLabel}>
-                  {formLoading || loading ? 'Connexion...' : 'Se connecter'}
-                </Text>
-              </LinearGradient>
+                <LinearGradient
+                  colors={modernColors.secondaryGradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.loginButton}
+                >
+                  <Text style={styles.loginButtonLabel}>
+                    {formLoading || loading ? 'Connexion...' : 'Se connecter'}
+                  </Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </Card.Content>
+          </Card>
+
+          {/* Lien vers l'inscription */}
+          <View style={styles.footer}>
+            <Text style={styles.footerText}>Pas encore inscrit ? </Text>
+            <TouchableOpacity onPress={() => navigation.navigate('Register' as never)}>
+              <Text style={styles.footerLink}>Créer un compte</Text>
             </TouchableOpacity>
-          </Card.Content>
-        </Card>
-
-        {/* Lien vers l'inscription */}
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>Pas encore inscrit ? </Text>
-          <TouchableOpacity onPress={() => navigation.navigate('Register' as never)}>
-            <Text style={styles.footerLink}>Créer un compte</Text>
-          </TouchableOpacity>
-        </View>
+          </View>
 
 
-        {/* Informations de support */}
-        <View style={styles.supportContainer}>
-          <Text style={styles.supportText}>
-            En cas de problème, contactez notre support à support@yukpo.com
-          </Text>
-        </View>
+          {/* Informations de support */}
+          <View style={styles.supportContainer}>
+            <Text style={styles.supportText}>
+              En cas de problème, contactez notre support à support@yukpo.com
+            </Text>
+          </View>
         </ScrollView>
       </KeyboardAvoidingView>
     </LinearGradient>

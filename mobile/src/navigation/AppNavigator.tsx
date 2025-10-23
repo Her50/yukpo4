@@ -8,8 +8,12 @@ import { modernColors, modernStyles } from '../theme/modernTheme';
 // Contexts - seulement AuthContext pour éviter les conflits
 import { useAuth } from '../contexts/AuthContext';
 
-// ✅ CORRECTION: Import de PushNotificationManager (chargé seulement si user connecté)
+// ✅ OPTIMISATION: Providers chargés après authentification
+import GPSTrackingManager from '../components/GPSTrackingManager';
 import PushNotificationManager from '../components/PushNotificationManager';
+import { GlobalIAStatsProvider } from '../components/intelligence/GlobalIAStats';
+import { LanguageProvider } from '../contexts/LanguageContext';
+import { LocationProvider } from '../contexts/LocationContext';
 
 // ✅ CORRECTION CRITIQUE: Chargement différé des écrans pour éviter les crashes
 // Screens - Lazy loading pour éviter les imports problématiques
@@ -60,7 +64,7 @@ const LoadingScreen = () => {
   return (
     <View style={styles.loadingContainer}>
       <ActivityIndicator size="large" color="#6366F1" />
-      <Text style={styles.loadingText}>Chargement{dots}</Text>
+      <Text style={styles.loadingText}>Chargement{String(dots)}</Text>
       <Text style={styles.loadingSubtext}>Connexion en cours...</Text>
     </View>
   );
@@ -133,7 +137,7 @@ const MainTabs = () => {
 
           return (
             <Text style={{ fontSize: size, color }}>
-              {getIcon(route.name)}
+              {String(getIcon(route.name))}
             </Text>
           );
         },
@@ -184,7 +188,7 @@ const MainTabs = () => {
                   L'écran d'accueil ne peut pas être chargé.{'\n'}Veuillez redémarrer l'application.
                 </Text>
                 <Text style={{ fontSize: 12, color: '#9CA3AF', textAlign: 'center' }}>
-                  Erreur: {error?.message || 'Inconnue'}
+                  Erreur: {String(error?.message || 'Inconnue')}
                 </Text>
               </View>
             );
@@ -280,125 +284,134 @@ const MainStack = () => {
 
   return (
     <>
-      {/* ✅ CORRECTION: PushNotificationManager chargé ici, après authentification */}
-      <PushNotificationManager />
+      {/* ✅ OPTIMISATION: Providers chargés APRÈS authentification */}
+      <LanguageProvider>
+        <LocationProvider>
+          <GlobalIAStatsProvider>
+            {/* Tracking GPS automatique (seulement si connecté) */}
+            <GPSTrackingManager />
+            {/* Push notifications (seulement si connecté) */}
+            <PushNotificationManager />
 
-      <Stack.Navigator
-        screenOptions={{
-          headerStyle: {
-            backgroundColor: '#6366F1',
-            elevation: 4,
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.2,
-            shadowRadius: 4,
-          },
-          headerTintColor: '#FFF',
-          headerTitleStyle: {
-            fontWeight: 'bold',
-            fontSize: 18,
-          },
-          headerBackTitleVisible: false,
-        }}
-      >
-        <Stack.Screen
-          name="MainTabs"
-          component={MainTabs}
-          options={{ headerShown: false }}
-        />
+            <Stack.Navigator
+              screenOptions={{
+                headerStyle: {
+                  backgroundColor: '#6366F1',
+                  elevation: 4,
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.2,
+                  shadowRadius: 4,
+                },
+                headerTintColor: '#FFF',
+                headerTitleStyle: {
+                  fontWeight: 'bold',
+                  fontSize: 18,
+                },
+                headerBackTitleVisible: false,
+              }}
+            >
+              <Stack.Screen
+                name="MainTabs"
+                component={MainTabs}
+                options={{ headerShown: false }}
+              />
 
-        {/* Pages secondaires accessibles depuis la navigation - Lazy Loading */}
-        <Stack.Screen
-          name="Contact"
-          options={{ title: t('contact.title') || 'Contact' }}
-        >
-          {() => (
-            <SafeScreen>
-              <ContactScreen />
-            </SafeScreen>
-          )}
-        </Stack.Screen>
-        <Stack.Screen
-          name="Services"
-          options={{ title: t('services.catalog') || 'Catalogue Services' }}
-        >
-          {() => (
-            <SafeScreen>
-              <ServicesListScreen />
-            </SafeScreen>
-          )}
-        </Stack.Screen>
-        <Stack.Screen
-          name="ResultatBesoin"
-          options={{ title: t('search.results') || 'Résultats de recherche' }}
-        >
-          {() => (
-            <SafeScreen>
-              <ResultatBesoinScreen />
-            </SafeScreen>
-          )}
-        </Stack.Screen>
-        <Stack.Screen
-          name="FormulaireYukpoIntelligent"
-          options={{ title: t('service.create') || 'Création de service' }}
-        >
-          {() => (
-            <SafeScreen>
-              <FormulaireYukpoIntelligentScreen />
-            </SafeScreen>
-          )}
-        </Stack.Screen>
-        <Stack.Screen
-          name="ServiceDetailShared"
-          options={{ title: t('service.shared') || 'Service partagé', headerShown: false }}
-        >
-          {() => (
-            <SafeScreen>
-              <ServiceDetailSharedScreen />
-            </SafeScreen>
-          )}
-        </Stack.Screen>
-        <Stack.Screen
-          name="SoldeDetail"
-          options={{ title: t('tokens.history') || 'Historique de Consommation' }}
-        >
-          {() => (
-            <SafeScreen>
-              <SoldeDetailScreen />
-            </SafeScreen>
-          )}
-        </Stack.Screen>
-        <Stack.Screen
-          name="YukpoService"
-          options={{ headerShown: false }}
-        >
-          {() => (
-            <SafeScreen>
-              <YukpoServicePlaceholderScreen />
-            </SafeScreen>
-          )}
-        </Stack.Screen>
-        <Stack.Screen
-          name="CreatePublicite"
-          options={{ title: t('publicite.create') || 'Créer une publicité', headerShown: false }}
-        >
-          {() => (
-            <SafeScreen>
-              <CreatePubliciteScreen />
-            </SafeScreen>
-          )}
-        </Stack.Screen>
-        <Stack.Screen
-          name="PubliciteDashboard"
-          options={{ title: t('publicite.dashboard') || 'Dashboard Publicité', headerShown: false }}
-        >
-          {() => (
-            <SafeScreen>
-              <PubliciteDashboardScreen />
-            </SafeScreen>
-          )}
-        </Stack.Screen>
-      </Stack.Navigator>
+              {/* Pages secondaires accessibles depuis la navigation - Lazy Loading */}
+              <Stack.Screen
+                name="Contact"
+                options={{ title: t('contact.title') || 'Contact' }}
+              >
+                {() => (
+                  <SafeScreen>
+                    <ContactScreen />
+                  </SafeScreen>
+                )}
+              </Stack.Screen>
+              <Stack.Screen
+                name="Services"
+                options={{ title: t('services.catalog') || 'Catalogue Services' }}
+              >
+                {() => (
+                  <SafeScreen>
+                    <ServicesListScreen />
+                  </SafeScreen>
+                )}
+              </Stack.Screen>
+              <Stack.Screen
+                name="ResultatBesoin"
+                options={{ title: t('search.results') || 'Résultats de recherche' }}
+              >
+                {() => (
+                  <SafeScreen>
+                    <ResultatBesoinScreen />
+                  </SafeScreen>
+                )}
+              </Stack.Screen>
+              <Stack.Screen
+                name="FormulaireYukpoIntelligent"
+                options={{ title: t('service.create') || 'Création de service' }}
+              >
+                {() => (
+                  <SafeScreen>
+                    <FormulaireYukpoIntelligentScreen />
+                  </SafeScreen>
+                )}
+              </Stack.Screen>
+              <Stack.Screen
+                name="ServiceDetailShared"
+                options={{ title: t('service.shared') || 'Service partagé', headerShown: false }}
+              >
+                {() => (
+                  <SafeScreen>
+                    <ServiceDetailSharedScreen />
+                  </SafeScreen>
+                )}
+              </Stack.Screen>
+              <Stack.Screen
+                name="SoldeDetail"
+                options={{ title: t('tokens.history') || 'Historique de Consommation' }}
+              >
+                {() => (
+                  <SafeScreen>
+                    <SoldeDetailScreen />
+                  </SafeScreen>
+                )}
+              </Stack.Screen>
+              <Stack.Screen
+                name="YukpoService"
+                options={{ headerShown: false }}
+              >
+                {() => (
+                  <SafeScreen>
+                    <YukpoServicePlaceholderScreen />
+                  </SafeScreen>
+                )}
+              </Stack.Screen>
+              <Stack.Screen
+                name="CreatePublicite"
+                options={{ title: t('publicite.create') || 'Créer une publicité', headerShown: false }}
+              >
+                {() => (
+                  <SafeScreen>
+                    <CreatePubliciteScreen />
+                  </SafeScreen>
+                )}
+              </Stack.Screen>
+              <Stack.Screen
+                name="PubliciteDashboard"
+                options={{ title: t('publicite.dashboard') || 'Dashboard Publicité', headerShown: false }}
+              >
+                {() => (
+                  <SafeScreen>
+                    <PubliciteDashboardScreen />
+                  </SafeScreen>
+                )}
+              </Stack.Screen>
+            </Stack.Navigator>
+          </GlobalIAStatsProvider>
+        </LocationProvider>
+      </LanguageProvider>
     </>
   );
 };
