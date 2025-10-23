@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { useFocusEffect, useNavigation } from '@react-navigation/native'; // ? Pour rafra�chir au retour sur l'�cran
+import { useFocusEffect, useNavigation } from '@react-navigation/native'; // ✅ Pour rafraîchir au retour sur l'écran
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -36,14 +36,14 @@ type PaymentLog = {
 
 const SoldeDetailScreen: React.FC = () => {
   const navigation = useNavigation();
-  const { user, refreshUser } = useAuth(); // ? Ajout de refreshUser
+  const { user, refreshUser } = useAuth(); // ✅ Ajout de refreshUser
   const [logs, setLogs] = useState<UsageLog[]>([]);
   const [paymentLogs, setPaymentLogs] = useState<PaymentLog[]>([]);
   const [selectedPeriod, setSelectedPeriod] = useState<'7d' | '30d' | '90d' | 'all'>('30d');
   const [selectedTab, setSelectedTab] = useState<'consumption' | 'payments'>('consumption');
   const [loading, setLoading] = useState(false);
 
-  // R�cup�rer le solde actuel
+  // Récupérer le solde actuel
   const getCurrentBalance = () => {
     if (user?.credits) {
       return user.credits;
@@ -58,14 +58,14 @@ const SoldeDetailScreen: React.FC = () => {
     loadData();
   }, [user, selectedPeriod]);
 
-  // ? NOUVEAU: Rafra�chir les donn�es quand on revient sur l'�cran
+  // ✅ NOUVEAU: Rafraîchir les données quand on revient sur l'écran
   useFocusEffect(
     React.useCallback(() => {
-      console.log('[SoldeDetailScreen] ?? �cran focus - Rafra�chissement des donn�es...');
+      console.log('[SoldeDetailScreen] 🔄 Écran focus - Rafraîchissement des données...');
       if (user?.id) {
-        // Rafra�chir le solde utilisateur
+        // Rafraîchir le solde utilisateur
         refreshUser().catch(err => {
-          console.error('[SoldeDetailScreen] Erreur rafra�chissement solde:', err);
+          console.error('[SoldeDetailScreen] Erreur rafraîchissement solde:', err);
         });
         // Recharger les logs
         loadData();
@@ -78,23 +78,23 @@ const SoldeDetailScreen: React.FC = () => {
     try {
       // Charger l'historique de consommation
       const consumptionResponse = await userApi.getCreditHistory(user.id, selectedPeriod);
-      console.log('[SoldeDetailScreen] R�ponse consommation:', consumptionResponse);
+      console.log('[SoldeDetailScreen] Réponse consommation:', consumptionResponse);
 
-      // ? Adapter le format des donn�es backend vers le format mobile
+      // ✅ Adapter le format des données backend vers le format mobile
       if (consumptionResponse.success && consumptionResponse.data) {
         const history = consumptionResponse.data.history || consumptionResponse.data;
         if (Array.isArray(history)) {
-          // ? Mapping corrig� selon la structure r�elle du backend:
+          // ✅ Mapping corrigé selon la structure réelle du backend:
           // Backend retourne: { id, date, service, amount, type, description }
           const mappedLogs = history.map((item: any) => ({
-            date: item.date,                    // ? D�j� format� par le backend
-            usage_type: item.description,       // ? Description de la consommation
-            montant: item.amount,               // ? Montant consomm�
-            moteur: item.type,                  // ? Type: "consumption" ou "recharge"
-            service_id: item.id,                // ? ID de l'entr�e
-            service_title: item.service         // ? Nom du service
+            date: item.date,                    // ✅ Déjà formaté par le backend
+            usage_type: item.description,       // ✅ Description de la consommation
+            montant: item.amount,               // ✅ Montant consommé
+            moteur: item.type,                  // ✅ Type: "consumption" ou "recharge"
+            service_id: item.id,                // ✅ ID de l'entrée
+            service_title: item.service         // ✅ Nom du service
           }));
-          console.log('[SoldeDetailScreen] Logs mapp�s:', mappedLogs);
+          console.log('[SoldeDetailScreen] Logs mappés:', mappedLogs);
           setLogs(mappedLogs);
         } else {
           setLogs([]);
@@ -105,24 +105,24 @@ const SoldeDetailScreen: React.FC = () => {
 
       // Charger l'historique des paiements
       const paymentsResponse = await userApi.getPaymentsHistory(user.id, selectedPeriod);
-      console.log('[SoldeDetailScreen] R�ponse paiements:', paymentsResponse);
+      console.log('[SoldeDetailScreen] Réponse paiements:', paymentsResponse);
 
-      // ? Adapter le format des donn�es backend vers le format mobile
+      // ✅ Adapter le format des données backend vers le format mobile
       if (paymentsResponse.success && paymentsResponse.data) {
         const payments = paymentsResponse.data.payments || paymentsResponse.data;
         if (Array.isArray(payments)) {
-          // ? Mapping corrig� selon la structure r�elle du backend:
+          // ✅ Mapping corrigé selon la structure réelle du backend:
           // Backend retourne: { id, date, amount, payment_method, status, transaction_id, description }
           const mappedPayments = payments.map((item: any) => ({
-            id: item.id,                                // ? ID du paiement
-            date: item.date,                            // ? D�j� format� par le backend
-            amount: item.amount,                        // ? Montant pay� en FCFA
-            payment_method: item.payment_method,        // ? M�thode de paiement
-            status: item.status,                        // ? Statut: completed/pending/failed
-            transaction_id: item.transaction_id || '',  // ? ID de transaction (optionnel)
-            tokens_added: item.amount                   // ? Tokens = montant (1 FCFA = 1 token)
+            id: item.id,                                // ✅ ID du paiement
+            date: item.date,                            // ✅ Déjà formaté par le backend
+            amount: item.amount,                        // ✅ Montant payé en FCFA
+            payment_method: item.payment_method,        // ✅ Méthode de paiement
+            status: item.status,                        // ✅ Statut: completed/pending/failed
+            transaction_id: item.transaction_id || '',  // ✅ ID de transaction (optionnel)
+            tokens_added: item.amount                   // ✅ Tokens = montant (1 FCFA = 1 token)
           }));
-          console.log('[SoldeDetailScreen] Paiements mapp�s:', mappedPayments);
+          console.log('[SoldeDetailScreen] Paiements mappés:', mappedPayments);
           setPaymentLogs(mappedPayments);
         } else {
           setPaymentLogs([]);
@@ -131,7 +131,7 @@ const SoldeDetailScreen: React.FC = () => {
         setPaymentLogs([]);
       }
     } catch (error) {
-      console.error('Erreur lors du chargement des donn�es:', error);
+      console.error('Erreur lors du chargement des données:', error);
       setLogs([]);
       setPaymentLogs([]);
     } finally {
@@ -175,7 +175,7 @@ const SoldeDetailScreen: React.FC = () => {
 
   const renderPeriodSelector = () => (
     <View style={styles.periodSelector}>
-      <Text style={styles.periodLabel}>P�riode:</Text>
+      <Text style={styles.periodLabel}>Période:</Text>
       <View style={styles.periodButtons}>
         {[
           { key: '7d', label: '7j' },
@@ -209,7 +209,7 @@ const SoldeDetailScreen: React.FC = () => {
         style={[styles.tabButton, selectedTab === 'consumption' && styles.tabButtonActive]}
         onPress={() => setSelectedTab('consumption')}
       >
-        <Text style={styles.tabIcon}>?</Text>
+        <Text style={styles.tabIcon}>📊</Text>
         <Text style={[styles.tabText, selectedTab === 'consumption' && styles.tabTextActive]}>
           Consommation
         </Text>
@@ -218,7 +218,7 @@ const SoldeDetailScreen: React.FC = () => {
         style={[styles.tabButton, selectedTab === 'payments' && styles.tabButtonActive]}
         onPress={() => setSelectedTab('payments')}
       >
-        <Text style={styles.tabIcon}>??</Text>
+        <Text style={styles.tabIcon}>💳</Text>
         <Text style={[styles.tabText, selectedTab === 'payments' && styles.tabTextActive]}>
           Paiements
         </Text>
@@ -231,17 +231,17 @@ const SoldeDetailScreen: React.FC = () => {
       {/* Statistiques */}
       <View style={styles.statsContainer}>
         <View style={styles.statCard}>
-          <Text style={styles.statIcon}>??</Text>
+          <Text style={styles.statIcon}>💰</Text>
           <Text style={styles.statValue}>{formatCurrency(totalConsumed)}</Text>
-          <Text style={styles.statLabel}>Total consomm�</Text>
+          <Text style={styles.statLabel}>Total consommé</Text>
         </View>
         <View style={styles.statCard}>
-          <Text style={styles.statIcon}>??</Text>
+          <Text style={styles.statIcon}>📈</Text>
           <Text style={styles.statValue}>{logs.length}</Text>
           <Text style={styles.statLabel}>Utilisations</Text>
         </View>
         <View style={styles.statCard}>
-          <Text style={styles.statIcon}>??</Text>
+          <Text style={styles.statIcon}>📊</Text>
           <Text style={styles.statValue}>
             {logs.length > 0 ? formatCurrency(totalConsumed / logs.length) : '0 FCFA'}
           </Text>
@@ -251,7 +251,7 @@ const SoldeDetailScreen: React.FC = () => {
 
       {/* Liste des utilisations */}
       <View style={styles.listContainer}>
-        <Text style={styles.listTitle}>D�tail des utilisations Yukpo</Text>
+        <Text style={styles.listTitle}>Détail des utilisations Yukpo</Text>
         {loading ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color={theme.colors.primary} />
@@ -261,7 +261,7 @@ const SoldeDetailScreen: React.FC = () => {
           logs.map((log, index) => (
             <View key={index} style={styles.logItem}>
               <View style={styles.logIcon}>
-                <Text style={styles.logIconText}>?</Text>
+                <Text style={styles.logIconText}>🔥</Text>
               </View>
               <View style={styles.logContent}>
                 <Text style={styles.logTitle}>{log.usage_type}</Text>
@@ -280,8 +280,8 @@ const SoldeDetailScreen: React.FC = () => {
           ))
         ) : (
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyIcon}>?</Text>
-            <Text style={styles.emptyText}>Aucune utilisation Yukpo enregistr�e</Text>
+            <Text style={styles.emptyIcon}>📭</Text>
+            <Text style={styles.emptyText}>Aucune utilisation Yukpo enregistrée</Text>
           </View>
         )}
       </View>
@@ -293,17 +293,17 @@ const SoldeDetailScreen: React.FC = () => {
       {/* Statistiques */}
       <View style={styles.statsContainer}>
         <View style={styles.statCard}>
-          <Text style={styles.statIcon}>??</Text>
+          <Text style={styles.statIcon}>💳</Text>
           <Text style={styles.statValue}>{formatCurrency(totalPaid)}</Text>
-          <Text style={styles.statLabel}>Total pay�</Text>
+          <Text style={styles.statLabel}>Total payé</Text>
         </View>
         <View style={styles.statCard}>
-          <Text style={styles.statIcon}>??</Text>
+          <Text style={styles.statIcon}>🪙</Text>
           <Text style={styles.statValue}>{totalTokensAdded.toLocaleString()}</Text>
-          <Text style={styles.statLabel}>Tokens ajout�s</Text>
+          <Text style={styles.statLabel}>Tokens ajoutés</Text>
         </View>
         <View style={styles.statCard}>
-          <Text style={styles.statIcon}>??</Text>
+          <Text style={styles.statIcon}>📝</Text>
           <Text style={styles.statValue}>{paymentLogs.length}</Text>
           <Text style={styles.statLabel}>Transactions</Text>
         </View>
@@ -343,8 +343,8 @@ const SoldeDetailScreen: React.FC = () => {
           ))
         ) : (
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyIcon}>??</Text>
-            <Text style={styles.emptyText}>Aucun paiement enregistr�</Text>
+            <Text style={styles.emptyIcon}>💳</Text>
+            <Text style={styles.emptyText}>Aucun paiement enregistré</Text>
           </View>
         )}
       </View>
@@ -369,28 +369,28 @@ const SoldeDetailScreen: React.FC = () => {
               </Text>
             </View>
             <View style={styles.balanceRight}>
-              <Text style={styles.balanceSubLabel}>Total consomm�</Text>
+              <Text style={styles.balanceSubLabel}>Total consommé</Text>
               <Text style={styles.balanceSubValue}>
                 {formatCurrency(totalConsumed)}
               </Text>
             </View>
           </View>
 
-          {/* ? Bouton Recharger Tokens - Bien visible */}
+          {/* ✅ Bouton Recharger Tokens - Bien visible */}
           <TouchableOpacity
             style={styles.rechargeButton}
             onPress={() => (navigation as any).navigate('RechargeTokens')}
           >
-            <Text style={styles.rechargeIcon}>??</Text>
+            <Text style={styles.rechargeIcon}>💳</Text>
             <Text style={styles.rechargeText}>Recharger tokens</Text>
-            <Text style={styles.rechargeArrow}>?</Text>
+            <Text style={styles.rechargeArrow}>→</Text>
           </TouchableOpacity>
         </View>
 
-        {/* S�lecteur de p�riode */}
+        {/* Sélecteur de période */}
         {renderPeriodSelector()}
 
-        {/* S�lecteur d'onglets */}
+        {/* Sélecteur d'onglets */}
         {renderTabSelector()}
 
         {/* Contenu des onglets */}
