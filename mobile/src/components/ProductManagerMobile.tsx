@@ -17,6 +17,8 @@ import * as DocumentPicker from 'expo-document-picker';
 // Code corrigé (remplace @ts-ignore)
 import * as FileSystem from 'expo-file-system';
 // Code corrigé (remplace @ts-ignore)
+import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
+// Code corrigé (remplace @ts-ignore)
 import { modernColors } from '../theme/modernTheme';
 import { NativeButton, NativeInput } from './NativeDesign';
 import SafeIcon from './SafeIcon';
@@ -775,8 +777,8 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
             const result = await ImagePicker.launchImageLibraryAsync({
                 mediaTypes: ImagePicker.MediaTypeOptions.Images,
                 allowsMultipleSelection: true,
-                quality: 0.5, // ✅ Qualité augmentée à 50% pour meilleures images
-                base64: true
+                quality: 0.3, // ✅ Qualité réduite à 30% pour éviter erreur 413
+                base64: false // ✅ Ne pas utiliser base64 de l'ImagePicker
             });
 
             if (!result.canceled && result.assets && result.assets.length > 0) {
@@ -792,14 +794,45 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                     );
                 }
 
-                const base64Images = assetsToAdd.map(asset =>
-                    `data:image/jpeg;base64,${asset.base64}`
+                // ✅ NOUVEAU : Compression et redimensionnement des images
+                const compressedImages = await Promise.all(
+                    assetsToAdd.map(async (asset) => {
+                        try {
+                            // Redimensionner l'image à max 1024px de largeur
+                            const manipulatedImage = await manipulateAsync(
+                                asset.uri,
+                                [{ resize: { width: 1024 } }], // Redimensionner à 1024px de largeur max
+                                { compress: 0.3, format: SaveFormat.JPEG, base64: true } // Compresser à 30% JPEG
+                            );
+
+                            return `data:image/jpeg;base64,${manipulatedImage.base64}`;
+                        } catch (error) {
+                            console.error('Erreur compression image:', error);
+                            // En cas d'erreur, retourner null pour filtrer ensuite
+                            return null;
+                        }
+                    })
                 );
+
+                // Filtrer les images null (erreurs)
+                const validImages = compressedImages.filter(img => img !== null) as string[];
+
+                if (validImages.length === 0) {
+                    Alert.alert('Erreur', 'Impossible de compresser les images. Veuillez réessayer.');
+                    return;
+                }
 
                 setNewProduct({
                     ...newProduct,
-                    images: [...(newProduct.images || []), ...base64Images]
+                    images: [...(newProduct.images || []), ...validImages]
                 });
+
+                // Afficher message de succès avec info compression
+                Alert.alert(
+                    'Images ajoutées',
+                    `${validImages.length} image(s) ajoutée(s) et compressées pour optimiser l'envoi.`,
+                    [{ text: 'OK' }]
+                );
             }
         } catch (error) {
             console.error('Erreur sélection images:', error);
