@@ -209,8 +209,13 @@ pub async fn ensure_publicites_table(pool: &PgPool) -> Result<(), sqlx::Error> {
     .execute(pool)
     .await?;
     
+    // Supprimer le trigger s'il existe
+    let _ = sqlx::query("DROP TRIGGER IF EXISTS trigger_update_publicites_updated_at ON publicites")
+        .execute(pool)
+        .await;
+    
+    // Créer le trigger
     sqlx::query(r#"
-        DROP TRIGGER IF EXISTS trigger_update_publicites_updated_at ON publicites;
         CREATE TRIGGER trigger_update_publicites_updated_at
             BEFORE UPDATE ON publicites
             FOR EACH ROW
@@ -234,8 +239,13 @@ pub async fn ensure_publicites_table(pool: &PgPool) -> Result<(), sqlx::Error> {
     .execute(pool)
     .await?;
     
+    // Supprimer le trigger s'il existe
+    let _ = sqlx::query("DROP TRIGGER IF EXISTS trigger_set_publicite_date_fin ON publicites")
+        .execute(pool)
+        .await;
+    
+    // Créer le trigger
     sqlx::query(r#"
-        DROP TRIGGER IF EXISTS trigger_set_publicite_date_fin ON publicites;
         CREATE TRIGGER trigger_set_publicite_date_fin
             BEFORE INSERT OR UPDATE ON publicites
             FOR EACH ROW
