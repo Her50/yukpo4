@@ -137,16 +137,20 @@ const ProductReactivationModal: React.FC<ProductReactivationModalProps> = ({
                 productsByService.get(serviceId)!.push(productIndex);
             });
 
+            console.log('[ProductReactivation] Produits à réactiver:', productsByService);
+
             // Réactiver service par service
             const promises = Array.from(productsByService.entries()).map(([serviceId, indices]) => {
                 if (indices.length === 1) {
                     // Réactivation simple
+                    console.log('[ProductReactivation] Réactivation simple - Service:', serviceId, 'Index:', indices[0]);
                     return apiPost('/api/products/reactivate', {
                         service_id: serviceId,
                         product_index: indices[0]
                     });
                 } else {
                     // Réactivation multiple
+                    console.log('[ProductReactivation] Réactivation multiple - Service:', serviceId, 'Indices:', indices);
                     return apiPost('/api/products/reactivate-multiple', {
                         service_id: serviceId,
                         product_indices: indices
@@ -155,6 +159,8 @@ const ProductReactivationModal: React.FC<ProductReactivationModalProps> = ({
             });
 
             const results = await Promise.all(promises);
+
+            console.log('[ProductReactivation] Résultats:', results);
 
             // Vérifier les résultats
             const allSuccess = results.every(r => r.success || r.data?.success);
@@ -173,11 +179,23 @@ const ProductReactivationModal: React.FC<ProductReactivationModalProps> = ({
                     }]
                 );
             } else {
-                Alert.alert('Erreur', 'Certains produits n\'ont pas pu être réactivés');
+                console.error('[ProductReactivation] Erreurs détaillées:', results);
+                const errorMessages = results
+                    .filter(r => !r.success && !r.data?.success)
+                    .map(r => r.error || r.data?.error || 'Erreur inconnue')
+                    .join('\n');
+                
+                Alert.alert(
+                    '❌ Erreur de réactivation', 
+                    `Certains produits n'ont pas pu être réactivés :\n\n${errorMessages}`
+                );
             }
         } catch (error) {
-            console.error('Erreur réactivation:', error);
-            Alert.alert('Erreur', 'Erreur lors de la réactivation des produits');
+            console.error('[ProductReactivation] Erreur réactivation:', error);
+            Alert.alert(
+                '❌ Erreur', 
+                `Erreur lors de la réactivation des produits :\n\n${error.message || error}`
+            );
         } finally {
             setLoading(false);
         }
