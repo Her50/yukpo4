@@ -106,19 +106,6 @@ const styles = StyleSheet.create({
         maxWidth: 400,
         width: '100%',
     },
-    errorIcon: {
-        fontSize: 48,
-        marginBottom: 16,
-        textAlign: 'center',
-    },
-    retryButtonIcon: {
-        fontSize: 20,
-        marginRight: 8,
-    },
-    reportButtonIcon: {
-        fontSize: 20,
-        marginRight: 8,
-    },
     errorTitle: {
         fontSize: 20,
         fontWeight: 'bold',

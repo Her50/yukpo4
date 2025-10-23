@@ -2,7 +2,6 @@
 import * as React from 'react';
 import { createContext, ReactNode, useContext, useEffect, useState } from 'react';
 import { authApi } from '../services/api';
-import { handleError } from '../utils/errorHandler';
 import { jwtDecode } from '../utils/jwtDecode';
 
 interface User {
@@ -77,11 +76,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       setLoading(true);
       const token = await AsyncStorage.getItem('auth_token');
-      console.log('[AuthContext] Token trouvé au démarrage:', !!token);
 
       if (token) {
         const decoded = jwtDecode<DecodedToken>(token);
-        console.log('[AuthContext] Token décodé:', decoded);
 
         if (decoded.exp * 1000 > Date.now()) {
           const userData: User = {
@@ -95,44 +92,35 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             token: token
           };
 
-          console.log('[AuthContext] Utilisateur connecté depuis JWT:', userData);
           setUser(userData);
         } else {
-          console.log('[AuthContext] Token expiré, déconnexion...');
           await AsyncStorage.removeItem('auth_token');
           setUser(null);
         }
       } else {
-        console.log('[AuthContext] Aucun token trouvé');
         setUser(null);
       }
     } catch (error) {
-      console.error('[AuthContext] Erreur vérification auth:', error);
+      console.error('[AuthContext] Erreur auth:', error);
       await AsyncStorage.removeItem('auth_token');
       setUser(null);
     } finally {
       setLoading(false);
-      console.log('[AuthContext] Vérification auth terminée, loading = false');
     }
   };
 
   const login = async (email: string, password: string): Promise<void> => {
     try {
       setLoading(true);
-      console.log('[AuthContext] Tentative de connexion pour:', email);
 
       const response = await authApi.login(email, password);
-      console.log('[AuthContext] Réponse login complète:', response);
 
       if (response.success && response.data?.token) {
-        console.log('[AuthContext] Token reçu, décodage JWT...');
         const decoded = jwtDecode<DecodedToken>(response.data.token);
-        console.log('[AuthContext] Token décodé:', decoded);
 
         if (decoded.exp * 1000 > Date.now()) {
           // Sauvegarder le token
           await AsyncStorage.setItem('auth_token', response.data.token);
-          console.log('[AuthContext] Token sauvegardé dans AsyncStorage');
 
           const userData: User = {
             id: String(decoded.sub),
@@ -145,47 +133,32 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             token: response.data.token
           };
 
-          console.log('[AuthContext] Utilisateur créé depuis JWT:', userData);
           setUser(userData);
 
-          // ✅ NOUVEAU: Enregistrer le token push pour notifications
+          // ✅ Enregistrer le token push pour notifications (en arrière-plan)
           try {
             const pushModule = await import('../services/pushNotifications');
-            if (!pushModule || !pushModule.registerForPushNotificationsAsync) {
-              throw new Error('Module pushNotifications non disponible');
-            }
-            const { registerForPushNotificationsAsync } = pushModule;
-            const pushToken = await registerForPushNotificationsAsync(response.data.token);
-            if (pushToken) {
-              console.log('[AuthContext] ✅ Token push enregistré');
+            if (pushModule?.registerForPushNotificationsAsync) {
+              pushModule.registerForPushNotificationsAsync(response.data.token).catch(() => {
+                // Push échoue silencieusement
+              });
             }
           } catch (pushError) {
-            handleError(pushError, {
-              component: 'AuthContext',
-              action: 'register_push_token',
-              details: { userId: userData.id }
-            });
             // Ne pas bloquer le login si push échoue
-            console.warn('[AuthContext] Push notifications désactivées');
           }
           setForceRender(prev => prev + 1);
-          console.log('[AuthContext] ✅ setUser() appelé avec:', userData);
-          console.log('[AuthContext] ✅ forceRender incrémenté pour forcer le re-render');
         } else {
-          console.log('[AuthContext] Token expiré');
           throw new Error('Token expiré');
         }
       } else {
-        console.log('[AuthContext] Échec de la connexion:', response);
         throw new Error(response.error || 'Token non reçu lors de la connexion');
       }
     } catch (error) {
-      console.error('[AuthContext] Erreur connexion:', error);
+      console.error('[AuthContext] Erreur login:', error);
       setUser(null);
       throw error;
     } finally {
       setLoading(false);
-      console.log('[AuthContext] Connexion terminée, loading = false');
     }
   };
 
@@ -197,16 +170,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }) => {
     try {
       setLoading(true);
-      console.log('[AuthContext] Tentative d\'inscription pour:', userData.email);
 
       const response = await authApi.register(userData);
-      console.log('[AuthContext] Réponse inscription:', response);
 
       if (response.success) {
         if (response.data?.token) {
-          console.log('[AuthContext] Token reçu lors de l\'inscription, décodage JWT...');
           const decoded = jwtDecode<DecodedToken>(response.data.token);
-          console.log('[AuthContext] Token décodé:', decoded);
 
           if (decoded.exp * 1000 > Date.now()) {
             await AsyncStorage.setItem('auth_token', response.data.token);
@@ -223,7 +192,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             };
 
             setUser(newUserData);
-            console.log('[AuthContext] Inscription réussie avec token direct:', newUserData);
             return { success: true, data: newUserData };
           } else {
             throw new Error('Token expiré');

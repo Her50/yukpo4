@@ -10,6 +10,8 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+import EnhancedModalitySelector from './EnhancedModalitySelector';
+import ProductDuplicationModal from './ProductDuplicationModal';
 // Code corrigé (remplace @ts-ignore)
 import * as ImagePicker from 'expo-image-picker';
 // Code corrigé (remplace @ts-ignore)
@@ -39,13 +41,13 @@ const normalizeText = (text: string): string => {
 };
 
 // ✅ NOUVEAU: Composant moderne pour les champs multi-sélection
-const ModernSelectField = ({ 
-    label, 
-    value, 
-    options, 
-    onSelect, 
+const ModernSelectField = ({
+    label,
+    value,
+    options,
+    onSelect,
     required = false,
-    allowCustom = false 
+    allowCustom = false
 }: {
     label: string;
     value: string;
@@ -59,7 +61,7 @@ const ModernSelectField = ({
             <Text style={styles.fieldLabel}>
                 {label} {required && <Text style={styles.required}>*</Text>}
             </Text>
-            
+
             <TouchableOpacity
                 style={styles.modernSelect}
                 onPress={() => {
@@ -80,9 +82,12 @@ const ModernSelectField = ({
                                 onSelect(option);
                             }
                         }
-                    })).concat([{ text: 'Annuler', style: 'cancel' }]);
-                    
-                    Alert.alert(label, 'Sélectionnez une option :', alertOptions);
+                    }));
+
+                    Alert.alert(label, 'Sélectionnez une option :', [
+                        ...alertOptions,
+                        { text: 'Annuler', style: 'cancel' }
+                    ]);
                 }}
             >
                 <Text style={[
@@ -706,6 +711,8 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
     const [searchQuery, setSearchQuery] = useState(''); // Recherche textuelle dans dropdown
     const [showGPSModal, setShowGPSModal] = useState(false);
     const [selectedGPSLocation, setSelectedGPSLocation] = useState<{ lat: number; lng: number } | null>(null);
+    const [showDuplicationModal, setShowDuplicationModal] = useState(false);
+    const [productToDuplicate, setProductToDuplicate] = useState<Product | null>(null);
 
     const [newProduct, setNewProduct] = useState<Partial<Product>>({
         type: 'autre',
@@ -1414,6 +1421,24 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
         }
     };
 
+    // Fonction pour gérer la duplication de produit
+    const handleDuplicateProduct = (product: Product) => {
+        setProductToDuplicate(product);
+        setShowDuplicationModal(true);
+    };
+
+    const handleConfirmDuplication = (duplicatedProduct: Product) => {
+        const updatedProducts = [...products, duplicatedProduct];
+        onProductsChange(updatedProducts);
+        setShowDuplicationModal(false);
+        setProductToDuplicate(null);
+    };
+
+    const handleCancelDuplication = () => {
+        setShowDuplicationModal(false);
+        setProductToDuplicate(null);
+    };
+
     const handleSelectType = (type: ProductType) => {
         setSelectedType(type);
 
@@ -1521,20 +1546,21 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                 return (
                     <>
                         {/* Type d'immobilier - MODERNE */}
-                        <ModernSelectField
+                        <EnhancedModalitySelector
                             label="Type d'immobilier"
                             value={newProduct.typeImmobilier || ''}
-                            options={TYPES_IMMOBILIERS}
+                            productType={newProduct.type}
+                            fieldName="types"
                             onSelect={(value) => setNewProduct({ ...newProduct, typeImmobilier: value })}
                             required={true}
-                            allowCustom={true}
                         />
 
                         {/* Statut (Vente/Location) - MODERNE */}
-                        <ModernSelectField
+                        <EnhancedModalitySelector
                             label="Statut"
                             value={newProduct.statutImmobilier || ''}
-                            options={STATUTS_IMMOBILIERS}
+                            productType={newProduct.type}
+                            fieldName="statuts"
                             onSelect={(value) => setNewProduct({ ...newProduct, statutImmobilier: value })}
                             required={true}
                         />
@@ -1576,10 +1602,11 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         </View>
 
                         {/* Niveau d'ameublement - MODERNE */}
-                        <ModernSelectField
+                        <EnhancedModalitySelector
                             label="Ameublement"
                             value={newProduct.ameublement || ''}
-                            options={NIVEAUX_AMEUBLEMENT}
+                            productType={newProduct.type}
+                            fieldName="ameublement"
                             onSelect={(value) => setNewProduct({ ...newProduct, ameublement: value })}
                         />
 
@@ -1718,13 +1745,13 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                     <>
                         {/* Marque avec liste déroulante */}
                         {/* Marque - MODERNE */}
-                        <ModernSelectField
+                        <EnhancedModalitySelector
                             label="Marque"
                             value={newProduct.marque || ''}
-                            options={MARQUES_AUTOMOBILES}
+                            productType={newProduct.type}
+                            fieldName="marques"
                             onSelect={(value) => setNewProduct({ ...newProduct, marque: value })}
                             required={true}
-                            allowCustom={true}
                         />
 
                         {/* Modèle */}
@@ -1739,10 +1766,11 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         </View>
 
                         {/* État du véhicule - MODERNE */}
-                        <ModernSelectField
+                        <EnhancedModalitySelector
                             label="État du véhicule"
                             value={newProduct.etatVehicule || ''}
-                            options={ETATS_VEHICULE}
+                            productType={newProduct.type}
+                            fieldName="etat"
                             onSelect={(value) => setNewProduct({ ...newProduct, etatVehicule: value })}
                             required={true}
                         />
@@ -1772,23 +1800,23 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         </View>
 
                         {/* Type de carburant - MODERNE */}
-                        <ModernSelectField
+                        <EnhancedModalitySelector
                             label="Type de carburant"
                             value={newProduct.typeCarburant || ''}
-                            options={TYPES_CARBURANT}
+                            productType={newProduct.type}
+                            fieldName="carburant"
                             onSelect={(value) => setNewProduct({ ...newProduct, typeCarburant: value })}
                             required={true}
-                            allowCustom={true}
                         />
 
                         {/* Transmission - MODERNE */}
-                        <ModernSelectField
+                        <EnhancedModalitySelector
                             label="Transmission"
                             value={newProduct.transmission || ''}
-                            options={TYPES_TRANSMISSION}
+                            productType={newProduct.type}
+                            fieldName="transmission"
                             onSelect={(value) => setNewProduct({ ...newProduct, transmission: value })}
                             required={true}
-                            allowCustom={true}
                         />
 
                         {/* Couleur */}
@@ -2264,41 +2292,41 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                     <>
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Taille</Text>
-                                <NativeInput
-                                    placeholder="Ex: L"
+                                <EnhancedModalitySelector
+                                    label="Taille"
                                     value={newProduct.taille || ''}
-                                    onChangeText={(text) => setNewProduct({ ...newProduct, taille: text })}
-                                    style={styles.fieldInput}
+                                    productType={newProduct.type}
+                                    fieldName="tailles"
+                                    onSelect={(value) => setNewProduct({ ...newProduct, taille: value })}
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Couleur</Text>
-                                <NativeInput
-                                    placeholder="Ex: Bleu"
+                                <EnhancedModalitySelector
+                                    label="Couleur"
                                     value={newProduct.couleurVetement || ''}
-                                    onChangeText={(text) => setNewProduct({ ...newProduct, couleurVetement: text })}
-                                    style={styles.fieldInput}
+                                    productType={newProduct.type}
+                                    fieldName="couleurs"
+                                    onSelect={(value) => setNewProduct({ ...newProduct, couleurVetement: value })}
                                 />
                             </View>
                         </View>
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Matière</Text>
-                                <NativeInput
-                                    placeholder="Ex: Coton"
+                                <EnhancedModalitySelector
+                                    label="Matière"
                                     value={newProduct.matiere || ''}
-                                    onChangeText={(text) => setNewProduct({ ...newProduct, matiere: text })}
-                                    style={styles.fieldInput}
+                                    productType={newProduct.type}
+                                    fieldName="matieres"
+                                    onSelect={(value) => setNewProduct({ ...newProduct, matiere: value })}
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Marque</Text>
-                                <NativeInput
-                                    placeholder="Ex: Nike"
+                                <EnhancedModalitySelector
+                                    label="Marque"
                                     value={newProduct.marqueVetement || ''}
-                                    onChangeText={(text) => setNewProduct({ ...newProduct, marqueVetement: text })}
-                                    style={styles.fieldInput}
+                                    productType={newProduct.type}
+                                    fieldName="marques"
+                                    onSelect={(value) => setNewProduct({ ...newProduct, marqueVetement: value })}
                                 />
                             </View>
                         </View>
@@ -2310,32 +2338,31 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                     <>
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Pointure</Text>
-                                <NativeInput
-                                    placeholder="Ex: 42"
+                                <EnhancedModalitySelector
+                                    label="Pointure"
                                     value={newProduct.pointure || ''}
-                                    onChangeText={(text) => setNewProduct({ ...newProduct, pointure: text })}
-                                    style={styles.fieldInput}
-                                    keyboardType="numeric"
+                                    productType={newProduct.type}
+                                    fieldName="pointures"
+                                    onSelect={(value) => setNewProduct({ ...newProduct, pointure: value })}
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Couleur</Text>
-                                <NativeInput
-                                    placeholder="Ex: Noire"
+                                <EnhancedModalitySelector
+                                    label="Couleur"
                                     value={newProduct.couleurChaussure || ''}
-                                    onChangeText={(text) => setNewProduct({ ...newProduct, couleurChaussure: text })}
-                                    style={styles.fieldInput}
+                                    productType={newProduct.type}
+                                    fieldName="couleurs"
+                                    onSelect={(value) => setNewProduct({ ...newProduct, couleurChaussure: value })}
                                 />
                             </View>
                         </View>
                         <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Marque</Text>
-                            <NativeInput
-                                placeholder="Ex: Adidas"
+                            <EnhancedModalitySelector
+                                label="Marque"
                                 value={newProduct.marqueChaussure || ''}
-                                onChangeText={(text) => setNewProduct({ ...newProduct, marqueChaussure: text })}
-                                style={styles.fieldInput}
+                                productType={newProduct.type}
+                                fieldName="marques"
+                                onSelect={(value) => setNewProduct({ ...newProduct, marqueChaussure: value })}
                             />
                         </View>
                     </>
@@ -4315,6 +4342,12 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                                     </TouchableOpacity>
                                                     <TouchableOpacity
                                                         style={styles.actionButton}
+                                                        onPress={() => handleDuplicateProduct(product)}
+                                                    >
+                                                        <SafeIcon name="copy" size={16} color={modernColors.success} />
+                                                    </TouchableOpacity>
+                                                    <TouchableOpacity
+                                                        style={styles.actionButton}
                                                         onPress={() => handleDeleteProduct(product.id)}
                                                     >
                                                         <SafeIcon name="trash-2" size={16} color={modernColors.error} />
@@ -4622,13 +4655,21 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 <View style={styles.mediaSectionContainer}>
                                     <Text style={styles.sectionTitle}>📸 Images du produit</Text>
 
+                                    {/* Message descriptif incitatif */}
+                                    <View style={styles.mediaHintContainer}>
+                                        <SafeIcon name="info" size={16} color={modernColors.info} />
+                                        <Text style={styles.mediaHintText}>
+                                            💡 Ajoutez des photos de qualité pour attirer plus de clients ! Montrez votre produit sous tous les angles.
+                                        </Text>
+                                    </View>
+
                                     <TouchableOpacity
                                         style={styles.mediaButton}
                                         onPress={handlePickImages}
                                     >
                                         <SafeIcon name="image" size={20} color={modernColors.primary} />
                                         <Text style={styles.mediaButtonText}>
-                                            Ajouter des images
+                                            📷 Ajouter des images
                                         </Text>
                                     </TouchableOpacity>
 
@@ -4650,13 +4691,21 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                                     <Text style={[styles.sectionTitle, { marginTop: 20 }]}>🎥 Vidéos du produit</Text>
 
+                                    {/* Message descriptif incitatif pour vidéos */}
+                                    <View style={styles.mediaHintContainer}>
+                                        <SafeIcon name="info" size={16} color={modernColors.info} />
+                                        <Text style={styles.mediaHintText}>
+                                            🎬 Les vidéos augmentent de 80% les chances de vente ! Montrez votre produit en action ou en démonstration.
+                                        </Text>
+                                    </View>
+
                                     <TouchableOpacity
                                         style={styles.mediaButton}
                                         onPress={handlePickVideos}
                                     >
                                         <SafeIcon name="video" size={20} color={modernColors.success} />
                                         <Text style={styles.mediaButtonText}>
-                                            Ajouter des vidéos
+                                            🎥 Ajouter des vidéos
                                         </Text>
                                     </TouchableOpacity>
 
@@ -4817,6 +4866,14 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                 currentLocation={selectedGPSLocation}
                 title="Localisation du bien immobilier"
                 allowZoneSelection={true}
+            />
+
+            {/* Modal de duplication de produit */}
+            <ProductDuplicationModal
+                visible={showDuplicationModal}
+                onClose={handleCancelDuplication}
+                product={productToDuplicate}
+                onDuplicate={handleConfirmDuplication}
             />
         </View>
     );
@@ -5725,6 +5782,25 @@ const styles = StyleSheet.create({
     },
     selectPlaceholder: {
         color: modernColors.textSecondary,
+    },
+    // Styles pour les messages descriptifs des médias
+    mediaHintContainer: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        backgroundColor: '#F0F9FF',
+        borderWidth: 1,
+        borderColor: '#BAE6FD',
+        borderRadius: 8,
+        padding: 12,
+        marginBottom: 12,
+        gap: 8,
+    },
+    mediaHintText: {
+        flex: 1,
+        fontSize: 12,
+        color: '#0369A1',
+        lineHeight: 16,
+        fontWeight: '500',
     },
 });
 

@@ -480,6 +480,12 @@ const HomeScreen: React.FC = () => {
                         <View style={styles.headerActionsCompact}>
                             <TouchableOpacity
                                 style={styles.headerButtonCompact}
+                                onPress={() => setShowChatModal(true)}
+                            >
+                                <Text style={styles.headerButtonIconCompact}>💬</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={styles.headerButtonCompact}
                                 onPress={() => setShowNotificationModal(true)}
                             >
                                 <Text style={styles.headerButtonIconCompact}>🔔</Text>
@@ -490,12 +496,6 @@ const HomeScreen: React.FC = () => {
                                         )}
                                     </View>
                                 )}
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                style={styles.headerButtonCompact}
-                                onPress={() => setShowChatModal(true)}
-                            >
-                                <Text style={styles.headerButtonIconCompact}>💬</Text>
                             </TouchableOpacity>
                         </View>
                     </View>

@@ -1,14 +1,14 @@
 // @ts-nocheck
 import React, { useState } from 'react';
-import { 
-  Alert, 
-  ScrollView, 
-  StyleSheet, 
-  Text, 
-  TextInput, 
-  TouchableOpacity, 
-  View,
-  Linking
+import {
+  Alert,
+  Linking,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { SafeNativeView } from '../components/SafeNativeView';
 
@@ -17,182 +17,188 @@ const ContactScreen: React.FC = () => {
   const [email, setEmail] = useState('');
   const [subject, setSubject] = useState('');
   const [message, setMessage] = useState('');
-  const [loading, setLoading] = useState(false);
 
   const handleSubmit = async () => {
-    if (!name || !email || !message) {
-      Alert.alert('Erreur', 'Veuillez remplir tous les champs obligatoires');
+    if (!name.trim() || !email.trim() || !subject.trim() || !message.trim()) {
+      Alert.alert('Erreur', 'Veuillez remplir tous les champs');
       return;
     }
 
-    setLoading(true);
     try {
-      // TODO: Impl�menter l'envoi du message de contact
+      // TODO: Implémenter l'envoi du message de contact
       await new Promise(resolve => setTimeout(resolve, 1000));
       Alert.alert(
-        'Message envoy�', 
-        'Nous avons bien re�u votre message et vous r�pondrons dans les plus brefs d�lais.'
+        'Message envoyé',
+        'Nous avons bien reçu votre message et vous répondrons dans les plus brefs délais.'
       );
-      // R�initialiser le formulaire
+      // Réinitialiser le formulaire
       setName('');
       setEmail('');
       setSubject('');
       setMessage('');
     } catch (error) {
-      Alert.alert('Erreur', 'Impossible d\'envoyer le message. Veuillez r�essayer.');
-    } finally {
-      setLoading(false);
+      Alert.alert('Erreur', 'Impossible d\'envoyer le message');
     }
   };
 
-  const openLink = (url: string) => {
-    Linking.openURL(url).catch(() => {
-      Alert.alert('Erreur', 'Impossible d\'ouvrir le lien');
-    });
+  const openLink = async (url: string) => {
+    try {
+      const supported = await Linking.canOpenURL(url);
+      if (supported) {
+        await Linking.openURL(url);
+      } else {
+        Alert.alert('Erreur', 'Impossible d\'ouvrir ce lien');
+      }
+    } catch (error) {
+      Alert.alert('Erreur', 'Impossible d\'ouvrir ce lien');
+    }
   };
 
   return (
     <SafeNativeView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.title}>?? Contactez-nous</Text>
+          <Text style={styles.title}>📞 Contactez-nous</Text>
           <Text style={styles.subtitle}>
-            L'�quipe <Text style={styles.brandYuk}>Yuk</Text>
-            <Text style={styles.brandPo}>po</Text> est l� pour vous aider
+            Nous sommes là pour vous aider ! N'hésitez pas à nous contacter.
           </Text>
-        </View>
-
-        {/* Infos de contact rapide */}
-        <View style={styles.quickContact}>
-          <TouchableOpacity 
-            style={styles.contactCard}
-            onPress={() => openLink('mailto:contact@yukpomnang.com')}
-          >
-            <Text style={styles.contactIcon}>??</Text>
-            <Text style={styles.contactLabel}>Email</Text>
-            <Text style={styles.contactValue}>contact@yukpomnang.com</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity 
-            style={styles.contactCard}
-            onPress={() => openLink('tel:+237699999999')}
-          >
-            <Text style={styles.contactIcon}>??</Text>
-            <Text style={styles.contactLabel}>T�l�phone</Text>
-            <Text style={styles.contactValue}>+237 6 99 99 99 99</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity 
-            style={styles.contactCard}
-            onPress={() => openLink('https://wa.me/237699999999')}
-          >
-            <Text style={styles.contactIcon}>??</Text>
-            <Text style={styles.contactLabel}>WhatsApp</Text>
-            <Text style={styles.contactValue}>Chat direct</Text>
-          </TouchableOpacity>
         </View>
 
         {/* Formulaire de contact */}
         <View style={styles.formContainer}>
-          <Text style={styles.formTitle}>Envoyez-nous un message</Text>
+          <Text style={styles.formTitle}>✉️ Envoyez-nous un message</Text>
 
-          <View style={styles.inputContainer}>
+          <View style={styles.inputGroup}>
             <Text style={styles.label}>Nom complet *</Text>
             <TextInput
               style={styles.input}
-              placeholder="Votre nom"
-              placeholderTextColor="#999"
               value={name}
               onChangeText={setName}
+              placeholder="Votre nom complet"
+              placeholderTextColor="#999"
             />
           </View>
 
-          <View style={styles.inputContainer}>
+          <View style={styles.inputGroup}>
             <Text style={styles.label}>Email *</Text>
             <TextInput
               style={styles.input}
-              placeholder="votre@email.com"
-              placeholderTextColor="#999"
               value={email}
               onChangeText={setEmail}
+              placeholder="votre@email.com"
+              placeholderTextColor="#999"
               keyboardType="email-address"
               autoCapitalize="none"
             />
           </View>
 
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Sujet</Text>
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Sujet *</Text>
             <TextInput
               style={styles.input}
-              placeholder="Objet de votre message"
-              placeholderTextColor="#999"
               value={subject}
               onChangeText={setSubject}
+              placeholder="Sujet de votre message"
+              placeholderTextColor="#999"
             />
           </View>
 
-          <View style={styles.inputContainer}>
+          <View style={styles.inputGroup}>
             <Text style={styles.label}>Message *</Text>
             <TextInput
               style={[styles.input, styles.textArea]}
-              placeholder="D�crivez votre demande..."
-              placeholderTextColor="#999"
               value={message}
               onChangeText={setMessage}
+              placeholder="Décrivez votre demande ou votre problème..."
+              placeholderTextColor="#999"
               multiline
-              numberOfLines={6}
+              numberOfLines={5}
               textAlignVertical="top"
             />
           </View>
 
-          <TouchableOpacity
-            style={[styles.submitButton, loading && styles.submitButtonDisabled]}
-            onPress={handleSubmit}
-            disabled={loading}
-          >
-            <Text style={styles.submitText}>
-              {loading ? 'Envoi en cours...' : 'Envoyer le message'}
-            </Text>
+          <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
+            <Text style={styles.submitButtonText}>📤 Envoyer le message</Text>
           </TouchableOpacity>
         </View>
 
-        {/* Informations suppl�mentaires */}
+        {/* Infos de contact rapide */}
+        <View style={styles.quickContact}>
+          <Text style={styles.quickContactTitle}>🚀 Contact rapide</Text>
+
+          <TouchableOpacity
+            style={styles.contactCard}
+            onPress={() => openLink('mailto:contact@yukpomnang.com')}
+          >
+            <Text style={styles.contactIcon}>📧</Text>
+            <View style={styles.contactInfo}>
+              <Text style={styles.contactTitle}>Email</Text>
+              <Text style={styles.contactValue}>contact@yukpomnang.com</Text>
+            </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.contactCard}
+            onPress={() => openLink('tel:+237699999999')}
+          >
+            <Text style={styles.contactIcon}>📞</Text>
+            <View style={styles.contactInfo}>
+              <Text style={styles.contactTitle}>Téléphone</Text>
+              <Text style={styles.contactValue}>+237 699 999 999</Text>
+            </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.contactCard}
+            onPress={() => openLink('https://wa.me/237699999999')}
+          >
+            <Text style={styles.contactIcon}>💬</Text>
+            <View style={styles.contactInfo}>
+              <Text style={styles.contactTitle}>WhatsApp</Text>
+              <Text style={styles.contactValue}>Chat direct</Text>
+            </View>
+          </TouchableOpacity>
+        </View>
+
+        {/* Informations supplémentaires */}
         <View style={styles.infoSection}>
-          <Text style={styles.infoTitle}>?? Horaires de disponibilit�</Text>
-          <Text style={styles.infoText}>
-            Lundi - Vendredi: 8h00 - 18h00{'\n'}
-            Samedi: 9h00 - 13h00{'\n'}
-            Dimanche: Ferm�
-          </Text>
+          <Text style={styles.infoTitle}>ℹ️ Informations</Text>
+          <View style={styles.infoCard}>
+            <Text style={styles.infoText}>
+              • <Text style={styles.bold}>Heures d'ouverture :</Text> 8h00 - 18h00 (Lun-Ven)
+            </Text>
+            <Text style={styles.infoText}>
+              • <Text style={styles.bold}>Temps de réponse :</Text> Moins de 24h
+            </Text>
+            <Text style={styles.infoText}>
+              • <Text style={styles.bold}>Support technique :</Text> Disponible 7j/7
+            </Text>
+          </View>
+        </View>
 
-          <Text style={styles.infoTitle}>?? Localisation</Text>
-          <Text style={styles.infoText}>
-            Douala, Cameroun{'\n'}
-            Akwa - Centre-ville
-          </Text>
-
-          <Text style={styles.infoTitle}>? R�seaux sociaux</Text>
+        {/* Réseaux sociaux */}
+        <View style={styles.socialSection}>
+          <Text style={styles.infoTitle}>🌐 Réseaux sociaux</Text>
           <View style={styles.socialLinks}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.socialButton}
               onPress={() => openLink('https://facebook.com/yukpomnang')}
             >
-              <Text style={styles.socialIcon}>??</Text>
+              <Text style={styles.socialIcon}>📘</Text>
               <Text style={styles.socialText}>Facebook</Text>
             </TouchableOpacity>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.socialButton}
               onPress={() => openLink('https://twitter.com/yukpomnang')}
             >
-              <Text style={styles.socialIcon}>??</Text>
+              <Text style={styles.socialIcon}>🐦</Text>
               <Text style={styles.socialText}>Twitter</Text>
             </TouchableOpacity>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.socialButton}
               onPress={() => openLink('https://linkedin.com/company/yukpomnang')}
             >
-              <Text style={styles.socialIcon}>??</Text>
+              <Text style={styles.socialIcon}>💼</Text>
               <Text style={styles.socialText}>LinkedIn</Text>
             </TouchableOpacity>
           </View>
@@ -205,179 +211,179 @@ const ContactScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: '#f8f9fa',
   },
   scrollContent: {
-    paddingBottom: 100,
+    padding: 20,
+    paddingBottom: 40,
   },
   header: {
-    backgroundColor: '#FFF',
-    paddingHorizontal: 20,
-    paddingVertical: 32,
-    marginBottom: 20,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+    alignItems: 'center',
+    marginBottom: 30,
   },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#1A1A1A',
-    marginBottom: 12,
+    color: '#2c3e50',
+    marginBottom: 10,
     textAlign: 'center',
   },
   subtitle: {
     fontSize: 16,
-    color: '#666',
+    color: '#7f8c8d',
     textAlign: 'center',
     lineHeight: 24,
   },
-  brandYuk: {
-    color: '#FFC107',
-    fontWeight: 'bold',
-  },
-  brandPo: {
-    color: '#EF4444',
-    fontWeight: 'bold',
-  },
-  quickContact: {
-    flexDirection: 'row',
-    marginHorizontal: 20,
-    marginBottom: 24,
-    gap: 12,
-  },
-  contactCard: {
-    flex: 1,
-    backgroundColor: '#FFF',
-    padding: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  contactIcon: {
-    fontSize: 32,
-    marginBottom: 8,
-  },
-  contactLabel: {
-    fontSize: 12,
-    color: '#999',
-    marginBottom: 4,
-  },
-  contactValue: {
-    fontSize: 11,
-    color: '#1A1A1A',
-    fontWeight: '600',
-    textAlign: 'center',
-  },
   formContainer: {
-    backgroundColor: '#FFF',
-    marginHorizontal: 20,
-    marginBottom: 24,
+    backgroundColor: 'white',
+    borderRadius: 15,
     padding: 20,
-    borderRadius: 16,
+    marginBottom: 25,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
-    shadowRadius: 8,
+    shadowRadius: 4,
     elevation: 3,
   },
   formTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#1A1A1A',
+    color: '#2c3e50',
     marginBottom: 20,
+    textAlign: 'center',
   },
-  inputContainer: {
+  inputGroup: {
     marginBottom: 20,
   },
   label: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '600',
-    color: '#1A1A1A',
+    color: '#34495e',
     marginBottom: 8,
   },
   input: {
-    backgroundColor: '#F8F9FA',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 16,
-    color: '#1A1A1A',
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#ddd',
+    borderRadius: 10,
+    padding: 15,
+    fontSize: 16,
+    backgroundColor: '#f8f9fa',
+    color: '#2c3e50',
   },
   textArea: {
     height: 120,
-    paddingTop: 14,
+    textAlignVertical: 'top',
   },
   submitButton: {
-    backgroundColor: '#6366F1',
-    paddingVertical: 16,
-    borderRadius: 12,
+    backgroundColor: '#3498db',
+    borderRadius: 10,
+    padding: 15,
     alignItems: 'center',
-    marginTop: 8,
+    marginTop: 10,
   },
-  submitButtonDisabled: {
-    backgroundColor: '#9CA3AF',
-  },
-  submitText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FFF',
-  },
-  infoSection: {
-    marginHorizontal: 20,
-    backgroundColor: '#FFF',
-    padding: 20,
-    borderRadius: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  infoTitle: {
+  submitButtonText: {
+    color: 'white',
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#1A1A1A',
-    marginTop: 16,
-    marginBottom: 8,
+  },
+  quickContact: {
+    marginBottom: 25,
+  },
+  quickContactTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#2c3e50',
+    marginBottom: 15,
+    textAlign: 'center',
+  },
+  contactCard: {
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 15,
+    marginBottom: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  contactIcon: {
+    fontSize: 24,
+    marginRight: 15,
+  },
+  contactInfo: {
+    flex: 1,
+  },
+  contactTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#2c3e50',
+    marginBottom: 2,
+  },
+  contactValue: {
+    fontSize: 14,
+    color: '#7f8c8d',
+  },
+  infoSection: {
+    marginBottom: 25,
+  },
+  infoTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#2c3e50',
+    marginBottom: 15,
+    textAlign: 'center',
+  },
+  infoCard: {
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 15,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
   },
   infoText: {
     fontSize: 14,
-    color: '#666',
-    lineHeight: 22,
+    color: '#34495e',
+    marginBottom: 8,
+    lineHeight: 20,
+  },
+  bold: {
+    fontWeight: 'bold',
+  },
+  socialSection: {
+    marginBottom: 25,
   },
   socialLinks: {
     flexDirection: 'row',
-    gap: 12,
-    marginTop: 12,
+    justifyContent: 'space-around',
   },
   socialButton: {
-    flex: 1,
-    backgroundColor: '#F8F9FA',
-    padding: 12,
+    backgroundColor: 'white',
     borderRadius: 12,
+    padding: 15,
     alignItems: 'center',
+    flex: 1,
+    marginHorizontal: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
   },
   socialIcon: {
     fontSize: 24,
-    marginBottom: 6,
+    marginBottom: 5,
   },
   socialText: {
     fontSize: 12,
-    color: '#6B7280',
+    color: '#2c3e50',
     fontWeight: '600',
   },
 });
 
 export default ContactScreen;
-

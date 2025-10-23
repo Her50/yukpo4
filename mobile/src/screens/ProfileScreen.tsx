@@ -1,5 +1,5 @@
 // @ts-nocheck
-// Remplacement des Ionicons par des emojis pour �viter les crashes
+// Remplacement des Ionicons par des emojis pour éviter les crashes
 import { useNavigation } from '@react-navigation/native';
 import * as React from 'react';
 import { useEffect, useState } from 'react';
@@ -14,7 +14,7 @@ const ProfileScreen: React.FC = () => {
   const [stats, setStats] = useState([
     { label: 'Services', value: '0' },
     { label: 'Clients', value: '0' },
-    { label: '�valuations', value: '0' },
+    { label: 'Évaluations', value: '0' },
   ]);
   const [loading, setLoading] = useState(true);
   const [accountInfo, setAccountInfo] = useState({
@@ -33,7 +33,7 @@ const ProfileScreen: React.FC = () => {
     try {
       setLoading(true);
 
-      // Charger les donn�es du profil utilisateur
+      // Charger les données du profil utilisateur
       const [profileResponse, servicesResponse] = await Promise.all([
         userApi.getUserProfile(),
         servicesApi.getUserServices()
@@ -64,12 +64,12 @@ const ProfileScreen: React.FC = () => {
         setStats([
           { label: 'Services', value: totalServices.toString() },
           { label: 'Interactions', value: totalInteractions.toString() },
-          { label: '�valuations', value: averageRating },
+          { label: 'Évaluations', value: averageRating },
         ]);
       }
     } catch (error) {
       console.error('Erreur chargement profil:', error);
-      Alert.alert('Erreur', 'Impossible de charger les donn�es du profil');
+      Alert.alert('Erreur', 'Impossible de charger les données du profil');
     } finally {
       setLoading(false);
     }
@@ -77,11 +77,11 @@ const ProfileScreen: React.FC = () => {
 
   const handleLogout = () => {
     Alert.alert(
-      'D�connexion',
-      '�tes-vous s�r de vouloir vous d�connecter ?',
+      'Déconnexion',
+      'Êtes-vous sûr de vouloir vous déconnecter ?',
       [
         { text: 'Annuler', style: 'cancel' },
-        { text: 'D�connexion', style: 'destructive', onPress: logout },
+        { text: 'Déconnexion', style: 'destructive', onPress: logout },
       ]
     );
   };
@@ -91,11 +91,11 @@ const ProfileScreen: React.FC = () => {
       if (action.route) {
         navigation.navigate(action.route as never);
       } else {
-        Alert.alert('Information', 'Cette fonctionnalit� sera bient�t disponible');
+        Alert.alert('Information', 'Cette fonctionnalité sera bientôt disponible');
       }
     } catch (error) {
       console.error('Erreur navigation:', error);
-      Alert.alert('Erreur', 'Impossible d\'acc�der � cette section');
+      Alert.alert('Erreur', 'Impossible d\'accéder à cette section');
     }
   };
 
@@ -133,10 +133,10 @@ const ProfileScreen: React.FC = () => {
       icon: 'wallet',
       color: '#EC4899',
       route: 'RechargeTokens',
-      description: 'Ajouter des tokens � votre compte'
+      description: 'Ajouter des tokens à votre compte'
     },
     {
-      title: 'Param�tres',
+      title: 'Paramètres',
       icon: 'settings-outline',
       color: '#757575',
       route: 'Settings',
@@ -171,8 +171,8 @@ const ProfileScreen: React.FC = () => {
           <Text style={styles.userName}>{user?.name || 'Utilisateur'}</Text>
           <Text style={styles.userEmail}>{user?.email || 'email@example.com'}</Text>
           <View style={styles.verificationBadge}>
-            <Text style={styles.verificationIcon}>?</Text>
-            <Text style={styles.verificationText}>Compte v�rifi�</Text>
+            <Text style={styles.verificationIcon}>✓</Text>
+            <Text style={styles.verificationText}>Compte vérifié</Text>
           </View>
         </View>
       </View>
@@ -197,7 +197,7 @@ const ProfileScreen: React.FC = () => {
               if (action.route) {
                 (navigation as any).navigate(action.route);
               } else {
-                Alert.alert('Information', 'Fonctionnalit� en cours de d�veloppement');
+                Alert.alert('Information', 'Fonctionnalité en cours de développement');
               }
             }}
           >
@@ -214,7 +214,7 @@ const ProfileScreen: React.FC = () => {
                 )}
               </View>
             </View>
-            <Text style={styles.chevronIcon}>?</Text>
+            <Text style={styles.chevronIcon}>›</Text>
           </TouchableOpacity>
         ))}
       </View>
@@ -240,14 +240,14 @@ const ProfileScreen: React.FC = () => {
         </View>
       </View>
 
-      {/* Bouton de d�connexion */}
+      {/* Bouton de déconnexion */}
       <View style={styles.logoutContainer}>
         <TouchableOpacity
           onPress={handleLogout}
           style={styles.logoutButton}
         >
-          <Text style={styles.logoutIcon}>??</Text>
-          <Text style={{ color: "#DC2626" }}>Se d�connecter</Text>
+          <Text style={styles.logoutIcon}>🚪</Text>
+          <Text style={{ color: "#DC2626" }}>Se déconnecter</Text>
         </TouchableOpacity>
       </View>
     </ScrollView>
@@ -441,7 +441,3 @@ const styles = StyleSheet.create({
 });
 
 export default ProfileScreen;
-
-
-
-

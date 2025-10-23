@@ -21,9 +21,17 @@ import AppNavigator from './src/navigation/AppNavigator';
 // - GPSTrackingManager : Chargé dans MainStack (après login)
 
 export default function App() {
-  console.log('[App] 🚀 Yukpomnang - VERSION OPTIMISÉE');
-  console.log('[App] 📱 Version: 1.0.0 - Chargement optimisé pour démarrage rapide');
-  console.log('[App] ⚡ Providers lourds chargés APRÈS authentification');
+  console.log('[App] 🚀 Yukpomnang - VERSION PRODUCTION OPTIMISÉE');
+  console.log('[App] 📱 Chargement progressif: Écran visible en <500ms');
+  
+  // ✅ PROTECTION: Gestion d'erreur pour le linking
+  const [linkingError, setLinkingError] = React.useState(false);
+  
+  const handleNavigationError = (error: any) => {
+    console.error('[App] ❌ Erreur navigation:', error);
+    setLinkingError(true);
+    // Continuer sans deep linking si erreur
+  };
 
   return (
     <ErrorBoundary>
@@ -34,7 +42,13 @@ export default function App() {
             {/* ✅ OPTIMISATION: Seul AuthProvider au démarrage */}
             <AuthProvider>
               <StatusBar style="auto" />
-              <NavigationContainer linking={linking}>
+              <NavigationContainer 
+                linking={linkingError ? undefined : linking}
+                onUnhandledAction={(action) => {
+                  console.warn('[App] Action non gérée:', action);
+                }}
+                fallback={null}
+              >
                 <AppNavigator />
               </NavigationContainer>
             </AuthProvider>

@@ -1,5 +1,5 @@
 // @ts-nocheck
-// Migration vers des composants React Native natifs pour Èviter les crashes
+// Migration vers des composants React Native natifs pour √©viter les crashes
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as React from 'react';
 import { useState } from 'react';
@@ -25,7 +25,7 @@ interface UserSettings {
   smsNotifications: boolean;
   marketingEmails: boolean;
 
-  // ConfidentialitÈ
+  // Confidentialit√©
   profileVisibility: 'public' | 'private' | 'friends';
   showLocation: boolean;
   showOnlineStatus: boolean;
@@ -37,7 +37,7 @@ interface UserSettings {
   fontSize: 'small' | 'medium' | 'large';
   compactMode: boolean;
 
-  // SÈcuritÈ
+  // S√©curit√©
   twoFactorAuth: boolean;
   sessionTimeout: number;
   loginAlerts: boolean;
@@ -48,20 +48,20 @@ const SettingsScreen: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [settings, setSettings] = useState<UserSettings>({
     // Profil
-    firstName: user?.name ? user.name.split(' ')[0] || '' : '',
-    lastName: user?.name ? user.name.split(' ').slice(1).join(' ') || '' : '',
+    firstName: user?.name?.split(' ')[0] || '',
+    lastName: user?.name?.split(' ').slice(1).join(' ') || '',
     name: user?.name || '',
     email: user?.email || '',
-    phone: user?.phone || '',
+    phone: '',
     bio: '',
 
     // Notifications
     emailNotifications: true,
     pushNotifications: true,
     smsNotifications: false,
-    marketingEmails: true,
+    marketingEmails: false,
 
-    // ConfidentialitÈ
+    // Confidentialit√©
     profileVisibility: 'public',
     showLocation: true,
     showOnlineStatus: true,
@@ -73,676 +73,661 @@ const SettingsScreen: React.FC = () => {
     fontSize: 'medium',
     compactMode: false,
 
-    // SÈcuritÈ
+    // S√©curit√©
     twoFactorAuth: false,
     sessionTimeout: 30,
     loginAlerts: true,
   });
 
-  // VÈrification de l'initialisation
-  React.useEffect(() => {
-    if (user) {
-      const nameParts = user.name ? user.name.split(' ') : ['', ''];
-      setSettings(prev => ({
-        ...prev,
-        firstName: nameParts[0] || '',
-        lastName: nameParts.slice(1).join(' ') || '',
-        name: user.name || '',
-        email: user.email || '',
-        phone: user.phone || '',
-      }));
-    }
-  }, [user]);
-
-  // Charger les paramËtres GPS au dÈmarrage
-  React.useEffect(() => {
-    const loadGPSSetting = async () => {
-      try {
-        const gpsEnabled = await AsyncStorage.getItem('gpsEnabled');
-        if (gpsEnabled !== null) {
-          setSettings(prev => ({
-            ...prev,
-            gpsEnabled: JSON.parse(gpsEnabled)
-          }));
-        } else {
-          // Si aucun paramËtre GPS n'est dÈfini, l'activer par dÈfaut
-          setSettings(prev => ({
-            ...prev,
-            gpsEnabled: true
-          }));
-          await AsyncStorage.setItem('gpsEnabled', JSON.stringify(true));
-        }
-      } catch (error) {
-        console.error('Erreur lors du chargement du paramËtre GPS:', error);
-      }
-    };
-
-    loadGPSSetting();
-  }, []);
+  const [activeSection, setActiveSection] = useState<string>('profile');
 
   const handleSave = async () => {
-    setLoading(true);
     try {
-      // Simuler la sauvegarde
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      setLoading(true);
 
-      // Mettre ‡ jour l'utilisateur
-      const fullName = `${settings.firstName} ${settings.lastName}`.trim();
-      updateUser({
-        name: fullName,
-        email: settings.email,
-        phone: settings.phone,
-      });
+      // Sauvegarder les param√®tres localement
+      await AsyncStorage.setItem('userSettings', JSON.stringify(settings));
 
-      // CORRECTION: Sauvegarder le paramËtre GPS dans AsyncStorage ET envoyer au backend
-      await AsyncStorage.setItem('gpsEnabled', JSON.stringify(settings.gpsEnabled));
+      // Mettre √† jour le profil utilisateur si n√©cessaire
+      if (settings.name !== user?.name || settings.email !== user?.email) {
+        const updateData = {
+          name: settings.name,
+          email: settings.email,
+          phone: settings.phone,
+          bio: settings.bio,
+        };
 
-      // ? CORRIG…: Envoyer le consentement GPS au backend avec apiPatch
-      try {
-        const response = await apiPatch('/api/user/me/gps_consent', {
-          gps_consent: settings.gpsEnabled
-        });
+        const response = await apiPatch('/api/users/profile', updateData);
 
         if (response.success) {
-          console.log('? [SettingsScreen] Consentement GPS envoyÈ au backend:', settings.gpsEnabled);
+          updateUser(response.data);
+          Alert.alert('Succ√®s', 'Param√®tres sauvegard√©s avec succ√®s');
         } else {
-          console.warn('?? [SettingsScreen] Erreur envoi consentement GPS au backend');
+          Alert.alert('Erreur', 'Impossible de sauvegarder les param√®tres');
         }
-      } catch (error) {
-        console.error('? [SettingsScreen] Erreur rÈseau consentement GPS:', error);
+      } else {
+        Alert.alert('Succ√®s', 'Param√®tres sauvegard√©s avec succ√®s');
       }
-
-      Alert.alert('SuccËs', 'ParamËtres sauvegardÈs avec succËs');
     } catch (error) {
-      Alert.alert('Erreur', 'Erreur lors de la sauvegarde');
+      console.error('Erreur sauvegarde param√®tres:', error);
+      Alert.alert('Erreur', 'Impossible de sauvegarder les param√®tres');
     } finally {
       setLoading(false);
     }
   };
 
-  const getInitials = (firstName: string, lastName: string) => {
-    const firstInitial = firstName.charAt(0).toUpperCase();
-    const lastInitial = lastName.charAt(0).toUpperCase();
-    return `${firstInitial}${lastInitial}`;
+  const handleReset = () => {
+    Alert.alert(
+      'R√©initialiser les param√®tres',
+      '√ätes-vous s√ªr de vouloir r√©initialiser tous les param√®tres aux valeurs par d√©faut ?',
+      [
+        { text: 'Annuler', style: 'cancel' },
+        {
+          text: 'R√©initialiser',
+          style: 'destructive',
+          onPress: () => {
+            setSettings({
+              firstName: user?.name?.split(' ')[0] || '',
+              lastName: user?.name?.split(' ').slice(1).join(' ') || '',
+              name: user?.name || '',
+              email: user?.email || '',
+              phone: '',
+              bio: '',
+              emailNotifications: true,
+              pushNotifications: true,
+              smsNotifications: false,
+              marketingEmails: false,
+              profileVisibility: 'public',
+              showLocation: true,
+              showOnlineStatus: true,
+              allowDataCollection: true,
+              gpsEnabled: true,
+              theme: 'light',
+              fontSize: 'medium',
+              compactMode: false,
+              twoFactorAuth: false,
+              sessionTimeout: 30,
+              loginAlerts: true,
+            });
+          }
+        }
+      ]
+    );
+  };
+
+  const updateSetting = (key: keyof UserSettings, value: any) => {
+    setSettings(prev => ({ ...prev, [key]: value }));
   };
 
   const renderProfileSection = () => (
-    <View style={styles.sectionCard}>
-      <View style={styles.sectionContent}>
-        <Text style={styles.sectionTitle}>Mon Profil</Text>
+    <View style={styles.section}>
+      <Text style={styles.sectionTitle}>üë§ Profil</Text>
 
-        {/* Avatar compact */}
-        <View style={styles.compactAvatarContainer}>
-          <View style={styles.compactAvatar}>
-            <Text style={styles.compactAvatarText}>{getInitials(settings.firstName, settings.lastName)}</Text>
-          </View>
-          <TouchableOpacity
-            onPress={() => Alert.alert('Info', 'FonctionnalitÈ de changement de photo en cours de dÈveloppement')}
-            style={styles.compactChangePhotoButton}
-          >
-            <Text style={styles.compactChangePhotoText}>?? Changer</Text>
-          </TouchableOpacity>
-        </View>
+      <View style={styles.inputGroup}>
+        <Text style={styles.label}>Pr√©nom</Text>
+        <TextInput
+          style={styles.input}
+          value={settings.firstName}
+          onChangeText={(value) => {
+            updateSetting('firstName', value);
+            updateSetting('name', `${value} ${settings.lastName}`.trim());
+          }}
+          placeholder="Votre pr√©nom"
+        />
+      </View>
 
-        {/* Champs nom et prÈnom cÙte ‡ cÙte */}
-        <View style={styles.nameRow}>
-          <View style={[styles.inputContainer, styles.halfWidth]}>
-            <Text style={styles.inputLabel}>PrÈnom</Text>
-            <TextInput
-              value={settings.firstName}
-              onChangeText={(text) => setSettings(prev => ({ ...prev, firstName: text }))}
-              style={styles.input}
-              placeholder="Votre prÈnom"
-            />
-          </View>
-          <View style={[styles.inputContainer, styles.halfWidth]}>
-            <Text style={styles.inputLabel}>Nom</Text>
-            <TextInput
-              value={settings.lastName}
-              onChangeText={(text) => setSettings(prev => ({ ...prev, lastName: text }))}
-              style={styles.input}
-              placeholder="Votre nom"
-            />
-          </View>
-        </View>
+      <View style={styles.inputGroup}>
+        <Text style={styles.label}>Nom</Text>
+        <TextInput
+          style={styles.input}
+          value={settings.lastName}
+          onChangeText={(value) => {
+            updateSetting('lastName', value);
+            updateSetting('name', `${settings.firstName} ${value}`.trim());
+          }}
+          placeholder="Votre nom"
+        />
+      </View>
 
-        <View style={styles.inputContainer}>
-          <Text style={styles.inputLabel}>Email</Text>
-          <TextInput
-            value={settings.email}
-            onChangeText={(text) => setSettings(prev => ({ ...prev, email: text }))}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            style={styles.input}
-            placeholder="votre@email.com"
-          />
-        </View>
+      <View style={styles.inputGroup}>
+        <Text style={styles.label}>Email</Text>
+        <TextInput
+          style={styles.input}
+          value={settings.email}
+          onChangeText={(value) => updateSetting('email', value)}
+          placeholder="votre@email.com"
+          keyboardType="email-address"
+          autoCapitalize="none"
+        />
+      </View>
 
-        <View style={styles.inputContainer}>
-          <Text style={styles.inputLabel}>TÈlÈphone</Text>
-          <TextInput
-            value={settings.phone}
-            onChangeText={(text) => setSettings(prev => ({ ...prev, phone: text }))}
-            keyboardType="phone-pad"
-            style={styles.input}
-            placeholder="+237 6XX XX XX XX"
-          />
-        </View>
+      <View style={styles.inputGroup}>
+        <Text style={styles.label}>T√©l√©phone</Text>
+        <TextInput
+          style={styles.input}
+          value={settings.phone}
+          onChangeText={(value) => updateSetting('phone', value)}
+          placeholder="+237 6XX XXX XXX"
+          keyboardType="phone-pad"
+        />
+      </View>
 
-        <View style={styles.inputContainer}>
-          <Text style={styles.inputLabel}>Bio (optionnel)</Text>
-          <TextInput
-            value={settings.bio}
-            onChangeText={(text) => setSettings(prev => ({ ...prev, bio: text }))}
-            multiline
-            numberOfLines={2}
-            style={[styles.input, styles.bioInput]}
-            placeholder="DÈcrivez-vous en quelques mots..."
-          />
-        </View>
+      <View style={styles.inputGroup}>
+        <Text style={styles.label}>Biographie</Text>
+        <TextInput
+          style={[styles.input, styles.textArea]}
+          value={settings.bio}
+          onChangeText={(value) => updateSetting('bio', value)}
+          placeholder="Parlez-nous de vous..."
+          multiline
+          numberOfLines={3}
+          textAlignVertical="top"
+        />
       </View>
     </View>
   );
 
   const renderNotificationsSection = () => (
-    <View style={styles.sectionCard}>
-      <View style={styles.sectionContent}>
-        <Text style={styles.sectionTitle}>Notifications</Text>
+    <View style={styles.section}>
+      <Text style={styles.sectionTitle}>üîî Notifications</Text>
 
-        <View style={styles.settingRow}>
-          <View style={styles.settingInfo}>
-            <Text style={styles.iconEmoji}>??</Text>
-            <View style={styles.settingText}>
-              <Text style={styles.settingLabel}>Notifications email</Text>
-              <Text style={styles.settingDescription}>Recevoir des notifications par email</Text>
-            </View>
-          </View>
-          <Switch
-            value={settings.emailNotifications}
-            onValueChange={(value) => setSettings(prev => ({ ...prev, emailNotifications: value }))}
-          />
+      <View style={styles.settingRow}>
+        <View style={styles.settingInfo}>
+          <Text style={styles.settingTitle}>Notifications email</Text>
+          <Text style={styles.settingDescription}>Recevoir des notifications par email</Text>
         </View>
+        <Switch
+          value={settings.emailNotifications}
+          onValueChange={(value) => updateSetting('emailNotifications', value)}
+          trackColor={{ false: '#767577', true: '#81b0ff' }}
+          thumbColor={settings.emailNotifications ? '#f5dd4b' : '#f4f3f4'}
+        />
+      </View>
 
-        <View style={styles.settingRow}>
-          <View style={styles.settingInfo}>
-            <Text style={styles.iconEmoji}>??</Text>
-            <View style={styles.settingText}>
-              <Text style={styles.settingLabel}>Notifications push</Text>
-              <Text style={styles.settingDescription}>Recevoir des notifications push</Text>
-            </View>
-          </View>
-          <Switch
-            value={settings.pushNotifications}
-            onValueChange={(value) => setSettings(prev => ({ ...prev, pushNotifications: value }))}
-          />
+      <View style={styles.settingRow}>
+        <View style={styles.settingInfo}>
+          <Text style={styles.settingTitle}>Notifications push</Text>
+          <Text style={styles.settingDescription}>Recevoir des notifications push</Text>
         </View>
+        <Switch
+          value={settings.pushNotifications}
+          onValueChange={(value) => updateSetting('pushNotifications', value)}
+          trackColor={{ false: '#767577', true: '#81b0ff' }}
+          thumbColor={settings.pushNotifications ? '#f5dd4b' : '#f4f3f4'}
+        />
+      </View>
 
-        <View style={styles.settingRow}>
-          <View style={styles.settingInfo}>
-            <Text style={styles.iconEmoji}>??</Text>
-            <View style={styles.settingText}>
-              <Text style={styles.settingLabel}>Notifications SMS</Text>
-              <Text style={styles.settingDescription}>Recevoir des notifications par SMS</Text>
-            </View>
-          </View>
-          <Switch
-            value={settings.smsNotifications}
-            onValueChange={(value) => setSettings(prev => ({ ...prev, smsNotifications: value }))}
-          />
+      <View style={styles.settingRow}>
+        <View style={styles.settingInfo}>
+          <Text style={styles.settingTitle}>Notifications SMS</Text>
+          <Text style={styles.settingDescription}>Recevoir des notifications par SMS</Text>
         </View>
+        <Switch
+          value={settings.smsNotifications}
+          onValueChange={(value) => updateSetting('smsNotifications', value)}
+          trackColor={{ false: '#767577', true: '#81b0ff' }}
+          thumbColor={settings.smsNotifications ? '#f5dd4b' : '#f4f3f4'}
+        />
+      </View>
 
-        <View style={styles.settingRow}>
-          <View style={styles.settingInfo}>
-            <Text style={styles.iconEmoji}>??</Text>
-            <View style={styles.settingText}>
-              <Text style={styles.settingLabel}>Emails marketing</Text>
-              <Text style={styles.settingDescription}>Recevoir des offres et nouveautÈs</Text>
-            </View>
-          </View>
-          <Switch
-            value={settings.marketingEmails}
-            onValueChange={(value) => setSettings(prev => ({ ...prev, marketingEmails: value }))}
-          />
+      <View style={styles.settingRow}>
+        <View style={styles.settingInfo}>
+          <Text style={styles.settingTitle}>Emails marketing</Text>
+          <Text style={styles.settingDescription}>Recevoir des offres et promotions</Text>
         </View>
+        <Switch
+          value={settings.marketingEmails}
+          onValueChange={(value) => updateSetting('marketingEmails', value)}
+          trackColor={{ false: '#767577', true: '#81b0ff' }}
+          thumbColor={settings.marketingEmails ? '#f5dd4b' : '#f4f3f4'}
+        />
       </View>
     </View>
   );
 
   const renderPrivacySection = () => (
-    <View style={styles.sectionCard}>
-      <View style={styles.sectionContent}>
-        <Text style={styles.sectionTitle}>ConfidentialitÈ</Text>
+    <View style={styles.section}>
+      <Text style={styles.sectionTitle}>üîí Confidentialit√©</Text>
 
-        <View style={styles.settingRow}>
-          <View style={styles.settingInfo}>
-            <Text style={styles.iconEmoji}>???</Text>
-            <View style={styles.settingText}>
-              <Text style={styles.settingLabel}>VisibilitÈ du profil</Text>
-              <Text style={styles.settingDescription}>Qui peut voir votre profil</Text>
-            </View>
-          </View>
-          <TouchableOpacity
-            onPress={() => {
-              const options = ['public', 'private', 'friends'];
-              const currentIndex = options.indexOf(settings.profileVisibility);
-              const nextIndex = (currentIndex + 1) % options.length;
-              setSettings(prev => ({ ...prev, profileVisibility: options[nextIndex] as any }));
-            }}
-            style={styles.visibilityButton}
-          >
-            <Text style={styles.visibilityButtonText}>{settings.profileVisibility}</Text>
-          </TouchableOpacity>
+      <View style={styles.settingRow}>
+        <View style={styles.settingInfo}>
+          <Text style={styles.settingTitle}>Visibilit√© du profil</Text>
+          <Text style={styles.settingDescription}>Qui peut voir votre profil</Text>
         </View>
+        <TouchableOpacity
+          style={styles.selector}
+          onPress={() => {
+            Alert.alert(
+              'Visibilit√© du profil',
+              'Choisissez qui peut voir votre profil',
+              [
+                { text: 'Public', onPress: () => updateSetting('profileVisibility', 'public') },
+                { text: 'Priv√©', onPress: () => updateSetting('profileVisibility', 'private') },
+                { text: 'Amis seulement', onPress: () => updateSetting('profileVisibility', 'friends') },
+                { text: 'Annuler', style: 'cancel' }
+              ]
+            );
+          }}
+        >
+          <Text style={styles.selectorText}>
+            {settings.profileVisibility === 'public' ? 'Public' :
+              settings.profileVisibility === 'private' ? 'Priv√©' : 'Amis seulement'}
+          </Text>
+        </TouchableOpacity>
+      </View>
 
-        <View style={styles.settingRow}>
-          <View style={styles.settingInfo}>
-            <Text style={styles.iconEmoji}>??</Text>
-            <View style={styles.settingText}>
-              <Text style={styles.settingLabel}>Afficher la localisation</Text>
-              <Text style={styles.settingDescription}>Partager votre position</Text>
-            </View>
-          </View>
-          <Switch
-            value={settings.showLocation}
-            onValueChange={(value) => setSettings(prev => ({ ...prev, showLocation: value }))}
-          />
+      <View style={styles.settingRow}>
+        <View style={styles.settingInfo}>
+          <Text style={styles.settingTitle}>Afficher la localisation</Text>
+          <Text style={styles.settingDescription}>Partager votre position</Text>
         </View>
+        <Switch
+          value={settings.showLocation}
+          onValueChange={(value) => updateSetting('showLocation', value)}
+          trackColor={{ false: '#767577', true: '#81b0ff' }}
+          thumbColor={settings.showLocation ? '#f5dd4b' : '#f4f3f4'}
+        />
+      </View>
 
-        <View style={styles.settingRow}>
-          <View style={styles.settingInfo}>
-            <Text style={styles.iconEmoji}>??</Text>
-            <View style={styles.settingText}>
-              <Text style={styles.settingLabel}>Statut en ligne</Text>
-              <Text style={styles.settingDescription}>Afficher quand vous Ítes en ligne</Text>
-            </View>
-          </View>
-          <Switch
-            value={settings.showOnlineStatus}
-            onValueChange={(value) => setSettings(prev => ({ ...prev, showOnlineStatus: value }))}
-          />
+      <View style={styles.settingRow}>
+        <View style={styles.settingInfo}>
+          <Text style={styles.settingTitle}>Statut en ligne</Text>
+          <Text style={styles.settingDescription}>Afficher quand vous √™tes en ligne</Text>
         </View>
+        <Switch
+          value={settings.showOnlineStatus}
+          onValueChange={(value) => updateSetting('showOnlineStatus', value)}
+          trackColor={{ false: '#767577', true: '#81b0ff' }}
+          thumbColor={settings.showOnlineStatus ? '#f5dd4b' : '#f4f3f4'}
+        />
+      </View>
 
-        <View style={styles.settingRow}>
-          <View style={styles.settingInfo}>
-            <Text style={styles.iconEmoji}>???</Text>
-            <View style={styles.settingText}>
-              <Text style={styles.settingLabel}>Localisation en temps rÈel</Text>
-              <Text style={styles.settingDescription}>
-                Partager votre position GPS avec vos clients (activÈ par dÈfaut)
-              </Text>
-            </View>
-          </View>
-          <Switch
-            value={settings.gpsEnabled}
-            onValueChange={async (value) => {
-              setSettings(prev => ({ ...prev, gpsEnabled: value }));
-              // CORRECTION: Sauvegarder immÈdiatement pour que le hook dÈtecte le changement
-              await AsyncStorage.setItem('gpsEnabled', JSON.stringify(value));
-              console.log('[SettingsScreen] GPS', value ? 'activÈ' : 'dÈsactivÈ');
-            }}
-          />
+      <View style={styles.settingRow}>
+        <View style={styles.settingInfo}>
+          <Text style={styles.settingTitle}>Collecte de donn√©es</Text>
+          <Text style={styles.settingDescription}>Autoriser la collecte de donn√©es d'usage</Text>
         </View>
+        <Switch
+          value={settings.allowDataCollection}
+          onValueChange={(value) => updateSetting('allowDataCollection', value)}
+          trackColor={{ false: '#767577', true: '#81b0ff' }}
+          thumbColor={settings.allowDataCollection ? '#f5dd4b' : '#f4f3f4'}
+        />
+      </View>
+    </View>
+  );
 
-        <View style={styles.settingRow}>
-          <View style={styles.settingInfo}>
-            <Text style={styles.iconEmoji}>??</Text>
-            <View style={styles.settingText}>
-              <Text style={styles.settingLabel}>Collecte de donnÈes</Text>
-              <Text style={styles.settingDescription}>Autoriser l'analyse d'usage</Text>
-            </View>
-          </View>
-          <Switch
-            value={settings.allowDataCollection}
-            onValueChange={(value) => setSettings(prev => ({ ...prev, allowDataCollection: value }))}
-          />
+  const renderAppearanceSection = () => (
+    <View style={styles.section}>
+      <Text style={styles.sectionTitle}>üé® Apparence</Text>
+
+      <View style={styles.settingRow}>
+        <View style={styles.settingInfo}>
+          <Text style={styles.settingTitle}>Th√®me</Text>
+          <Text style={styles.settingDescription}>Choisir le th√®me de l'application</Text>
         </View>
+        <TouchableOpacity
+          style={styles.selector}
+          onPress={() => {
+            Alert.alert(
+              'Th√®me',
+              'Choisissez le th√®me de l\'application',
+              [
+                { text: 'Clair', onPress: () => updateSetting('theme', 'light') },
+                { text: 'Sombre', onPress: () => updateSetting('theme', 'dark') },
+                { text: 'Automatique', onPress: () => updateSetting('theme', 'auto') },
+                { text: 'Annuler', style: 'cancel' }
+              ]
+            );
+          }}
+        >
+          <Text style={styles.selectorText}>
+            {settings.theme === 'light' ? 'Clair' :
+              settings.theme === 'dark' ? 'Sombre' : 'Automatique'}
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.settingRow}>
+        <View style={styles.settingInfo}>
+          <Text style={styles.settingTitle}>Taille de police</Text>
+          <Text style={styles.settingDescription}>Ajuster la taille du texte</Text>
+        </View>
+        <TouchableOpacity
+          style={styles.selector}
+          onPress={() => {
+            Alert.alert(
+              'Taille de police',
+              'Choisissez la taille de police',
+              [
+                { text: 'Petite', onPress: () => updateSetting('fontSize', 'small') },
+                { text: 'Moyenne', onPress: () => updateSetting('fontSize', 'medium') },
+                { text: 'Grande', onPress: () => updateSetting('fontSize', 'large') },
+                { text: 'Annuler', style: 'cancel' }
+              ]
+            );
+          }}
+        >
+          <Text style={styles.selectorText}>
+            {settings.fontSize === 'small' ? 'Petite' :
+              settings.fontSize === 'medium' ? 'Moyenne' : 'Grande'}
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.settingRow}>
+        <View style={styles.settingInfo}>
+          <Text style={styles.settingTitle}>Mode compact</Text>
+          <Text style={styles.settingDescription}>Interface plus compacte</Text>
+        </View>
+        <Switch
+          value={settings.compactMode}
+          onValueChange={(value) => updateSetting('compactMode', value)}
+          trackColor={{ false: '#767577', true: '#81b0ff' }}
+          thumbColor={settings.compactMode ? '#f5dd4b' : '#f4f3f4'}
+        />
       </View>
     </View>
   );
 
   const renderSecuritySection = () => (
-    <View style={styles.sectionCard}>
-      <View style={styles.sectionContent}>
-        <Text style={styles.sectionTitle}>SÈcuritÈ</Text>
+    <View style={styles.section}>
+      <Text style={styles.sectionTitle}>üõ°Ô∏è S√©curit√©</Text>
 
-        <View style={styles.settingRow}>
-          <View style={styles.settingInfo}>
-            <Text style={styles.iconEmoji}>???</Text>
-            <View style={styles.settingText}>
-              <Text style={styles.settingLabel}>Authentification ‡ deux facteurs</Text>
-              <Text style={styles.settingDescription}>SÈcuriser votre compte</Text>
-            </View>
-          </View>
-          <Switch
-            value={settings.twoFactorAuth}
-            onValueChange={(value) => setSettings(prev => ({ ...prev, twoFactorAuth: value }))}
-          />
+      <View style={styles.settingRow}>
+        <View style={styles.settingInfo}>
+          <Text style={styles.settingTitle}>Authentification √† deux facteurs</Text>
+          <Text style={styles.settingDescription}>S√©curiser votre compte avec 2FA</Text>
         </View>
+        <Switch
+          value={settings.twoFactorAuth}
+          onValueChange={(value) => updateSetting('twoFactorAuth', value)}
+          trackColor={{ false: '#767577', true: '#81b0ff' }}
+          thumbColor={settings.twoFactorAuth ? '#f5dd4b' : '#f4f3f4'}
+        />
+      </View>
 
-        <View style={styles.settingRow}>
-          <View style={styles.settingInfo}>
-            <Text style={styles.iconEmoji}>?</Text>
-            <View style={styles.settingText}>
-              <Text style={styles.settingLabel}>DÈlai de session</Text>
-              <Text style={styles.settingDescription}>Minutes avant dÈconnexion automatique</Text>
-            </View>
-          </View>
-          <TouchableOpacity
-            onPress={() => {
-              const options = [15, 30, 60, 120];
-              const currentIndex = options.indexOf(settings.sessionTimeout);
-              const nextIndex = (currentIndex + 1) % options.length;
-              setSettings(prev => ({ ...prev, sessionTimeout: options[nextIndex] }));
-            }}
-            style={styles.timeoutButton}
-          >
-            <Text style={styles.timeoutButtonText}>{settings.sessionTimeout}min</Text>
-          </TouchableOpacity>
+      <View style={styles.settingRow}>
+        <View style={styles.settingInfo}>
+          <Text style={styles.settingTitle}>D√©lai de session</Text>
+          <Text style={styles.settingDescription}>Temps avant d√©connexion automatique</Text>
         </View>
-
-        <View style={styles.settingRow}>
-          <View style={styles.settingInfo}>
-            <Text style={styles.iconEmoji}>??</Text>
-            <View style={styles.settingText}>
-              <Text style={styles.settingLabel}>Alertes de connexion</Text>
-              <Text style={styles.settingDescription}> tre notifiÈ des nouvelles connexions</Text>
-            </View>
-          </View>
-          <Switch
-            value={settings.loginAlerts}
-            onValueChange={(value) => setSettings(prev => ({ ...prev, loginAlerts: value }))}
-          />
-        </View>
-
         <TouchableOpacity
-          onPress={() => Alert.alert('Info', 'FonctionnalitÈ de changement de mot de passe en cours de dÈveloppement')}
-          style={styles.changePasswordButton}
+          style={styles.selector}
+          onPress={() => {
+            Alert.alert(
+              'D√©lai de session',
+              'Choisissez le d√©lai de d√©connexion automatique',
+              [
+                { text: '15 minutes', onPress: () => updateSetting('sessionTimeout', 15) },
+                { text: '30 minutes', onPress: () => updateSetting('sessionTimeout', 30) },
+                { text: '1 heure', onPress: () => updateSetting('sessionTimeout', 60) },
+                { text: '2 heures', onPress: () => updateSetting('sessionTimeout', 120) },
+                { text: 'Annuler', style: 'cancel' }
+              ]
+            );
+          }}
         >
-          <Text style={styles.changePasswordIcon}>??</Text>
-          <Text style={styles.changePasswordText}>Changer le mot de passe</Text>
+          <Text style={styles.selectorText}>
+            {settings.sessionTimeout === 15 ? '15 minutes' :
+              settings.sessionTimeout === 30 ? '30 minutes' :
+                settings.sessionTimeout === 60 ? '1 heure' : '2 heures'}
+          </Text>
         </TouchableOpacity>
+      </View>
+
+      <View style={styles.settingRow}>
+        <View style={styles.settingInfo}>
+          <Text style={styles.settingTitle}>Alertes de connexion</Text>
+          <Text style={styles.settingDescription}>√ätre notifi√© des nouvelles connexions</Text>
+        </View>
+        <Switch
+          value={settings.loginAlerts}
+          onValueChange={(value) => updateSetting('loginAlerts', value)}
+          trackColor={{ false: '#767577', true: '#81b0ff' }}
+          thumbColor={settings.loginAlerts ? '#f5dd4b' : '#f4f3f4'}
+        />
       </View>
     </View>
   );
 
-  // Gestion d'erreur pour Èviter les crashes
-  try {
-    return (
-      <SafeNativeView style={styles.container}>
-        <ScrollView contentContainerStyle={styles.scrollContent}>
-          {user ? (
-            <>
-              {renderProfileSection()}
-              {renderNotificationsSection()}
-              {renderPrivacySection()}
-              {renderSecuritySection()}
+  const renderSection = () => {
+    switch (activeSection) {
+      case 'profile':
+        return renderProfileSection();
+      case 'notifications':
+        return renderNotificationsSection();
+      case 'privacy':
+        return renderPrivacySection();
+      case 'appearance':
+        return renderAppearanceSection();
+      case 'security':
+        return renderSecuritySection();
+      default:
+        return renderProfileSection();
+    }
+  };
 
-              <TouchableOpacity
-                onPress={handleSave}
-                disabled={loading}
-                style={styles.saveButton}
-              >
-                <Text style={styles.saveButtonText}>
-                  {loading ? 'Sauvegarde...' : 'Sauvegarder les paramËtres'}
-                </Text>
-              </TouchableOpacity>
-            </>
-          ) : (
-            <View style={styles.errorContainer}>
-              <Text style={styles.errorText}>Erreur de chargement des paramËtres</Text>
-              <TouchableOpacity onPress={() => setLoading(false)} style={styles.retryButton}>
-                <Text style={styles.retryButtonText}>RÈessayer</Text>
-              </TouchableOpacity>
-            </View>
-          )}
+  return (
+    <SafeNativeView style={styles.container}>
+      <View style={styles.header}>
+        <Text style={styles.title}>‚öôÔ∏è Param√®tres</Text>
+        <Text style={styles.subtitle}>Personnalisez votre exp√©rience</Text>
+      </View>
+
+      <View style={styles.tabsContainer}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabs}>
+          {[
+            { id: 'profile', title: 'üë§ Profil', icon: 'üë§' },
+            { id: 'notifications', title: 'üîî Notifications', icon: 'üîî' },
+            { id: 'privacy', title: 'üîí Confidentialit√©', icon: 'üîí' },
+            { id: 'appearance', title: 'üé® Apparence', icon: 'üé®' },
+            { id: 'security', title: 'üõ°Ô∏è S√©curit√©', icon: 'üõ°Ô∏è' },
+          ].map((tab) => (
+            <TouchableOpacity
+              key={tab.id}
+              style={[
+                styles.tab,
+                activeSection === tab.id && styles.activeTab
+              ]}
+              onPress={() => setActiveSection(tab.id)}
+            >
+              <Text style={[
+                styles.tabText,
+                activeSection === tab.id && styles.activeTabText
+              ]}>
+                {tab.title}
+              </Text>
+            </TouchableOpacity>
+          ))}
         </ScrollView>
-      </SafeNativeView>
-    );
-  } catch (error) {
-    console.error('Erreur dans SettingsScreen:', error);
-    return (
-      <SafeNativeView style={styles.container}>
-        <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>Erreur d'affichage des paramËtres</Text>
-          <Text style={styles.errorSubtext}>Veuillez rÈessayer plus tard</Text>
-        </View>
-      </SafeNativeView>
-    );
-  }
+      </View>
+
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        {renderSection()}
+      </ScrollView>
+
+      <View style={styles.footer}>
+        <TouchableOpacity
+          style={[styles.button, styles.resetButton]}
+          onPress={handleReset}
+        >
+          <Text style={styles.resetButtonText}>üîÑ R√©initialiser</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.button, styles.saveButton]}
+          onPress={handleSave}
+          disabled={loading}
+        >
+          <Text style={styles.saveButtonText}>
+            {loading ? '‚è≥ Sauvegarde...' : 'üíæ Sauvegarder'}
+          </Text>
+        </TouchableOpacity>
+      </View>
+    </SafeNativeView>
+  );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background,
+    backgroundColor: '#f8f9fa',
   },
-  scrollContent: {
-    padding: 16,
-    paddingBottom: 120,
+  header: {
+    backgroundColor: theme.colors.primary,
+    paddingTop: 50,
+    paddingBottom: 20,
+    paddingHorizontal: 20,
+    alignItems: 'center',
   },
-  sectionCard: {
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: 'white',
+    marginBottom: 5,
+  },
+  subtitle: {
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.8)',
+  },
+  tabsContainer: {
     backgroundColor: 'white',
-    marginBottom: 16,
-    marginHorizontal: 16,
-    borderRadius: 12,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
   },
-  sectionContent: {
-    padding: 16,
+  tabs: {
+    paddingHorizontal: 10,
+  },
+  tab: {
+    paddingHorizontal: 20,
+    paddingVertical: 15,
+    marginHorizontal: 5,
+    borderRadius: 20,
+    backgroundColor: '#f0f0f0',
+  },
+  activeTab: {
+    backgroundColor: theme.colors.primary,
+  },
+  tabText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#666',
+  },
+  activeTabText: {
+    color: 'white',
+  },
+  content: {
+    flex: 1,
+    padding: 20,
+  },
+  section: {
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 20,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: theme.colors.text,
-    marginBottom: 16,
+    color: '#2c3e50',
+    marginBottom: 20,
   },
-  // Styles compacts pour le profil
-  compactAvatarContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
+  inputGroup: {
+    marginBottom: 20,
   },
-  compactAvatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: theme.colors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  compactAvatarText: {
-    color: 'white',
+  label: {
     fontSize: 16,
-    fontWeight: 'bold',
-  },
-  compactChangePhotoButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    backgroundColor: theme.colors.surface,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-  },
-  compactChangePhotoText: {
-    color: theme.colors.primary,
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  nameRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 16,
-  },
-  halfWidth: {
-    width: '48%',
-  },
-  bioInput: {
-    height: 60,
-    textAlignVertical: 'top',
-  },
-  inputContainer: {
-    marginBottom: 16,
-  },
-  inputLabel: {
-    fontSize: 14,
-    color: theme.colors.textSecondary,
+    fontWeight: '600',
+    color: '#34495e',
     marginBottom: 8,
-    fontWeight: '500',
   },
   input: {
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: '#ddd',
     borderRadius: 8,
     padding: 12,
     fontSize: 16,
-    color: theme.colors.text,
-    backgroundColor: 'white',
+    backgroundColor: '#f8f9fa',
+    color: '#2c3e50',
+  },
+  textArea: {
+    height: 80,
+    textAlignVertical: 'top',
   },
   settingRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 12,
+    paddingVertical: 15,
     borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
+    borderBottomColor: '#f0f0f0',
   },
   settingInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
     flex: 1,
+    marginRight: 15,
   },
-  settingText: {
-    marginLeft: 12,
-    flex: 1,
-  },
-  settingLabel: {
+  settingTitle: {
     fontSize: 16,
-    color: theme.colors.text,
-    fontWeight: '500',
+    fontWeight: '600',
+    color: '#2c3e50',
+    marginBottom: 2,
   },
   settingDescription: {
-    fontSize: 12,
-    color: theme.colors.textSecondary,
-    marginTop: 2,
-  },
-  iconEmoji: {
-    fontSize: 20,
-    marginRight: 12,
-  },
-  visibilityButton: {
-    minWidth: 80,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    backgroundColor: theme.colors.surface,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-  },
-  visibilityButtonText: {
-    color: theme.colors.primary,
     fontSize: 14,
-    fontWeight: '500',
+    color: '#7f8c8d',
   },
-  timeoutButton: {
-    minWidth: 80,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    backgroundColor: theme.colors.surface,
-    borderRadius: 8,
+  selector: {
+    backgroundColor: '#f8f9fa',
     borderWidth: 1,
-    borderColor: theme.colors.border,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    minWidth: 100,
   },
-  timeoutButtonText: {
-    color: theme.colors.primary,
+  selectorText: {
     fontSize: 14,
-    fontWeight: '500',
+    color: '#2c3e50',
+    textAlign: 'center',
   },
-  changePasswordButton: {
-    marginTop: 16,
+  footer: {
     flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    backgroundColor: theme.colors.surface,
+    padding: 20,
+    backgroundColor: 'white',
+    borderTopWidth: 1,
+    borderTopColor: '#e0e0e0',
+    gap: 10,
+  },
+  button: {
+    flex: 1,
+    paddingVertical: 15,
     borderRadius: 8,
+    alignItems: 'center',
+  },
+  resetButton: {
+    backgroundColor: '#f8f9fa',
     borderWidth: 1,
-    borderColor: theme.colors.primary,
+    borderColor: '#ddd',
   },
-  changePasswordIcon: {
-    fontSize: 20,
-    marginRight: 8,
-  },
-  changePasswordText: {
-    color: theme.colors.primary,
+  resetButtonText: {
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: '600',
+    color: '#666',
   },
   saveButton: {
     backgroundColor: theme.colors.primary,
-    marginTop: 24,
-    marginBottom: 32,
-    marginHorizontal: 16,
-    paddingVertical: 16,
-    borderRadius: 8,
-    alignItems: 'center',
   },
   saveButtonText: {
-    color: 'white',
     fontSize: 16,
     fontWeight: '600',
-  },
-  saveButtonContent: {
-    paddingVertical: 8,
-  },
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  errorText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#EF4444',
-    textAlign: 'center',
-    marginBottom: 10,
-  },
-  errorSubtext: {
-    fontSize: 14,
-    color: '#6B7280',
-    textAlign: 'center',
-    marginBottom: 20,
-  },
-  retryButton: {
-    backgroundColor: theme.colors.primary,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 8,
-  },
-  retryButtonText: {
     color: 'white',
-    fontSize: 16,
-    fontWeight: '600',
   },
 });
 
 export default SettingsScreen;
-
-
-
-
-
-
-
-
-
-
-
-
-
-

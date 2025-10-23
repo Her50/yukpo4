@@ -1,8 +1,8 @@
 // Composant de carte moderne avec glassmorphism et gradients
+import { BlurView } from 'expo-blur';
 import React from 'react';
 import { StyleSheet, View, ViewStyle } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
-import { BlurView } from '@react-native-community/blur';
 import { modernColors, modernStyles } from '../theme/modernTheme';
 
 interface ModernCardProps {
@@ -47,9 +47,8 @@ const ModernCard: React.FC<ModernCardProps> = ({
     return (
       <BlurView
         style={cardStyle}
-        blurType={blurType}
-        blurAmount={intensity}
-        reducedTransparencyFallbackColor="rgba(255, 255, 255, 0.8)"
+        intensity={intensity}
+        tint={blurType === 'dark' ? 'dark' : 'light'}
       >
         <View style={styles.glassOverlay}>
           {children}

@@ -4,32 +4,34 @@ const linking: LinkingOptions<any> = {
   prefixes: ['yukpomnang://', 'https://yukpomnang.com'],
   config: {
     screens: {
-      // Auth screens
+      // ✅ Auth screens (AuthStack - pour utilisateurs non connectés)
       Login: 'login',
       Register: 'register',
 
-      // Main tabs
-      MainTabs: {
+      // ✅ Main app (SecondaryStack - pour utilisateurs connectés)
+      // Tous ces écrans sont dans SecondaryStack
+      Main: {
         screens: {
+          // Bottom Tabs (MainStack)
           Home: 'home',
-          MonActivite: 'activity',
-          MesInteractions: 'interactions',
-          MonCompte: 'account',
+          Services: 'services',
+          Dashboard: 'dashboard',
+          History: 'history',
+          Profile: 'profile',
         },
       },
 
-      // Secondary screens
-      Settings: 'settings',
+      // ✅ Secondary screens (dans SecondaryStack, même niveau que Main)
       Contact: 'contact',
-      Services: 'services',
+      Settings: 'settings',
       RechargeTokens: 'recharge',
-      ResultatBesoin: 'search/:query',
       FormulaireYukpoIntelligent: 'create-service',
+      ResultatBesoin: 'search/:query',
       ServiceDetailShared: 'service/:id',
       SoldeDetail: 'balance',
-      YukpoService: 'yukpo-service',
       CreatePublicite: 'create-ad',
       PubliciteDashboard: 'ads-dashboard',
+      YukpoServicePlaceholder: 'yukpo-service',
     },
   },
 };

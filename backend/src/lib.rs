@@ -4,6 +4,7 @@ pub mod state;
 pub mod core;
 pub mod middlewares;
 pub mod routes;
+pub mod modalities;
 pub mod ia;
 pub mod services;
 pub mod utils;
@@ -159,6 +160,9 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
     // ✅ Routes de gestion du cycle de vie des produits
     let product_lifecycle = product_lifecycle_routes(state.clone());
     
+    // ✅ Routes des modalités personnalisées
+    let modalities = modalities::routes::create_modalities_router();
+    
     let app = Router::new()
         .route("/", get(|| async { "Yukpomnang Backend API - Service actif" }))
         .route("/healthz", get(healthz))
@@ -182,6 +186,7 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .merge(notifications)  // ✅ NOUVEAU : Routes de notifications
         .merge(push_notifs)  // ✅ NOUVEAU : Routes push notifications
         .merge(product_lifecycle)  // ✅ Routes de gestion du cycle de vie des produits
+        .merge(modalities)  // ✅ Routes des modalités personnalisées
         .nest("/api", recommendation_routes())  // ✅ NOUVEAU : Routes recommandations
         .route("/fournitures/gestion", axum::routing::post(fournitures_axum_handler))
         .layer(axum::middleware::from_fn(cors_middleware))  // ← AJOUTER CETTE LIGNE

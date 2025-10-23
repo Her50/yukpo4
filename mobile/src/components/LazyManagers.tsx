@@ -1,0 +1,73 @@
+// Gestionnaires chargés à la demande (GPS et Push Notifications)
+// Se chargent APRÈS que l'utilisateur ait commencé à utiliser l'app
+import React, { Component, useEffect, useState } from 'react';
+import GPSTrackingManager from './GPSTrackingManager';
+import PushNotificationManager from './PushNotificationManager';
+
+// ✅ ErrorBoundary spécifique pour les Managers
+class ManagerErrorBoundary extends Component<
+  { children: React.ReactNode; managerName: string },
+  { hasError: boolean }
+> {
+  constructor(props: any) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    console.error(`[${this.name}] Erreur capturée:`, error);
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: Error, errorInfo: any) {
+    console.error(`[ManagerErrorBoundary] ${this.props.managerName} a crashé:`, error, errorInfo);
+    // Le manager crash silencieusement sans bloquer l'app
+  }
+
+  render() {
+    if (this.state.hasError) {
+      console.warn(`[ManagerErrorBoundary] ${this.props.managerName} désactivé suite à une erreur`);
+      return null; // Ne rien afficher si le manager crash
+    }
+    return this.props.children;
+  }
+}
+
+/**
+ * Charge les managers lourds de manière différée :
+ * - Attend 2 secondes après le montage de l'écran principal
+ * - Ou se charge quand l'utilisateur interagit avec une feature qui en a besoin
+ */
+const LazyManagers: React.FC = () => {
+  const [loadManagers, setLoadManagers] = useState(false);
+
+  useEffect(() => {
+    // Charger après 2 secondes (l'utilisateur a déjà vu l'écran)
+    const timer = setTimeout(() => {
+      console.log('[LazyManagers] 🔔 Chargement GPS et Push Notifications...');
+      setLoadManagers(true);
+    }, 2000);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (!loadManagers) {
+    return null; // Ne rien afficher pendant le délai
+  }
+
+  console.log('[LazyManagers] ✅ Managers actifs');
+  return (
+    <>
+      <ManagerErrorBoundary managerName="GPSTrackingManager">
+        <GPSTrackingManager />
+      </ManagerErrorBoundary>
+      
+      <ManagerErrorBoundary managerName="PushNotificationManager">
+        <PushNotificationManager />
+      </ManagerErrorBoundary>
+    </>
+  );
+};
+
+export default LazyManagers;
+

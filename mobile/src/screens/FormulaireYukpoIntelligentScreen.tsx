@@ -13,7 +13,8 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
-import { apiGet, apiPost } from '../services/api';
+import NetworkDiagnostics from '../components/NetworkDiagnostics';
+import { apiGet, apiPost, networkDiagnostics } from '../services/api';
 // Code corrigé (remplace @ts-ignore)
 import BrandingManagerMobile from '../components/BrandingManagerMobile';
 // Code corrigé (remplace @ts-ignore)
@@ -75,6 +76,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
   const [valeursFormulaire, setValeursFormulaire] = useState<Record<string, any>>({});
   const [showGPSModal, setShowGPSModal] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [showNetworkDiagnostics, setShowNetworkDiagnostics] = useState(false);
   const [mediaFiles, setMediaFiles] = useState<MediaFiles>({
     images: mediaData.base64_image || [],
     audios: mediaData.audio_base64 || [],
@@ -1023,6 +1025,10 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       // ✅ MODE CRÉATION : Appel IA + Vérification solde + Coût
       console.log('[FormulaireYukpoIntelligentScreen] 🆕 MODE CRÉATION - Appel IA requis');
 
+      // ✅ NOUVEAU: Diagnostic réseau avant création
+      console.log('[FormulaireYukpoIntelligentScreen] 🔍 Diagnostic réseau...');
+      await networkDiagnostics.logNetworkStatus('Before service creation');
+
       // 💰 ÉTAPE 1 : Appeler l'IA externe pour générer le JSON structuré ET obtenir le coût réel
 
       // ✅ CORRECTION 413: Compresser les médias AVANT l'envoi
@@ -1289,7 +1295,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                   // ✅ AMÉLIORATION : Construire un log d'erreur détaillé copiable
                   const errorLog = {
                     timestamp: new Date().toISOString(),
-                    status: 'ERROR 500',
+                    status: 'ERROR',
+                    phase: 'Service Creation',
                     endpoint: '/api/services/create',
                     errorMessage: response.error || response.message || 'Erreur inconnue',
                     responseData: response.data,
@@ -1314,9 +1321,24 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                   // ✅ Copier automatiquement dans le presse-papiers
                   Clipboard.setStringAsync(errorLogString);
 
+                  // ✅ AMÉLIORATION : Messages d'erreur plus spécifiques selon le type d'erreur
+                  let alertTitle = '❌ Erreur de création';
+                  let alertMessage = errorMessage;
+
+                  if (errorMessage.includes('Network request failed') || errorMessage.includes('Impossible de se connecter')) {
+                    alertTitle = '🌐 Problème de connexion';
+                    alertMessage = `Problème de connexion réseau détecté.\n\n${errorMessage}\n\nVérifiez votre connexion internet et réessayez.`;
+                  } else if (errorMessage.includes('timeout') || errorMessage.includes('expiré')) {
+                    alertTitle = '⏱️ Timeout de requête';
+                    alertMessage = `La requête a pris trop de temps.\n\n${errorMessage}\n\nVotre service contient peut-être trop de données. Essayez de réduire le nombre de médias.`;
+                  } else if (errorMessage.includes('413') || errorMessage.includes('trop volumineux')) {
+                    alertTitle = '📦 Données trop volumineuses';
+                    alertMessage = `Votre service contient trop de données.\n\n${errorMessage}\n\nConseils :\n- Réduisez le nombre d'images par produit\n- Raccourcissez les vidéos\n- Supprimez les produits non essentiels`;
+                  }
+
                   Alert.alert(
-                    '❌ Erreur 500 - Création échouée',
-                    `${errorMessage}\n\n📋 Le log d'erreur détaillé a été copié dans votre presse-papiers.\n\nVous pouvez le coller pour analyse.`,
+                    alertTitle,
+                    `${alertMessage}\n\n📋 Le log d'erreur détaillé a été copié dans votre presse-papiers.\n\nVous pouvez le coller pour analyse.`,
                     [
                       {
                         text: 'Copier à nouveau',
@@ -1467,7 +1489,12 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           </Text>
         </View>
         <View style={styles.headerRight}>
-          {/* Badge supprimé - la numérotation par blocs est suffisante */}
+          <TouchableOpacity
+            style={styles.diagnosticButton}
+            onPress={() => setShowNetworkDiagnostics(true)}
+          >
+            <SafeIcon name="wifi" size={20} color="#FFFFFF" />
+          </TouchableOpacity>
         </View>
       </LinearGradient>
 
@@ -1768,6 +1795,15 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         title="Sélection de localisation GPS"
         allowZoneSelection={true}
       />
+
+      {/* Modal de diagnostic réseau */}
+      {showNetworkDiagnostics && (
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <NetworkDiagnostics onClose={() => setShowNetworkDiagnostics(false)} />
+          </View>
+        </View>
+      )}
     </View>
   );
 };
@@ -2291,6 +2327,32 @@ const styles = StyleSheet.create({
     color: modernColors.textSecondary,
     fontStyle: 'italic',
     marginTop: 4,
+  },
+  // Styles pour le bouton de diagnostic
+  diagnosticButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  // Styles pour le modal de diagnostic
+  modalOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1000,
+  },
+  modalContainer: {
+    width: '90%',
+    maxWidth: 400,
+    maxHeight: '80%',
   },
 });
 

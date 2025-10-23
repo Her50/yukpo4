@@ -1,0 +1,59 @@
+{
+  "expo": {
+    "name": "Yukpomnang",
+    "slug": "yukpomnang-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.yukpomnang.mobile"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "package": "com.yukpomnang.mobile",
+      "permissions": [
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.INTERNET"
+      ],
+      // ✅ CORRECTION ENCODAGE: Configuration UTF-8 pour Android
+      "config": {
+        "encoding": "UTF-8"
+      }
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-location",
+      "expo-camera",
+      "expo-image-picker",
+      "expo-document-picker",
+      "expo-file-system",
+      "expo-notifications"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "944bbf0d-5541-4e56-ba75-87ffc4c5e51f"
+      }
+    },
+    "owner": "hernandezlele"
+  }
+}

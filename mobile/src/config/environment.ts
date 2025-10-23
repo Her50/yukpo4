@@ -3,10 +3,13 @@ export const ENVIRONMENT = {
     // Clé API Google Translate
     GOOGLE_TRANSLATE_API_KEY: process.env.EXPO_PUBLIC_GOOGLE_TRANSLATE_API_KEY || '',
 
-    // URL de l'API backend - Backend déployé sur Render utilisé en dev et prod
-    API_URL: process.env.EXPO_PUBLIC_API_URL || 'https://yukpomnang.onrender.com',
+    // URL de l'API backend - Configurable via .env
+    // Par défaut: Render (production)
+    // Pour développement local: http://localhost:3000
+    // Pour autre serveur: définir EXPO_PUBLIC_API_BASE_URL dans .env
+    API_URL: process.env.EXPO_PUBLIC_API_BASE_URL || 'https://yukpomnang.onrender.com',
 
-    // Environnement (development, production, staging) - FORCÉ EN PRODUCTION
+    // Environnement (development, production, staging)
     ENVIRONMENT: process.env.EXPO_PUBLIC_ENVIRONMENT || 'production',
 
     // Configuration de traduction

@@ -14,9 +14,9 @@ import {
 } from 'react-native';
 import CategoryFilters from '../components/CategoryFilters';
 import ChatModalMobile from '../components/ChatModalMobile';
-import SearchBar from '../components/SearchBar';
 import ProductCard from '../components/ProductCard';
 import SafeIcon from '../components/SafeIcon';
+import SearchBar from '../components/SearchBar';
 import ServiceGalleryModal from '../components/ServiceGalleryModal';
 import UltraModernServiceCard from '../components/UltraModernServiceCard';
 import { getCategoryConfig, getCategoryStyle, getCategoryTerminology } from '../config/categoryConfig';
@@ -886,6 +886,86 @@ const ResultatBesoinScreen: React.FC = () => {
         setRefreshing(false);
     }, [initialResults]);
 
+    // Fonction de recherche (identique à HomeScreen)
+    const handleSearch = async (input: any) => {
+        try {
+            // Vérifier l'authentification
+            if (!user) {
+                Alert.alert('Erreur d\'authentification', 'Vous devez être connecté pour effectuer une recherche');
+                return;
+            }
+
+            setLoading(true);
+            console.log('[ResultatBesoinScreen] Recherche avec:', input);
+
+            // Utiliser yukpoclient (comme le frontend)
+            let rechercherServices;
+            try {
+                const yukpoclientModule = await import('../lib/yukpoclient');
+                rechercherServices = yukpoclientModule.rechercherServices;
+            } catch (error) {
+                console.error('[ResultatBesoinScreen] Erreur import yukpoclient:', error);
+                Alert.alert('Erreur', 'Service de recherche temporairement indisponible');
+                setLoading(false);
+                return;
+            }
+
+            const result = await rechercherServices(input);
+            console.log('[ResultatBesoinScreen] Résultat API brut:', result);
+
+            // Parser les résultats (même logique que HomeScreen)
+            let results = [];
+            if (result?.resultats?.resultats && Array.isArray(result.resultats.resultats)) {
+                results = result.resultats.resultats;
+                console.log('[ResultatBesoinScreen] ✅ Résultats trouvés dans result.resultats.resultats:', results.length);
+            }
+            else if (result?.resultats && Array.isArray(result.resultats)) {
+                results = result.resultats;
+                console.log('[ResultatBesoinScreen] ✅ Résultats trouvés dans result.resultats:', results.length);
+            }
+            else if (result?.results && Array.isArray(result.results)) {
+                results = result.results;
+                console.log('[ResultatBesoinScreen] ✅ Résultats trouvés dans result.results:', results.length);
+            }
+            else if (result?.data?.resultats && Array.isArray(result.data.resultats)) {
+                results = result.data.resultats;
+                console.log('[ResultatBesoinScreen] ✅ Résultats trouvés dans result.data.resultats:', results.length);
+            }
+            else if (result?.data && Array.isArray(result.data)) {
+                results = result.data;
+                console.log('[ResultatBesoinScreen] ✅ Résultats trouvés dans result.data:', results.length);
+            }
+
+            if (results.length > 0) {
+                console.log('[ResultatBesoinScreen] Traitement de', results.length, 'résultats');
+
+                // Trier par pertinence et proximité
+                const sortedResults = await sortResultsByRelevanceAndProximity(results);
+
+                // Récupérer les services
+                const serviceIds = sortedResults
+                    .map((r: any) => r.service_id)
+                    .filter((id: any) => id && id !== 'undefined')
+                    .map((id: any) => id.toString());
+
+                if (serviceIds.length > 0) {
+                    await fetchServicesByIds(serviceIds, sortedResults);
+                } else {
+                    Alert.alert('Aucun résultat', 'Aucun service trouvé pour cette recherche');
+                }
+            } else {
+                console.log('[ResultatBesoinScreen] Aucun résultat trouvé');
+                Alert.alert('Aucun résultat', 'Aucun service trouvé pour cette recherche');
+            }
+
+            setLoading(false);
+        } catch (error) {
+            console.error('[ResultatBesoinScreen] Erreur recherche:', error);
+            Alert.alert('Erreur', 'Impossible d\'effectuer la recherche');
+            setLoading(false);
+        }
+    };
+
     // Fonction utilitaire pour extraire la valeur d'un champ de service
     const getServiceFieldValue = (field: any): string => {
         if (!field) return 'Non spécifié';
@@ -1029,59 +1109,10 @@ const ResultatBesoinScreen: React.FC = () => {
             <View style={styles.searchContainer}>
                 <SearchBar
                     placeholder="Affiner votre recherche..."
-                    onSubmit={async (input) => {
-                        // Réutiliser la même logique que HomeScreen
-                        try {
-                            setLoading(true);
-                            let rechercherServices;
-                            try {
-                                const yukpoclientModule = await import('../lib/yukpoclient');
-                                rechercherServices = yukpoclientModule.rechercherServices;
-                            } catch (error) {
-                                console.error('[ResultatBesoinScreen] Erreur import yukpoclient:', error);
-                                console.warn('[ResultatBesoinScreen] Recherche désactivée');
-                                return;
-                            }
-                            const result = await rechercherServices(input);
-
-                            // Parser les résultats
-                            let newResults = [];
-                            if (result?.resultats?.resultats && Array.isArray(result.resultats.resultats)) {
-                                newResults = result.resultats.resultats;
-                            }
-
-                            // Recharger avec les nouveaux résultats
-                            if (newResults.length > 0) {
-                                const serviceIds = newResults.map((r: any) => r.service_id);
-                                const servicesResponse = await apiPost('/api/services/batch', { service_ids: serviceIds });
-
-                                if (servicesResponse.success && servicesResponse.data) {
-                                    setServices(servicesResponse.data);
-
-                                    // Extraire les produits
-                                    const allProducts: any[] = [];
-                                    servicesResponse.data.forEach((service: any) => {
-                                        if (service.data?.produits && Array.isArray(service.data.produits)) {
-                                            service.data.produits.forEach((product: any) => {
-                                                allProducts.push({
-                                                    ...product,
-                                                    serviceId: service.id,
-                                                    service: service
-                                                });
-                                            });
-                                        }
-                                    });
-                                    setProducts(allProducts);
-                                }
-                            } else {
-                                Alert.alert('Aucun résultat', 'Aucun service trouvé pour cette recherche');
-                            }
-                            setLoading(false);
-                        } catch (error) {
-                            console.error('[ResultatBesoin] Erreur recherche:', error);
-                            Alert.alert('Erreur', 'Une erreur est survenue lors de la recherche');
-                            setLoading(false);
-                        }
+                    onSubmit={async (query) => {
+                        // Convertir la chaîne en objet comme HomeScreen
+                        const input = { texte: query };
+                        await handleSearch(input);
                     }}
                     showSendButton={true}
                 />
@@ -1186,29 +1217,97 @@ const ResultatBesoinScreen: React.FC = () => {
                             </TouchableOpacity>
                         </View>
 
-                        {/* Boutons de tri horizontal */}
+                        {/* Boutons de tri horizontal améliorés */}
                         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.modernSortScroll}>
                             <View style={styles.modernSortButtons}>
-                                {Object.entries(terminology.sortLabels).map(([key, label]) => (
+                                {/* Bouton Pertinence */}
                                     <TouchableOpacity
-                                        key={key}
                                         style={[
                                             styles.modernSortChip,
-                                            sortBy === key && [styles.modernSortChipActive, { backgroundColor: categoryStyle.primaryColor }]
+                                        sortBy === 'relevance' && [styles.modernSortChipActive, { backgroundColor: categoryStyle.primaryColor }]
                                         ]}
-                                        onPress={() => setSortBy(key as any)}
+                                    onPress={() => setSortBy('relevance')}
                                     >
                                         <Text
                                             style={[
                                                 styles.modernSortChipText,
-                                                sortBy === key && styles.modernSortChipTextActive
+                                            sortBy === 'relevance' && styles.modernSortChipTextActive
                                             ]}
-                                            numberOfLines={1}
                                         >
-                                            {label}
+                                        {terminology.sortLabels.relevance}
                                         </Text>
                                     </TouchableOpacity>
-                                ))}
+
+                                {/* Bouton Prix avec toggle */}
+                                <TouchableOpacity
+                                    style={[
+                                        styles.modernSortChip,
+                                        (sortBy === 'price_asc' || sortBy === 'price_desc') && [styles.modernSortChipActive, { backgroundColor: categoryStyle.primaryColor }]
+                                    ]}
+                                    onPress={() => {
+                                        if (sortBy === 'price_asc') {
+                                            setSortBy('price_desc');
+                                        } else if (sortBy === 'price_desc') {
+                                            setSortBy('price_asc');
+                                        } else {
+                                            setSortBy('price_asc');
+                                        }
+                                    }}
+                                >
+                                    <View style={styles.priceSortContainer}>
+                                        <Text
+                                            style={[
+                                                styles.modernSortChipText,
+                                                (sortBy === 'price_asc' || sortBy === 'price_desc') && styles.modernSortChipTextActive
+                                            ]}
+                                        >
+                                            {terminology.sortLabels.price_asc.replace(' croissant', '')}
+                                        </Text>
+                                        <SafeIcon
+                                            name={sortBy === 'price_desc' ? 'arrow-up' : 'arrow-down'}
+                                            size={12}
+                                            color={(sortBy === 'price_asc' || sortBy === 'price_desc') ? '#FFFFFF' : categoryStyle.primaryColor}
+                                        />
+                                    </View>
+                                </TouchableOpacity>
+
+                                {/* Bouton Distance */}
+                                <TouchableOpacity
+                                    style={[
+                                        styles.modernSortChip,
+                                        sortBy === 'distance' && [styles.modernSortChipActive, { backgroundColor: categoryStyle.primaryColor }]
+                                    ]}
+                                    onPress={() => setSortBy('distance')}
+                                >
+                                    <Text
+                                        style={[
+                                            styles.modernSortChipText,
+                                            sortBy === 'distance' && styles.modernSortChipTextActive
+                                        ]}
+                                    >
+                                        {terminology.sortLabels.distance}
+                                    </Text>
+                                </TouchableOpacity>
+
+                                {/* Bouton Date si disponible */}
+                                {terminology.sortLabels.date && (
+                                    <TouchableOpacity
+                                        style={[
+                                            styles.modernSortChip,
+                                            sortBy === 'date' && [styles.modernSortChipActive, { backgroundColor: categoryStyle.primaryColor }]
+                                        ]}
+                                        onPress={() => setSortBy('date' as any)}
+                                    >
+                                        <Text
+                                            style={[
+                                                styles.modernSortChipText,
+                                                sortBy === 'date' && styles.modernSortChipTextActive
+                                            ]}
+                                        >
+                                            {terminology.sortLabels.date}
+                                        </Text>
+                                    </TouchableOpacity>
+                                )}
                             </View>
                         </ScrollView>
                     </View>
@@ -1889,6 +1988,11 @@ const styles = StyleSheet.create({
     },
     modernSortChipTextActive: {
         color: '#FFFFFF',
+    },
+    priceSortContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
     },
     priceFilterContainer: {
         marginTop: 16,
