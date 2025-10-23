@@ -1,10 +1,9 @@
 // @ts-nocheck
-// Remplacement des Ionicons par des emojis pour éviter les crashes
+// Remplacement des Ionicons par des emojis pour ï¿½viter les crashes
 import { useNavigation } from '@react-navigation/native';
 import * as React from 'react';
 import { useEffect, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { ActivityIndicator } from 'react-native';
+import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 import { servicesApi, userApi } from '../services/api';
 import { theme } from '../theme/theme';
@@ -15,7 +14,7 @@ const ProfileScreen: React.FC = () => {
   const [stats, setStats] = useState([
     { label: 'Services', value: '0' },
     { label: 'Clients', value: '0' },
-    { label: 'Évaluations', value: '0' },
+    { label: 'ï¿½valuations', value: '0' },
   ]);
   const [loading, setLoading] = useState(true);
   const [accountInfo, setAccountInfo] = useState({
@@ -34,7 +33,7 @@ const ProfileScreen: React.FC = () => {
     try {
       setLoading(true);
 
-      // Charger les données du profil utilisateur
+      // Charger les donnï¿½es du profil utilisateur
       const [profileResponse, servicesResponse] = await Promise.all([
         userApi.getUserProfile(),
         servicesApi.getUserServices()
@@ -65,12 +64,12 @@ const ProfileScreen: React.FC = () => {
         setStats([
           { label: 'Services', value: totalServices.toString() },
           { label: 'Interactions', value: totalInteractions.toString() },
-          { label: 'Évaluations', value: averageRating },
+          { label: 'ï¿½valuations', value: averageRating },
         ]);
       }
     } catch (error) {
       console.error('Erreur chargement profil:', error);
-      Alert.alert('Erreur', 'Impossible de charger les données du profil');
+      Alert.alert('Erreur', 'Impossible de charger les donnï¿½es du profil');
     } finally {
       setLoading(false);
     }
@@ -78,11 +77,11 @@ const ProfileScreen: React.FC = () => {
 
   const handleLogout = () => {
     Alert.alert(
-      'Déconnexion',
-      'Êtes-vous sûr de vouloir vous déconnecter ?',
+      'Dï¿½connexion',
+      'ï¿½tes-vous sï¿½r de vouloir vous dï¿½connecter ?',
       [
         { text: 'Annuler', style: 'cancel' },
-        { text: 'Déconnexion', style: 'destructive', onPress: logout },
+        { text: 'Dï¿½connexion', style: 'destructive', onPress: logout },
       ]
     );
   };
@@ -92,33 +91,33 @@ const ProfileScreen: React.FC = () => {
       if (action.route) {
         navigation.navigate(action.route as never);
       } else {
-        Alert.alert('Information', 'Cette fonctionnalité sera bientôt disponible');
+        Alert.alert('Information', 'Cette fonctionnalitï¿½ sera bientï¿½t disponible');
       }
     } catch (error) {
       console.error('Erreur navigation:', error);
-      Alert.alert('Erreur', 'Impossible d\'accéder à cette section');
+      Alert.alert('Erreur', 'Impossible d\'accï¿½der ï¿½ cette section');
     }
   };
 
   const getActionIcon = (iconName: string) => {
     const iconMap: { [key: string]: string } = {
-      'wallet': '??',
-      'person-outline': '??',
-      'settings-outline': '??',
-      'help-circle-outline': '?',
-      'information-circle-outline': '??',
-      'shield-checkmark-outline': '???',
-      'star-outline': '?',
-      'time-outline': '?',
-      'card-outline': '??',
-      'notifications-outline': '??',
-      'chatbubbles-outline': '??',
-      'analytics-outline': '??',
-      'document-outline': '??',
-      'camera-outline': '??',
-      'location-outline': '??',
+      'wallet': 'ðŸ’°',
+      'person-outline': 'ðŸ‘¤',
+      'settings-outline': 'âš™ï¸',
+      'help-circle-outline': 'â“',
+      'information-circle-outline': 'â„¹ï¸',
+      'shield-checkmark-outline': 'ðŸ›¡ï¸',
+      'star-outline': 'â­',
+      'time-outline': 'â°',
+      'card-outline': 'ðŸ’³',
+      'notifications-outline': 'ðŸ””',
+      'chatbubbles-outline': 'ðŸ’¬',
+      'analytics-outline': 'ðŸ“Š',
+      'document-outline': 'ðŸ“„',
+      'camera-outline': 'ðŸ“·',
+      'location-outline': 'ðŸ“',
     };
-    return iconMap[iconName] || '??';
+    return iconMap[iconName] || 'â“';
   };
 
   const profileActions = [
@@ -134,10 +133,10 @@ const ProfileScreen: React.FC = () => {
       icon: 'wallet',
       color: '#EC4899',
       route: 'RechargeTokens',
-      description: 'Ajouter des tokens à votre compte'
+      description: 'Ajouter des tokens ï¿½ votre compte'
     },
     {
-      title: 'Paramètres',
+      title: 'Paramï¿½tres',
       icon: 'settings-outline',
       color: '#757575',
       route: 'Settings',
@@ -173,7 +172,7 @@ const ProfileScreen: React.FC = () => {
           <Text style={styles.userEmail}>{user?.email || 'email@example.com'}</Text>
           <View style={styles.verificationBadge}>
             <Text style={styles.verificationIcon}>?</Text>
-            <Text style={styles.verificationText}>Compte vérifié</Text>
+            <Text style={styles.verificationText}>Compte vï¿½rifiï¿½</Text>
           </View>
         </View>
       </View>
@@ -198,7 +197,7 @@ const ProfileScreen: React.FC = () => {
               if (action.route) {
                 (navigation as any).navigate(action.route);
               } else {
-                Alert.alert('Information', 'Fonctionnalité en cours de développement');
+                Alert.alert('Information', 'Fonctionnalitï¿½ en cours de dï¿½veloppement');
               }
             }}
           >
@@ -241,14 +240,14 @@ const ProfileScreen: React.FC = () => {
         </View>
       </View>
 
-      {/* Bouton de déconnexion */}
+      {/* Bouton de dï¿½connexion */}
       <View style={styles.logoutContainer}>
         <TouchableOpacity
           onPress={handleLogout}
           style={styles.logoutButton}
         >
           <Text style={styles.logoutIcon}>??</Text>
-          <Text style={{ color: "#DC2626" }}>Se déconnecter</Text>
+          <Text style={{ color: "#DC2626" }}>Se dï¿½connecter</Text>
         </TouchableOpacity>
       </View>
     </ScrollView>

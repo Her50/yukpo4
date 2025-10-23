@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { useFocusEffect, useNavigation } from '@react-navigation/native'; // ? Pour rafraîchir au retour sur l'écran
+import { useFocusEffect, useNavigation } from '@react-navigation/native'; // ? Pour rafraï¿½chir au retour sur l'ï¿½cran
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -43,7 +43,7 @@ const SoldeDetailScreen: React.FC = () => {
   const [selectedTab, setSelectedTab] = useState<'consumption' | 'payments'>('consumption');
   const [loading, setLoading] = useState(false);
 
-  // Récupérer le solde actuel
+  // Rï¿½cupï¿½rer le solde actuel
   const getCurrentBalance = () => {
     if (user?.credits) {
       return user.credits;
@@ -58,14 +58,14 @@ const SoldeDetailScreen: React.FC = () => {
     loadData();
   }, [user, selectedPeriod]);
 
-  // ? NOUVEAU: Rafraîchir les données quand on revient sur l'écran
+  // ? NOUVEAU: Rafraï¿½chir les donnï¿½es quand on revient sur l'ï¿½cran
   useFocusEffect(
     React.useCallback(() => {
-      console.log('[SoldeDetailScreen] ?? Écran focus - Rafraîchissement des données...');
+      console.log('[SoldeDetailScreen] ?? ï¿½cran focus - Rafraï¿½chissement des donnï¿½es...');
       if (user?.id) {
-        // Rafraîchir le solde utilisateur
+        // Rafraï¿½chir le solde utilisateur
         refreshUser().catch(err => {
-          console.error('[SoldeDetailScreen] Erreur rafraîchissement solde:', err);
+          console.error('[SoldeDetailScreen] Erreur rafraï¿½chissement solde:', err);
         });
         // Recharger les logs
         loadData();
@@ -78,23 +78,23 @@ const SoldeDetailScreen: React.FC = () => {
     try {
       // Charger l'historique de consommation
       const consumptionResponse = await userApi.getCreditHistory(user.id, selectedPeriod);
-      console.log('[SoldeDetailScreen] Réponse consommation:', consumptionResponse);
+      console.log('[SoldeDetailScreen] Rï¿½ponse consommation:', consumptionResponse);
 
-      // ? Adapter le format des données backend vers le format mobile
+      // ? Adapter le format des donnï¿½es backend vers le format mobile
       if (consumptionResponse.success && consumptionResponse.data) {
         const history = consumptionResponse.data.history || consumptionResponse.data;
         if (Array.isArray(history)) {
-          // ? Mapping corrigé selon la structure réelle du backend:
+          // ? Mapping corrigï¿½ selon la structure rï¿½elle du backend:
           // Backend retourne: { id, date, service, amount, type, description }
           const mappedLogs = history.map((item: any) => ({
-            date: item.date,                    // ? Déjà formaté par le backend
+            date: item.date,                    // ? Dï¿½jï¿½ formatï¿½ par le backend
             usage_type: item.description,       // ? Description de la consommation
-            montant: item.amount,               // ? Montant consommé
+            montant: item.amount,               // ? Montant consommï¿½
             moteur: item.type,                  // ? Type: "consumption" ou "recharge"
-            service_id: item.id,                // ? ID de l'entrée
+            service_id: item.id,                // ? ID de l'entrï¿½e
             service_title: item.service         // ? Nom du service
           }));
-          console.log('[SoldeDetailScreen] Logs mappés:', mappedLogs);
+          console.log('[SoldeDetailScreen] Logs mappï¿½s:', mappedLogs);
           setLogs(mappedLogs);
         } else {
           setLogs([]);
@@ -105,24 +105,24 @@ const SoldeDetailScreen: React.FC = () => {
 
       // Charger l'historique des paiements
       const paymentsResponse = await userApi.getPaymentsHistory(user.id, selectedPeriod);
-      console.log('[SoldeDetailScreen] Réponse paiements:', paymentsResponse);
+      console.log('[SoldeDetailScreen] Rï¿½ponse paiements:', paymentsResponse);
 
-      // ? Adapter le format des données backend vers le format mobile
+      // ? Adapter le format des donnï¿½es backend vers le format mobile
       if (paymentsResponse.success && paymentsResponse.data) {
         const payments = paymentsResponse.data.payments || paymentsResponse.data;
         if (Array.isArray(payments)) {
-          // ? Mapping corrigé selon la structure réelle du backend:
+          // ? Mapping corrigï¿½ selon la structure rï¿½elle du backend:
           // Backend retourne: { id, date, amount, payment_method, status, transaction_id, description }
           const mappedPayments = payments.map((item: any) => ({
             id: item.id,                                // ? ID du paiement
-            date: item.date,                            // ? Déjà formaté par le backend
-            amount: item.amount,                        // ? Montant payé en FCFA
-            payment_method: item.payment_method,        // ? Méthode de paiement
+            date: item.date,                            // ? Dï¿½jï¿½ formatï¿½ par le backend
+            amount: item.amount,                        // ? Montant payï¿½ en FCFA
+            payment_method: item.payment_method,        // ? Mï¿½thode de paiement
             status: item.status,                        // ? Statut: completed/pending/failed
             transaction_id: item.transaction_id || '',  // ? ID de transaction (optionnel)
             tokens_added: item.amount                   // ? Tokens = montant (1 FCFA = 1 token)
           }));
-          console.log('[SoldeDetailScreen] Paiements mappés:', mappedPayments);
+          console.log('[SoldeDetailScreen] Paiements mappï¿½s:', mappedPayments);
           setPaymentLogs(mappedPayments);
         } else {
           setPaymentLogs([]);
@@ -131,7 +131,7 @@ const SoldeDetailScreen: React.FC = () => {
         setPaymentLogs([]);
       }
     } catch (error) {
-      console.error('Erreur lors du chargement des données:', error);
+      console.error('Erreur lors du chargement des donnï¿½es:', error);
       setLogs([]);
       setPaymentLogs([]);
     } finally {
@@ -149,14 +149,14 @@ const SoldeDetailScreen: React.FC = () => {
   const getPaymentMethodIcon = (method: string) => {
     switch (method.toLowerCase()) {
       case 'orange_money':
-        return '??';
+        return 'ðŸŸ ';
       case 'mtn_money':
-        return '??';
+        return 'ðŸŸ¡';
       case 'visa_card':
       case 'mastercard':
-        return '??';
+        return 'ðŸ’³';
       default:
-        return '??';
+        return 'ðŸ’°';
     }
   };
 
@@ -175,7 +175,7 @@ const SoldeDetailScreen: React.FC = () => {
 
   const renderPeriodSelector = () => (
     <View style={styles.periodSelector}>
-      <Text style={styles.periodLabel}>Période:</Text>
+      <Text style={styles.periodLabel}>Pï¿½riode:</Text>
       <View style={styles.periodButtons}>
         {[
           { key: '7d', label: '7j' },
@@ -233,7 +233,7 @@ const SoldeDetailScreen: React.FC = () => {
         <View style={styles.statCard}>
           <Text style={styles.statIcon}>??</Text>
           <Text style={styles.statValue}>{formatCurrency(totalConsumed)}</Text>
-          <Text style={styles.statLabel}>Total consommé</Text>
+          <Text style={styles.statLabel}>Total consommï¿½</Text>
         </View>
         <View style={styles.statCard}>
           <Text style={styles.statIcon}>??</Text>
@@ -251,7 +251,7 @@ const SoldeDetailScreen: React.FC = () => {
 
       {/* Liste des utilisations */}
       <View style={styles.listContainer}>
-        <Text style={styles.listTitle}>Détail des utilisations Yukpo</Text>
+        <Text style={styles.listTitle}>Dï¿½tail des utilisations Yukpo</Text>
         {loading ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color={theme.colors.primary} />
@@ -281,7 +281,7 @@ const SoldeDetailScreen: React.FC = () => {
         ) : (
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyIcon}>?</Text>
-            <Text style={styles.emptyText}>Aucune utilisation Yukpo enregistrée</Text>
+            <Text style={styles.emptyText}>Aucune utilisation Yukpo enregistrï¿½e</Text>
           </View>
         )}
       </View>
@@ -295,12 +295,12 @@ const SoldeDetailScreen: React.FC = () => {
         <View style={styles.statCard}>
           <Text style={styles.statIcon}>??</Text>
           <Text style={styles.statValue}>{formatCurrency(totalPaid)}</Text>
-          <Text style={styles.statLabel}>Total payé</Text>
+          <Text style={styles.statLabel}>Total payï¿½</Text>
         </View>
         <View style={styles.statCard}>
           <Text style={styles.statIcon}>??</Text>
           <Text style={styles.statValue}>{totalTokensAdded.toLocaleString()}</Text>
-          <Text style={styles.statLabel}>Tokens ajoutés</Text>
+          <Text style={styles.statLabel}>Tokens ajoutï¿½s</Text>
         </View>
         <View style={styles.statCard}>
           <Text style={styles.statIcon}>??</Text>
@@ -344,7 +344,7 @@ const SoldeDetailScreen: React.FC = () => {
         ) : (
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyIcon}>??</Text>
-            <Text style={styles.emptyText}>Aucun paiement enregistré</Text>
+            <Text style={styles.emptyText}>Aucun paiement enregistrï¿½</Text>
           </View>
         )}
       </View>
@@ -369,7 +369,7 @@ const SoldeDetailScreen: React.FC = () => {
               </Text>
             </View>
             <View style={styles.balanceRight}>
-              <Text style={styles.balanceSubLabel}>Total consommé</Text>
+              <Text style={styles.balanceSubLabel}>Total consommï¿½</Text>
               <Text style={styles.balanceSubValue}>
                 {formatCurrency(totalConsumed)}
               </Text>
@@ -387,10 +387,10 @@ const SoldeDetailScreen: React.FC = () => {
           </TouchableOpacity>
         </View>
 
-        {/* Sélecteur de période */}
+        {/* Sï¿½lecteur de pï¿½riode */}
         {renderPeriodSelector()}
 
-        {/* Sélecteur d'onglets */}
+        {/* Sï¿½lecteur d'onglets */}
         {renderTabSelector()}
 
         {/* Contenu des onglets */}
