@@ -13,8 +13,8 @@ import {
     View
 } from 'react-native';
 import CategoryFilters from '../components/CategoryFilters';
-import ChatInputMobile from '../components/ChatInputMobile';
 import ChatModalMobile from '../components/ChatModalMobile';
+import SearchBar from '../components/SearchBar';
 import ProductCard from '../components/ProductCard';
 import SafeIcon from '../components/SafeIcon';
 import ServiceGalleryModal from '../components/ServiceGalleryModal';
@@ -1025,82 +1025,66 @@ const ResultatBesoinScreen: React.FC = () => {
                 </TouchableOpacity>
             </View>
 
-            {/* 🔍 Zone de recherche améliorée - Plus longue et horizontale */}
+            {/* 🔍 Barre de recherche simple et horizontale */}
             <View style={styles.searchContainer}>
-                <View style={styles.searchBarHorizontal}>
-                    <View style={styles.searchInputContainer}>
-                        <SafeIcon name="search" size={20} color="#6B7280" style={styles.searchIcon} />
-                        <ChatInputMobile
-                            onSubmit={async (input) => {
-                                // Réutiliser la même logique que HomeScreen
-                                try {
-                                    setLoading(true);
-                                    let rechercherServices;
-                                    try {
-                                        const yukpoclientModule = await import('../lib/yukpoclient');
-                                        rechercherServices = yukpoclientModule.rechercherServices;
-                                    } catch (error) {
-                                        console.error('[ResultatBesoinScreen] Erreur import yukpoclient:', error);
-                                        console.warn('[ResultatBesoinScreen] Recherche désactivée');
-                                        return;
-                                    }
-                                    const result = await rechercherServices(input);
+                <SearchBar
+                    placeholder="Affiner votre recherche..."
+                    onSubmit={async (input) => {
+                        // Réutiliser la même logique que HomeScreen
+                        try {
+                            setLoading(true);
+                            let rechercherServices;
+                            try {
+                                const yukpoclientModule = await import('../lib/yukpoclient');
+                                rechercherServices = yukpoclientModule.rechercherServices;
+                            } catch (error) {
+                                console.error('[ResultatBesoinScreen] Erreur import yukpoclient:', error);
+                                console.warn('[ResultatBesoinScreen] Recherche désactivée');
+                                return;
+                            }
+                            const result = await rechercherServices(input);
 
-                                    // Parser les résultats
-                                    let newResults = [];
-                                    if (result?.resultats?.resultats && Array.isArray(result.resultats.resultats)) {
-                                        newResults = result.resultats.resultats;
-                                    }
+                            // Parser les résultats
+                            let newResults = [];
+                            if (result?.resultats?.resultats && Array.isArray(result.resultats.resultats)) {
+                                newResults = result.resultats.resultats;
+                            }
 
-                                    // Recharger avec les nouveaux résultats
-                                    if (newResults.length > 0) {
-                                        const serviceIds = newResults.map((r: any) => r.service_id);
-                                        const servicesResponse = await apiPost('/api/services/batch', { service_ids: serviceIds });
+                            // Recharger avec les nouveaux résultats
+                            if (newResults.length > 0) {
+                                const serviceIds = newResults.map((r: any) => r.service_id);
+                                const servicesResponse = await apiPost('/api/services/batch', { service_ids: serviceIds });
 
-                                        if (servicesResponse.success && servicesResponse.data) {
-                                            setServices(servicesResponse.data);
+                                if (servicesResponse.success && servicesResponse.data) {
+                                    setServices(servicesResponse.data);
 
-                                            // Extraire les produits
-                                            const allProducts: any[] = [];
-                                            servicesResponse.data.forEach((service: any) => {
-                                                if (service.data?.produits && Array.isArray(service.data.produits)) {
-                                                    service.data.produits.forEach((product: any) => {
-                                                        allProducts.push({
-                                                            ...product,
-                                                            serviceId: service.id,
-                                                            service: service
-                                                        });
-                                                    });
-                                                }
+                                    // Extraire les produits
+                                    const allProducts: any[] = [];
+                                    servicesResponse.data.forEach((service: any) => {
+                                        if (service.data?.produits && Array.isArray(service.data.produits)) {
+                                            service.data.produits.forEach((product: any) => {
+                                                allProducts.push({
+                                                    ...product,
+                                                    serviceId: service.id,
+                                                    service: service
+                                                });
                                             });
-                                            setProducts(allProducts);
                                         }
-                                    } else {
-                                        Alert.alert('Aucun résultat', 'Aucun service trouvé pour cette recherche');
-                                    }
-                                    setLoading(false);
-                                } catch (error) {
-                                    console.error('[ResultatBesoin] Erreur recherche:', error);
-                                    Alert.alert('Erreur', 'Une erreur est survenue lors de la recherche');
-                                    setLoading(false);
+                                    });
+                                    setProducts(allProducts);
                                 }
-                            }}
-                            placeholder="Affiner votre recherche..."
-                            showMediaButtons={false} // ✅ Désactivé pour plus de compacité
-                            showLocationButton={false} // ✅ Désactivé pour plus de compacité
-                        />
-                    </View>
-                    {/* ✅ Bouton d'envoi à l'extrême droite */}
-                    <TouchableOpacity
-                        style={styles.searchSendButton}
-                        onPress={() => {
-                            // Déclencher la recherche avec le texte actuel
-                            console.log('[ResultatBesoinScreen] Recherche déclenchée');
-                        }}
-                    >
-                        <SafeIcon name="send" size={20} color="#FFFFFF" />
-                    </TouchableOpacity>
-                </View>
+                            } else {
+                                Alert.alert('Aucun résultat', 'Aucun service trouvé pour cette recherche');
+                            }
+                            setLoading(false);
+                        } catch (error) {
+                            console.error('[ResultatBesoin] Erreur recherche:', error);
+                            Alert.alert('Erreur', 'Une erreur est survenue lors de la recherche');
+                            setLoading(false);
+                        }
+                    }}
+                    showSendButton={true}
+                />
             </View>
 
             {/* Avertissement GPS en temps réel */}

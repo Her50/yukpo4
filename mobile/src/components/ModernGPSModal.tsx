@@ -10,10 +10,12 @@ import {
     TextInput,
     TouchableOpacity,
     View,
+    ActivityIndicator,
 } from 'react-native';
 import { modernColors } from '../theme/modernTheme';
 import InteractiveMapView from './InteractiveMapView';
 import SafeIcon from './SafeIcon';
+import ErrorBoundary from './ErrorBoundary';
 
 const { width, height } = Dimensions.get('window');
 
@@ -373,15 +375,39 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
 
                     {/* Carte interactive - PLUS D'ESPACE */}
                     <View style={styles.mapContainer}>
-                        <InteractiveMapView
-                            selectedLocation={selectedLocation}
-                            onLocationSelect={handleLocationSelect}
-                            mapStyle={mapStyle}
-                            zoneType={zoneType}
-                            polygonPoints={selectedPolygon}
-                            onPolygonPointsChange={handlePolygonPointsChange}
-                            style={styles.map}
-                        />
+                        <ErrorBoundary
+                            fallback={
+                                <View style={[styles.map, styles.mapErrorContainer]}>
+                                    <SafeIcon name="alert-circle" size={48} color="#EF4444" />
+                                    <Text style={styles.mapErrorText}>
+                                        Impossible de charger la carte
+                                    </Text>
+                                    <Text style={styles.mapErrorSubtext}>
+                                        Vérifiez votre connexion internet et les permissions GPS
+                                    </Text>
+                                    <TouchableOpacity
+                                        style={styles.retryButton}
+                                        onPress={() => {
+                                            onClose();
+                                            // Recharger en rouvrant
+                                        }}
+                                    >
+                                        <SafeIcon name="refresh-cw" size={16} color="#FFFFFF" />
+                                        <Text style={styles.retryButtonText}>Réessayer</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            }
+                        >
+                            <InteractiveMapView
+                                selectedLocation={selectedLocation}
+                                onLocationSelect={handleLocationSelect}
+                                mapStyle={mapStyle}
+                                zoneType={zoneType}
+                                polygonPoints={selectedPolygon}
+                                onPolygonPointsChange={handlePolygonPointsChange}
+                                style={styles.map}
+                            />
+                        </ErrorBoundary>
                     </View>
                 </View>
 
@@ -610,6 +636,41 @@ const styles = StyleSheet.create({
     },
     map: {
         flex: 1,
+    },
+    mapErrorContainer: {
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: '#F9FAFB',
+        padding: 20,
+    },
+    mapErrorText: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#EF4444',
+        marginTop: 16,
+        textAlign: 'center',
+    },
+    mapErrorSubtext: {
+        fontSize: 14,
+        color: '#6B7280',
+        marginTop: 8,
+        textAlign: 'center',
+        lineHeight: 20,
+    },
+    retryButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: modernColors.primary,
+        paddingHorizontal: 20,
+        paddingVertical: 12,
+        borderRadius: 8,
+        marginTop: 20,
+        gap: 8,
+    },
+    retryButtonText: {
+        color: '#FFFFFF',
+        fontSize: 14,
+        fontWeight: '600',
     },
     actionBar: {
         flexDirection: 'row',

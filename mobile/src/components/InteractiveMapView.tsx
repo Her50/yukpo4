@@ -1,10 +1,11 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import {
     Dimensions,
     StyleSheet,
     Text,
     TouchableOpacity,
     View,
+    ActivityIndicator,
 } from 'react-native';
 import MapView, { Circle, Marker, Polygon, PROVIDER_GOOGLE } from 'react-native-maps';
 import { modernColors } from '../theme/modernTheme';
@@ -45,6 +46,20 @@ const InteractiveMapView: React.FC<InteractiveMapViewProps> = ({
         latitudeDelta: 0.01,
         longitudeDelta: 0.01,
     });
+    const [mapReady, setMapReady] = useState(false);
+    const [mapError, setMapError] = useState(false);
+
+    // ✅ CORRECTION CRASH: Timeout pour le chargement de la carte
+    useEffect(() => {
+        const timeout = setTimeout(() => {
+            if (!mapReady) {
+                console.warn('[InteractiveMapView] ⚠️ Map loading timeout');
+                setMapReady(true); // Forcer l'affichage même si pas prêt
+            }
+        }, 5000);
+
+        return () => clearTimeout(timeout);
+    }, [mapReady]);
 
     const handleMapPress = (event: any) => {
         const { latitude, longitude } = event.nativeEvent.coordinate;
@@ -153,6 +168,12 @@ const InteractiveMapView: React.FC<InteractiveMapViewProps> = ({
 
     return (
         <View style={styles.container}>
+            {!mapReady && !mapError && (
+                <View style={styles.loadingContainer}>
+                    <ActivityIndicator size="large" color={modernColors.primary} />
+                    <Text style={styles.loadingText}>Chargement de la carte...</Text>
+                </View>
+            )}
             <MapView
                 ref={mapRef}
                 style={styles.map}
@@ -160,6 +181,16 @@ const InteractiveMapView: React.FC<InteractiveMapViewProps> = ({
                 mapType={getMapType()}
                 region={mapRegion}
                 onPress={handleMapPress}
+                onMapReady={() => {
+                    console.log('[InteractiveMapView] ✅ Map ready');
+                    setMapReady(true);
+                    setMapError(false);
+                }}
+                onError={(error) => {
+                    console.error('[InteractiveMapView] ❌ Map error:', error);
+                    setMapError(true);
+                    setMapReady(true);
+                }}
                 showsUserLocation={true}
                 showsMyLocationButton={true}
                 showsBuildings={showBuildings}
@@ -322,6 +353,19 @@ const styles = StyleSheet.create({
     },
     map: {
         flex: 1,
+    },
+    loadingContainer: {
+        ...StyleSheet.absoluteFillObject,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: '#F9FAFB',
+        zIndex: 1000,
+    },
+    loadingText: {
+        marginTop: 12,
+        fontSize: 14,
+        color: '#6B7280',
+        fontWeight: '500',
     },
     mapControls: {
         position: 'absolute',
