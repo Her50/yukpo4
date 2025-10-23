@@ -18,21 +18,8 @@ const UserAvatarMenu: React.FC<UserAvatarMenuProps> = ({ onNavigate, balance = 0
         {
             title: 'Mon historique',
             icon: '📊',
-            route: 'Historique',
+            route: 'SoldeDetail',
             description: 'Voir mon historique de transactions'
-        },
-        {
-            title: 'Recharger Tokens',
-            icon: '💰',
-            route: 'RechargeTokens',
-            description: 'Ajouter des tokens à votre compte',
-            highlighted: true // ✅ Mise en évidence du lien de recharge
-        },
-        {
-            title: 'Paramètres',
-            icon: '⚙️',
-            route: 'Settings',
-            description: 'Configurer votre compte'
         },
         {
             title: 'Contacter le Support',

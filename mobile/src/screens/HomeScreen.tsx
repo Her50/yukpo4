@@ -244,11 +244,7 @@ const HomeScreen: React.FC = () => {
                     result.message || 'Votre solde est insuffisant pour effectuer une recherche par image.',
                     [
                         {
-                            text: 'Recharger',
-                            onPress: () => (navigation as any).navigate('RechargeTokens')
-                        },
-                        {
-                            text: 'Annuler',
+                            text: 'OK',
                             style: 'cancel'
                         }
                     ]

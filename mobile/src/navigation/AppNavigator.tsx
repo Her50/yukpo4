@@ -107,7 +107,7 @@ const MainTabs = () => {
   const t = (key: string) => {
     const translations: { [key: string]: string } = {
       'home.title': 'Accueil',
-      'services.title': 'Boutique | Services', // ✅ Modifié
+      'services.title': 'Boutique & Services', // ✅ Corrigé pour afficher les deux mots
       'activity.title': 'Activité',
       'tokens.history': 'Historique',
       'tokens.recharge': 'Recharge',

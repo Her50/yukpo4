@@ -77,17 +77,78 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
 
             const response = await apiGet(`/api/content/mixed?${params.toString()}`);
 
-            if (response.success && response.data) {
-                setContent(Array.isArray(response.data) ? response.data : []);
+            if (response.success && response.data && Array.isArray(response.data) && response.data.length > 0) {
+                setContent(response.data);
             } else {
-                setContent([]);
+                // ✅ FALLBACK: Charger les produits organiques si pas de contenu mixte
+                console.log('[MixedContentCarousel] Pas de contenu mixte, chargement des produits organiques...');
+                await loadOrganicProducts();
             }
 
             setLoading(false);
         } catch (error) {
             console.error('[MixedContentCarousel] Erreur chargement:', error);
-            setContent([]);
+            // ✅ FALLBACK: En cas d'erreur, charger les produits organiques
+            await loadOrganicProducts();
             setLoading(false);
+        }
+    };
+
+    // ✅ NOUVEAU: Charger les produits organiques en fallback
+    const loadOrganicProducts = async () => {
+        try {
+            console.log('[MixedContentCarousel] Chargement des produits organiques...');
+            
+            // Essayer d'abord l'API récente
+            let response = await apiGet('/api/services/recent?limit=20&include_products=true');
+            
+            // Si ça ne marche pas, essayer l'API standard
+            if (!response.success || !response.data || !Array.isArray(response.data)) {
+                console.log('[MixedContentCarousel] API recent échouée, essai API standard...');
+                response = await apiGet('/api/services?limit=20');
+            }
+            
+            if (response.success && response.data && Array.isArray(response.data)) {
+                const organicContent: ContentItem[] = [];
+                
+                response.data.forEach((service: any) => {
+                    if (service.data?.produits && Array.isArray(service.data.produits)) {
+                        service.data.produits.forEach((product: any) => {
+                            organicContent.push({
+                                type: 'organic',
+                                is_paid: false,
+                                data: {
+                                    ...product,
+                                    serviceId: service.id,
+                                    service: service
+                                }
+                            });
+                        });
+                    } else {
+                        // Si pas de produits, ajouter le service lui-même
+                        organicContent.push({
+                            type: 'organic',
+                            is_paid: false,
+                            data: {
+                                ...service,
+                                nom: service.titre || service.nom || 'Service',
+                                description: service.description || 'Description du service',
+                                prix: service.prix || '0',
+                                devise: service.devise || 'XAF'
+                            }
+                        });
+                    }
+                });
+                
+                console.log(`[MixedContentCarousel] ${organicContent.length} produits organiques chargés`);
+                setContent(organicContent);
+            } else {
+                console.log('[MixedContentCarousel] Aucun produit organique trouvé');
+                setContent([]);
+            }
+        } catch (error) {
+            console.error('[MixedContentCarousel] Erreur chargement produits organiques:', error);
+            setContent([]);
         }
     };
 
