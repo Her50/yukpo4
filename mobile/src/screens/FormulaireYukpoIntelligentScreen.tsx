@@ -27,10 +27,8 @@ import PaymentMethodSelector from '../components/PaymentMethodSelector';
 import { NativeButton, NativeCard, NativeDivider, NativeInput } from '../components/NativeDesign';
 import ProductManagerMobile from '../components/ProductManagerMobile';
 // ✅ AJOUT: Composants pour modalités personnalisées et sélection multiple
-import EnhancedModalitySelector from '../components/EnhancedModalitySelector';
-import MultiSelectModalitySelector from '../components/MultiSelectModalitySelector';
-import ProductFieldSelector from '../components/ProductFieldSelector';
 import ProductDuplicationModal from '../components/ProductDuplicationModal';
+import ProductFieldSelector from '../components/ProductFieldSelector';
 // Code corrigé (remplace @ts-ignore)
 import SafeIcon from '../components/SafeIcon';
 import { useAuth } from '../contexts/AuthContext';
@@ -787,7 +785,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       case 'dropdown':
         // ✅ AMÉLIORATION: Utiliser ProductFieldSelector qui détecte automatiquement le type de sélection
         const productType = valeursFormulaire.category || 'autre';
-        
+
         return (
           <View key={field.name} style={styles.fieldContainer}>
             <ProductFieldSelector
@@ -864,6 +862,53 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           </View>
         );
       case 'number':
+        // ✅ Cas spécial : Prix et Devise sur la même ligne
+        if (field.name === 'prix') {
+          return (
+            <View key={field.name} style={styles.fieldRow}>
+              <View style={[styles.fieldContainer, { flex: 2 }]}>
+                <Text style={styles.fieldLabel}>
+                  {field.label} {field.required && <Text style={styles.required}>*</Text>}
+                </Text>
+                <NativeInput
+                  placeholder={field.placeholder}
+                  value={valeursFormulaire[field.name]?.toString() || ''}
+                  onChangeText={(text) => handleFieldChange(field.name, text)}
+                  keyboardType="numeric"
+                  style={styles.fieldInput}
+                />
+              </View>
+              <View style={[styles.fieldContainer, { flex: 1 }]}>
+                <Text style={styles.fieldLabel}>Devise</Text>
+                <TouchableOpacity
+                  style={styles.pickerButton}
+                  onPress={() => {
+                    Alert.alert(
+                      'Sélectionner la devise',
+                      'Choisissez la devise du prix',
+                      [
+                        { text: 'XAF (Franc CFA)', onPress: () => handleFieldChange('devise', 'XAF') },
+                        { text: 'EUR (Euro)', onPress: () => handleFieldChange('devise', 'EUR') },
+                        { text: 'USD (Dollar)', onPress: () => handleFieldChange('devise', 'USD') },
+                        { text: 'GBP (Livre)', onPress: () => handleFieldChange('devise', 'GBP') },
+                        { text: 'CAD (Dollar canadien)', onPress: () => handleFieldChange('devise', 'CAD') },
+                        { text: 'CHF (Franc suisse)', onPress: () => handleFieldChange('devise', 'CHF') },
+                        { text: 'Annuler', style: 'cancel' }
+                      ]
+                    );
+                  }}
+                >
+                  <Text style={styles.pickerButtonText}>
+                    {valeursFormulaire.devise || 'XAF'}
+                  </Text>
+                  <SafeIcon name="chevron-down" size={16} color="#666" />
+                </TouchableOpacity>
+              </View>
+            </View>
+          );
+        }
+
+        // Autres champs number
         return (
           <View key={field.name} style={styles.fieldContainer}>
             <Text style={styles.fieldLabel}>
@@ -873,6 +918,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
               placeholder={field.placeholder}
               value={valeursFormulaire[field.name]?.toString() || ''}
               onChangeText={(text) => handleFieldChange(field.name, text)}
+              keyboardType="numeric"
               style={styles.fieldInput}
             />
           </View>
@@ -1742,7 +1788,9 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                       </LinearGradient>
 
                       <NativeCard style={styles.sectionContent}>
-                        {(blocks[currentBlock]?.fields || []).map((field, index) => renderField(field))}
+                        {(blocks[currentBlock]?.fields || [])
+                          .filter(field => field.name !== 'devise') // ✅ Masquer le champ devise (intégré dans prix)
+                          .map((field, index) => renderField(field))}
                       </NativeCard>
                     </View>
                   )}
@@ -1937,6 +1985,7 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     padding: 20,
+    paddingBottom: 300, // ✅ Espace supplémentaire pour le clavier
   },
   stepContainer: {
     gap: 20,

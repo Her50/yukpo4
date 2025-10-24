@@ -27,10 +27,13 @@ const ProductDuplicationModal: React.FC<ProductDuplicationModalProps> = ({
                 ...product,
                 id: `duplicate_${Date.now()}`,
                 nom: `${product.nom} (Copie)`,
+                // ✅ Assurer que le prix est un nombre
+                prix: typeof product.prix === 'string' ? parseFloat(product.prix) || 0 : product.prix,
+                prixParNuit: product.prixParNuit ? (typeof product.prixParNuit === 'string' ? parseFloat(product.prixParNuit) : product.prixParNuit) : undefined,
                 // Réinitialiser les champs qui doivent être modifiés
                 images: [], // Vider les images
                 videos: [], // Vider les vidéos
-                // Garder tous les autres champs (type, prix, description, etc.)
+                // Garder tous les autres champs (type, description, etc.)
             };
             setDuplicatedProduct(newProduct);
         }
@@ -77,7 +80,13 @@ const ProductDuplicationModal: React.FC<ProductDuplicationModalProps> = ({
                     </TouchableOpacity>
                 </View>
 
-                <ScrollView style={styles.content} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
+                <ScrollView
+                    style={styles.content}
+                    showsVerticalScrollIndicator={false}
+                    keyboardShouldPersistTaps="handled"
+                    keyboardDismissMode="on-drag"
+                    contentContainerStyle={{ paddingBottom: 300 }}
+                >
                     <NativeCard style={styles.infoCard}>
                         <View style={styles.infoHeader}>
                             <SafeIcon name="info" size={20} color={modernColors.info} />

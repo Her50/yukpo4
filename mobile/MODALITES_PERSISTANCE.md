@@ -196,3 +196,4 @@ ON custom_modalities(usage_count DESC);
 **Impact :** Amélioration continue de l'expérience utilisateur et enrichissement automatique du catalogue de modalités disponibles.
 
 
+

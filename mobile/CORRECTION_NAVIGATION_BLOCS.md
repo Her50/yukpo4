@@ -259,3 +259,4 @@ Vous devez ajouter au moins un produit avant d'accéder aux étapes suivantes.
 **Status :** ✅ CORRIGÉ ET TESTÉ
 
 **Le contournement de validation par navigation est maintenant impossible ! 🎉**
+

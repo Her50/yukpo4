@@ -72,3 +72,4 @@ INSERT INTO custom_modalities (product_type, field_name, modality, added_by, usa
 ON CONFLICT (product_type, field_name, LOWER(TRIM(modality))) DO NOTHING;
 
 
+

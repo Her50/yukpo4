@@ -398,3 +398,4 @@ POST /api/modalities/increment-usage           - Tracker usage
 **Date d'intégration:** $(date)
 **Status:** ✅ INTÉGRÉ ET FONCTIONNEL
 
+

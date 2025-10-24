@@ -444,3 +444,4 @@ const timeoutId = setTimeout(() => controller.abort(), timeoutDuration);
 **Date :** 24 Octobre 2025  
 **Status :** ✅ COMPLET ET TESTÉ
 
+

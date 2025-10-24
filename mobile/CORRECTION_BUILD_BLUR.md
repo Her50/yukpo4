@@ -182,3 +182,4 @@ eas build --platform android --profile preview
 *Cette correction résout définitivement le problème de build EAS lié à BlurView et prévient les erreurs similaires à l'avenir.*
 
 
+
