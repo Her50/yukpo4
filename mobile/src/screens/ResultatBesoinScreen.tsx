@@ -24,6 +24,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useLocation } from '../contexts/LocationContext';
 import { apiGet, apiPost } from '../services/api';
 import { theme } from '../theme/theme';
+import { normalizeProduct } from '../utils/productNormalizer';
 
 // Types
 interface SearchResult {
@@ -1370,7 +1371,7 @@ const ResultatBesoinScreen: React.FC = () => {
                                         );
                                     } else {
                                         // Afficher le produit individuel
-                                        const product = result.data;
+                                        const product = normalizeProduct(result.data);
                                         return (
                                             <ProductCardComponent key={`product-${index}-${product.nom}`} product={product} />
                                         );
