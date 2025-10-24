@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { getFieldOptions } from '../data/productModalities';
 import { modalityService } from '../services/modalityService';
 import { modernColors } from '../theme/modernTheme';
@@ -29,6 +29,7 @@ const MultiSelectModalitySelector: React.FC<MultiSelectModalitySelectorProps> = 
     const [allOptions, setAllOptions] = useState<string[]>([]);
     const [loading, setLoading] = useState(false);
     const [showModal, setShowModal] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
 
     // Charger les options (statiques + personnalisées)
     useEffect(() => {
@@ -169,8 +170,16 @@ const MultiSelectModalitySelector: React.FC<MultiSelectModalitySelectorProps> = 
     const getDisplayText = () => {
         if (values.length === 0) return placeholder;
         if (values.length === 1) return values[0];
-        return `${values.length} ${label.toLowerCase()}s sélectionnées`;
+        return `${values.length} ${label.toLowerCase()}${values.length > 1 ? 's' : ''} sélectionné${values.length > 1 ? 's' : ''}`;
     };
+
+    // ✅ NOUVEAU : Filtrer les options selon la recherche
+    const filteredOptions = allOptions.filter(option => {
+        if (!searchQuery.trim()) return true;
+        const normalizedQuery = searchQuery.toLowerCase().trim();
+        const normalizedOption = option.toLowerCase();
+        return normalizedOption.includes(normalizedQuery);
+    });
 
     return (
         <View style={styles.container}>
@@ -244,7 +253,12 @@ const MultiSelectModalitySelector: React.FC<MultiSelectModalitySelectorProps> = 
             )}
 
             {/* Modal de sélection */}
-            {showModal && (
+            <Modal
+                visible={showModal}
+                transparent={true}
+                animationType="slide"
+                onRequestClose={() => setShowModal(false)}
+            >
                 <View style={styles.modalOverlay}>
                     <View style={styles.modalContent}>
                         <View style={styles.modalHeader}>
@@ -252,49 +266,104 @@ const MultiSelectModalitySelector: React.FC<MultiSelectModalitySelectorProps> = 
                                 Sélectionner {label.toLowerCase()}
                             </Text>
                             <TouchableOpacity onPress={() => setShowModal(false)}>
-                                <SafeIcon name="close" size={24} color={modernColors.textSecondary} />
+                                <SafeIcon name="x" size={24} color={modernColors.textSecondary} />
                             </TouchableOpacity>
                         </View>
 
-                        <ScrollView style={styles.modalOptions} showsVerticalScrollIndicator={false}>
-                            {allOptions.map((option, index) => {
-                                const isSelected = values.includes(option);
-                                return (
+                        {/* ✅ NOUVEAU : Barre de recherche */}
+                        <View style={styles.searchContainer}>
+                            <SafeIcon name="search" size={20} color={modernColors.textSecondary} />
+                            <TextInput
+                                style={styles.searchInput}
+                                placeholder={`Rechercher dans ${allOptions.length} options...`}
+                                value={searchQuery}
+                                onChangeText={setSearchQuery}
+                                autoCapitalize="none"
+                                autoCorrect={false}
+                            />
+                            {searchQuery.length > 0 && (
+                                <TouchableOpacity onPress={() => setSearchQuery('')}>
+                                    <SafeIcon name="x-circle" size={20} color={modernColors.textSecondary} />
+                                </TouchableOpacity>
+                            )}
+                        </View>
+
+                        {/* ✅ Afficher le nombre de résultats */}
+                        {searchQuery.trim() && (
+                            <View style={styles.searchResultsInfo}>
+                                <Text style={styles.searchResultsText}>
+                                    {filteredOptions.length} résultat{filteredOptions.length > 1 ? 's' : ''} trouvé{filteredOptions.length > 1 ? 's' : ''}
+                                </Text>
+                            </View>
+                        )}
+
+                        <ScrollView style={styles.modalOptions} showsVerticalScrollIndicator={true}>
+                            {filteredOptions.length === 0 ? (
+                                <View style={styles.noResultsContainer}>
+                                    <SafeIcon name="search" size={40} color={modernColors.textSecondary} />
+                                    <Text style={styles.noResultsText}>
+                                        Aucun résultat pour "{searchQuery}"
+                                    </Text>
                                     <TouchableOpacity
-                                        key={index}
-                                        style={[
-                                            styles.optionItem,
-                                            isSelected && styles.optionItemSelected
-                                        ]}
-                                        onPress={() => toggleSelection(option)}
+                                        style={styles.addCustomButton}
+                                        onPress={() => {
+                                            setShowModal(false);
+                                            setSearchQuery('');
+                                            // Ajouter directement avec le texte recherché
+                                            toggleSelection('🆕 Autre (ajouter)');
+                                        }}
                                     >
-                                        <View style={styles.optionContent}>
-                                            <Text style={[
-                                                styles.optionText,
-                                                isSelected && styles.optionTextSelected
-                                            ]}>
-                                                {option}
-                                            </Text>
-                                            {isSelected && (
-                                                <SafeIcon name="check" size={20} color={modernColors.primary} />
-                                            )}
-                                        </View>
+                                        <SafeIcon name="plus-circle" size={20} color={modernColors.primary} />
+                                        <Text style={styles.addCustomButtonText}>
+                                            Ajouter "{searchQuery}" comme nouvelle modalité
+                                        </Text>
                                     </TouchableOpacity>
-                                );
-                            })}
+                                </View>
+                            ) : (
+                                filteredOptions.map((option, index) => {
+                                    const isSelected = values.includes(option);
+                                    return (
+                                        <TouchableOpacity
+                                            key={index}
+                                            style={[
+                                                styles.optionItem,
+                                                isSelected && styles.optionItemSelected
+                                            ]}
+                                            onPress={() => toggleSelection(option)}
+                                        >
+                                            <View style={styles.optionContent}>
+                                                <Text style={[
+                                                    styles.optionText,
+                                                    isSelected && styles.optionTextSelected
+                                                ]}>
+                                                    {option}
+                                                </Text>
+                                                {isSelected && (
+                                                    <SafeIcon name="check" size={20} color={modernColors.primary} />
+                                                )}
+                                            </View>
+                                        </TouchableOpacity>
+                                    );
+                                })
+                            )}
                         </ScrollView>
 
                         <View style={styles.modalFooter}>
                             <TouchableOpacity
                                 style={styles.modalButton}
-                                onPress={() => setShowModal(false)}
+                                onPress={() => {
+                                    setShowModal(false);
+                                    setSearchQuery(''); // Réinitialiser la recherche
+                                }}
                             >
-                                <Text style={styles.modalButtonText}>Terminé</Text>
+                                <Text style={styles.modalButtonText}>
+                                    Terminé ({values.length} sélectionné{values.length > 1 ? 's' : ''})
+                                </Text>
                             </TouchableOpacity>
                         </View>
                     </View>
                 </View>
-            )}
+            </Modal>
         </View>
     );
 };
@@ -396,15 +465,10 @@ const styles = StyleSheet.create({
         fontStyle: 'italic',
     },
     modalOverlay: {
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
+        flex: 1,
         backgroundColor: 'rgba(0, 0, 0, 0.5)',
         justifyContent: 'center',
         alignItems: 'center',
-        zIndex: 1000,
     },
     modalContent: {
         backgroundColor: modernColors.background,
@@ -466,6 +530,64 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontWeight: '600',
         color: 'white',
+    },
+    searchContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 12,
+        paddingHorizontal: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: modernColors.border,
+        backgroundColor: modernColors.surface,
+        gap: 8,
+    },
+    searchInput: {
+        flex: 1,
+        fontSize: 16,
+        color: modernColors.text,
+        paddingVertical: 8,
+    },
+    searchResultsInfo: {
+        paddingVertical: 8,
+        paddingHorizontal: 16,
+        backgroundColor: modernColors.primary + '10',
+        borderBottomWidth: 1,
+        borderBottomColor: modernColors.border,
+    },
+    searchResultsText: {
+        fontSize: 12,
+        color: modernColors.primary,
+        fontWeight: '600',
+    },
+    noResultsContainer: {
+        padding: 40,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    noResultsText: {
+        fontSize: 14,
+        color: modernColors.textSecondary,
+        marginTop: 12,
+        marginBottom: 20,
+        textAlign: 'center',
+    },
+    addCustomButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        backgroundColor: modernColors.primary + '10',
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: modernColors.primary,
+        borderStyle: 'dashed',
+    },
+    addCustomButtonText: {
+        fontSize: 14,
+        color: modernColors.primary,
+        fontWeight: '600',
+        flex: 1,
     },
 });
 

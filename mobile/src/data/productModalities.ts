@@ -625,27 +625,76 @@ export const BIJOUX_MODALITIES: ModalityCategory = {
   // Carats (pour l'or)
   carats: [
     '9 carats', '14 carats', '18 carats', '22 carats', '24 carats', '🆕 Autre (ajouter)'
+  ],
+
+  // Styles de bijoux
+  styles: [
+    'Classique', 'Moderne', 'Vintage', 'Bohemian', 'Luxe', 'Minimaliste', 'Sport',
+    'Ethnique', 'Art déco', 'Contemporain', 'Romantique', 'Rock', '🆕 Autre (ajouter)'
   ]
 };
 
 // ✅ MODALITÉS COIFFURE & BEAUTÉ
 export const COIFFURE_BEAUTE_MODALITIES: ModalityCategory = {
-  // Types de services
+  // Types de services/produits
   types: [
+    'Mèches', 'Extensions', 'Perruque', 'Tissage', 'Closure', 'Frontal', 'Accessoires',
     'Coupe', 'Coloration', 'Permanente', 'Lissage', 'Brushing', 'Manucure',
     'Pédicure', 'Maquillage', 'Soin visage', 'Massage', 'Épilation', '🆕 Autre (ajouter)'
   ],
 
-  // Durées
-  durees: [
-    '30 minutes', '1 heure', '1h30', '2 heures', '3 heures', 'Sur devis',
+  // Longueurs
+  longueurs: [
+    '10cm', '15cm', '20cm', '25cm', '30cm', '35cm', '40cm', '45cm', '50cm', 
+    '55cm', '60cm', '65cm', '70cm', '75cm', '80cm+', '🆕 Autre (ajouter)'
+  ],
+
+  // Textures
+  textures: [
+    'Lisse', 'Ondulée', 'Bouclée', 'Crépue', 'Kinky', 'Afro', 'Yaki', 'Body wave',
+    'Deep wave', 'Curly', 'Straight', '🆕 Autre (ajouter)'
+  ],
+
+  // Types de pose
+  typesPose: [
+    'Clip', 'Collage', 'Tissage', 'Tresse', 'Crochet', 'Lace', 'U-part', 'Coudre',
+    'Microlinks', 'Bonding', '🆕 Autre (ajouter)'
+  ],
+
+  // Types de cheveux (matière)
+  typesCheveux: [
+    'Cheveux naturels', 'Cheveux synthétiques', 'Cheveux mixtes', 'Cheveux humains',
+    'Remy hair', 'Virgin hair', 'Brazilian hair', 'Peruvian hair', 'Indian hair',
     '🆕 Autre (ajouter)'
   ],
 
-  // Types de cheveux
-  typesCheveux: [
-    'Cheveux normaux', 'Cheveux secs', 'Cheveux gras', 'Cheveux colorés',
-    'Cheveux frisés', 'Cheveux lisses', '🆕 Autre (ajouter)'
+  // Densités
+  densites: [
+    '130%', '150%', '180%', '200%', '250%', '🆕 Autre (ajouter)'
+  ],
+
+  // Couleurs
+  couleurs: [
+    'Noir naturel', 'Brun foncé', 'Brun moyen', 'Brun clair', 'Châtain', 'Blond',
+    'Blond platine', 'Roux', 'Auburn', 'Ombré', 'Balayage', 'Highlights',
+    'Gris/Argenté', 'Coloré (Rouge/Bleu/Vert)', '🆕 Autre (ajouter)'
+  ],
+
+  // Origines des cheveux
+  origines: [
+    'Brésilien', 'Péruvien', 'Indien', 'Malaisien', 'Cambodgien', 'Européen',
+    'Chinois', 'Mongol', 'Russe', 'Synthétique', '🆕 Autre (ajouter)'
+  ],
+
+  // Durée de vie
+  dureeVie: [
+    '1-3 mois', '3-6 mois', '6-12 mois', '1-2 ans', '2+ ans', '🆕 Autre (ajouter)'
+  ],
+
+  // Durées (services)
+  durees: [
+    '30 minutes', '1 heure', '1h30', '2 heures', '3 heures', 'Sur devis',
+    '🆕 Autre (ajouter)'
   ]
 };
 
@@ -671,21 +720,33 @@ export const DEMENAGEMENT_MODALITIES: ModalityCategory = {
 
 // ✅ MODALITÉS ASSURANCE
 export const ASSURANCE_MODALITIES: ModalityCategory = {
+  // Catégories principales
+  categories: [
+    'Vie', 'Non-Vie', '🆕 Autre (ajouter)'
+  ],
+
   // Types d'assurance
   types: [
     'Assurance auto', 'Assurance habitation', 'Assurance santé', 'Assurance vie',
-    'Assurance voyage', 'Assurance professionnelle', '🆕 Autre (ajouter)'
+    'Assurance voyage', 'Assurance professionnelle', 'Assurance entreprise',
+    'Assurance scolaire', 'Assurance décès', 'Assurance maladie', '🆕 Autre (ajouter)'
   ],
 
   // Compagnies
   compagnies: [
     'Allianz', 'AXA', 'Groupama', 'Maaf', 'Macif', 'Matmut', 'MMA', 'SMA',
-    '🆕 Autre (ajouter)'
+    'Activa', 'Ascoma', 'Beneficial Life', 'Sunu Assurances', '🆕 Autre (ajouter)'
   ],
 
   // Types de couverture
   couvertures: [
     'Tous risques', 'Au tiers', 'Comprehensive', 'Responsabilité civile',
+    'Dommages collision', 'Vol et incendie', '🆕 Autre (ajouter)'
+  ],
+
+  // Durées de contrat
+  durees: [
+    '1 an', '2 ans', '3 ans', '5 ans', '10 ans', '15 ans', '20 ans', 'Vie entière',
     '🆕 Autre (ajouter)'
   ]
 };

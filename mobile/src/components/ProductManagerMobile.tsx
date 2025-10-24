@@ -2993,28 +2993,14 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                 return (
                     <>
                         {/* Planification nuit simplifiée */}
-                        <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>🌙 Fonctionnement la nuit</Text>
-                            <View style={styles.pickerButtons}>
-                                {['Permanence nuit', 'Planning hebdomadaire'].map((type) => (
-                                    <TouchableOpacity
-                                        key={type}
-                                        style={[
-                                            styles.pickerButton,
-                                            newProduct.typePharmacie === type && styles.pickerButtonActive
-                                        ]}
-                                        onPress={() => setNewProduct({ ...newProduct, typePharmacie: type, joursGarde: type === 'Permanence nuit' ? 'Tous les jours' : undefined })}
-                                    >
-                                        <Text style={[
-                                            styles.pickerButtonText,
-                                            newProduct.typePharmacie === type && styles.pickerButtonTextActive
-                                        ]}>
-                                            {type}
-                                        </Text>
-                                    </TouchableOpacity>
-                                ))}
-                            </View>
-                        </View>
+                        <ProductFieldSelector
+                            label="🌙 Fonctionnement la nuit"
+                            fieldName="types"
+                            productType="pharmacie"
+                            value={newProduct.typePharmacie || ''}
+                            onSelect={(value) => setNewProduct({ ...newProduct, typePharmacie: value, joursGarde: value === 'Permanence nuit' ? 'Tous les jours' : undefined })}
+                            required
+                        />
 
                         {/* Planning hebdomadaire de garde */}
                         {newProduct.typePharmacie === 'Planning hebdomadaire' && (
@@ -3118,28 +3104,14 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                 return (
                     <>
                         {/* Type d'établissement */}
-                        <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Type d'établissement médical</Text>
-                            <View style={styles.pickerButtons}>
-                                {['Hôpital', 'Clinique', 'Centre de santé', 'Dispensaire'].map((type) => (
-                                    <TouchableOpacity
-                                        key={type}
-                                        style={[
-                                            styles.pickerButton,
-                                            newProduct.typeEtablissement === type && styles.pickerButtonActive
-                                        ]}
-                                        onPress={() => setNewProduct({ ...newProduct, typeEtablissement: type })}
-                                    >
-                                        <Text style={[
-                                            styles.pickerButtonText,
-                                            newProduct.typeEtablissement === type && styles.pickerButtonTextActive
-                                        ]}>
-                                            {type}
-                                        </Text>
-                                    </TouchableOpacity>
-                                ))}
-                            </View>
-                        </View>
+                        <ProductFieldSelector
+                            label="Type d'établissement médical"
+                            fieldName="types"
+                            productType="hopital_clinique"
+                            value={newProduct.typeEtablissement || ''}
+                            onSelect={(value) => setNewProduct({ ...newProduct, typeEtablissement: value })}
+                            required
+                        />
 
                         {/* Banque de sang */}
                         <View style={styles.fieldContainer}>
@@ -3696,28 +3668,13 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         </View>
 
                         {/* Style */}
-                        <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Style</Text>
-                            <View style={styles.pickerButtons}>
-                                {['Classique', 'Moderne', 'Vintage', 'Bohemian', 'Luxe', 'Minimaliste', 'Sport'].map((style) => (
-                                    <TouchableOpacity
-                                        key={style}
-                                        style={[
-                                            styles.pickerButton,
-                                            newProduct.styleBijou === style && styles.pickerButtonActive
-                                        ]}
-                                        onPress={() => setNewProduct({ ...newProduct, styleBijou: style })}
-                                    >
-                                        <Text style={[
-                                            styles.pickerButtonText,
-                                            newProduct.styleBijou === style && styles.pickerButtonTextActive
-                                        ]}>
-                                            {style}
-                                        </Text>
-                                    </TouchableOpacity>
-                                ))}
-                            </View>
-                        </View>
+                        <ProductFieldSelector
+                            label="Style"
+                            fieldName="styles"
+                            productType="bijoux"
+                            value={newProduct.styleBijou || ''}
+                            onSelect={(value) => setNewProduct({ ...newProduct, styleBijou: value })}
+                        />
 
                         {/* Origine */}
                         <View style={styles.fieldContainer}>
@@ -3766,52 +3723,24 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                 return (
                     <>
                         {/* Type de coiffure */}
-                        <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Type de produit</Text>
-                            <View style={styles.pickerButtons}>
-                                {['Mèches', 'Extensions', 'Perruque', 'Tissage', 'Closure', 'Frontal', 'Accessoires'].map((type) => (
-                                    <TouchableOpacity
-                                        key={type}
-                                        style={[
-                                            styles.pickerButton,
-                                            newProduct.typeCoiffure === type && styles.pickerButtonActive
-                                        ]}
-                                        onPress={() => setNewProduct({ ...newProduct, typeCoiffure: type })}
-                                    >
-                                        <Text style={[
-                                            styles.pickerButtonText,
-                                            newProduct.typeCoiffure === type && styles.pickerButtonTextActive
-                                        ]}>
-                                            {type}
-                                        </Text>
-                                    </TouchableOpacity>
-                                ))}
-                            </View>
-                        </View>
+                        <ProductFieldSelector
+                            label="Type de produit"
+                            fieldName="types"
+                            productType="coiffure_beaute"
+                            value={newProduct.typeCoiffure || ''}
+                            onSelect={(value) => setNewProduct({ ...newProduct, typeCoiffure: value })}
+                            required
+                        />
 
                         {/* Longueur */}
-                        <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Longueur</Text>
-                            <View style={styles.pickerButtons}>
-                                {['10cm', '20cm', '30cm', '40cm', '50cm', '60cm', '70cm+'].map((longueur) => (
-                                    <TouchableOpacity
-                                        key={longueur}
-                                        style={[
-                                            styles.pickerButton,
-                                            newProduct.longueurMech === longueur && styles.pickerButtonActive
-                                        ]}
-                                        onPress={() => setNewProduct({ ...newProduct, longueurMech: longueur })}
-                                    >
-                                        <Text style={[
-                                            styles.pickerButtonText,
-                                            newProduct.longueurMech === longueur && styles.pickerButtonTextActive
-                                        ]}>
-                                            {longueur}
-                                        </Text>
-                                    </TouchableOpacity>
-                                ))}
-                            </View>
-                        </View>
+                        <ProductFieldSelector
+                            label="Longueur"
+                            fieldName="longueurs"
+                            productType="coiffure_beaute"
+                            value={newProduct.longueurMech || ''}
+                            onSelect={(value) => setNewProduct({ ...newProduct, longueurMech: value })}
+                            required
+                        />
 
                         {/* Couleur */}
                         <View style={styles.fieldContainer}>
@@ -3825,52 +3754,22 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         </View>
 
                         {/* Texture */}
-                        <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Texture</Text>
-                            <View style={styles.pickerButtons}>
-                                {['Lisse', 'Ondulée', 'Bouclée', 'Crépue', 'Kinky', 'Afro'].map((texture) => (
-                                    <TouchableOpacity
-                                        key={texture}
-                                        style={[
-                                            styles.pickerButton,
-                                            newProduct.textureMech === texture && styles.pickerButtonActive
-                                        ]}
-                                        onPress={() => setNewProduct({ ...newProduct, textureMech: texture })}
-                                    >
-                                        <Text style={[
-                                            styles.pickerButtonText,
-                                            newProduct.textureMech === texture && styles.pickerButtonTextActive
-                                        ]}>
-                                            {texture}
-                                        </Text>
-                                    </TouchableOpacity>
-                                ))}
-                            </View>
-                        </View>
+                        <ProductFieldSelector
+                            label="Texture"
+                            fieldName="textures"
+                            productType="coiffure_beaute"
+                            value={newProduct.textureMech || ''}
+                            onSelect={(value) => setNewProduct({ ...newProduct, textureMech: value })}
+                        />
 
                         {/* Type de pose */}
-                        <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Type de pose</Text>
-                            <View style={styles.pickerButtons}>
-                                {['Clip', 'Collage', 'Tissage', 'Tresse', 'Crochet', 'Lace'].map((pose) => (
-                                    <TouchableOpacity
-                                        key={pose}
-                                        style={[
-                                            styles.pickerButton,
-                                            newProduct.typePose === pose && styles.pickerButtonActive
-                                        ]}
-                                        onPress={() => setNewProduct({ ...newProduct, typePose: pose })}
-                                    >
-                                        <Text style={[
-                                            styles.pickerButtonText,
-                                            newProduct.typePose === pose && styles.pickerButtonTextActive
-                                        ]}>
-                                            {pose}
-                                        </Text>
-                                    </TouchableOpacity>
-                                ))}
-                            </View>
-                        </View>
+                        <ProductFieldSelector
+                            label="Type de pose"
+                            fieldName="typesPose"
+                            productType="coiffure_beaute"
+                            value={newProduct.typePose || ''}
+                            onSelect={(value) => setNewProduct({ ...newProduct, typePose: value })}
+                        />
 
                         {/* Marque */}
                         <View style={styles.fieldContainer}>
@@ -3884,52 +3783,22 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         </View>
 
                         {/* Origine */}
-                        <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Origine des cheveux</Text>
-                            <View style={styles.pickerButtons}>
-                                {['Brésilien', 'Péruvien', 'Indien', 'Malaisien', 'Cambodgien', 'Européen', 'Synthétique'].map((origine) => (
-                                    <TouchableOpacity
-                                        key={origine}
-                                        style={[
-                                            styles.pickerButton,
-                                            newProduct.origineMech === origine && styles.pickerButtonActive
-                                        ]}
-                                        onPress={() => setNewProduct({ ...newProduct, origineMech: origine })}
-                                    >
-                                        <Text style={[
-                                            styles.pickerButtonText,
-                                            newProduct.origineMech === origine && styles.pickerButtonTextActive
-                                        ]}>
-                                            {origine}
-                                        </Text>
-                                    </TouchableOpacity>
-                                ))}
-                            </View>
-                        </View>
+                        <ProductFieldSelector
+                            label="Origine des cheveux"
+                            fieldName="origines"
+                            productType="coiffure_beaute"
+                            value={newProduct.origineMech || ''}
+                            onSelect={(value) => setNewProduct({ ...newProduct, origineMech: value })}
+                        />
 
                         {/* Type de cheveux */}
-                        <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Type de cheveux</Text>
-                            <View style={styles.pickerButtons}>
-                                {['100% Naturel', 'Remy Hair', 'Virgin Hair', 'Semi-naturel', 'Synthétique'].map((typeChev) => (
-                                    <TouchableOpacity
-                                        key={typeChev}
-                                        style={[
-                                            styles.pickerButton,
-                                            newProduct.typeCheveux === typeChev && styles.pickerButtonActive
-                                        ]}
-                                        onPress={() => setNewProduct({ ...newProduct, typeCheveux: typeChev })}
-                                    >
-                                        <Text style={[
-                                            styles.pickerButtonText,
-                                            newProduct.typeCheveux === typeChev && styles.pickerButtonTextActive
-                                        ]}>
-                                            {typeChev}
-                                        </Text>
-                                    </TouchableOpacity>
-                                ))}
-                            </View>
-                        </View>
+                        <ProductFieldSelector
+                            label="Type de cheveux"
+                            fieldName="typesCheveux"
+                            productType="coiffure_beaute"
+                            value={newProduct.typeCheveux || ''}
+                            onSelect={(value) => setNewProduct({ ...newProduct, typeCheveux: value })}
+                        />
 
                         {/* Entretien */}
                         <View style={styles.fieldContainer}>
@@ -3944,28 +3813,13 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         </View>
 
                         {/* Durée de vie */}
-                        <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Durée de vie estimée</Text>
-                            <View style={styles.pickerButtons}>
-                                {['1-3 mois', '3-6 mois', '6-12 mois', '1-2 ans', '2+ ans'].map((duree) => (
-                                    <TouchableOpacity
-                                        key={duree}
-                                        style={[
-                                            styles.pickerButton,
-                                            newProduct.dureeVie === duree && styles.pickerButtonActive
-                                        ]}
-                                        onPress={() => setNewProduct({ ...newProduct, dureeVie: duree })}
-                                    >
-                                        <Text style={[
-                                            styles.pickerButtonText,
-                                            newProduct.dureeVie === duree && styles.pickerButtonTextActive
-                                        ]}>
-                                            {duree}
-                                        </Text>
-                                    </TouchableOpacity>
-                                ))}
-                            </View>
-                        </View>
+                        <ProductFieldSelector
+                            label="Durée de vie estimée"
+                            fieldName="dureeVie"
+                            productType="coiffure_beaute"
+                            value={newProduct.dureeVie || ''}
+                            onSelect={(value) => setNewProduct({ ...newProduct, dureeVie: value })}
+                        />
 
                         <View style={styles.hintBox}>
                             <Text style={styles.hintText}>
@@ -3978,73 +3832,25 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
             case 'assurance':
                 return (
                     <>
-                        <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Type d'assurance <Text style={styles.required}>*</Text></Text>
-                            <View style={styles.pickerButtons}>
-                                {['Vie', 'Non-Vie'].map((type) => (
-                                    <TouchableOpacity
-                                        key={type}
-                                        style={[
-                                            styles.pickerButton,
-                                            newProduct.categorieAssurance === type && styles.pickerButtonActive
-                                        ]}
-                                        onPress={() => setNewProduct({ ...newProduct, categorieAssurance: type, typeAssurance: '' })}
-                                    >
-                                        <Text style={[
-                                            styles.pickerButtonText,
-                                            newProduct.categorieAssurance === type && styles.pickerButtonTextActive
-                                        ]}>
-                                            {type}
-                                        </Text>
-                                    </TouchableOpacity>
-                                ))}
-                            </View>
-                        </View>
+                        <ProductFieldSelector
+                            label="Type d'assurance"
+                            fieldName="categories"
+                            productType="assurance"
+                            value={newProduct.categorieAssurance || ''}
+                            onSelect={(value) => setNewProduct({ ...newProduct, categorieAssurance: value, typeAssurance: '' })}
+                            required
+                        />
 
                         {/* Sous-catégories selon Vie ou Non-Vie */}
                         {newProduct.categorieAssurance && (
-                            <View style={styles.fieldContainer}>
-                                <Text style={styles.fieldLabel}>Sous-catégorie <Text style={styles.required}>*</Text></Text>
-                                <View style={styles.pickerButtons}>
-                                    {newProduct.categorieAssurance === 'Vie' ? (
-                                        ['Vie entière', 'Temporaire décès', 'Épargne retraite', 'Prévoyance', 'Obsèques'].map((subtype) => (
-                                            <TouchableOpacity
-                                                key={subtype}
-                                                style={[
-                                                    styles.pickerButton,
-                                                    newProduct.typeAssurance === subtype && styles.pickerButtonActive
-                                                ]}
-                                                onPress={() => setNewProduct({ ...newProduct, typeAssurance: subtype })}
-                                            >
-                                                <Text style={[
-                                                    styles.pickerButtonText,
-                                                    newProduct.typeAssurance === subtype && styles.pickerButtonTextActive
-                                                ]}>
-                                                    {subtype}
-                                                </Text>
-                                            </TouchableOpacity>
-                                        ))
-                                    ) : (
-                                        ['Auto', 'Habitation', 'Santé', 'Voyage', 'Responsabilité civile', 'Entreprise'].map((subtype) => (
-                                            <TouchableOpacity
-                                                key={subtype}
-                                                style={[
-                                                    styles.pickerButton,
-                                                    newProduct.typeAssurance === subtype && styles.pickerButtonActive
-                                                ]}
-                                                onPress={() => setNewProduct({ ...newProduct, typeAssurance: subtype })}
-                                            >
-                                                <Text style={[
-                                                    styles.pickerButtonText,
-                                                    newProduct.typeAssurance === subtype && styles.pickerButtonTextActive
-                                                ]}>
-                                                    {subtype}
-                                                </Text>
-                                            </TouchableOpacity>
-                                        ))
-                                    )}
-                                </View>
-                            </View>
+                            <ProductFieldSelector
+                                label="Sous-catégorie"
+                                fieldName="types"
+                                productType="assurance"
+                                value={newProduct.typeAssurance || ''}
+                                onSelect={(value) => setNewProduct({ ...newProduct, typeAssurance: value })}
+                                required
+                            />
                         )}
 
                         <View style={styles.fieldRow}>
@@ -4093,28 +3899,13 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             </View>
                         </View>
 
-                        <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Durée du contrat</Text>
-                            <View style={styles.pickerButtons}>
-                                {['1 an', '2 ans', '5 ans', '10 ans', 'Vie entière'].map((duree) => (
-                                    <TouchableOpacity
-                                        key={duree}
-                                        style={[
-                                            styles.pickerButton,
-                                            newProduct.dureeContrat === duree && styles.pickerButtonActive
-                                        ]}
-                                        onPress={() => setNewProduct({ ...newProduct, dureeContrat: duree })}
-                                    >
-                                        <Text style={[
-                                            styles.pickerButtonText,
-                                            newProduct.dureeContrat === duree && styles.pickerButtonTextActive
-                                        ]}>
-                                            {duree}
-                                        </Text>
-                                    </TouchableOpacity>
-                                ))}
-                            </View>
-                        </View>
+                        <ProductFieldSelector
+                            label="Durée du contrat"
+                            fieldName="durees"
+                            productType="assurance"
+                            value={newProduct.dureeContrat || ''}
+                            onSelect={(value) => setNewProduct({ ...newProduct, dureeContrat: value })}
+                        />
 
                         <View style={styles.fieldContainer}>
                             <Text style={styles.fieldLabel}>Principaux bénéfices</Text>
