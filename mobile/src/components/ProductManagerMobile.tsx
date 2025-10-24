@@ -1808,36 +1808,51 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
             case 'immobilier_batiment':
                 return (
                     <>
-                        {/* Type d'immobilier */}
-                        <ProductFieldSelector
-                            label="Type d'immobilier"
-                            value={newProduct.typeImmobilier || ''}
-                            productType="immobilier"
-                            fieldName="types"
-                            onSelect={(value) => setNewProduct({ ...newProduct, typeImmobilier: value })}
-                            required
-                        />
+                        {/* Type et Statut sur la même ligne */}
+                        <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Type d'immobilier"
+                                    value={newProduct.typeImmobilier || ''}
+                                    productType="immobilier"
+                                    fieldName="types"
+                                    onSelect={(value) => setNewProduct({ ...newProduct, typeImmobilier: value })}
+                                    required
+                                />
+                            </View>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Statut"
+                                    value={newProduct.statutImmobilier || ''}
+                                    productType="immobilier"
+                                    fieldName="statuts"
+                                    onSelect={(value) => setNewProduct({ ...newProduct, statutImmobilier: value })}
+                                    required
+                                />
+                            </View>
+                        </View>
 
-                        {/* Statut (Vente/Location) */}
-                        <ProductFieldSelector
-                            label="Statut"
-                            value={newProduct.statutImmobilier || ''}
-                            productType="immobilier"
-                            fieldName="statuts"
-                            onSelect={(value) => setNewProduct({ ...newProduct, statutImmobilier: value })}
-                            required
-                        />
-
-                        {/* Superficie */}
-                        <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Superficie (m²) <Text style={styles.required}>*</Text></Text>
-                            <NativeInput
-                                placeholder="Ex: 120"
-                                value={newProduct.superficie || ''}
-                                onChangeText={(text) => setNewProduct({ ...newProduct, superficie: text })}
-                                style={styles.fieldInput}
-                                keyboardType="numeric"
-                            />
+                        {/* Superficie et Ameublement sur la même ligne */}
+                        <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <Text style={styles.fieldLabel}>Superficie (m²) <Text style={styles.required}>*</Text></Text>
+                                <NativeInput
+                                    placeholder="Ex: 120"
+                                    value={newProduct.superficie || ''}
+                                    onChangeText={(text) => setNewProduct({ ...newProduct, superficie: text })}
+                                    style={styles.fieldInput}
+                                    keyboardType="numeric"
+                                />
+                            </View>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Ameublement"
+                                    value={newProduct.ameublement || ''}
+                                    productType="immobilier"
+                                    fieldName="ameublement"
+                                    onSelect={(value) => setNewProduct({ ...newProduct, ameublement: value })}
+                                />
+                            </View>
                         </View>
 
                         {/* Chambres et Salles de bain */}
@@ -1863,15 +1878,6 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 />
                             </View>
                         </View>
-
-                        {/* Niveau d'ameublement */}
-                        <ProductFieldSelector
-                            label="Ameublement"
-                            value={newProduct.ameublement || ''}
-                            productType="immobilier"
-                            fieldName="ameublement"
-                            onSelect={(value) => setNewProduct({ ...newProduct, ameublement: value })}
-                        />
 
                         {/* Adresse complète */}
                         <View style={styles.fieldContainer}>
@@ -1936,24 +1942,51 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
             case 'immobilier_terrain':
                 return (
                     <>
-                        <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Superficie (m²)</Text>
-                            <NativeInput
-                                placeholder="Ex: 500"
-                                value={newProduct.superficie || ''}
-                                onChangeText={(text) => setNewProduct({ ...newProduct, superficie: text })}
-                                style={styles.fieldInput}
-                                keyboardType="numeric"
-                            />
+                        {/* Type et Statut sur la même ligne */}
+                        <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Type de terrain"
+                                    value={newProduct.typeImmobilier || ''}
+                                    productType="immobilier"
+                                    fieldName="types"
+                                    onSelect={(value) => setNewProduct({ ...newProduct, typeImmobilier: value })}
+                                    required
+                                />
+                            </View>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Statut"
+                                    value={newProduct.statutImmobilier || ''}
+                                    productType="immobilier"
+                                    fieldName="statuts"
+                                    onSelect={(value) => setNewProduct({ ...newProduct, statutImmobilier: value })}
+                                    required
+                                />
+                            </View>
                         </View>
-                        <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Adresse</Text>
-                            <NativeInput
-                                placeholder="Ex: Zone industrielle"
-                                value={newProduct.adresse || ''}
-                                onChangeText={(text) => setNewProduct({ ...newProduct, adresse: text })}
-                                style={styles.fieldInput}
-                            />
+
+                        {/* Superficie et Adresse sur la même ligne */}
+                        <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <Text style={styles.fieldLabel}>Superficie (m²)</Text>
+                                <NativeInput
+                                    placeholder="Ex: 500"
+                                    value={newProduct.superficie || ''}
+                                    onChangeText={(text) => setNewProduct({ ...newProduct, superficie: text })}
+                                    style={styles.fieldInput}
+                                    keyboardType="numeric"
+                                />
+                            </View>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <Text style={styles.fieldLabel}>Adresse</Text>
+                                <NativeInput
+                                    placeholder="Ex: Zone industrielle"
+                                    value={newProduct.adresse || ''}
+                                    onChangeText={(text) => setNewProduct({ ...newProduct, adresse: text })}
+                                    style={styles.fieldInput}
+                                />
+                            </View>
                         </View>
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
@@ -2105,25 +2138,29 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
             case 'ticket_voyage':
                 return (
                     <>
-                        {/* Compagnie de voyage */}
-                        <ProductFieldSelector
-                            label="Compagnie de transport"
-                            fieldName="compagnies"
-                            productType="voyage"
-                            value={newProduct.compagnie || ''}
-                            onSelect={(value) => setNewProduct({ ...newProduct, compagnie: value })}
-                            required
-                        />
-
-                        {/* Type de véhicule */}
-                        <ProductFieldSelector
-                            label="Type de véhicule"
-                            fieldName="vehicules"
-                            productType="voyage"
-                            value={newProduct.typeVehiculeTransport || ''}
-                            onSelect={(value) => setNewProduct({ ...newProduct, typeVehiculeTransport: value })}
-                            required
-                        />
+                        {/* Compagnie et Type de véhicule sur la même ligne */}
+                        <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Compagnie de transport"
+                                    fieldName="compagnies"
+                                    productType="voyage"
+                                    value={newProduct.compagnie || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, compagnie: value })}
+                                    required
+                                />
+                            </View>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Type de véhicule"
+                                    fieldName="vehicules"
+                                    productType="voyage"
+                                    value={newProduct.typeVehiculeTransport || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, typeVehiculeTransport: value })}
+                                    required
+                                />
+                            </View>
+                        </View>
 
                         {/* Classe de voyage */}
                         <ProductFieldSelector
@@ -2234,49 +2271,52 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
             case 'hotellerie':
                 return (
                     <>
-                        {/* Type d'hébergement */}
-                        <ProductFieldSelector
-                            label="Type d'hébergement"
-                            fieldName="types"
-                            productType="hotellerie"
-                            value={newProduct.typeHebergement || ''}
-                            onSelect={(value) => setNewProduct({ ...newProduct, typeHebergement: value })}
-                            required
-                        />
-
-                        {/* Catégorie (Étoiles) */}
-                        <ProductFieldSelector
-                            label="Catégorie"
-                            fieldName="categories"
-                            productType="hotellerie"
-                            value={newProduct.categorieHotel || ''}
-                            onSelect={(value) => setNewProduct({ ...newProduct, categorieHotel: value })}
-                            required
-                        />
-
-                        {/* Prix par nuit */}
-                        <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Prix par nuit (minimum) <Text style={styles.required}>*</Text></Text>
-                            <NativeInput
-                                placeholder="Ex: 35000"
-                                value={newProduct.prixParNuit || ''}
-                                onChangeText={(text) => setNewProduct({ ...newProduct, prixParNuit: text })}
-                                style={styles.fieldInput}
-                                keyboardType="numeric"
-                            />
-                            <Text style={styles.fieldHint}>Prix de la chambre la moins chère</Text>
+                        {/* Type et Catégorie sur la même ligne */}
+                        <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Type d'hébergement"
+                                    fieldName="types"
+                                    productType="hotellerie"
+                                    value={newProduct.typeHebergement || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, typeHebergement: value })}
+                                    required
+                                />
+                            </View>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Catégorie"
+                                    fieldName="categories"
+                                    productType="hotellerie"
+                                    value={newProduct.categorieHotel || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, categorieHotel: value })}
+                                    required
+                                />
+                            </View>
                         </View>
 
-                        {/* Nombre de chambres */}
-                        <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Nombre de chambres disponibles</Text>
-                            <NativeInput
-                                placeholder="Ex: 25"
-                                value={newProduct.nbChambresHotel || ''}
-                                onChangeText={(text) => setNewProduct({ ...newProduct, nbChambresHotel: text })}
-                                style={styles.fieldInput}
-                                keyboardType="numeric"
-                            />
+                        {/* Prix par nuit et Nombre de chambres sur la même ligne */}
+                        <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <Text style={styles.fieldLabel}>Prix/nuit (min) <Text style={styles.required}>*</Text></Text>
+                                <NativeInput
+                                    placeholder="Ex: 35000"
+                                    value={newProduct.prixParNuit || ''}
+                                    onChangeText={(text) => setNewProduct({ ...newProduct, prixParNuit: text })}
+                                    style={styles.fieldInput}
+                                    keyboardType="numeric"
+                                />
+                            </View>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <Text style={styles.fieldLabel}>Nb chambres</Text>
+                                <NativeInput
+                                    placeholder="Ex: 25"
+                                    value={newProduct.nbChambresHotel || ''}
+                                    onChangeText={(text) => setNewProduct({ ...newProduct, nbChambresHotel: text })}
+                                    style={styles.fieldInput}
+                                    keyboardType="numeric"
+                                />
+                            </View>
                         </View>
 
                         {/* Types de chambres disponibles */}
@@ -2299,21 +2339,21 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             multiSelect
                         />
 
-                        {/* Adresse et Ville */}
-                        <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Adresse <Text style={styles.required}>*</Text></Text>
-                            <NativeInput
-                                placeholder="Ex: Avenue Kennedy"
-                                value={newProduct.adresseHotel || ''}
-                                onChangeText={(text) => setNewProduct({ ...newProduct, adresseHotel: text })}
-                                style={styles.fieldInput}
-                            />
-                        </View>
-
-                        <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Ville <Text style={styles.required}>*</Text></Text>
-                            <NativeInput
-                                placeholder="Ex: Douala"
+                        {/* Adresse et Ville sur la même ligne */}
+                        <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <Text style={styles.fieldLabel}>Adresse <Text style={styles.required}>*</Text></Text>
+                                <NativeInput
+                                    placeholder="Ex: Avenue Kennedy"
+                                    value={newProduct.adresseHotel || ''}
+                                    onChangeText={(text) => setNewProduct({ ...newProduct, adresseHotel: text })}
+                                    style={styles.fieldInput}
+                                />
+                            </View>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <Text style={styles.fieldLabel}>Ville <Text style={styles.required}>*</Text></Text>
+                                <NativeInput
+                                    placeholder="Ex: Douala"
                                 value={newProduct.villeHotel || ''}
                                 onChangeText={(text) => setNewProduct({ ...newProduct, villeHotel: text })}
                                 style={styles.fieldInput}
