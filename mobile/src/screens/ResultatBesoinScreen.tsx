@@ -25,6 +25,13 @@ import { useLocation } from '../contexts/LocationContext';
 import { apiGet, apiPost } from '../services/api';
 import { theme } from '../theme/theme';
 import { normalizeProduct } from '../utils/productNormalizer';
+import {
+    detectDominantCategoryWeighted,
+    generateSmartFilterSuggestions,
+    saveFilterToHistory,
+    getFilterHistory,
+    SmartFilterSuggestion
+} from '../utils/smartFilterSuggestions';
 
 // Types
 interface SearchResult {
@@ -93,39 +100,69 @@ const ResultatBesoinScreen: React.FC = () => {
     const [showPriceFilter, setShowPriceFilter] = useState(false);
     const [showCategoryFilters, setShowCategoryFilters] = useState(false);
     const [categoryFilters, setCategoryFilters] = useState<Record<string, any>>({});
+    
+    // ✅ NOUVEAUX ÉTATS: Suggestions intelligentes
+    const [smartSuggestions, setSmartSuggestions] = useState<SmartFilterSuggestion[]>([]);
+    const [showSmartSuggestions, setShowSmartSuggestions] = useState(false);
+    const [filterHistory, setFilterHistory] = useState<any[]>([]);
 
     // Récupérer les résultats depuis la navigation
     const routeParams = (route.params as any) || {};
     const initialResults = routeParams.results || [];
 
-    // Déterminer la catégorie dominante des produits
+    // ✅ AMÉLIORATION: Déterminer la catégorie dominante avec pondération intelligente
     const dominantCategory = useMemo(() => {
         if (products.length === 0) return 'default';
-
-        // Compter les catégories
-        const categoryCount: Record<string, number> = {};
-        products.forEach((product) => {
-            const category = product.type || 'default';
-            categoryCount[category] = (categoryCount[category] || 0) + 1;
-        });
-
-        // Trouver la catégorie la plus fréquente
-        let maxCount = 0;
-        let dominant = 'default';
-        Object.entries(categoryCount).forEach(([category, count]) => {
-            if (count > maxCount) {
-                maxCount = count;
-                dominant = category;
-            }
-        });
-
-        return dominant;
+        
+        // Utiliser la détection intelligente avec pondération
+        const detected = detectDominantCategoryWeighted(products);
+        
+        console.log(`🎯 [ResultatBesoinScreen] Catégorie dominante détectée: ${detected} (${products.length} produits)`);
+        
+        return detected;
     }, [products]);
 
     // Récupérer la configuration de la catégorie dominante
     const categoryConfig = getCategoryConfig(dominantCategory);
     const categoryStyle = getCategoryStyle(dominantCategory);
     const terminology = getCategoryTerminology(dominantCategory);
+
+    // ✅ AMÉLIORATION: Générer des suggestions intelligentes
+    useEffect(() => {
+        if (products.length > 0) {
+            const userContext = {
+                location: location ? {
+                    latitude: location.latitude,
+                    longitude: location.longitude
+                } : undefined,
+                budget: routeParams.budget,
+                searchQuery: routeParams.searchQuery
+            };
+            
+            const suggestions = generateSmartFilterSuggestions(
+                products,
+                dominantCategory,
+                userContext
+            );
+            
+            setSmartSuggestions(suggestions);
+            
+            console.log(`💡 [ResultatBesoinScreen] ${suggestions.length} suggestions intelligentes générées`);
+        }
+    }, [products, dominantCategory, location, routeParams.budget]);
+
+    // ✅ AMÉLIORATION: Charger l'historique des filtres
+    useEffect(() => {
+        const loadFilterHistory = async () => {
+            const history = await getFilterHistory(dominantCategory);
+            setFilterHistory(history);
+            console.log(`📜 [ResultatBesoinScreen] ${history.length} filtres dans l'historique`);
+        };
+        
+        if (dominantCategory !== 'default') {
+            loadFilterHistory();
+        }
+    }, [dominantCategory]);
 
     // DEBUG: Afficher les paramètres reçus
     useEffect(() => {
@@ -1325,16 +1362,27 @@ const ResultatBesoinScreen: React.FC = () => {
                         </ScrollView>
                     </View>
 
-                    {/* Modal de filtres de catégorie */}
+                    {/* Modal de filtres de catégorie - AMÉLIORÉ */}
                     <CategoryFilters
                         category={dominantCategory}
                         visible={showCategoryFilters}
                         onClose={() => setShowCategoryFilters(false)}
-                        onApply={(filters) => {
+                        onApply={async (filters) => {
                             setCategoryFilters(filters);
-                            console.log('Filtres appliqués:', filters);
+                            
+                            // ✅ AMÉLIORATION: Sauvegarder dans l'historique
+                            const filteredResults = filterProducts(products);
+                            await saveFilterToHistory(dominantCategory, filters, filteredResults.length);
+                            
+                            // Recharger l'historique
+                            const updatedHistory = await getFilterHistory(dominantCategory);
+                            setFilterHistory(updatedHistory);
+                            
+                            console.log(`✅ Filtres appliqués: ${Object.keys(filters).length} filtres → ${filteredResults.length} résultats`);
                         }}
                         initialFilters={categoryFilters}
+                        smartSuggestions={smartSuggestions}
+                        filterHistory={filterHistory}
                     />
 
                     {/* ✅ CORRECTION: Afficher TOUS les résultats (services ET produits) */}

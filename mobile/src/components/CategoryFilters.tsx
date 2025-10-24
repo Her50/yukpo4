@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     Modal,
     ScrollView,
@@ -8,9 +8,14 @@ import {
     TextInput,
     TouchableOpacity,
     View,
+    Animated,
+    Dimensions,
 } from 'react-native';
 import { CategoryFilter, getCategoryFilters, getCategoryStyle, getCategoryTerminology } from '../config/categoryConfig';
 import SafeIcon from './SafeIcon';
+import { SmartFilterSuggestion } from '../utils/smartFilterSuggestions';
+
+const { width } = Dimensions.get('window');
 
 interface CategoryFiltersProps {
     category: string;
@@ -18,6 +23,8 @@ interface CategoryFiltersProps {
     onClose: () => void;
     onApply: (filters: Record<string, any>) => void;
     initialFilters?: Record<string, any>;
+    smartSuggestions?: SmartFilterSuggestion[];  // ✅ NOUVEAU: Suggestions intelligentes
+    filterHistory?: any[];                        // ✅ NOUVEAU: Historique des filtres
 }
 
 const CategoryFilters: React.FC<CategoryFiltersProps> = ({
@@ -26,12 +33,30 @@ const CategoryFilters: React.FC<CategoryFiltersProps> = ({
     onClose,
     onApply,
     initialFilters = {},
+    smartSuggestions = [],
+    filterHistory = [],
 }) => {
     const categoryFilters = getCategoryFilters(category);
     const categoryStyle = getCategoryStyle(category);
     const terminology = getCategoryTerminology(category);
 
     const [filters, setFilters] = useState<Record<string, any>>(initialFilters);
+    const [showSuggestions, setShowSuggestions] = useState(true);
+    const [showHistory, setShowHistory] = useState(false);
+    const [fadeAnim] = useState(new Animated.Value(0));
+    
+    // Animation d'entrée
+    useEffect(() => {
+        if (visible) {
+            Animated.timing(fadeAnim, {
+                toValue: 1,
+                duration: 300,
+                useNativeDriver: true,
+            }).start();
+        } else {
+            fadeAnim.setValue(0);
+        }
+    }, [visible]);
 
     const handleApply = () => {
         onApply(filters);
@@ -40,6 +65,27 @@ const CategoryFilters: React.FC<CategoryFiltersProps> = ({
 
     const handleReset = () => {
         setFilters({});
+    };
+
+    // ✅ NOUVEAU: Appliquer une suggestion intelligente
+    const applySuggestion = (suggestion: SmartFilterSuggestion) => {
+        const newFilters = { ...filters };
+        
+        if (suggestion.type === 'range') {
+            newFilters[`${suggestion.id}_min`] = suggestion.min;
+            newFilters[`${suggestion.id}_max`] = suggestion.max;
+        } else {
+            newFilters[suggestion.id] = suggestion.options?.[0]?.value || null;
+        }
+        
+        setFilters(newFilters);
+        console.log(`💡 Suggestion appliquée: ${suggestion.label}`);
+    };
+
+    // ✅ NOUVEAU: Appliquer un filtre de l'historique
+    const applyHistoryFilter = (historyItem: any) => {
+        setFilters(historyItem.filters);
+        console.log(`📜 Historique appliqué: ${Object.keys(historyItem.filters).length} filtres`);
     };
 
     const renderFilter = (filter: CategoryFilter) => {
@@ -231,6 +277,16 @@ const CategoryFilters: React.FC<CategoryFiltersProps> = ({
         return value !== null && value !== undefined && value !== '';
     }).length;
 
+    // ✅ NOUVEAU: Formater le temps écoulé
+    const formatTimeAgo = (timestamp: number): string => {
+        const seconds = Math.floor((Date.now() - timestamp) / 1000);
+        
+        if (seconds < 60) return 'Il y a quelques secondes';
+        if (seconds < 3600) return `Il y a ${Math.floor(seconds / 60)} min`;
+        if (seconds < 86400) return `Il y a ${Math.floor(seconds / 3600)}h`;
+        return `Il y a ${Math.floor(seconds / 86400)}j`;
+    };
+
     return (
         <Modal
             visible={visible}
@@ -254,6 +310,124 @@ const CategoryFilters: React.FC<CategoryFiltersProps> = ({
                             <SafeIcon name="x" size={24} color="#1F2937" />
                         </TouchableOpacity>
                     </View>
+
+                    {/* ✅ NOUVEAU: Suggestions Intelligentes */}
+                    {smartSuggestions.length > 0 && (
+                        <View style={styles.suggestionsSection}>
+                            <TouchableOpacity
+                                style={styles.sectionToggle}
+                                onPress={() => setShowSuggestions(!showSuggestions)}
+                            >
+                                <View style={styles.sectionTitleContainer}>
+                                    <SafeIcon name="lightbulb" size={20} color={categoryStyle.primaryColor} />
+                                    <Text style={styles.sectionTitle}>
+                                        Suggestions intelligentes ({smartSuggestions.length})
+                                    </Text>
+                                </View>
+                                <SafeIcon
+                                    name={showSuggestions ? "chevron-up" : "chevron-down"}
+                                    size={20}
+                                    color="#6B7280"
+                                />
+                            </TouchableOpacity>
+                            
+                            {showSuggestions && (
+                                <Animated.View style={{ opacity: fadeAnim }}>
+                                    <ScrollView
+                                        horizontal
+                                        showsHorizontalScrollIndicator={false}
+                                        contentContainerStyle={styles.suggestionsScroll}
+                                    >
+                                        {smartSuggestions.slice(0, 5).map((suggestion, index) => (
+                                            <TouchableOpacity
+                                                key={index}
+                                                style={[
+                                                    styles.suggestionCard,
+                                                    { borderColor: categoryStyle.primaryColor }
+                                                ]}
+                                                onPress={() => applySuggestion(suggestion)}
+                                            >
+                                                <View style={styles.suggestionHeader}>
+                                                    <View style={[
+                                                        styles.priorityBadge,
+                                                        { backgroundColor: categoryStyle.badgeColor }
+                                                    ]}>
+                                                        <Text style={[
+                                                            styles.priorityText,
+                                                            { color: categoryStyle.primaryColor }
+                                                        ]}>
+                                                            {suggestion.priority}/10
+                                                        </Text>
+                                                    </View>
+                                                    <Text style={styles.suggestionCount}>
+                                                        {suggestion.applicableCount}+
+                                                    </Text>
+                                                </View>
+                                                <Text style={styles.suggestionLabel}>
+                                                    {suggestion.label}
+                                                </Text>
+                                                <Text style={styles.suggestionReason}>
+                                                    {suggestion.reason}
+                                                </Text>
+                                            </TouchableOpacity>
+                                        ))}
+                                    </ScrollView>
+                                </Animated.View>
+                            )}
+                        </View>
+                    )}
+
+                    {/* ✅ NOUVEAU: Historique des filtres */}
+                    {filterHistory.length > 0 && (
+                        <View style={styles.historySection}>
+                            <TouchableOpacity
+                                style={styles.sectionToggle}
+                                onPress={() => setShowHistory(!showHistory)}
+                            >
+                                <View style={styles.sectionTitleContainer}>
+                                    <SafeIcon name="clock" size={20} color="#F59E0B" />
+                                    <Text style={styles.sectionTitle}>
+                                        Historique ({filterHistory.length})
+                                    </Text>
+                                </View>
+                                <SafeIcon
+                                    name={showHistory ? "chevron-up" : "chevron-down"}
+                                    size={20}
+                                    color="#6B7280"
+                                />
+                            </TouchableOpacity>
+                            
+                            {showHistory && (
+                                <View style={styles.historyList}>
+                                    {filterHistory.slice(0, 3).map((item, index) => {
+                                        const filterCount = Object.keys(item.filters).length;
+                                        const timeAgo = formatTimeAgo(item.timestamp);
+                                        
+                                        return (
+                                            <TouchableOpacity
+                                                key={index}
+                                                style={styles.historyItem}
+                                                onPress={() => applyHistoryFilter(item)}
+                                            >
+                                                <View style={styles.historyInfo}>
+                                                    <Text style={styles.historyFilterCount}>
+                                                        {filterCount} filtre{filterCount > 1 ? 's' : ''}
+                                                    </Text>
+                                                    <Text style={styles.historyTime}>{timeAgo}</Text>
+                                                </View>
+                                                <View style={styles.historyResults}>
+                                                    <Text style={styles.historyResultsText}>
+                                                        {item.resultCount} résultat{item.resultCount > 1 ? 's' : ''}
+                                                    </Text>
+                                                    <SafeIcon name="arrow-right" size={16} color={categoryStyle.primaryColor} />
+                                                </View>
+                                            </TouchableOpacity>
+                                        );
+                                    })}
+                                </View>
+                            )}
+                        </View>
+                    )}
 
                     {/* Filters */}
                     <ScrollView style={styles.filtersContent} showsVerticalScrollIndicator={false}>
@@ -485,6 +659,126 @@ const styles = StyleSheet.create({
         fontSize: 15,
         fontWeight: '700',
         color: '#FFFFFF',
+    },
+    // ✅ NOUVEAUX STYLES: Suggestions & Historique
+    suggestionsSection: {
+        paddingHorizontal: 20,
+        paddingVertical: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: '#E5E7EB',
+        backgroundColor: '#F9FAFB',
+    },
+    historySection: {
+        paddingHorizontal: 20,
+        paddingVertical: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: '#E5E7EB',
+        backgroundColor: '#FFFBEB',
+    },
+    sectionToggle: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+    },
+    sectionTitleContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    sectionTitle: {
+        fontSize: 15,
+        fontWeight: '700',
+        color: '#1F2937',
+    },
+    suggestionsScroll: {
+        paddingTop: 12,
+        paddingRight: 20,
+        gap: 12,
+    },
+    suggestionCard: {
+        width: width * 0.7,
+        padding: 16,
+        borderRadius: 16,
+        borderWidth: 2,
+        backgroundColor: '#FFFFFF',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+        elevation: 4,
+    },
+    suggestionHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: 10,
+    },
+    priorityBadge: {
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 12,
+    },
+    priorityText: {
+        fontSize: 12,
+        fontWeight: '800',
+    },
+    suggestionCount: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#10B981',
+    },
+    suggestionLabel: {
+        fontSize: 15,
+        fontWeight: '700',
+        color: '#1F2937',
+        marginBottom: 6,
+    },
+    suggestionReason: {
+        fontSize: 12,
+        color: '#6B7280',
+        fontStyle: 'italic',
+    },
+    historyList: {
+        marginTop: 12,
+        gap: 10,
+    },
+    historyItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: 14,
+        borderRadius: 12,
+        backgroundColor: '#FFFFFF',
+        borderWidth: 1,
+        borderColor: '#FDE68A',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 4,
+        elevation: 2,
+    },
+    historyInfo: {
+        flex: 1,
+    },
+    historyFilterCount: {
+        fontSize: 14,
+        fontWeight: '700',
+        color: '#1F2937',
+        marginBottom: 4,
+    },
+    historyTime: {
+        fontSize: 12,
+        color: '#9CA3AF',
+    },
+    historyResults: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+    },
+    historyResultsText: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: '#F59E0B',
     },
 });
 
