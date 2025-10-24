@@ -5,10 +5,11 @@ use axum::{
     routing::{get, post},
     Router,
 };
-use serde::{Deserialize, Serialize};
-use sqlx::PgPool;
+use serde::Deserialize;
 use uuid::Uuid;
+use std::sync::Arc;
 
+use crate::state::AppState;
 use crate::modalities::models::{
     CreateCustomModalityRequest, CustomModality, CustomModalityResponse, 
     IncrementUsageRequest, PopularModalitiesRequest, ModalityStats
@@ -23,12 +24,13 @@ pub struct ModalityQuery {
 
 /// Obtenir toutes les modalités personnalisées ou filtrées
 pub async fn get_custom_modalities(
-    State(pool): State<PgPool>,
+    State(state): State<Arc<AppState>>,
     Query(params): Query<ModalityQuery>,
 ) -> Result<Json<CustomModalityResponse>, StatusCode> {
+    let pool = &state.db;
     let result = if let (Some(product_type), Some(field_name)) = (params.product_type, params.field_name) {
         // Obtenir les modalités pour un champ spécifique
-        match CustomModality::get_by_field(&pool, &product_type, &field_name).await {
+        match CustomModality::get_by_field(pool, &product_type, &field_name).await {
             Ok(modalities) => {
                 // Convertir en CustomModality pour la réponse
                 let custom_modalities = modalities.into_iter().map(|modality| CustomModality {
@@ -60,7 +62,7 @@ pub async fn get_custom_modalities(
         }
     } else {
         // Obtenir toutes les modalités
-        match CustomModality::get_all(&pool).await {
+        match CustomModality::get_all(pool).await {
             Ok(modalities) => CustomModalityResponse {
                 success: true,
                 data: Some(modalities),
@@ -82,9 +84,10 @@ pub async fn get_custom_modalities(
 
 /// Créer une nouvelle modalité personnalisée
 pub async fn create_custom_modality(
-    State(pool): State<PgPool>,
+    State(state): State<Arc<AppState>>,
     Json(request): Json<CreateCustomModalityRequest>,
 ) -> Result<Json<CustomModalityResponse>, StatusCode> {
+    let pool = &state.db;
     // Valider les données
     if request.product_type.trim().is_empty() || 
        request.field_name.trim().is_empty() || 
@@ -98,7 +101,7 @@ pub async fn create_custom_modality(
 
     // Vérifier si la modalité existe déjà
     match CustomModality::exists(
-        &pool,
+        pool,
         &request.product_type,
         &request.field_name,
         &request.modality,
@@ -123,7 +126,7 @@ pub async fn create_custom_modality(
     }
 
     // Créer la modalité
-    match CustomModality::create(&pool, request).await {
+    match CustomModality::create(pool, request).await {
         Ok(modality) => {
             log::info!("Nouvelle modalité créée: {} - {} - {}", 
                       modality.product_type, modality.field_name, modality.modality);
@@ -147,10 +150,11 @@ pub async fn create_custom_modality(
 
 /// Incrémenter le compteur d'utilisation d'une modalité
 pub async fn increment_usage(
-    State(pool): State<PgPool>,
+    State(state): State<Arc<AppState>>,
     Json(request): Json<IncrementUsageRequest>,
 ) -> Result<Json<CustomModalityResponse>, StatusCode> {
-    match CustomModality::increment_usage(&pool, request).await {
+    let pool = &state.db;
+    match CustomModality::increment_usage(pool, request).await {
         Ok(_) => Ok(Json(CustomModalityResponse {
             success: true,
             data: None,
@@ -169,10 +173,11 @@ pub async fn increment_usage(
 
 /// Obtenir les modalités les plus populaires
 pub async fn get_popular_modalities(
-    State(pool): State<PgPool>,
+    State(state): State<Arc<AppState>>,
     Query(params): Query<PopularModalitiesRequest>,
 ) -> Result<Json<CustomModalityResponse>, StatusCode> {
-    match CustomModality::get_popular(&pool, params).await {
+    let pool = &state.db;
+    match CustomModality::get_popular(pool, params).await {
         Ok(modalities) => Ok(Json(CustomModalityResponse {
             success: true,
             data: Some(modalities),
@@ -191,9 +196,10 @@ pub async fn get_popular_modalities(
 
 /// Obtenir les statistiques des modalités
 pub async fn get_modality_stats(
-    State(pool): State<PgPool>,
+    State(state): State<Arc<AppState>>,
 ) -> Result<Json<ModalityStats>, StatusCode> {
-    match CustomModality::get_stats(&pool).await {
+    let pool = &state.db;
+    match CustomModality::get_stats(pool).await {
         Ok(stats) => Ok(Json(stats)),
         Err(e) => {
             log::error!("Erreur lors de la récupération des statistiques: {}", e);
@@ -204,10 +210,11 @@ pub async fn get_modality_stats(
 
 /// Supprimer une modalité personnalisée
 pub async fn delete_custom_modality(
-    State(pool): State<PgPool>,
+    State(state): State<Arc<AppState>>,
     Path(id): Path<Uuid>,
 ) -> Result<Json<CustomModalityResponse>, StatusCode> {
-    match CustomModality::delete(&pool, id).await {
+    let pool = &state.db;
+    match CustomModality::delete(pool, id).await {
         Ok(_) => {
             log::info!("Modalité supprimée: {}", id);
             Ok(Json(CustomModalityResponse {
@@ -228,7 +235,7 @@ pub async fn delete_custom_modality(
 }
 
 /// Créer le routeur pour les modalités
-pub fn create_modalities_router() -> Router<PgPool> {
+pub fn create_modalities_router() -> Router<Arc<AppState>> {
     Router::new()
         .route("/api/modalities/custom", get(get_custom_modalities))
         .route("/api/modalities/custom", post(create_custom_modality))
