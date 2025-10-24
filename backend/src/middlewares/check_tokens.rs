@@ -60,11 +60,11 @@ pub async fn update_jwt_with_new_balance(
     let secret = std::env::var("JWT_SECRET")
         .map_err(|_| "JWT_SECRET manquant")?;
     
-    let new_jwt = generate_jwt(
+    let new_jwt = crate::utils::jwt_manager::generate_jwt(
         user_id,
         &user_data.role,
         &user_data.email,
-        user_data.nom_complet.clone(), // ✅ NOUVEAU: passer le nom de l'utilisateur
+        user_data.nom_complet,
         new_balance,
         &secret,
     )?;

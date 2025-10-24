@@ -24,6 +24,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useLanguageSafe } from '../contexts/LanguageContext';
 import { apiDelete, apiPatch, userApi } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
+import { getFieldValue } from '../utils/productNormalizer';
 
 const { width } = Dimensions.get('window');
 
@@ -111,18 +112,14 @@ const ServicesScreen: React.FC = () => {
           // Extraire les données du champ 'data'
           const serviceData = rawService.data || {};
 
-          // Construire le service au format attendu
+          // ✅ CORRECTION: Utiliser getFieldValue pour extraire les valeurs
           const extractValue = (field: any): string => {
-            if (!field) return '';
-            if (typeof field === 'string') return field;
-            if (typeof field === 'number') return String(field);
-            if (typeof field === 'object' && field.valeur) {
-              // ✅ CORRECTION: Extraction récursive pour gérer les objets imbriqués
-              return extractValue(field.valeur);
-            }
-            // ✅ CORRECTION: Si c'est un objet sans propriété valeur, retourner chaîne vide
-            if (typeof field === 'object') return '';
-            return String(field);
+            const value = getFieldValue(field);
+            if (value === null || value === undefined) return '';
+            if (typeof value === 'string') return value;
+            if (typeof value === 'number') return String(value);
+            if (typeof value === 'object') return ''; // Objet complexe non convertible
+            return String(value);
           };
 
           return {
