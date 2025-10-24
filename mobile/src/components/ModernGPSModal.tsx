@@ -9,13 +9,12 @@ import {
     Text,
     TextInput,
     TouchableOpacity,
-    View,
-    ActivityIndicator,
+    View
 } from 'react-native';
 import { modernColors } from '../theme/modernTheme';
+import ErrorBoundary from './ErrorBoundary';
 import InteractiveMapView from './InteractiveMapView';
 import SafeIcon from './SafeIcon';
-import ErrorBoundary from './ErrorBoundary';
 
 const { width, height } = Dimensions.get('window');
 
@@ -231,14 +230,15 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
 
                     <TouchableOpacity style={styles.layerButton} onPress={toggleMapStyle}>
                         <SafeIcon name="layers" size={18} color="#FFFFFF" />
+                        <Text style={styles.layerButtonText}>{getMapStyleText()}</Text>
                     </TouchableOpacity>
                 </LinearGradient>
 
                 {/* ✅ NOUVEAU: Barre de contrôles horizontale en haut */}
                 <View style={styles.topControlBar}>
                     {/* Mode de sélection */}
-                    <View style={styles.topControlSection}>
-                        <Text style={styles.topControlLabel}>Mode</Text>
+                    <View style={[styles.topControlSection, { flex: 0.75 }]}>
+                        <Text style={styles.topControlLabel}>MODE</Text>
                         <View style={styles.topModeButtons}>
                             <TouchableOpacity
                                 style={[
@@ -276,30 +276,32 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
                         </View>
                     </View>
 
-                    {/* Recherche d'adresse */}
-                    <View style={styles.topControlSection}>
-                        <Text style={styles.topControlLabel}>Recherche</Text>
+                    {/* Recherche d'adresse - PLUS D'ESPACE */}
+                    <View style={[styles.topControlSection, { flex: 1.6 }]}>
+                        <Text style={styles.topControlLabel}>RECHERCHE</Text>
                         <View style={styles.topSearchContainer}>
                             <TextInput
                                 style={styles.topSearchInput}
-                                placeholder="Adresse..."
+                                placeholder="Entrez une adresse ou un lieu..."
                                 value={searchQuery}
                                 onChangeText={setSearchQuery}
                                 placeholderTextColor="#9CA3AF"
+                                returnKeyType="search"
+                                onSubmitEditing={handleSearch}
                             />
                             <TouchableOpacity
                                 style={styles.topSearchButton}
                                 onPress={handleSearch}
                                 disabled={loading}
                             >
-                                <SafeIcon name="search" size={16} color="#FFFFFF" />
+                                <SafeIcon name="search" size={18} color="#FFFFFF" />
                             </TouchableOpacity>
                         </View>
                     </View>
 
                     {/* Ma position GPS */}
-                    <View style={styles.topControlSection}>
-                        <Text style={styles.topControlLabel}>Position</Text>
+                    <View style={[styles.topControlSection, { flex: 1 }]}>
+                        <Text style={styles.topControlLabel}>POSITION</Text>
                         <TouchableOpacity
                             style={styles.topGPSButton}
                             onPress={handleGetCurrentLocation}
@@ -465,22 +467,30 @@ const styles = StyleSheet.create({
         gap: 4,
     },
     layerButton: {
-        width: 32,
-        height: 32,
-        borderRadius: 16,
-        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+        flexDirection: 'row',
+        height: 36,
+        paddingHorizontal: 12,
+        borderRadius: 18,
+        backgroundColor: 'rgba(255, 255, 255, 0.25)',
         justifyContent: 'center',
         alignItems: 'center',
+        gap: 6,
+    },
+    layerButtonText: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: '#FFFFFF',
+        letterSpacing: 0.3,
     },
     content: {
         flex: 1,
         flexDirection: 'row',
     },
     leftPanel: {
-        width: width * 0.30, // ✅ Réduit car contrôles sont en haut maintenant
+        width: width * 0.22, // ✅ Encore réduit pour donner plus d'espace à la carte
         backgroundColor: '#F8FAFC',
-        paddingHorizontal: 12,
-        paddingVertical: 16,
+        paddingHorizontal: 10,
+        paddingVertical: 12,
         borderRightWidth: 1,
         borderRightColor: '#E2E8F0',
     },
@@ -488,55 +498,64 @@ const styles = StyleSheet.create({
     topControlBar: {
         flexDirection: 'row',
         backgroundColor: '#FFFFFF',
-        paddingHorizontal: 16,
-        paddingVertical: 14,
+        paddingHorizontal: 20,
+        paddingVertical: 16,
         borderBottomWidth: 1,
-        borderBottomColor: '#E5E7EB',
+        borderBottomColor: '#D1D5DB',
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.05,
-        shadowRadius: 3,
-        elevation: 2,
-        gap: 12,
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.08,
+        shadowRadius: 4,
+        elevation: 3,
+        gap: 16,
     },
     topControlSection: {
         flex: 1,
+        minWidth: 0, // ✅ Pour permettre au flex de bien fonctionner
     },
     topControlLabel: {
-        fontSize: 13,
-        fontWeight: '700',
-        color: '#374151',
-        marginBottom: 8,
-        letterSpacing: 0.3,
+        fontSize: 11,
+        fontWeight: '800',
+        color: '#1F2937',
+        marginBottom: 6,
+        letterSpacing: 0.5,
+        textTransform: 'uppercase',
     },
     topModeButtons: {
         flexDirection: 'row',
-        gap: 6,
+        gap: 8,
     },
     topModeButton: {
         flex: 1,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        paddingVertical: 10,
-        paddingHorizontal: 10,
-        borderRadius: 10,
-        borderWidth: 2,
+        paddingVertical: 12,
+        paddingHorizontal: 12,
+        borderRadius: 12,
+        borderWidth: 2.5,
         borderColor: modernColors.primary,
         backgroundColor: '#FFFFFF',
-        gap: 4,
+        gap: 6,
+        shadowColor: modernColors.primary,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 2,
     },
     topModeButtonActive: {
         backgroundColor: modernColors.primary,
         borderColor: modernColors.primary,
+        shadowOpacity: 0.3,
     },
     topModeIcon: {
-        fontSize: 18,
+        fontSize: 20,
     },
     topModeButtonText: {
-        fontSize: 13,
-        fontWeight: '600',
+        fontSize: 14,
+        fontWeight: '700',
         color: modernColors.primary,
+        letterSpacing: 0.3,
     },
     topModeButtonTextActive: {
         color: '#FFFFFF',
@@ -544,46 +563,61 @@ const styles = StyleSheet.create({
     topSearchContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 6,
+        gap: 8,
     },
     topSearchInput: {
         flex: 1,
-        height: 42,
-        borderWidth: 2,
+        height: 46,
+        borderWidth: 2.5,
         borderColor: '#D1D5DB',
-        borderRadius: 10,
-        paddingHorizontal: 12,
-        fontSize: 14,
+        borderRadius: 12,
+        paddingHorizontal: 14,
+        fontSize: 15,
         backgroundColor: '#FFFFFF',
         color: '#111827',
-        fontWeight: '500',
+        fontWeight: '600',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 2,
+        elevation: 1,
     },
     topSearchButton: {
-        width: 42,
-        height: 42,
-        borderRadius: 10,
+        width: 46,
+        height: 46,
+        borderRadius: 12,
         backgroundColor: modernColors.primary,
         justifyContent: 'center',
         alignItems: 'center',
+        shadowColor: modernColors.primary,
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
+        elevation: 3,
     },
     topGPSButton: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        paddingVertical: 11,
-        paddingHorizontal: 14,
-        borderRadius: 10,
+        paddingVertical: 13,
+        paddingHorizontal: 16,
+        borderRadius: 12,
         backgroundColor: modernColors.primary,
-        gap: 6,
+        gap: 8,
+        shadowColor: modernColors.primary,
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
+        elevation: 3,
     },
     topGPSIcon: {
-        fontSize: 20,
+        fontSize: 22,
     },
     topGPSButtonText: {
-        fontSize: 14,
+        fontSize: 15,
         fontWeight: '700',
         color: '#FFFFFF',
-        letterSpacing: 0.3,
+        letterSpacing: 0.4,
     },
     controlCard: {
         backgroundColor: '#FFFFFF',

@@ -347,3 +347,5 @@ const TYPES_CHAMBRES_HOTEL = [ ... ];
 Voulez-vous que je commence par supprimer ces constantes ? 🗑️
 
 
+
+

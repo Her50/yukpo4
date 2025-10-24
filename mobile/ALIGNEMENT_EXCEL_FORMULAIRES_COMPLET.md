@@ -329,3 +329,5 @@ Spécialités: Ndolé|Poulet DG|Eru|Koki
 **L'import en masse de produits via Excel est maintenant 100% fonctionnel pour les 46 catégories !** 🎉
 
 
+
+

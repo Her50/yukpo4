@@ -228,6 +228,12 @@ export async function creerService(donneesStructurees: any, tokensIAExterne?: nu
   const timeoutId = setTimeout(() => controller.abort(), 5 * 60 * 1000); // 5 minutes
 
   try {
+    // ✅ CORRECTION: Ajouter tokens_ia_externe DANS le champ data, pas à la racine
+    const serviceData = { ...donneesStructurees };
+    if (tokensIAExterne) {
+      serviceData.tokens_ia_externe = tokensIAExterne;
+    }
+    
     // UNIQUEMENT ÉTAPE 2 : Créer le service avec les données déjà structurées
     const response = await fetch(`${API_BASE_URL}/api/services/create`, {
       method: 'POST',
@@ -237,8 +243,7 @@ export async function creerService(donneesStructurees: any, tokensIAExterne?: nu
       },
       body: JSON.stringify({
         user_id: user_id,
-        data: donneesStructurees, // ✅ CORRECTION : Encapsuler dans 'data' comme attendu par le backend
-        ...(tokensIAExterne && { tokens_ia_externe: tokensIAExterne }) // Transmettre les tokens IA externe
+        data: serviceData // ✅ CORRECTION : tokens_ia_externe est maintenant dans data
       }),
       signal: controller.signal
     });

@@ -593,3 +593,5 @@ console.log('[productModalities] Options pour ${productType} > ${fieldName}:', o
 **Status:** ✅ Système complet et testé - Prêt pour le build
 
 
+
+

@@ -70,3 +70,5 @@ npm run android
 **L'application est prête pour le déploiement !** 🚀
 
 
+
+

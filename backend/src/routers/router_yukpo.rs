@@ -666,17 +666,25 @@ async fn handle_brouillon_service(
 async fn handle_creer_service(
     State(state): State<Arc<AppState>>,
     Extension(user): Extension<crate::middlewares::jwt::AuthenticatedUser>,
-    Json(data): Json<Value>,
+    Json(payload): Json<Value>,
 ) -> Result<axum::response::Response, axum::http::StatusCode> {
     let user_id = user.id;
     
     // ?? LOGS DE D?BOGAGE
     eprintln!("[DEBUG][HANDLE_CREER_SERVICE] ?? REQU?TE RE?UE SUR /api/services/create");
     eprintln!("[DEBUG][HANDLE_CREER_SERVICE] User ID: {}", user_id);
-    eprintln!("[DEBUG][HANDLE_CREER_SERVICE] Donn?es re?ues: {}", serde_json::to_string(&data).unwrap_or_default());
+    eprintln!("[DEBUG][HANDLE_CREER_SERVICE] Payload re?u: {}", serde_json::to_string(&payload).unwrap_or_default());
     info!("[handle_creer_service] ?? ==== Requ?te re?ue sur /api/services/create ====");
     info!("[handle_creer_service] User ID: {}", user_id);
-    info!("[handle_creer_service] Donn?es re?ues: {}", serde_json::to_string(&data).unwrap_or_default());
+    info!("[handle_creer_service] Payload re?u: {}", serde_json::to_string(&payload).unwrap_or_default());
+    
+    // ?? CORRECTION : Extraire le champ 'data' du payload pour ?viter le double embo?tement
+    // Le frontend envoie { user_id, data: {...} }
+    // On extrait data pour le passer au contr?leur
+    let data = payload.get("data").cloned().unwrap_or(payload.clone());
+    
+    eprintln!("[DEBUG][HANDLE_CREER_SERVICE] Donn?es extraites: {}", serde_json::to_string(&data).unwrap_or_default());
+    info!("[handle_creer_service] Donn?es extraites: {}", serde_json::to_string(&data).unwrap_or_default());
     
     // Cr?er la structure attendue par creer_service
     let service_request = crate::controllers::service_controller::NewServiceRequest {

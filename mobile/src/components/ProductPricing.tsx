@@ -39,9 +39,11 @@ const ProductPricing: React.FC<ProductPricingProps> = ({
         return null;
     }
 
-    const formatPrice = (price: string, currency: string) => {
+    // ✅ Les produits arrivent maintenant normalisés depuis ServiceCard
+    // Tous les champs sont déjà extraits de la structure {valeur, type_donnee, origine_champs}
+    const formatPrice = (price: string | number, currency: string) => {
         const symbol = CURRENCY_SYMBOLS[currency] || currency;
-        const numericPrice = parseFloat(price);
+        const numericPrice = typeof price === 'number' ? price : parseFloat(price);
 
         if (isNaN(numericPrice)) return `${price} ${symbol}`;
 
@@ -57,30 +59,38 @@ const ProductPricing: React.FC<ProductPricingProps> = ({
 
     const getPriceRange = () => {
         const prices = products
-            .map(p => parseFloat(p.price))
+            .map(p => {
+                const price = p.price || p.prix;
+                return typeof price === 'number' ? price : parseFloat(price);
+            })
             .filter(p => !isNaN(p));
 
         if (prices.length === 0) return null;
 
         const min = Math.min(...prices);
         const max = Math.max(...prices);
+        const currency = products[0].currency || products[0].devise || 'XAF';
 
         if (min === max) {
-            return formatPrice(min.toString(), products[0].currency);
+            return formatPrice(min, currency);
         }
 
-        return `${formatPrice(min.toString(), products[0].currency)} - ${formatPrice(max.toString(), products[0].currency)}`;
+        return `${formatPrice(min, currency)} - ${formatPrice(max, currency)}`;
     };
 
     const getAveragePrice = () => {
         const prices = products
-            .map(p => parseFloat(p.price))
+            .map(p => {
+                const price = p.price || p.prix;
+                return typeof price === 'number' ? price : parseFloat(price);
+            })
             .filter(p => !isNaN(p));
 
         if (prices.length === 0) return null;
 
         const average = prices.reduce((sum, price) => sum + price, 0) / prices.length;
-        return formatPrice(average.toString(), products[0].currency);
+        const currency = products[0].currency || products[0].devise || 'XAF';
+        return formatPrice(average, currency);
     };
 
     if (compact) {
@@ -118,26 +128,32 @@ const ProductPricing: React.FC<ProductPricingProps> = ({
                 </View>
 
                 <View style={styles.productsList}>
-                    {products.slice(0, maxDisplay).map((product, index) => (
-                        <View key={product.id || index} style={styles.productItem}>
-                            <View style={styles.productInfo}>
-                                <Text style={styles.productName} numberOfLines={1}>
-                                    {product.name}
+                    {products.slice(0, maxDisplay).map((product, index) => {
+                        const name = product.name || product.nom || 'Produit';
+                        const price = product.price || product.prix;
+                        const currency = product.currency || product.devise || 'XAF';
+                        
+                        return (
+                            <View key={product.id || index} style={styles.productItem}>
+                                <View style={styles.productInfo}>
+                                    <Text style={styles.productName} numberOfLines={1}>
+                                        {name}
+                                    </Text>
+                                    {(product.images?.length || 0) > 0 && (
+                                        <View style={styles.productMediaInfo}>
+                                            <Text style={styles.mediaIcon}>🖼️</Text>
+                                            <Text style={styles.productMediaText}>
+                                                {product.images?.length} image{(product.images?.length || 0) > 1 ? 's' : ''}
+                                            </Text>
+                                        </View>
+                                    )}
+                                </View>
+                                <Text style={styles.productPrice}>
+                                    {formatPrice(price, currency)}
                                 </Text>
-                                {(product.images?.length || 0) > 0 && (
-                                    <View style={styles.productMediaInfo}>
-                                        <Text style={styles.mediaIcon}>🖼️</Text>
-                                        <Text style={styles.productMediaText}>
-                                            {product.images?.length} image{(product.images?.length || 0) > 1 ? 's' : ''}
-                                        </Text>
-                                    </View>
-                                )}
                             </View>
-                            <Text style={styles.productPrice}>
-                                {formatPrice(product.price, product.currency)}
-                            </Text>
-                        </View>
-                    ))}
+                        );
+                    })}
 
                     {products.length > maxDisplay && (
                         <View style={styles.moreProductsContainer}>

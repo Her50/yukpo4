@@ -9,6 +9,7 @@ import useServiceMedia from '../hooks/useServiceMedia';
 import useServiceStats from '../hooks/useServiceStats';
 import useWebSocket from '../hooks/useWebSocket';
 import { theme } from '../theme/theme';
+import { normalizeServiceProducts } from '../utils/productNormalizer';
 import ChatModalAdvanced from './ChatModalAdvanced';
 import LocationDisplayModern from './LocationDisplayModern';
 import ProductPricing from './ProductPricing';
@@ -332,22 +333,15 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
 
                 {/* Produits avec prix */}
                 {(() => {
-                    const produitsField = service.data?.produits;
-                    if (produitsField) {
-                        let produits = [];
-                        if (Array.isArray(produitsField)) {
-                            produits = produitsField;
-                        } else if (produitsField.valeur && Array.isArray(produitsField.valeur)) {
-                            produits = produitsField.valeur;
-                        }
-
-                        if (produits.length > 0) {
-                            return (
-                                <View style={styles.productPricingContainer}>
-                                    <ProductPricing products={produits} compact={true} />
-                                </View>
-                            );
-                        }
+                    // ✅ CORRECTION: Normaliser les produits pour extraire toutes les valeurs
+                    const normalizedProducts = normalizeServiceProducts(service.data?.produits);
+                    
+                    if (normalizedProducts.length > 0) {
+                        return (
+                            <View style={styles.productPricingContainer}>
+                                <ProductPricing products={normalizedProducts} compact={true} />
+                            </View>
+                        );
                     }
                     return null;
                 })()}

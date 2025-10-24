@@ -130,3 +130,5 @@
 **L'import en masse de produits via Excel est maintenant 100% fonctionnel pour les 46 catégories !** 🎉
 
 
+
+

@@ -239,3 +239,5 @@ if fulltext_results.len() < 5 {
 **Prochaine étape** : Implémenter les 2 actions ci-dessus ✅
 
 
+
+

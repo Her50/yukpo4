@@ -106,3 +106,5 @@ De nombreux formulaires utilisent encore **des listes fixes** avec `.map()` au l
 **Total** : ~20 champs à migrer vers ProductFieldSelector
 
 
+
+

@@ -106,3 +106,5 @@ Si un produit "aliments" correspond mieux à "agroalimentaire" :
 **Status :** ✅ VÉRIFIÉ ET COMPLET
 
 
+
+

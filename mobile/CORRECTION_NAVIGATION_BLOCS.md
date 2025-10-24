@@ -260,3 +260,5 @@ Vous devez ajouter au moins un produit avant d'accéder aux étapes suivantes.
 
 **Le contournement de validation par navigation est maintenant impossible ! 🎉**
 
+
+

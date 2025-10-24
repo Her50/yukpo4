@@ -445,8 +445,11 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
             if (serviceData?.data) {
               Object.keys(serviceData.data).forEach(key => {
-                const value = serviceData.data[key];
-                formValues[key] = value?.valeur !== undefined ? value.valeur : value;
+                // ✅ CORRECTION: Ne pas mettre produits dans formValues, les gérer séparément
+                if (key !== 'produits') {
+                  const value = serviceData.data[key];
+                  formValues[key] = value?.valeur !== undefined ? value.valeur : value;
+                }
               });
             }
 
@@ -462,6 +465,16 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
               email: formValues.email,
               website: formValues.website
             });
+
+            // ✅ CORRECTION CRITIQUE: Charger les produits existants
+            if (serviceData?.data?.produits) {
+              const { normalizeServiceProducts } = await import('../utils/productNormalizer');
+              const existingProducts = normalizeServiceProducts(serviceData.data.produits);
+              console.log('[FormulaireYukpoIntelligentScreen] ✅ Produits existants chargés:', existingProducts.length);
+              setProducts(existingProducts);
+            } else {
+              console.log('[FormulaireYukpoIntelligentScreen] ⚠️ Aucun produit trouvé dans le service');
+            }
 
             setValeursFormulaire(formValues);
             setActiveStep(2); // Aller directement au formulaire
@@ -524,6 +537,9 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       // Extraire les valeurs des données IA pour pré-remplir les champs
       const initialValues: Record<string, any> = {};
       Object.keys(suggestion.data).forEach(fieldName => {
+        // ✅ CORRECTION: Ignorer produits ici, traité séparément
+        if (fieldName === 'produits') return;
+
         const fieldData = suggestion.data[fieldName];
         if (fieldData && typeof fieldData === 'object' && 'valeur' in fieldData) {
           initialValues[fieldName] = fieldData.valeur;
@@ -534,6 +550,16 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           console.log(`[FormulaireYukpoIntelligentScreen] Valeur directe pour ${fieldName}:`, fieldData);
         }
       });
+
+      // ✅ CORRECTION CRITIQUE: Charger les produits générés par l'IA
+      if (suggestion.data.produits) {
+        (async () => {
+          const { normalizeServiceProducts } = await import('../utils/productNormalizer');
+          const iaProducts = normalizeServiceProducts(suggestion.data.produits);
+          console.log('[FormulaireYukpoIntelligentScreen] ✅ Produits IA chargés:', iaProducts.length);
+          setProducts(iaProducts);
+        })();
+      }
 
       // CORRECTION: S'assurer que le champ category est bien chargé
       if (suggestion.data.category) {
@@ -703,6 +729,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
             readonly={isReadonly}
             titreService={valeursFormulaire.titre_service}
             descriptionService={valeursFormulaire.description}
+            categoryService={valeursFormulaire.category}
             onDuplicate={(product) => {
               setProductToDuplicate(product);
               setShowDuplicationModal(true);
@@ -1046,7 +1073,12 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
             });
             return cleaned;
           });
-          finalServiceData.produits = cleanedProducts;
+          // ✅ CORRECTION: Structure normalisée cohérente avec backend
+          finalServiceData.produits = {
+            type_donnee: 'listeproduit',
+            valeur: cleanedProducts,
+            origine_champs: 'formulaire'
+          };
           console.log('[FormulaireYukpoIntelligentScreen] 📦 Produits ajoutés/mis à jour:', cleanedProducts.length);
         }
 
@@ -1278,7 +1310,13 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                     return cleaned;
                   });
 
-                  finalServiceData.produits = cleanedProducts;
+                  // ✅ CORRECTION: Envoyer la structure normalisée (cohérent avec backend)
+                  // Le backend normalise automatiquement, mais autant être cohérent
+                  finalServiceData.produits = {
+                    type_donnee: 'listeproduit',
+                    valeur: cleanedProducts,
+                    origine_champs: 'formulaire'
+                  };
 
                   // ✅ VÉRIFICATION : Estimer la taille finale du payload
                   const finalPayloadSize = JSON.stringify(finalServiceData).length;

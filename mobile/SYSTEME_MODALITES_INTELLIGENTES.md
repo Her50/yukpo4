@@ -371,3 +371,5 @@ curl -X POST http://localhost:8080/api/modalities/custom \
   - `backend/migrations/*_create_custom_modalities.sql`
 
 
+
+

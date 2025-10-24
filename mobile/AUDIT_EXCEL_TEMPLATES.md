@@ -303,3 +303,5 @@ Mise aux Normes,350000,XAF,Rénovation installation électrique complète,Rénov
 **Permettre l'import en masse de produits pour TOUTES les 46 catégories via Excel** ✅
 
 
+
+

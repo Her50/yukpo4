@@ -342,3 +342,5 @@ Ajouter le code de parsing Excel pour les 15 nouvelles catégories dans la fonct
 Cela nécessitera d'ajouter des `case` pour chaque catégorie dans le `switch (selectedType)` pour parser correctement les colonnes du fichier Excel.
 
 
+
+

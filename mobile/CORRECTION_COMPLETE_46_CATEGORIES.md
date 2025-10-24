@@ -278,3 +278,5 @@ Implémenter le fallback backend vers `prestation_service` dans `backend/src/ser
 **L'application est maintenant prête avec 46 catégories complètement fonctionnelles !** 🚀
 
 
+
+

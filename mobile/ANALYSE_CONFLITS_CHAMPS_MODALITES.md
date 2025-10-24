@@ -260,3 +260,5 @@ Certains champs peuvent rester génériques s'ils sont communs à TOUTES les cat
 Il faut seulement corriger les **anciennes catégories** pour harmoniser tout le système.
 
 
+
+

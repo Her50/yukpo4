@@ -223,3 +223,5 @@ Créer un fichier Excel avec plusieurs lignes et vérifier que tous les produits
 **Garantir que chaque ligne du fichier Excel crée UN produit avec TOUS les champs correctement mappés** ✅
 
 
+
+
