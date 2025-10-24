@@ -51,18 +51,17 @@ impl CustomModality {
         pool: &sqlx::PgPool,
         request: CreateCustomModalityRequest,
     ) -> Result<Self, sqlx::Error> {
-        let modality = sqlx::query_as!(
-            CustomModality,
+        let modality = sqlx::query_as::<_, CustomModality>(
             r#"
             INSERT INTO custom_modalities (product_type, field_name, modality, added_by)
             VALUES ($1, $2, $3, $4)
             RETURNING *
-            "#,
-            request.product_type,
-            request.field_name,
-            request.modality.trim(),
-            request.added_by
+            "#
         )
+        .bind(&request.product_type)
+        .bind(&request.field_name)
+        .bind(request.modality.trim())
+        .bind(&request.added_by)
         .fetch_one(pool)
         .await?;
 
@@ -75,16 +74,21 @@ impl CustomModality {
         product_type: &str,
         field_name: &str,
     ) -> Result<Vec<String>, sqlx::Error> {
-        let modalities = sqlx::query!(
+        #[derive(sqlx::FromRow)]
+        struct ModalityRow {
+            modality: String,
+        }
+        
+        let modalities = sqlx::query_as::<_, ModalityRow>(
             r#"
             SELECT modality
             FROM custom_modalities
             WHERE product_type = $1 AND field_name = $2
             ORDER BY usage_count DESC, added_at DESC
-            "#,
-            product_type,
-            field_name
+            "#
         )
+        .bind(product_type)
+        .bind(field_name)
         .fetch_all(pool)
         .await?;
 
@@ -96,7 +100,7 @@ impl CustomModality {
         pool: &sqlx::PgPool,
         request: IncrementUsageRequest,
     ) -> Result<(), sqlx::Error> {
-        sqlx::query!(
+        sqlx::query(
             r#"
             UPDATE custom_modalities
             SET usage_count = usage_count + 1,
@@ -104,11 +108,11 @@ impl CustomModality {
             WHERE product_type = $1 
               AND field_name = $2 
               AND LOWER(TRIM(modality)) = LOWER(TRIM($3))
-            "#,
-            request.product_type,
-            request.field_name,
-            request.modality
+            "#
         )
+        .bind(&request.product_type)
+        .bind(&request.field_name)
+        .bind(&request.modality)
         .execute(pool)
         .await?;
 
@@ -122,19 +126,18 @@ impl CustomModality {
     ) -> Result<Vec<CustomModality>, sqlx::Error> {
         let limit = request.limit.unwrap_or(10);
         
-        let modalities = sqlx::query_as!(
-            CustomModality,
+        let modalities = sqlx::query_as::<_, CustomModality>(
             r#"
             SELECT *
             FROM custom_modalities
             WHERE product_type = $1 AND field_name = $2
             ORDER BY usage_count DESC, added_at DESC
             LIMIT $3
-            "#,
-            request.product_type,
-            request.field_name,
-            limit
+            "#
         )
+        .bind(&request.product_type)
+        .bind(&request.field_name)
+        .bind(limit)
         .fetch_all(pool)
         .await?;
 
@@ -143,8 +146,7 @@ impl CustomModality {
 
     /// Obtenir toutes les modalités personnalisées
     pub async fn get_all(pool: &sqlx::PgPool) -> Result<Vec<CustomModality>, sqlx::Error> {
-        let modalities = sqlx::query_as!(
-            CustomModality,
+        let modalities = sqlx::query_as::<_, CustomModality>(
             r#"
             SELECT *
             FROM custom_modalities
@@ -162,13 +164,13 @@ impl CustomModality {
         pool: &sqlx::PgPool,
         id: Uuid,
     ) -> Result<(), sqlx::Error> {
-        sqlx::query!(
+        sqlx::query(
             r#"
             DELETE FROM custom_modalities
             WHERE id = $1
-            "#,
-            id
+            "#
         )
+        .bind(id)
         .execute(pool)
         .await?;
 
@@ -182,18 +184,23 @@ impl CustomModality {
         field_name: &str,
         modality: &str,
     ) -> Result<bool, sqlx::Error> {
-        let count = sqlx::query!(
+        #[derive(sqlx::FromRow)]
+        struct CountRow {
+            count: Option<i64>,
+        }
+        
+        let count = sqlx::query_as::<_, CountRow>(
             r#"
             SELECT COUNT(*) as count
             FROM custom_modalities
             WHERE product_type = $1 
               AND field_name = $2 
               AND LOWER(TRIM(modality)) = LOWER(TRIM($3))
-            "#,
-            product_type,
-            field_name,
-            modality
+            "#
         )
+        .bind(product_type)
+        .bind(field_name)
+        .bind(modality)
         .fetch_one(pool)
         .await?;
 
@@ -202,7 +209,16 @@ impl CustomModality {
 
     /// Obtenir les statistiques des modalités
     pub async fn get_stats(pool: &sqlx::PgPool) -> Result<ModalityStats, sqlx::Error> {
-        let stats = sqlx::query!(
+        #[derive(sqlx::FromRow)]
+        struct StatsRow {
+            total_modalities: Option<i64>,
+            total_product_types: Option<i64>,
+            total_field_names: Option<i64>,
+            total_usage: Option<i64>,
+            avg_usage: Option<f64>,
+        }
+        
+        let stats = sqlx::query_as::<_, StatsRow>(
             r#"
             SELECT 
                 COUNT(*) as total_modalities,

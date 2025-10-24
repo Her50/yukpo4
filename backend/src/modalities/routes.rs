@@ -27,7 +27,7 @@ pub async fn get_custom_modalities(
     State(state): State<Arc<AppState>>,
     Query(params): Query<ModalityQuery>,
 ) -> Result<Json<CustomModalityResponse>, StatusCode> {
-    let pool = &state.db;
+    let pool = &state.pg;
     let result = if let (Some(product_type), Some(field_name)) = (params.product_type, params.field_name) {
         // Obtenir les modalités pour un champ spécifique
         match CustomModality::get_by_field(pool, &product_type, &field_name).await {
@@ -87,7 +87,7 @@ pub async fn create_custom_modality(
     State(state): State<Arc<AppState>>,
     Json(request): Json<CreateCustomModalityRequest>,
 ) -> Result<Json<CustomModalityResponse>, StatusCode> {
-    let pool = &state.db;
+    let pool = &state.pg;
     // Valider les données
     if request.product_type.trim().is_empty() || 
        request.field_name.trim().is_empty() || 
@@ -153,7 +153,7 @@ pub async fn increment_usage(
     State(state): State<Arc<AppState>>,
     Json(request): Json<IncrementUsageRequest>,
 ) -> Result<Json<CustomModalityResponse>, StatusCode> {
-    let pool = &state.db;
+    let pool = &state.pg;
     match CustomModality::increment_usage(pool, request).await {
         Ok(_) => Ok(Json(CustomModalityResponse {
             success: true,
@@ -176,7 +176,7 @@ pub async fn get_popular_modalities(
     State(state): State<Arc<AppState>>,
     Query(params): Query<PopularModalitiesRequest>,
 ) -> Result<Json<CustomModalityResponse>, StatusCode> {
-    let pool = &state.db;
+    let pool = &state.pg;
     match CustomModality::get_popular(pool, params).await {
         Ok(modalities) => Ok(Json(CustomModalityResponse {
             success: true,
@@ -198,7 +198,7 @@ pub async fn get_popular_modalities(
 pub async fn get_modality_stats(
     State(state): State<Arc<AppState>>,
 ) -> Result<Json<ModalityStats>, StatusCode> {
-    let pool = &state.db;
+    let pool = &state.pg;
     match CustomModality::get_stats(pool).await {
         Ok(stats) => Ok(Json(stats)),
         Err(e) => {
@@ -213,7 +213,7 @@ pub async fn delete_custom_modality(
     State(state): State<Arc<AppState>>,
     Path(id): Path<Uuid>,
 ) -> Result<Json<CustomModalityResponse>, StatusCode> {
-    let pool = &state.db;
+    let pool = &state.pg;
     match CustomModality::delete(pool, id).await {
         Ok(_) => {
             log::info!("Modalité supprimée: {}", id);
