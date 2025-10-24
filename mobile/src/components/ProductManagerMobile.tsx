@@ -799,12 +799,14 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
             const detectedType = detectProductTypeFromCategory(categoryService);
             console.log('[ProductManagerMobile] Type auto-détecté depuis catégorie:', detectedType, 'pour', categoryService);
             setSelectedType(detectedType);
+            setCurrentStep('form'); // ✅ CORRECTION: Ouvrir automatiquement le formulaire
         } else if (products.length > 0 && !selectedType) {
             // Si pas de catégorie mais des produits existants, détecter depuis le premier produit
             const { detectProductTypeFromProduct } = require('../utils/productCategoryMapper');
             const detectedType = detectProductTypeFromProduct(products[0]);
             console.log('[ProductManagerMobile] Type auto-détecté depuis produit:', detectedType);
             setSelectedType(detectedType);
+            setCurrentStep('form'); // ✅ CORRECTION: Ouvrir automatiquement le formulaire
         }
     }, [categoryService, products.length]);
 
