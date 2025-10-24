@@ -77,7 +77,7 @@ const ProductDuplicationModal: React.FC<ProductDuplicationModalProps> = ({
                     </TouchableOpacity>
                 </View>
 
-                <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+                <ScrollView style={styles.content} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
                     <NativeCard style={styles.infoCard}>
                         <View style={styles.infoHeader}>
                             <SafeIcon name="info" size={20} color={modernColors.info} />

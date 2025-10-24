@@ -29,6 +29,7 @@ import ProductManagerMobile from '../components/ProductManagerMobile';
 // ✅ AJOUT: Composants pour modalités personnalisées et sélection multiple
 import EnhancedModalitySelector from '../components/EnhancedModalitySelector';
 import MultiSelectModalitySelector from '../components/MultiSelectModalitySelector';
+import ProductFieldSelector from '../components/ProductFieldSelector';
 import ProductDuplicationModal from '../components/ProductDuplicationModal';
 // Code corrigé (remplace @ts-ignore)
 import SafeIcon from '../components/SafeIcon';
@@ -784,48 +785,37 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     switch (field.type) {
       case 'select':
       case 'dropdown':
-        // ✅ CORRECTION: Utiliser EnhancedModalitySelector ou MultiSelectModalitySelector
+        // ✅ AMÉLIORATION: Utiliser ProductFieldSelector qui détecte automatiquement le type de sélection
         const productType = valeursFormulaire.category || 'autre';
-        const isMultiSelect = field.multiSelect || field.allowMultiple || false;
-
-        if (isMultiSelect) {
-          // Sélection multiple avec possibilité d'ajouter des modalités
-          return (
-            <View key={field.name} style={styles.fieldContainer}>
-              <MultiSelectModalitySelector
-                label={field.label}
-                values={Array.isArray(valeursFormulaire[field.name]) ? valeursFormulaire[field.name] : []}
-                productType={productType}
-                fieldName={field.name}
-                onSelect={(values) => handleFieldChange(field.name, values)}
-                required={field.required}
-                placeholder={field.placeholder || 'Sélectionner...'}
-                maxSelections={field.maxSelections || 10}
-              />
-              {fieldErrors[field.name] && (
-                <Text style={styles.fieldErrorText}>⚠️ {String(fieldErrors[field.name])}</Text>
-              )}
-            </View>
-          );
-        } else {
-          // Sélection simple avec possibilité d'ajouter des modalités
-          return (
-            <View key={field.name} style={styles.fieldContainer}>
-              <EnhancedModalitySelector
-                label={field.label}
-                value={valeursFormulaire[field.name] || ''}
-                productType={productType}
-                fieldName={field.name}
-                onSelect={(value) => handleFieldChange(field.name, value)}
-                required={field.required}
-                placeholder={field.placeholder || 'Sélectionner...'}
-              />
-              {fieldErrors[field.name] && (
-                <Text style={styles.fieldErrorText}>⚠️ {String(fieldErrors[field.name])}</Text>
-              )}
-            </View>
-          );
-        }
+        
+        return (
+          <View key={field.name} style={styles.fieldContainer}>
+            <ProductFieldSelector
+              label={field.label}
+              fieldName={field.name}
+              productType={productType}
+              value={valeursFormulaire[field.name] || (field.multiSelect ? [] : '')}
+              onSelect={(value) => {
+                handleFieldChange(field.name, value);
+                // Effacer l'erreur quand l'utilisateur sélectionne une valeur
+                if (fieldErrors[field.name]) {
+                  setFieldErrors(prev => {
+                    const newErrors = { ...prev };
+                    delete newErrors[field.name];
+                    return newErrors;
+                  });
+                }
+              }}
+              required={field.required}
+              multiSelect={field.multiSelect || field.allowMultiple}
+              maxSelections={field.maxSelections || 20}
+              placeholder={field.placeholder || 'Sélectionner...'}
+            />
+            {fieldErrors[field.name] && (
+              <Text style={styles.fieldErrorText}>⚠️ {String(fieldErrors[field.name])}</Text>
+            )}
+          </View>
+        );
 
       case 'text':
       case 'email':
@@ -1734,6 +1724,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                   style={styles.contentScrollView}
                   contentContainerStyle={styles.contentContainer}
                   showsVerticalScrollIndicator={false}
+                  keyboardShouldPersistTaps="handled"
+                  keyboardDismissMode="on-drag"
                 >
                   {/* Affichage du bloc actuel uniquement */}
                   {blocks[currentBlock] && (
