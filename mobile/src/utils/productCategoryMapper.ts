@@ -197,8 +197,10 @@ export function detectProductTypeFromCategory(serviceCategory: string | undefine
     }
 
     // Fallback
-    console.log(`[productCategoryMapper] Aucune correspondance pour "${serviceCategory}", utilisation de 'autre'`);
-    return 'autre';
+    // ✅ AMÉLIORATION: Fallback vers 'prestation_service' au lieu de 'autre'
+    // Raison: Si on ne détecte pas automatiquement, c'est probablement un service
+    console.log(`[productCategoryMapper] Aucune correspondance pour "${serviceCategory}", fallback vers 'prestation_service'`);
+    return 'prestation_service';
 }
 
 /**
@@ -237,7 +239,7 @@ export function shouldShowProductManager(serviceCategory: string | undefined | n
  * Analyse les champs présents pour deviner le type
  */
 export function detectProductTypeFromProduct(product: any): ProductType {
-    if (!product || typeof product !== 'object') return 'autre';
+    if (!product || typeof product !== 'object') return 'prestation_service'; // ✅ Fallback vers prestation_service
 
     // Si le produit a déjà un type explicite
     if (product.type) return product.type as ProductType;
@@ -262,6 +264,7 @@ export function detectProductTypeFromProduct(product: any): ProductType {
     if (product.typeBijou) return 'bijoux';
     if (product.typeCoiffure) return 'coiffure_beaute';
 
-    return 'autre';
+    // ✅ AMÉLIORATION: Fallback vers 'prestation_service' au lieu de 'autre'
+    return 'prestation_service';
 }
 

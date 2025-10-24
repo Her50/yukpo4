@@ -2014,6 +2014,1055 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     cardLayout: 'grid',
   },
 
+  // 🏨 HÔTELLERIE
+  hotellerie: {
+    terminology: {
+      productLabel: 'Hébergement',
+      productsLabel: 'Hébergements',
+      priceLabel: 'Prix/nuit',
+      locationLabel: 'Adresse',
+      providerLabel: 'Hôtel',
+      searchPlaceholder: 'Rechercher un hôtel, chambre d\'hôtes...',
+      emptyMessage: 'Aucun hébergement disponible',
+      sortLabels: {
+        relevance: 'Pertinence',
+        price_asc: 'Prix croissant',
+        price_desc: 'Prix décroissant',
+        distance: 'Proximité',
+      },
+    },
+    filters: [
+      {
+        id: 'typeHebergement',
+        label: 'Type d\'hébergement',
+        type: 'select',
+        options: [
+          { value: 'hotel', label: 'Hôtel' },
+          { value: 'chambre_hotes', label: 'Chambre d\'hôtes' },
+          { value: 'auberge', label: 'Auberge' },
+          { value: 'gite', label: 'Gîte' },
+          { value: 'motel', label: 'Motel' },
+        ],
+      },
+      {
+        id: 'etoiles',
+        label: 'Classement',
+        type: 'select',
+        options: [
+          { value: '1', label: '1 étoile' },
+          { value: '2', label: '2 étoiles' },
+          { value: '3', label: '3 étoiles' },
+          { value: '4', label: '4 étoiles' },
+          { value: '5', label: '5 étoiles' },
+        ],
+      },
+      {
+        id: 'nbPersonnes',
+        label: 'Nombre de personnes',
+        type: 'range',
+        min: 1,
+        max: 10,
+        unit: 'personnes',
+      },
+      {
+        id: 'services',
+        label: 'Services',
+        type: 'multiselect',
+        options: [
+          { value: 'petit_dejeuner', label: 'Petit-déjeuner' },
+          { value: 'wifi', label: 'Wi-Fi gratuit' },
+          { value: 'piscine', label: 'Piscine' },
+          { value: 'parking', label: 'Parking' },
+          { value: 'restaurant', label: 'Restaurant' },
+          { value: 'spa', label: 'Spa' },
+          { value: 'climatisation', label: 'Climatisation' },
+        ],
+      },
+    ],
+    style: {
+      primaryColor: '#EC4899',
+      gradientColors: ['#EC4899', '#DB2777'],
+      icon: '🏨',
+      badgeColor: '#FCE7F3',
+      accentColor: '#DB2777',
+    },
+    displayPriority: ['typeHebergement', 'etoiles', 'nbPersonnes', 'services', 'prix'],
+    contactMethods: ['phone', 'whatsapp', 'message'],
+    showDistance: true,
+    showRating: true,
+    cardLayout: 'vertical',
+  },
+
+  // 🍽️ RESTAURATION
+  restauration: {
+    terminology: {
+      productLabel: 'Établissement',
+      productsLabel: 'Restaurants & Traiteurs',
+      priceLabel: 'Prix moyen',
+      locationLabel: 'Adresse',
+      providerLabel: 'Restaurant',
+      searchPlaceholder: 'Rechercher un restaurant, traiteur...',
+      emptyMessage: 'Aucun établissement disponible',
+      sortLabels: {
+        relevance: 'Pertinence',
+        price_asc: 'Prix croissant',
+        price_desc: 'Prix décroissant',
+        distance: 'Proximité',
+      },
+    },
+    filters: [
+      {
+        id: 'typeRestaurant',
+        label: 'Type',
+        type: 'select',
+        options: [
+          { value: 'restaurant', label: 'Restaurant' },
+          { value: 'traiteur', label: 'Traiteur' },
+          { value: 'food_truck', label: 'Food truck' },
+          { value: 'cafe', label: 'Café' },
+          { value: 'bar', label: 'Bar' },
+          { value: 'fast_food', label: 'Fast-food' },
+        ],
+      },
+      {
+        id: 'cuisineType',
+        label: 'Type de cuisine',
+        type: 'multiselect',
+        options: [
+          { value: 'camerounaise', label: 'Camerounaise' },
+          { value: 'africaine', label: 'Africaine' },
+          { value: 'europeenne', label: 'Européenne' },
+          { value: 'asiatique', label: 'Asiatique' },
+          { value: 'pizza', label: 'Pizza' },
+          { value: 'grillades', label: 'Grillades' },
+        ],
+      },
+      {
+        id: 'livraison',
+        label: 'Livraison',
+        type: 'toggle',
+      },
+      {
+        id: 'terrasse',
+        label: 'Terrasse',
+        type: 'toggle',
+      },
+    ],
+    style: {
+      primaryColor: '#F97316',
+      gradientColors: ['#F97316', '#EA580C'],
+      icon: '🍽️',
+      badgeColor: '#FFEDD5',
+      accentColor: '#EA580C',
+    },
+    displayPriority: ['typeRestaurant', 'cuisineType', 'livraison', 'prix'],
+    contactMethods: ['phone', 'whatsapp', 'message'],
+    showDistance: true,
+    showRating: true,
+    cardLayout: 'vertical',
+  },
+
+  // 💪 SPORT & FITNESS
+  sport_fitness: {
+    terminology: {
+      productLabel: 'Activité sportive',
+      productsLabel: 'Sport & Fitness',
+      priceLabel: 'Tarif',
+      locationLabel: 'Adresse',
+      providerLabel: 'Coach/Salle',
+      searchPlaceholder: 'Rechercher une salle, coach...',
+      emptyMessage: 'Aucune activité sportive disponible',
+      sortLabels: {
+        relevance: 'Pertinence',
+        price_asc: 'Tarif croissant',
+        price_desc: 'Tarif décroissant',
+        distance: 'Proximité',
+      },
+    },
+    filters: [
+      {
+        id: 'typeSport',
+        label: 'Type d\'activité',
+        type: 'select',
+        options: [
+          { value: 'musculation', label: 'Musculation' },
+          { value: 'cardio', label: 'Cardio' },
+          { value: 'yoga', label: 'Yoga' },
+          { value: 'pilates', label: 'Pilates' },
+          { value: 'crossfit', label: 'CrossFit' },
+          { value: 'boxe', label: 'Boxe' },
+          { value: 'natation', label: 'Natation' },
+        ],
+      },
+      {
+        id: 'niveau',
+        label: 'Niveau',
+        type: 'select',
+        options: [
+          { value: 'debutant', label: 'Débutant' },
+          { value: 'intermediaire', label: 'Intermédiaire' },
+          { value: 'avance', label: 'Avancé' },
+        ],
+      },
+      {
+        id: 'coaching',
+        label: 'Coaching personnel',
+        type: 'toggle',
+      },
+    ],
+    style: {
+      primaryColor: '#EF4444',
+      gradientColors: ['#EF4444', '#DC2626'],
+      icon: '💪',
+      badgeColor: '#FEE2E2',
+      accentColor: '#DC2626',
+    },
+    displayPriority: ['typeSport', 'niveau', 'coaching', 'prix'],
+    contactMethods: ['whatsapp', 'phone', 'message'],
+    showDistance: true,
+    showRating: true,
+    cardLayout: 'vertical',
+  },
+
+  // 🎓 FORMATION & ÉDUCATION
+  formation_education: {
+    terminology: {
+      productLabel: 'Formation',
+      productsLabel: 'Formations',
+      priceLabel: 'Tarif',
+      locationLabel: 'Lieu',
+      providerLabel: 'Formateur',
+      searchPlaceholder: 'Rechercher une formation...',
+      emptyMessage: 'Aucune formation disponible',
+      sortLabels: {
+        relevance: 'Pertinence',
+        price_asc: 'Tarif croissant',
+        price_desc: 'Tarif décroissant',
+        distance: 'Proximité',
+      },
+    },
+    filters: [
+      {
+        id: 'domaine',
+        label: 'Domaine',
+        type: 'select',
+        options: [
+          { value: 'informatique', label: 'Informatique' },
+          { value: 'langues', label: 'Langues' },
+          { value: 'management', label: 'Management' },
+          { value: 'bureautique', label: 'Bureautique' },
+          { value: 'comptabilite', label: 'Comptabilité' },
+        ],
+      },
+      {
+        id: 'format',
+        label: 'Format',
+        type: 'select',
+        options: [
+          { value: 'presentiel', label: 'Présentiel' },
+          { value: 'en_ligne', label: 'En ligne' },
+          { value: 'hybride', label: 'Hybride' },
+        ],
+      },
+      {
+        id: 'certification',
+        label: 'Avec certification',
+        type: 'toggle',
+      },
+    ],
+    style: {
+      primaryColor: '#7C3AED',
+      gradientColors: ['#7C3AED', '#6D28D9'],
+      icon: '🎓',
+      badgeColor: '#EDE9FE',
+      accentColor: '#6D28D9',
+    },
+    displayPriority: ['domaine', 'format', 'certification', 'prix'],
+    contactMethods: ['whatsapp', 'phone', 'message'],
+    showDistance: true,
+    showRating: true,
+    cardLayout: 'vertical',
+  },
+
+  // 🎉 ÉVÉNEMENTIEL
+  evenementiel: {
+    terminology: {
+      productLabel: 'Prestation événementielle',
+      productsLabel: 'Événementiel',
+      priceLabel: 'Tarif',
+      locationLabel: 'Zone d\'intervention',
+      providerLabel: 'Organisateur',
+      searchPlaceholder: 'Rechercher une prestation événementielle...',
+      emptyMessage: 'Aucune prestation disponible',
+      sortLabels: {
+        relevance: 'Pertinence',
+        price_asc: 'Tarif croissant',
+        price_desc: 'Tarif décroissant',
+        distance: 'Proximité',
+      },
+    },
+    filters: [
+      {
+        id: 'typeEvenement',
+        label: 'Type d\'événement',
+        type: 'multiselect',
+        options: [
+          { value: 'mariage', label: 'Mariage' },
+          { value: 'anniversaire', label: 'Anniversaire' },
+          { value: 'entreprise', label: 'Événement d\'entreprise' },
+          { value: 'conference', label: 'Conférence' },
+          { value: 'concert', label: 'Concert' },
+        ],
+      },
+      {
+        id: 'nbPersonnes',
+        label: 'Nombre de personnes',
+        type: 'range',
+        min: 10,
+        max: 1000,
+        unit: 'personnes',
+      },
+    ],
+    style: {
+      primaryColor: '#EC4899',
+      gradientColors: ['#EC4899', '#DB2777'],
+      icon: '🎉',
+      badgeColor: '#FCE7F3',
+      accentColor: '#DB2777',
+    },
+    displayPriority: ['typeEvenement', 'nbPersonnes', 'prix'],
+    contactMethods: ['whatsapp', 'phone', 'message'],
+    showDistance: true,
+    showRating: true,
+    cardLayout: 'vertical',
+  },
+
+  // ⚡ ÉLECTRICITÉ
+  electricite: {
+    terminology: {
+      productLabel: 'Article électrique',
+      productsLabel: 'Électricité',
+      priceLabel: 'Prix',
+      locationLabel: 'Magasin',
+      providerLabel: 'Vendeur',
+      searchPlaceholder: 'Rechercher câbles, prises...',
+      emptyMessage: 'Aucun article électrique disponible',
+      sortLabels: {
+        relevance: 'Pertinence',
+        price_asc: 'Prix croissant',
+        price_desc: 'Prix décroissant',
+        distance: 'Proximité',
+      },
+    },
+    filters: [
+      {
+        id: 'categorieElectrique',
+        label: 'Catégorie',
+        type: 'select',
+        options: [
+          { value: 'cable', label: 'Câbles' },
+          { value: 'interrupteur', label: 'Interrupteurs' },
+          { value: 'prise', label: 'Prises' },
+          { value: 'lampe', label: 'Lampes' },
+          { value: 'disjoncteur', label: 'Disjoncteurs' },
+        ],
+      },
+    ],
+    style: {
+      primaryColor: '#FFC107',
+      gradientColors: ['#FFC107', '#FFA000'],
+      icon: '⚡',
+      badgeColor: '#FFF9C4',
+      accentColor: '#FFA000',
+    },
+    displayPriority: ['categorieElectrique', 'prix'],
+    contactMethods: ['whatsapp', 'phone', 'message'],
+    showDistance: true,
+    showRating: true,
+    cardLayout: 'grid',
+  },
+
+  // 🚰 PLOMBERIE
+  plomberie: {
+    terminology: {
+      productLabel: 'Prestation plomberie',
+      productsLabel: 'Plomberie',
+      priceLabel: 'Tarif',
+      locationLabel: 'Zone d\'intervention',
+      providerLabel: 'Plombier',
+      searchPlaceholder: 'Rechercher un plombier...',
+      emptyMessage: 'Aucun plombier disponible',
+      sortLabels: {
+        relevance: 'Pertinence',
+        price_asc: 'Tarif croissant',
+        price_desc: 'Tarif décroissant',
+        distance: 'Proximité',
+      },
+    },
+    filters: [
+      {
+        id: 'typeIntervention',
+        label: 'Type d\'intervention',
+        type: 'multiselect',
+        options: [
+          { value: 'fuite', label: 'Réparation fuite' },
+          { value: 'debouchage', label: 'Débouchage' },
+          { value: 'installation', label: 'Installation' },
+          { value: 'urgence', label: 'Urgence' },
+        ],
+      },
+      {
+        id: 'urgence24h',
+        label: 'Dépannage 24h/24',
+        type: 'toggle',
+      },
+    ],
+    style: {
+      primaryColor: '#00BCD4',
+      gradientColors: ['#00BCD4', '#0097A7'],
+      icon: '🚰',
+      badgeColor: '#E0F7FA',
+      accentColor: '#0097A7',
+    },
+    displayPriority: ['typeIntervention', 'urgence24h', 'prix'],
+    contactMethods: ['phone', 'whatsapp', 'message'],
+    showDistance: true,
+    showRating: true,
+    cardLayout: 'vertical',
+  },
+
+  // 🪵 MENUISERIE
+  menuiserie: {
+    terminology: {
+      productLabel: 'Prestation menuiserie',
+      productsLabel: 'Menuiserie',
+      priceLabel: 'Tarif',
+      locationLabel: 'Zone d\'intervention',
+      providerLabel: 'Menuisier',
+      searchPlaceholder: 'Rechercher un menuisier...',
+      emptyMessage: 'Aucun menuisier disponible',
+      sortLabels: {
+        relevance: 'Pertinence',
+        price_asc: 'Tarif croissant',
+        price_desc: 'Tarif décroissant',
+        distance: 'Proximité',
+      },
+    },
+    filters: [
+      {
+        id: 'typeMenuiserie',
+        label: 'Type',
+        type: 'multiselect',
+        options: [
+          { value: 'meuble', label: 'Meubles sur mesure' },
+          { value: 'porte', label: 'Portes' },
+          { value: 'fenetre', label: 'Fenêtres' },
+          { value: 'parquet', label: 'Parquet' },
+          { value: 'charpente', label: 'Charpente' },
+        ],
+      },
+    ],
+    style: {
+      primaryColor: '#F97316',
+      gradientColors: ['#F97316', '#EA580C'],
+      icon: '🪵',
+      badgeColor: '#FFEDD5',
+      accentColor: '#EA580C',
+    },
+    displayPriority: ['typeMenuiserie', 'prix'],
+    contactMethods: ['phone', 'whatsapp', 'message'],
+    showDistance: true,
+    showRating: true,
+    cardLayout: 'vertical',
+  },
+
+  // 🌳 JARDINAGE & PAYSAGISME
+  jardinage_paysagisme: {
+    terminology: {
+      productLabel: 'Prestation jardinage',
+      productsLabel: 'Jardinage & Paysagisme',
+      priceLabel: 'Tarif',
+      locationLabel: 'Zone d\'intervention',
+      providerLabel: 'Jardinier/Paysagiste',
+      searchPlaceholder: 'Rechercher un jardinier...',
+      emptyMessage: 'Aucun service disponible',
+      sortLabels: {
+        relevance: 'Pertinence',
+        price_asc: 'Tarif croissant',
+        price_desc: 'Tarif décroissant',
+        distance: 'Proximité',
+      },
+    },
+    filters: [
+      {
+        id: 'typeService',
+        label: 'Type de service',
+        type: 'multiselect',
+        options: [
+          { value: 'tonte', label: 'Tonte pelouse' },
+          { value: 'taille', label: 'Taille haies' },
+          { value: 'elagage', label: 'Élagage' },
+          { value: 'plantation', label: 'Plantation' },
+          { value: 'creation', label: 'Création espaces verts' },
+        ],
+      },
+    ],
+    style: {
+      primaryColor: '#059669',
+      gradientColors: ['#059669', '#047857'],
+      icon: '🌳',
+      badgeColor: '#D1FAE5',
+      accentColor: '#047857',
+    },
+    displayPriority: ['typeService', 'prix'],
+    contactMethods: ['phone', 'whatsapp', 'message'],
+    showDistance: true,
+    showRating: true,
+    cardLayout: 'vertical',
+  },
+
+  // 🧹 NETTOYAGE & ENTRETIEN
+  nettoyage_entretien: {
+    terminology: {
+      productLabel: 'Service de nettoyage',
+      productsLabel: 'Nettoyage & Entretien',
+      priceLabel: 'Tarif',
+      locationLabel: 'Zone d\'intervention',
+      providerLabel: 'Entreprise/Agent',
+      searchPlaceholder: 'Rechercher un service de nettoyage...',
+      emptyMessage: 'Aucun service disponible',
+      sortLabels: {
+        relevance: 'Pertinence',
+        price_asc: 'Tarif croissant',
+        price_desc: 'Tarif décroissant',
+        distance: 'Proximité',
+      },
+    },
+    filters: [
+      {
+        id: 'typeNettoyage',
+        label: 'Type',
+        type: 'multiselect',
+        options: [
+          { value: 'menage', label: 'Ménage' },
+          { value: 'bureaux', label: 'Bureaux' },
+          { value: 'vitres', label: 'Vitres' },
+          { value: 'fin_chantier', label: 'Fin de chantier' },
+        ],
+      },
+      {
+        id: 'frequence',
+        label: 'Fréquence',
+        type: 'select',
+        options: [
+          { value: 'ponctuel', label: 'Ponctuel' },
+          { value: 'hebdomadaire', label: 'Hebdomadaire' },
+          { value: 'mensuel', label: 'Mensuel' },
+        ],
+      },
+    ],
+    style: {
+      primaryColor: '#6B7280',
+      gradientColors: ['#6B7280', '#4B5563'],
+      icon: '🧹',
+      badgeColor: '#F3F4F6',
+      accentColor: '#4B5563',
+    },
+    displayPriority: ['typeNettoyage', 'frequence', 'prix'],
+    contactMethods: ['whatsapp', 'phone', 'message'],
+    showDistance: true,
+    showRating: true,
+    cardLayout: 'vertical',
+  },
+
+  // 🧘 BIEN-ÊTRE & SPA
+  bien_etre_spa: {
+    terminology: {
+      productLabel: 'Soin bien-être',
+      productsLabel: 'Bien-être & Spa',
+      priceLabel: 'Tarif',
+      locationLabel: 'Adresse',
+      providerLabel: 'Spa/Thérapeute',
+      searchPlaceholder: 'Rechercher un spa, massage...',
+      emptyMessage: 'Aucun soin disponible',
+      sortLabels: {
+        relevance: 'Pertinence',
+        price_asc: 'Tarif croissant',
+        price_desc: 'Tarif décroissant',
+        distance: 'Proximité',
+      },
+    },
+    filters: [
+      {
+        id: 'typeSoin',
+        label: 'Type de soin',
+        type: 'multiselect',
+        options: [
+          { value: 'massage', label: 'Massage' },
+          { value: 'spa', label: 'Spa' },
+          { value: 'hammam', label: 'Hammam' },
+          { value: 'sauna', label: 'Sauna' },
+          { value: 'reflexologie', label: 'Réflexologie' },
+        ],
+      },
+    ],
+    style: {
+      primaryColor: '#14B8A6',
+      gradientColors: ['#14B8A6', '#0D9488'],
+      icon: '🧘',
+      badgeColor: '#CCFBF1',
+      accentColor: '#0D9488',
+    },
+    displayPriority: ['typeSoin', 'prix'],
+    contactMethods: ['whatsapp', 'phone', 'message'],
+    showDistance: true,
+    showRating: true,
+    cardLayout: 'vertical',
+  },
+
+  // 🌾 AGROALIMENTAIRE
+  agroalimentaire: {
+    terminology: {
+      productLabel: 'Produit agroalimentaire',
+      productsLabel: 'Agroalimentaire',
+      priceLabel: 'Prix',
+      locationLabel: 'Point de vente',
+      providerLabel: 'Fournisseur',
+      searchPlaceholder: 'Rechercher riz, pâtes, huile...',
+      emptyMessage: 'Aucun produit disponible',
+      sortLabels: {
+        relevance: 'Pertinence',
+        price_asc: 'Prix croissant',
+        price_desc: 'Prix décroissant',
+        distance: 'Proximité',
+      },
+    },
+    filters: [
+      {
+        id: 'categorieAgro',
+        label: 'Catégorie',
+        type: 'select',
+        options: [
+          { value: 'cereales', label: 'Céréales' },
+          { value: 'huiles', label: 'Huiles' },
+          { value: 'conserves', label: 'Conserves' },
+          { value: 'boissons', label: 'Boissons' },
+          { value: 'epicerie', label: 'Épicerie' },
+        ],
+      },
+    ],
+    style: {
+      primaryColor: '#F59E0B',
+      gradientColors: ['#F59E0B', '#D97706'],
+      icon: '🌾',
+      badgeColor: '#FEF3C7',
+      accentColor: '#D97706',
+    },
+    displayPriority: ['categorieAgro', 'marque', 'prix'],
+    contactMethods: ['whatsapp', 'phone', 'message'],
+    showDistance: true,
+    showRating: true,
+    cardLayout: 'grid',
+  },
+
+  // 🌱 AGRICULTURE
+  agriculture: {
+    terminology: {
+      productLabel: 'Produit agricole',
+      productsLabel: 'Agriculture',
+      priceLabel: 'Prix',
+      locationLabel: 'Exploitation',
+      providerLabel: 'Agriculteur',
+      searchPlaceholder: 'Rechercher produits agricoles...',
+      emptyMessage: 'Aucun produit disponible',
+      sortLabels: {
+        relevance: 'Pertinence',
+        price_asc: 'Prix croissant',
+        price_desc: 'Prix décroissant',
+        distance: 'Proximité',
+      },
+    },
+    filters: [
+      {
+        id: 'typeAgricole',
+        label: 'Type',
+        type: 'select',
+        options: [
+          { value: 'cereale', label: 'Céréales' },
+          { value: 'legume', label: 'Légumes' },
+          { value: 'fruit', label: 'Fruits' },
+          { value: 'elevage', label: 'Élevage' },
+        ],
+      },
+      {
+        id: 'bio',
+        label: 'Agriculture biologique',
+        type: 'toggle',
+      },
+    ],
+    style: {
+      primaryColor: '#10B981',
+      gradientColors: ['#10B981', '#059669'],
+      icon: '🌱',
+      badgeColor: '#D1FAE5',
+      accentColor: '#059669',
+    },
+    displayPriority: ['typeAgricole', 'bio', 'prix'],
+    contactMethods: ['whatsapp', 'phone', 'message'],
+    showDistance: true,
+    showRating: true,
+    cardLayout: 'horizontal',
+  },
+
+  // 🧸 JOUETS & ENFANTS
+  jouets_enfants: {
+    terminology: {
+      productLabel: 'Jouet',
+      productsLabel: 'Jouets & Enfants',
+      priceLabel: 'Prix',
+      locationLabel: 'Boutique',
+      providerLabel: 'Vendeur',
+      searchPlaceholder: 'Rechercher des jouets...',
+      emptyMessage: 'Aucun jouet disponible',
+      sortLabels: {
+        relevance: 'Pertinence',
+        price_asc: 'Prix croissant',
+        price_desc: 'Prix décroissant',
+        distance: 'Proximité',
+      },
+    },
+    filters: [
+      {
+        id: 'ageJouet',
+        label: 'Tranche d\'âge',
+        type: 'select',
+        options: [
+          { value: '0_3', label: '0-3 ans' },
+          { value: '3_6', label: '3-6 ans' },
+          { value: '6_12', label: '6-12 ans' },
+          { value: '12_plus', label: '12+ ans' },
+        ],
+      },
+      {
+        id: 'typeJouet',
+        label: 'Type',
+        type: 'select',
+        options: [
+          { value: 'peluche', label: 'Peluche' },
+          { value: 'educatif', label: 'Éducatif' },
+          { value: 'construction', label: 'Construction' },
+          { value: 'jeu_societe', label: 'Jeu de société' },
+        ],
+      },
+    ],
+    style: {
+      primaryColor: '#FF69B4',
+      gradientColors: ['#FF69B4', '#FF1493'],
+      icon: '🧸',
+      badgeColor: '#FFE4E1',
+      accentColor: '#FF1493',
+    },
+    displayPriority: ['typeJouet', 'ageJouet', 'marque', 'prix'],
+    contactMethods: ['whatsapp', 'phone', 'message'],
+    showDistance: true,
+    showRating: true,
+    cardLayout: 'grid',
+  },
+
+  // 🔧 PIÈCES AUTO
+  pieces_auto: {
+    terminology: {
+      productLabel: 'Pièce auto',
+      productsLabel: 'Pièces Auto',
+      priceLabel: 'Prix',
+      locationLabel: 'Magasin',
+      providerLabel: 'Vendeur',
+      searchPlaceholder: 'Rechercher pièces auto...',
+      emptyMessage: 'Aucune pièce disponible',
+      sortLabels: {
+        relevance: 'Pertinence',
+        price_asc: 'Prix croissant',
+        price_desc: 'Prix décroissant',
+        distance: 'Proximité',
+      },
+    },
+    filters: [
+      {
+        id: 'categoriePiece',
+        label: 'Catégorie',
+        type: 'select',
+        options: [
+          { value: 'moteur', label: 'Moteur' },
+          { value: 'freins', label: 'Freins' },
+          { value: 'carrosserie', label: 'Carrosserie' },
+          { value: 'filtres', label: 'Filtres' },
+          { value: 'batterie', label: 'Batteries' },
+        ],
+      },
+      {
+        id: 'marqueVehicule',
+        label: 'Marque véhicule',
+        type: 'select',
+        options: [
+          { value: 'toyota', label: 'Toyota' },
+          { value: 'mercedes', label: 'Mercedes' },
+          { value: 'bmw', label: 'BMW' },
+          { value: 'nissan', label: 'Nissan' },
+        ],
+      },
+    ],
+    style: {
+      primaryColor: '#607D8B',
+      gradientColors: ['#607D8B', '#455A64'],
+      icon: '🔧',
+      badgeColor: '#CFD8DC',
+      accentColor: '#455A64',
+    },
+    displayPriority: ['categoriePiece', 'marqueVehicule', 'prix'],
+    contactMethods: ['whatsapp', 'phone', 'message'],
+    showDistance: true,
+    showRating: true,
+    cardLayout: 'horizontal',
+  },
+
+  // ⚙️ PIÈCES INDUSTRIELLES
+  pieces_industrielles: {
+    terminology: {
+      productLabel: 'Pièce industrielle',
+      productsLabel: 'Pièces Industrielles',
+      priceLabel: 'Prix',
+      locationLabel: 'Fournisseur',
+      providerLabel: 'Vendeur',
+      searchPlaceholder: 'Rechercher pièces industrielles...',
+      emptyMessage: 'Aucune pièce disponible',
+      sortLabels: {
+        relevance: 'Pertinence',
+        price_asc: 'Prix croissant',
+        price_desc: 'Prix décroissant',
+        distance: 'Proximité',
+      },
+    },
+    filters: [
+      {
+        id: 'typeIndustriel',
+        label: 'Type',
+        type: 'select',
+        options: [
+          { value: 'roulement', label: 'Roulements' },
+          { value: 'courroie', label: 'Courroies' },
+          { value: 'moteur', label: 'Moteurs' },
+          { value: 'pompe', label: 'Pompes' },
+        ],
+      },
+    ],
+    style: {
+      primaryColor: '#455A64',
+      gradientColors: ['#455A64', '#263238'],
+      icon: '⚙️',
+      badgeColor: '#ECEFF1',
+      accentColor: '#263238',
+    },
+    displayPriority: ['typeIndustriel', 'prix'],
+    contactMethods: ['whatsapp', 'phone', 'message'],
+    showDistance: true,
+    showRating: true,
+    cardLayout: 'horizontal',
+  },
+
+  // 📟 ÉLECTRONIQUE
+  electronique: {
+    terminology: {
+      productLabel: 'Appareil électronique',
+      productsLabel: 'Électronique',
+      priceLabel: 'Prix',
+      locationLabel: 'Boutique',
+      providerLabel: 'Vendeur',
+      searchPlaceholder: 'Rechercher électronique...',
+      emptyMessage: 'Aucun appareil disponible',
+      sortLabels: {
+        relevance: 'Pertinence',
+        price_asc: 'Prix croissant',
+        price_desc: 'Prix décroissant',
+        distance: 'Proximité',
+      },
+    },
+    filters: [
+      {
+        id: 'typeElectro',
+        label: 'Type',
+        type: 'select',
+        options: [
+          { value: 'console', label: 'Console de jeux' },
+          { value: 'drone', label: 'Drone' },
+          { value: 'camera', label: 'Caméra' },
+          { value: 'gadget', label: 'Gadget' },
+        ],
+      },
+    ],
+    style: {
+      primaryColor: '#00BCD4',
+      gradientColors: ['#00BCD4', '#0097A7'],
+      icon: '📟',
+      badgeColor: '#E0F7FA',
+      accentColor: '#0097A7',
+    },
+    displayPriority: ['typeElectro', 'marque', 'prix'],
+    contactMethods: ['whatsapp', 'phone', 'message'],
+    showDistance: true,
+    showRating: true,
+    cardLayout: 'grid',
+  },
+
+  // 🎸 MUSIQUE & INSTRUMENTS
+  musique_instruments: {
+    terminology: {
+      productLabel: 'Instrument de musique',
+      productsLabel: 'Musique & Instruments',
+      priceLabel: 'Prix',
+      locationLabel: 'Boutique',
+      providerLabel: 'Vendeur',
+      searchPlaceholder: 'Rechercher instruments...',
+      emptyMessage: 'Aucun instrument disponible',
+      sortLabels: {
+        relevance: 'Pertinence',
+        price_asc: 'Prix croissant',
+        price_desc: 'Prix décroissant',
+        distance: 'Proximité',
+      },
+    },
+    filters: [
+      {
+        id: 'typeInstrument',
+        label: 'Type',
+        type: 'select',
+        options: [
+          { value: 'guitare', label: 'Guitare' },
+          { value: 'piano', label: 'Piano/Clavier' },
+          { value: 'batterie', label: 'Batterie' },
+          { value: 'vent', label: 'Instruments à vent' },
+          { value: 'percussion', label: 'Percussions' },
+        ],
+      },
+    ],
+    style: {
+      primaryColor: '#9C27B0',
+      gradientColors: ['#9C27B0', '#7B1FA2'],
+      icon: '🎸',
+      badgeColor: '#F3E5F5',
+      accentColor: '#7B1FA2',
+    },
+    displayPriority: ['typeInstrument', 'marque', 'prix'],
+    contactMethods: ['whatsapp', 'phone', 'message'],
+    showDistance: true,
+    showRating: true,
+    cardLayout: 'horizontal',
+  },
+
+  // 🛡️ SÉCURITÉ & SURVEILLANCE
+  securite_surveillance: {
+    terminology: {
+      productLabel: 'Service de sécurité',
+      productsLabel: 'Sécurité & Surveillance',
+      priceLabel: 'Tarif',
+      locationLabel: 'Zone d\'intervention',
+      providerLabel: 'Entreprise de sécurité',
+      searchPlaceholder: 'Rechercher service de sécurité...',
+      emptyMessage: 'Aucun service disponible',
+      sortLabels: {
+        relevance: 'Pertinence',
+        price_asc: 'Tarif croissant',
+        price_desc: 'Tarif décroissant',
+        distance: 'Proximité',
+      },
+    },
+    filters: [
+      {
+        id: 'typeSecurite',
+        label: 'Type',
+        type: 'multiselect',
+        options: [
+          { value: 'gardiennage', label: 'Gardiennage' },
+          { value: 'surveillance', label: 'Surveillance' },
+          { value: 'alarme', label: 'Installation alarme' },
+          { value: 'camera', label: 'Vidéosurveillance' },
+        ],
+      },
+      {
+        id: 'garde24h',
+        label: '24h/24',
+        type: 'toggle',
+      },
+    ],
+    style: {
+      primaryColor: '#DC2626',
+      gradientColors: ['#DC2626', '#B91C1C'],
+      icon: '🛡️',
+      badgeColor: '#FEE2E2',
+      accentColor: '#B91C1C',
+    },
+    displayPriority: ['typeSecurite', 'garde24h', 'prix'],
+    contactMethods: ['phone', 'whatsapp', 'message'],
+    showDistance: true,
+    showRating: true,
+    cardLayout: 'vertical',
+  },
+
+  // 🐾 ANIMAUX & VÉTÉRINAIRE
+  animaux_veterinaire: {
+    terminology: {
+      productLabel: 'Service vétérinaire',
+      productsLabel: 'Animaux & Vétérinaire',
+      priceLabel: 'Tarif',
+      locationLabel: 'Adresse',
+      providerLabel: 'Vétérinaire',
+      searchPlaceholder: 'Rechercher vétérinaire...',
+      emptyMessage: 'Aucun service disponible',
+      sortLabels: {
+        relevance: 'Pertinence',
+        price_asc: 'Tarif croissant',
+        price_desc: 'Tarif décroissant',
+        distance: 'Proximité',
+      },
+    },
+    filters: [
+      {
+        id: 'typeService',
+        label: 'Type de service',
+        type: 'multiselect',
+        options: [
+          { value: 'consultation', label: 'Consultation' },
+          { value: 'vaccination', label: 'Vaccination' },
+          { value: 'toilettage', label: 'Toilettage' },
+          { value: 'dressage', label: 'Dressage' },
+          { value: 'pension', label: 'Pension' },
+        ],
+      },
+      {
+        id: 'typeAnimal',
+        label: 'Animal',
+        type: 'select',
+        options: [
+          { value: 'chien', label: 'Chien' },
+          { value: 'chat', label: 'Chat' },
+          { value: 'oiseau', label: 'Oiseau' },
+          { value: 'rongeur', label: 'Rongeur' },
+        ],
+      },
+    ],
+    style: {
+      primaryColor: '#FF69B4',
+      gradientColors: ['#FF69B4', '#FF1493'],
+      icon: '🐾',
+      badgeColor: '#FFE4E1',
+      accentColor: '#FF1493',
+    },
+    displayPriority: ['typeService', 'typeAnimal', 'prix'],
+    contactMethods: ['phone', 'whatsapp', 'message'],
+    showDistance: true,
+    showRating: true,
+    cardLayout: 'vertical',
+  },
+
   // Configuration par défaut pour les catégories non spécifiées
   default: {
         terminology: {
