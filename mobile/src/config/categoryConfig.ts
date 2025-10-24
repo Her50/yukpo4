@@ -451,8 +451,8 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         ],
       },
       {
-        id: 'specialites',
-        label: 'Spécialités',
+        id: 'prestationsMedicales',
+        label: 'Prestations médicales',
         type: 'multiselect',
         options: [
           { value: 'generaliste', label: 'Médecine générale' },
@@ -471,26 +471,14 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         type: 'toggle',
       },
       {
-        id: 'urgences24h',
-        label: 'Urgences 24h/24',
+        id: 'urgencesDisponible',
+        label: 'Urgences disponibles',
         type: 'toggle',
       },
       {
         id: 'rdvEnLigne',
         label: 'RDV en ligne',
         type: 'toggle',
-      },
-      {
-        id: 'assurancesAcceptees',
-        label: 'Assurances acceptées',
-        type: 'multiselect',
-        options: [
-          { value: 'cnps', label: 'CNPS' },
-          { value: 'allianz', label: 'Allianz' },
-          { value: 'saar', label: 'SAAR' },
-          { value: 'activa', label: 'Activa' },
-          { value: 'autre', label: 'Autre' },
-        ],
       },
     ],
     style: {
@@ -1757,13 +1745,37 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     },
     filters: [
       {
-        id: 'dateDepart',
-        label: 'Date de départ',
+        id: 'pointDepart',
+        label: 'Point de départ',
+        type: 'select',
+        options: [
+          { value: 'douala', label: 'Douala' },
+          { value: 'yaounde', label: 'Yaoundé' },
+          { value: 'bafoussam', label: 'Bafoussam' },
+          { value: 'bamenda', label: 'Bamenda' },
+          { value: 'autre', label: 'Autre' },
+        ],
+      },
+      {
+        id: 'pointArrivee',
+        label: 'Point d\'arrivée',
+        type: 'select',
+        options: [
+          { value: 'douala', label: 'Douala' },
+          { value: 'yaounde', label: 'Yaoundé' },
+          { value: 'bafoussam', label: 'Bafoussam' },
+          { value: 'bamenda', label: 'Bamenda' },
+          { value: 'autre', label: 'Autre' },
+        ],
+      },
+      {
+        id: 'dateTrajet',
+        label: 'Date du trajet',
         type: 'date',
       },
       {
-        id: 'heureDepart',
-        label: 'Heure de départ',
+        id: 'heureTrajet',
+        label: 'Heure du trajet',
         type: 'time',
       },
       {
@@ -1773,26 +1785,6 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         min: 1,
         max: 7,
         unit: 'places',
-      },
-      {
-        id: 'confort',
-        label: 'Confort',
-        type: 'select',
-        options: [
-          { value: 'standard', label: 'Standard' },
-          { value: 'premium', label: 'Premium' },
-          { value: 'vip', label: 'VIP' },
-        ],
-      },
-      {
-        id: 'climatisation',
-        label: 'Climatisation',
-        type: 'toggle',
-      },
-      {
-        id: 'bagages',
-        label: 'Bagages acceptés',
-        type: 'toggle',
       },
     ],
     style: {
@@ -1828,8 +1820,8 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     },
     filters: [
       {
-        id: 'typeAssurance',
-        label: 'Type d\'assurance',
+        id: 'categorieAssurance',
+        label: 'Catégorie',
         type: 'select',
         options: [
           { value: 'auto', label: 'Automobile' },
@@ -1837,11 +1829,21 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
           { value: 'habitation', label: 'Habitation' },
           { value: 'vie', label: 'Vie' },
           { value: 'voyage', label: 'Voyage' },
-          { value: 'entreprise', label: 'Entreprise' },
         ],
       },
       {
-        id: 'compagnie',
+        id: 'typeAssurance',
+        label: 'Type de couverture',
+        type: 'select',
+        options: [
+          { value: 'base', label: 'Base' },
+          { value: 'intermediaire', label: 'Intermédiaire' },
+          { value: 'complete', label: 'Complète' },
+          { value: 'tous_risques', label: 'Tous risques' },
+        ],
+      },
+      {
+        id: 'compagnieAssurance',
         label: 'Compagnie',
         type: 'select',
         options: [
@@ -1861,6 +1863,17 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
           { value: 'intermediaire', label: 'Intermédiaire' },
           { value: 'complete', label: 'Complète' },
           { value: 'premium', label: 'Premium' },
+        ],
+      },
+      {
+        id: 'dureeContrat',
+        label: 'Durée du contrat',
+        type: 'select',
+        options: [
+          { value: '6_mois', label: '6 mois' },
+          { value: '1_an', label: '1 an' },
+          { value: '2_ans', label: '2 ans' },
+          { value: '3_ans', label: '3 ans' },
         ],
       },
     ],
@@ -3124,8 +3137,21 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     },
     filters: [
       {
-        id: 'ageJouet',
-        label: 'Tranche d\'âge',
+        id: 'typeJouet',
+        label: 'Type',
+        type: 'select',
+        options: [
+          { value: 'peluche', label: 'Peluche' },
+          { value: 'educatif', label: 'Éducatif' },
+          { value: 'construction', label: 'Construction' },
+          { value: 'jeu_societe', label: 'Jeu de société' },
+          { value: 'vehicule', label: 'Véhicules' },
+          { value: 'poupee', label: 'Poupées' },
+        ],
+      },
+      {
+        id: 'ageRecommande',
+        label: 'Âge recommandé',
         type: 'select',
         options: [
           { value: '0_3', label: '0-3 ans' },
@@ -3135,15 +3161,32 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         ],
       },
       {
-        id: 'typeJouet',
-        label: 'Type',
+        id: 'marqueJouet',
+        label: 'Marque',
         type: 'select',
         options: [
-          { value: 'peluche', label: 'Peluche' },
-          { value: 'educatif', label: 'Éducatif' },
-          { value: 'construction', label: 'Construction' },
-          { value: 'jeu_societe', label: 'Jeu de société' },
+          { value: 'lego', label: 'LEGO' },
+          { value: 'fisher_price', label: 'Fisher-Price' },
+          { value: 'mattel', label: 'Mattel' },
+          { value: 'hasbro', label: 'Hasbro' },
+          { value: 'autre', label: 'Autre' },
         ],
+      },
+      {
+        id: 'materielJouet',
+        label: 'Matériel',
+        type: 'select',
+        options: [
+          { value: 'plastique', label: 'Plastique' },
+          { value: 'bois', label: 'Bois' },
+          { value: 'tissu', label: 'Tissu' },
+          { value: 'metal', label: 'Métal' },
+        ],
+      },
+      {
+        id: 'normeSecurite',
+        label: 'Norme de sécurité',
+        type: 'toggle',
       },
     ],
     style: {
@@ -3153,7 +3196,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
       badgeColor: '#FFE4E1',
       accentColor: '#FF1493',
     },
-    displayPriority: ['typeJouet', 'ageJouet', 'marque', 'prix'],
+    displayPriority: ['typeJouet', 'ageRecommande', 'marqueJouet', 'prix'],
     contactMethods: ['whatsapp', 'phone', 'message'],
     showDistance: true,
     showRating: true,
@@ -3179,8 +3222,8 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     },
     filters: [
       {
-        id: 'categoriePiece',
-        label: 'Catégorie',
+        id: 'typePieceAuto',
+        label: 'Type de pièce',
         type: 'select',
         options: [
           { value: 'moteur', label: 'Moteur' },
@@ -3191,14 +3234,36 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         ],
       },
       {
-        id: 'marqueVehicule',
-        label: 'Marque véhicule',
+        id: 'marquePieceAuto',
+        label: 'Marque pièce',
+        type: 'select',
+        options: [
+          { value: 'bosch', label: 'Bosch' },
+          { value: 'valeo', label: 'Valeo' },
+          { value: 'mann', label: 'Mann' },
+          { value: 'autre', label: 'Autre' },
+        ],
+      },
+      {
+        id: 'compatibilite',
+        label: 'Marque véhicule compatible',
         type: 'select',
         options: [
           { value: 'toyota', label: 'Toyota' },
           { value: 'mercedes', label: 'Mercedes' },
           { value: 'bmw', label: 'BMW' },
           { value: 'nissan', label: 'Nissan' },
+          { value: 'universel', label: 'Universel' },
+        ],
+      },
+      {
+        id: 'etatPieceAuto',
+        label: 'État',
+        type: 'select',
+        options: [
+          { value: 'neuf', label: 'Neuf' },
+          { value: 'occasion', label: 'Occasion' },
+          { value: 'reconditionne', label: 'Reconditionné' },
         ],
       },
     ],
@@ -3235,7 +3300,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     },
     filters: [
       {
-        id: 'typeIndustriel',
+        id: 'typePieceIndustrielle',
         label: 'Type',
         type: 'select',
         options: [
@@ -3243,6 +3308,39 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
           { value: 'courroie', label: 'Courroies' },
           { value: 'moteur', label: 'Moteurs' },
           { value: 'pompe', label: 'Pompes' },
+        ],
+      },
+      {
+        id: 'marquePieceIndustrielle',
+        label: 'Marque',
+        type: 'select',
+        options: [
+          { value: 'skf', label: 'SKF' },
+          { value: 'fag', label: 'FAG' },
+          { value: 'nsk', label: 'NSK' },
+          { value: 'autre', label: 'Autre' },
+        ],
+      },
+      {
+        id: 'applicationIndustrielle',
+        label: 'Application',
+        type: 'select',
+        options: [
+          { value: 'pompage', label: 'Pompage' },
+          { value: 'ventilation', label: 'Ventilation' },
+          { value: 'convoyage', label: 'Convoyage' },
+          { value: 'autre', label: 'Autre' },
+        ],
+      },
+      {
+        id: 'materielPiece',
+        label: 'Matériel',
+        type: 'select',
+        options: [
+          { value: 'acier', label: 'Acier' },
+          { value: 'inox', label: 'Inox' },
+          { value: 'fonte', label: 'Fonte' },
+          { value: 'plastique', label: 'Plastique' },
         ],
       },
     ],
@@ -3279,7 +3377,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     },
     filters: [
       {
-        id: 'typeElectro',
+        id: 'typeElectronique',
         label: 'Type',
         type: 'select',
         options: [
@@ -3287,6 +3385,49 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
           { value: 'drone', label: 'Drone' },
           { value: 'camera', label: 'Caméra' },
           { value: 'gadget', label: 'Gadget' },
+        ],
+      },
+      {
+        id: 'marqueElectronique',
+        label: 'Marque',
+        type: 'select',
+        options: [
+          { value: 'sony', label: 'Sony' },
+          { value: 'samsung', label: 'Samsung' },
+          { value: 'dji', label: 'DJI' },
+          { value: 'gopro', label: 'GoPro' },
+          { value: 'autre', label: 'Autre' },
+        ],
+      },
+      {
+        id: 'modeleElectronique',
+        label: 'Modèle',
+        type: 'select',
+        options: [
+          { value: 'standard', label: 'Standard' },
+          { value: 'pro', label: 'Pro' },
+          { value: 'premium', label: 'Premium' },
+        ],
+      },
+      {
+        id: 'etatElectronique',
+        label: 'État',
+        type: 'select',
+        options: [
+          { value: 'neuf', label: 'Neuf' },
+          { value: 'occasion', label: 'Occasion' },
+          { value: 'reconditionne', label: 'Reconditionné' },
+        ],
+      },
+      {
+        id: 'garantieElectronique',
+        label: 'Garantie',
+        type: 'select',
+        options: [
+          { value: '6_mois', label: '6 mois' },
+          { value: '1_an', label: '1 an' },
+          { value: '2_ans', label: '2 ans' },
+          { value: 'sans', label: 'Sans garantie' },
         ],
       },
     ],
@@ -3297,7 +3438,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
       badgeColor: '#E0F7FA',
       accentColor: '#0097A7',
     },
-    displayPriority: ['typeElectro', 'marque', 'prix'],
+    displayPriority: ['typeElectronique', 'marqueElectronique', 'modeleElectronique', 'prix'],
     contactMethods: ['whatsapp', 'phone', 'message'],
     showDistance: true,
     showRating: true,
@@ -3334,6 +3475,47 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
           { value: 'percussion', label: 'Percussions' },
         ],
       },
+      {
+        id: 'marqueInstrument',
+        label: 'Marque',
+        type: 'select',
+        options: [
+          { value: 'yamaha', label: 'Yamaha' },
+          { value: 'fender', label: 'Fender' },
+          { value: 'gibson', label: 'Gibson' },
+          { value: 'roland', label: 'Roland' },
+          { value: 'autre', label: 'Autre' },
+        ],
+      },
+      {
+        id: 'modeleInstrument',
+        label: 'Modèle',
+        type: 'select',
+        options: [
+          { value: 'debutant', label: 'Débutant' },
+          { value: 'intermediaire', label: 'Intermédiaire' },
+          { value: 'professionnel', label: 'Professionnel' },
+        ],
+      },
+      {
+        id: 'etatInstrument',
+        label: 'État',
+        type: 'select',
+        options: [
+          { value: 'neuf', label: 'Neuf' },
+          { value: 'occasion', label: 'Occasion' },
+        ],
+      },
+      {
+        id: 'niveauInstrument',
+        label: 'Niveau',
+        type: 'select',
+        options: [
+          { value: 'debutant', label: 'Débutant' },
+          { value: 'intermediaire', label: 'Intermédiaire' },
+          { value: 'avance', label: 'Avancé' },
+        ],
+      },
     ],
     style: {
       primaryColor: '#9C27B0',
@@ -3342,7 +3524,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
       badgeColor: '#F3E5F5',
       accentColor: '#7B1FA2',
     },
-    displayPriority: ['typeInstrument', 'marque', 'prix'],
+    displayPriority: ['typeInstrument', 'marqueInstrument', 'modeleInstrument', 'niveauInstrument', 'prix'],
     contactMethods: ['whatsapp', 'phone', 'message'],
     showDistance: true,
     showRating: true,
