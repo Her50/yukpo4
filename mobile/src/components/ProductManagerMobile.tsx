@@ -2029,15 +2029,28 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             </View>
                         </View>
 
-                        {/* État du véhicule */}
-                        <ProductFieldSelector
-                            label="État du véhicule"
-                            value={newProduct.etatVehicule || ''}
-                            productType="automobile"
-                            fieldName="etat"
-                            onSelect={(value) => setNewProduct({ ...newProduct, etatVehicule: value })}
-                            required
-                        />
+                        {/* État et Couleur sur la même ligne */}
+                        <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="État du véhicule"
+                                    value={newProduct.etatVehicule || ''}
+                                    productType="automobile"
+                                    fieldName="etat"
+                                    onSelect={(value) => setNewProduct({ ...newProduct, etatVehicule: value })}
+                                    required
+                                />
+                            </View>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Couleur"
+                                    value={newProduct.couleurAutomobile || ''}
+                                    productType="automobile"
+                                    fieldName="couleur"
+                                    onSelect={(value) => setNewProduct({ ...newProduct, couleurAutomobile: value })}
+                                />
+                            </View>
+                        </View>
 
                         {/* Année et Kilométrage */}
                         <View style={styles.fieldRow}>
@@ -2086,15 +2099,6 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 />
                             </View>
                         </View>
-
-                        {/* Couleur */}
-                        <ProductFieldSelector
-                            label="Couleur"
-                            value={newProduct.couleurAutomobile || ''}
-                            productType="automobile"
-                            fieldName="couleur"
-                            onSelect={(value) => setNewProduct({ ...newProduct, couleurAutomobile: value })}
-                        />
                     </>
                 );
 
@@ -2454,11 +2458,35 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <ProductFieldSelector
+                                    label="Type"
+                                    value={newProduct.typeChaussure || ''}
+                                    productType="chaussure"
+                                    fieldName="types"
+                                    onSelect={(value) => setNewProduct({ ...newProduct, typeChaussure: value })}
+                                    required
+                                />
+                            </View>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Marque"
+                                    value={newProduct.marqueChaussure || ''}
+                                    productType="chaussure"
+                                    fieldName="marques"
+                                    onSelect={(value) => setNewProduct({ ...newProduct, marqueChaussure: value })}
+                                />
+                            </View>
+                        </View>
+
+                        <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
                                     label="Pointure"
                                     value={newProduct.pointure || ''}
                                     productType="chaussure"
                                     fieldName="pointures"
                                     onSelect={(value) => setNewProduct({ ...newProduct, pointure: value })}
+                                    multiSelect
+                                    maxSelections={10}
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
@@ -2470,15 +2498,6 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                     onSelect={(value) => setNewProduct({ ...newProduct, couleurChaussure: value })}
                                 />
                             </View>
-                        </View>
-                        <View style={styles.fieldContainer}>
-                            <ProductFieldSelector
-                                label="Marque"
-                                value={newProduct.marqueChaussure || ''}
-                                productType="chaussure"
-                                fieldName="marques"
-                                onSelect={(value) => setNewProduct({ ...newProduct, marqueChaussure: value })}
-                            />
                         </View>
                     </>
                 );
@@ -4810,6 +4829,457 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             <Text style={styles.hintText}>
                                 💡 Ajoutez des photos de vos réalisations pour montrer votre savoir-faire.
                             </Text>
+                        </View>
+                    </>
+                );
+
+            case 'telephone':
+                return (
+                    <>
+                        <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Marque"
+                                    fieldName="marques"
+                                    productType="telephone"
+                                    value={newProduct.marqueTelephone || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, marqueTelephone: value })}
+                                    required
+                                />
+                            </View>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <Text style={styles.fieldLabel}>Modèle <Text style={styles.required}>*</Text></Text>
+                                <NativeInput
+                                    placeholder="Ex: iPhone 14 Pro"
+                                    value={newProduct.modeleTelephone || ''}
+                                    onChangeText={(text) => setNewProduct({ ...newProduct, modeleTelephone: text })}
+                                    style={styles.fieldInput}
+                                />
+                            </View>
+                        </View>
+
+                        <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Stockage"
+                                    fieldName="stockage"
+                                    productType="telephone"
+                                    value={newProduct.stockage || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, stockage: value })}
+                                />
+                            </View>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="RAM"
+                                    fieldName="ram"
+                                    productType="telephone"
+                                    value={newProduct.ram || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, ram: value })}
+                                />
+                            </View>
+                        </View>
+
+                        <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="État"
+                                    fieldName="etats"
+                                    productType="telephone"
+                                    value={newProduct.etatTelephone || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, etatTelephone: value })}
+                                    required
+                                />
+                            </View>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Couleur"
+                                    fieldName="couleurs"
+                                    productType="telephone"
+                                    value={newProduct.couleurTelephone || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, couleurTelephone: value })}
+                                />
+                            </View>
+                        </View>
+
+                        <View style={styles.hintBox}>
+                            <Text style={styles.hintText}>
+                                📱 Précisez les caractéristiques techniques pour rassurer les acheteurs
+                            </Text>
+                        </View>
+                    </>
+                );
+
+            case 'ordinateur':
+                return (
+                    <>
+                        <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Type"
+                                    fieldName="types"
+                                    productType="ordinateur"
+                                    value={newProduct.typeOrdinateur || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, typeOrdinateur: value })}
+                                    required
+                                />
+                            </View>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Marque"
+                                    fieldName="marques"
+                                    productType="ordinateur"
+                                    value={newProduct.marqueOrdinateur || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, marqueOrdinateur: value })}
+                                    required
+                                />
+                            </View>
+                        </View>
+
+                        <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Processeur"
+                                    fieldName="processeurs"
+                                    productType="ordinateur"
+                                    value={newProduct.processeur || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, processeur: value })}
+                                />
+                            </View>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="RAM"
+                                    fieldName="ram"
+                                    productType="ordinateur"
+                                    value={newProduct.ramOrdinateur || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, ramOrdinateur: value })}
+                                />
+                            </View>
+                        </View>
+
+                        <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Stockage"
+                                    fieldName="stockage"
+                                    productType="ordinateur"
+                                    value={newProduct.stockageOrdinateur || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, stockageOrdinateur: value })}
+                                />
+                            </View>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Carte Graphique"
+                                    fieldName="cartesGraphiques"
+                                    productType="ordinateur"
+                                    value={newProduct.carteGraphique || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, carteGraphique: value })}
+                                />
+                            </View>
+                        </View>
+
+                        <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="État"
+                                    fieldName="etats"
+                                    productType="ordinateur"
+                                    value={newProduct.etatOrdinateur || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, etatOrdinateur: value })}
+                                    required
+                                />
+                            </View>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <Text style={styles.fieldLabel}>Système d'exploitation</Text>
+                                <NativeInput
+                                    placeholder="Ex: Windows 11, macOS"
+                                    value={newProduct.systemeExploitation || ''}
+                                    onChangeText={(text) => setNewProduct({ ...newProduct, systemeExploitation: text })}
+                                    style={styles.fieldInput}
+                                />
+                            </View>
+                        </View>
+
+                        <View style={styles.hintBox}>
+                            <Text style={styles.hintText}>
+                                💻 Les spécifications techniques sont essentielles pour les ordinateurs
+                            </Text>
+                        </View>
+                    </>
+                );
+
+            case 'image_son':
+                return (
+                    <>
+                        <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Type d'appareil"
+                                    fieldName="types"
+                                    productType="image_son"
+                                    value={newProduct.typeImageSon || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, typeImageSon: value })}
+                                    required
+                                />
+                            </View>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Marque"
+                                    fieldName="marques"
+                                    productType="image_son"
+                                    value={newProduct.marqueImageSon || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, marqueImageSon: value })}
+                                />
+                            </View>
+                        </View>
+
+                        <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Résolution"
+                                    fieldName="resolutions"
+                                    productType="image_son"
+                                    value={newProduct.resolution || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, resolution: value })}
+                                />
+                            </View>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Taille écran"
+                                    fieldName="taillesEcran"
+                                    productType="image_son"
+                                    value={newProduct.diagonaleEcran || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, diagonaleEcran: value })}
+                                />
+                            </View>
+                        </View>
+
+                        <ProductFieldSelector
+                            label="État"
+                            fieldName="etats"
+                            productType="image_son"
+                            value={newProduct.etatImageSon || ''}
+                            onSelect={(value) => setNewProduct({ ...newProduct, etatImageSon: value })}
+                            required
+                        />
+
+                        <View style={styles.hintBox}>
+                            <Text style={styles.hintText}>
+                                📺 Pour les TV, précisez la taille et la résolution
+                            </Text>
+                        </View>
+                    </>
+                );
+
+            case 'pieces_auto':
+                return (
+                    <>
+                        <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Type de pièce"
+                                    fieldName="types"
+                                    productType="pieces_auto"
+                                    value={newProduct.typePieceAuto || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, typePieceAuto: value })}
+                                    required
+                                />
+                            </View>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Marque"
+                                    fieldName="marques"
+                                    productType="pieces_auto"
+                                    value={newProduct.marquePieceAuto || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, marquePieceAuto: value })}
+                                />
+                            </View>
+                        </View>
+
+                        <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="État"
+                                    fieldName="etats"
+                                    productType="pieces_auto"
+                                    value={newProduct.etatPieceAuto || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, etatPieceAuto: value })}
+                                    required
+                                />
+                            </View>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <Text style={styles.fieldLabel}>Référence</Text>
+                                <NativeInput
+                                    placeholder="Ex: REF-12345"
+                                    value={newProduct.referenceAuto || ''}
+                                    onChangeText={(text) => setNewProduct({ ...newProduct, referenceAuto: text })}
+                                    style={styles.fieldInput}
+                                />
+                            </View>
+                        </View>
+
+                        <View style={styles.fieldContainer}>
+                            <Text style={styles.fieldLabel}>Compatibilité</Text>
+                            <NativeInput
+                                placeholder="Ex: Toyota Camry 2015-2020"
+                                value={newProduct.compatibilite || ''}
+                                onChangeText={(text) => setNewProduct({ ...newProduct, compatibilite: text })}
+                                style={styles.fieldInput}
+                                multiline
+                            />
+                        </View>
+                    </>
+                );
+
+            case 'pieces_industrielles':
+                return (
+                    <>
+                        <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Type de pièce"
+                                    fieldName="types"
+                                    productType="pieces_industrielles"
+                                    value={newProduct.typePieceIndustrielle || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, typePieceIndustrielle: value })}
+                                    required
+                                />
+                            </View>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Marque"
+                                    fieldName="marques"
+                                    productType="pieces_industrielles"
+                                    value={newProduct.marquePieceIndustrielle || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, marquePieceIndustrielle: value })}
+                                />
+                            </View>
+                        </View>
+
+                        <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Matériau"
+                                    fieldName="materiaux"
+                                    productType="pieces_industrielles"
+                                    value={newProduct.materielPiece || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, materielPiece: value })}
+                                />
+                            </View>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Application"
+                                    fieldName="applications"
+                                    productType="pieces_industrielles"
+                                    value={newProduct.applicationIndustrielle || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, applicationIndustrielle: value })}
+                                />
+                            </View>
+                        </View>
+
+                        <View style={styles.fieldContainer}>
+                            <Text style={styles.fieldLabel}>Référence</Text>
+                            <NativeInput
+                                placeholder="Ex: SKF-6205-2Z"
+                                value={newProduct.referencePiece || ''}
+                                onChangeText={(text) => setNewProduct({ ...newProduct, referencePiece: text })}
+                                style={styles.fieldInput}
+                            />
+                        </View>
+                    </>
+                );
+
+            case 'jouets_enfants':
+                return (
+                    <>
+                        <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Type de jouet"
+                                    fieldName="types"
+                                    productType="jouets_enfants"
+                                    value={newProduct.typeJouet || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, typeJouet: value })}
+                                    required
+                                />
+                            </View>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Âge recommandé"
+                                    fieldName="ages"
+                                    productType="jouets_enfants"
+                                    value={newProduct.ageJouet || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, ageJouet: value })}
+                                />
+                            </View>
+                        </View>
+
+                        <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Marque"
+                                    fieldName="marques"
+                                    productType="jouets_enfants"
+                                    value={newProduct.marqueJouet || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, marqueJouet: value })}
+                                />
+                            </View>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Matériau"
+                                    fieldName="materiaux"
+                                    productType="jouets_enfants"
+                                    value={newProduct.materiauJouet || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, materiauJouet: value })}
+                                />
+                            </View>
+                        </View>
+                    </>
+                );
+
+            case 'ustensiles_cuisine':
+                return (
+                    <>
+                        <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Type d'ustensile"
+                                    fieldName="types"
+                                    productType="ustensiles_cuisine"
+                                    value={newProduct.typeUstensile || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, typeUstensile: value })}
+                                    required
+                                />
+                            </View>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Matériau"
+                                    fieldName="materiaux"
+                                    productType="ustensiles_cuisine"
+                                    value={newProduct.materiauUstensile || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, materiauUstensile: value })}
+                                />
+                            </View>
+                        </View>
+
+                        <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Marque"
+                                    fieldName="marques"
+                                    productType="ustensiles_cuisine"
+                                    value={newProduct.marqueUstensile || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, marqueUstensile: value })}
+                                />
+                            </View>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <Text style={styles.fieldLabel}>Capacité</Text>
+                                <NativeInput
+                                    placeholder="Ex: 2L, 5L"
+                                    value={newProduct.capaciteUstensile || ''}
+                                    onChangeText={(text) => setNewProduct({ ...newProduct, capaciteUstensile: text })}
+                                    style={styles.fieldInput}
+                                />
+                            </View>
                         </View>
                     </>
                 );
