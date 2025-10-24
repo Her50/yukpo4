@@ -2928,52 +2928,87 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         <View style={styles.fieldContainer}>
                             <View style={styles.prestationHeader}>
                                 <Text style={styles.fieldLabel}>Offres de service proposées</Text>
-                                <TouchableOpacity
-                                    style={styles.addPrestationButton}
-                                    onPress={() => {
-                                        const prestations = newProduct.prestations || [];
-                                        prestations.push({ nom: '', prixAPartirDe: '', description: '' });
-                                        setNewProduct({ ...newProduct, prestations });
-                                    }}
-                                >
-                                    <SafeIcon name="plus-circle" size={20} color={modernColors.primary} />
-                                    <Text style={styles.addPrestationText}>Ajouter une offre</Text>
-                                </TouchableOpacity>
+                                <View style={{ flexDirection: 'row', gap: 8 }}>
+                                    <TouchableOpacity
+                                        style={styles.addPrestationButtonSecondary}
+                                        onPress={() => {
+                                            const prestations = newProduct.prestations || [];
+                                            // Ajouter 3 offres d'un coup
+                                            for (let i = 0; i < 3; i++) {
+                                                prestations.push({ nom: '', prixAPartirDe: '', description: '' });
+                                            }
+                                            setNewProduct({ ...newProduct, prestations });
+                                        }}
+                                    >
+                                        <SafeIcon name="layers" size={18} color={modernColors.primary} />
+                                        <Text style={styles.addPrestationTextSecondary}>+3 offres</Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity
+                                        style={styles.addPrestationButton}
+                                        onPress={() => {
+                                            const prestations = newProduct.prestations || [];
+                                            prestations.push({ nom: '', prixAPartirDe: '', description: '' });
+                                            setNewProduct({ ...newProduct, prestations });
+                                        }}
+                                    >
+                                        <SafeIcon name="plus-circle" size={20} color="#FFFFFF" />
+                                        <Text style={styles.addPrestationText}>Ajouter</Text>
+                                    </TouchableOpacity>
+                                </View>
                             </View>
 
                             {(newProduct.prestations || []).map((prestation, index) => (
-                                <View key={index} style={styles.prestationCard}>
+                                <View key={index} style={styles.prestationCardCompact}>
                                     <View style={styles.prestationCardHeader}>
-                                        <Text style={styles.prestationCardTitle}>Offre {index + 1}</Text>
-                                        <TouchableOpacity
-                                            style={styles.deletePrestationButton}
-                                            onPress={() => {
-                                                const prestations = [...(newProduct.prestations || [])];
-                                                prestations.splice(index, 1);
-                                                setNewProduct({ ...newProduct, prestations });
-                                            }}
-                                        >
-                                            <SafeIcon name="trash-2" size={18} color={modernColors.error} />
-                                        </TouchableOpacity>
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
+                                            <View style={styles.prestationNumber}>
+                                                <Text style={styles.prestationNumberText}>{index + 1}</Text>
+                                            </View>
+                                            <Text style={styles.prestationCardTitle}>
+                                                {prestation.nom || `Offre ${index + 1}`}
+                                            </Text>
+                                        </View>
+                                        <View style={{ flexDirection: 'row', gap: 8 }}>
+                                            <TouchableOpacity
+                                                style={styles.duplicatePrestationButton}
+                                                onPress={() => {
+                                                    const prestations = [...(newProduct.prestations || [])];
+                                                    prestations.splice(index + 1, 0, { ...prestation });
+                                                    setNewProduct({ ...newProduct, prestations });
+                                                }}
+                                            >
+                                                <SafeIcon name="copy" size={16} color={modernColors.success} />
+                                            </TouchableOpacity>
+                                            <TouchableOpacity
+                                                style={styles.deletePrestationButton}
+                                                onPress={() => {
+                                                    const prestations = [...(newProduct.prestations || [])];
+                                                    prestations.splice(index, 1);
+                                                    setNewProduct({ ...newProduct, prestations });
+                                                }}
+                                            >
+                                                <SafeIcon name="trash-2" size={16} color={modernColors.error} />
+                                            </TouchableOpacity>
+                                        </View>
                                     </View>
 
-                                    <View style={styles.prestationFieldContainer}>
-                                        <Text style={styles.prestationFieldLabel}>Nom de l'offre *</Text>
+                                    <View style={styles.prestationFieldContainerCompact}>
+                                        <Text style={styles.prestationFieldLabelCompact}>Nom de l'offre *</Text>
                                         <NativeInput
-                                            placeholder="Ex: Traitement de données, Analyse statistique, Rédaction de rapport..."
+                                            placeholder="Ex: Installation électrique"
                                             value={prestation.nom}
                                             onChangeText={(text) => {
                                                 const prestations = [...(newProduct.prestations || [])];
                                                 prestations[index].nom = text;
                                                 setNewProduct({ ...newProduct, prestations });
                                             }}
-                                            style={styles.fieldInput}
+                                            style={styles.fieldInputCompact}
                                         />
                                     </View>
 
                                     <View style={styles.prestationFieldRow}>
-                                        <View style={[styles.prestationFieldContainer, { flex: 1 }]}>
-                                            <Text style={styles.prestationFieldLabel}>Montant minimum *</Text>
+                                        <View style={[styles.prestationFieldContainerCompact, { flex: 1 }]}>
+                                            <Text style={styles.prestationFieldLabelCompact}>Prix min. (XAF) *</Text>
                                             <NativeInput
                                                 placeholder="50000"
                                                 value={prestation.prixAPartirDe}
@@ -2982,48 +3017,46 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                                     prestations[index].prixAPartirDe = text;
                                                     setNewProduct({ ...newProduct, prestations });
                                                 }}
-                                                style={styles.fieldInput}
+                                                style={styles.fieldInputCompact}
                                                 keyboardType="numeric"
                                             />
                                         </View>
-                                        <View style={styles.xafLabel}>
-                                            <Text style={styles.xafText}>XAF</Text>
+                                        <View style={[styles.prestationFieldContainerCompact, { flex: 2 }]}>
+                                            <Text style={styles.prestationFieldLabelCompact}>Description (opt.)</Text>
+                                            <NativeInput
+                                                placeholder="Ex: Comprend installation + câblage..."
+                                                value={prestation.description}
+                                                onChangeText={(text) => {
+                                                    const prestations = [...(newProduct.prestations || [])];
+                                                    prestations[index].description = text;
+                                                    setNewProduct({ ...newProduct, prestations });
+                                                }}
+                                                style={styles.fieldInputCompact}
+                                            />
                                         </View>
-                                    </View>
-
-                                    <View style={styles.prestationFieldContainer}>
-                                        <Text style={styles.prestationFieldLabel}>Description de l'offre (optionnelle)</Text>
-                                        <NativeInput
-                                            placeholder="Ex: Comprend l'analyse complète des données, visualisations, et recommandations..."
-                                            value={prestation.description}
-                                            onChangeText={(text) => {
-                                                const prestations = [...(newProduct.prestations || [])];
-                                                prestations[index].description = text;
-                                                setNewProduct({ ...newProduct, prestations });
-                                            }}
-                                            style={[styles.fieldInput, styles.textareaInput]}
-                                            multiline
-                                        />
                                     </View>
                                 </View>
                             ))}
 
                             {(!newProduct.prestations || newProduct.prestations.length === 0) && (
                                 <View style={styles.emptyPrestationState}>
-                                    <SafeIcon name="info" size={32} color={modernColors.textSecondary} />
+                                    <SafeIcon name="briefcase" size={40} color={modernColors.textSecondary} />
                                     <Text style={styles.emptyPrestationText}>
                                         Aucune offre ajoutée
                                     </Text>
                                     <Text style={styles.emptyPrestationSubtext}>
-                                        Cliquez sur "Ajouter une offre" pour commencer
+                                        Ajoutez vos offres rapidement avec les boutons ci-dessus
                                     </Text>
+                                    <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
+                                        <Text style={styles.emptyPrestationHint}>💡 Astuce: Utilisez "+3 offres" pour gagner du temps</Text>
+                                    </View>
                                 </View>
                             )}
                         </View>
 
                         <View style={styles.hintBox}>
                             <Text style={styles.hintText}>
-                                💰 <Text style={styles.hintBold}>Conseil :</Text> Listez toutes vos offres de service avec leur montant minimum. Cela permet aux clients d'évaluer rapidement si votre offre correspond à leur budget.
+                                💰 <Text style={styles.hintBold}>Conseil :</Text> Listez toutes vos offres de service avec leur montant minimum. Utilisez le bouton de duplication 📋 pour créer rapidement des variantes.
                             </Text>
                         </View>
                     </>
@@ -6611,15 +6644,34 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         gap: 6,
-        paddingHorizontal: 12,
-        paddingVertical: 8,
-        backgroundColor: modernColors.surface,
-        borderWidth: 1,
-        borderColor: modernColors.primary,
+        paddingHorizontal: 14,
+        paddingVertical: 10,
+        backgroundColor: modernColors.primary,
         borderRadius: 8,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 3,
+        elevation: 2,
     },
     addPrestationText: {
         fontSize: 13,
+        fontWeight: '600',
+        color: '#FFFFFF',
+    },
+    addPrestationButtonSecondary: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        paddingHorizontal: 12,
+        paddingVertical: 10,
+        backgroundColor: modernColors.surface,
+        borderWidth: 1.5,
+        borderColor: modernColors.primary,
+        borderRadius: 8,
+    },
+    addPrestationTextSecondary: {
+        fontSize: 12,
         fontWeight: '600',
         color: modernColors.primary,
     },
@@ -6698,6 +6750,63 @@ const styles = StyleSheet.create({
         color: modernColors.textSecondary,
         marginTop: 4,
         textAlign: 'center',
+    },
+    emptyPrestationHint: {
+        fontSize: 11,
+        color: modernColors.primary,
+        fontStyle: 'italic',
+    },
+    prestationCardCompact: {
+        backgroundColor: modernColors.surface,
+        borderWidth: 1,
+        borderColor: modernColors.border,
+        borderRadius: 10,
+        padding: 12,
+        marginBottom: 10,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 2,
+        elevation: 1,
+    },
+    prestationNumber: {
+        width: 28,
+        height: 28,
+        borderRadius: 14,
+        backgroundColor: modernColors.primary,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    prestationNumberText: {
+        fontSize: 13,
+        fontWeight: '700',
+        color: '#FFFFFF',
+    },
+    duplicatePrestationButton: {
+        padding: 6,
+        borderRadius: 6,
+        backgroundColor: '#D1FAE5',
+    },
+    prestationFieldContainerCompact: {
+        marginBottom: 8,
+    },
+    prestationFieldLabelCompact: {
+        fontSize: 11,
+        fontWeight: '600',
+        color: modernColors.textSecondary,
+        marginBottom: 4,
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
+    },
+    fieldInputCompact: {
+        backgroundColor: modernColors.background,
+        borderWidth: 1,
+        borderColor: modernColors.border,
+        borderRadius: 8,
+        paddingHorizontal: 10,
+        paddingVertical: 8,
+        fontSize: 13,
+        color: modernColors.text,
     },
     // Style pour le rappel de catégorie
     categoryReminder: {
