@@ -3043,8 +3043,8 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     },
     filters: [
       {
-        id: 'categorieAgro',
-        label: 'Catégorie',
+        id: 'typeAgro',
+        label: 'Type de produit',
         type: 'select',
         options: [
           { value: 'cereales', label: 'Céréales' },
@@ -3052,6 +3052,36 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
           { value: 'conserves', label: 'Conserves' },
           { value: 'boissons', label: 'Boissons' },
           { value: 'epicerie', label: 'Épicerie' },
+        ],
+      },
+      {
+        id: 'marqueAgro',
+        label: 'Marque',
+        type: 'select',
+        options: [
+          { value: 'nestle', label: 'Nestlé' },
+          { value: 'maggi', label: 'Maggi' },
+          { value: 'jumbo', label: 'Jumbo' },
+          { value: 'autre', label: 'Autre' },
+        ],
+      },
+      {
+        id: 'origine',
+        label: 'Origine',
+        type: 'select',
+        options: [
+          { value: 'locale', label: 'Locale' },
+          { value: 'importee', label: 'Importée' },
+        ],
+      },
+      {
+        id: 'certification',
+        label: 'Certification',
+        type: 'select',
+        options: [
+          { value: 'bio', label: 'Bio' },
+          { value: 'halal', label: 'Halal' },
+          { value: 'standard', label: 'Standard' },
         ],
       },
     ],
@@ -3096,12 +3126,40 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
           { value: 'legume', label: 'Légumes' },
           { value: 'fruit', label: 'Fruits' },
           { value: 'elevage', label: 'Élevage' },
+          { value: 'semence', label: 'Semences' },
+          { value: 'engrais', label: 'Engrais' },
         ],
       },
       {
-        id: 'bio',
-        label: 'Agriculture biologique',
-        type: 'toggle',
+        id: 'culture',
+        label: 'Type de culture',
+        type: 'select',
+        options: [
+          { value: 'mais', label: 'Maïs' },
+          { value: 'riz', label: 'Riz' },
+          { value: 'manioc', label: 'Manioc' },
+          { value: 'autre', label: 'Autre' },
+        ],
+      },
+      {
+        id: 'saisonAgricole',
+        label: 'Saison',
+        type: 'select',
+        options: [
+          { value: 'toutes', label: 'Toutes saisons' },
+          { value: 'seche', label: 'Saison sèche' },
+          { value: 'pluies', label: 'Saison des pluies' },
+        ],
+      },
+      {
+        id: 'certificationsAgricole',
+        label: 'Certifications',
+        type: 'multiselect',
+        options: [
+          { value: 'bio', label: 'Bio' },
+          { value: 'minader', label: 'MINADER' },
+          { value: 'autre', label: 'Autre' },
+        ],
       },
     ],
     style: {
