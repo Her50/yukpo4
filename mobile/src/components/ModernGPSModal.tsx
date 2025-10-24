@@ -234,102 +234,90 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
                     </TouchableOpacity>
                 </LinearGradient>
 
-                <View style={styles.content}>
-                    {/* Panneau de contrôle gauche - COMPACT */}
-                    <View style={styles.leftPanel}>
-                        {/* Mode de sélection */}
-                        <View style={styles.controlCard}>
-                            <View style={styles.cardHeader}>
-                                <SafeIcon name="layers" size={14} color={modernColors.primary} />
-                                <Text style={styles.cardTitle} numberOfLines={1}>Mode</Text>
-                            </View>
-
-                            <View style={styles.selectionModeButtons}>
-                                <TouchableOpacity
-                                    style={[
-                                        styles.modeButton,
-                                        zoneType === 'point' && styles.modeButtonActive
-                                    ]}
-                                    onPress={() => setZoneType('point')}
-                                >
-                                    {/* ✅ Symbole très clair : map-pin pour un point précis */}
-                                    <Text style={{ fontSize: 18 }}>📍</Text>
-                                    <Text
-                                        style={[
-                                            styles.modeButtonText,
-                                            zoneType === 'point' && styles.modeButtonTextActive
-                                        ]}
-                                        numberOfLines={1}
-                                    >
-                                        Point
-                                    </Text>
-                                </TouchableOpacity>
-
-                                {allowZoneSelection && (
-                                    <TouchableOpacity
-                                        style={[
-                                            styles.modeButton,
-                                            zoneType === 'polygon' && styles.modeButtonActive
-                                        ]}
-                                        onPress={() => setZoneType('polygon')}
-                                    >
-                                        {/* ✅ Symbole très clair : zone délimitée */}
-                                        <Text style={{ fontSize: 18 }}>⬛</Text>
-                                        <Text
-                                            style={[
-                                                styles.modeButtonText,
-                                                zoneType === 'polygon' && styles.modeButtonTextActive
-                                            ]}
-                                            numberOfLines={1}
-                                        >
-                                            Zone
-                                        </Text>
-                                    </TouchableOpacity>
-                                )}
-                            </View>
-                        </View>
-
-                        {/* Recherche d'adresse */}
-                        <View style={styles.controlCard}>
-                            <View style={styles.cardHeader}>
-                                <SafeIcon name="search" size={14} color={modernColors.primary} />
-                                <Text style={styles.cardTitle} numberOfLines={1}>Recherche</Text>
-                            </View>
-
-                            <View style={styles.searchContainer}>
-                                <TextInput
-                                    style={styles.searchInput}
-                                    placeholder="Adresse..."
-                                    value={searchQuery}
-                                    onChangeText={setSearchQuery}
-                                    placeholderTextColor={modernColors.textSecondary}
-                                />
-                                <TouchableOpacity
-                                    style={styles.searchButton}
-                                    onPress={handleSearch}
-                                    disabled={loading}
-                                >
-                                    <SafeIcon name="search" size={14} color="#FFFFFF" />
-                                </TouchableOpacity>
-                            </View>
-                        </View>
-
-                        {/* Ma position GPS */}
-                        <View style={styles.controlCard}>
+                {/* ✅ NOUVEAU: Barre de contrôles horizontale en haut */}
+                <View style={styles.topControlBar}>
+                    {/* Mode de sélection */}
+                    <View style={styles.topControlSection}>
+                        <Text style={styles.topControlLabel}>Mode</Text>
+                        <View style={styles.topModeButtons}>
                             <TouchableOpacity
-                                style={styles.gpsButton}
-                                onPress={handleGetCurrentLocation}
-                                disabled={loading}
+                                style={[
+                                    styles.topModeButton,
+                                    zoneType === 'point' && styles.topModeButtonActive
+                                ]}
+                                onPress={() => setZoneType('point')}
                             >
-                                {/* ✅ Symbole ultra clair : localiser */}
-                                <Text style={{ fontSize: 18, marginRight: 4 }}>
-                                    {loading ? '⏳' : '🎯'}
-                                </Text>
-                                <Text style={styles.gpsButtonText} numberOfLines={1}>
-                                    Me localiser
+                                <Text style={styles.topModeIcon}>📍</Text>
+                                <Text style={[
+                                    styles.topModeButtonText,
+                                    zoneType === 'point' && styles.topModeButtonTextActive
+                                ]}>
+                                    Point
                                 </Text>
                             </TouchableOpacity>
+
+                            {allowZoneSelection && (
+                                <TouchableOpacity
+                                    style={[
+                                        styles.topModeButton,
+                                        zoneType === 'polygon' && styles.topModeButtonActive
+                                    ]}
+                                    onPress={() => setZoneType('polygon')}
+                                >
+                                    <Text style={styles.topModeIcon}>⬛</Text>
+                                    <Text style={[
+                                        styles.topModeButtonText,
+                                        zoneType === 'polygon' && styles.topModeButtonTextActive
+                                    ]}>
+                                        Zone
+                                    </Text>
+                                </TouchableOpacity>
+                            )}
                         </View>
+                    </View>
+
+                    {/* Recherche d'adresse */}
+                    <View style={styles.topControlSection}>
+                        <Text style={styles.topControlLabel}>Recherche</Text>
+                        <View style={styles.topSearchContainer}>
+                            <TextInput
+                                style={styles.topSearchInput}
+                                placeholder="Adresse..."
+                                value={searchQuery}
+                                onChangeText={setSearchQuery}
+                                placeholderTextColor="#9CA3AF"
+                            />
+                            <TouchableOpacity
+                                style={styles.topSearchButton}
+                                onPress={handleSearch}
+                                disabled={loading}
+                            >
+                                <SafeIcon name="search" size={16} color="#FFFFFF" />
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+
+                    {/* Ma position GPS */}
+                    <View style={styles.topControlSection}>
+                        <Text style={styles.topControlLabel}>Position</Text>
+                        <TouchableOpacity
+                            style={styles.topGPSButton}
+                            onPress={handleGetCurrentLocation}
+                            disabled={loading}
+                        >
+                            <Text style={styles.topGPSIcon}>
+                                {loading ? '⏳' : '🎯'}
+                            </Text>
+                            <Text style={styles.topGPSButtonText}>
+                                Me localiser
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+
+                <View style={styles.content}>
+                    {/* Panneau d'informations - SIMPLIFIÉ */}
+                    <View style={styles.leftPanel}>
 
                         {/* Position sélectionnée */}
                         {selectedLocation && (
@@ -489,12 +477,113 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
     },
     leftPanel: {
-        width: width * 0.38, // Augmenté légèrement pour éviter le texte vertical
+        width: width * 0.30, // ✅ Réduit car contrôles sont en haut maintenant
         backgroundColor: '#F8FAFC',
         paddingHorizontal: 12,
         paddingVertical: 16,
         borderRightWidth: 1,
         borderRightColor: '#E2E8F0',
+    },
+    // ✅ NOUVEAU: Styles pour la barre de contrôle horizontale
+    topControlBar: {
+        flexDirection: 'row',
+        backgroundColor: '#FFFFFF',
+        paddingHorizontal: 16,
+        paddingVertical: 14,
+        borderBottomWidth: 1,
+        borderBottomColor: '#E5E7EB',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 3,
+        elevation: 2,
+        gap: 12,
+    },
+    topControlSection: {
+        flex: 1,
+    },
+    topControlLabel: {
+        fontSize: 13,
+        fontWeight: '700',
+        color: '#374151',
+        marginBottom: 8,
+        letterSpacing: 0.3,
+    },
+    topModeButtons: {
+        flexDirection: 'row',
+        gap: 6,
+    },
+    topModeButton: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 10,
+        paddingHorizontal: 10,
+        borderRadius: 10,
+        borderWidth: 2,
+        borderColor: modernColors.primary,
+        backgroundColor: '#FFFFFF',
+        gap: 4,
+    },
+    topModeButtonActive: {
+        backgroundColor: modernColors.primary,
+        borderColor: modernColors.primary,
+    },
+    topModeIcon: {
+        fontSize: 18,
+    },
+    topModeButtonText: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: modernColors.primary,
+    },
+    topModeButtonTextActive: {
+        color: '#FFFFFF',
+    },
+    topSearchContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+    },
+    topSearchInput: {
+        flex: 1,
+        height: 42,
+        borderWidth: 2,
+        borderColor: '#D1D5DB',
+        borderRadius: 10,
+        paddingHorizontal: 12,
+        fontSize: 14,
+        backgroundColor: '#FFFFFF',
+        color: '#111827',
+        fontWeight: '500',
+    },
+    topSearchButton: {
+        width: 42,
+        height: 42,
+        borderRadius: 10,
+        backgroundColor: modernColors.primary,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    topGPSButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 11,
+        paddingHorizontal: 14,
+        borderRadius: 10,
+        backgroundColor: modernColors.primary,
+        gap: 6,
+    },
+    topGPSIcon: {
+        fontSize: 20,
+    },
+    topGPSButtonText: {
+        fontSize: 14,
+        fontWeight: '700',
+        color: '#FFFFFF',
+        letterSpacing: 0.3,
     },
     controlCard: {
         backgroundColor: '#FFFFFF',
@@ -514,9 +603,9 @@ const styles = StyleSheet.create({
         flexWrap: 'nowrap',
     },
     cardTitle: {
-        fontSize: 12,
-        fontWeight: '600',
-        color: modernColors.text,
+        fontSize: 14, // ✅ Augmenté de 12 à 14 pour meilleure lisibilité
+        fontWeight: '700', // ✅ Plus gras
+        color: '#1F2937', // ✅ Plus contrasté
         marginLeft: 6,
         flexShrink: 1,
         flexWrap: 'nowrap',
@@ -598,19 +687,21 @@ const styles = StyleSheet.create({
         flexWrap: 'wrap',
     },
     selectedLocationText: {
-        fontSize: 10,
-        color: modernColors.textSecondary,
+        fontSize: 13, // ✅ Augmenté pour meilleure lisibilité
+        fontWeight: '700', // ✅ Plus gras
+        color: '#111827', // ✅ Plus contrasté
         fontFamily: 'monospace',
         flexWrap: 'wrap',
         textAlign: 'left',
     },
     selectedAddressText: {
-        fontSize: 10,
-        color: modernColors.text,
-        marginTop: 2,
+        fontSize: 12, // ✅ Augmenté pour meilleure lisibilité
+        fontWeight: '600', // ✅ Plus gras
+        color: '#374151', // ✅ Plus contrasté
+        marginTop: 4,
         flexWrap: 'wrap',
         textAlign: 'left',
-        lineHeight: 14,
+        lineHeight: 17,
     },
     clearButton: {
         flexDirection: 'row',
