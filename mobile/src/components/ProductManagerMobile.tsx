@@ -6341,14 +6341,22 @@ const styles = StyleSheet.create({
     deviseButtonActive: {
         backgroundColor: modernColors.primary,
         borderColor: modernColors.primary,
+        shadowColor: modernColors.primary, // ✅ Ombre pour effet élevé
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
+        elevation: 4, // ✅ Pour Android
     },
     deviseButtonText: {
-        fontSize: 12,
-        fontWeight: '600',
+        fontSize: 14, // ✅ Augmenté de 12 à 14 pour lisibilité
+        fontWeight: '700', // ✅ Plus gras pour meilleure visibilité
         color: modernColors.textSecondary,
+        letterSpacing: 0.5, // ✅ Espacement pour clarté
     },
     deviseButtonTextActive: {
         color: '#FFFFFF',
+        fontWeight: '800', // ✅ Extra gras quand actif
+        letterSpacing: 0.8, // ✅ Plus d'espacement quand actif
     },
     mediaSectionContainer: {
         marginTop: 20,
@@ -6804,22 +6812,25 @@ const styles = StyleSheet.create({
     dayButtonTextActive: {
         color: '#FFFFFF',
     },
-    // Grille de devises (toutes visibles)
+    // ✅ AMÉLIORATION: Grille de devises (toutes sur la même ligne)
     deviseGridContainer: {
         flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 8,
+        flexWrap: 'nowrap', // ✅ Empêcher retour à la ligne
+        gap: 6, // ✅ Réduit pour plus d'espace
         marginTop: 8,
+        justifyContent: 'flex-start', // ✅ Alignement à gauche
     },
     deviseButtonGrid: {
-        paddingHorizontal: 12,
-        paddingVertical: 8,
-        borderRadius: 8,
+        flex: 1, // ✅ Chaque devise prend espace égal
+        paddingHorizontal: 10, // ✅ Réduit de 12 à 10
+        paddingVertical: 10, // ✅ Augmenté pour meilleure cible tactile
+        borderRadius: 10, // ✅ Plus arrondi pour modernité
         backgroundColor: '#F3F4F6',
-        borderWidth: 1,
+        borderWidth: 2, // ✅ Border plus épaisse pour visibilité
         borderColor: '#E5E7EB',
-        minWidth: 60,
         alignItems: 'center',
+        justifyContent: 'center', // ✅ Centrage vertical
+        minHeight: 42, // ✅ Hauteur minimale pour touch target
     },
     // Container pour le planning des prestations médicales
     prestationPlanningContainer: {
