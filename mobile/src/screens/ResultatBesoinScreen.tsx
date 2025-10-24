@@ -12,6 +12,7 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+import BusSeatSelector from '../components/BusSeatSelector';
 import CategoryFilters from '../components/CategoryFilters';
 import ChatModalMobile from '../components/ChatModalMobile';
 import ProductCard from '../components/ProductCard';
@@ -86,6 +87,7 @@ const ResultatBesoinScreen: React.FC = () => {
     const [prestatairesLoaded, setPrestatairesLoaded] = useState(false);
     const [showChatModal, setShowChatModal] = useState(false);
     const [showGalleryModal, setShowGalleryModal] = useState(false);
+    const [showSeatSelector, setShowSeatSelector] = useState(false);
     const [selectedService, setSelectedService] = useState<Service | null>(null);
     const [selectedProduct, setSelectedProduct] = useState<any | null>(null);
     const [selectedPrestataire, setSelectedPrestataire] = useState<Prestataire | null>(null);
@@ -1079,6 +1081,12 @@ const ResultatBesoinScreen: React.FC = () => {
                     setSelectedPrestataire(prestataire);
                     setShowGalleryModal(true);
                 }}
+                onBookSeat={() => {
+                    setSelectedProduct(product);
+                    setSelectedService(service);
+                    setSelectedPrestataire(prestataire);
+                    setShowSeatSelector(true);
+                }}
             />
         );
     };
@@ -1482,6 +1490,61 @@ const ResultatBesoinScreen: React.FC = () => {
                     setSelectedPrestataire(null);
                 }}
             />
+
+            {/* Seat Selector Modal pour ticket_voyage */}
+            {selectedProduct && selectedProduct.type === 'ticket_voyage' && selectedProduct.seatMap && (
+                <BusSeatSelector
+                    visible={showSeatSelector}
+                    onClose={() => setShowSeatSelector(false)}
+                    busConfiguration={selectedProduct.busConfiguration || { rows: 12, seatsPerRow: 4, aislePosition: 2 }}
+                    seatMap={selectedProduct.seatMap || []}
+                    product={selectedProduct}
+                    onSelectSeat={async (seat) => {
+                        try {
+                            // Mettre à jour localement le statut de la place
+                            const updatedSeatMap = selectedProduct.seatMap.map(s => 
+                                s.id === seat.id ? { ...s, status: 'reserved' } : s
+                            );
+                            
+                            // Mettre à jour le produit localement
+                            setSelectedProduct({
+                                ...selectedProduct,
+                                seatMap: updatedSeatMap,
+                                selectedSeat: seat.number
+                            });
+
+                            // Mettre à jour dans la liste des produits
+                            setProducts(prevProducts => 
+                                prevProducts.map(p => 
+                                    p.id === selectedProduct.id 
+                                        ? { ...p, seatMap: updatedSeatMap, selectedSeat: seat.number }
+                                        : p
+                                )
+                            );
+
+                            // TODO: Appeler l'API pour persister la réservation
+                            // await apiPost(`/products/${selectedProduct.id}/reserve-seat`, { seatId: seat.id, userId: user.id });
+
+                            Alert.alert(
+                                'Place réservée!',
+                                `Votre place n°${seat.number} a été réservée avec succès.\n\nContactez le prestataire pour finaliser votre réservation.`,
+                                [
+                                    {
+                                        text: 'Discuter avec le prestataire',
+                                        onPress: () => {
+                                            setShowChatModal(true);
+                                        }
+                                    },
+                                    { text: 'OK' }
+                                ]
+                            );
+                        } catch (error) {
+                            console.error('Erreur réservation place:', error);
+                            Alert.alert('Erreur', 'Impossible de réserver cette place. Veuillez réessayer.');
+                        }
+                    }}
+                />
+            )}
 
             {/* Gallery Modal */}
             <ServiceGalleryModal

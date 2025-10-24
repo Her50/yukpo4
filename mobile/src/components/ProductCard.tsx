@@ -14,6 +14,7 @@ interface ProductCardProps {
     onChatPress?: () => void;
     onGalleryPress?: () => void;
     onWhatsAppPress?: () => void;
+    onBookSeat?: () => void; // Pour réservation de place (ticket_voyage)
 }
 
 const ProductCard: React.FC<ProductCardProps> = ({
@@ -23,7 +24,8 @@ const ProductCard: React.FC<ProductCardProps> = ({
     onPress,
     onChatPress,
     onGalleryPress,
-    onWhatsAppPress
+    onWhatsAppPress,
+    onBookSeat
 }) => {
     const [showAllImages, setShowAllImages] = useState(false);
 
@@ -1124,6 +1126,22 @@ const ProductCard: React.FC<ProductCardProps> = ({
                         </View>
                     )}
 
+                    {/* Bouton de réservation pour ticket_voyage */}
+                    {product.type === 'ticket_voyage' && product.seatMap && product.busConfiguration && onBookSeat && (
+                        <TouchableOpacity
+                            style={styles.bookSeatButton}
+                            onPress={onBookSeat}
+                        >
+                            <SafeIcon name="grid" size={20} color="#FFFFFF" />
+                            <Text style={styles.bookSeatButtonText}>🎫 Réserver une place</Text>
+                            {product.seatMap && (
+                                <Text style={styles.bookSeatSubtext}>
+                                    {product.seatMap.filter(s => s.status === 'available').length} places disponibles
+                                </Text>
+                            )}
+                        </TouchableOpacity>
+                    )}
+
                     {/* Actions */}
                     <View style={styles.actions}>
                         {/* Bouton Chat principal - TOUJOURS PRIORITAIRE */}
@@ -1417,6 +1435,33 @@ const styles = StyleSheet.create({
         fontSize: 13,
         fontWeight: '600',
         color: '#FFFFFF',
+    },
+    bookSeatButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        backgroundColor: '#10B981',
+        paddingVertical: 14,
+        paddingHorizontal: 16,
+        borderRadius: 12,
+        marginBottom: 12,
+        shadowColor: '#10B981',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 5,
+    },
+    bookSeatButtonText: {
+        fontSize: 15,
+        fontWeight: '700',
+        color: '#FFFFFF',
+    },
+    bookSeatSubtext: {
+        fontSize: 11,
+        fontWeight: '600',
+        color: '#D1FAE5',
+        marginLeft: 8,
     },
     secondaryActions: {
         flexDirection: 'row',
