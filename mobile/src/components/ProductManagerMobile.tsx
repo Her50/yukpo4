@@ -2354,207 +2354,209 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 <Text style={styles.fieldLabel}>Ville <Text style={styles.required}>*</Text></Text>
                                 <NativeInput
                                     placeholder="Ex: Douala"
-                                value={newProduct.villeHotel || ''}
-                                onChangeText={(text) => setNewProduct({ ...newProduct, villeHotel: text })}
-                                style={styles.fieldInput}
-                            />
-                        </View>
+                                    value={newProduct.villeHotel || ''}
+                                    onChangeText={(text) => setNewProduct({ ...newProduct, villeHotel: text })}
+                                    style={styles.fieldInput}
+                                />
+                            </View>
 
-                        {/* GPS de l'hôtel */}
-                        <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>📍 Localisation GPS</Text>
-                            <TouchableOpacity
-                                style={styles.gpsButton}
-                                onPress={() => setShowGPSModal(true)}
-                            >
-                                <SafeIcon name="map-pin" size={16} color={modernColors.primary} />
-                                <Text style={styles.gpsButtonText}>
-                                    {newProduct.gpsHotel ? 'Modifier la localisation' : 'Ajouter la localisation GPS'}
-                                </Text>
-                            </TouchableOpacity>
-                            {newProduct.gpsHotel && (
-                                <View style={styles.gpsInfoCard}>
-                                    <SafeIcon name="check-circle" size={14} color={modernColors.success} />
-                                    <Text style={styles.gpsInfoText}>
-                                        Position enregistrée : {newProduct.gpsHotel}
+                            {/* GPS de l'hôtel */}
+                            <View style={styles.fieldContainer}>
+                                <Text style={styles.fieldLabel}>📍 Localisation GPS</Text>
+                                <TouchableOpacity
+                                    style={styles.gpsButton}
+                                    onPress={() => setShowGPSModal(true)}
+                                >
+                                    <SafeIcon name="map-pin" size={16} color={modernColors.primary} />
+                                    <Text style={styles.gpsButtonText}>
+                                        {newProduct.gpsHotel ? 'Modifier la localisation' : 'Ajouter la localisation GPS'}
+                                    </Text>
+                                </TouchableOpacity>
+                                {newProduct.gpsHotel && (
+                                    <View style={styles.gpsInfoCard}>
+                                        <SafeIcon name="check-circle" size={14} color={modernColors.success} />
+                                        <Text style={styles.gpsInfoText}>
+                                            Position enregistrée : {newProduct.gpsHotel}
+                                        </Text>
+                                    </View>
+                                )}
+                                <View style={styles.hintBox}>
+                                    <Text style={styles.hintText}>
+                                        💡 La localisation GPS facilite la recherche de l'établissement par les clients
                                     </Text>
                                 </View>
-                            )}
-                            <View style={styles.hintBox}>
-                                <Text style={styles.hintText}>
-                                    💡 La localisation GPS facilite la recherche de l'établissement par les clients
-                                </Text>
                             </View>
-                        </View>
-                    </>
-                );
+                        </>
+                        );
 
-            case 'covoiturage':
-                return (
-                    <>
-                        <View style={styles.fieldRow}>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Point de départ</Text>
+                        case 'covoiturage':
+                        return (
+                        <>
+                            <View style={styles.fieldRow}>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <Text style={styles.fieldLabel}>Point de départ</Text>
+                                    <NativeInput
+                                        placeholder="Ex: Bonanjo"
+                                        value={newProduct.pointDepart || ''}
+                                        onChangeText={(text) => setNewProduct({ ...newProduct, pointDepart: text })}
+                                        style={styles.fieldInput}
+                                    />
+                                </View>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <Text style={styles.fieldLabel}>Point d'arrivée</Text>
+                                    <NativeInput
+                                        placeholder="Ex: Yaoundé"
+                                        value={newProduct.pointArrivee || ''}
+                                        onChangeText={(text) => setNewProduct({ ...newProduct, pointArrivee: text })}
+                                        style={styles.fieldInput}
+                                    />
+                                </View>
+                            </View>
+                            <View style={styles.fieldRow}>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <Text style={styles.fieldLabel}>Date du trajet</Text>
+                                    <NativeInput
+                                        placeholder="JJ/MM/AAAA"
+                                        value={newProduct.dateTrajet || ''}
+                                        onChangeText={(text) => setNewProduct({ ...newProduct, dateTrajet: text })}
+                                        style={styles.fieldInput}
+                                    />
+                                </View>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <Text style={styles.fieldLabel}>Heure</Text>
+                                    <NativeInput
+                                        placeholder="HH:MM"
+                                        value={newProduct.heureTrajet || ''}
+                                        onChangeText={(text) => setNewProduct({ ...newProduct, heureTrajet: text })}
+                                        style={styles.fieldInput}
+                                    />
+                                </View>
+                            </View>
+                            <View style={styles.fieldContainer}>
+                                <Text style={styles.fieldLabel}>Places disponibles</Text>
                                 <NativeInput
-                                    placeholder="Ex: Bonanjo"
-                                    value={newProduct.pointDepart || ''}
-                                    onChangeText={(text) => setNewProduct({ ...newProduct, pointDepart: text })}
+                                    placeholder="Ex: 3"
+                                    value={newProduct.nbPlacesDisponibles || ''}
+                                    onChangeText={(text) => setNewProduct({ ...newProduct, nbPlacesDisponibles: text })}
                                     style={styles.fieldInput}
+                                    keyboardType="numeric"
                                 />
                             </View>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Point d'arrivée</Text>
-                                <NativeInput
-                                    placeholder="Ex: Yaoundé"
-                                    value={newProduct.pointArrivee || ''}
-                                    onChangeText={(text) => setNewProduct({ ...newProduct, pointArrivee: text })}
-                                    style={styles.fieldInput}
-                                />
-                            </View>
-                        </View>
-                        <View style={styles.fieldRow}>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Date du trajet</Text>
-                                <NativeInput
-                                    placeholder="JJ/MM/AAAA"
-                                    value={newProduct.dateTrajet || ''}
-                                    onChangeText={(text) => setNewProduct({ ...newProduct, dateTrajet: text })}
-                                    style={styles.fieldInput}
-                                />
-                            </View>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Heure</Text>
-                                <NativeInput
-                                    placeholder="HH:MM"
-                                    value={newProduct.heureTrajet || ''}
-                                    onChangeText={(text) => setNewProduct({ ...newProduct, heureTrajet: text })}
-                                    style={styles.fieldInput}
-                                />
-                            </View>
-                        </View>
-                        <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Places disponibles</Text>
-                            <NativeInput
-                                placeholder="Ex: 3"
-                                value={newProduct.nbPlacesDisponibles || ''}
-                                onChangeText={(text) => setNewProduct({ ...newProduct, nbPlacesDisponibles: text })}
-                                style={styles.fieldInput}
-                                keyboardType="numeric"
-                            />
-                        </View>
-                    </>
-                );
+                        </>
+                        );
 
-            case 'vetement':
-                return (
-                    <>
-                        <View style={styles.fieldRow}>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
-                                    label="Taille"
-                                    value={newProduct.taille || ''}
-                                    productType="vetement"
-                                    fieldName="tailles"
-                                    onSelect={(value) => setNewProduct({ ...newProduct, taille: value })}
-                                />
+                        case 'vetement':
+                        return (
+                        <>
+                            <View style={styles.fieldRow}>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <ProductFieldSelector
+                                        label="Taille"
+                                        value={newProduct.taille || ''}
+                                        productType="vetement"
+                                        fieldName="tailles"
+                                        onSelect={(value) => setNewProduct({ ...newProduct, taille: value })}
+                                    />
+                                </View>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <ProductFieldSelector
+                                        label="Couleur"
+                                        value={newProduct.couleurVetement || ''}
+                                        productType="vetement"
+                                        fieldName="couleurs"
+                                        onSelect={(value) => setNewProduct({ ...newProduct, couleurVetement: value })}
+                                        multiSelect
+                                    />
+                                </View>
                             </View>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
-                                    label="Couleur"
-                                    value={newProduct.couleurVetement || ''}
-                                    productType="vetement"
-                                    fieldName="couleurs"
-                                    onSelect={(value) => setNewProduct({ ...newProduct, couleurVetement: value })}
-                                    multiSelect
-                                />
+                            <View style={styles.fieldRow}>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <ProductFieldSelector
+                                        label="Matière"
+                                        value={newProduct.matiereVetement || ''}
+                                        productType="vetement"
+                                        fieldName="matieres"
+                                        onSelect={(value) => setNewProduct({ ...newProduct, matiereVetement: value })}
+                                    />
+                                </View>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <ProductFieldSelector
+                                        label="Marque"
+                                        value={newProduct.marqueVetement || ''}
+                                        productType="vetement"
+                                        fieldName="marques"
+                                        onSelect={(value) => setNewProduct({ ...newProduct, marqueVetement: value })}
+                                    />
+                                </View>
                             </View>
-                        </View>
-                        <View style={styles.fieldRow}>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
-                                    label="Matière"
-                                    value={newProduct.matiereVetement || ''}
-                                    productType="vetement"
-                                    fieldName="matieres"
-                                    onSelect={(value) => setNewProduct({ ...newProduct, matiereVetement: value })}
-                                />
-                            </View>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
-                                    label="Marque"
-                                    value={newProduct.marqueVetement || ''}
-                                    productType="vetement"
-                                    fieldName="marques"
-                                    onSelect={(value) => setNewProduct({ ...newProduct, marqueVetement: value })}
-                                />
-                            </View>
-                        </View>
-                    </>
-                );
+                        </>
+                        );
 
-            case 'chaussure':
-                return (
+                        case 'chaussure':
+                        return (
+                        <>
+                            <View style={styles.fieldRow}>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <ProductFieldSelector
+                                        label="Type"
+                                        value={newProduct.typeChaussure || ''}
+                                        productType="chaussure"
+                                        fieldName="types"
+                                        onSelect={(value) => setNewProduct({ ...newProduct, typeChaussure: value })}
+                                        required
+                                    />
+                                </View>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <ProductFieldSelector
+                                        label="Marque"
+                                        value={newProduct.marqueChaussure || ''}
+                                        productType="chaussure"
+                                        fieldName="marques"
+                                        onSelect={(value) => setNewProduct({ ...newProduct, marqueChaussure: value })}
+                                    />
+                                </View>
+                            </View>
+
+                            <View style={styles.fieldRow}>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <ProductFieldSelector
+                                        label="Pointure"
+                                        value={newProduct.pointure || ''}
+                                        productType="chaussure"
+                                        fieldName="pointures"
+                                        onSelect={(value) => setNewProduct({ ...newProduct, pointure: value })}
+                                        multiSelect
+                                        maxSelections={10}
+                                    />
+                                </View>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <ProductFieldSelector
+                                        label="Couleur"
+                                        value={newProduct.couleurChaussure || ''}
+                                        productType="chaussure"
+                                        fieldName="couleurs"
+                                        onSelect={(value) => setNewProduct({ ...newProduct, couleurChaussure: value })}
+                                    />
+                                </View>
+                            </View>
+                        </>
+                        );
+
+                    case 'electromenager':
+                    return (
                     <>
+                        {/* Type et Marque sur la même ligne */}
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <ProductFieldSelector
-                                    label="Type"
-                                    value={newProduct.typeChaussure || ''}
-                                    productType="chaussure"
+                                    label="Type d'appareil"
                                     fieldName="types"
-                                    onSelect={(value) => setNewProduct({ ...newProduct, typeChaussure: value })}
+                                    productType="electromenager"
+                                    value={newProduct.typeElectro || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, typeElectro: value })}
                                     required
                                 />
                             </View>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
-                                    label="Marque"
-                                    value={newProduct.marqueChaussure || ''}
-                                    productType="chaussure"
-                                    fieldName="marques"
-                                    onSelect={(value) => setNewProduct({ ...newProduct, marqueChaussure: value })}
-                                />
-                            </View>
-                        </View>
-
-                        <View style={styles.fieldRow}>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
-                                    label="Pointure"
-                                    value={newProduct.pointure || ''}
-                                    productType="chaussure"
-                                    fieldName="pointures"
-                                    onSelect={(value) => setNewProduct({ ...newProduct, pointure: value })}
-                                    multiSelect
-                                    maxSelections={10}
-                                />
-                            </View>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
-                                    label="Couleur"
-                                    value={newProduct.couleurChaussure || ''}
-                                    productType="chaussure"
-                                    fieldName="couleurs"
-                                    onSelect={(value) => setNewProduct({ ...newProduct, couleurChaussure: value })}
-                                />
-                            </View>
-                        </View>
-                    </>
-                );
-
-            case 'electromenager':
-                return (
-                    <>
-                        <ProductFieldSelector
-                            label="Type d'appareil"
-                            fieldName="types"
-                            productType="electromenager"
-                            value={newProduct.typeElectro || ''}
-                            onSelect={(value) => setNewProduct({ ...newProduct, typeElectro: value })}
-                            required
-                        />
-
-                        <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <ProductFieldSelector
                                     label="Marque"
@@ -2564,59 +2566,63 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                     onSelect={(value) => setNewProduct({ ...newProduct, marqueElectro: value })}
                                 />
                             </View>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Modèle</Text>
-                                <NativeInput
-                                    placeholder="Ex: RT50K6000S8"
-                                    value={newProduct.modeleElectro || ''}
-                                    onChangeText={(text) => setNewProduct({ ...newProduct, modeleElectro: text })}
-                                    style={styles.fieldInput}
-                                />
-                            </View>
                         </View>
 
-                        {/* État et Garantie sur la même ligne */}
-                        <View style={styles.fieldRow}>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
-                                    label="État"
-                                    fieldName="etats"
-                                    productType="electromenager"
-                                    value={newProduct.etatElectro || ''}
-                                    onSelect={(value) => setNewProduct({ ...newProduct, etatElectro: value })}
-                                />
-                            </View>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
-                                    label="Garantie"
-                                    fieldName="garanties"
-                                    productType="electromenager"
-                                    value={newProduct.garantieElectro || ''}
-                                    onSelect={(value) => setNewProduct({ ...newProduct, garantieElectro: value })}
-                                />
-                            </View>
+                        {/* Modèle seul */}
+                        <View style={styles.fieldContainer}>
+                            <Text style={styles.fieldLabel}>Modèle</Text>
+                            <NativeInput
+                                placeholder="Ex: RT50K6000S8"
+                                value={newProduct.modeleElectro || ''}
+                                onChangeText={(text) => setNewProduct({ ...newProduct, modeleElectro: text })}
+                                style={styles.fieldInput}
+                            />
                         </View>
 
-                        <View style={styles.hintBox}>
-                            <Text style={styles.hintText}>
-                                💡 Précisez le type d'appareil pour aider les clients à trouver exactement ce qu'ils cherchent
-                            </Text>
-                        </View>
-                    </>
-                );
+                            {/* État et Garantie sur la même ligne */}
+                            <View style={styles.fieldRow}>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <ProductFieldSelector
+                                        label="État"
+                                        fieldName="etats"
+                                        productType="electromenager"
+                                        value={newProduct.etatElectro || ''}
+                                        onSelect={(value) => setNewProduct({ ...newProduct, etatElectro: value })}
+                                    />
+                                </View>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <ProductFieldSelector
+                                        label="Garantie"
+                                        fieldName="garanties"
+                                        productType="electromenager"
+                                        value={newProduct.garantieElectro || ''}
+                                        onSelect={(value) => setNewProduct({ ...newProduct, garantieElectro: value })}
+                                    />
+                                </View>
+                            </View>
 
-            case 'mobilier':
-                return (
+                            <View style={styles.hintBox}>
+                                <Text style={styles.hintText}>
+                                    💡 Précisez le type d'appareil pour aider les clients à trouver exactement ce qu'ils cherchent
+                                </Text>
+                            </View>
+                        </>
+                        );
+
+                    case 'mobilier':
+                    return (
                     <>
-                        <ProductFieldSelector
-                            label="Type de mobilier"
-                            fieldName="types"
-                            productType="mobilier"
-                            value={newProduct.typeMobilier || ''}
-                            onSelect={(value) => setNewProduct({ ...newProduct, typeMobilier: value })}
-                        />
-
+                        {/* Type et Matériau sur la même ligne */}
                         <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Type de mobilier"
+                                    fieldName="types"
+                                    productType="mobilier"
+                                    value={newProduct.typeMobilier || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, typeMobilier: value })}
+                                />
+                            </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <ProductFieldSelector
                                     label="Matériau"
@@ -2626,4216 +2632,4222 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                     onSelect={(value) => setNewProduct({ ...newProduct, materiauMobilier: value })}
                                 />
                             </View>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
-                                    label="Couleur"
-                                    fieldName="couleurs"
-                                    productType="mobilier"
-                                    value={newProduct.couleurMobilier || ''}
-                                    onSelect={(value) => setNewProduct({ ...newProduct, couleurMobilier: value })}
-                                />
-                            </View>
                         </View>
-                        {/* Dimensions et État sur la même ligne */}
-                        <View style={styles.fieldRow}>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Dimensions (LxPxH cm)</Text>
-                                <NativeInput
-                                    placeholder="Ex: 200x90x85"
-                                    value={newProduct.dimensionsMobilier || ''}
-                                    onChangeText={(text) => setNewProduct({ ...newProduct, dimensionsMobilier: text })}
-                                    style={styles.fieldInput}
-                                />
-                            </View>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
-                                    label="État"
-                                    fieldName="etats"
-                                    productType="mobilier"
-                                    value={newProduct.etatMobilier || ''}
-                                    onSelect={(value) => setNewProduct({ ...newProduct, etatMobilier: value })}
-                                />
-                            </View>
-                        </View>
-                        <View style={styles.hintBox}>
-                            <Text style={styles.hintText}>
-                                💡 Précisez les dimensions et l'état pour faciliter l'évaluation par les acheteurs
-                            </Text>
-                        </View>
-                    </>
-                );
 
-            case 'decoration':
-                return (
-                    <>
+                        {/* Couleur seule */}
                         <ProductFieldSelector
-                            label="Type de décoration"
-                            fieldName="types"
+                            label="Couleur"
+                            fieldName="couleurs"
                             productType="mobilier"
-                            value={newProduct.typeDecoration || ''}
-                            onSelect={(value) => setNewProduct({ ...newProduct, typeDecoration: value })}
-                            required
+                            value={newProduct.couleurMobilier || ''}
+                            onSelect={(value) => setNewProduct({ ...newProduct, couleurMobilier: value })}
                         />
-
-                        <ProductFieldSelector
-                            label="Style décoratif"
-                            fieldName="styles"
-                            productType="mobilier"
-                            value={newProduct.styleDecoration || ''}
-                            onSelect={(value) => setNewProduct({ ...newProduct, styleDecoration: value })}
-                        />
-
-                        <View style={styles.fieldRow}>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Couleur principale</Text>
-                                <NativeInput
-                                    placeholder="Ex: Beige et or"
-                                    value={newProduct.couleurDecoration || ''}
-                                    onChangeText={(text) => setNewProduct({ ...newProduct, couleurDecoration: text })}
-                                    style={styles.fieldInput}
-                                />
+                            {/* Dimensions et État sur la même ligne */}
+                            <View style={styles.fieldRow}>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <Text style={styles.fieldLabel}>Dimensions (LxPxH cm)</Text>
+                                    <NativeInput
+                                        placeholder="Ex: 200x90x85"
+                                        value={newProduct.dimensionsMobilier || ''}
+                                        onChangeText={(text) => setNewProduct({ ...newProduct, dimensionsMobilier: text })}
+                                        style={styles.fieldInput}
+                                    />
+                                </View>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <ProductFieldSelector
+                                        label="État"
+                                        fieldName="etats"
+                                        productType="mobilier"
+                                        value={newProduct.etatMobilier || ''}
+                                        onSelect={(value) => setNewProduct({ ...newProduct, etatMobilier: value })}
+                                    />
+                                </View>
                             </View>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Dimensions</Text>
-                                <NativeInput
-                                    placeholder="Ex: 80x60 cm"
-                                    value={newProduct.dimensionsDecoration || ''}
-                                    onChangeText={(text) => setNewProduct({ ...newProduct, dimensionsDecoration: text })}
-                                    style={styles.fieldInput}
-                                />
+                            <View style={styles.hintBox}>
+                                <Text style={styles.hintText}>
+                                    💡 Précisez les dimensions et l'état pour faciliter l'évaluation par les acheteurs
+                                </Text>
                             </View>
-                        </View>
+                        </>
+                        );
 
-                        <ProductFieldSelector
-                            label="Matériau / Matière"
-                            fieldName="materiaux"
-                            productType="decoration"
-                            value={newProduct.materiauDecoration || ''}
-                            onSelect={(value) => setNewProduct({ ...newProduct, materiauDecoration: value })}
-                        />
-
-                        <View style={styles.hintBox}>
-                            <Text style={styles.hintText}>
-                                💡 <Text style={styles.hintBold}>Conseil :</Text> Ajoutez de belles photos pour montrer comment votre article s'intègre dans un intérieur
-                            </Text>
-                        </View>
-                    </>
-                );
-
-            case 'aliments':
-                return (
+                    case 'decoration':
+                    return (
                     <>
-                        <ProductFieldSelector
-                            label="Catégorie d'aliment"
-                            fieldName="categories"
-                            productType="aliments"
-                            value={newProduct.categorieAliment || ''}
-                            onSelect={(value) => setNewProduct({ ...newProduct, categorieAliment: value })}
-                        />
-
+                        {/* Type et Style sur la même ligne */}
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <ProductFieldSelector
-                                    label="Origine"
-                                    fieldName="origines"
-                                    productType="aliments"
-                                    value={newProduct.origine || ''}
-                                    onSelect={(value) => setNewProduct({ ...newProduct, origine: value })}
+                                    label="Type de décoration"
+                                    fieldName="types"
+                                    productType="mobilier"
+                                    value={newProduct.typeDecoration || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, typeDecoration: value })}
+                                    required
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <ProductFieldSelector
-                                    label="Conservation"
-                                    fieldName="conservations"
-                                    productType="aliments"
-                                    value={newProduct.conservation || ''}
-                                    onSelect={(value) => setNewProduct({ ...newProduct, conservation: value })}
+                                    label="Style décoratif"
+                                    fieldName="styles"
+                                    productType="mobilier"
+                                    value={newProduct.styleDecoration || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, styleDecoration: value })}
                                 />
                             </View>
-                        </View>
-                        <View style={styles.fieldRow}>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Poids / Quantité</Text>
-                                <NativeInput
-                                    placeholder="Ex: 1kg, 500g, 2L"
-                                    value={newProduct.poids || ''}
-                                    onChangeText={(text) => setNewProduct({ ...newProduct, poids: text })}
-                                    style={styles.fieldInput}
-                                />
-                            </View>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Date d'expiration</Text>
-                                <NativeInput
-                                    placeholder="JJ/MM/AAAA"
-                                    value={newProduct.dateExpiration || ''}
-                                    onChangeText={(text) => setNewProduct({ ...newProduct, dateExpiration: text })}
-                                    style={styles.fieldInput}
-                                />
-                            </View>
-                        </View>
-                        <ProductFieldSelector
-                            label="Certification (optionnel)"
-                            fieldName="certifications"
-                            productType="aliments"
-                            value={newProduct.certification || ''}
-                            onSelect={(value) => setNewProduct({ ...newProduct, certification: value })}
-                        />
-                        <View style={styles.hintBox}>
-                            <Text style={styles.hintText}>
-                                💡 Les informations sur l'origine et la certification rassurent les acheteurs sur la qualité
-                            </Text>
-                        </View>
-                    </>
-                );
-
-            case 'quincaillerie':
-                return (
-                    <>
-                        <ProductFieldSelector
-                            label="Catégorie"
-                            fieldName="categories"
-                            productType="quincaillerie"
-                            value={newProduct.categorieQuincaillerie || ''}
-                            onSelect={(value) => setNewProduct({ ...newProduct, categorieQuincaillerie: value })}
-                        />
-                        <View style={styles.fieldRow}>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Marque</Text>
-                                <NativeInput
-                                    placeholder="Ex: Stanley"
-                                    value={newProduct.marqueQuincaillerie || ''}
-                                    onChangeText={(text) => setNewProduct({ ...newProduct, marqueQuincaillerie: text })}
-                                    style={styles.fieldInput}
-                                />
-                            </View>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Référence</Text>
-                                <NativeInput
-                                    placeholder="Ex: STHT0-51309"
-                                    value={newProduct.referenceQuincaillerie || ''}
-                                    onChangeText={(text) => setNewProduct({ ...newProduct, referenceQuincaillerie: text })}
-                                    style={styles.fieldInput}
-                                />
-                            </View>
-                        </View>
-                        <View style={styles.fieldRow}>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
-                                    label="Unité"
-                                    fieldName="unites"
-                                    productType="quincaillerie"
-                                    value={newProduct.unite || ''}
-                                    onSelect={(value) => setNewProduct({ ...newProduct, unite: value })}
-                                />
-                            </View>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Stock disponible</Text>
-                                <NativeInput
-                                    placeholder="Ex: 50"
-                                    value={newProduct.stockDisponible || ''}
-                                    onChangeText={(text) => setNewProduct({ ...newProduct, stockDisponible: text })}
-                                    style={styles.fieldInput}
-                                    keyboardType="numeric"
-                                />
-                            </View>
-                        </View>
-                        <View style={styles.hintBox}>
-                            <Text style={styles.hintText}>
-                                💡 Précisez la référence et le stock pour faciliter les commandes
-                            </Text>
-                        </View>
-                    </>
-                );
-
-            case 'prestation_service':
-                return (
-                    <>
-                        <View style={styles.hintBox}>
-                            <Text style={styles.hintText}>
-                                💡 <Text style={styles.hintBold}>Portfolio de Réalisations :</Text> Ajoutez des images et vidéos de vos meilleures réalisations pour montrer votre savoir-faire. Le titre et la description sont automatiquement repris du service principal.
-                            </Text>
                         </View>
 
-                        {/* Gestion des offres de service */}
-                        <View style={styles.fieldContainer}>
-                            <View style={styles.prestationHeader}>
-                                <Text style={styles.fieldLabel}>Offres de service proposées</Text>
-                                <TouchableOpacity
-                                    style={styles.addPrestationButton}
-                                    onPress={() => {
-                                        const prestations = newProduct.prestations || [];
-                                        prestations.push({ nom: '', prixAPartirDe: '', description: '' });
-                                        setNewProduct({ ...newProduct, prestations });
-                                    }}
-                                >
-                                    <SafeIcon name="plus-circle" size={20} color={modernColors.primary} />
-                                    <Text style={styles.addPrestationText}>Ajouter une offre</Text>
-                                </TouchableOpacity>
+                            <View style={styles.fieldRow}>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <Text style={styles.fieldLabel}>Couleur principale</Text>
+                                    <NativeInput
+                                        placeholder="Ex: Beige et or"
+                                        value={newProduct.couleurDecoration || ''}
+                                        onChangeText={(text) => setNewProduct({ ...newProduct, couleurDecoration: text })}
+                                        style={styles.fieldInput}
+                                    />
+                                </View>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <Text style={styles.fieldLabel}>Dimensions</Text>
+                                    <NativeInput
+                                        placeholder="Ex: 80x60 cm"
+                                        value={newProduct.dimensionsDecoration || ''}
+                                        onChangeText={(text) => setNewProduct({ ...newProduct, dimensionsDecoration: text })}
+                                        style={styles.fieldInput}
+                                    />
+                                </View>
                             </View>
 
-                            {(newProduct.prestations || []).map((prestation, index) => (
-                                <View key={index} style={styles.prestationCard}>
-                                    <View style={styles.prestationCardHeader}>
-                                        <Text style={styles.prestationCardTitle}>Offre {index + 1}</Text>
-                                        <TouchableOpacity
-                                            style={styles.deletePrestationButton}
-                                            onPress={() => {
-                                                const prestations = [...(newProduct.prestations || [])];
-                                                prestations.splice(index, 1);
-                                                setNewProduct({ ...newProduct, prestations });
-                                            }}
-                                        >
-                                            <SafeIcon name="trash-2" size={18} color={modernColors.error} />
-                                        </TouchableOpacity>
-                                    </View>
+                            <ProductFieldSelector
+                                label="Matériau / Matière"
+                                fieldName="materiaux"
+                                productType="decoration"
+                                value={newProduct.materiauDecoration || ''}
+                                onSelect={(value) => setNewProduct({ ...newProduct, materiauDecoration: value })}
+                            />
 
-                                    <View style={styles.prestationFieldContainer}>
-                                        <Text style={styles.prestationFieldLabel}>Nom de l'offre *</Text>
-                                        <NativeInput
-                                            placeholder="Ex: Traitement de données, Analyse statistique, Rédaction de rapport..."
-                                            value={prestation.nom}
-                                            onChangeText={(text) => {
-                                                const prestations = [...(newProduct.prestations || [])];
-                                                prestations[index].nom = text;
-                                                setNewProduct({ ...newProduct, prestations });
-                                            }}
-                                            style={styles.fieldInput}
-                                        />
-                                    </View>
+                            <View style={styles.hintBox}>
+                                <Text style={styles.hintText}>
+                                    💡 <Text style={styles.hintBold}>Conseil :</Text> Ajoutez de belles photos pour montrer comment votre article s'intègre dans un intérieur
+                                </Text>
+                            </View>
+                        </>
+                        );
 
-                                    <View style={styles.prestationFieldRow}>
-                                        <View style={[styles.prestationFieldContainer, { flex: 1 }]}>
-                                            <Text style={styles.prestationFieldLabel}>Montant minimum *</Text>
+                        case 'aliments':
+                        return (
+                        <>
+                            <ProductFieldSelector
+                                label="Catégorie d'aliment"
+                                fieldName="categories"
+                                productType="aliments"
+                                value={newProduct.categorieAliment || ''}
+                                onSelect={(value) => setNewProduct({ ...newProduct, categorieAliment: value })}
+                            />
+
+                            <View style={styles.fieldRow}>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <ProductFieldSelector
+                                        label="Origine"
+                                        fieldName="origines"
+                                        productType="aliments"
+                                        value={newProduct.origine || ''}
+                                        onSelect={(value) => setNewProduct({ ...newProduct, origine: value })}
+                                    />
+                                </View>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <ProductFieldSelector
+                                        label="Conservation"
+                                        fieldName="conservations"
+                                        productType="aliments"
+                                        value={newProduct.conservation || ''}
+                                        onSelect={(value) => setNewProduct({ ...newProduct, conservation: value })}
+                                    />
+                                </View>
+                            </View>
+                            <View style={styles.fieldRow}>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <Text style={styles.fieldLabel}>Poids / Quantité</Text>
+                                    <NativeInput
+                                        placeholder="Ex: 1kg, 500g, 2L"
+                                        value={newProduct.poids || ''}
+                                        onChangeText={(text) => setNewProduct({ ...newProduct, poids: text })}
+                                        style={styles.fieldInput}
+                                    />
+                                </View>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <Text style={styles.fieldLabel}>Date d'expiration</Text>
+                                    <NativeInput
+                                        placeholder="JJ/MM/AAAA"
+                                        value={newProduct.dateExpiration || ''}
+                                        onChangeText={(text) => setNewProduct({ ...newProduct, dateExpiration: text })}
+                                        style={styles.fieldInput}
+                                    />
+                                </View>
+                            </View>
+                            <ProductFieldSelector
+                                label="Certification (optionnel)"
+                                fieldName="certifications"
+                                productType="aliments"
+                                value={newProduct.certification || ''}
+                                onSelect={(value) => setNewProduct({ ...newProduct, certification: value })}
+                            />
+                            <View style={styles.hintBox}>
+                                <Text style={styles.hintText}>
+                                    💡 Les informations sur l'origine et la certification rassurent les acheteurs sur la qualité
+                                </Text>
+                            </View>
+                        </>
+                        );
+
+                        case 'quincaillerie':
+                        return (
+                        <>
+                            <ProductFieldSelector
+                                label="Catégorie"
+                                fieldName="categories"
+                                productType="quincaillerie"
+                                value={newProduct.categorieQuincaillerie || ''}
+                                onSelect={(value) => setNewProduct({ ...newProduct, categorieQuincaillerie: value })}
+                            />
+                            <View style={styles.fieldRow}>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <Text style={styles.fieldLabel}>Marque</Text>
+                                    <NativeInput
+                                        placeholder="Ex: Stanley"
+                                        value={newProduct.marqueQuincaillerie || ''}
+                                        onChangeText={(text) => setNewProduct({ ...newProduct, marqueQuincaillerie: text })}
+                                        style={styles.fieldInput}
+                                    />
+                                </View>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <Text style={styles.fieldLabel}>Référence</Text>
+                                    <NativeInput
+                                        placeholder="Ex: STHT0-51309"
+                                        value={newProduct.referenceQuincaillerie || ''}
+                                        onChangeText={(text) => setNewProduct({ ...newProduct, referenceQuincaillerie: text })}
+                                        style={styles.fieldInput}
+                                    />
+                                </View>
+                            </View>
+                            <View style={styles.fieldRow}>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <ProductFieldSelector
+                                        label="Unité"
+                                        fieldName="unites"
+                                        productType="quincaillerie"
+                                        value={newProduct.unite || ''}
+                                        onSelect={(value) => setNewProduct({ ...newProduct, unite: value })}
+                                    />
+                                </View>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <Text style={styles.fieldLabel}>Stock disponible</Text>
+                                    <NativeInput
+                                        placeholder="Ex: 50"
+                                        value={newProduct.stockDisponible || ''}
+                                        onChangeText={(text) => setNewProduct({ ...newProduct, stockDisponible: text })}
+                                        style={styles.fieldInput}
+                                        keyboardType="numeric"
+                                    />
+                                </View>
+                            </View>
+                            <View style={styles.hintBox}>
+                                <Text style={styles.hintText}>
+                                    💡 Précisez la référence et le stock pour faciliter les commandes
+                                </Text>
+                            </View>
+                        </>
+                        );
+
+                        case 'prestation_service':
+                        return (
+                        <>
+                            <View style={styles.hintBox}>
+                                <Text style={styles.hintText}>
+                                    💡 <Text style={styles.hintBold}>Portfolio de Réalisations :</Text> Ajoutez des images et vidéos de vos meilleures réalisations pour montrer votre savoir-faire. Le titre et la description sont automatiquement repris du service principal.
+                                </Text>
+                            </View>
+
+                            {/* Gestion des offres de service */}
+                            <View style={styles.fieldContainer}>
+                                <View style={styles.prestationHeader}>
+                                    <Text style={styles.fieldLabel}>Offres de service proposées</Text>
+                                    <TouchableOpacity
+                                        style={styles.addPrestationButton}
+                                        onPress={() => {
+                                            const prestations = newProduct.prestations || [];
+                                            prestations.push({ nom: '', prixAPartirDe: '', description: '' });
+                                            setNewProduct({ ...newProduct, prestations });
+                                        }}
+                                    >
+                                        <SafeIcon name="plus-circle" size={20} color={modernColors.primary} />
+                                        <Text style={styles.addPrestationText}>Ajouter une offre</Text>
+                                    </TouchableOpacity>
+                                </View>
+
+                                {(newProduct.prestations || []).map((prestation, index) => (
+                                    <View key={index} style={styles.prestationCard}>
+                                        <View style={styles.prestationCardHeader}>
+                                            <Text style={styles.prestationCardTitle}>Offre {index + 1}</Text>
+                                            <TouchableOpacity
+                                                style={styles.deletePrestationButton}
+                                                onPress={() => {
+                                                    const prestations = [...(newProduct.prestations || [])];
+                                                    prestations.splice(index, 1);
+                                                    setNewProduct({ ...newProduct, prestations });
+                                                }}
+                                            >
+                                                <SafeIcon name="trash-2" size={18} color={modernColors.error} />
+                                            </TouchableOpacity>
+                                        </View>
+
+                                        <View style={styles.prestationFieldContainer}>
+                                            <Text style={styles.prestationFieldLabel}>Nom de l'offre *</Text>
                                             <NativeInput
-                                                placeholder="50000"
-                                                value={prestation.prixAPartirDe}
+                                                placeholder="Ex: Traitement de données, Analyse statistique, Rédaction de rapport..."
+                                                value={prestation.nom}
                                                 onChangeText={(text) => {
                                                     const prestations = [...(newProduct.prestations || [])];
-                                                    prestations[index].prixAPartirDe = text;
+                                                    prestations[index].nom = text;
                                                     setNewProduct({ ...newProduct, prestations });
                                                 }}
                                                 style={styles.fieldInput}
-                                                keyboardType="numeric"
                                             />
                                         </View>
-                                        <View style={styles.xafLabel}>
-                                            <Text style={styles.xafText}>XAF</Text>
-                                        </View>
-                                    </View>
 
-                                    <View style={styles.prestationFieldContainer}>
-                                        <Text style={styles.prestationFieldLabel}>Description de l'offre (optionnelle)</Text>
-                                        <NativeInput
-                                            placeholder="Ex: Comprend l'analyse complète des données, visualisations, et recommandations..."
-                                            value={prestation.description}
-                                            onChangeText={(text) => {
-                                                const prestations = [...(newProduct.prestations || [])];
-                                                prestations[index].description = text;
-                                                setNewProduct({ ...newProduct, prestations });
-                                            }}
-                                            style={[styles.fieldInput, styles.textareaInput]}
-                                            multiline
-                                        />
-                                    </View>
-                                </View>
-                            ))}
-
-                            {(!newProduct.prestations || newProduct.prestations.length === 0) && (
-                                <View style={styles.emptyPrestationState}>
-                                    <SafeIcon name="info" size={32} color={modernColors.textSecondary} />
-                                    <Text style={styles.emptyPrestationText}>
-                                        Aucune offre ajoutée
-                                    </Text>
-                                    <Text style={styles.emptyPrestationSubtext}>
-                                        Cliquez sur "Ajouter une offre" pour commencer
-                                    </Text>
-                                </View>
-                            )}
-                        </View>
-
-                        <View style={styles.hintBox}>
-                            <Text style={styles.hintText}>
-                                💰 <Text style={styles.hintBold}>Conseil :</Text> Listez toutes vos offres de service avec leur montant minimum. Cela permet aux clients d'évaluer rapidement si votre offre correspond à leur budget.
-                            </Text>
-                        </View>
-                    </>
-                );
-
-            case 'livres_fournitures':
-                return (
-                    <>
-                        <ProductFieldSelector
-                            label="Type d'article"
-                            fieldName="types"
-                            productType="livres_fournitures"
-                            value={newProduct.categorieLivre || ''}
-                            onSelect={(value) => setNewProduct({ ...newProduct, categorieLivre: value })}
-                        />
-
-                        <ProductFieldSelector
-                            label="Niveau scolaire"
-                            fieldName="niveaux"
-                            productType="livres_fournitures"
-                            value={newProduct.niveau || ''}
-                            onSelect={(value) => setNewProduct({ ...newProduct, niveau: value })}
-                        />
-                        {(newProduct.categorieLivre === 'Livre scolaire' || newProduct.categorieLivre === 'Livre') && (
-                            <>
-                                <View style={styles.fieldContainer}>
-                                    <Text style={styles.fieldLabel}>Matière</Text>
-                                    <NativeInput
-                                        placeholder="Ex: Mathématiques, Français, Histoire"
-                                        value={newProduct.matiereScolaire || ''}
-                                        onChangeText={(text) => setNewProduct({ ...newProduct, matiereScolaire: text })}
-                                        style={styles.fieldInput}
-                                    />
-                                </View>
-                                <View style={styles.fieldRow}>
-                                    <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                        <Text style={styles.fieldLabel}>Auteur</Text>
-                                        <NativeInput
-                                            placeholder="Ex: Collection CIAM"
-                                            value={newProduct.auteur || ''}
-                                            onChangeText={(text) => setNewProduct({ ...newProduct, auteur: text })}
-                                            style={styles.fieldInput}
-                                        />
-                                    </View>
-                                    <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                        <Text style={styles.fieldLabel}>Éditeur</Text>
-                                        <NativeInput
-                                            placeholder="Ex: Edicef"
-                                            value={newProduct.editeur || ''}
-                                            onChangeText={(text) => setNewProduct({ ...newProduct, editeur: text })}
-                                            style={styles.fieldInput}
-                                        />
-                                    </View>
-                                </View>
-                                <View style={styles.fieldRow}>
-                                    <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                        <Text style={styles.fieldLabel}>ISBN (optionnel)</Text>
-                                        <NativeInput
-                                            placeholder="Ex: 978-2-7531-0584-3"
-                                            value={newProduct.isbn || ''}
-                                            onChangeText={(text) => setNewProduct({ ...newProduct, isbn: text })}
-                                            style={styles.fieldInput}
-                                        />
-                                    </View>
-                                    <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                        <Text style={styles.fieldLabel}>Année d'édition</Text>
-                                        <NativeInput
-                                            placeholder="Ex: 2023"
-                                            value={newProduct.anneeEdition || ''}
-                                            onChangeText={(text) => setNewProduct({ ...newProduct, anneeEdition: text })}
-                                            style={styles.fieldInput}
-                                            keyboardType="numeric"
-                                        />
-                                    </View>
-                                </View>
-                            </>
-                        )}
-                        <ProductFieldSelector
-                            label="État"
-                            fieldName="etats"
-                            productType="livres_fournitures"
-                            value={newProduct.etatLivre || ''}
-                            onSelect={(value) => setNewProduct({ ...newProduct, etatLivre: value })}
-                        />
-                        <View style={styles.hintBox}>
-                            <Text style={styles.hintText}>
-                                💡 Précisez le niveau et la matière pour aider les étudiants à trouver le bon article
-                            </Text>
-                        </View>
-                    </>
-                );
-
-            case 'pharmacie':
-                return (
-                    <>
-                        {/* Planification nuit simplifiée */}
-                        <ProductFieldSelector
-                            label="🌙 Fonctionnement la nuit"
-                            fieldName="types"
-                            productType="pharmacie"
-                            value={newProduct.typePharmacie || ''}
-                            onSelect={(value) => setNewProduct({ ...newProduct, typePharmacie: value, joursGarde: value === 'Permanence nuit' ? 'Tous les jours' : undefined })}
-                            required
-                        />
-
-                        {/* Planning hebdomadaire de garde */}
-                        {newProduct.typePharmacie === 'Planning hebdomadaire' && (
-                            <View style={styles.fieldContainer}>
-                                <Text style={styles.fieldLabel}>Jours de garde la nuit</Text>
-                                <Text style={styles.fieldHint}>Sélectionnez les jours où votre pharmacie est de garde la nuit</Text>
-                                <View style={styles.weekDaysContainer}>
-                                    {['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'].map((jour, index) => {
-                                        const joursArray = (newProduct.joursGarde || '').split(',').map(j => j.trim());
-                                        const isSelected = joursArray.includes(jour);
-                                        return (
-                                            <TouchableOpacity
-                                                key={jour}
-                                                style={[
-                                                    styles.dayButton,
-                                                    isSelected && styles.dayButtonActive
-                                                ]}
-                                                onPress={() => {
-                                                    const current = (newProduct.joursGarde || '').split(',').map(j => j.trim()).filter(j => j);
-                                                    const updated = isSelected
-                                                        ? current.filter(j => j !== jour)
-                                                        : [...current, jour];
-                                                    setNewProduct({ ...newProduct, joursGarde: updated.join(', ') });
-                                                }}
-                                            >
-                                                <Text style={[
-                                                    styles.dayButtonText,
-                                                    isSelected && styles.dayButtonTextActive
-                                                ]}>
-                                                    {jour}
-                                                </Text>
-                                            </TouchableOpacity>
-                                        );
-                                    })}
-                                </View>
-                            </View>
-                        )}
-
-                        <View style={styles.fieldRow}>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Heure d'ouverture</Text>
-                                <NativeInput
-                                    placeholder="Ex: 08:00"
-                                    value={newProduct.heuresOuverture || ''}
-                                    onChangeText={(text) => setNewProduct({ ...newProduct, heuresOuverture: text })}
-                                    style={styles.fieldInput}
-                                />
-                            </View>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Heure de fermeture</Text>
-                                <NativeInput
-                                    placeholder="Ex: 20:00"
-                                    value={newProduct.heuresFermeture || ''}
-                                    onChangeText={(text) => setNewProduct({ ...newProduct, heuresFermeture: text })}
-                                    style={styles.fieldInput}
-                                />
-                            </View>
-                        </View>
-
-                        <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Téléphone d'urgence</Text>
-                            <NativeInput
-                                placeholder="Ex: +237 6XX XX XX XX"
-                                value={newProduct.telephoneUrgence || ''}
-                                onChangeText={(text) => setNewProduct({ ...newProduct, telephoneUrgence: text })}
-                                style={styles.fieldInput}
-                            />
-                        </View>
-                        <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Services disponibles</Text>
-                            <NativeInput
-                                placeholder="Ex: Délivrance, Conseil pharmaceutique, Vaccination"
-                                value={newProduct.services || ''}
-                                onChangeText={(text) => setNewProduct({ ...newProduct, services: text })}
-                                multiline
-                                style={[styles.fieldInput, styles.textareaInput]}
-                            />
-                        </View>
-                        <View style={styles.hintBox}>
-                            <Text style={styles.hintText}>
-                                💡 {newProduct.typePharmacie === 'Permanence nuit' ? 'Votre pharmacie est de garde tous les soirs' : 'Sélectionnez les jours de garde hebdomadaire'}
-                            </Text>
-                        </View>
-                    </>
-                );
-
-            case 'hopital_clinique': {
-                // Listes de prestations médicales disponibles
-                const prestationsMedicalesOptions = [
-                    'Consultation générale', 'Consultation spécialisée', 'Chirurgie',
-                    'Maternité / Accouchement', 'Pédiatrie', 'Cardiologie',
-                    'Radiologie', 'Échographie', 'Scanner', 'IRM',
-                    'Laboratoire', 'Analyses médicales', 'Pharmacie',
-                    'Urgences 24h/24', 'Hospitalisation', 'Soins intensifs',
-                    'Dialyse', 'Dentaire', 'Ophtalmologie', 'ORL',
-                    'Kinésithérapie', 'Radiothérapie', 'Chimiothérapie'
-                ];
-
-                const jours = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
-
-                return (
-                    <>
-                        {/* Type d'établissement */}
-                        <ProductFieldSelector
-                            label="Type d'établissement médical"
-                            fieldName="types"
-                            productType="hopital_clinique"
-                            value={newProduct.typeEtablissement || ''}
-                            onSelect={(value) => setNewProduct({ ...newProduct, typeEtablissement: value })}
-                            required
-                        />
-
-                        {/* Banque de sang */}
-                        <View style={styles.fieldContainer}>
-                            <TouchableOpacity
-                                style={styles.checkboxContainer}
-                                onPress={() => setNewProduct({ ...newProduct, banqueSang: !newProduct.banqueSang })}
-                            >
-                                <View style={[
-                                    styles.checkbox,
-                                    newProduct.banqueSang && styles.checkboxChecked
-                                ]}>
-                                    {newProduct.banqueSang && (
-                                        <SafeIcon name="check" size={16} color="#FFFFFF" />
-                                    )}
-                                </View>
-                                <Text style={styles.checkboxLabel}>🩸 Banque de sang disponible</Text>
-                            </TouchableOpacity>
-                        </View>
-
-                        {/* Prestations médicales disponibles */}
-                        <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Prestations médicales disponibles</Text>
-                            <Text style={styles.fieldHint}>Cochez les prestations et configurez leur planning</Text>
-                            <ScrollView style={styles.checkboxList} nestedScrollEnabled>
-                                {prestationsMedicalesOptions.map((prestation) => {
-                                    const isSelected = (newProduct.prestationsMedicales || []).includes(prestation);
-                                    return (
-                                        <View key={prestation}>
-                                            <TouchableOpacity
-                                                style={styles.checkboxItem}
-                                                onPress={() => {
-                                                    const current = newProduct.prestationsMedicales || [];
-                                                    if (current.includes(prestation)) {
-                                                        setNewProduct({
-                                                            ...newProduct,
-                                                            prestationsMedicales: current.filter(p => p !== prestation),
-                                                            planningHebdomadaire: {
-                                                                ...newProduct.planningHebdomadaire,
-                                                                [prestation]: undefined
-                                                            }
-                                                        });
-                                                    } else {
-                                                        setNewProduct({
-                                                            ...newProduct,
-                                                            prestationsMedicales: [...current, prestation]
-                                                        });
-                                                    }
-                                                }}
-                                            >
-                                                <View style={[
-                                                    styles.checkbox,
-                                                    isSelected && styles.checkboxChecked
-                                                ]}>
-                                                    {isSelected && (
-                                                        <SafeIcon name="check" size={14} color="#FFFFFF" />
-                                                    )}
-                                                </View>
-                                                <Text style={styles.checkboxLabel}>{prestation}</Text>
-                                            </TouchableOpacity>
-
-                                            {/* Planning pour cette prestation si cochée */}
-                                            {isSelected && (
-                                                <View style={styles.prestationPlanningContainer}>
-                                                    <Text style={styles.prestationPlanningTitle}>📅 Planning pour {prestation}</Text>
-
-                                                    {/* Jours disponibles */}
-                                                    <Text style={styles.fieldHint}>Jours disponibles :</Text>
-                                                    <View style={styles.weekDaysContainer}>
-                                                        {['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'].map((jour) => {
-                                                            const joursArray = (newProduct.planningHebdomadaire?.[prestation]?.jours || '').split(',').map(j => j.trim());
-                                                            const isJourSelected = joursArray.includes(jour);
-                                                            return (
-                                                                <TouchableOpacity
-                                                                    key={jour}
-                                                                    style={[
-                                                                        styles.dayButton,
-                                                                        isJourSelected && styles.dayButtonActive
-                                                                    ]}
-                                                                    onPress={() => {
-                                                                        const current = (newProduct.planningHebdomadaire?.[prestation]?.jours || '').split(',').map(j => j.trim()).filter(j => j);
-                                                                        const updated = isJourSelected
-                                                                            ? current.filter(j => j !== jour)
-                                                                            : [...current, jour];
-                                                                        setNewProduct({
-                                                                            ...newProduct,
-                                                                            planningHebdomadaire: {
-                                                                                ...newProduct.planningHebdomadaire,
-                                                                                [prestation]: {
-                                                                                    ...newProduct.planningHebdomadaire?.[prestation],
-                                                                                    jours: updated.join(', ')
-                                                                                }
-                                                                            }
-                                                                        });
-                                                                    }}
-                                                                >
-                                                                    <Text style={[
-                                                                        styles.dayButtonText,
-                                                                        isJourSelected && styles.dayButtonTextActive
-                                                                    ]}>
-                                                                        {jour}
-                                                                    </Text>
-                                                                </TouchableOpacity>
-                                                            );
-                                                        })}
-                                                    </View>
-
-                                                    {/* Moment de disponibilité */}
-                                                    <Text style={styles.fieldHint}>Moment de disponibilité :</Text>
-                                                    <View style={styles.pickerButtons}>
-                                                        {['Journée', 'Nuit', '24h/24'].map((moment) => (
-                                                            <TouchableOpacity
-                                                                key={moment}
-                                                                style={[
-                                                                    styles.pickerButton,
-                                                                    newProduct.planningHebdomadaire?.[prestation]?.moment === moment && styles.pickerButtonActive
-                                                                ]}
-                                                                onPress={() => setNewProduct({
-                                                                    ...newProduct,
-                                                                    planningHebdomadaire: {
-                                                                        ...newProduct.planningHebdomadaire,
-                                                                        [prestation]: {
-                                                                            ...newProduct.planningHebdomadaire?.[prestation],
-                                                                            moment
-                                                                        }
-                                                                    }
-                                                                })}
-                                                            >
-                                                                <Text style={[
-                                                                    styles.pickerButtonText,
-                                                                    newProduct.planningHebdomadaire?.[prestation]?.moment === moment && styles.pickerButtonTextActive
-                                                                ]}>
-                                                                    {moment}
-                                                                </Text>
-                                                            </TouchableOpacity>
-                                                        ))}
-                                                    </View>
-                                                </View>
-                                            )}
-                                        </View>
-                                    );
-                                })}
-                            </ScrollView>
-                        </View>
-
-                        {/* RDV en ligne */}
-                        <View style={styles.fieldContainer}>
-                            <TouchableOpacity
-                                style={styles.checkboxContainer}
-                                onPress={() => setNewProduct({ ...newProduct, rdvEnLigne: !newProduct.rdvEnLigne })}
-                            >
-                                <View style={[
-                                    styles.checkbox,
-                                    newProduct.rdvEnLigne && styles.checkboxChecked
-                                ]}>
-                                    {newProduct.rdvEnLigne && (
-                                        <SafeIcon name="check" size={16} color="#FFFFFF" />
-                                    )}
-                                </View>
-                                <Text style={styles.checkboxLabel}>📅 Prise de rendez-vous en ligne disponible</Text>
-                            </TouchableOpacity>
-                        </View>
-
-                        <View style={styles.hintBox}>
-                            <Text style={styles.hintText}>
-                                💡 Renseignez précisément vos prestations et horaires pour aider les patients à trouver le bon service médical
-                            </Text>
-                        </View>
-                    </>
-                );
-            }
-
-            case 'agroalimentaire':
-                return (
-                    <>
-                        {/* Type de produit agroalimentaire */}
-                        <ProductFieldSelector
-                            label="Type de produit"
-                            fieldName="types"
-                            productType={selectedType}
-                            value={newProduct.typeAgro || ''}
-                            onSelect={(value) => setNewProduct({ ...newProduct, typeAgro: value })}
-                            required={true}
-                            placeholder="Ex: Riz et céréales, Huile alimentaire..."
-                        />
-
-                        {/* Marque */}
-                        <ProductFieldSelector
-                            label="Marque"
-                            fieldName="marques"
-                            productType={selectedType}
-                            value={newProduct.marqueAgro || ''}
-                            onSelect={(value) => setNewProduct({ ...newProduct, marqueAgro: value })}
-                            placeholder="Ex: Nestlé, Barilla, Maggi..."
-                        />
-
-                        {/* Format/Conditionnement */}
-                        <ProductFieldSelector
-                            label="Format / Conditionnement"
-                            fieldName="formats"
-                            productType={selectedType}
-                            value={newProduct.formatAgro || ''}
-                            onSelect={(value) => setNewProduct({ ...newProduct, formatAgro: value })}
-                            required={true}
-                            placeholder="Ex: 5kg, 1L, Pack de 12..."
-                        />
-
-                        {/* Origine */}
-                        <ProductFieldSelector
-                            label="Origine / Provenance"
-                            fieldName="origines"
-                            productType={selectedType}
-                            value={newProduct.origine || ''}
-                            onSelect={(value) => setNewProduct({ ...newProduct, origine: value })}
-                            placeholder="Ex: Cameroun, Thaïlande, Europe..."
-                        />
-
-                        {/* Certification */}
-                        <ProductFieldSelector
-                            label="Certification / Label"
-                            fieldName="certifications"
-                            productType={selectedType}
-                            value={newProduct.certification || ''}
-                            onSelect={(value) => setNewProduct({ ...newProduct, certification: value })}
-                            placeholder="Ex: Bio, Halal, Sans OGM..."
-                        />
-
-                        {/* Mode de conservation */}
-                        <ProductFieldSelector
-                            label="Mode de conservation"
-                            fieldName="conservation"
-                            productType={selectedType}
-                            value={newProduct.modeConservation || ''}
-                            onSelect={(value) => setNewProduct({ ...newProduct, modeConservation: value })}
-                            placeholder="Ex: Température ambiante, Au sec..."
-                        />
-
-                        {/* Date de péremption */}
-                        <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Date de péremption / DLC</Text>
-                            <NativeInput
-                                placeholder="Ex: 2026-12-31"
-                                value={newProduct.datePeremption || ''}
-                                onChangeText={(text) => setNewProduct({ ...newProduct, datePeremption: text })}
-                                style={styles.fieldInput}
-                            />
-                            <Text style={styles.fieldHint}>Format: AAAA-MM-JJ (optionnel)</Text>
-                        </View>
-
-                        {/* Numéro de lot */}
-                        <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Numéro de lot</Text>
-                            <NativeInput
-                                placeholder="Ex: LOT2025-001"
-                                value={newProduct.numeroLot || ''}
-                                onChangeText={(text) => setNewProduct({ ...newProduct, numeroLot: text })}
-                                style={styles.fieldInput}
-                            />
-                            <Text style={styles.fieldHint}>Pour la traçabilité (optionnel)</Text>
-                        </View>
-
-                        <View style={styles.hintBox}>
-                            <Text style={styles.hintText}>
-                                💡 Précisez le format, l'origine et les certifications pour rassurer les acheteurs
-                            </Text>
-                        </View>
-                    </>
-                );
-
-            case 'demenagement':
-                return (
-                    <>
-                        {/* Type de déménagement */}
-                        <ProductFieldSelector
-                            label="Type de déménagement"
-                            fieldName="types"
-                            productType="demenagement"
-                            value={newProduct.typeDemenagement || ''}
-                            onSelect={(value) => setNewProduct({ ...newProduct, typeDemenagement: value })}
-                        />
-
-                        {/* Volume estimé */}
-                        <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Volume estimé (m³)</Text>
-                            <NativeInput
-                                placeholder="Ex: 20, 30, 40"
-                                value={newProduct.volumeEstime || ''}
-                                onChangeText={(text) => setNewProduct({ ...newProduct, volumeEstime: text })}
-                                keyboardType="numeric"
-                                style={styles.fieldInput}
-                            />
-                            <Text style={styles.fieldHint}>Volume maximal que vous pouvez transporter</Text>
-                        </View>
-
-                        {/* Type de véhicule */}
-                        <ProductFieldSelector
-                            label="Type de véhicule disponible"
-                            fieldName="vehicules"
-                            productType="demenagement"
-                            value={newProduct.typeVehicule || ''}
-                            onSelect={(value) => setNewProduct({ ...newProduct, typeVehicule: value })}
-                        />
-
-                        {/* Distance maximale */}
-                        <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Distance maximale (km)</Text>
-                            <NativeInput
-                                placeholder="Ex: 50, 500, 2000"
-                                value={newProduct.distanceKm || ''}
-                                onChangeText={(text) => setNewProduct({ ...newProduct, distanceKm: text })}
-                                keyboardType="numeric"
-                                style={styles.fieldInput}
-                            />
-                            <Text style={styles.fieldHint}>Distance maximale que vous couvrez</Text>
-                        </View>
-
-                        {/* Nombre de déménageurs */}
-                        <ProductFieldSelector
-                            label="Nombre de déménageurs"
-                            fieldName="nombre_demenageurs"
-                            productType="demenagement"
-                            value={newProduct.nbDemenageurs || ''}
-                            onSelect={(value) => setNewProduct({ ...newProduct, nbDemenageurs: value })}
-                        />
-
-                        {/* Services inclus */}
-                        <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Services inclus</Text>
-                            <Text style={styles.fieldHint}>Cochez tous les services que vous proposez</Text>
-
-                            <TouchableOpacity
-                                style={styles.checkboxContainer}
-                                onPress={() => setNewProduct({ ...newProduct, assuranceMarchandise: !newProduct.assuranceMarchandise })}
-                            >
-                                <View style={[styles.checkbox, newProduct.assuranceMarchandise && styles.checkboxChecked]}>
-                                    {newProduct.assuranceMarchandise && <SafeIcon name="check" size={16} color="#FFFFFF" />}
-                                </View>
-                                <Text style={styles.checkboxLabel}>🛡️ Assurance marchandise</Text>
-                            </TouchableOpacity>
-
-                            <TouchableOpacity
-                                style={styles.checkboxContainer}
-                                onPress={() => setNewProduct({ ...newProduct, serviceManutention: !newProduct.serviceManutention })}
-                            >
-                                <View style={[styles.checkbox, newProduct.serviceManutention && styles.checkboxChecked]}>
-                                    {newProduct.serviceManutention && <SafeIcon name="check" size={16} color="#FFFFFF" />}
-                                </View>
-                                <Text style={styles.checkboxLabel}>💪 Service de manutention</Text>
-                            </TouchableOpacity>
-
-                            <TouchableOpacity
-                                style={styles.checkboxContainer}
-                                onPress={() => setNewProduct({ ...newProduct, montageDemontage: !newProduct.montageDemontage })}
-                            >
-                                <View style={[styles.checkbox, newProduct.montageDemontage && styles.checkboxChecked]}>
-                                    {newProduct.montageDemontage && <SafeIcon name="check" size={16} color="#FFFFFF" />}
-                                </View>
-                                <Text style={styles.checkboxLabel}>🔧 Montage / Démontage meubles</Text>
-                            </TouchableOpacity>
-
-                            <TouchableOpacity
-                                style={styles.checkboxContainer}
-                                onPress={() => setNewProduct({ ...newProduct, emballageCartons: !newProduct.emballageCartons })}
-                            >
-                                <View style={[styles.checkbox, newProduct.emballageCartons && styles.checkboxChecked]}>
-                                    {newProduct.emballageCartons && <SafeIcon name="check" size={16} color="#FFFFFF" />}
-                                </View>
-                                <Text style={styles.checkboxLabel}>📦 Fourniture cartons d'emballage</Text>
-                            </TouchableOpacity>
-
-                            <TouchableOpacity
-                                style={styles.checkboxContainer}
-                                onPress={() => setNewProduct({ ...newProduct, gardeMeuble: !newProduct.gardeMeuble })}
-                            >
-                                <View style={[styles.checkbox, newProduct.gardeMeuble && styles.checkboxChecked]}>
-                                    {newProduct.gardeMeuble && <SafeIcon name="check" size={16} color="#FFFFFF" />}
-                                </View>
-                                <Text style={styles.checkboxLabel}>🏠 Garde-meuble disponible</Text>
-                            </TouchableOpacity>
-
-                            <TouchableOpacity
-                                style={styles.checkboxContainer}
-                                onPress={() => setNewProduct({ ...newProduct, debarras: !newProduct.debarras })}
-                            >
-                                <View style={[styles.checkbox, newProduct.debarras && styles.checkboxChecked]}>
-                                    {newProduct.debarras && <SafeIcon name="check" size={16} color="#FFFFFF" />}
-                                </View>
-                                <Text style={styles.checkboxLabel}>🗑️ Service de débarras</Text>
-                            </TouchableOpacity>
-                        </View>
-
-                        {/* Date de disponibilité */}
-                        <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Première date de disponibilité</Text>
-                            <NativeInput
-                                placeholder="Ex: 2025-01-15"
-                                value={newProduct.dateDemenagementDisponible || ''}
-                                onChangeText={(text) => setNewProduct({ ...newProduct, dateDemenagementDisponible: text })}
-                                style={styles.fieldInput}
-                            />
-                            <Text style={styles.fieldHint}>Format: AAAA-MM-JJ</Text>
-                        </View>
-
-                        <View style={styles.hintBox}>
-                            <Text style={styles.hintText}>
-                                💡 Précisez tous vos services pour que les clients puissent comparer facilement les offres
-                            </Text>
-                        </View>
-                    </>
-                );
-
-            case 'cosmetique_parfum':
-                return (
-                    <>
-                        {/* Type de produit cosmétique */}
-                        <ProductFieldSelector
-                            label="Type de produit"
-                            fieldName="types"
-                            productType="cosmetique_parfum"
-                            value={newProduct.typeCosmetique || ''}
-                            onSelect={(value) => setNewProduct({ ...newProduct, typeCosmetique: value })}
-                        />
-
-                        {/* Marque */}
-                        <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Marque</Text>
-                            <NativeInput
-                                placeholder="Ex: Chanel, Dior, Nivea, L'Oréal"
-                                value={newProduct.marqueCosmetique || ''}
-                                onChangeText={(text) => setNewProduct({ ...newProduct, marqueCosmetique: text })}
-                                style={styles.fieldInput}
-                            />
-                        </View>
-
-                        {/* Volume */}
-                        <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Volume / Poids</Text>
-                            <View style={styles.inputRow}>
-                                <NativeInput
-                                    placeholder="Ex: 50"
-                                    value={newProduct.volumeCosmetique || ''}
-                                    onChangeText={(text) => setNewProduct({ ...newProduct, volumeCosmetique: text })}
-                                    keyboardType="numeric"
-                                    style={[styles.fieldInput, { flex: 1, marginRight: 8 }]}
-                                />
-                                <ProductFieldSelector
-                                    label="Unité"
-                                    fieldName="unites"
-                                    productType="cosmetique_parfum"
-                                    value={newProduct.uniteCosmetique || ''}
-                                    onSelect={(value) => setNewProduct({ ...newProduct, uniteCosmetique: value })}
-                                />
-                            </View>
-                        </View>
-
-                        {/* Type de peau */}
-                        <ProductFieldSelector
-                            label="Type de peau / Cible"
-                            fieldName="types_peau"
-                            productType="cosmetique_parfum"
-                            value={newProduct.typePeau || ''}
-                            onSelect={(value) => setNewProduct({ ...newProduct, typePeau: value })}
-                        />
-
-                        {/* Âge recommandé */}
-                        <ProductFieldSelector
-                            label="Âge recommandé"
-                            fieldName="ages"
-                            productType="cosmetique_parfum"
-                            value={newProduct.ageRecommandé || ''}
-                            onSelect={(value) => setNewProduct({ ...newProduct, ageRecommandé: value })}
-                        />
-
-                        {/* Ingrédients principaux */}
-                        <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Ingrédients principaux</Text>
-                            <NativeInput
-                                placeholder="Ex: Vitamine E, Argan, Aloe Vera, Collagène"
-                                value={newProduct.ingredientsCosmetique || ''}
-                                onChangeText={(text) => setNewProduct({ ...newProduct, ingredientsCosmetique: text })}
-                                style={styles.fieldInput}
-                            />
-                        </View>
-
-                        {/* Origine */}
-                        <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Origine / Pays</Text>
-                            <NativeInput
-                                placeholder="Ex: France, Corée du Sud, Maroc"
-                                value={newProduct.origineCosmetique || ''}
-                                onChangeText={(text) => setNewProduct({ ...newProduct, origineCosmetique: text })}
-                                style={styles.fieldInput}
-                            />
-                        </View>
-
-                        <View style={styles.hintBox}>
-                            <Text style={styles.hintText}>
-                                ✨ Précisez les caractéristiques pour aider les clients à choisir le bon produit cosmétique
-                            </Text>
-                        </View>
-                    </>
-                );
-
-            case 'bijoux':
-                return (
-                    <>
-                        {/* Type de bijou */}
-                        <ProductFieldSelector
-                            label="Type de bijou"
-                            fieldName="types"
-                            productType="bijoux"
-                            value={newProduct.typeBijou || ''}
-                            onSelect={(value) => setNewProduct({ ...newProduct, typeBijou: value })}
-                        />
-
-                        {/* Matière */}
-                        <ProductFieldSelector
-                            label="Matière principale"
-                            fieldName="matieres"
-                            productType="bijoux"
-                            value={newProduct.matiereBijou || ''}
-                            onSelect={(value) => setNewProduct({ ...newProduct, matiereBijou: value })}
-                        />
-
-                        {/* Poids */}
-                        <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Poids</Text>
-                            <View style={styles.inputRow}>
-                                <NativeInput
-                                    placeholder="Ex: 15"
-                                    value={newProduct.poidsBijou || ''}
-                                    onChangeText={(text) => setNewProduct({ ...newProduct, poidsBijou: text })}
-                                    keyboardType="numeric"
-                                    style={[styles.fieldInput, { flex: 1, marginRight: 8 }]}
-                                />
-                                <ProductFieldSelector
-                                    label="Unité"
-                                    fieldName="unites_poids"
-                                    productType="bijoux"
-                                    value={newProduct.unitePoids || ''}
-                                    onSelect={(value) => setNewProduct({ ...newProduct, unitePoids: value })}
-                                />
-                            </View>
-                        </View>
-
-                        {/* Taille */}
-                        <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Taille / Dimensions</Text>
-                            <NativeInput
-                                placeholder="Ex: 54, 16 pouces, 40mm"
-                                value={newProduct.tailleBijou || ''}
-                                onChangeText={(text) => setNewProduct({ ...newProduct, tailleBijou: text })}
-                                style={styles.fieldInput}
-                            />
-                        </View>
-
-                        {/* Style */}
-                        <ProductFieldSelector
-                            label="Style"
-                            fieldName="styles"
-                            productType="bijoux"
-                            value={newProduct.styleBijou || ''}
-                            onSelect={(value) => setNewProduct({ ...newProduct, styleBijou: value })}
-                        />
-
-                        {/* Origine */}
-                        <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Origine / Pays de fabrication</Text>
-                            <NativeInput
-                                placeholder="Ex: Italie, Suisse, France, Thaïlande"
-                                value={newProduct.origineBijou || ''}
-                                onChangeText={(text) => setNewProduct({ ...newProduct, origineBijou: text })}
-                                style={styles.fieldInput}
-                            />
-                        </View>
-
-                        {/* Certificat */}
-                        <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Certificat d'authenticité</Text>
-                            <View style={styles.pickerButtons}>
-                                {['Oui', 'Non'].map((cert) => (
-                                    <TouchableOpacity
-                                        key={cert}
-                                        style={[
-                                            styles.pickerButton,
-                                            newProduct.certificatBijou === cert && styles.pickerButtonActive
-                                        ]}
-                                        onPress={() => setNewProduct({ ...newProduct, certificatBijou: cert })}
-                                    >
-                                        <Text style={[
-                                            styles.pickerButtonText,
-                                            newProduct.certificatBijou === cert && styles.pickerButtonTextActive
-                                        ]}>
-                                            {cert}
-                                        </Text>
-                                    </TouchableOpacity>
-                                ))}
-                            </View>
-                        </View>
-
-                        <View style={styles.hintBox}>
-                            <Text style={styles.hintText}>
-                                💎 Précisez tous les détails pour rassurer les clients sur l'authenticité et la qualité
-                            </Text>
-                        </View>
-                    </>
-                );
-
-            case 'coiffure_beaute':
-                return (
-                    <>
-                        {/* Type de coiffure */}
-                        <ProductFieldSelector
-                            label="Type de produit"
-                            fieldName="types"
-                            productType="coiffure_beaute"
-                            value={newProduct.typeCoiffure || ''}
-                            onSelect={(value) => setNewProduct({ ...newProduct, typeCoiffure: value })}
-                            required
-                        />
-
-                        {/* Longueur */}
-                        <ProductFieldSelector
-                            label="Longueur"
-                            fieldName="longueurs"
-                            productType="coiffure_beaute"
-                            value={newProduct.longueurMech || ''}
-                            onSelect={(value) => setNewProduct({ ...newProduct, longueurMech: value })}
-                            required
-                        />
-
-                        {/* Couleur */}
-                        <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Couleur</Text>
-                            <NativeInput
-                                placeholder="Ex: Noir naturel, Blond platine, Châtain clair"
-                                value={newProduct.couleurMech || ''}
-                                onChangeText={(text) => setNewProduct({ ...newProduct, couleurMech: text })}
-                                style={styles.fieldInput}
-                            />
-                        </View>
-
-                        {/* Texture */}
-                        <ProductFieldSelector
-                            label="Texture"
-                            fieldName="textures"
-                            productType="coiffure_beaute"
-                            value={newProduct.textureMech || ''}
-                            onSelect={(value) => setNewProduct({ ...newProduct, textureMech: value })}
-                        />
-
-                        {/* Type de pose */}
-                        <ProductFieldSelector
-                            label="Type de pose"
-                            fieldName="typesPose"
-                            productType="coiffure_beaute"
-                            value={newProduct.typePose || ''}
-                            onSelect={(value) => setNewProduct({ ...newProduct, typePose: value })}
-                        />
-
-                        {/* Marque */}
-                        <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Marque</Text>
-                            <NativeInput
-                                placeholder="Ex: Remy Hair, Virgin Hair, Brazilian Hair"
-                                value={newProduct.marqueCoiffure || ''}
-                                onChangeText={(text) => setNewProduct({ ...newProduct, marqueCoiffure: text })}
-                                style={styles.fieldInput}
-                            />
-                        </View>
-
-                        {/* Origine */}
-                        <ProductFieldSelector
-                            label="Origine des cheveux"
-                            fieldName="origines"
-                            productType="coiffure_beaute"
-                            value={newProduct.origineMech || ''}
-                            onSelect={(value) => setNewProduct({ ...newProduct, origineMech: value })}
-                        />
-
-                        {/* Type de cheveux */}
-                        <ProductFieldSelector
-                            label="Type de cheveux"
-                            fieldName="typesCheveux"
-                            productType="coiffure_beaute"
-                            value={newProduct.typeCheveux || ''}
-                            onSelect={(value) => setNewProduct({ ...newProduct, typeCheveux: value })}
-                        />
-
-                        {/* Entretien */}
-                        <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Conseils d'entretien</Text>
-                            <NativeInput
-                                placeholder="Ex: Shampoing doux, Séchage naturel, Éviter chaleur élevée"
-                                value={newProduct.entretienMech || ''}
-                                onChangeText={(text) => setNewProduct({ ...newProduct, entretienMech: text })}
-                                multiline
-                                style={[styles.fieldInput, styles.textareaInput]}
-                            />
-                        </View>
-
-                        {/* Durée de vie */}
-                        <ProductFieldSelector
-                            label="Durée de vie estimée"
-                            fieldName="dureeVie"
-                            productType="coiffure_beaute"
-                            value={newProduct.dureeVie || ''}
-                            onSelect={(value) => setNewProduct({ ...newProduct, dureeVie: value })}
-                        />
-
-                        <View style={styles.hintBox}>
-                            <Text style={styles.hintText}>
-                                💇‍♀️ Précisez la qualité, l'origine et l'entretien pour aider vos clientes à faire le bon choix
-                            </Text>
-                        </View>
-                    </>
-                );
-
-            case 'assurance':
-                return (
-                    <>
-                        <ProductFieldSelector
-                            label="Type d'assurance"
-                            fieldName="categories"
-                            productType="assurance"
-                            value={newProduct.categorieAssurance || ''}
-                            onSelect={(value) => setNewProduct({ ...newProduct, categorieAssurance: value, typeAssurance: '' })}
-                            required
-                        />
-
-                        {/* Sous-catégories selon Vie ou Non-Vie */}
-                        {newProduct.categorieAssurance && (
-                            <ProductFieldSelector
-                                label="Sous-catégorie"
-                                fieldName="types"
-                                productType="assurance"
-                                value={newProduct.typeAssurance || ''}
-                                onSelect={(value) => setNewProduct({ ...newProduct, typeAssurance: value })}
-                                required
-                            />
-                        )}
-
-                        <View style={styles.fieldRow}>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Compagnie d'assurance</Text>
-                                <NativeInput
-                                    placeholder="Ex: AXA Assurances"
-                                    value={newProduct.compagnieAssurance || ''}
-                                    onChangeText={(text) => setNewProduct({ ...newProduct, compagnieAssurance: text })}
-                                    style={styles.fieldInput}
-                                />
-                            </View>
-                        </View>
-
-                        <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Couverture / Garanties</Text>
-                            <NativeInput
-                                placeholder="Ex: Tous risques, Protection juridique, Assistance 24h/24"
-                                value={newProduct.couverture || ''}
-                                onChangeText={(text) => setNewProduct({ ...newProduct, couverture: text })}
-                                multiline
-                                style={[styles.fieldInput, styles.textareaInput]}
-                            />
-                        </View>
-
-                        <View style={styles.fieldRow}>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Prime annuelle (FCFA)</Text>
-                                <NativeInput
-                                    placeholder="Ex: 150000"
-                                    value={newProduct.primeAnnuelle || ''}
-                                    onChangeText={(text) => setNewProduct({ ...newProduct, primeAnnuelle: text })}
-                                    style={styles.fieldInput}
-                                    keyboardType="numeric"
-                                />
-                            </View>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Franchise (FCFA)</Text>
-                                <NativeInput
-                                    placeholder="Ex: 50000"
-                                    value={newProduct.franchise || ''}
-                                    onChangeText={(text) => setNewProduct({ ...newProduct, franchise: text })}
-                                    style={styles.fieldInput}
-                                    keyboardType="numeric"
-                                />
-                            </View>
-                        </View>
-
-                        <ProductFieldSelector
-                            label="Durée du contrat"
-                            fieldName="durees"
-                            productType="assurance"
-                            value={newProduct.dureeContrat || ''}
-                            onSelect={(value) => setNewProduct({ ...newProduct, dureeContrat: value })}
-                        />
-
-                        <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Principaux bénéfices</Text>
-                            <NativeInput
-                                placeholder="Ex: Capital décès, Rente invalidité, Assistance rapatriement..."
-                                value={newProduct.benefices || ''}
-                                onChangeText={(text) => setNewProduct({ ...newProduct, benefices: text })}
-                                multiline
-                                style={[styles.fieldInput, styles.textareaInput]}
-                            />
-                        </View>
-
-                        <View style={styles.hintBox}>
-                            <Text style={styles.hintText}>
-                                💡 <Text style={styles.hintBold}>Conseil :</Text> Détaillez bien les garanties et la couverture pour aider vos clients à comparer les offres.
-                            </Text>
-                        </View>
-                    </>
-                );
-
-            case 'restauration':
-                return (
-                    <>
-                        <ProductFieldSelector
-                            label="Type de cuisine"
-                            fieldName="types_cuisine"
-                            productType="restauration"
-                            value={newProduct.typeCuisine || ''}
-                            onSelect={(value) => setNewProduct({ ...newProduct, typeCuisine: value })}
-                            required
-                        />
-
-                        <ProductFieldSelector
-                            label="Spécialités"
-                            fieldName="specialites"
-                            productType="restauration"
-                            value={newProduct.specialites || []}
-                            onSelect={(values) => setNewProduct({ ...newProduct, specialites: values })}
-                            multiSelect
-                        />
-
-                        <ProductFieldSelector
-                            label="Services proposés"
-                            fieldName="services"
-                            productType="restauration"
-                            value={newProduct.servicesRestau || []}
-                            onSelect={(values) => setNewProduct({ ...newProduct, servicesRestau: values })}
-                            multiSelect
-                        />
-
-                        <View style={styles.fieldRow}>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
-                                    label="Ambiance"
-                                    fieldName="ambiances"
-                                    productType="restauration"
-                                    value={newProduct.ambiance || ''}
-                                    onSelect={(value) => setNewProduct({ ...newProduct, ambiance: value })}
-                                />
-                            </View>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
-                                    label="Gamme de prix"
-                                    fieldName="gammes_prix"
-                                    productType="restauration"
-                                    value={newProduct.gammePrix || ''}
-                                    onSelect={(value) => setNewProduct({ ...newProduct, gammePrix: value })}
-                                />
-                            </View>
-                        </View>
-
-                        <View style={styles.fieldRow}>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Capacité (personnes)</Text>
-                                <NativeInput
-                                    placeholder="Ex: 50"
-                                    value={newProduct.capacite || ''}
-                                    onChangeText={(text) => setNewProduct({ ...newProduct, capacite: text })}
-                                    keyboardType="numeric"
-                                    style={styles.fieldInput}
-                                />
-                            </View>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Horaires</Text>
-                                <NativeInput
-                                    placeholder="Ex: 11h-23h"
-                                    value={newProduct.horaires || ''}
-                                    onChangeText={(text) => setNewProduct({ ...newProduct, horaires: text })}
-                                    style={styles.fieldInput}
-                                />
-                            </View>
-                        </View>
-
-                        <ProductFieldSelector
-                            label="Certifications"
-                            fieldName="certifications"
-                            productType="restauration"
-                            value={newProduct.certificationsRestau || []}
-                            onSelect={(values) => setNewProduct({ ...newProduct, certificationsRestau: values })}
-                            multiSelect
-                        />
-
-                        <ProductFieldSelector
-                            label="Options alimentaires"
-                            fieldName="options_alimentaires"
-                            productType="restauration"
-                            value={newProduct.optionsAlimentaires || []}
-                            onSelect={(values) => setNewProduct({ ...newProduct, optionsAlimentaires: values })}
-                            multiSelect
-                        />
-
-                        <View style={styles.hintBox}>
-                            <Text style={styles.hintText}>
-                                💡 <Text style={styles.hintBold}>Conseil :</Text> Détaillez vos spécialités et services pour attirer plus de clients.
-                            </Text>
-                        </View>
-                    </>
-                );
-
-            case 'electronique':
-                return (
-                    <>
-                        <ProductFieldSelector
-                            label="Type d'appareil"
-                            fieldName="types"
-                            productType="electronique"
-                            value={newProduct.typeElectronique || ''}
-                            onSelect={(value) => setNewProduct({ ...newProduct, typeElectronique: value })}
-                            required
-                        />
-
-                        <View style={styles.fieldRow}>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
-                                    label="Marque"
-                                    fieldName="marques"
-                                    productType="electronique"
-                                    value={newProduct.marqueElectronique || ''}
-                                    onSelect={(value) => setNewProduct({ ...newProduct, marqueElectronique: value })}
-                                />
-                            </View>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Modèle</Text>
-                                <NativeInput
-                                    placeholder="Ex: Galaxy S23"
-                                    value={newProduct.modeleElectronique || ''}
-                                    onChangeText={(text) => setNewProduct({ ...newProduct, modeleElectronique: text })}
-                                    style={styles.fieldInput}
-                                />
-                            </View>
-                        </View>
-
-                        <View style={styles.fieldRow}>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
-                                    label="État"
-                                    fieldName="etats"
-                                    productType="electronique"
-                                    value={newProduct.etatElectronique || ''}
-                                    onSelect={(value) => setNewProduct({ ...newProduct, etatElectronique: value })}
-                                />
-                            </View>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
-                                    label="Garantie"
-                                    fieldName="garanties"
-                                    productType="electronique"
-                                    value={newProduct.garantieElectronique || ''}
-                                    onSelect={(value) => setNewProduct({ ...newProduct, garantieElectronique: value })}
-                                />
-                            </View>
-                        </View>
-
-                        <ProductFieldSelector
-                            label="Connectivités"
-                            fieldName="connectivites"
-                            productType="electronique"
-                            value={newProduct.connectivites || []}
-                            onSelect={(values) => setNewProduct({ ...newProduct, connectivites: values })}
-                            multiSelect
-                        />
-
-                        <View style={styles.hintBox}>
-                            <Text style={styles.hintText}>
-                                💡 Précisez les spécifications techniques pour aider les acheteurs.
-                            </Text>
-                        </View>
-                    </>
-                );
-
-            case 'musique_instruments':
-                return (
-                    <>
-                        <ProductFieldSelector
-                            label="Type d'instrument"
-                            fieldName="types"
-                            productType="musique_instruments"
-                            value={newProduct.typeInstrument || ''}
-                            onSelect={(value) => setNewProduct({ ...newProduct, typeInstrument: value })}
-                            required
-                        />
-
-                        <View style={styles.fieldRow}>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
-                                    label="Marque"
-                                    fieldName="marques"
-                                    productType="musique_instruments"
-                                    value={newProduct.marqueInstrument || ''}
-                                    onSelect={(value) => setNewProduct({ ...newProduct, marqueInstrument: value })}
-                                />
-                            </View>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Modèle</Text>
-                                <NativeInput
-                                    placeholder="Ex: Stratocaster"
-                                    value={newProduct.modeleInstrument || ''}
-                                    onChangeText={(text) => setNewProduct({ ...newProduct, modeleInstrument: text })}
-                                    style={styles.fieldInput}
-                                />
-                            </View>
-                        </View>
-
-                        <View style={styles.fieldRow}>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
-                                    label="État"
-                                    fieldName="etats"
-                                    productType="musique_instruments"
-                                    value={newProduct.etatInstrument || ''}
-                                    onSelect={(value) => setNewProduct({ ...newProduct, etatInstrument: value })}
-                                />
-                            </View>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
-                                    label="Niveau"
-                                    fieldName="niveaux"
-                                    productType="musique_instruments"
-                                    value={newProduct.niveauInstrument || ''}
-                                    onSelect={(value) => setNewProduct({ ...newProduct, niveauInstrument: value })}
-                                />
-                            </View>
-                        </View>
-
-                        <View style={styles.hintBox}>
-                            <Text style={styles.hintText}>
-                                💡 Précisez si des accessoires sont inclus (étui, cordes, etc.).
-                            </Text>
-                        </View>
-                    </>
-                );
-
-            case 'formation_education':
-                return (
-                    <>
-                        <ProductFieldSelector
-                            label="Type de formation"
-                            fieldName="types"
-                            productType="formation_education"
-                            value={newProduct.typeFormation || ''}
-                            onSelect={(value) => setNewProduct({ ...newProduct, typeFormation: value })}
-                            required
-                        />
-
-                        <View style={styles.fieldRow}>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
-                                    label="Niveau"
-                                    fieldName="niveaux"
-                                    productType="formation_education"
-                                    value={newProduct.niveauFormation || ''}
-                                    onSelect={(value) => setNewProduct({ ...newProduct, niveauFormation: value })}
-                                />
-                            </View>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
-                                    label="Mode"
-                                    fieldName="modes"
-                                    productType="formation_education"
-                                    value={newProduct.modeFormation || ''}
-                                    onSelect={(value) => setNewProduct({ ...newProduct, modeFormation: value })}
-                                />
-                            </View>
-                        </View>
-
-                        <ProductFieldSelector
-                            label="Matières enseignées"
-                            fieldName="matieres"
-                            productType="formation_education"
-                            value={newProduct.matieresFormation || []}
-                            onSelect={(values) => setNewProduct({ ...newProduct, matieresFormation: values })}
-                            multiSelect
-                        />
-
-                        <View style={styles.fieldRow}>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
-                                    label="Durée"
-                                    fieldName="durees"
-                                    productType="formation_education"
-                                    value={newProduct.dureeFormation || ''}
-                                    onSelect={(value) => setNewProduct({ ...newProduct, dureeFormation: value })}
-                                />
-                            </View>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
-                                    label="Certification"
-                                    fieldName="certifications"
-                                    productType="formation_education"
-                                    value={newProduct.certificationFormation || ''}
-                                    onSelect={(value) => setNewProduct({ ...newProduct, certificationFormation: value })}
-                                />
-                            </View>
-                        </View>
-
-                        <View style={styles.hintBox}>
-                            <Text style={styles.hintText}>
-                                💡 Indiquez si la formation est certifiante ou diplômante.
-                            </Text>
-                        </View>
-                    </>
-                );
-
-            case 'evenementiel':
-                return (
-                    <>
-                        <ProductFieldSelector
-                            label="Type d'événement"
-                            fieldName="types"
-                            productType="evenementiel"
-                            value={newProduct.typeEvenement || ''}
-                            onSelect={(value) => setNewProduct({ ...newProduct, typeEvenement: value })}
-                            required
-                        />
-
-                        <ProductFieldSelector
-                            label="Services inclus"
-                            fieldName="services"
-                            productType="evenementiel"
-                            value={newProduct.servicesEvenement || []}
-                            onSelect={(values) => setNewProduct({ ...newProduct, servicesEvenement: values })}
-                            multiSelect
-                        />
-
-                        <View style={styles.fieldRow}>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Capacité (personnes)</Text>
-                                <NativeInput
-                                    placeholder="Ex: 200"
-                                    value={newProduct.capaciteEvenement || ''}
-                                    onChangeText={(text) => setNewProduct({ ...newProduct, capaciteEvenement: text })}
-                                    keyboardType="numeric"
-                                    style={styles.fieldInput}
-                                />
-                            </View>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
-                                    label="Gamme tarifaire"
-                                    fieldName="tarifs"
-                                    productType="evenementiel"
-                                    value={newProduct.tarifEvenement || ''}
-                                    onSelect={(value) => setNewProduct({ ...newProduct, tarifEvenement: value })}
-                                />
-                            </View>
-                        </View>
-
-                        <View style={styles.hintBox}>
-                            <Text style={styles.hintText}>
-                                💡 Ajoutez des photos de vos événements précédents pour inspirer confiance.
-                            </Text>
-                        </View>
-                    </>
-                );
-
-            case 'agriculture':
-                return (
-                    <>
-                        <ProductFieldSelector
-                            label="Type de produit"
-                            fieldName="types"
-                            productType="agriculture"
-                            value={newProduct.typeAgricole || ''}
-                            onSelect={(value) => setNewProduct({ ...newProduct, typeAgricole: value })}
-                            required
-                        />
-
-                        <View style={styles.fieldRow}>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
-                                    label="Culture"
-                                    fieldName="cultures"
-                                    productType="agriculture"
-                                    value={newProduct.culture || ''}
-                                    onSelect={(value) => setNewProduct({ ...newProduct, culture: value })}
-                                />
-                            </View>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
-                                    label="Saison"
-                                    fieldName="saisons"
-                                    productType="agriculture"
-                                    value={newProduct.saisonAgricole || ''}
-                                    onSelect={(value) => setNewProduct({ ...newProduct, saisonAgricole: value })}
-                                />
-                            </View>
-                        </View>
-
-                        <View style={styles.fieldRow}>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
-                                    label="Unité de vente"
-                                    fieldName="unites"
-                                    productType="agriculture"
-                                    value={newProduct.uniteVente || ''}
-                                    onSelect={(value) => setNewProduct({ ...newProduct, uniteVente: value })}
-                                />
-                            </View>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Quantité disponible</Text>
-                                <NativeInput
-                                    placeholder="Ex: 500"
-                                    value={newProduct.quantiteDisponible || ''}
-                                    onChangeText={(text) => setNewProduct({ ...newProduct, quantiteDisponible: text })}
-                                    keyboardType="numeric"
-                                    style={styles.fieldInput}
-                                />
-                            </View>
-                        </View>
-
-                        <ProductFieldSelector
-                            label="Certifications"
-                            fieldName="certifications"
-                            productType="agriculture"
-                            value={newProduct.certificationsAgricole || []}
-                            onSelect={(values) => setNewProduct({ ...newProduct, certificationsAgricole: values })}
-                            multiSelect
-                        />
-
-                        <View style={styles.hintBox}>
-                            <Text style={styles.hintText}>
-                                💡 Indiquez si vos produits sont bio, sans pesticides, ou issus de l'agriculture locale.
-                            </Text>
-                        </View>
-                    </>
-                );
-
-            case 'sport_fitness':
-                return (
-                    <>
-                        <ProductFieldSelector
-                            label="Type d'activité"
-                            fieldName="types"
-                            productType="sport_fitness"
-                            value={newProduct.typeSport || ''}
-                            onSelect={(value) => setNewProduct({ ...newProduct, typeSport: value })}
-                            required
-                        />
-
-                        <View style={styles.fieldRow}>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
-                                    label="Niveau"
-                                    fieldName="niveaux"
-                                    productType="sport_fitness"
-                                    value={newProduct.niveauSport || ''}
-                                    onSelect={(value) => setNewProduct({ ...newProduct, niveauSport: value })}
-                                />
-                            </View>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
-                                    label="Durée"
-                                    fieldName="durees"
-                                    productType="sport_fitness"
-                                    value={newProduct.dureeSport || ''}
-                                    onSelect={(value) => setNewProduct({ ...newProduct, dureeSport: value })}
-                                />
-                            </View>
-                        </View>
-
-                        <ProductFieldSelector
-                            label="Équipements fournis"
-                            fieldName="equipements"
-                            productType="sport_fitness"
-                            value={newProduct.equipementsSport || []}
-                            onSelect={(values) => setNewProduct({ ...newProduct, equipementsSport: values })}
-                            multiSelect
-                        />
-
-                        <View style={styles.hintBox}>
-                            <Text style={styles.hintText}>
-                                💡 Précisez si les équipements sont fournis ou si les participants doivent les apporter.
-                            </Text>
-                        </View>
-                    </>
-                );
-
-            case 'bien_etre_spa':
-                return (
-                    <>
-                        <ProductFieldSelector
-                            label="Type de service"
-                            fieldName="types"
-                            productType="bien_etre_spa"
-                            value={newProduct.typeBienEtre || ''}
-                            onSelect={(value) => setNewProduct({ ...newProduct, typeBienEtre: value })}
-                            required
-                        />
-
-                        <ProductFieldSelector
-                            label="Services"
-                            fieldName="services"
-                            productType="bien_etre_spa"
-                            value={newProduct.servicesBienEtre || []}
-                            onSelect={(values) => setNewProduct({ ...newProduct, servicesBienEtre: values })}
-                            multiSelect
-                        />
-
-                        <View style={styles.fieldRow}>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
-                                    label="Durée"
-                                    fieldName="durees"
-                                    productType="bien_etre_spa"
-                                    value={newProduct.dureeBienEtre || ''}
-                                    onSelect={(value) => setNewProduct({ ...newProduct, dureeBienEtre: value })}
-                                />
-                            </View>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
-                                    label="Gamme tarifaire"
-                                    fieldName="tarifs"
-                                    productType="bien_etre_spa"
-                                    value={newProduct.tarifBienEtre || ''}
-                                    onSelect={(value) => setNewProduct({ ...newProduct, tarifBienEtre: value })}
-                                />
-                            </View>
-                        </View>
-
-                        <View style={styles.hintBox}>
-                            <Text style={styles.hintText}>
-                                💡 Détaillez vos prestations pour permettre aux clients de choisir facilement.
-                            </Text>
-                        </View>
-                    </>
-                );
-
-            case 'animaux_veterinaire':
-                return (
-                    <>
-                        <ProductFieldSelector
-                            label="Type d'animal"
-                            fieldName="types"
-                            productType="animaux_veterinaire"
-                            value={newProduct.typeAnimal || ''}
-                            onSelect={(value) => setNewProduct({ ...newProduct, typeAnimal: value })}
-                            required
-                        />
-
-                        <View style={styles.fieldRow}>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
-                                    label="Race"
-                                    fieldName="races"
-                                    productType="animaux_veterinaire"
-                                    value={newProduct.raceAnimal || ''}
-                                    onSelect={(value) => setNewProduct({ ...newProduct, raceAnimal: value })}
-                                />
-                            </View>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
-                                    label="Âge"
-                                    fieldName="ages"
-                                    productType="animaux_veterinaire"
-                                    value={newProduct.ageAnimal || ''}
-                                    onSelect={(value) => setNewProduct({ ...newProduct, ageAnimal: value })}
-                                />
-                            </View>
-                        </View>
-
-                        <ProductFieldSelector
-                            label="Services vétérinaires"
-                            fieldName="services"
-                            productType="animaux_veterinaire"
-                            value={newProduct.servicesVeterinaire || []}
-                            onSelect={(values) => setNewProduct({ ...newProduct, servicesVeterinaire: values })}
-                            multiSelect
-                        />
-
-                        <View style={styles.hintBox}>
-                            <Text style={styles.hintText}>
-                                💡 Ajoutez des photos de qualité pour montrer votre animal ou vos services.
-                            </Text>
-                        </View>
-                    </>
-                );
-
-            case 'nettoyage_entretien':
-                return (
-                    <>
-                        <ProductFieldSelector
-                            label="Type de service"
-                            fieldName="types"
-                            productType="nettoyage_entretien"
-                            value={newProduct.typeNettoyage || ''}
-                            onSelect={(value) => setNewProduct({ ...newProduct, typeNettoyage: value })}
-                            required
-                        />
-
-                        <View style={styles.fieldRow}>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
-                                    label="Fréquence"
-                                    fieldName="frequences"
-                                    productType="nettoyage_entretien"
-                                    value={newProduct.frequenceNettoyage || ''}
-                                    onSelect={(value) => setNewProduct({ ...newProduct, frequenceNettoyage: value })}
-                                />
-                            </View>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
-                                    label="Surface"
-                                    fieldName="surfaces"
-                                    productType="nettoyage_entretien"
-                                    value={newProduct.surfaceNettoyage || ''}
-                                    onSelect={(value) => setNewProduct({ ...newProduct, surfaceNettoyage: value })}
-                                />
-                            </View>
-                        </View>
-
-                        <ProductFieldSelector
-                            label="Équipements"
-                            fieldName="equipements"
-                            productType="nettoyage_entretien"
-                            value={newProduct.equipementsNettoyage || []}
-                            onSelect={(values) => setNewProduct({ ...newProduct, equipementsNettoyage: values })}
-                            multiSelect
-                        />
-
-                        <View style={styles.hintBox}>
-                            <Text style={styles.hintText}>
-                                💡 Précisez si vous fournissez les produits d'entretien et le matériel.
-                            </Text>
-                        </View>
-                    </>
-                );
-
-            case 'jardinage_paysagisme':
-                return (
-                    <>
-                        <ProductFieldSelector
-                            label="Type de service"
-                            fieldName="types"
-                            productType="jardinage_paysagisme"
-                            value={newProduct.typeJardinage || ''}
-                            onSelect={(value) => setNewProduct({ ...newProduct, typeJardinage: value })}
-                            required
-                        />
-
-                        <View style={styles.fieldRow}>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
-                                    label="Saison recommandée"
-                                    fieldName="saisons"
-                                    productType="jardinage_paysagisme"
-                                    value={newProduct.saisonJardinage || ''}
-                                    onSelect={(value) => setNewProduct({ ...newProduct, saisonJardinage: value })}
-                                />
-                            </View>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
-                                    label="Surface"
-                                    fieldName="surfaces"
-                                    productType="jardinage_paysagisme"
-                                    value={newProduct.surfaceJardinage || ''}
-                                    onSelect={(value) => setNewProduct({ ...newProduct, surfaceJardinage: value })}
-                                />
-                            </View>
-                        </View>
-
-                        <ProductFieldSelector
-                            label="Services inclus"
-                            fieldName="services"
-                            productType="jardinage_paysagisme"
-                            value={newProduct.servicesJardinage || []}
-                            onSelect={(values) => setNewProduct({ ...newProduct, servicesJardinage: values })}
-                            multiSelect
-                        />
-
-                        <View style={styles.hintBox}>
-                            <Text style={styles.hintText}>
-                                💡 Montrez vos réalisations avec des photos avant/après.
-                            </Text>
-                        </View>
-                    </>
-                );
-
-            case 'securite_surveillance':
-                return (
-                    <>
-                        <ProductFieldSelector
-                            label="Type de service"
-                            fieldName="types"
-                            productType="securite_surveillance"
-                            value={newProduct.typeSecurite || ''}
-                            onSelect={(value) => setNewProduct({ ...newProduct, typeSecurite: value })}
-                            required
-                        />
-
-                        <View style={styles.fieldRow}>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
-                                    label="Zone à couvrir"
-                                    fieldName="zones"
-                                    productType="securite_surveillance"
-                                    value={newProduct.zoneSecurite || ''}
-                                    onSelect={(value) => setNewProduct({ ...newProduct, zoneSecurite: value })}
-                                />
-                            </View>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
-                                    label="Durée du contrat"
-                                    fieldName="durees"
-                                    productType="securite_surveillance"
-                                    value={newProduct.dureeSecurite || ''}
-                                    onSelect={(value) => setNewProduct({ ...newProduct, dureeSecurite: value })}
-                                />
-                            </View>
-                        </View>
-
-                        <ProductFieldSelector
-                            label="Équipements"
-                            fieldName="equipements"
-                            productType="securite_surveillance"
-                            value={newProduct.equipementsSecurite || []}
-                            onSelect={(values) => setNewProduct({ ...newProduct, equipementsSecurite: values })}
-                            multiSelect
-                        />
-
-                        <View style={styles.hintBox}>
-                            <Text style={styles.hintText}>
-                                💡 Précisez vos certifications et agréments de sécurité.
-                            </Text>
-                        </View>
-                    </>
-                );
-
-            case 'plomberie':
-                return (
-                    <>
-                        <ProductFieldSelector
-                            label="Type de service"
-                            fieldName="types"
-                            productType="plomberie"
-                            value={newProduct.typePlomberie || ''}
-                            onSelect={(value) => setNewProduct({ ...newProduct, typePlomberie: value })}
-                            required
-                        />
-
-                        <View style={styles.fieldRow}>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
-                                    label="Service d'urgence"
-                                    fieldName="urgences"
-                                    productType="plomberie"
-                                    value={newProduct.urgencePlomberie || ''}
-                                    onSelect={(value) => setNewProduct({ ...newProduct, urgencePlomberie: value })}
-                                />
-                            </View>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
-                                    label="Garantie"
-                                    fieldName="garanties"
-                                    productType="plomberie"
-                                    value={newProduct.garantiePlomberie || ''}
-                                    onSelect={(value) => setNewProduct({ ...newProduct, garantiePlomberie: value })}
-                                />
-                            </View>
-                        </View>
-
-                        <ProductFieldSelector
-                            label="Matériaux"
-                            fieldName="materiaux"
-                            productType="plomberie"
-                            value={newProduct.materiauxPlomberie || []}
-                            onSelect={(values) => setNewProduct({ ...newProduct, materiauxPlomberie: values })}
-                            multiSelect
-                        />
-
-                        <View style={styles.hintBox}>
-                            <Text style={styles.hintText}>
-                                💡 Indiquez si vous intervenez en urgence 24h/24.
-                            </Text>
-                        </View>
-                    </>
-                );
-
-            case 'electricite':
-                return (
-                    <>
-                        <ProductFieldSelector
-                            label="Type de service"
-                            fieldName="types"
-                            productType="electricite"
-                            value={newProduct.typeElectricite || ''}
-                            onSelect={(value) => setNewProduct({ ...newProduct, typeElectricite: value })}
-                            required
-                        />
-
-                        <View style={styles.fieldRow}>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
-                                    label="Puissance"
-                                    fieldName="puissances"
-                                    productType="electricite"
-                                    value={newProduct.puissanceElectricite || ''}
-                                    onSelect={(value) => setNewProduct({ ...newProduct, puissanceElectricite: value })}
-                                />
-                            </View>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
-                                    label="Garantie"
-                                    fieldName="garanties"
-                                    productType="electricite"
-                                    value={newProduct.garantieElectricite || ''}
-                                    onSelect={(value) => setNewProduct({ ...newProduct, garantieElectricite: value })}
-                                />
-                            </View>
-                        </View>
-
-                        <ProductFieldSelector
-                            label="Certifications"
-                            fieldName="certifications"
-                            productType="electricite"
-                            value={newProduct.certificationsElectricite || []}
-                            onSelect={(values) => setNewProduct({ ...newProduct, certificationsElectricite: values })}
-                            multiSelect
-                        />
-
-                        <View style={styles.hintBox}>
-                            <Text style={styles.hintText}>
-                                💡 Mentionnez vos certifications et agréments électriques.
-                            </Text>
-                        </View>
-                    </>
-                );
-
-            case 'menuiserie':
-                return (
-                    <>
-                        <ProductFieldSelector
-                            label="Type de produit/service"
-                            fieldName="types"
-                            productType="menuiserie"
-                            value={newProduct.typeMenuiserie || ''}
-                            onSelect={(value) => setNewProduct({ ...newProduct, typeMenuiserie: value })}
-                            required
-                        />
-
-                        <View style={styles.fieldRow}>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
-                                    label="Type de bois"
-                                    fieldName="bois"
-                                    productType="menuiserie"
-                                    value={newProduct.typeBois || ''}
-                                    onSelect={(value) => setNewProduct({ ...newProduct, typeBois: value })}
-                                />
-                            </View>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
-                                    label="Finition"
-                                    fieldName="finitions"
-                                    productType="menuiserie"
-                                    value={newProduct.finitionMenuiserie || ''}
-                                    onSelect={(value) => setNewProduct({ ...newProduct, finitionMenuiserie: value })}
-                                />
-                            </View>
-                        </View>
-
-                        <View style={styles.fieldRow}>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
-                                    label="Style"
-                                    fieldName="styles"
-                                    productType="menuiserie"
-                                    value={newProduct.styleMenuiserie || ''}
-                                    onSelect={(value) => setNewProduct({ ...newProduct, styleMenuiserie: value })}
-                                />
-                            </View>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Dimensions</Text>
-                                <NativeInput
-                                    placeholder="Ex: 200x100x80cm"
-                                    value={newProduct.dimensionsMenuiserie || ''}
-                                    onChangeText={(text) => setNewProduct({ ...newProduct, dimensionsMenuiserie: text })}
-                                    style={styles.fieldInput}
-                                />
-                            </View>
-                        </View>
-
-                        <View style={styles.hintBox}>
-                            <Text style={styles.hintText}>
-                                💡 Ajoutez des photos de vos réalisations pour montrer votre savoir-faire.
-                            </Text>
-                        </View>
-                    </>
-                );
-
-            case 'telephone':
-                return (
-                    <>
-                        <View style={styles.fieldRow}>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
-                                    label="Marque"
-                                    fieldName="marques"
-                                    productType="telephone"
-                                    value={newProduct.marqueTelephone || ''}
-                                    onSelect={(value) => setNewProduct({ ...newProduct, marqueTelephone: value })}
-                                    required
-                                />
-                            </View>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Modèle <Text style={styles.required}>*</Text></Text>
-                                <NativeInput
-                                    placeholder="Ex: iPhone 14 Pro"
-                                    value={newProduct.modeleTelephone || ''}
-                                    onChangeText={(text) => setNewProduct({ ...newProduct, modeleTelephone: text })}
-                                    style={styles.fieldInput}
-                                />
-                            </View>
-                        </View>
-
-                        <View style={styles.fieldRow}>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
-                                    label="Stockage"
-                                    fieldName="stockage"
-                                    productType="telephone"
-                                    value={newProduct.stockage || ''}
-                                    onSelect={(value) => setNewProduct({ ...newProduct, stockage: value })}
-                                />
-                            </View>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
-                                    label="RAM"
-                                    fieldName="ram"
-                                    productType="telephone"
-                                    value={newProduct.ram || ''}
-                                    onSelect={(value) => setNewProduct({ ...newProduct, ram: value })}
-                                />
-                            </View>
-                        </View>
-
-                        <View style={styles.fieldRow}>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
-                                    label="État"
-                                    fieldName="etats"
-                                    productType="telephone"
-                                    value={newProduct.etatTelephone || ''}
-                                    onSelect={(value) => setNewProduct({ ...newProduct, etatTelephone: value })}
-                                    required
-                                />
-                            </View>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
-                                    label="Couleur"
-                                    fieldName="couleurs"
-                                    productType="telephone"
-                                    value={newProduct.couleurTelephone || ''}
-                                    onSelect={(value) => setNewProduct({ ...newProduct, couleurTelephone: value })}
-                                />
-                            </View>
-                        </View>
-
-                        <View style={styles.hintBox}>
-                            <Text style={styles.hintText}>
-                                📱 Précisez les caractéristiques techniques pour rassurer les acheteurs
-                            </Text>
-                        </View>
-                    </>
-                );
-
-            case 'ordinateur':
-                return (
-                    <>
-                        <View style={styles.fieldRow}>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
-                                    label="Type"
-                                    fieldName="types"
-                                    productType="ordinateur"
-                                    value={newProduct.typeOrdinateur || ''}
-                                    onSelect={(value) => setNewProduct({ ...newProduct, typeOrdinateur: value })}
-                                    required
-                                />
-                            </View>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
-                                    label="Marque"
-                                    fieldName="marques"
-                                    productType="ordinateur"
-                                    value={newProduct.marqueOrdinateur || ''}
-                                    onSelect={(value) => setNewProduct({ ...newProduct, marqueOrdinateur: value })}
-                                    required
-                                />
-                            </View>
-                        </View>
-
-                        <View style={styles.fieldRow}>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
-                                    label="Processeur"
-                                    fieldName="processeurs"
-                                    productType="ordinateur"
-                                    value={newProduct.processeur || ''}
-                                    onSelect={(value) => setNewProduct({ ...newProduct, processeur: value })}
-                                />
-                            </View>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
-                                    label="RAM"
-                                    fieldName="ram"
-                                    productType="ordinateur"
-                                    value={newProduct.ramOrdinateur || ''}
-                                    onSelect={(value) => setNewProduct({ ...newProduct, ramOrdinateur: value })}
-                                />
-                            </View>
-                        </View>
-
-                        <View style={styles.fieldRow}>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
-                                    label="Stockage"
-                                    fieldName="stockage"
-                                    productType="ordinateur"
-                                    value={newProduct.stockageOrdinateur || ''}
-                                    onSelect={(value) => setNewProduct({ ...newProduct, stockageOrdinateur: value })}
-                                />
-                            </View>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
-                                    label="Carte Graphique"
-                                    fieldName="cartesGraphiques"
-                                    productType="ordinateur"
-                                    value={newProduct.carteGraphique || ''}
-                                    onSelect={(value) => setNewProduct({ ...newProduct, carteGraphique: value })}
-                                />
-                            </View>
-                        </View>
-
-                        <View style={styles.fieldRow}>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
-                                    label="État"
-                                    fieldName="etats"
-                                    productType="ordinateur"
-                                    value={newProduct.etatOrdinateur || ''}
-                                    onSelect={(value) => setNewProduct({ ...newProduct, etatOrdinateur: value })}
-                                    required
-                                />
-                            </View>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Système d'exploitation</Text>
-                                <NativeInput
-                                    placeholder="Ex: Windows 11, macOS"
-                                    value={newProduct.systemeExploitation || ''}
-                                    onChangeText={(text) => setNewProduct({ ...newProduct, systemeExploitation: text })}
-                                    style={styles.fieldInput}
-                                />
-                            </View>
-                        </View>
-
-                        <View style={styles.hintBox}>
-                            <Text style={styles.hintText}>
-                                💻 Les spécifications techniques sont essentielles pour les ordinateurs
-                            </Text>
-                        </View>
-                    </>
-                );
-
-            case 'image_son':
-                return (
-                    <>
-                        <View style={styles.fieldRow}>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
-                                    label="Type d'appareil"
-                                    fieldName="types"
-                                    productType="image_son"
-                                    value={newProduct.typeImageSon || ''}
-                                    onSelect={(value) => setNewProduct({ ...newProduct, typeImageSon: value })}
-                                    required
-                                />
-                            </View>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
-                                    label="Marque"
-                                    fieldName="marques"
-                                    productType="image_son"
-                                    value={newProduct.marqueImageSon || ''}
-                                    onSelect={(value) => setNewProduct({ ...newProduct, marqueImageSon: value })}
-                                />
-                            </View>
-                        </View>
-
-                        <View style={styles.fieldRow}>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
-                                    label="Résolution"
-                                    fieldName="resolutions"
-                                    productType="image_son"
-                                    value={newProduct.resolution || ''}
-                                    onSelect={(value) => setNewProduct({ ...newProduct, resolution: value })}
-                                />
-                            </View>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
-                                    label="Taille écran"
-                                    fieldName="taillesEcran"
-                                    productType="image_son"
-                                    value={newProduct.diagonaleEcran || ''}
-                                    onSelect={(value) => setNewProduct({ ...newProduct, diagonaleEcran: value })}
-                                />
-                            </View>
-                        </View>
-
-                        <ProductFieldSelector
-                            label="État"
-                            fieldName="etats"
-                            productType="image_son"
-                            value={newProduct.etatImageSon || ''}
-                            onSelect={(value) => setNewProduct({ ...newProduct, etatImageSon: value })}
-                            required
-                        />
-
-                        <View style={styles.hintBox}>
-                            <Text style={styles.hintText}>
-                                📺 Pour les TV, précisez la taille et la résolution
-                            </Text>
-                        </View>
-                    </>
-                );
-
-            case 'pieces_auto':
-                return (
-                    <>
-                        <View style={styles.fieldRow}>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
-                                    label="Type de pièce"
-                                    fieldName="types"
-                                    productType="pieces_auto"
-                                    value={newProduct.typePieceAuto || ''}
-                                    onSelect={(value) => setNewProduct({ ...newProduct, typePieceAuto: value })}
-                                    required
-                                />
-                            </View>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
-                                    label="Marque"
-                                    fieldName="marques"
-                                    productType="pieces_auto"
-                                    value={newProduct.marquePieceAuto || ''}
-                                    onSelect={(value) => setNewProduct({ ...newProduct, marquePieceAuto: value })}
-                                />
-                            </View>
-                        </View>
-
-                        <View style={styles.fieldRow}>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
-                                    label="État"
-                                    fieldName="etats"
-                                    productType="pieces_auto"
-                                    value={newProduct.etatPieceAuto || ''}
-                                    onSelect={(value) => setNewProduct({ ...newProduct, etatPieceAuto: value })}
-                                    required
-                                />
-                            </View>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Référence</Text>
-                                <NativeInput
-                                    placeholder="Ex: REF-12345"
-                                    value={newProduct.referenceAuto || ''}
-                                    onChangeText={(text) => setNewProduct({ ...newProduct, referenceAuto: text })}
-                                    style={styles.fieldInput}
-                                />
-                            </View>
-                        </View>
-
-                        <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Compatibilité</Text>
-                            <NativeInput
-                                placeholder="Ex: Toyota Camry 2015-2020"
-                                value={newProduct.compatibilite || ''}
-                                onChangeText={(text) => setNewProduct({ ...newProduct, compatibilite: text })}
-                                style={styles.fieldInput}
-                                multiline
-                            />
-                        </View>
-                    </>
-                );
-
-            case 'pieces_industrielles':
-                return (
-                    <>
-                        <View style={styles.fieldRow}>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
-                                    label="Type de pièce"
-                                    fieldName="types"
-                                    productType="pieces_industrielles"
-                                    value={newProduct.typePieceIndustrielle || ''}
-                                    onSelect={(value) => setNewProduct({ ...newProduct, typePieceIndustrielle: value })}
-                                    required
-                                />
-                            </View>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
-                                    label="Marque"
-                                    fieldName="marques"
-                                    productType="pieces_industrielles"
-                                    value={newProduct.marquePieceIndustrielle || ''}
-                                    onSelect={(value) => setNewProduct({ ...newProduct, marquePieceIndustrielle: value })}
-                                />
-                            </View>
-                        </View>
-
-                        <View style={styles.fieldRow}>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
-                                    label="Matériau"
-                                    fieldName="materiaux"
-                                    productType="pieces_industrielles"
-                                    value={newProduct.materielPiece || ''}
-                                    onSelect={(value) => setNewProduct({ ...newProduct, materielPiece: value })}
-                                />
-                            </View>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
-                                    label="Application"
-                                    fieldName="applications"
-                                    productType="pieces_industrielles"
-                                    value={newProduct.applicationIndustrielle || ''}
-                                    onSelect={(value) => setNewProduct({ ...newProduct, applicationIndustrielle: value })}
-                                />
-                            </View>
-                        </View>
-
-                        <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Référence</Text>
-                            <NativeInput
-                                placeholder="Ex: SKF-6205-2Z"
-                                value={newProduct.referencePiece || ''}
-                                onChangeText={(text) => setNewProduct({ ...newProduct, referencePiece: text })}
-                                style={styles.fieldInput}
-                            />
-                        </View>
-                    </>
-                );
-
-            case 'jouets_enfants':
-                return (
-                    <>
-                        <View style={styles.fieldRow}>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
-                                    label="Type de jouet"
-                                    fieldName="types"
-                                    productType="jouets_enfants"
-                                    value={newProduct.typeJouet || ''}
-                                    onSelect={(value) => setNewProduct({ ...newProduct, typeJouet: value })}
-                                    required
-                                />
-                            </View>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
-                                    label="Âge recommandé"
-                                    fieldName="ages"
-                                    productType="jouets_enfants"
-                                    value={newProduct.ageJouet || ''}
-                                    onSelect={(value) => setNewProduct({ ...newProduct, ageJouet: value })}
-                                />
-                            </View>
-                        </View>
-
-                        <View style={styles.fieldRow}>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
-                                    label="Marque"
-                                    fieldName="marques"
-                                    productType="jouets_enfants"
-                                    value={newProduct.marqueJouet || ''}
-                                    onSelect={(value) => setNewProduct({ ...newProduct, marqueJouet: value })}
-                                />
-                            </View>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
-                                    label="Matériau"
-                                    fieldName="materiaux"
-                                    productType="jouets_enfants"
-                                    value={newProduct.materiauJouet || ''}
-                                    onSelect={(value) => setNewProduct({ ...newProduct, materiauJouet: value })}
-                                />
-                            </View>
-                        </View>
-                    </>
-                );
-
-            case 'ustensiles_cuisine':
-                return (
-                    <>
-                        <View style={styles.fieldRow}>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
-                                    label="Type d'ustensile"
-                                    fieldName="types"
-                                    productType="ustensiles_cuisine"
-                                    value={newProduct.typeUstensile || ''}
-                                    onSelect={(value) => setNewProduct({ ...newProduct, typeUstensile: value })}
-                                    required
-                                />
-                            </View>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
-                                    label="Matériau"
-                                    fieldName="materiaux"
-                                    productType="ustensiles_cuisine"
-                                    value={newProduct.materiauUstensile || ''}
-                                    onSelect={(value) => setNewProduct({ ...newProduct, materiauUstensile: value })}
-                                />
-                            </View>
-                        </View>
-
-                        <View style={styles.fieldRow}>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
-                                    label="Marque"
-                                    fieldName="marques"
-                                    productType="ustensiles_cuisine"
-                                    value={newProduct.marqueUstensile || ''}
-                                    onSelect={(value) => setNewProduct({ ...newProduct, marqueUstensile: value })}
-                                />
-                            </View>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Capacité</Text>
-                                <NativeInput
-                                    placeholder="Ex: 2L, 5L"
-                                    value={newProduct.capaciteUstensile || ''}
-                                    onChangeText={(text) => setNewProduct({ ...newProduct, capaciteUstensile: text })}
-                                    style={styles.fieldInput}
-                                />
-                            </View>
-                        </View>
-                    </>
-                );
-
-            default:
-                return null;
-        }
-    };
-
-    return (
-        <View style={styles.container}>
-            {/* Liste des produits */}
-            {products.length > 0 ? (
-                <ScrollView style={styles.productsList} showsVerticalScrollIndicator={false}>
-                    {products.map((product) => {
-                        const typeInfo = getProductTypeInfo(product.type);
-                        return (
-                            <View key={product.id} style={styles.productCard}>
-                                <View style={styles.productContent}>
-                                    {product.images && product.images.length > 0 && (
-                                        <Image
-                                            source={{ uri: product.images[0] }}
-                                            style={styles.productImage}
-                                            resizeMode="cover"
-                                        />
-                                    )}
-                                    <View style={styles.productInfo}>
-                                        <View style={styles.productHeader}>
-                                            <View style={{ flex: 1 }}>
-                                                <Text style={styles.productBadge} numberOfLines={1}>
-                                                    {typeInfo.icon} {typeInfo.label}
-                                                </Text>
-                                                <Text style={styles.productName} numberOfLines={2} ellipsizeMode="tail">
-                                                    {product.nom}
-                                                </Text>
+                                        <View style={styles.prestationFieldRow}>
+                                            <View style={[styles.prestationFieldContainer, { flex: 1 }]}>
+                                                <Text style={styles.prestationFieldLabel}>Montant minimum *</Text>
+                                                <NativeInput
+                                                    placeholder="50000"
+                                                    value={prestation.prixAPartirDe}
+                                                    onChangeText={(text) => {
+                                                        const prestations = [...(newProduct.prestations || [])];
+                                                        prestations[index].prixAPartirDe = text;
+                                                        setNewProduct({ ...newProduct, prestations });
+                                                    }}
+                                                    style={styles.fieldInput}
+                                                    keyboardType="numeric"
+                                                />
                                             </View>
-                                            {!readonly && (
-                                                <View style={styles.productActions}>
-                                                    <TouchableOpacity
-                                                        style={styles.actionButton}
-                                                        onPress={() => handleEditProduct(product)}
-                                                    >
-                                                        <SafeIcon name="edit-2" size={16} color={modernColors.primary} />
-                                                    </TouchableOpacity>
-                                                    <TouchableOpacity
-                                                        style={styles.actionButton}
-                                                        onPress={() => handleDuplicateProduct(product)}
-                                                    >
-                                                        <SafeIcon name="copy" size={16} color={modernColors.success} />
-                                                    </TouchableOpacity>
-                                                    <TouchableOpacity
-                                                        style={styles.actionButton}
-                                                        onPress={() => handleDeleteProduct(product.id)}
-                                                    >
-                                                        <SafeIcon name="trash-2" size={16} color={modernColors.error} />
-                                                    </TouchableOpacity>
-                                                </View>
-                                            )}
+                                            <View style={styles.xafLabel}>
+                                                <Text style={styles.xafText}>XAF</Text>
+                                            </View>
                                         </View>
-                                        <Text style={styles.productPrice}>
-                                            {product.prix} {product.devise}
-                                        </Text>
-                                        {product.description && (
-                                            <Text style={styles.productDescription} numberOfLines={2}>
-                                                {product.description}
-                                            </Text>
-                                        )}
-                                        {product.images && product.images.length > 1 && (
-                                            <Text style={styles.productMediaCount}>
-                                                📷 {product.images.length} image(s)
-                                            </Text>
-                                        )}
-                                        {product.videos && product.videos.length > 0 && (
-                                            <Text style={styles.productMediaCount}>
-                                                🎥 {product.videos.length} vidéo(s)
-                                            </Text>
-                                        )}
+
+                                        <View style={styles.prestationFieldContainer}>
+                                            <Text style={styles.prestationFieldLabel}>Description de l'offre (optionnelle)</Text>
+                                            <NativeInput
+                                                placeholder="Ex: Comprend l'analyse complète des données, visualisations, et recommandations..."
+                                                value={prestation.description}
+                                                onChangeText={(text) => {
+                                                    const prestations = [...(newProduct.prestations || [])];
+                                                    prestations[index].description = text;
+                                                    setNewProduct({ ...newProduct, prestations });
+                                                }}
+                                                style={[styles.fieldInput, styles.textareaInput]}
+                                                multiline
+                                            />
+                                        </View>
                                     </View>
-                                </View>
-                            </View>
-                        );
-                    })}
-                </ScrollView>
-            ) : (
-                <View style={styles.emptyState}>
-                    <SafeIcon name="package" size={48} color={modernColors.textSecondary} />
-                    <Text style={styles.emptyText}>Aucun produit ajouté</Text>
-                    <Text style={styles.emptyHint}>
-                        Ajoutez des produits pour enrichir votre offre
-                    </Text>
-                </View>
-            )}
+                                ))}
 
-            {/* Boutons d'ajout et d'import */}
-            {!readonly && (
-                <View style={styles.buttonsContainer}>
-                    <TouchableOpacity
-                        style={styles.addButton}
-                        onPress={() => {
-                            setCurrentStep('type');
-                            setShowAddModal(true);
-                        }}
-                    >
-                        <LinearGradient
-                            colors={modernColors.primaryGradient as unknown as readonly [string, string, ...string[]]}
-                            style={styles.addButtonGradient}
-                        >
-                            <SafeIcon name="plus" size={20} color="#FFFFFF" />
-                            <Text style={styles.addButtonText}>Ajouter un produit</Text>
-                        </LinearGradient>
-                    </TouchableOpacity>
-                </View>
-            )}
-
-            {/* Modal d'ajout/modification */}
-            <Modal
-                visible={showAddModal}
-                animationType="slide"
-                presentationStyle="fullScreen"
-                onRequestClose={handleCancel}
-            >
-                <View style={styles.modalContainer}>
-                    {/* Header */}
-                    <LinearGradient
-                        colors={modernColors.primaryGradient as unknown as readonly [string, string, ...string[]]}
-                        style={styles.modalHeaderGradient}
-                    >
-                        <TouchableOpacity
-                            style={styles.modalCloseButton}
-                            onPress={handleCancel}
-                        >
-                            <SafeIcon name="x" size={24} color="#FFFFFF" />
-                        </TouchableOpacity>
-                        <Text style={styles.modalHeaderTitle}>
-                            {editingProductId ? 'Modifier le produit' : 'Nouveau produit'}
-                        </Text>
-                        <View style={styles.modalSpacer} />
-                    </LinearGradient>
-
-                    <ScrollView
-                        style={styles.modalContent}
-                        showsVerticalScrollIndicator={false}
-                        keyboardShouldPersistTaps="handled"
-                        keyboardDismissMode="on-drag"
-                        contentContainerStyle={{ paddingBottom: 300 }}
-                    >
-                        {/* Étape 1: Sélection du type */}
-                        {currentStep === 'type' && (
-                            <View style={styles.stepContainer}>
-                                <Text style={styles.sectionTitle}>
-                                    ✨ Sélectionnez le type de produit <Text style={styles.required}>*</Text>
-                                </Text>
-                                <Text style={styles.sectionSubtitle}>
-                                    Choisissez la catégorie qui correspond le mieux à votre produit
-                                </Text>
-
-                                {/* Champ de recherche textuelle */}
-                                <View style={styles.searchContainer}>
-                                    <SafeIcon name="search" size={18} color={modernColors.textSecondary} />
-                                    <NativeInput
-                                        placeholder="Rechercher une catégorie..."
-                                        value={searchQuery}
-                                        onChangeText={setSearchQuery}
-                                        style={styles.searchInput}
-                                    />
-                                    {searchQuery.length > 0 && (
-                                        <TouchableOpacity onPress={() => setSearchQuery('')}>
-                                            <SafeIcon name="x" size={18} color={modernColors.textSecondary} />
-                                        </TouchableOpacity>
-                                    )}
-                                </View>
-
-                                <View style={styles.dropdownContainer}>
-                                    {(() => {
-                                        // Filtrer les catégories selon la recherche
-                                        let filteredTypes = PRODUCT_TYPES.filter(type => {
-                                            if (searchQuery.length === 0) return true;
-                                            // ✅ Recherche sans sensibilité aux accents
-                                            const normalizedQuery = normalizeText(searchQuery);
-                                            return normalizeText(type.label).includes(normalizedQuery) ||
-                                                normalizeText(type.description).includes(normalizedQuery) ||
-                                                ('keywords' in type && type.keywords.some((kw: string) => normalizeText(kw).includes(normalizedQuery)));
-                                        });
-
-                                        // ✅ Si aucune catégorie ne correspond et qu'il y a une recherche, proposer "Prestation de service" par défaut
-                                        const hasNoResults = filteredTypes.length === 0 && searchQuery.length > 0;
-                                        if (hasNoResults) {
-                                            const prestationService = PRODUCT_TYPES.find(t => t.value === 'prestation_service');
-                                            if (prestationService) {
-                                                filteredTypes = [prestationService];
-                                            }
-                                        }
-
-                                        return (
-                                            <>
-                                                {hasNoResults && filteredTypes.length > 0 && (
-                                                    <View style={styles.noResultsHint}>
-                                                        <SafeIcon name="info" size={16} color={modernColors.primary} />
-                                                        <Text style={styles.noResultsText}>
-                                                            Aucune catégorie ne correspond. Nous vous proposons "Prestation de service" par défaut.
-                                                        </Text>
-                                                    </View>
-                                                )}
-                                                {filteredTypes.map((type) => (
-                                                    <TouchableOpacity
-                                                        key={type.value}
-                                                        style={[
-                                                            styles.dropdownItem,
-                                                            selectedType === type.value && styles.dropdownItemActive
-                                                        ]}
-                                                        onPress={() => handleSelectType(type.value as ProductType)}
-                                                    >
-                                                        <View style={styles.dropdownItemLeft}>
-                                                            <Text style={styles.dropdownIcon}>{type.icon}</Text>
-                                                            <View style={{ flex: 1 }}>
-                                                                <Text style={[
-                                                                    styles.dropdownLabel,
-                                                                    selectedType === type.value && styles.dropdownLabelActive
-                                                                ]}>{type.label}</Text>
-                                                                <Text style={styles.dropdownDescription}>{type.description}</Text>
-                                                            </View>
-                                                        </View>
-                                                        {selectedType === type.value && (
-                                                            <SafeIcon name="check" size={20} color={modernColors.primary} />
-                                                        )}
-                                                    </TouchableOpacity>
-                                                ))}
-                                            </>
-                                        );
-                                    })()}
-                                </View>
-                            </View>
-                        )}
-
-                        {/* Étape 2: Formulaire */}
-                        {currentStep === 'form' && selectedType && (
-                            <View style={styles.stepContainer}>
-                                {/* Badge de type sélectionné */}
-                                <View style={styles.selectedTypeBadge}>
-                                    <Text style={styles.selectedTypeText}>
-                                        {getProductTypeInfo(selectedType).icon} {getProductTypeInfo(selectedType).label}
-                                    </Text>
-                                    <TouchableOpacity
-                                        onPress={() => setCurrentStep('type')}
-                                        style={styles.changeTypeButton}
-                                    >
-                                        <Text style={styles.changeTypeText}>Changer</Text>
-                                    </TouchableOpacity>
-                                </View>
-
-                                {/* Bouton télécharger modèle Excel */}
-                                <TouchableOpacity
-                                    style={styles.templateButton}
-                                    onPress={() => downloadExcelTemplate(selectedType)}
-                                >
-                                    <SafeIcon name="download" size={18} color={modernColors.primary} />
-                                    <Text style={styles.templateButtonText}>
-                                        Télécharger le modèle Excel
-                                    </Text>
-                                </TouchableOpacity>
-
-                                {/* Bouton importer Excel */}
-                                <TouchableOpacity
-                                    style={styles.importExcelButton}
-                                    onPress={handleImportExcel}
-                                >
-                                    <SafeIcon name="file-text" size={18} color={modernColors.success} />
-                                    <Text style={styles.importExcelText}>
-                                        Importer depuis Excel/CSV
-                                    </Text>
-                                </TouchableOpacity>
-
-                                <View style={styles.dividerWithText}>
-                                    <View style={styles.dividerLine} />
-                                    <Text style={styles.dividerText}>ou remplir manuellement</Text>
-                                    <View style={styles.dividerLine} />
-                                </View>
-
-                                {/* Champs communs - Toujours visibles, pré-remplis pour Prestation de Service */}
-                                <View style={styles.fieldContainer}>
-                                    <Text style={styles.fieldLabel}>
-                                        {getProductNameLabel(selectedType)} <Text style={styles.required}>*</Text>
-                                        {selectedType === 'prestation_service' && (
-                                            <Text style={styles.autoFilledHint}> (pré-rempli automatiquement)</Text>
-                                        )}
-                                    </Text>
-                                    {selectedType && (
-                                        <Text style={styles.categoryReminder}>
-                                            📦 Catégorie : {PRODUCT_TYPES.find(t => t.value === selectedType)?.label}
+                                {(!newProduct.prestations || newProduct.prestations.length === 0) && (
+                                    <View style={styles.emptyPrestationState}>
+                                        <SafeIcon name="info" size={32} color={modernColors.textSecondary} />
+                                        <Text style={styles.emptyPrestationText}>
+                                            Aucune offre ajoutée
                                         </Text>
-                                    )}
-                                    <NativeInput
-                                        placeholder={getProductNamePlaceholder(selectedType)}
-                                        value={newProduct.nom || ''}
-                                        onChangeText={(text) => setNewProduct({ ...newProduct, nom: text })}
-                                        style={styles.fieldInput}
-                                    />
-                                </View>
+                                        <Text style={styles.emptyPrestationSubtext}>
+                                            Cliquez sur "Ajouter une offre" pour commencer
+                                        </Text>
+                                    </View>
+                                )}
+                            </View>
 
-                                <View style={styles.fieldContainer}>
-                                    <Text style={styles.fieldLabel}>
-                                        Description
-                                        {selectedType === 'prestation_service' && (
-                                            <Text style={styles.autoFilledHint}> (pré-remplie automatiquement)</Text>
-                                        )}
-                                    </Text>
-                                    <NativeInput
-                                        placeholder="Décrivez ce produit..."
-                                        value={newProduct.description || ''}
-                                        onChangeText={(text) => setNewProduct({ ...newProduct, description: text })}
-                                        multiline
-                                        style={[styles.fieldInput, styles.textareaInput]}
-                                    />
-                                </View>
+                            <View style={styles.hintBox}>
+                                <Text style={styles.hintText}>
+                                    💰 <Text style={styles.hintBold}>Conseil :</Text> Listez toutes vos offres de service avec leur montant minimum. Cela permet aux clients d'évaluer rapidement si votre offre correspond à leur budget.
+                                </Text>
+                            </View>
+                        </>
+                        );
 
-                                {/* Prix et devise - MASQUÉ pour pharmacie et hopital_clinique */}
-                                {selectedType !== 'pharmacie' && selectedType !== 'hopital_clinique' && (
+                        case 'livres_fournitures':
+                        return (
+                        <>
+                            <ProductFieldSelector
+                                label="Type d'article"
+                                fieldName="types"
+                                productType="livres_fournitures"
+                                value={newProduct.categorieLivre || ''}
+                                onSelect={(value) => setNewProduct({ ...newProduct, categorieLivre: value })}
+                            />
+
+                            <ProductFieldSelector
+                                label="Niveau scolaire"
+                                fieldName="niveaux"
+                                productType="livres_fournitures"
+                                value={newProduct.niveau || ''}
+                                onSelect={(value) => setNewProduct({ ...newProduct, niveau: value })}
+                            />
+                            {(newProduct.categorieLivre === 'Livre scolaire' || newProduct.categorieLivre === 'Livre') && (
+                                <>
+                                    <View style={styles.fieldContainer}>
+                                        <Text style={styles.fieldLabel}>Matière</Text>
+                                        <NativeInput
+                                            placeholder="Ex: Mathématiques, Français, Histoire"
+                                            value={newProduct.matiereScolaire || ''}
+                                            onChangeText={(text) => setNewProduct({ ...newProduct, matiereScolaire: text })}
+                                            style={styles.fieldInput}
+                                        />
+                                    </View>
                                     <View style={styles.fieldRow}>
                                         <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                            <Text style={styles.fieldLabel}>
-                                                {selectedType === 'assurance' ? 'Prime (à partir de)' :
-                                                    selectedType === 'prestation_service' ? 'À partir de' : 'Prix'}
-                                                {selectedType !== 'prestation_service' && selectedType !== 'assurance' && <Text style={styles.required}>*</Text>}
-                                            </Text>
+                                            <Text style={styles.fieldLabel}>Auteur</Text>
                                             <NativeInput
-                                                placeholder={selectedType === 'prestation_service' || selectedType === 'assurance' ? 'Prix (optionnel)' : '0'}
-                                                value={newProduct.prix || ''}
-                                                onChangeText={(text) => setNewProduct({ ...newProduct, prix: text })}
+                                                placeholder="Ex: Collection CIAM"
+                                                value={newProduct.auteur || ''}
+                                                onChangeText={(text) => setNewProduct({ ...newProduct, auteur: text })}
+                                                style={styles.fieldInput}
+                                            />
+                                        </View>
+                                        <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                            <Text style={styles.fieldLabel}>Éditeur</Text>
+                                            <NativeInput
+                                                placeholder="Ex: Edicef"
+                                                value={newProduct.editeur || ''}
+                                                onChangeText={(text) => setNewProduct({ ...newProduct, editeur: text })}
+                                                style={styles.fieldInput}
+                                            />
+                                        </View>
+                                    </View>
+                                    <View style={styles.fieldRow}>
+                                        <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                            <Text style={styles.fieldLabel}>ISBN (optionnel)</Text>
+                                            <NativeInput
+                                                placeholder="Ex: 978-2-7531-0584-3"
+                                                value={newProduct.isbn || ''}
+                                                onChangeText={(text) => setNewProduct({ ...newProduct, isbn: text })}
+                                                style={styles.fieldInput}
+                                            />
+                                        </View>
+                                        <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                            <Text style={styles.fieldLabel}>Année d'édition</Text>
+                                            <NativeInput
+                                                placeholder="Ex: 2023"
+                                                value={newProduct.anneeEdition || ''}
+                                                onChangeText={(text) => setNewProduct({ ...newProduct, anneeEdition: text })}
                                                 style={styles.fieldInput}
                                                 keyboardType="numeric"
                                             />
                                         </View>
-
-                                        <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                            <Text style={styles.fieldLabel}>Devise</Text>
-                                            <View style={styles.deviseGridContainer}>
-                                                {devises.map((devise) => (
-                                                    <TouchableOpacity
-                                                        key={devise}
-                                                        style={[
-                                                            styles.deviseButtonGrid,
-                                                            newProduct.devise === devise && styles.deviseButtonActive
-                                                        ]}
-                                                        onPress={() => setNewProduct({ ...newProduct, devise })}
-                                                    >
-                                                        <Text style={[
-                                                            styles.deviseButtonText,
-                                                            newProduct.devise === devise && styles.deviseButtonTextActive
-                                                        ]}>
-                                                            {devise}
-                                                        </Text>
-                                                    </TouchableOpacity>
-                                                ))}
-                                            </View>
-                                        </View>
                                     </View>
-                                )}
+                                </>
+                            )}
+                            <ProductFieldSelector
+                                label="État"
+                                fieldName="etats"
+                                productType="livres_fournitures"
+                                value={newProduct.etatLivre || ''}
+                                onSelect={(value) => setNewProduct({ ...newProduct, etatLivre: value })}
+                            />
+                            <View style={styles.hintBox}>
+                                <Text style={styles.hintText}>
+                                    💡 Précisez le niveau et la matière pour aider les étudiants à trouver le bon article
+                                </Text>
+                            </View>
+                        </>
+                        );
 
-                                {/* Champs spécifiques */}
-                                {renderSpecificFields()}
+                        case 'pharmacie':
+                        return (
+                        <>
+                            {/* Planification nuit simplifiée */}
+                            <ProductFieldSelector
+                                label="🌙 Fonctionnement la nuit"
+                                fieldName="types"
+                                productType="pharmacie"
+                                value={newProduct.typePharmacie || ''}
+                                onSelect={(value) => setNewProduct({ ...newProduct, typePharmacie: value, joursGarde: value === 'Permanence nuit' ? 'Tous les jours' : undefined })}
+                                required
+                            />
 
-                                {/* Section Médias */}
-                                <View style={styles.mediaSectionContainer}>
-                                    <Text style={styles.sectionTitle}>📸 Images du produit</Text>
-
-                                    {/* Message descriptif incitatif */}
-                                    <View style={styles.mediaHintContainer}>
-                                        <SafeIcon name="info" size={16} color={modernColors.info} />
-                                        <Text style={styles.mediaHintText}>
-                                            💡 Ajoutez des photos de qualité pour attirer plus de clients ! Montrez votre produit sous tous les angles.
-                                        </Text>
+                            {/* Planning hebdomadaire de garde */}
+                            {newProduct.typePharmacie === 'Planning hebdomadaire' && (
+                                <View style={styles.fieldContainer}>
+                                    <Text style={styles.fieldLabel}>Jours de garde la nuit</Text>
+                                    <Text style={styles.fieldHint}>Sélectionnez les jours où votre pharmacie est de garde la nuit</Text>
+                                    <View style={styles.weekDaysContainer}>
+                                        {['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'].map((jour, index) => {
+                                            const joursArray = (newProduct.joursGarde || '').split(',').map(j => j.trim());
+                                            const isSelected = joursArray.includes(jour);
+                                            return (
+                                                <TouchableOpacity
+                                                    key={jour}
+                                                    style={[
+                                                        styles.dayButton,
+                                                        isSelected && styles.dayButtonActive
+                                                    ]}
+                                                    onPress={() => {
+                                                        const current = (newProduct.joursGarde || '').split(',').map(j => j.trim()).filter(j => j);
+                                                        const updated = isSelected
+                                                            ? current.filter(j => j !== jour)
+                                                            : [...current, jour];
+                                                        setNewProduct({ ...newProduct, joursGarde: updated.join(', ') });
+                                                    }}
+                                                >
+                                                    <Text style={[
+                                                        styles.dayButtonText,
+                                                        isSelected && styles.dayButtonTextActive
+                                                    ]}>
+                                                        {jour}
+                                                    </Text>
+                                                </TouchableOpacity>
+                                            );
+                                        })}
                                     </View>
-
-                                    <TouchableOpacity
-                                        style={styles.mediaButton}
-                                        onPress={handlePickImages}
-                                    >
-                                        <SafeIcon name="image" size={20} color={modernColors.primary} />
-                                        <Text style={styles.mediaButtonText}>
-                                            📷 Ajouter des images
-                                        </Text>
-                                    </TouchableOpacity>
-
-                                    {newProduct.images && newProduct.images.length > 0 && (
-                                        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.mediaPreviewScroll}>
-                                            {newProduct.images.map((image, index) => (
-                                                <View key={index} style={styles.mediaPreviewItem}>
-                                                    <Image source={{ uri: image }} style={styles.mediaPreviewImage} />
-                                                    <TouchableOpacity
-                                                        style={styles.removeMediaButton}
-                                                        onPress={() => removeImage(index)}
-                                                    >
-                                                        <SafeIcon name="x" size={16} color="#FFFFFF" />
-                                                    </TouchableOpacity>
-                                                </View>
-                                            ))}
-                                        </ScrollView>
-                                    )}
-
-                                    <Text style={[styles.sectionTitle, { marginTop: 20 }]}>🎥 Vidéos du produit</Text>
-
-                                    {/* Message descriptif incitatif pour vidéos */}
-                                    <View style={styles.mediaHintContainer}>
-                                        <SafeIcon name="info" size={16} color={modernColors.info} />
-                                        <Text style={styles.mediaHintText}>
-                                            🎬 Les vidéos augmentent de 80% les chances de vente ! Montrez votre produit en action ou en démonstration.
-                                        </Text>
-                                    </View>
-
-                                    <TouchableOpacity
-                                        style={styles.mediaButton}
-                                        onPress={handlePickVideos}
-                                    >
-                                        <SafeIcon name="video" size={20} color={modernColors.success} />
-                                        <Text style={styles.mediaButtonText}>
-                                            🎥 Ajouter des vidéos
-                                        </Text>
-                                    </TouchableOpacity>
-
-                                    {newProduct.videos && newProduct.videos.length > 0 && (
-                                        <View style={styles.videosList}>
-                                            {newProduct.videos.map((video, index) => (
-                                                <View key={index} style={styles.videoItem}>
-                                                    <SafeIcon name="video" size={20} color={modernColors.success} />
-                                                    <Text style={styles.videoText}>Vidéo {index + 1}</Text>
-                                                    <TouchableOpacity
-                                                        style={styles.removeVideoButton}
-                                                        onPress={() => removeVideo(index)}
-                                                    >
-                                                        <SafeIcon name="trash-2" size={16} color={modernColors.error} />
-                                                    </TouchableOpacity>
-                                                </View>
-                                            ))}
-                                        </View>
-                                    )}
                                 </View>
+                            )}
 
-                                {/* Section Promotion - APRÈS les médias */}
-                                <View style={styles.promotionSectionContainer}>
-                                    <Text style={styles.sectionTitle}>🎁 Promotion (optionnel)</Text>
-
-                                    <TouchableOpacity
-                                        style={styles.checkboxContainer}
-                                        onPress={() => setNewProduct({ ...newProduct, promotionActive: !newProduct.promotionActive })}
-                                    >
-                                        <View style={[
-                                            styles.checkbox,
-                                            newProduct.promotionActive && styles.checkboxChecked
-                                        ]}>
-                                            {newProduct.promotionActive && (
-                                                <SafeIcon name="check" size={16} color="#FFFFFF" />
-                                            )}
-                                        </View>
-                                        <Text style={styles.checkboxLabel}>Activer une promotion pour ce produit</Text>
-                                    </TouchableOpacity>
-
-                                    {newProduct.promotionActive && (
-                                        <View style={styles.promotionFields}>
-                                            <View style={styles.fieldContainer}>
-                                                <Text style={styles.fieldLabel}>🏷️ Type de promotion</Text>
-                                                <View style={styles.pickerButtons}>
-                                                    {(['reduction', 'offre', 'bon_plan', 'flash'] as const).map((type) => (
-                                                        <TouchableOpacity
-                                                            key={type}
-                                                            style={[
-                                                                styles.pickerButton,
-                                                                newProduct.promotionType === type && styles.pickerButtonActive
-                                                            ]}
-                                                            onPress={() => setNewProduct({ ...newProduct, promotionType: type })}
-                                                        >
-                                                            <Text style={[
-                                                                styles.pickerButtonText,
-                                                                newProduct.promotionType === type && styles.pickerButtonTextActive
-                                                            ]}>
-                                                                {type === 'reduction' ? 'Réduction' :
-                                                                    type === 'offre' ? 'Offre' :
-                                                                        type === 'bon_plan' ? 'Bon plan' : 'Flash'}
-                                                            </Text>
-                                                        </TouchableOpacity>
-                                                    ))}
-                                                </View>
-                                            </View>
-
-                                            <View style={styles.fieldContainer}>
-                                                <Text style={styles.fieldLabel}>💰 Valeur</Text>
-                                                <NativeInput
-                                                    placeholder="Ex: -20%, 1+1 gratuit"
-                                                    value={newProduct.promotionValeur || ''}
-                                                    onChangeText={(text) => setNewProduct({ ...newProduct, promotionValeur: text })}
-                                                    style={styles.fieldInput}
-                                                />
-                                            </View>
-
-                                            <View style={styles.fieldContainer}>
-                                                <Text style={styles.fieldLabel}>📝 Description</Text>
-                                                <NativeInput
-                                                    placeholder="Décrivez l'offre..."
-                                                    value={newProduct.promotionDescription || ''}
-                                                    onChangeText={(text) => setNewProduct({ ...newProduct, promotionDescription: text })}
-                                                    multiline
-                                                    style={[styles.fieldInput, styles.textareaInput]}
-                                                />
-                                            </View>
-
-                                            <View style={styles.fieldContainer}>
-                                                <Text style={styles.fieldLabel}>📅 Date de fin</Text>
-                                                <NativeInput
-                                                    placeholder="JJ/MM/AAAA"
-                                                    value={newProduct.promotionDateFin || ''}
-                                                    onChangeText={(text) => setNewProduct({ ...newProduct, promotionDateFin: text })}
-                                                    style={styles.fieldInput}
-                                                />
-                                            </View>
-                                        </View>
-                                    )}
+                            <View style={styles.fieldRow}>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <Text style={styles.fieldLabel}>Heure d'ouverture</Text>
+                                    <NativeInput
+                                        placeholder="Ex: 08:00"
+                                        value={newProduct.heuresOuverture || ''}
+                                        onChangeText={(text) => setNewProduct({ ...newProduct, heuresOuverture: text })}
+                                        style={styles.fieldInput}
+                                    />
+                                </View>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <Text style={styles.fieldLabel}>Heure de fermeture</Text>
+                                    <NativeInput
+                                        placeholder="Ex: 20:00"
+                                        value={newProduct.heuresFermeture || ''}
+                                        onChangeText={(text) => setNewProduct({ ...newProduct, heuresFermeture: text })}
+                                        style={styles.fieldInput}
+                                    />
                                 </View>
                             </View>
-                        )}
-                    </ScrollView>
 
-                    {/* Footer avec boutons */}
-                    {currentStep === 'form' && (
-                        <View style={styles.modalFooter}>
-                            <NativeButton
-                                title="Annuler"
-                                onPress={handleCancel}
-                                variant="secondary"
-                                style={{ flex: 1 }}
+                            <View style={styles.fieldContainer}>
+                                <Text style={styles.fieldLabel}>Téléphone d'urgence</Text>
+                                <NativeInput
+                                    placeholder="Ex: +237 6XX XX XX XX"
+                                    value={newProduct.telephoneUrgence || ''}
+                                    onChangeText={(text) => setNewProduct({ ...newProduct, telephoneUrgence: text })}
+                                    style={styles.fieldInput}
+                                />
+                            </View>
+                            <View style={styles.fieldContainer}>
+                                <Text style={styles.fieldLabel}>Services disponibles</Text>
+                                <NativeInput
+                                    placeholder="Ex: Délivrance, Conseil pharmaceutique, Vaccination"
+                                    value={newProduct.services || ''}
+                                    onChangeText={(text) => setNewProduct({ ...newProduct, services: text })}
+                                    multiline
+                                    style={[styles.fieldInput, styles.textareaInput]}
+                                />
+                            </View>
+                            <View style={styles.hintBox}>
+                                <Text style={styles.hintText}>
+                                    💡 {newProduct.typePharmacie === 'Permanence nuit' ? 'Votre pharmacie est de garde tous les soirs' : 'Sélectionnez les jours de garde hebdomadaire'}
+                                </Text>
+                            </View>
+                        </>
+                        );
+
+                        case 'hopital_clinique': {
+                // Listes de prestations médicales disponibles
+                const prestationsMedicalesOptions = [
+                        'Consultation générale', 'Consultation spécialisée', 'Chirurgie',
+                        'Maternité / Accouchement', 'Pédiatrie', 'Cardiologie',
+                        'Radiologie', 'Échographie', 'Scanner', 'IRM',
+                        'Laboratoire', 'Analyses médicales', 'Pharmacie',
+                        'Urgences 24h/24', 'Hospitalisation', 'Soins intensifs',
+                        'Dialyse', 'Dentaire', 'Ophtalmologie', 'ORL',
+                        'Kinésithérapie', 'Radiothérapie', 'Chimiothérapie'
+                        ];
+
+                        const jours = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
+
+                        return (
+                        <>
+                            {/* Type d'établissement */}
+                            <ProductFieldSelector
+                                label="Type d'établissement médical"
+                                fieldName="types"
+                                productType="hopital_clinique"
+                                value={newProduct.typeEtablissement || ''}
+                                onSelect={(value) => setNewProduct({ ...newProduct, typeEtablissement: value })}
+                                required
                             />
-                            <NativeButton
-                                title={editingProductId ? 'Modifier' : 'Ajouter'}
-                                onPress={handleAddProduct}
-                                variant="primary"
-                                style={{ flex: 1 }}
+
+                            {/* Banque de sang */}
+                            <View style={styles.fieldContainer}>
+                                <TouchableOpacity
+                                    style={styles.checkboxContainer}
+                                    onPress={() => setNewProduct({ ...newProduct, banqueSang: !newProduct.banqueSang })}
+                                >
+                                    <View style={[
+                                        styles.checkbox,
+                                        newProduct.banqueSang && styles.checkboxChecked
+                                    ]}>
+                                        {newProduct.banqueSang && (
+                                            <SafeIcon name="check" size={16} color="#FFFFFF" />
+                                        )}
+                                    </View>
+                                    <Text style={styles.checkboxLabel}>🩸 Banque de sang disponible</Text>
+                                </TouchableOpacity>
+                            </View>
+
+                            {/* Prestations médicales disponibles */}
+                            <View style={styles.fieldContainer}>
+                                <Text style={styles.fieldLabel}>Prestations médicales disponibles</Text>
+                                <Text style={styles.fieldHint}>Cochez les prestations et configurez leur planning</Text>
+                                <ScrollView style={styles.checkboxList} nestedScrollEnabled>
+                                    {prestationsMedicalesOptions.map((prestation) => {
+                                        const isSelected = (newProduct.prestationsMedicales || []).includes(prestation);
+                                        return (
+                                            <View key={prestation}>
+                                                <TouchableOpacity
+                                                    style={styles.checkboxItem}
+                                                    onPress={() => {
+                                                        const current = newProduct.prestationsMedicales || [];
+                                                        if (current.includes(prestation)) {
+                                                            setNewProduct({
+                                                                ...newProduct,
+                                                                prestationsMedicales: current.filter(p => p !== prestation),
+                                                                planningHebdomadaire: {
+                                                                    ...newProduct.planningHebdomadaire,
+                                                                    [prestation]: undefined
+                                                                }
+                                                            });
+                                                        } else {
+                                                            setNewProduct({
+                                                                ...newProduct,
+                                                                prestationsMedicales: [...current, prestation]
+                                                            });
+                                                        }
+                                                    }}
+                                                >
+                                                    <View style={[
+                                                        styles.checkbox,
+                                                        isSelected && styles.checkboxChecked
+                                                    ]}>
+                                                        {isSelected && (
+                                                            <SafeIcon name="check" size={14} color="#FFFFFF" />
+                                                        )}
+                                                    </View>
+                                                    <Text style={styles.checkboxLabel}>{prestation}</Text>
+                                                </TouchableOpacity>
+
+                                                {/* Planning pour cette prestation si cochée */}
+                                                {isSelected && (
+                                                    <View style={styles.prestationPlanningContainer}>
+                                                        <Text style={styles.prestationPlanningTitle}>📅 Planning pour {prestation}</Text>
+
+                                                        {/* Jours disponibles */}
+                                                        <Text style={styles.fieldHint}>Jours disponibles :</Text>
+                                                        <View style={styles.weekDaysContainer}>
+                                                            {['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'].map((jour) => {
+                                                                const joursArray = (newProduct.planningHebdomadaire?.[prestation]?.jours || '').split(',').map(j => j.trim());
+                                                                const isJourSelected = joursArray.includes(jour);
+                                                                return (
+                                                                    <TouchableOpacity
+                                                                        key={jour}
+                                                                        style={[
+                                                                            styles.dayButton,
+                                                                            isJourSelected && styles.dayButtonActive
+                                                                        ]}
+                                                                        onPress={() => {
+                                                                            const current = (newProduct.planningHebdomadaire?.[prestation]?.jours || '').split(',').map(j => j.trim()).filter(j => j);
+                                                                            const updated = isJourSelected
+                                                                                ? current.filter(j => j !== jour)
+                                                                                : [...current, jour];
+                                                                            setNewProduct({
+                                                                                ...newProduct,
+                                                                                planningHebdomadaire: {
+                                                                                    ...newProduct.planningHebdomadaire,
+                                                                                    [prestation]: {
+                                                                                        ...newProduct.planningHebdomadaire?.[prestation],
+                                                                                        jours: updated.join(', ')
+                                                                                    }
+                                                                                }
+                                                                            });
+                                                                        }}
+                                                                    >
+                                                                        <Text style={[
+                                                                            styles.dayButtonText,
+                                                                            isJourSelected && styles.dayButtonTextActive
+                                                                        ]}>
+                                                                            {jour}
+                                                                        </Text>
+                                                                    </TouchableOpacity>
+                                                                );
+                                                            })}
+                                                        </View>
+
+                                                        {/* Moment de disponibilité */}
+                                                        <Text style={styles.fieldHint}>Moment de disponibilité :</Text>
+                                                        <View style={styles.pickerButtons}>
+                                                            {['Journée', 'Nuit', '24h/24'].map((moment) => (
+                                                                <TouchableOpacity
+                                                                    key={moment}
+                                                                    style={[
+                                                                        styles.pickerButton,
+                                                                        newProduct.planningHebdomadaire?.[prestation]?.moment === moment && styles.pickerButtonActive
+                                                                    ]}
+                                                                    onPress={() => setNewProduct({
+                                                                        ...newProduct,
+                                                                        planningHebdomadaire: {
+                                                                            ...newProduct.planningHebdomadaire,
+                                                                            [prestation]: {
+                                                                                ...newProduct.planningHebdomadaire?.[prestation],
+                                                                                moment
+                                                                            }
+                                                                        }
+                                                                    })}
+                                                                >
+                                                                    <Text style={[
+                                                                        styles.pickerButtonText,
+                                                                        newProduct.planningHebdomadaire?.[prestation]?.moment === moment && styles.pickerButtonTextActive
+                                                                    ]}>
+                                                                        {moment}
+                                                                    </Text>
+                                                                </TouchableOpacity>
+                                                            ))}
+                                                        </View>
+                                                    </View>
+                                                )}
+                                            </View>
+                                        );
+                                    })}
+                                </ScrollView>
+                            </View>
+
+                            {/* RDV en ligne */}
+                            <View style={styles.fieldContainer}>
+                                <TouchableOpacity
+                                    style={styles.checkboxContainer}
+                                    onPress={() => setNewProduct({ ...newProduct, rdvEnLigne: !newProduct.rdvEnLigne })}
+                                >
+                                    <View style={[
+                                        styles.checkbox,
+                                        newProduct.rdvEnLigne && styles.checkboxChecked
+                                    ]}>
+                                        {newProduct.rdvEnLigne && (
+                                            <SafeIcon name="check" size={16} color="#FFFFFF" />
+                                        )}
+                                    </View>
+                                    <Text style={styles.checkboxLabel}>📅 Prise de rendez-vous en ligne disponible</Text>
+                                </TouchableOpacity>
+                            </View>
+
+                            <View style={styles.hintBox}>
+                                <Text style={styles.hintText}>
+                                    💡 Renseignez précisément vos prestations et horaires pour aider les patients à trouver le bon service médical
+                                </Text>
+                            </View>
+                        </>
+                        );
+            }
+
+                        case 'agroalimentaire':
+                        return (
+                        <>
+                            {/* Type de produit agroalimentaire */}
+                            <ProductFieldSelector
+                                label="Type de produit"
+                                fieldName="types"
+                                productType={selectedType}
+                                value={newProduct.typeAgro || ''}
+                                onSelect={(value) => setNewProduct({ ...newProduct, typeAgro: value })}
+                                required={true}
+                                placeholder="Ex: Riz et céréales, Huile alimentaire..."
+                            />
+
+                            {/* Marque */}
+                            <ProductFieldSelector
+                                label="Marque"
+                                fieldName="marques"
+                                productType={selectedType}
+                                value={newProduct.marqueAgro || ''}
+                                onSelect={(value) => setNewProduct({ ...newProduct, marqueAgro: value })}
+                                placeholder="Ex: Nestlé, Barilla, Maggi..."
+                            />
+
+                            {/* Format/Conditionnement */}
+                            <ProductFieldSelector
+                                label="Format / Conditionnement"
+                                fieldName="formats"
+                                productType={selectedType}
+                                value={newProduct.formatAgro || ''}
+                                onSelect={(value) => setNewProduct({ ...newProduct, formatAgro: value })}
+                                required={true}
+                                placeholder="Ex: 5kg, 1L, Pack de 12..."
+                            />
+
+                            {/* Origine */}
+                            <ProductFieldSelector
+                                label="Origine / Provenance"
+                                fieldName="origines"
+                                productType={selectedType}
+                                value={newProduct.origine || ''}
+                                onSelect={(value) => setNewProduct({ ...newProduct, origine: value })}
+                                placeholder="Ex: Cameroun, Thaïlande, Europe..."
+                            />
+
+                            {/* Certification */}
+                            <ProductFieldSelector
+                                label="Certification / Label"
+                                fieldName="certifications"
+                                productType={selectedType}
+                                value={newProduct.certification || ''}
+                                onSelect={(value) => setNewProduct({ ...newProduct, certification: value })}
+                                placeholder="Ex: Bio, Halal, Sans OGM..."
+                            />
+
+                            {/* Mode de conservation */}
+                            <ProductFieldSelector
+                                label="Mode de conservation"
+                                fieldName="conservation"
+                                productType={selectedType}
+                                value={newProduct.modeConservation || ''}
+                                onSelect={(value) => setNewProduct({ ...newProduct, modeConservation: value })}
+                                placeholder="Ex: Température ambiante, Au sec..."
+                            />
+
+                            {/* Date de péremption */}
+                            <View style={styles.fieldContainer}>
+                                <Text style={styles.fieldLabel}>Date de péremption / DLC</Text>
+                                <NativeInput
+                                    placeholder="Ex: 2026-12-31"
+                                    value={newProduct.datePeremption || ''}
+                                    onChangeText={(text) => setNewProduct({ ...newProduct, datePeremption: text })}
+                                    style={styles.fieldInput}
+                                />
+                                <Text style={styles.fieldHint}>Format: AAAA-MM-JJ (optionnel)</Text>
+                            </View>
+
+                            {/* Numéro de lot */}
+                            <View style={styles.fieldContainer}>
+                                <Text style={styles.fieldLabel}>Numéro de lot</Text>
+                                <NativeInput
+                                    placeholder="Ex: LOT2025-001"
+                                    value={newProduct.numeroLot || ''}
+                                    onChangeText={(text) => setNewProduct({ ...newProduct, numeroLot: text })}
+                                    style={styles.fieldInput}
+                                />
+                                <Text style={styles.fieldHint}>Pour la traçabilité (optionnel)</Text>
+                            </View>
+
+                            <View style={styles.hintBox}>
+                                <Text style={styles.hintText}>
+                                    💡 Précisez le format, l'origine et les certifications pour rassurer les acheteurs
+                                </Text>
+                            </View>
+                        </>
+                        );
+
+                        case 'demenagement':
+                        return (
+                        <>
+                            {/* Type de déménagement */}
+                            <ProductFieldSelector
+                                label="Type de déménagement"
+                                fieldName="types"
+                                productType="demenagement"
+                                value={newProduct.typeDemenagement || ''}
+                                onSelect={(value) => setNewProduct({ ...newProduct, typeDemenagement: value })}
+                            />
+
+                            {/* Volume estimé */}
+                            <View style={styles.fieldContainer}>
+                                <Text style={styles.fieldLabel}>Volume estimé (m³)</Text>
+                                <NativeInput
+                                    placeholder="Ex: 20, 30, 40"
+                                    value={newProduct.volumeEstime || ''}
+                                    onChangeText={(text) => setNewProduct({ ...newProduct, volumeEstime: text })}
+                                    keyboardType="numeric"
+                                    style={styles.fieldInput}
+                                />
+                                <Text style={styles.fieldHint}>Volume maximal que vous pouvez transporter</Text>
+                            </View>
+
+                            {/* Type de véhicule */}
+                            <ProductFieldSelector
+                                label="Type de véhicule disponible"
+                                fieldName="vehicules"
+                                productType="demenagement"
+                                value={newProduct.typeVehicule || ''}
+                                onSelect={(value) => setNewProduct({ ...newProduct, typeVehicule: value })}
+                            />
+
+                            {/* Distance maximale */}
+                            <View style={styles.fieldContainer}>
+                                <Text style={styles.fieldLabel}>Distance maximale (km)</Text>
+                                <NativeInput
+                                    placeholder="Ex: 50, 500, 2000"
+                                    value={newProduct.distanceKm || ''}
+                                    onChangeText={(text) => setNewProduct({ ...newProduct, distanceKm: text })}
+                                    keyboardType="numeric"
+                                    style={styles.fieldInput}
+                                />
+                                <Text style={styles.fieldHint}>Distance maximale que vous couvrez</Text>
+                            </View>
+
+                            {/* Nombre de déménageurs */}
+                            <ProductFieldSelector
+                                label="Nombre de déménageurs"
+                                fieldName="nombre_demenageurs"
+                                productType="demenagement"
+                                value={newProduct.nbDemenageurs || ''}
+                                onSelect={(value) => setNewProduct({ ...newProduct, nbDemenageurs: value })}
+                            />
+
+                            {/* Services inclus */}
+                            <View style={styles.fieldContainer}>
+                                <Text style={styles.fieldLabel}>Services inclus</Text>
+                                <Text style={styles.fieldHint}>Cochez tous les services que vous proposez</Text>
+
+                                <TouchableOpacity
+                                    style={styles.checkboxContainer}
+                                    onPress={() => setNewProduct({ ...newProduct, assuranceMarchandise: !newProduct.assuranceMarchandise })}
+                                >
+                                    <View style={[styles.checkbox, newProduct.assuranceMarchandise && styles.checkboxChecked]}>
+                                        {newProduct.assuranceMarchandise && <SafeIcon name="check" size={16} color="#FFFFFF" />}
+                                    </View>
+                                    <Text style={styles.checkboxLabel}>🛡️ Assurance marchandise</Text>
+                                </TouchableOpacity>
+
+                                <TouchableOpacity
+                                    style={styles.checkboxContainer}
+                                    onPress={() => setNewProduct({ ...newProduct, serviceManutention: !newProduct.serviceManutention })}
+                                >
+                                    <View style={[styles.checkbox, newProduct.serviceManutention && styles.checkboxChecked]}>
+                                        {newProduct.serviceManutention && <SafeIcon name="check" size={16} color="#FFFFFF" />}
+                                    </View>
+                                    <Text style={styles.checkboxLabel}>💪 Service de manutention</Text>
+                                </TouchableOpacity>
+
+                                <TouchableOpacity
+                                    style={styles.checkboxContainer}
+                                    onPress={() => setNewProduct({ ...newProduct, montageDemontage: !newProduct.montageDemontage })}
+                                >
+                                    <View style={[styles.checkbox, newProduct.montageDemontage && styles.checkboxChecked]}>
+                                        {newProduct.montageDemontage && <SafeIcon name="check" size={16} color="#FFFFFF" />}
+                                    </View>
+                                    <Text style={styles.checkboxLabel}>🔧 Montage / Démontage meubles</Text>
+                                </TouchableOpacity>
+
+                                <TouchableOpacity
+                                    style={styles.checkboxContainer}
+                                    onPress={() => setNewProduct({ ...newProduct, emballageCartons: !newProduct.emballageCartons })}
+                                >
+                                    <View style={[styles.checkbox, newProduct.emballageCartons && styles.checkboxChecked]}>
+                                        {newProduct.emballageCartons && <SafeIcon name="check" size={16} color="#FFFFFF" />}
+                                    </View>
+                                    <Text style={styles.checkboxLabel}>📦 Fourniture cartons d'emballage</Text>
+                                </TouchableOpacity>
+
+                                <TouchableOpacity
+                                    style={styles.checkboxContainer}
+                                    onPress={() => setNewProduct({ ...newProduct, gardeMeuble: !newProduct.gardeMeuble })}
+                                >
+                                    <View style={[styles.checkbox, newProduct.gardeMeuble && styles.checkboxChecked]}>
+                                        {newProduct.gardeMeuble && <SafeIcon name="check" size={16} color="#FFFFFF" />}
+                                    </View>
+                                    <Text style={styles.checkboxLabel}>🏠 Garde-meuble disponible</Text>
+                                </TouchableOpacity>
+
+                                <TouchableOpacity
+                                    style={styles.checkboxContainer}
+                                    onPress={() => setNewProduct({ ...newProduct, debarras: !newProduct.debarras })}
+                                >
+                                    <View style={[styles.checkbox, newProduct.debarras && styles.checkboxChecked]}>
+                                        {newProduct.debarras && <SafeIcon name="check" size={16} color="#FFFFFF" />}
+                                    </View>
+                                    <Text style={styles.checkboxLabel}>🗑️ Service de débarras</Text>
+                                </TouchableOpacity>
+                            </View>
+
+                            {/* Date de disponibilité */}
+                            <View style={styles.fieldContainer}>
+                                <Text style={styles.fieldLabel}>Première date de disponibilité</Text>
+                                <NativeInput
+                                    placeholder="Ex: 2025-01-15"
+                                    value={newProduct.dateDemenagementDisponible || ''}
+                                    onChangeText={(text) => setNewProduct({ ...newProduct, dateDemenagementDisponible: text })}
+                                    style={styles.fieldInput}
+                                />
+                                <Text style={styles.fieldHint}>Format: AAAA-MM-JJ</Text>
+                            </View>
+
+                            <View style={styles.hintBox}>
+                                <Text style={styles.hintText}>
+                                    💡 Précisez tous vos services pour que les clients puissent comparer facilement les offres
+                                </Text>
+                            </View>
+                        </>
+                        );
+
+                        case 'cosmetique_parfum':
+                        return (
+                        <>
+                            {/* Type de produit cosmétique */}
+                            <ProductFieldSelector
+                                label="Type de produit"
+                                fieldName="types"
+                                productType="cosmetique_parfum"
+                                value={newProduct.typeCosmetique || ''}
+                                onSelect={(value) => setNewProduct({ ...newProduct, typeCosmetique: value })}
+                            />
+
+                            {/* Marque */}
+                            <View style={styles.fieldContainer}>
+                                <Text style={styles.fieldLabel}>Marque</Text>
+                                <NativeInput
+                                    placeholder="Ex: Chanel, Dior, Nivea, L'Oréal"
+                                    value={newProduct.marqueCosmetique || ''}
+                                    onChangeText={(text) => setNewProduct({ ...newProduct, marqueCosmetique: text })}
+                                    style={styles.fieldInput}
+                                />
+                            </View>
+
+                            {/* Volume */}
+                            <View style={styles.fieldContainer}>
+                                <Text style={styles.fieldLabel}>Volume / Poids</Text>
+                                <View style={styles.inputRow}>
+                                    <NativeInput
+                                        placeholder="Ex: 50"
+                                        value={newProduct.volumeCosmetique || ''}
+                                        onChangeText={(text) => setNewProduct({ ...newProduct, volumeCosmetique: text })}
+                                        keyboardType="numeric"
+                                        style={[styles.fieldInput, { flex: 1, marginRight: 8 }]}
+                                    />
+                                    <ProductFieldSelector
+                                        label="Unité"
+                                        fieldName="unites"
+                                        productType="cosmetique_parfum"
+                                        value={newProduct.uniteCosmetique || ''}
+                                        onSelect={(value) => setNewProduct({ ...newProduct, uniteCosmetique: value })}
+                                    />
+                                </View>
+                            </View>
+
+                            {/* Type de peau */}
+                            <ProductFieldSelector
+                                label="Type de peau / Cible"
+                                fieldName="types_peau"
+                                productType="cosmetique_parfum"
+                                value={newProduct.typePeau || ''}
+                                onSelect={(value) => setNewProduct({ ...newProduct, typePeau: value })}
+                            />
+
+                            {/* Âge recommandé */}
+                            <ProductFieldSelector
+                                label="Âge recommandé"
+                                fieldName="ages"
+                                productType="cosmetique_parfum"
+                                value={newProduct.ageRecommandé || ''}
+                                onSelect={(value) => setNewProduct({ ...newProduct, ageRecommandé: value })}
+                            />
+
+                            {/* Ingrédients principaux */}
+                            <View style={styles.fieldContainer}>
+                                <Text style={styles.fieldLabel}>Ingrédients principaux</Text>
+                                <NativeInput
+                                    placeholder="Ex: Vitamine E, Argan, Aloe Vera, Collagène"
+                                    value={newProduct.ingredientsCosmetique || ''}
+                                    onChangeText={(text) => setNewProduct({ ...newProduct, ingredientsCosmetique: text })}
+                                    style={styles.fieldInput}
+                                />
+                            </View>
+
+                            {/* Origine */}
+                            <View style={styles.fieldContainer}>
+                                <Text style={styles.fieldLabel}>Origine / Pays</Text>
+                                <NativeInput
+                                    placeholder="Ex: France, Corée du Sud, Maroc"
+                                    value={newProduct.origineCosmetique || ''}
+                                    onChangeText={(text) => setNewProduct({ ...newProduct, origineCosmetique: text })}
+                                    style={styles.fieldInput}
+                                />
+                            </View>
+
+                            <View style={styles.hintBox}>
+                                <Text style={styles.hintText}>
+                                    ✨ Précisez les caractéristiques pour aider les clients à choisir le bon produit cosmétique
+                                </Text>
+                            </View>
+                        </>
+                        );
+
+                        case 'bijoux':
+                        return (
+                        <>
+                            {/* Type de bijou */}
+                            <ProductFieldSelector
+                                label="Type de bijou"
+                                fieldName="types"
+                                productType="bijoux"
+                                value={newProduct.typeBijou || ''}
+                                onSelect={(value) => setNewProduct({ ...newProduct, typeBijou: value })}
+                            />
+
+                            {/* Matière */}
+                            <ProductFieldSelector
+                                label="Matière principale"
+                                fieldName="matieres"
+                                productType="bijoux"
+                                value={newProduct.matiereBijou || ''}
+                                onSelect={(value) => setNewProduct({ ...newProduct, matiereBijou: value })}
+                            />
+
+                            {/* Poids */}
+                            <View style={styles.fieldContainer}>
+                                <Text style={styles.fieldLabel}>Poids</Text>
+                                <View style={styles.inputRow}>
+                                    <NativeInput
+                                        placeholder="Ex: 15"
+                                        value={newProduct.poidsBijou || ''}
+                                        onChangeText={(text) => setNewProduct({ ...newProduct, poidsBijou: text })}
+                                        keyboardType="numeric"
+                                        style={[styles.fieldInput, { flex: 1, marginRight: 8 }]}
+                                    />
+                                    <ProductFieldSelector
+                                        label="Unité"
+                                        fieldName="unites_poids"
+                                        productType="bijoux"
+                                        value={newProduct.unitePoids || ''}
+                                        onSelect={(value) => setNewProduct({ ...newProduct, unitePoids: value })}
+                                    />
+                                </View>
+                            </View>
+
+                            {/* Taille */}
+                            <View style={styles.fieldContainer}>
+                                <Text style={styles.fieldLabel}>Taille / Dimensions</Text>
+                                <NativeInput
+                                    placeholder="Ex: 54, 16 pouces, 40mm"
+                                    value={newProduct.tailleBijou || ''}
+                                    onChangeText={(text) => setNewProduct({ ...newProduct, tailleBijou: text })}
+                                    style={styles.fieldInput}
+                                />
+                            </View>
+
+                            {/* Style */}
+                            <ProductFieldSelector
+                                label="Style"
+                                fieldName="styles"
+                                productType="bijoux"
+                                value={newProduct.styleBijou || ''}
+                                onSelect={(value) => setNewProduct({ ...newProduct, styleBijou: value })}
+                            />
+
+                            {/* Origine */}
+                            <View style={styles.fieldContainer}>
+                                <Text style={styles.fieldLabel}>Origine / Pays de fabrication</Text>
+                                <NativeInput
+                                    placeholder="Ex: Italie, Suisse, France, Thaïlande"
+                                    value={newProduct.origineBijou || ''}
+                                    onChangeText={(text) => setNewProduct({ ...newProduct, origineBijou: text })}
+                                    style={styles.fieldInput}
+                                />
+                            </View>
+
+                            {/* Certificat */}
+                            <View style={styles.fieldContainer}>
+                                <Text style={styles.fieldLabel}>Certificat d'authenticité</Text>
+                                <View style={styles.pickerButtons}>
+                                    {['Oui', 'Non'].map((cert) => (
+                                        <TouchableOpacity
+                                            key={cert}
+                                            style={[
+                                                styles.pickerButton,
+                                                newProduct.certificatBijou === cert && styles.pickerButtonActive
+                                            ]}
+                                            onPress={() => setNewProduct({ ...newProduct, certificatBijou: cert })}
+                                        >
+                                            <Text style={[
+                                                styles.pickerButtonText,
+                                                newProduct.certificatBijou === cert && styles.pickerButtonTextActive
+                                            ]}>
+                                                {cert}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    ))}
+                                </View>
+                            </View>
+
+                            <View style={styles.hintBox}>
+                                <Text style={styles.hintText}>
+                                    💎 Précisez tous les détails pour rassurer les clients sur l'authenticité et la qualité
+                                </Text>
+                            </View>
+                        </>
+                        );
+
+                        case 'coiffure_beaute':
+                        return (
+                        <>
+                            {/* Type de coiffure */}
+                            <ProductFieldSelector
+                                label="Type de produit"
+                                fieldName="types"
+                                productType="coiffure_beaute"
+                                value={newProduct.typeCoiffure || ''}
+                                onSelect={(value) => setNewProduct({ ...newProduct, typeCoiffure: value })}
+                                required
+                            />
+
+                            {/* Longueur */}
+                            <ProductFieldSelector
+                                label="Longueur"
+                                fieldName="longueurs"
+                                productType="coiffure_beaute"
+                                value={newProduct.longueurMech || ''}
+                                onSelect={(value) => setNewProduct({ ...newProduct, longueurMech: value })}
+                                required
+                            />
+
+                            {/* Couleur */}
+                            <View style={styles.fieldContainer}>
+                                <Text style={styles.fieldLabel}>Couleur</Text>
+                                <NativeInput
+                                    placeholder="Ex: Noir naturel, Blond platine, Châtain clair"
+                                    value={newProduct.couleurMech || ''}
+                                    onChangeText={(text) => setNewProduct({ ...newProduct, couleurMech: text })}
+                                    style={styles.fieldInput}
+                                />
+                            </View>
+
+                            {/* Texture */}
+                            <ProductFieldSelector
+                                label="Texture"
+                                fieldName="textures"
+                                productType="coiffure_beaute"
+                                value={newProduct.textureMech || ''}
+                                onSelect={(value) => setNewProduct({ ...newProduct, textureMech: value })}
+                            />
+
+                            {/* Type de pose */}
+                            <ProductFieldSelector
+                                label="Type de pose"
+                                fieldName="typesPose"
+                                productType="coiffure_beaute"
+                                value={newProduct.typePose || ''}
+                                onSelect={(value) => setNewProduct({ ...newProduct, typePose: value })}
+                            />
+
+                            {/* Marque */}
+                            <View style={styles.fieldContainer}>
+                                <Text style={styles.fieldLabel}>Marque</Text>
+                                <NativeInput
+                                    placeholder="Ex: Remy Hair, Virgin Hair, Brazilian Hair"
+                                    value={newProduct.marqueCoiffure || ''}
+                                    onChangeText={(text) => setNewProduct({ ...newProduct, marqueCoiffure: text })}
+                                    style={styles.fieldInput}
+                                />
+                            </View>
+
+                            {/* Origine */}
+                            <ProductFieldSelector
+                                label="Origine des cheveux"
+                                fieldName="origines"
+                                productType="coiffure_beaute"
+                                value={newProduct.origineMech || ''}
+                                onSelect={(value) => setNewProduct({ ...newProduct, origineMech: value })}
+                            />
+
+                            {/* Type de cheveux */}
+                            <ProductFieldSelector
+                                label="Type de cheveux"
+                                fieldName="typesCheveux"
+                                productType="coiffure_beaute"
+                                value={newProduct.typeCheveux || ''}
+                                onSelect={(value) => setNewProduct({ ...newProduct, typeCheveux: value })}
+                            />
+
+                            {/* Entretien */}
+                            <View style={styles.fieldContainer}>
+                                <Text style={styles.fieldLabel}>Conseils d'entretien</Text>
+                                <NativeInput
+                                    placeholder="Ex: Shampoing doux, Séchage naturel, Éviter chaleur élevée"
+                                    value={newProduct.entretienMech || ''}
+                                    onChangeText={(text) => setNewProduct({ ...newProduct, entretienMech: text })}
+                                    multiline
+                                    style={[styles.fieldInput, styles.textareaInput]}
+                                />
+                            </View>
+
+                            {/* Durée de vie */}
+                            <ProductFieldSelector
+                                label="Durée de vie estimée"
+                                fieldName="dureeVie"
+                                productType="coiffure_beaute"
+                                value={newProduct.dureeVie || ''}
+                                onSelect={(value) => setNewProduct({ ...newProduct, dureeVie: value })}
+                            />
+
+                            <View style={styles.hintBox}>
+                                <Text style={styles.hintText}>
+                                    💇‍♀️ Précisez la qualité, l'origine et l'entretien pour aider vos clientes à faire le bon choix
+                                </Text>
+                            </View>
+                        </>
+                        );
+
+                        case 'assurance':
+                        return (
+                        <>
+                            <ProductFieldSelector
+                                label="Type d'assurance"
+                                fieldName="categories"
+                                productType="assurance"
+                                value={newProduct.categorieAssurance || ''}
+                                onSelect={(value) => setNewProduct({ ...newProduct, categorieAssurance: value, typeAssurance: '' })}
+                                required
+                            />
+
+                            {/* Sous-catégories selon Vie ou Non-Vie */}
+                            {newProduct.categorieAssurance && (
+                                <ProductFieldSelector
+                                    label="Sous-catégorie"
+                                    fieldName="types"
+                                    productType="assurance"
+                                    value={newProduct.typeAssurance || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, typeAssurance: value })}
+                                    required
+                                />
+                            )}
+
+                            <View style={styles.fieldRow}>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <Text style={styles.fieldLabel}>Compagnie d'assurance</Text>
+                                    <NativeInput
+                                        placeholder="Ex: AXA Assurances"
+                                        value={newProduct.compagnieAssurance || ''}
+                                        onChangeText={(text) => setNewProduct({ ...newProduct, compagnieAssurance: text })}
+                                        style={styles.fieldInput}
+                                    />
+                                </View>
+                            </View>
+
+                            <View style={styles.fieldContainer}>
+                                <Text style={styles.fieldLabel}>Couverture / Garanties</Text>
+                                <NativeInput
+                                    placeholder="Ex: Tous risques, Protection juridique, Assistance 24h/24"
+                                    value={newProduct.couverture || ''}
+                                    onChangeText={(text) => setNewProduct({ ...newProduct, couverture: text })}
+                                    multiline
+                                    style={[styles.fieldInput, styles.textareaInput]}
+                                />
+                            </View>
+
+                            <View style={styles.fieldRow}>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <Text style={styles.fieldLabel}>Prime annuelle (FCFA)</Text>
+                                    <NativeInput
+                                        placeholder="Ex: 150000"
+                                        value={newProduct.primeAnnuelle || ''}
+                                        onChangeText={(text) => setNewProduct({ ...newProduct, primeAnnuelle: text })}
+                                        style={styles.fieldInput}
+                                        keyboardType="numeric"
+                                    />
+                                </View>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <Text style={styles.fieldLabel}>Franchise (FCFA)</Text>
+                                    <NativeInput
+                                        placeholder="Ex: 50000"
+                                        value={newProduct.franchise || ''}
+                                        onChangeText={(text) => setNewProduct({ ...newProduct, franchise: text })}
+                                        style={styles.fieldInput}
+                                        keyboardType="numeric"
+                                    />
+                                </View>
+                            </View>
+
+                            <ProductFieldSelector
+                                label="Durée du contrat"
+                                fieldName="durees"
+                                productType="assurance"
+                                value={newProduct.dureeContrat || ''}
+                                onSelect={(value) => setNewProduct({ ...newProduct, dureeContrat: value })}
+                            />
+
+                            <View style={styles.fieldContainer}>
+                                <Text style={styles.fieldLabel}>Principaux bénéfices</Text>
+                                <NativeInput
+                                    placeholder="Ex: Capital décès, Rente invalidité, Assistance rapatriement..."
+                                    value={newProduct.benefices || ''}
+                                    onChangeText={(text) => setNewProduct({ ...newProduct, benefices: text })}
+                                    multiline
+                                    style={[styles.fieldInput, styles.textareaInput]}
+                                />
+                            </View>
+
+                            <View style={styles.hintBox}>
+                                <Text style={styles.hintText}>
+                                    💡 <Text style={styles.hintBold}>Conseil :</Text> Détaillez bien les garanties et la couverture pour aider vos clients à comparer les offres.
+                                </Text>
+                            </View>
+                        </>
+                        );
+
+                        case 'restauration':
+                        return (
+                        <>
+                            <ProductFieldSelector
+                                label="Type de cuisine"
+                                fieldName="types_cuisine"
+                                productType="restauration"
+                                value={newProduct.typeCuisine || ''}
+                                onSelect={(value) => setNewProduct({ ...newProduct, typeCuisine: value })}
+                                required
+                            />
+
+                            <ProductFieldSelector
+                                label="Spécialités"
+                                fieldName="specialites"
+                                productType="restauration"
+                                value={newProduct.specialites || []}
+                                onSelect={(values) => setNewProduct({ ...newProduct, specialites: values })}
+                                multiSelect
+                            />
+
+                            <ProductFieldSelector
+                                label="Services proposés"
+                                fieldName="services"
+                                productType="restauration"
+                                value={newProduct.servicesRestau || []}
+                                onSelect={(values) => setNewProduct({ ...newProduct, servicesRestau: values })}
+                                multiSelect
+                            />
+
+                            <View style={styles.fieldRow}>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <ProductFieldSelector
+                                        label="Ambiance"
+                                        fieldName="ambiances"
+                                        productType="restauration"
+                                        value={newProduct.ambiance || ''}
+                                        onSelect={(value) => setNewProduct({ ...newProduct, ambiance: value })}
+                                    />
+                                </View>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <ProductFieldSelector
+                                        label="Gamme de prix"
+                                        fieldName="gammes_prix"
+                                        productType="restauration"
+                                        value={newProduct.gammePrix || ''}
+                                        onSelect={(value) => setNewProduct({ ...newProduct, gammePrix: value })}
+                                    />
+                                </View>
+                            </View>
+
+                            <View style={styles.fieldRow}>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <Text style={styles.fieldLabel}>Capacité (personnes)</Text>
+                                    <NativeInput
+                                        placeholder="Ex: 50"
+                                        value={newProduct.capacite || ''}
+                                        onChangeText={(text) => setNewProduct({ ...newProduct, capacite: text })}
+                                        keyboardType="numeric"
+                                        style={styles.fieldInput}
+                                    />
+                                </View>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <Text style={styles.fieldLabel}>Horaires</Text>
+                                    <NativeInput
+                                        placeholder="Ex: 11h-23h"
+                                        value={newProduct.horaires || ''}
+                                        onChangeText={(text) => setNewProduct({ ...newProduct, horaires: text })}
+                                        style={styles.fieldInput}
+                                    />
+                                </View>
+                            </View>
+
+                            <ProductFieldSelector
+                                label="Certifications"
+                                fieldName="certifications"
+                                productType="restauration"
+                                value={newProduct.certificationsRestau || []}
+                                onSelect={(values) => setNewProduct({ ...newProduct, certificationsRestau: values })}
+                                multiSelect
+                            />
+
+                            <ProductFieldSelector
+                                label="Options alimentaires"
+                                fieldName="options_alimentaires"
+                                productType="restauration"
+                                value={newProduct.optionsAlimentaires || []}
+                                onSelect={(values) => setNewProduct({ ...newProduct, optionsAlimentaires: values })}
+                                multiSelect
+                            />
+
+                            <View style={styles.hintBox}>
+                                <Text style={styles.hintText}>
+                                    💡 <Text style={styles.hintBold}>Conseil :</Text> Détaillez vos spécialités et services pour attirer plus de clients.
+                                </Text>
+                            </View>
+                        </>
+                        );
+
+                        case 'electronique':
+                        return (
+                        <>
+                            <ProductFieldSelector
+                                label="Type d'appareil"
+                                fieldName="types"
+                                productType="electronique"
+                                value={newProduct.typeElectronique || ''}
+                                onSelect={(value) => setNewProduct({ ...newProduct, typeElectronique: value })}
+                                required
+                            />
+
+                            <View style={styles.fieldRow}>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <ProductFieldSelector
+                                        label="Marque"
+                                        fieldName="marques"
+                                        productType="electronique"
+                                        value={newProduct.marqueElectronique || ''}
+                                        onSelect={(value) => setNewProduct({ ...newProduct, marqueElectronique: value })}
+                                    />
+                                </View>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <Text style={styles.fieldLabel}>Modèle</Text>
+                                    <NativeInput
+                                        placeholder="Ex: Galaxy S23"
+                                        value={newProduct.modeleElectronique || ''}
+                                        onChangeText={(text) => setNewProduct({ ...newProduct, modeleElectronique: text })}
+                                        style={styles.fieldInput}
+                                    />
+                                </View>
+                            </View>
+
+                            <View style={styles.fieldRow}>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <ProductFieldSelector
+                                        label="État"
+                                        fieldName="etats"
+                                        productType="electronique"
+                                        value={newProduct.etatElectronique || ''}
+                                        onSelect={(value) => setNewProduct({ ...newProduct, etatElectronique: value })}
+                                    />
+                                </View>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <ProductFieldSelector
+                                        label="Garantie"
+                                        fieldName="garanties"
+                                        productType="electronique"
+                                        value={newProduct.garantieElectronique || ''}
+                                        onSelect={(value) => setNewProduct({ ...newProduct, garantieElectronique: value })}
+                                    />
+                                </View>
+                            </View>
+
+                            <ProductFieldSelector
+                                label="Connectivités"
+                                fieldName="connectivites"
+                                productType="electronique"
+                                value={newProduct.connectivites || []}
+                                onSelect={(values) => setNewProduct({ ...newProduct, connectivites: values })}
+                                multiSelect
+                            />
+
+                            <View style={styles.hintBox}>
+                                <Text style={styles.hintText}>
+                                    💡 Précisez les spécifications techniques pour aider les acheteurs.
+                                </Text>
+                            </View>
+                        </>
+                        );
+
+                        case 'musique_instruments':
+                        return (
+                        <>
+                            <ProductFieldSelector
+                                label="Type d'instrument"
+                                fieldName="types"
+                                productType="musique_instruments"
+                                value={newProduct.typeInstrument || ''}
+                                onSelect={(value) => setNewProduct({ ...newProduct, typeInstrument: value })}
+                                required
+                            />
+
+                            <View style={styles.fieldRow}>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <ProductFieldSelector
+                                        label="Marque"
+                                        fieldName="marques"
+                                        productType="musique_instruments"
+                                        value={newProduct.marqueInstrument || ''}
+                                        onSelect={(value) => setNewProduct({ ...newProduct, marqueInstrument: value })}
+                                    />
+                                </View>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <Text style={styles.fieldLabel}>Modèle</Text>
+                                    <NativeInput
+                                        placeholder="Ex: Stratocaster"
+                                        value={newProduct.modeleInstrument || ''}
+                                        onChangeText={(text) => setNewProduct({ ...newProduct, modeleInstrument: text })}
+                                        style={styles.fieldInput}
+                                    />
+                                </View>
+                            </View>
+
+                            <View style={styles.fieldRow}>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <ProductFieldSelector
+                                        label="État"
+                                        fieldName="etats"
+                                        productType="musique_instruments"
+                                        value={newProduct.etatInstrument || ''}
+                                        onSelect={(value) => setNewProduct({ ...newProduct, etatInstrument: value })}
+                                    />
+                                </View>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <ProductFieldSelector
+                                        label="Niveau"
+                                        fieldName="niveaux"
+                                        productType="musique_instruments"
+                                        value={newProduct.niveauInstrument || ''}
+                                        onSelect={(value) => setNewProduct({ ...newProduct, niveauInstrument: value })}
+                                    />
+                                </View>
+                            </View>
+
+                            <View style={styles.hintBox}>
+                                <Text style={styles.hintText}>
+                                    💡 Précisez si des accessoires sont inclus (étui, cordes, etc.).
+                                </Text>
+                            </View>
+                        </>
+                        );
+
+                        case 'formation_education':
+                        return (
+                        <>
+                            <ProductFieldSelector
+                                label="Type de formation"
+                                fieldName="types"
+                                productType="formation_education"
+                                value={newProduct.typeFormation || ''}
+                                onSelect={(value) => setNewProduct({ ...newProduct, typeFormation: value })}
+                                required
+                            />
+
+                            <View style={styles.fieldRow}>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <ProductFieldSelector
+                                        label="Niveau"
+                                        fieldName="niveaux"
+                                        productType="formation_education"
+                                        value={newProduct.niveauFormation || ''}
+                                        onSelect={(value) => setNewProduct({ ...newProduct, niveauFormation: value })}
+                                    />
+                                </View>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <ProductFieldSelector
+                                        label="Mode"
+                                        fieldName="modes"
+                                        productType="formation_education"
+                                        value={newProduct.modeFormation || ''}
+                                        onSelect={(value) => setNewProduct({ ...newProduct, modeFormation: value })}
+                                    />
+                                </View>
+                            </View>
+
+                            <ProductFieldSelector
+                                label="Matières enseignées"
+                                fieldName="matieres"
+                                productType="formation_education"
+                                value={newProduct.matieresFormation || []}
+                                onSelect={(values) => setNewProduct({ ...newProduct, matieresFormation: values })}
+                                multiSelect
+                            />
+
+                            <View style={styles.fieldRow}>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <ProductFieldSelector
+                                        label="Durée"
+                                        fieldName="durees"
+                                        productType="formation_education"
+                                        value={newProduct.dureeFormation || ''}
+                                        onSelect={(value) => setNewProduct({ ...newProduct, dureeFormation: value })}
+                                    />
+                                </View>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <ProductFieldSelector
+                                        label="Certification"
+                                        fieldName="certifications"
+                                        productType="formation_education"
+                                        value={newProduct.certificationFormation || ''}
+                                        onSelect={(value) => setNewProduct({ ...newProduct, certificationFormation: value })}
+                                    />
+                                </View>
+                            </View>
+
+                            <View style={styles.hintBox}>
+                                <Text style={styles.hintText}>
+                                    💡 Indiquez si la formation est certifiante ou diplômante.
+                                </Text>
+                            </View>
+                        </>
+                        );
+
+                        case 'evenementiel':
+                        return (
+                        <>
+                            <ProductFieldSelector
+                                label="Type d'événement"
+                                fieldName="types"
+                                productType="evenementiel"
+                                value={newProduct.typeEvenement || ''}
+                                onSelect={(value) => setNewProduct({ ...newProduct, typeEvenement: value })}
+                                required
+                            />
+
+                            <ProductFieldSelector
+                                label="Services inclus"
+                                fieldName="services"
+                                productType="evenementiel"
+                                value={newProduct.servicesEvenement || []}
+                                onSelect={(values) => setNewProduct({ ...newProduct, servicesEvenement: values })}
+                                multiSelect
+                            />
+
+                            <View style={styles.fieldRow}>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <Text style={styles.fieldLabel}>Capacité (personnes)</Text>
+                                    <NativeInput
+                                        placeholder="Ex: 200"
+                                        value={newProduct.capaciteEvenement || ''}
+                                        onChangeText={(text) => setNewProduct({ ...newProduct, capaciteEvenement: text })}
+                                        keyboardType="numeric"
+                                        style={styles.fieldInput}
+                                    />
+                                </View>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <ProductFieldSelector
+                                        label="Gamme tarifaire"
+                                        fieldName="tarifs"
+                                        productType="evenementiel"
+                                        value={newProduct.tarifEvenement || ''}
+                                        onSelect={(value) => setNewProduct({ ...newProduct, tarifEvenement: value })}
+                                    />
+                                </View>
+                            </View>
+
+                            <View style={styles.hintBox}>
+                                <Text style={styles.hintText}>
+                                    💡 Ajoutez des photos de vos événements précédents pour inspirer confiance.
+                                </Text>
+                            </View>
+                        </>
+                        );
+
+                        case 'agriculture':
+                        return (
+                        <>
+                            <ProductFieldSelector
+                                label="Type de produit"
+                                fieldName="types"
+                                productType="agriculture"
+                                value={newProduct.typeAgricole || ''}
+                                onSelect={(value) => setNewProduct({ ...newProduct, typeAgricole: value })}
+                                required
+                            />
+
+                            <View style={styles.fieldRow}>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <ProductFieldSelector
+                                        label="Culture"
+                                        fieldName="cultures"
+                                        productType="agriculture"
+                                        value={newProduct.culture || ''}
+                                        onSelect={(value) => setNewProduct({ ...newProduct, culture: value })}
+                                    />
+                                </View>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <ProductFieldSelector
+                                        label="Saison"
+                                        fieldName="saisons"
+                                        productType="agriculture"
+                                        value={newProduct.saisonAgricole || ''}
+                                        onSelect={(value) => setNewProduct({ ...newProduct, saisonAgricole: value })}
+                                    />
+                                </View>
+                            </View>
+
+                            <View style={styles.fieldRow}>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <ProductFieldSelector
+                                        label="Unité de vente"
+                                        fieldName="unites"
+                                        productType="agriculture"
+                                        value={newProduct.uniteVente || ''}
+                                        onSelect={(value) => setNewProduct({ ...newProduct, uniteVente: value })}
+                                    />
+                                </View>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <Text style={styles.fieldLabel}>Quantité disponible</Text>
+                                    <NativeInput
+                                        placeholder="Ex: 500"
+                                        value={newProduct.quantiteDisponible || ''}
+                                        onChangeText={(text) => setNewProduct({ ...newProduct, quantiteDisponible: text })}
+                                        keyboardType="numeric"
+                                        style={styles.fieldInput}
+                                    />
+                                </View>
+                            </View>
+
+                            <ProductFieldSelector
+                                label="Certifications"
+                                fieldName="certifications"
+                                productType="agriculture"
+                                value={newProduct.certificationsAgricole || []}
+                                onSelect={(values) => setNewProduct({ ...newProduct, certificationsAgricole: values })}
+                                multiSelect
+                            />
+
+                            <View style={styles.hintBox}>
+                                <Text style={styles.hintText}>
+                                    💡 Indiquez si vos produits sont bio, sans pesticides, ou issus de l'agriculture locale.
+                                </Text>
+                            </View>
+                        </>
+                        );
+
+                        case 'sport_fitness':
+                        return (
+                        <>
+                            <ProductFieldSelector
+                                label="Type d'activité"
+                                fieldName="types"
+                                productType="sport_fitness"
+                                value={newProduct.typeSport || ''}
+                                onSelect={(value) => setNewProduct({ ...newProduct, typeSport: value })}
+                                required
+                            />
+
+                            <View style={styles.fieldRow}>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <ProductFieldSelector
+                                        label="Niveau"
+                                        fieldName="niveaux"
+                                        productType="sport_fitness"
+                                        value={newProduct.niveauSport || ''}
+                                        onSelect={(value) => setNewProduct({ ...newProduct, niveauSport: value })}
+                                    />
+                                </View>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <ProductFieldSelector
+                                        label="Durée"
+                                        fieldName="durees"
+                                        productType="sport_fitness"
+                                        value={newProduct.dureeSport || ''}
+                                        onSelect={(value) => setNewProduct({ ...newProduct, dureeSport: value })}
+                                    />
+                                </View>
+                            </View>
+
+                            <ProductFieldSelector
+                                label="Équipements fournis"
+                                fieldName="equipements"
+                                productType="sport_fitness"
+                                value={newProduct.equipementsSport || []}
+                                onSelect={(values) => setNewProduct({ ...newProduct, equipementsSport: values })}
+                                multiSelect
+                            />
+
+                            <View style={styles.hintBox}>
+                                <Text style={styles.hintText}>
+                                    💡 Précisez si les équipements sont fournis ou si les participants doivent les apporter.
+                                </Text>
+                            </View>
+                        </>
+                        );
+
+                        case 'bien_etre_spa':
+                        return (
+                        <>
+                            <ProductFieldSelector
+                                label="Type de service"
+                                fieldName="types"
+                                productType="bien_etre_spa"
+                                value={newProduct.typeBienEtre || ''}
+                                onSelect={(value) => setNewProduct({ ...newProduct, typeBienEtre: value })}
+                                required
+                            />
+
+                            <ProductFieldSelector
+                                label="Services"
+                                fieldName="services"
+                                productType="bien_etre_spa"
+                                value={newProduct.servicesBienEtre || []}
+                                onSelect={(values) => setNewProduct({ ...newProduct, servicesBienEtre: values })}
+                                multiSelect
+                            />
+
+                            <View style={styles.fieldRow}>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <ProductFieldSelector
+                                        label="Durée"
+                                        fieldName="durees"
+                                        productType="bien_etre_spa"
+                                        value={newProduct.dureeBienEtre || ''}
+                                        onSelect={(value) => setNewProduct({ ...newProduct, dureeBienEtre: value })}
+                                    />
+                                </View>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <ProductFieldSelector
+                                        label="Gamme tarifaire"
+                                        fieldName="tarifs"
+                                        productType="bien_etre_spa"
+                                        value={newProduct.tarifBienEtre || ''}
+                                        onSelect={(value) => setNewProduct({ ...newProduct, tarifBienEtre: value })}
+                                    />
+                                </View>
+                            </View>
+
+                            <View style={styles.hintBox}>
+                                <Text style={styles.hintText}>
+                                    💡 Détaillez vos prestations pour permettre aux clients de choisir facilement.
+                                </Text>
+                            </View>
+                        </>
+                        );
+
+                        case 'animaux_veterinaire':
+                        return (
+                        <>
+                            <ProductFieldSelector
+                                label="Type d'animal"
+                                fieldName="types"
+                                productType="animaux_veterinaire"
+                                value={newProduct.typeAnimal || ''}
+                                onSelect={(value) => setNewProduct({ ...newProduct, typeAnimal: value })}
+                                required
+                            />
+
+                            <View style={styles.fieldRow}>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <ProductFieldSelector
+                                        label="Race"
+                                        fieldName="races"
+                                        productType="animaux_veterinaire"
+                                        value={newProduct.raceAnimal || ''}
+                                        onSelect={(value) => setNewProduct({ ...newProduct, raceAnimal: value })}
+                                    />
+                                </View>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <ProductFieldSelector
+                                        label="Âge"
+                                        fieldName="ages"
+                                        productType="animaux_veterinaire"
+                                        value={newProduct.ageAnimal || ''}
+                                        onSelect={(value) => setNewProduct({ ...newProduct, ageAnimal: value })}
+                                    />
+                                </View>
+                            </View>
+
+                            <ProductFieldSelector
+                                label="Services vétérinaires"
+                                fieldName="services"
+                                productType="animaux_veterinaire"
+                                value={newProduct.servicesVeterinaire || []}
+                                onSelect={(values) => setNewProduct({ ...newProduct, servicesVeterinaire: values })}
+                                multiSelect
+                            />
+
+                            <View style={styles.hintBox}>
+                                <Text style={styles.hintText}>
+                                    💡 Ajoutez des photos de qualité pour montrer votre animal ou vos services.
+                                </Text>
+                            </View>
+                        </>
+                        );
+
+                        case 'nettoyage_entretien':
+                        return (
+                        <>
+                            <ProductFieldSelector
+                                label="Type de service"
+                                fieldName="types"
+                                productType="nettoyage_entretien"
+                                value={newProduct.typeNettoyage || ''}
+                                onSelect={(value) => setNewProduct({ ...newProduct, typeNettoyage: value })}
+                                required
+                            />
+
+                            <View style={styles.fieldRow}>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <ProductFieldSelector
+                                        label="Fréquence"
+                                        fieldName="frequences"
+                                        productType="nettoyage_entretien"
+                                        value={newProduct.frequenceNettoyage || ''}
+                                        onSelect={(value) => setNewProduct({ ...newProduct, frequenceNettoyage: value })}
+                                    />
+                                </View>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <ProductFieldSelector
+                                        label="Surface"
+                                        fieldName="surfaces"
+                                        productType="nettoyage_entretien"
+                                        value={newProduct.surfaceNettoyage || ''}
+                                        onSelect={(value) => setNewProduct({ ...newProduct, surfaceNettoyage: value })}
+                                    />
+                                </View>
+                            </View>
+
+                            <ProductFieldSelector
+                                label="Équipements"
+                                fieldName="equipements"
+                                productType="nettoyage_entretien"
+                                value={newProduct.equipementsNettoyage || []}
+                                onSelect={(values) => setNewProduct({ ...newProduct, equipementsNettoyage: values })}
+                                multiSelect
+                            />
+
+                            <View style={styles.hintBox}>
+                                <Text style={styles.hintText}>
+                                    💡 Précisez si vous fournissez les produits d'entretien et le matériel.
+                                </Text>
+                            </View>
+                        </>
+                        );
+
+                        case 'jardinage_paysagisme':
+                        return (
+                        <>
+                            <ProductFieldSelector
+                                label="Type de service"
+                                fieldName="types"
+                                productType="jardinage_paysagisme"
+                                value={newProduct.typeJardinage || ''}
+                                onSelect={(value) => setNewProduct({ ...newProduct, typeJardinage: value })}
+                                required
+                            />
+
+                            <View style={styles.fieldRow}>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <ProductFieldSelector
+                                        label="Saison recommandée"
+                                        fieldName="saisons"
+                                        productType="jardinage_paysagisme"
+                                        value={newProduct.saisonJardinage || ''}
+                                        onSelect={(value) => setNewProduct({ ...newProduct, saisonJardinage: value })}
+                                    />
+                                </View>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <ProductFieldSelector
+                                        label="Surface"
+                                        fieldName="surfaces"
+                                        productType="jardinage_paysagisme"
+                                        value={newProduct.surfaceJardinage || ''}
+                                        onSelect={(value) => setNewProduct({ ...newProduct, surfaceJardinage: value })}
+                                    />
+                                </View>
+                            </View>
+
+                            <ProductFieldSelector
+                                label="Services inclus"
+                                fieldName="services"
+                                productType="jardinage_paysagisme"
+                                value={newProduct.servicesJardinage || []}
+                                onSelect={(values) => setNewProduct({ ...newProduct, servicesJardinage: values })}
+                                multiSelect
+                            />
+
+                            <View style={styles.hintBox}>
+                                <Text style={styles.hintText}>
+                                    💡 Montrez vos réalisations avec des photos avant/après.
+                                </Text>
+                            </View>
+                        </>
+                        );
+
+                        case 'securite_surveillance':
+                        return (
+                        <>
+                            <ProductFieldSelector
+                                label="Type de service"
+                                fieldName="types"
+                                productType="securite_surveillance"
+                                value={newProduct.typeSecurite || ''}
+                                onSelect={(value) => setNewProduct({ ...newProduct, typeSecurite: value })}
+                                required
+                            />
+
+                            <View style={styles.fieldRow}>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <ProductFieldSelector
+                                        label="Zone à couvrir"
+                                        fieldName="zones"
+                                        productType="securite_surveillance"
+                                        value={newProduct.zoneSecurite || ''}
+                                        onSelect={(value) => setNewProduct({ ...newProduct, zoneSecurite: value })}
+                                    />
+                                </View>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <ProductFieldSelector
+                                        label="Durée du contrat"
+                                        fieldName="durees"
+                                        productType="securite_surveillance"
+                                        value={newProduct.dureeSecurite || ''}
+                                        onSelect={(value) => setNewProduct({ ...newProduct, dureeSecurite: value })}
+                                    />
+                                </View>
+                            </View>
+
+                            <ProductFieldSelector
+                                label="Équipements"
+                                fieldName="equipements"
+                                productType="securite_surveillance"
+                                value={newProduct.equipementsSecurite || []}
+                                onSelect={(values) => setNewProduct({ ...newProduct, equipementsSecurite: values })}
+                                multiSelect
+                            />
+
+                            <View style={styles.hintBox}>
+                                <Text style={styles.hintText}>
+                                    💡 Précisez vos certifications et agréments de sécurité.
+                                </Text>
+                            </View>
+                        </>
+                        );
+
+                        case 'plomberie':
+                        return (
+                        <>
+                            <ProductFieldSelector
+                                label="Type de service"
+                                fieldName="types"
+                                productType="plomberie"
+                                value={newProduct.typePlomberie || ''}
+                                onSelect={(value) => setNewProduct({ ...newProduct, typePlomberie: value })}
+                                required
+                            />
+
+                            <View style={styles.fieldRow}>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <ProductFieldSelector
+                                        label="Service d'urgence"
+                                        fieldName="urgences"
+                                        productType="plomberie"
+                                        value={newProduct.urgencePlomberie || ''}
+                                        onSelect={(value) => setNewProduct({ ...newProduct, urgencePlomberie: value })}
+                                    />
+                                </View>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <ProductFieldSelector
+                                        label="Garantie"
+                                        fieldName="garanties"
+                                        productType="plomberie"
+                                        value={newProduct.garantiePlomberie || ''}
+                                        onSelect={(value) => setNewProduct({ ...newProduct, garantiePlomberie: value })}
+                                    />
+                                </View>
+                            </View>
+
+                            <ProductFieldSelector
+                                label="Matériaux"
+                                fieldName="materiaux"
+                                productType="plomberie"
+                                value={newProduct.materiauxPlomberie || []}
+                                onSelect={(values) => setNewProduct({ ...newProduct, materiauxPlomberie: values })}
+                                multiSelect
+                            />
+
+                            <View style={styles.hintBox}>
+                                <Text style={styles.hintText}>
+                                    💡 Indiquez si vous intervenez en urgence 24h/24.
+                                </Text>
+                            </View>
+                        </>
+                        );
+
+                        case 'electricite':
+                        return (
+                        <>
+                            <ProductFieldSelector
+                                label="Type de service"
+                                fieldName="types"
+                                productType="electricite"
+                                value={newProduct.typeElectricite || ''}
+                                onSelect={(value) => setNewProduct({ ...newProduct, typeElectricite: value })}
+                                required
+                            />
+
+                            <View style={styles.fieldRow}>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <ProductFieldSelector
+                                        label="Puissance"
+                                        fieldName="puissances"
+                                        productType="electricite"
+                                        value={newProduct.puissanceElectricite || ''}
+                                        onSelect={(value) => setNewProduct({ ...newProduct, puissanceElectricite: value })}
+                                    />
+                                </View>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <ProductFieldSelector
+                                        label="Garantie"
+                                        fieldName="garanties"
+                                        productType="electricite"
+                                        value={newProduct.garantieElectricite || ''}
+                                        onSelect={(value) => setNewProduct({ ...newProduct, garantieElectricite: value })}
+                                    />
+                                </View>
+                            </View>
+
+                            <ProductFieldSelector
+                                label="Certifications"
+                                fieldName="certifications"
+                                productType="electricite"
+                                value={newProduct.certificationsElectricite || []}
+                                onSelect={(values) => setNewProduct({ ...newProduct, certificationsElectricite: values })}
+                                multiSelect
+                            />
+
+                            <View style={styles.hintBox}>
+                                <Text style={styles.hintText}>
+                                    💡 Mentionnez vos certifications et agréments électriques.
+                                </Text>
+                            </View>
+                        </>
+                        );
+
+                        case 'menuiserie':
+                        return (
+                        <>
+                            <ProductFieldSelector
+                                label="Type de produit/service"
+                                fieldName="types"
+                                productType="menuiserie"
+                                value={newProduct.typeMenuiserie || ''}
+                                onSelect={(value) => setNewProduct({ ...newProduct, typeMenuiserie: value })}
+                                required
+                            />
+
+                            <View style={styles.fieldRow}>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <ProductFieldSelector
+                                        label="Type de bois"
+                                        fieldName="bois"
+                                        productType="menuiserie"
+                                        value={newProduct.typeBois || ''}
+                                        onSelect={(value) => setNewProduct({ ...newProduct, typeBois: value })}
+                                    />
+                                </View>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <ProductFieldSelector
+                                        label="Finition"
+                                        fieldName="finitions"
+                                        productType="menuiserie"
+                                        value={newProduct.finitionMenuiserie || ''}
+                                        onSelect={(value) => setNewProduct({ ...newProduct, finitionMenuiserie: value })}
+                                    />
+                                </View>
+                            </View>
+
+                            <View style={styles.fieldRow}>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <ProductFieldSelector
+                                        label="Style"
+                                        fieldName="styles"
+                                        productType="menuiserie"
+                                        value={newProduct.styleMenuiserie || ''}
+                                        onSelect={(value) => setNewProduct({ ...newProduct, styleMenuiserie: value })}
+                                    />
+                                </View>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <Text style={styles.fieldLabel}>Dimensions</Text>
+                                    <NativeInput
+                                        placeholder="Ex: 200x100x80cm"
+                                        value={newProduct.dimensionsMenuiserie || ''}
+                                        onChangeText={(text) => setNewProduct({ ...newProduct, dimensionsMenuiserie: text })}
+                                        style={styles.fieldInput}
+                                    />
+                                </View>
+                            </View>
+
+                            <View style={styles.hintBox}>
+                                <Text style={styles.hintText}>
+                                    💡 Ajoutez des photos de vos réalisations pour montrer votre savoir-faire.
+                                </Text>
+                            </View>
+                        </>
+                        );
+
+                        case 'telephone':
+                        return (
+                        <>
+                            <View style={styles.fieldRow}>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <ProductFieldSelector
+                                        label="Marque"
+                                        fieldName="marques"
+                                        productType="telephone"
+                                        value={newProduct.marqueTelephone || ''}
+                                        onSelect={(value) => setNewProduct({ ...newProduct, marqueTelephone: value })}
+                                        required
+                                    />
+                                </View>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <Text style={styles.fieldLabel}>Modèle <Text style={styles.required}>*</Text></Text>
+                                    <NativeInput
+                                        placeholder="Ex: iPhone 14 Pro"
+                                        value={newProduct.modeleTelephone || ''}
+                                        onChangeText={(text) => setNewProduct({ ...newProduct, modeleTelephone: text })}
+                                        style={styles.fieldInput}
+                                    />
+                                </View>
+                            </View>
+
+                            <View style={styles.fieldRow}>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <ProductFieldSelector
+                                        label="Stockage"
+                                        fieldName="stockage"
+                                        productType="telephone"
+                                        value={newProduct.stockage || ''}
+                                        onSelect={(value) => setNewProduct({ ...newProduct, stockage: value })}
+                                    />
+                                </View>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <ProductFieldSelector
+                                        label="RAM"
+                                        fieldName="ram"
+                                        productType="telephone"
+                                        value={newProduct.ram || ''}
+                                        onSelect={(value) => setNewProduct({ ...newProduct, ram: value })}
+                                    />
+                                </View>
+                            </View>
+
+                            <View style={styles.fieldRow}>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <ProductFieldSelector
+                                        label="État"
+                                        fieldName="etats"
+                                        productType="telephone"
+                                        value={newProduct.etatTelephone || ''}
+                                        onSelect={(value) => setNewProduct({ ...newProduct, etatTelephone: value })}
+                                        required
+                                    />
+                                </View>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <ProductFieldSelector
+                                        label="Couleur"
+                                        fieldName="couleurs"
+                                        productType="telephone"
+                                        value={newProduct.couleurTelephone || ''}
+                                        onSelect={(value) => setNewProduct({ ...newProduct, couleurTelephone: value })}
+                                    />
+                                </View>
+                            </View>
+
+                            <View style={styles.hintBox}>
+                                <Text style={styles.hintText}>
+                                    📱 Précisez les caractéristiques techniques pour rassurer les acheteurs
+                                </Text>
+                            </View>
+                        </>
+                        );
+
+                        case 'ordinateur':
+                        return (
+                        <>
+                            <View style={styles.fieldRow}>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <ProductFieldSelector
+                                        label="Type"
+                                        fieldName="types"
+                                        productType="ordinateur"
+                                        value={newProduct.typeOrdinateur || ''}
+                                        onSelect={(value) => setNewProduct({ ...newProduct, typeOrdinateur: value })}
+                                        required
+                                    />
+                                </View>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <ProductFieldSelector
+                                        label="Marque"
+                                        fieldName="marques"
+                                        productType="ordinateur"
+                                        value={newProduct.marqueOrdinateur || ''}
+                                        onSelect={(value) => setNewProduct({ ...newProduct, marqueOrdinateur: value })}
+                                        required
+                                    />
+                                </View>
+                            </View>
+
+                            <View style={styles.fieldRow}>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <ProductFieldSelector
+                                        label="Processeur"
+                                        fieldName="processeurs"
+                                        productType="ordinateur"
+                                        value={newProduct.processeur || ''}
+                                        onSelect={(value) => setNewProduct({ ...newProduct, processeur: value })}
+                                    />
+                                </View>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <ProductFieldSelector
+                                        label="RAM"
+                                        fieldName="ram"
+                                        productType="ordinateur"
+                                        value={newProduct.ramOrdinateur || ''}
+                                        onSelect={(value) => setNewProduct({ ...newProduct, ramOrdinateur: value })}
+                                    />
+                                </View>
+                            </View>
+
+                            <View style={styles.fieldRow}>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <ProductFieldSelector
+                                        label="Stockage"
+                                        fieldName="stockage"
+                                        productType="ordinateur"
+                                        value={newProduct.stockageOrdinateur || ''}
+                                        onSelect={(value) => setNewProduct({ ...newProduct, stockageOrdinateur: value })}
+                                    />
+                                </View>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <ProductFieldSelector
+                                        label="Carte Graphique"
+                                        fieldName="cartesGraphiques"
+                                        productType="ordinateur"
+                                        value={newProduct.carteGraphique || ''}
+                                        onSelect={(value) => setNewProduct({ ...newProduct, carteGraphique: value })}
+                                    />
+                                </View>
+                            </View>
+
+                            <View style={styles.fieldRow}>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <ProductFieldSelector
+                                        label="État"
+                                        fieldName="etats"
+                                        productType="ordinateur"
+                                        value={newProduct.etatOrdinateur || ''}
+                                        onSelect={(value) => setNewProduct({ ...newProduct, etatOrdinateur: value })}
+                                        required
+                                    />
+                                </View>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <Text style={styles.fieldLabel}>Système d'exploitation</Text>
+                                    <NativeInput
+                                        placeholder="Ex: Windows 11, macOS"
+                                        value={newProduct.systemeExploitation || ''}
+                                        onChangeText={(text) => setNewProduct({ ...newProduct, systemeExploitation: text })}
+                                        style={styles.fieldInput}
+                                    />
+                                </View>
+                            </View>
+
+                            <View style={styles.hintBox}>
+                                <Text style={styles.hintText}>
+                                    💻 Les spécifications techniques sont essentielles pour les ordinateurs
+                                </Text>
+                            </View>
+                        </>
+                        );
+
+                        case 'image_son':
+                        return (
+                        <>
+                            <View style={styles.fieldRow}>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <ProductFieldSelector
+                                        label="Type d'appareil"
+                                        fieldName="types"
+                                        productType="image_son"
+                                        value={newProduct.typeImageSon || ''}
+                                        onSelect={(value) => setNewProduct({ ...newProduct, typeImageSon: value })}
+                                        required
+                                    />
+                                </View>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <ProductFieldSelector
+                                        label="Marque"
+                                        fieldName="marques"
+                                        productType="image_son"
+                                        value={newProduct.marqueImageSon || ''}
+                                        onSelect={(value) => setNewProduct({ ...newProduct, marqueImageSon: value })}
+                                    />
+                                </View>
+                            </View>
+
+                            <View style={styles.fieldRow}>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <ProductFieldSelector
+                                        label="Résolution"
+                                        fieldName="resolutions"
+                                        productType="image_son"
+                                        value={newProduct.resolution || ''}
+                                        onSelect={(value) => setNewProduct({ ...newProduct, resolution: value })}
+                                    />
+                                </View>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <ProductFieldSelector
+                                        label="Taille écran"
+                                        fieldName="taillesEcran"
+                                        productType="image_son"
+                                        value={newProduct.diagonaleEcran || ''}
+                                        onSelect={(value) => setNewProduct({ ...newProduct, diagonaleEcran: value })}
+                                    />
+                                </View>
+                            </View>
+
+                            <ProductFieldSelector
+                                label="État"
+                                fieldName="etats"
+                                productType="image_son"
+                                value={newProduct.etatImageSon || ''}
+                                onSelect={(value) => setNewProduct({ ...newProduct, etatImageSon: value })}
+                                required
+                            />
+
+                            <View style={styles.hintBox}>
+                                <Text style={styles.hintText}>
+                                    📺 Pour les TV, précisez la taille et la résolution
+                                </Text>
+                            </View>
+                        </>
+                        );
+
+                        case 'pieces_auto':
+                        return (
+                        <>
+                            <View style={styles.fieldRow}>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <ProductFieldSelector
+                                        label="Type de pièce"
+                                        fieldName="types"
+                                        productType="pieces_auto"
+                                        value={newProduct.typePieceAuto || ''}
+                                        onSelect={(value) => setNewProduct({ ...newProduct, typePieceAuto: value })}
+                                        required
+                                    />
+                                </View>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <ProductFieldSelector
+                                        label="Marque"
+                                        fieldName="marques"
+                                        productType="pieces_auto"
+                                        value={newProduct.marquePieceAuto || ''}
+                                        onSelect={(value) => setNewProduct({ ...newProduct, marquePieceAuto: value })}
+                                    />
+                                </View>
+                            </View>
+
+                            <View style={styles.fieldRow}>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <ProductFieldSelector
+                                        label="État"
+                                        fieldName="etats"
+                                        productType="pieces_auto"
+                                        value={newProduct.etatPieceAuto || ''}
+                                        onSelect={(value) => setNewProduct({ ...newProduct, etatPieceAuto: value })}
+                                        required
+                                    />
+                                </View>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <Text style={styles.fieldLabel}>Référence</Text>
+                                    <NativeInput
+                                        placeholder="Ex: REF-12345"
+                                        value={newProduct.referenceAuto || ''}
+                                        onChangeText={(text) => setNewProduct({ ...newProduct, referenceAuto: text })}
+                                        style={styles.fieldInput}
+                                    />
+                                </View>
+                            </View>
+
+                            <View style={styles.fieldContainer}>
+                                <Text style={styles.fieldLabel}>Compatibilité</Text>
+                                <NativeInput
+                                    placeholder="Ex: Toyota Camry 2015-2020"
+                                    value={newProduct.compatibilite || ''}
+                                    onChangeText={(text) => setNewProduct({ ...newProduct, compatibilite: text })}
+                                    style={styles.fieldInput}
+                                    multiline
+                                />
+                            </View>
+                        </>
+                        );
+
+                        case 'pieces_industrielles':
+                        return (
+                        <>
+                            <View style={styles.fieldRow}>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <ProductFieldSelector
+                                        label="Type de pièce"
+                                        fieldName="types"
+                                        productType="pieces_industrielles"
+                                        value={newProduct.typePieceIndustrielle || ''}
+                                        onSelect={(value) => setNewProduct({ ...newProduct, typePieceIndustrielle: value })}
+                                        required
+                                    />
+                                </View>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <ProductFieldSelector
+                                        label="Marque"
+                                        fieldName="marques"
+                                        productType="pieces_industrielles"
+                                        value={newProduct.marquePieceIndustrielle || ''}
+                                        onSelect={(value) => setNewProduct({ ...newProduct, marquePieceIndustrielle: value })}
+                                    />
+                                </View>
+                            </View>
+
+                            <View style={styles.fieldRow}>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <ProductFieldSelector
+                                        label="Matériau"
+                                        fieldName="materiaux"
+                                        productType="pieces_industrielles"
+                                        value={newProduct.materielPiece || ''}
+                                        onSelect={(value) => setNewProduct({ ...newProduct, materielPiece: value })}
+                                    />
+                                </View>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <ProductFieldSelector
+                                        label="Application"
+                                        fieldName="applications"
+                                        productType="pieces_industrielles"
+                                        value={newProduct.applicationIndustrielle || ''}
+                                        onSelect={(value) => setNewProduct({ ...newProduct, applicationIndustrielle: value })}
+                                    />
+                                </View>
+                            </View>
+
+                            <View style={styles.fieldContainer}>
+                                <Text style={styles.fieldLabel}>Référence</Text>
+                                <NativeInput
+                                    placeholder="Ex: SKF-6205-2Z"
+                                    value={newProduct.referencePiece || ''}
+                                    onChangeText={(text) => setNewProduct({ ...newProduct, referencePiece: text })}
+                                    style={styles.fieldInput}
+                                />
+                            </View>
+                        </>
+                        );
+
+                        case 'jouets_enfants':
+                        return (
+                        <>
+                            <View style={styles.fieldRow}>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <ProductFieldSelector
+                                        label="Type de jouet"
+                                        fieldName="types"
+                                        productType="jouets_enfants"
+                                        value={newProduct.typeJouet || ''}
+                                        onSelect={(value) => setNewProduct({ ...newProduct, typeJouet: value })}
+                                        required
+                                    />
+                                </View>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <ProductFieldSelector
+                                        label="Âge recommandé"
+                                        fieldName="ages"
+                                        productType="jouets_enfants"
+                                        value={newProduct.ageJouet || ''}
+                                        onSelect={(value) => setNewProduct({ ...newProduct, ageJouet: value })}
+                                    />
+                                </View>
+                            </View>
+
+                            <View style={styles.fieldRow}>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <ProductFieldSelector
+                                        label="Marque"
+                                        fieldName="marques"
+                                        productType="jouets_enfants"
+                                        value={newProduct.marqueJouet || ''}
+                                        onSelect={(value) => setNewProduct({ ...newProduct, marqueJouet: value })}
+                                    />
+                                </View>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <ProductFieldSelector
+                                        label="Matériau"
+                                        fieldName="materiaux"
+                                        productType="jouets_enfants"
+                                        value={newProduct.materiauJouet || ''}
+                                        onSelect={(value) => setNewProduct({ ...newProduct, materiauJouet: value })}
+                                    />
+                                </View>
+                            </View>
+                        </>
+                        );
+
+                        case 'ustensiles_cuisine':
+                        return (
+                        <>
+                            <View style={styles.fieldRow}>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <ProductFieldSelector
+                                        label="Type d'ustensile"
+                                        fieldName="types"
+                                        productType="ustensiles_cuisine"
+                                        value={newProduct.typeUstensile || ''}
+                                        onSelect={(value) => setNewProduct({ ...newProduct, typeUstensile: value })}
+                                        required
+                                    />
+                                </View>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <ProductFieldSelector
+                                        label="Matériau"
+                                        fieldName="materiaux"
+                                        productType="ustensiles_cuisine"
+                                        value={newProduct.materiauUstensile || ''}
+                                        onSelect={(value) => setNewProduct({ ...newProduct, materiauUstensile: value })}
+                                    />
+                                </View>
+                            </View>
+
+                            <View style={styles.fieldRow}>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <ProductFieldSelector
+                                        label="Marque"
+                                        fieldName="marques"
+                                        productType="ustensiles_cuisine"
+                                        value={newProduct.marqueUstensile || ''}
+                                        onSelect={(value) => setNewProduct({ ...newProduct, marqueUstensile: value })}
+                                    />
+                                </View>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <Text style={styles.fieldLabel}>Capacité</Text>
+                                    <NativeInput
+                                        placeholder="Ex: 2L, 5L"
+                                        value={newProduct.capaciteUstensile || ''}
+                                        onChangeText={(text) => setNewProduct({ ...newProduct, capaciteUstensile: text })}
+                                        style={styles.fieldInput}
+                                    />
+                                </View>
+                            </View>
+                        </>
+                        );
+
+                        default:
+                        return null;
+        }
+    };
+
+                        return (
+                        <View style={styles.container}>
+                            {/* Liste des produits */}
+                            {products.length > 0 ? (
+                                <ScrollView style={styles.productsList} showsVerticalScrollIndicator={false}>
+                                    {products.map((product) => {
+                                        const typeInfo = getProductTypeInfo(product.type);
+                                        return (
+                                            <View key={product.id} style={styles.productCard}>
+                                                <View style={styles.productContent}>
+                                                    {product.images && product.images.length > 0 && (
+                                                        <Image
+                                                            source={{ uri: product.images[0] }}
+                                                            style={styles.productImage}
+                                                            resizeMode="cover"
+                                                        />
+                                                    )}
+                                                    <View style={styles.productInfo}>
+                                                        <View style={styles.productHeader}>
+                                                            <View style={{ flex: 1 }}>
+                                                                <Text style={styles.productBadge} numberOfLines={1}>
+                                                                    {typeInfo.icon} {typeInfo.label}
+                                                                </Text>
+                                                                <Text style={styles.productName} numberOfLines={2} ellipsizeMode="tail">
+                                                                    {product.nom}
+                                                                </Text>
+                                                            </View>
+                                                            {!readonly && (
+                                                                <View style={styles.productActions}>
+                                                                    <TouchableOpacity
+                                                                        style={styles.actionButton}
+                                                                        onPress={() => handleEditProduct(product)}
+                                                                    >
+                                                                        <SafeIcon name="edit-2" size={16} color={modernColors.primary} />
+                                                                    </TouchableOpacity>
+                                                                    <TouchableOpacity
+                                                                        style={styles.actionButton}
+                                                                        onPress={() => handleDuplicateProduct(product)}
+                                                                    >
+                                                                        <SafeIcon name="copy" size={16} color={modernColors.success} />
+                                                                    </TouchableOpacity>
+                                                                    <TouchableOpacity
+                                                                        style={styles.actionButton}
+                                                                        onPress={() => handleDeleteProduct(product.id)}
+                                                                    >
+                                                                        <SafeIcon name="trash-2" size={16} color={modernColors.error} />
+                                                                    </TouchableOpacity>
+                                                                </View>
+                                                            )}
+                                                        </View>
+                                                        <Text style={styles.productPrice}>
+                                                            {product.prix} {product.devise}
+                                                        </Text>
+                                                        {product.description && (
+                                                            <Text style={styles.productDescription} numberOfLines={2}>
+                                                                {product.description}
+                                                            </Text>
+                                                        )}
+                                                        {product.images && product.images.length > 1 && (
+                                                            <Text style={styles.productMediaCount}>
+                                                                📷 {product.images.length} image(s)
+                                                            </Text>
+                                                        )}
+                                                        {product.videos && product.videos.length > 0 && (
+                                                            <Text style={styles.productMediaCount}>
+                                                                🎥 {product.videos.length} vidéo(s)
+                                                            </Text>
+                                                        )}
+                                                    </View>
+                                                </View>
+                                            </View>
+                                        );
+                                    })}
+                                </ScrollView>
+                            ) : (
+                                <View style={styles.emptyState}>
+                                    <SafeIcon name="package" size={48} color={modernColors.textSecondary} />
+                                    <Text style={styles.emptyText}>Aucun produit ajouté</Text>
+                                    <Text style={styles.emptyHint}>
+                                        Ajoutez des produits pour enrichir votre offre
+                                    </Text>
+                                </View>
+                            )}
+
+                            {/* Boutons d'ajout et d'import */}
+                            {!readonly && (
+                                <View style={styles.buttonsContainer}>
+                                    <TouchableOpacity
+                                        style={styles.addButton}
+                                        onPress={() => {
+                                            setCurrentStep('type');
+                                            setShowAddModal(true);
+                                        }}
+                                    >
+                                        <LinearGradient
+                                            colors={modernColors.primaryGradient as unknown as readonly [string, string, ...string[]]}
+                                            style={styles.addButtonGradient}
+                                        >
+                                            <SafeIcon name="plus" size={20} color="#FFFFFF" />
+                                            <Text style={styles.addButtonText}>Ajouter un produit</Text>
+                                        </LinearGradient>
+                                    </TouchableOpacity>
+                                </View>
+                            )}
+
+                            {/* Modal d'ajout/modification */}
+                            <Modal
+                                visible={showAddModal}
+                                animationType="slide"
+                                presentationStyle="fullScreen"
+                                onRequestClose={handleCancel}
+                            >
+                                <View style={styles.modalContainer}>
+                                    {/* Header */}
+                                    <LinearGradient
+                                        colors={modernColors.primaryGradient as unknown as readonly [string, string, ...string[]]}
+                                        style={styles.modalHeaderGradient}
+                                    >
+                                        <TouchableOpacity
+                                            style={styles.modalCloseButton}
+                                            onPress={handleCancel}
+                                        >
+                                            <SafeIcon name="x" size={24} color="#FFFFFF" />
+                                        </TouchableOpacity>
+                                        <Text style={styles.modalHeaderTitle}>
+                                            {editingProductId ? 'Modifier le produit' : 'Nouveau produit'}
+                                        </Text>
+                                        <View style={styles.modalSpacer} />
+                                    </LinearGradient>
+
+                                    <ScrollView
+                                        style={styles.modalContent}
+                                        showsVerticalScrollIndicator={false}
+                                        keyboardShouldPersistTaps="handled"
+                                        keyboardDismissMode="on-drag"
+                                        contentContainerStyle={{ paddingBottom: 300 }}
+                                    >
+                                        {/* Étape 1: Sélection du type */}
+                                        {currentStep === 'type' && (
+                                            <View style={styles.stepContainer}>
+                                                <Text style={styles.sectionTitle}>
+                                                    ✨ Sélectionnez le type de produit <Text style={styles.required}>*</Text>
+                                                </Text>
+                                                <Text style={styles.sectionSubtitle}>
+                                                    Choisissez la catégorie qui correspond le mieux à votre produit
+                                                </Text>
+
+                                                {/* Champ de recherche textuelle */}
+                                                <View style={styles.searchContainer}>
+                                                    <SafeIcon name="search" size={18} color={modernColors.textSecondary} />
+                                                    <NativeInput
+                                                        placeholder="Rechercher une catégorie..."
+                                                        value={searchQuery}
+                                                        onChangeText={setSearchQuery}
+                                                        style={styles.searchInput}
+                                                    />
+                                                    {searchQuery.length > 0 && (
+                                                        <TouchableOpacity onPress={() => setSearchQuery('')}>
+                                                            <SafeIcon name="x" size={18} color={modernColors.textSecondary} />
+                                                        </TouchableOpacity>
+                                                    )}
+                                                </View>
+
+                                                <View style={styles.dropdownContainer}>
+                                                    {(() => {
+                                                        // Filtrer les catégories selon la recherche
+                                                        let filteredTypes = PRODUCT_TYPES.filter(type => {
+                                                            if (searchQuery.length === 0) return true;
+                                                            // ✅ Recherche sans sensibilité aux accents
+                                                            const normalizedQuery = normalizeText(searchQuery);
+                                                            return normalizeText(type.label).includes(normalizedQuery) ||
+                                                                normalizeText(type.description).includes(normalizedQuery) ||
+                                                                ('keywords' in type && type.keywords.some((kw: string) => normalizeText(kw).includes(normalizedQuery)));
+                                                        });
+
+                                                        // ✅ Si aucune catégorie ne correspond et qu'il y a une recherche, proposer "Prestation de service" par défaut
+                                                        const hasNoResults = filteredTypes.length === 0 && searchQuery.length > 0;
+                                                        if (hasNoResults) {
+                                                            const prestationService = PRODUCT_TYPES.find(t => t.value === 'prestation_service');
+                                                            if (prestationService) {
+                                                                filteredTypes = [prestationService];
+                                                            }
+                                                        }
+
+                                                        return (
+                                                            <>
+                                                                {hasNoResults && filteredTypes.length > 0 && (
+                                                                    <View style={styles.noResultsHint}>
+                                                                        <SafeIcon name="info" size={16} color={modernColors.primary} />
+                                                                        <Text style={styles.noResultsText}>
+                                                                            Aucune catégorie ne correspond. Nous vous proposons "Prestation de service" par défaut.
+                                                                        </Text>
+                                                                    </View>
+                                                                )}
+                                                                {filteredTypes.map((type) => (
+                                                                    <TouchableOpacity
+                                                                        key={type.value}
+                                                                        style={[
+                                                                            styles.dropdownItem,
+                                                                            selectedType === type.value && styles.dropdownItemActive
+                                                                        ]}
+                                                                        onPress={() => handleSelectType(type.value as ProductType)}
+                                                                    >
+                                                                        <View style={styles.dropdownItemLeft}>
+                                                                            <Text style={styles.dropdownIcon}>{type.icon}</Text>
+                                                                            <View style={{ flex: 1 }}>
+                                                                                <Text style={[
+                                                                                    styles.dropdownLabel,
+                                                                                    selectedType === type.value && styles.dropdownLabelActive
+                                                                                ]}>{type.label}</Text>
+                                                                                <Text style={styles.dropdownDescription}>{type.description}</Text>
+                                                                            </View>
+                                                                        </View>
+                                                                        {selectedType === type.value && (
+                                                                            <SafeIcon name="check" size={20} color={modernColors.primary} />
+                                                                        )}
+                                                                    </TouchableOpacity>
+                                                                ))}
+                                                            </>
+                                                        );
+                                                    })()}
+                                                </View>
+                                            </View>
+                                        )}
+
+                                        {/* Étape 2: Formulaire */}
+                                        {currentStep === 'form' && selectedType && (
+                                            <View style={styles.stepContainer}>
+                                                {/* Badge de type sélectionné */}
+                                                <View style={styles.selectedTypeBadge}>
+                                                    <Text style={styles.selectedTypeText}>
+                                                        {getProductTypeInfo(selectedType).icon} {getProductTypeInfo(selectedType).label}
+                                                    </Text>
+                                                    <TouchableOpacity
+                                                        onPress={() => setCurrentStep('type')}
+                                                        style={styles.changeTypeButton}
+                                                    >
+                                                        <Text style={styles.changeTypeText}>Changer</Text>
+                                                    </TouchableOpacity>
+                                                </View>
+
+                                                {/* Bouton télécharger modèle Excel */}
+                                                <TouchableOpacity
+                                                    style={styles.templateButton}
+                                                    onPress={() => downloadExcelTemplate(selectedType)}
+                                                >
+                                                    <SafeIcon name="download" size={18} color={modernColors.primary} />
+                                                    <Text style={styles.templateButtonText}>
+                                                        Télécharger le modèle Excel
+                                                    </Text>
+                                                </TouchableOpacity>
+
+                                                {/* Bouton importer Excel */}
+                                                <TouchableOpacity
+                                                    style={styles.importExcelButton}
+                                                    onPress={handleImportExcel}
+                                                >
+                                                    <SafeIcon name="file-text" size={18} color={modernColors.success} />
+                                                    <Text style={styles.importExcelText}>
+                                                        Importer depuis Excel/CSV
+                                                    </Text>
+                                                </TouchableOpacity>
+
+                                                <View style={styles.dividerWithText}>
+                                                    <View style={styles.dividerLine} />
+                                                    <Text style={styles.dividerText}>ou remplir manuellement</Text>
+                                                    <View style={styles.dividerLine} />
+                                                </View>
+
+                                                {/* Champs communs - Toujours visibles, pré-remplis pour Prestation de Service */}
+                                                <View style={styles.fieldContainer}>
+                                                    <Text style={styles.fieldLabel}>
+                                                        {getProductNameLabel(selectedType)} <Text style={styles.required}>*</Text>
+                                                        {selectedType === 'prestation_service' && (
+                                                            <Text style={styles.autoFilledHint}> (pré-rempli automatiquement)</Text>
+                                                        )}
+                                                    </Text>
+                                                    {selectedType && (
+                                                        <Text style={styles.categoryReminder}>
+                                                            📦 Catégorie : {PRODUCT_TYPES.find(t => t.value === selectedType)?.label}
+                                                        </Text>
+                                                    )}
+                                                    <NativeInput
+                                                        placeholder={getProductNamePlaceholder(selectedType)}
+                                                        value={newProduct.nom || ''}
+                                                        onChangeText={(text) => setNewProduct({ ...newProduct, nom: text })}
+                                                        style={styles.fieldInput}
+                                                    />
+                                                </View>
+
+                                                <View style={styles.fieldContainer}>
+                                                    <Text style={styles.fieldLabel}>
+                                                        Description
+                                                        {selectedType === 'prestation_service' && (
+                                                            <Text style={styles.autoFilledHint}> (pré-remplie automatiquement)</Text>
+                                                        )}
+                                                    </Text>
+                                                    <NativeInput
+                                                        placeholder="Décrivez ce produit..."
+                                                        value={newProduct.description || ''}
+                                                        onChangeText={(text) => setNewProduct({ ...newProduct, description: text })}
+                                                        multiline
+                                                        style={[styles.fieldInput, styles.textareaInput]}
+                                                    />
+                                                </View>
+
+                                                {/* Prix et devise - MASQUÉ pour pharmacie et hopital_clinique */}
+                                                {selectedType !== 'pharmacie' && selectedType !== 'hopital_clinique' && (
+                                                    <View style={styles.fieldRow}>
+                                                        <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                                            <Text style={styles.fieldLabel}>
+                                                                {selectedType === 'assurance' ? 'Prime (à partir de)' :
+                                                                    selectedType === 'prestation_service' ? 'À partir de' : 'Prix'}
+                                                                {selectedType !== 'prestation_service' && selectedType !== 'assurance' && <Text style={styles.required}>*</Text>}
+                                                            </Text>
+                                                            <NativeInput
+                                                                placeholder={selectedType === 'prestation_service' || selectedType === 'assurance' ? 'Prix (optionnel)' : '0'}
+                                                                value={newProduct.prix || ''}
+                                                                onChangeText={(text) => setNewProduct({ ...newProduct, prix: text })}
+                                                                style={styles.fieldInput}
+                                                                keyboardType="numeric"
+                                                            />
+                                                        </View>
+
+                                                        <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                                            <Text style={styles.fieldLabel}>Devise</Text>
+                                                            <View style={styles.deviseGridContainer}>
+                                                                {devises.map((devise) => (
+                                                                    <TouchableOpacity
+                                                                        key={devise}
+                                                                        style={[
+                                                                            styles.deviseButtonGrid,
+                                                                            newProduct.devise === devise && styles.deviseButtonActive
+                                                                        ]}
+                                                                        onPress={() => setNewProduct({ ...newProduct, devise })}
+                                                                    >
+                                                                        <Text style={[
+                                                                            styles.deviseButtonText,
+                                                                            newProduct.devise === devise && styles.deviseButtonTextActive
+                                                                        ]}>
+                                                                            {devise}
+                                                                        </Text>
+                                                                    </TouchableOpacity>
+                                                                ))}
+                                                            </View>
+                                                        </View>
+                                                    </View>
+                                                )}
+
+                                                {/* Champs spécifiques */}
+                                                {renderSpecificFields()}
+
+                                                {/* Section Médias */}
+                                                <View style={styles.mediaSectionContainer}>
+                                                    <Text style={styles.sectionTitle}>📸 Images du produit</Text>
+
+                                                    {/* Message descriptif incitatif */}
+                                                    <View style={styles.mediaHintContainer}>
+                                                        <SafeIcon name="info" size={16} color={modernColors.info} />
+                                                        <Text style={styles.mediaHintText}>
+                                                            💡 Ajoutez des photos de qualité pour attirer plus de clients ! Montrez votre produit sous tous les angles.
+                                                        </Text>
+                                                    </View>
+
+                                                    <TouchableOpacity
+                                                        style={styles.mediaButton}
+                                                        onPress={handlePickImages}
+                                                    >
+                                                        <SafeIcon name="image" size={20} color={modernColors.primary} />
+                                                        <Text style={styles.mediaButtonText}>
+                                                            📷 Ajouter des images
+                                                        </Text>
+                                                    </TouchableOpacity>
+
+                                                    {newProduct.images && newProduct.images.length > 0 && (
+                                                        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.mediaPreviewScroll}>
+                                                            {newProduct.images.map((image, index) => (
+                                                                <View key={index} style={styles.mediaPreviewItem}>
+                                                                    <Image source={{ uri: image }} style={styles.mediaPreviewImage} />
+                                                                    <TouchableOpacity
+                                                                        style={styles.removeMediaButton}
+                                                                        onPress={() => removeImage(index)}
+                                                                    >
+                                                                        <SafeIcon name="x" size={16} color="#FFFFFF" />
+                                                                    </TouchableOpacity>
+                                                                </View>
+                                                            ))}
+                                                        </ScrollView>
+                                                    )}
+
+                                                    <Text style={[styles.sectionTitle, { marginTop: 20 }]}>🎥 Vidéos du produit</Text>
+
+                                                    {/* Message descriptif incitatif pour vidéos */}
+                                                    <View style={styles.mediaHintContainer}>
+                                                        <SafeIcon name="info" size={16} color={modernColors.info} />
+                                                        <Text style={styles.mediaHintText}>
+                                                            🎬 Les vidéos augmentent de 80% les chances de vente ! Montrez votre produit en action ou en démonstration.
+                                                        </Text>
+                                                    </View>
+
+                                                    <TouchableOpacity
+                                                        style={styles.mediaButton}
+                                                        onPress={handlePickVideos}
+                                                    >
+                                                        <SafeIcon name="video" size={20} color={modernColors.success} />
+                                                        <Text style={styles.mediaButtonText}>
+                                                            🎥 Ajouter des vidéos
+                                                        </Text>
+                                                    </TouchableOpacity>
+
+                                                    {newProduct.videos && newProduct.videos.length > 0 && (
+                                                        <View style={styles.videosList}>
+                                                            {newProduct.videos.map((video, index) => (
+                                                                <View key={index} style={styles.videoItem}>
+                                                                    <SafeIcon name="video" size={20} color={modernColors.success} />
+                                                                    <Text style={styles.videoText}>Vidéo {index + 1}</Text>
+                                                                    <TouchableOpacity
+                                                                        style={styles.removeVideoButton}
+                                                                        onPress={() => removeVideo(index)}
+                                                                    >
+                                                                        <SafeIcon name="trash-2" size={16} color={modernColors.error} />
+                                                                    </TouchableOpacity>
+                                                                </View>
+                                                            ))}
+                                                        </View>
+                                                    )}
+                                                </View>
+
+                                                {/* Section Promotion - APRÈS les médias */}
+                                                <View style={styles.promotionSectionContainer}>
+                                                    <Text style={styles.sectionTitle}>🎁 Promotion (optionnel)</Text>
+
+                                                    <TouchableOpacity
+                                                        style={styles.checkboxContainer}
+                                                        onPress={() => setNewProduct({ ...newProduct, promotionActive: !newProduct.promotionActive })}
+                                                    >
+                                                        <View style={[
+                                                            styles.checkbox,
+                                                            newProduct.promotionActive && styles.checkboxChecked
+                                                        ]}>
+                                                            {newProduct.promotionActive && (
+                                                                <SafeIcon name="check" size={16} color="#FFFFFF" />
+                                                            )}
+                                                        </View>
+                                                        <Text style={styles.checkboxLabel}>Activer une promotion pour ce produit</Text>
+                                                    </TouchableOpacity>
+
+                                                    {newProduct.promotionActive && (
+                                                        <View style={styles.promotionFields}>
+                                                            <View style={styles.fieldContainer}>
+                                                                <Text style={styles.fieldLabel}>🏷️ Type de promotion</Text>
+                                                                <View style={styles.pickerButtons}>
+                                                                    {(['reduction', 'offre', 'bon_plan', 'flash'] as const).map((type) => (
+                                                                        <TouchableOpacity
+                                                                            key={type}
+                                                                            style={[
+                                                                                styles.pickerButton,
+                                                                                newProduct.promotionType === type && styles.pickerButtonActive
+                                                                            ]}
+                                                                            onPress={() => setNewProduct({ ...newProduct, promotionType: type })}
+                                                                        >
+                                                                            <Text style={[
+                                                                                styles.pickerButtonText,
+                                                                                newProduct.promotionType === type && styles.pickerButtonTextActive
+                                                                            ]}>
+                                                                                {type === 'reduction' ? 'Réduction' :
+                                                                                    type === 'offre' ? 'Offre' :
+                                                                                        type === 'bon_plan' ? 'Bon plan' : 'Flash'}
+                                                                            </Text>
+                                                                        </TouchableOpacity>
+                                                                    ))}
+                                                                </View>
+                                                            </View>
+
+                                                            <View style={styles.fieldContainer}>
+                                                                <Text style={styles.fieldLabel}>💰 Valeur</Text>
+                                                                <NativeInput
+                                                                    placeholder="Ex: -20%, 1+1 gratuit"
+                                                                    value={newProduct.promotionValeur || ''}
+                                                                    onChangeText={(text) => setNewProduct({ ...newProduct, promotionValeur: text })}
+                                                                    style={styles.fieldInput}
+                                                                />
+                                                            </View>
+
+                                                            <View style={styles.fieldContainer}>
+                                                                <Text style={styles.fieldLabel}>📝 Description</Text>
+                                                                <NativeInput
+                                                                    placeholder="Décrivez l'offre..."
+                                                                    value={newProduct.promotionDescription || ''}
+                                                                    onChangeText={(text) => setNewProduct({ ...newProduct, promotionDescription: text })}
+                                                                    multiline
+                                                                    style={[styles.fieldInput, styles.textareaInput]}
+                                                                />
+                                                            </View>
+
+                                                            <View style={styles.fieldContainer}>
+                                                                <Text style={styles.fieldLabel}>📅 Date de fin</Text>
+                                                                <NativeInput
+                                                                    placeholder="JJ/MM/AAAA"
+                                                                    value={newProduct.promotionDateFin || ''}
+                                                                    onChangeText={(text) => setNewProduct({ ...newProduct, promotionDateFin: text })}
+                                                                    style={styles.fieldInput}
+                                                                />
+                                                            </View>
+                                                        </View>
+                                                    )}
+                                                </View>
+                                            </View>
+                                        )}
+                                    </ScrollView>
+
+                                    {/* Footer avec boutons */}
+                                    {currentStep === 'form' && (
+                                        <View style={styles.modalFooter}>
+                                            <NativeButton
+                                                title="Annuler"
+                                                onPress={handleCancel}
+                                                variant="secondary"
+                                                style={{ flex: 1 }}
+                                            />
+                                            <NativeButton
+                                                title={editingProductId ? 'Modifier' : 'Ajouter'}
+                                                onPress={handleAddProduct}
+                                                variant="primary"
+                                                style={{ flex: 1 }}
+                                            />
+                                        </View>
+                                    )}
+                                </View>
+                            </Modal>
+
+                            {/* Modal de sélection de place pour tickets de voyage */}
+                            <BusSeatSelector
+                                visible={showSeatSelector}
+                                onClose={() => setShowSeatSelector(false)}
+                                onSelectSeat={(seatLabel) => {
+                                    setNewProduct({ ...newProduct, numeroPlace: seatLabel });
+                                }}
+                                busType="standard"
+                            />
+
+                            {/* Modal GPS pour immobilier et hôtellerie */}
+                            <ModernGPSModal
+                                visible={showGPSModal}
+                                onClose={() => setShowGPSModal(false)}
+                                onSelect={(coordinatesString) => {
+                                    const firstPoint = coordinatesString.split('|')[0].split(',');
+                                    if (firstPoint.length === 2) {
+                                        const lat = parseFloat(firstPoint[0]);
+                                        const lng = parseFloat(firstPoint[1]);
+                                        setSelectedGPSLocation({ lat, lng });
+
+                                        // ✅ Déterminer quel champ GPS mettre à jour selon le type
+                                        if (selectedType === 'immobilier_batiment' || selectedType === 'immobilier_terrain') {
+                                            setNewProduct({ ...newProduct, gpsImmobilier: coordinatesString });
+                                        } else if (selectedType === 'hotellerie') {
+                                            setNewProduct({ ...newProduct, gpsHotel: coordinatesString });
+                                        } else {
+                                            // Fallback pour autres types qui pourraient utiliser GPS
+                                            setNewProduct({ ...newProduct, gpsImmobilier: coordinatesString });
+                                        }
+                                    }
+                                    setShowGPSModal(false);
+                                }}
+                                currentLocation={selectedGPSLocation}
+                                title="Localisation du bien immobilier"
+                                allowZoneSelection={true}
+                            />
+
+                            {/* Modal de duplication de produit */}
+                            <ProductDuplicationModal
+                                visible={showDuplicationModal}
+                                onClose={handleCancelDuplication}
+                                product={productToDuplicate}
+                                onDuplicate={handleConfirmDuplication}
                             />
                         </View>
-                    )}
-                </View>
-            </Modal>
-
-            {/* Modal de sélection de place pour tickets de voyage */}
-            <BusSeatSelector
-                visible={showSeatSelector}
-                onClose={() => setShowSeatSelector(false)}
-                onSelectSeat={(seatLabel) => {
-                    setNewProduct({ ...newProduct, numeroPlace: seatLabel });
-                }}
-                busType="standard"
-            />
-
-            {/* Modal GPS pour immobilier et hôtellerie */}
-            <ModernGPSModal
-                visible={showGPSModal}
-                onClose={() => setShowGPSModal(false)}
-                onSelect={(coordinatesString) => {
-                    const firstPoint = coordinatesString.split('|')[0].split(',');
-                    if (firstPoint.length === 2) {
-                        const lat = parseFloat(firstPoint[0]);
-                        const lng = parseFloat(firstPoint[1]);
-                        setSelectedGPSLocation({ lat, lng });
-
-                        // ✅ Déterminer quel champ GPS mettre à jour selon le type
-                        if (selectedType === 'immobilier_batiment' || selectedType === 'immobilier_terrain') {
-                            setNewProduct({ ...newProduct, gpsImmobilier: coordinatesString });
-                        } else if (selectedType === 'hotellerie') {
-                            setNewProduct({ ...newProduct, gpsHotel: coordinatesString });
-                        } else {
-                            // Fallback pour autres types qui pourraient utiliser GPS
-                            setNewProduct({ ...newProduct, gpsImmobilier: coordinatesString });
-                        }
-                    }
-                    setShowGPSModal(false);
-                }}
-                currentLocation={selectedGPSLocation}
-                title="Localisation du bien immobilier"
-                allowZoneSelection={true}
-            />
-
-            {/* Modal de duplication de produit */}
-            <ProductDuplicationModal
-                visible={showDuplicationModal}
-                onClose={handleCancelDuplication}
-                product={productToDuplicate}
-                onDuplicate={handleConfirmDuplication}
-            />
-        </View>
-    );
+                        );
 };
 
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-    },
-    productsList: {
-        maxHeight: 400,
-    },
-    productCard: {
-        backgroundColor: modernColors.surface,
-        borderRadius: 12,
-        padding: 12,
-        marginBottom: 12,
-        borderWidth: 1,
-        borderColor: modernColors.border,
-    },
-    productContent: {
-        flexDirection: 'row',
-        gap: 12,
-    },
-    productImage: {
-        width: 80,
-        height: 80,
-        borderRadius: 8,
-        backgroundColor: modernColors.background,
-    },
-    productInfo: {
-        flex: 1,
-    },
-    productHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'flex-start',
-        marginBottom: 8,
-    },
-    productBadge: {
-        fontSize: 11,
-        color: modernColors.textSecondary,
-        marginBottom: 4,
-        flexShrink: 1, // ✅ Permet au badge de rétrécir
-    },
-    productName: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: modernColors.text,
-        flexShrink: 1, // ✅ Permet au texte de rétrécir si nécessaire
-        flexWrap: 'nowrap', // ✅ Empêche le wrap non contrôlé
-    },
-    productActions: {
-        flexDirection: 'row',
-        gap: 8,
-    },
-    actionButton: {
-        padding: 8,
-        backgroundColor: modernColors.background,
-        borderRadius: 8,
-    },
-    productPrice: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: modernColors.primary,
-        marginBottom: 4,
-    },
-    productDescription: {
-        fontSize: 12,
-        color: modernColors.textSecondary,
-        lineHeight: 16,
-        marginBottom: 4,
-    },
-    productMediaCount: {
-        fontSize: 11,
-        color: modernColors.textSecondary,
-        marginTop: 2,
-    },
-    emptyState: {
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 32,
-    },
-    emptyText: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: modernColors.textSecondary,
-        marginTop: 12,
-    },
-    emptyHint: {
-        fontSize: 12,
-        color: modernColors.textSecondary,
-        textAlign: 'center',
-        marginTop: 4,
-    },
-    buttonsContainer: {
-        marginTop: 12,
-        gap: 8,
-    },
-    addButton: {
-        marginTop: 8,
-    },
-    addButtonGradient: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingVertical: 12,
-        paddingHorizontal: 16,
-        borderRadius: 12,
-        gap: 8,
-    },
-    addButtonText: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: '#FFFFFF',
-    },
-    modalContainer: {
-        flex: 1,
-        backgroundColor: modernColors.background,
-    },
-    modalHeaderGradient: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingTop: 50,
-        paddingBottom: 16,
-        paddingHorizontal: 20,
-    },
-    modalCloseButton: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        backgroundColor: 'rgba(255, 255, 255, 0.2)',
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    modalHeaderTitle: {
-        fontSize: 18,
-        fontWeight: 'bold',
-        color: '#FFFFFF',
-    },
-    modalSpacer: {
-        width: 40,
-    },
-    modalContent: {
-        flex: 1,
-        padding: 20,
-    },
-    stepContainer: {
-        gap: 16,
-    },
-    sectionTitle: {
-        fontSize: 18,
-        fontWeight: '600',
-        color: modernColors.text,
-        marginBottom: 8,
-    },
-    sectionSubtitle: {
-        fontSize: 14,
-        color: modernColors.textSecondary,
-        marginBottom: 16,
-    },
-    searchContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: modernColors.surface,
-        borderRadius: 10,
-        borderWidth: 1,
-        borderColor: modernColors.border,
-        paddingHorizontal: 12,
-        marginBottom: 16,
-        gap: 8,
-    },
-    searchInput: {
-        flex: 1,
-        paddingVertical: 10,
-        fontSize: 14,
-        color: modernColors.text,
-    },
-    dropdownContainer: {
-        backgroundColor: modernColors.surface,
-        borderRadius: 12,
-        borderWidth: 1,
-        borderColor: modernColors.border,
-        overflow: 'hidden',
-    },
-    noResultsHint: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        padding: 12,
-        backgroundColor: '#EEF2FF',
-        borderBottomWidth: 1,
-        borderBottomColor: modernColors.border,
-        gap: 8,
-    },
-    noResultsText: {
-        flex: 1,
-        fontSize: 12,
-        fontWeight: '500',
-        color: modernColors.primary,
-        lineHeight: 18,
-    },
-    dropdownItem: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        padding: 16,
-        borderBottomWidth: 1,
-        borderBottomColor: modernColors.border,
-    },
-    dropdownItemActive: {
-        backgroundColor: '#EFF6FF',
-    },
-    dropdownItemLeft: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 12,
-        flex: 1,
-    },
-    dropdownIcon: {
-        fontSize: 24,
-    },
-    dropdownLabel: {
-        fontSize: 15,
-        fontWeight: '500',
-        color: modernColors.text,
-        flex: 1,
-    },
-    dropdownLabelActive: {
-        fontWeight: '600',
-        color: modernColors.primary,
-    },
-    dropdownDescription: {
-        fontSize: 11,
-        color: modernColors.textSecondary,
-        marginTop: 2,
-    },
-    selectedTypeBadge: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        backgroundColor: '#EFF6FF',
-        padding: 12,
-        borderRadius: 12,
-        borderWidth: 1,
-        borderColor: modernColors.primary,
-    },
-    selectedTypeText: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: modernColors.primary,
-    },
-    changeTypeButton: {
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        backgroundColor: modernColors.primary,
-        borderRadius: 8,
-    },
-    changeTypeText: {
-        fontSize: 12,
-        fontWeight: '600',
-        color: '#FFFFFF',
-    },
-    templateButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 8,
-        backgroundColor: modernColors.surface,
-        borderWidth: 1,
-        borderColor: modernColors.primary,
-        borderRadius: 12,
-        paddingVertical: 12,
-        paddingHorizontal: 16,
-    },
-    templateButtonText: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: modernColors.primary,
-    },
-    importExcelButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 8,
-        backgroundColor: modernColors.surface,
-        borderWidth: 1,
-        borderColor: modernColors.success,
-        borderRadius: 12,
-        paddingVertical: 12,
-        paddingHorizontal: 16,
-    },
-    importExcelText: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: modernColors.success,
-    },
-    dividerWithText: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginVertical: 16,
-    },
-    dividerLine: {
-        flex: 1,
-        height: 1,
-        backgroundColor: modernColors.border,
-    },
-    dividerText: {
-        fontSize: 12,
-        color: modernColors.textSecondary,
-        marginHorizontal: 12,
-    },
-    fieldContainer: {
-        marginBottom: 16,
-    },
-    fieldRow: {
-        flexDirection: 'row',
-        gap: 12,
-        marginBottom: 16,
-    },
-    fieldLabel: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: modernColors.text,
-        marginBottom: 8,
-    },
-    required: {
-        color: modernColors.error,
-    },
-    autoFilledHint: {
-        fontSize: 11,
-        color: modernColors.success,
-        fontStyle: 'italic',
-        fontWeight: '400',
-    },
-    fieldInput: {
-        backgroundColor: modernColors.surface,
-        borderWidth: 1,
-        borderColor: modernColors.border,
-        borderRadius: 8,
-        paddingHorizontal: 12,
-        paddingVertical: 10,
-        fontSize: 14,
-        color: modernColors.text,
-    },
-    textareaInput: {
-        minHeight: 80,
-        textAlignVertical: 'top',
-    },
-    pickerContainer: {
-        flexDirection: 'row',
-        gap: 8,
-    },
-    deviseButton: {
-        paddingHorizontal: 12,
-        paddingVertical: 8,
-        borderRadius: 8,
-        backgroundColor: modernColors.background,
-        borderWidth: 1,
-        borderColor: modernColors.border,
-        marginRight: 4,
-    },
-    deviseButtonActive: {
-        backgroundColor: modernColors.primary,
-        borderColor: modernColors.primary,
-    },
-    deviseButtonText: {
-        fontSize: 12,
-        fontWeight: '600',
-        color: modernColors.textSecondary,
-    },
-    deviseButtonTextActive: {
-        color: '#FFFFFF',
-    },
-    mediaSectionContainer: {
-        marginTop: 20,
-        paddingTop: 20,
-        borderTopWidth: 1,
-        borderTopColor: modernColors.border,
-    },
-    mediaButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 8,
-        backgroundColor: modernColors.surface,
-        borderWidth: 2,
-        borderColor: modernColors.border,
-        borderStyle: 'dashed',
-        borderRadius: 12,
-        paddingVertical: 16,
-        paddingHorizontal: 16,
-    },
-    mediaButtonText: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: modernColors.text,
-    },
-    mediaPreviewScroll: {
-        marginTop: 12,
-    },
-    mediaPreviewItem: {
-        position: 'relative',
-        marginRight: 12,
-    },
-    mediaPreviewImage: {
-        width: 100,
-        height: 100,
-        borderRadius: 8,
-    },
-    removeMediaButton: {
-        position: 'absolute',
-        top: -8,
-        right: -8,
-        width: 24,
-        height: 24,
-        borderRadius: 12,
-        backgroundColor: modernColors.error,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    videosList: {
-        marginTop: 12,
-        gap: 8,
-    },
-    videoItem: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 12,
-        backgroundColor: modernColors.surface,
-        padding: 12,
-        borderRadius: 8,
-        borderWidth: 1,
-        borderColor: modernColors.border,
-    },
-    videoText: {
-        flex: 1,
-        fontSize: 14,
-        color: modernColors.text,
-    },
-    removeVideoButton: {
-        padding: 8,
-    },
-    hintBox: {
-        backgroundColor: '#EFF6FF',
-        borderRadius: 8,
-        padding: 12,
-        marginTop: 12,
-        borderLeftWidth: 4,
-        borderLeftColor: modernColors.primary,
-    },
-    hintText: {
-        fontSize: 12,
-        color: modernColors.text,
-        lineHeight: 16,
-    },
-    modalFooter: {
-        flexDirection: 'row',
-        gap: 12,
-        padding: 20,
-        borderTopWidth: 1,
-        borderTopColor: modernColors.border,
-        backgroundColor: modernColors.surface,
-    },
-    seatSelectionContainer: {
-        flexDirection: 'row',
-        gap: 8,
-        alignItems: 'center',
-    },
-    seatSelectorButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
-        backgroundColor: modernColors.primary,
-        paddingHorizontal: 12,
-        paddingVertical: 10,
-        borderRadius: 8,
-    },
-    seatSelectorButtonText: {
-        fontSize: 12,
-        fontWeight: '600',
-        color: '#FFFFFF',
-    },
-    scrollablePicker: {
-        maxHeight: 50,
-        marginBottom: 8,
-    },
-    pickerButtons: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 8,
-    },
-    pickerButton: {
-        paddingHorizontal: 16,
-        paddingVertical: 10,
-        borderRadius: 8,
-        backgroundColor: modernColors.background,
-        borderWidth: 1,
-        borderColor: modernColors.border,
-    },
-    pickerButtonActive: {
-        backgroundColor: modernColors.primary,
-        borderColor: modernColors.primary,
-    },
-    pickerButtonText: {
-        fontSize: 13,
-        fontWeight: '600',
-        color: modernColors.textSecondary,
-    },
-    pickerButtonTextActive: {
-        color: '#FFFFFF',
-    },
-    checkboxContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 12,
-        paddingVertical: 8,
-    },
-    checkbox: {
-        width: 24,
-        height: 24,
-        borderRadius: 6,
-        borderWidth: 2,
-        borderColor: modernColors.border,
-        backgroundColor: modernColors.surface,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    checkboxChecked: {
-        backgroundColor: modernColors.primary,
-        borderColor: modernColors.primary,
-    },
-    checkboxLabel: {
-        fontSize: 14,
-        fontWeight: '500',
-        color: modernColors.text,
-        flex: 1,
-    },
-    gpsButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: modernColors.background,
-        borderWidth: 1,
-        borderColor: modernColors.primary,
-        borderRadius: 8,
-        paddingVertical: 12,
-        paddingHorizontal: 16,
-        gap: 8,
-    },
-    gpsButtonText: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: modernColors.primary,
-    },
-    gpsInfoCard: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#D1FAE5',
-        borderWidth: 1,
-        borderColor: modernColors.success,
-        borderRadius: 8,
-        paddingVertical: 10,
-        paddingHorizontal: 12,
-        marginTop: 8,
-        gap: 8,
-    },
-    gpsInfoText: {
-        flex: 1,
-        fontSize: 12,
-        color: modernColors.text,
-    },
-    // Styles pour les prestations de service
-    prestationHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 16,
-    },
-    addPrestationButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
-        paddingHorizontal: 12,
-        paddingVertical: 8,
-        backgroundColor: modernColors.surface,
-        borderWidth: 1,
-        borderColor: modernColors.primary,
-        borderRadius: 8,
-    },
-    addPrestationText: {
-        fontSize: 13,
-        fontWeight: '600',
-        color: modernColors.primary,
-    },
-    prestationCard: {
-        backgroundColor: modernColors.surface,
-        borderWidth: 1,
-        borderColor: modernColors.border,
-        borderRadius: 12,
-        padding: 16,
-        marginBottom: 12,
-    },
-    prestationCardHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 16,
-        paddingBottom: 12,
-        borderBottomWidth: 1,
-        borderBottomColor: modernColors.border,
-    },
-    prestationCardTitle: {
-        fontSize: 15,
-        fontWeight: '600',
-        color: modernColors.text,
-    },
-    deletePrestationButton: {
-        padding: 6,
-        borderRadius: 6,
-        backgroundColor: '#FEE2E2',
-    },
-    prestationFieldContainer: {
-        marginBottom: 12,
-    },
-    prestationFieldLabel: {
-        fontSize: 13,
-        fontWeight: '600',
-        color: modernColors.text,
-        marginBottom: 6,
-    },
-    prestationFieldRow: {
-        flexDirection: 'row',
-        alignItems: 'flex-end',
-        gap: 8,
-        marginBottom: 12,
-    },
-    xafLabel: {
-        paddingHorizontal: 12,
-        paddingVertical: 10,
-        backgroundColor: '#EFF6FF',
-        borderRadius: 8,
-        borderWidth: 1,
-        borderColor: modernColors.primary,
-    },
-    xafText: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: modernColors.primary,
-    },
-    emptyPrestationState: {
-        alignItems: 'center',
-        padding: 32,
-        backgroundColor: modernColors.background,
-        borderRadius: 12,
-        borderWidth: 2,
-        borderColor: modernColors.border,
-        borderStyle: 'dashed',
-    },
-    emptyPrestationText: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: modernColors.textSecondary,
-        marginTop: 12,
-    },
-    emptyPrestationSubtext: {
-        fontSize: 12,
-        color: modernColors.textSecondary,
-        marginTop: 4,
-        textAlign: 'center',
-    },
-    // Style pour le rappel de catégorie
-    categoryReminder: {
-        fontSize: 12,
-        fontWeight: '600',
-        color: modernColors.primary,
-        backgroundColor: '#EFF6FF',
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        borderRadius: 6,
-        marginBottom: 8,
-        alignSelf: 'flex-start',
-    },
-    // Styles pour Logo et Bannière
-    logoBannerContainer: {
-        flexDirection: 'row',
-        gap: 12,
-        marginTop: 12,
-    },
-    logoBannerItem: {
-        flex: 1,
-        gap: 8,
-    },
-    logoBannerLabel: {
-        fontSize: 13,
-        fontWeight: '600',
-        color: modernColors.text,
-    },
-    logoBannerButton: {
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: modernColors.surface,
-        borderWidth: 2,
-        borderColor: modernColors.border,
-        borderStyle: 'dashed',
-        borderRadius: 12,
-        paddingVertical: 20,
-        paddingHorizontal: 16,
-        gap: 8,
-    },
-    logoBannerButtonText: {
-        fontSize: 12,
-        fontWeight: '500',
-        color: modernColors.textSecondary,
-    },
-    logoPreview: {
-        width: 80,
-        height: 80,
-        borderRadius: 40,
-    },
-    bannerPreview: {
-        width: '100%',
-        height: 80,
-        borderRadius: 8,
-    },
-    removeLogoBannerButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 4,
-        paddingVertical: 6,
-        paddingHorizontal: 10,
-        backgroundColor: '#FEE2E2',
-        borderRadius: 6,
-    },
-    removeLogoBannerText: {
-        fontSize: 11,
-        fontWeight: '600',
-        color: modernColors.error,
-    },
-    // ✅ NOUVEAU: Styles pour listes à cocher (prestations médicales)
-    checkboxList: {
-        maxHeight: 300,
-        borderWidth: 1,
-        borderColor: modernColors.border,
-        borderRadius: 8,
-        padding: 8,
-        marginTop: 8,
-        backgroundColor: modernColors.surface,
-    },
-    checkboxItem: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingVertical: 8,
-        paddingHorizontal: 4,
-    },
-    // ✅ NOUVEAU: Styles pour planning hebdomadaire
-    planningRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 12,
-        paddingVertical: 8,
-        borderBottomWidth: 1,
-        borderBottomColor: modernColors.border,
-    },
-    planningJour: {
-        width: 80,
-        fontSize: 14,
-        fontWeight: '600',
-        color: modernColors.text,
-    },
-    planningInputs: {
-        flex: 1,
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-    },
-    planningInput: {
-        flex: 1,
-        borderWidth: 1,
-        borderColor: modernColors.border,
-        borderRadius: 8,
-        padding: 8,
-        fontSize: 14,
-        color: modernColors.text,
-        backgroundColor: modernColors.surface,
-    },
-    planningDivider: {
-        fontSize: 14,
-        color: modernColors.textSecondary,
-        paddingHorizontal: 4,
-    },
-    checkboxSmall: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 4,
-    },
-    checkboxLabelSmall: {
-        fontSize: 12,
-        color: modernColors.text,
-    },
-    // Styles pour les jours de la semaine (pharmacie)
-    weekDaysContainer: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 8,
-        marginTop: 8,
-    },
-    dayButton: {
-        paddingHorizontal: 12,
-        paddingVertical: 8,
-        borderRadius: 20,
-        backgroundColor: '#F3F4F6',
-        borderWidth: 1,
-        borderColor: '#E5E7EB',
-    },
-    dayButtonActive: {
-        backgroundColor: modernColors.primary,
-        borderColor: modernColors.primary,
-    },
-    dayButtonText: {
-        fontSize: 13,
-        fontWeight: '600',
-        color: '#6B7280',
-    },
-    dayButtonTextActive: {
-        color: '#FFFFFF',
-    },
-    // Grille de devises (toutes visibles)
-    deviseGridContainer: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 8,
-        marginTop: 8,
-    },
-    deviseButtonGrid: {
-        paddingHorizontal: 12,
-        paddingVertical: 8,
-        borderRadius: 8,
-        backgroundColor: '#F3F4F6',
-        borderWidth: 1,
-        borderColor: '#E5E7EB',
-        minWidth: 60,
-        alignItems: 'center',
-    },
-    // Container pour le planning des prestations médicales
-    prestationPlanningContainer: {
-        marginLeft: 32,
-        marginTop: 12,
-        marginBottom: 16,
-        padding: 12,
-        backgroundColor: '#F9FAFB',
-        borderRadius: 12,
-        borderLeftWidth: 3,
-        borderLeftColor: modernColors.primary,
-    },
-    prestationPlanningTitle: {
-        fontSize: 13,
-        fontWeight: '700',
-        color: modernColors.primary,
-        marginBottom: 12,
-    },
-    // Styles manquants
-    fieldHint: {
-        fontSize: 12,
-        color: '#6B7280',
-        marginTop: 4,
-        fontStyle: 'italic',
-    },
-    hintBold: {
-        fontSize: 12,
-        fontWeight: '600',
-        color: '#374151',
-        marginTop: 4,
-    },
-    inputRow: {
-        flexDirection: 'row',
-        gap: 12,
-        marginBottom: 12,
-    },
-    promotionSectionContainer: {
-        marginTop: 16,
-        padding: 16,
-        backgroundColor: '#FFF7ED',
-        borderRadius: 12,
-        borderWidth: 1,
-        borderColor: '#FDBA74',
-    },
-    promotionFields: {
-        gap: 12,
-    },
-    // Styles pour le select moderne
-    modernSelect: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        backgroundColor: modernColors.background,
-        borderWidth: 1,
-        borderColor: modernColors.border,
-        borderRadius: 8,
-        paddingVertical: 12,
-        paddingHorizontal: 16,
-        marginTop: 8,
-    },
-    selectText: {
-        fontSize: 14,
-        color: modernColors.text,
-        flex: 1,
-    },
-    selectPlaceholder: {
-        color: modernColors.textSecondary,
-    },
-    // Styles pour les messages descriptifs des médias
-    mediaHintContainer: {
-        flexDirection: 'row',
-        alignItems: 'flex-start',
-        backgroundColor: '#F0F9FF',
-        borderWidth: 1,
-        borderColor: '#BAE6FD',
-        borderRadius: 8,
-        padding: 12,
-        marginBottom: 12,
-        gap: 8,
-    },
-    mediaHintText: {
-        flex: 1,
-        fontSize: 12,
-        color: '#0369A1',
-        lineHeight: 16,
-        fontWeight: '500',
+                        const styles = StyleSheet.create({
+                            container: {
+                            flex: 1,
+    },
+                        productsList: {
+                            maxHeight: 400,
+    },
+                        productCard: {
+                            backgroundColor: modernColors.surface,
+                        borderRadius: 12,
+                        padding: 12,
+                        marginBottom: 12,
+                        borderWidth: 1,
+                        borderColor: modernColors.border,
+    },
+                        productContent: {
+                            flexDirection: 'row',
+                        gap: 12,
+    },
+                        productImage: {
+                            width: 80,
+                        height: 80,
+                        borderRadius: 8,
+                        backgroundColor: modernColors.background,
+    },
+                        productInfo: {
+                            flex: 1,
+    },
+                        productHeader: {
+                            flexDirection: 'row',
+                        justifyContent: 'space-between',
+                        alignItems: 'flex-start',
+                        marginBottom: 8,
+    },
+                        productBadge: {
+                            fontSize: 11,
+                        color: modernColors.textSecondary,
+                        marginBottom: 4,
+                        flexShrink: 1, // ✅ Permet au badge de rétrécir
+    },
+                        productName: {
+                            fontSize: 16,
+                        fontWeight: '600',
+                        color: modernColors.text,
+                        flexShrink: 1, // ✅ Permet au texte de rétrécir si nécessaire
+                        flexWrap: 'nowrap', // ✅ Empêche le wrap non contrôlé
+    },
+                        productActions: {
+                            flexDirection: 'row',
+                        gap: 8,
+    },
+                        actionButton: {
+                            padding: 8,
+                        backgroundColor: modernColors.background,
+                        borderRadius: 8,
+    },
+                        productPrice: {
+                            fontSize: 14,
+                        fontWeight: '600',
+                        color: modernColors.primary,
+                        marginBottom: 4,
+    },
+                        productDescription: {
+                            fontSize: 12,
+                        color: modernColors.textSecondary,
+                        lineHeight: 16,
+                        marginBottom: 4,
+    },
+                        productMediaCount: {
+                            fontSize: 11,
+                        color: modernColors.textSecondary,
+                        marginTop: 2,
+    },
+                        emptyState: {
+                            alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: 32,
+    },
+                        emptyText: {
+                            fontSize: 16,
+                        fontWeight: '600',
+                        color: modernColors.textSecondary,
+                        marginTop: 12,
+    },
+                        emptyHint: {
+                            fontSize: 12,
+                        color: modernColors.textSecondary,
+                        textAlign: 'center',
+                        marginTop: 4,
+    },
+                        buttonsContainer: {
+                            marginTop: 12,
+                        gap: 8,
+    },
+                        addButton: {
+                            marginTop: 8,
+    },
+                        addButtonGradient: {
+                            flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        paddingVertical: 12,
+                        paddingHorizontal: 16,
+                        borderRadius: 12,
+                        gap: 8,
+    },
+                        addButtonText: {
+                            fontSize: 14,
+                        fontWeight: '600',
+                        color: '#FFFFFF',
+    },
+                        modalContainer: {
+                            flex: 1,
+                        backgroundColor: modernColors.background,
+    },
+                        modalHeaderGradient: {
+                            flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        paddingTop: 50,
+                        paddingBottom: 16,
+                        paddingHorizontal: 20,
+    },
+                        modalCloseButton: {
+                            width: 40,
+                        height: 40,
+                        borderRadius: 20,
+                        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+    },
+                        modalHeaderTitle: {
+                            fontSize: 18,
+                        fontWeight: 'bold',
+                        color: '#FFFFFF',
+    },
+                        modalSpacer: {
+                            width: 40,
+    },
+                        modalContent: {
+                            flex: 1,
+                        padding: 20,
+    },
+                        stepContainer: {
+                            gap: 16,
+    },
+                        sectionTitle: {
+                            fontSize: 18,
+                        fontWeight: '600',
+                        color: modernColors.text,
+                        marginBottom: 8,
+    },
+                        sectionSubtitle: {
+                            fontSize: 14,
+                        color: modernColors.textSecondary,
+                        marginBottom: 16,
+    },
+                        searchContainer: {
+                            flexDirection: 'row',
+                        alignItems: 'center',
+                        backgroundColor: modernColors.surface,
+                        borderRadius: 10,
+                        borderWidth: 1,
+                        borderColor: modernColors.border,
+                        paddingHorizontal: 12,
+                        marginBottom: 16,
+                        gap: 8,
+    },
+                        searchInput: {
+                            flex: 1,
+                        paddingVertical: 10,
+                        fontSize: 14,
+                        color: modernColors.text,
+    },
+                        dropdownContainer: {
+                            backgroundColor: modernColors.surface,
+                        borderRadius: 12,
+                        borderWidth: 1,
+                        borderColor: modernColors.border,
+                        overflow: 'hidden',
+    },
+                        noResultsHint: {
+                            flexDirection: 'row',
+                        alignItems: 'center',
+                        padding: 12,
+                        backgroundColor: '#EEF2FF',
+                        borderBottomWidth: 1,
+                        borderBottomColor: modernColors.border,
+                        gap: 8,
+    },
+                        noResultsText: {
+                            flex: 1,
+                        fontSize: 12,
+                        fontWeight: '500',
+                        color: modernColors.primary,
+                        lineHeight: 18,
+    },
+                        dropdownItem: {
+                            flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: 16,
+                        borderBottomWidth: 1,
+                        borderBottomColor: modernColors.border,
+    },
+                        dropdownItemActive: {
+                            backgroundColor: '#EFF6FF',
+    },
+                        dropdownItemLeft: {
+                            flexDirection: 'row',
+                        alignItems: 'center',
+                        gap: 12,
+                        flex: 1,
+    },
+                        dropdownIcon: {
+                            fontSize: 24,
+    },
+                        dropdownLabel: {
+                            fontSize: 15,
+                        fontWeight: '500',
+                        color: modernColors.text,
+                        flex: 1,
+    },
+                        dropdownLabelActive: {
+                            fontWeight: '600',
+                        color: modernColors.primary,
+    },
+                        dropdownDescription: {
+                            fontSize: 11,
+                        color: modernColors.textSecondary,
+                        marginTop: 2,
+    },
+                        selectedTypeBadge: {
+                            flexDirection: 'row',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        backgroundColor: '#EFF6FF',
+                        padding: 12,
+                        borderRadius: 12,
+                        borderWidth: 1,
+                        borderColor: modernColors.primary,
+    },
+                        selectedTypeText: {
+                            fontSize: 14,
+                        fontWeight: '600',
+                        color: modernColors.primary,
+    },
+                        changeTypeButton: {
+                            paddingHorizontal: 12,
+                        paddingVertical: 6,
+                        backgroundColor: modernColors.primary,
+                        borderRadius: 8,
+    },
+                        changeTypeText: {
+                            fontSize: 12,
+                        fontWeight: '600',
+                        color: '#FFFFFF',
+    },
+                        templateButton: {
+                            flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 8,
+                        backgroundColor: modernColors.surface,
+                        borderWidth: 1,
+                        borderColor: modernColors.primary,
+                        borderRadius: 12,
+                        paddingVertical: 12,
+                        paddingHorizontal: 16,
+    },
+                        templateButtonText: {
+                            fontSize: 14,
+                        fontWeight: '600',
+                        color: modernColors.primary,
+    },
+                        importExcelButton: {
+                            flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 8,
+                        backgroundColor: modernColors.surface,
+                        borderWidth: 1,
+                        borderColor: modernColors.success,
+                        borderRadius: 12,
+                        paddingVertical: 12,
+                        paddingHorizontal: 16,
+    },
+                        importExcelText: {
+                            fontSize: 14,
+                        fontWeight: '600',
+                        color: modernColors.success,
+    },
+                        dividerWithText: {
+                            flexDirection: 'row',
+                        alignItems: 'center',
+                        marginVertical: 16,
+    },
+                        dividerLine: {
+                            flex: 1,
+                        height: 1,
+                        backgroundColor: modernColors.border,
+    },
+                        dividerText: {
+                            fontSize: 12,
+                        color: modernColors.textSecondary,
+                        marginHorizontal: 12,
+    },
+                        fieldContainer: {
+                            marginBottom: 16,
+    },
+                        fieldRow: {
+                            flexDirection: 'row',
+                        gap: 12,
+                        marginBottom: 16,
+    },
+                        fieldLabel: {
+                            fontSize: 14,
+                        fontWeight: '600',
+                        color: modernColors.text,
+                        marginBottom: 8,
+    },
+                        required: {
+                            color: modernColors.error,
+    },
+                        autoFilledHint: {
+                            fontSize: 11,
+                        color: modernColors.success,
+                        fontStyle: 'italic',
+                        fontWeight: '400',
+    },
+                        fieldInput: {
+                            backgroundColor: modernColors.surface,
+                        borderWidth: 1,
+                        borderColor: modernColors.border,
+                        borderRadius: 8,
+                        paddingHorizontal: 12,
+                        paddingVertical: 10,
+                        fontSize: 14,
+                        color: modernColors.text,
+    },
+                        textareaInput: {
+                            minHeight: 80,
+                        textAlignVertical: 'top',
+    },
+                        pickerContainer: {
+                            flexDirection: 'row',
+                        gap: 8,
+    },
+                        deviseButton: {
+                            paddingHorizontal: 12,
+                        paddingVertical: 8,
+                        borderRadius: 8,
+                        backgroundColor: modernColors.background,
+                        borderWidth: 1,
+                        borderColor: modernColors.border,
+                        marginRight: 4,
+    },
+                        deviseButtonActive: {
+                            backgroundColor: modernColors.primary,
+                        borderColor: modernColors.primary,
+    },
+                        deviseButtonText: {
+                            fontSize: 12,
+                        fontWeight: '600',
+                        color: modernColors.textSecondary,
+    },
+                        deviseButtonTextActive: {
+                            color: '#FFFFFF',
+    },
+                        mediaSectionContainer: {
+                            marginTop: 20,
+                        paddingTop: 20,
+                        borderTopWidth: 1,
+                        borderTopColor: modernColors.border,
+    },
+                        mediaButton: {
+                            flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 8,
+                        backgroundColor: modernColors.surface,
+                        borderWidth: 2,
+                        borderColor: modernColors.border,
+                        borderStyle: 'dashed',
+                        borderRadius: 12,
+                        paddingVertical: 16,
+                        paddingHorizontal: 16,
+    },
+                        mediaButtonText: {
+                            fontSize: 14,
+                        fontWeight: '600',
+                        color: modernColors.text,
+    },
+                        mediaPreviewScroll: {
+                            marginTop: 12,
+    },
+                        mediaPreviewItem: {
+                            position: 'relative',
+                        marginRight: 12,
+    },
+                        mediaPreviewImage: {
+                            width: 100,
+                        height: 100,
+                        borderRadius: 8,
+    },
+                        removeMediaButton: {
+                            position: 'absolute',
+                        top: -8,
+                        right: -8,
+                        width: 24,
+                        height: 24,
+                        borderRadius: 12,
+                        backgroundColor: modernColors.error,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+    },
+                        videosList: {
+                            marginTop: 12,
+                        gap: 8,
+    },
+                        videoItem: {
+                            flexDirection: 'row',
+                        alignItems: 'center',
+                        gap: 12,
+                        backgroundColor: modernColors.surface,
+                        padding: 12,
+                        borderRadius: 8,
+                        borderWidth: 1,
+                        borderColor: modernColors.border,
+    },
+                        videoText: {
+                            flex: 1,
+                        fontSize: 14,
+                        color: modernColors.text,
+    },
+                        removeVideoButton: {
+                            padding: 8,
+    },
+                        hintBox: {
+                            backgroundColor: '#EFF6FF',
+                        borderRadius: 8,
+                        padding: 12,
+                        marginTop: 12,
+                        borderLeftWidth: 4,
+                        borderLeftColor: modernColors.primary,
+    },
+                        hintText: {
+                            fontSize: 12,
+                        color: modernColors.text,
+                        lineHeight: 16,
+    },
+                        modalFooter: {
+                            flexDirection: 'row',
+                        gap: 12,
+                        padding: 20,
+                        borderTopWidth: 1,
+                        borderTopColor: modernColors.border,
+                        backgroundColor: modernColors.surface,
+    },
+                        seatSelectionContainer: {
+                            flexDirection: 'row',
+                        gap: 8,
+                        alignItems: 'center',
+    },
+                        seatSelectorButton: {
+                            flexDirection: 'row',
+                        alignItems: 'center',
+                        gap: 6,
+                        backgroundColor: modernColors.primary,
+                        paddingHorizontal: 12,
+                        paddingVertical: 10,
+                        borderRadius: 8,
+    },
+                        seatSelectorButtonText: {
+                            fontSize: 12,
+                        fontWeight: '600',
+                        color: '#FFFFFF',
+    },
+                        scrollablePicker: {
+                            maxHeight: 50,
+                        marginBottom: 8,
+    },
+                        pickerButtons: {
+                            flexDirection: 'row',
+                        flexWrap: 'wrap',
+                        gap: 8,
+    },
+                        pickerButton: {
+                            paddingHorizontal: 16,
+                        paddingVertical: 10,
+                        borderRadius: 8,
+                        backgroundColor: modernColors.background,
+                        borderWidth: 1,
+                        borderColor: modernColors.border,
+    },
+                        pickerButtonActive: {
+                            backgroundColor: modernColors.primary,
+                        borderColor: modernColors.primary,
+    },
+                        pickerButtonText: {
+                            fontSize: 13,
+                        fontWeight: '600',
+                        color: modernColors.textSecondary,
+    },
+                        pickerButtonTextActive: {
+                            color: '#FFFFFF',
+    },
+                        checkboxContainer: {
+                            flexDirection: 'row',
+                        alignItems: 'center',
+                        gap: 12,
+                        paddingVertical: 8,
+    },
+                        checkbox: {
+                            width: 24,
+                        height: 24,
+                        borderRadius: 6,
+                        borderWidth: 2,
+                        borderColor: modernColors.border,
+                        backgroundColor: modernColors.surface,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+    },
+                        checkboxChecked: {
+                            backgroundColor: modernColors.primary,
+                        borderColor: modernColors.primary,
+    },
+                        checkboxLabel: {
+                            fontSize: 14,
+                        fontWeight: '500',
+                        color: modernColors.text,
+                        flex: 1,
+    },
+                        gpsButton: {
+                            flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        backgroundColor: modernColors.background,
+                        borderWidth: 1,
+                        borderColor: modernColors.primary,
+                        borderRadius: 8,
+                        paddingVertical: 12,
+                        paddingHorizontal: 16,
+                        gap: 8,
+    },
+                        gpsButtonText: {
+                            fontSize: 14,
+                        fontWeight: '600',
+                        color: modernColors.primary,
+    },
+                        gpsInfoCard: {
+                            flexDirection: 'row',
+                        alignItems: 'center',
+                        backgroundColor: '#D1FAE5',
+                        borderWidth: 1,
+                        borderColor: modernColors.success,
+                        borderRadius: 8,
+                        paddingVertical: 10,
+                        paddingHorizontal: 12,
+                        marginTop: 8,
+                        gap: 8,
+    },
+                        gpsInfoText: {
+                            flex: 1,
+                        fontSize: 12,
+                        color: modernColors.text,
+    },
+                        // Styles pour les prestations de service
+                        prestationHeader: {
+                            flexDirection: 'row',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        marginBottom: 16,
+    },
+                        addPrestationButton: {
+                            flexDirection: 'row',
+                        alignItems: 'center',
+                        gap: 6,
+                        paddingHorizontal: 12,
+                        paddingVertical: 8,
+                        backgroundColor: modernColors.surface,
+                        borderWidth: 1,
+                        borderColor: modernColors.primary,
+                        borderRadius: 8,
+    },
+                        addPrestationText: {
+                            fontSize: 13,
+                        fontWeight: '600',
+                        color: modernColors.primary,
+    },
+                        prestationCard: {
+                            backgroundColor: modernColors.surface,
+                        borderWidth: 1,
+                        borderColor: modernColors.border,
+                        borderRadius: 12,
+                        padding: 16,
+                        marginBottom: 12,
+    },
+                        prestationCardHeader: {
+                            flexDirection: 'row',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        marginBottom: 16,
+                        paddingBottom: 12,
+                        borderBottomWidth: 1,
+                        borderBottomColor: modernColors.border,
+    },
+                        prestationCardTitle: {
+                            fontSize: 15,
+                        fontWeight: '600',
+                        color: modernColors.text,
+    },
+                        deletePrestationButton: {
+                            padding: 6,
+                        borderRadius: 6,
+                        backgroundColor: '#FEE2E2',
+    },
+                        prestationFieldContainer: {
+                            marginBottom: 12,
+    },
+                        prestationFieldLabel: {
+                            fontSize: 13,
+                        fontWeight: '600',
+                        color: modernColors.text,
+                        marginBottom: 6,
+    },
+                        prestationFieldRow: {
+                            flexDirection: 'row',
+                        alignItems: 'flex-end',
+                        gap: 8,
+                        marginBottom: 12,
+    },
+                        xafLabel: {
+                            paddingHorizontal: 12,
+                        paddingVertical: 10,
+                        backgroundColor: '#EFF6FF',
+                        borderRadius: 8,
+                        borderWidth: 1,
+                        borderColor: modernColors.primary,
+    },
+                        xafText: {
+                            fontSize: 14,
+                        fontWeight: '600',
+                        color: modernColors.primary,
+    },
+                        emptyPrestationState: {
+                            alignItems: 'center',
+                        padding: 32,
+                        backgroundColor: modernColors.background,
+                        borderRadius: 12,
+                        borderWidth: 2,
+                        borderColor: modernColors.border,
+                        borderStyle: 'dashed',
+    },
+                        emptyPrestationText: {
+                            fontSize: 14,
+                        fontWeight: '600',
+                        color: modernColors.textSecondary,
+                        marginTop: 12,
+    },
+                        emptyPrestationSubtext: {
+                            fontSize: 12,
+                        color: modernColors.textSecondary,
+                        marginTop: 4,
+                        textAlign: 'center',
+    },
+                        // Style pour le rappel de catégorie
+                        categoryReminder: {
+                            fontSize: 12,
+                        fontWeight: '600',
+                        color: modernColors.primary,
+                        backgroundColor: '#EFF6FF',
+                        paddingHorizontal: 8,
+                        paddingVertical: 4,
+                        borderRadius: 6,
+                        marginBottom: 8,
+                        alignSelf: 'flex-start',
+    },
+                        // Styles pour Logo et Bannière
+                        logoBannerContainer: {
+                            flexDirection: 'row',
+                        gap: 12,
+                        marginTop: 12,
+    },
+                        logoBannerItem: {
+                            flex: 1,
+                        gap: 8,
+    },
+                        logoBannerLabel: {
+                            fontSize: 13,
+                        fontWeight: '600',
+                        color: modernColors.text,
+    },
+                        logoBannerButton: {
+                            alignItems: 'center',
+                        justifyContent: 'center',
+                        backgroundColor: modernColors.surface,
+                        borderWidth: 2,
+                        borderColor: modernColors.border,
+                        borderStyle: 'dashed',
+                        borderRadius: 12,
+                        paddingVertical: 20,
+                        paddingHorizontal: 16,
+                        gap: 8,
+    },
+                        logoBannerButtonText: {
+                            fontSize: 12,
+                        fontWeight: '500',
+                        color: modernColors.textSecondary,
+    },
+                        logoPreview: {
+                            width: 80,
+                        height: 80,
+                        borderRadius: 40,
+    },
+                        bannerPreview: {
+                            width: '100%',
+                        height: 80,
+                        borderRadius: 8,
+    },
+                        removeLogoBannerButton: {
+                            flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 4,
+                        paddingVertical: 6,
+                        paddingHorizontal: 10,
+                        backgroundColor: '#FEE2E2',
+                        borderRadius: 6,
+    },
+                        removeLogoBannerText: {
+                            fontSize: 11,
+                        fontWeight: '600',
+                        color: modernColors.error,
+    },
+                        // ✅ NOUVEAU: Styles pour listes à cocher (prestations médicales)
+                        checkboxList: {
+                            maxHeight: 300,
+                        borderWidth: 1,
+                        borderColor: modernColors.border,
+                        borderRadius: 8,
+                        padding: 8,
+                        marginTop: 8,
+                        backgroundColor: modernColors.surface,
+    },
+                        checkboxItem: {
+                            flexDirection: 'row',
+                        alignItems: 'center',
+                        paddingVertical: 8,
+                        paddingHorizontal: 4,
+    },
+                        // ✅ NOUVEAU: Styles pour planning hebdomadaire
+                        planningRow: {
+                            flexDirection: 'row',
+                        alignItems: 'center',
+                        marginBottom: 12,
+                        paddingVertical: 8,
+                        borderBottomWidth: 1,
+                        borderBottomColor: modernColors.border,
+    },
+                        planningJour: {
+                            width: 80,
+                        fontSize: 14,
+                        fontWeight: '600',
+                        color: modernColors.text,
+    },
+                        planningInputs: {
+                            flex: 1,
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        gap: 8,
+    },
+                        planningInput: {
+                            flex: 1,
+                        borderWidth: 1,
+                        borderColor: modernColors.border,
+                        borderRadius: 8,
+                        padding: 8,
+                        fontSize: 14,
+                        color: modernColors.text,
+                        backgroundColor: modernColors.surface,
+    },
+                        planningDivider: {
+                            fontSize: 14,
+                        color: modernColors.textSecondary,
+                        paddingHorizontal: 4,
+    },
+                        checkboxSmall: {
+                            flexDirection: 'row',
+                        alignItems: 'center',
+                        gap: 4,
+    },
+                        checkboxLabelSmall: {
+                            fontSize: 12,
+                        color: modernColors.text,
+    },
+                        // Styles pour les jours de la semaine (pharmacie)
+                        weekDaysContainer: {
+                            flexDirection: 'row',
+                        flexWrap: 'wrap',
+                        gap: 8,
+                        marginTop: 8,
+    },
+                        dayButton: {
+                            paddingHorizontal: 12,
+                        paddingVertical: 8,
+                        borderRadius: 20,
+                        backgroundColor: '#F3F4F6',
+                        borderWidth: 1,
+                        borderColor: '#E5E7EB',
+    },
+                        dayButtonActive: {
+                            backgroundColor: modernColors.primary,
+                        borderColor: modernColors.primary,
+    },
+                        dayButtonText: {
+                            fontSize: 13,
+                        fontWeight: '600',
+                        color: '#6B7280',
+    },
+                        dayButtonTextActive: {
+                            color: '#FFFFFF',
+    },
+                        // Grille de devises (toutes visibles)
+                        deviseGridContainer: {
+                            flexDirection: 'row',
+                        flexWrap: 'wrap',
+                        gap: 8,
+                        marginTop: 8,
+    },
+                        deviseButtonGrid: {
+                            paddingHorizontal: 12,
+                        paddingVertical: 8,
+                        borderRadius: 8,
+                        backgroundColor: '#F3F4F6',
+                        borderWidth: 1,
+                        borderColor: '#E5E7EB',
+                        minWidth: 60,
+                        alignItems: 'center',
+    },
+                        // Container pour le planning des prestations médicales
+                        prestationPlanningContainer: {
+                            marginLeft: 32,
+                        marginTop: 12,
+                        marginBottom: 16,
+                        padding: 12,
+                        backgroundColor: '#F9FAFB',
+                        borderRadius: 12,
+                        borderLeftWidth: 3,
+                        borderLeftColor: modernColors.primary,
+    },
+                        prestationPlanningTitle: {
+                            fontSize: 13,
+                        fontWeight: '700',
+                        color: modernColors.primary,
+                        marginBottom: 12,
+    },
+                        // Styles manquants
+                        fieldHint: {
+                            fontSize: 12,
+                        color: '#6B7280',
+                        marginTop: 4,
+                        fontStyle: 'italic',
+    },
+                        hintBold: {
+                            fontSize: 12,
+                        fontWeight: '600',
+                        color: '#374151',
+                        marginTop: 4,
+    },
+                        inputRow: {
+                            flexDirection: 'row',
+                        gap: 12,
+                        marginBottom: 12,
+    },
+                        promotionSectionContainer: {
+                            marginTop: 16,
+                        padding: 16,
+                        backgroundColor: '#FFF7ED',
+                        borderRadius: 12,
+                        borderWidth: 1,
+                        borderColor: '#FDBA74',
+    },
+                        promotionFields: {
+                            gap: 12,
+    },
+                        // Styles pour le select moderne
+                        modernSelect: {
+                            flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        backgroundColor: modernColors.background,
+                        borderWidth: 1,
+                        borderColor: modernColors.border,
+                        borderRadius: 8,
+                        paddingVertical: 12,
+                        paddingHorizontal: 16,
+                        marginTop: 8,
+    },
+                        selectText: {
+                            fontSize: 14,
+                        color: modernColors.text,
+                        flex: 1,
+    },
+                        selectPlaceholder: {
+                            color: modernColors.textSecondary,
+    },
+                        // Styles pour les messages descriptifs des médias
+                        mediaHintContainer: {
+                            flexDirection: 'row',
+                        alignItems: 'flex-start',
+                        backgroundColor: '#F0F9FF',
+                        borderWidth: 1,
+                        borderColor: '#BAE6FD',
+                        borderRadius: 8,
+                        padding: 12,
+                        marginBottom: 12,
+                        gap: 8,
+    },
+                        mediaHintText: {
+                            flex: 1,
+                        fontSize: 12,
+                        color: '#0369A1',
+                        lineHeight: 16,
+                        fontWeight: '500',
     },
 });
 
-export default ProductManagerMobile;
+                        export default ProductManagerMobile;
 
