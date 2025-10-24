@@ -71,17 +71,17 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     },
     filters: [
       {
-        id: 'typeTransaction',
-        label: 'Type de transaction',
+        id: 'statutImmobilier',
+        label: 'Statut',
         type: 'select',
         options: [
-          { value: 'vente', label: 'Vente' },
-          { value: 'location', label: 'Location' },
+          { value: 'vente', label: 'À vendre' },
+          { value: 'location', label: 'À louer' },
           { value: 'colocation', label: 'Colocation' },
         ],
       },
       {
-        id: 'typeBatiment',
+        id: 'typeImmobilier',
         label: 'Type de bien',
         type: 'select',
         options: [
@@ -95,12 +95,20 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         ],
       },
       {
-        id: 'nbPieces',
-        label: 'Nombre de pièces',
+        id: 'nbChambres',
+        label: 'Nombre de chambres',
         type: 'range',
-        min: 1,
+        min: 0,
         max: 10,
-        unit: 'pièces',
+        unit: 'chambres',
+      },
+      {
+        id: 'nbSallesBain',
+        label: 'Salles de bain',
+        type: 'range',
+        min: 0,
+        max: 5,
+        unit: 'salles de bain',
       },
       {
         id: 'superficie',
@@ -111,22 +119,13 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         unit: 'm²',
       },
       {
-        id: 'meuble',
-        label: 'Meublé',
-        type: 'toggle',
-      },
-      {
-        id: 'equipements',
-        label: 'Équipements',
-        type: 'multiselect',
+        id: 'ameublement',
+        label: 'Ameublement',
+        type: 'select',
         options: [
-          { value: 'climatisation', label: 'Climatisation' },
-          { value: 'piscine', label: 'Piscine' },
-          { value: 'jardin', label: 'Jardin' },
-          { value: 'parking', label: 'Parking' },
-          { value: 'gardien', label: 'Gardien' },
-          { value: 'eau_courante', label: 'Eau courante' },
-          { value: 'electricite', label: 'Électricité' },
+          { value: 'meuble', label: 'Meublé' },
+          { value: 'semi_meuble', label: 'Semi-meublé' },
+          { value: 'non_meuble', label: 'Non meublé' },
         ],
       },
     ],
@@ -163,15 +162,16 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     },
     filters: [
       {
-        id: 'superficie',
-        label: 'Superficie',
-        type: 'range',
-        min: 0,
-        max: 10000,
-        unit: 'm²',
+        id: 'statutImmobilier',
+        label: 'Statut',
+        type: 'select',
+        options: [
+          { value: 'vente', label: 'À vendre' },
+          { value: 'location', label: 'À louer' },
+        ],
       },
       {
-        id: 'typeTerrain',
+        id: 'typeImmobilier',
         label: 'Type de terrain',
         type: 'select',
         options: [
@@ -182,14 +182,12 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         ],
       },
       {
-        id: 'viabilise',
-        label: 'Viabilisé',
-        type: 'toggle',
-      },
-      {
-        id: 'titreFoncier',
-        label: 'Titre foncier',
-        type: 'toggle',
+        id: 'superficie',
+        label: 'Superficie',
+        type: 'range',
+        min: 0,
+        max: 10000,
+        unit: 'm²',
       },
     ],
     style: {
@@ -225,19 +223,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     },
     filters: [
       {
-        id: 'typeVehicule',
-        label: 'Type de véhicule',
-        type: 'select',
-        options: [
-          { value: 'voiture', label: 'Voiture' },
-          { value: 'moto', label: 'Moto' },
-          { value: 'camion', label: 'Camion' },
-          { value: 'bus', label: 'Bus' },
-          { value: 'tricycle', label: 'Tricycle' },
-        ],
-      },
-      {
-        id: 'marque',
+        id: 'marqueAutomobile',
         label: 'Marque',
         type: 'select',
         options: [
@@ -247,7 +233,30 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
           { value: 'nissan', label: 'Nissan' },
           { value: 'honda', label: 'Honda' },
           { value: 'yamaha', label: 'Yamaha' },
+          { value: 'peugeot', label: 'Peugeot' },
           { value: 'autre', label: 'Autre' },
+        ],
+      },
+      {
+        id: 'modeleAutomobile',
+        label: 'Modèle',
+        type: 'select',
+        options: [
+          { value: 'berline', label: 'Berline' },
+          { value: '4x4', label: '4x4/SUV' },
+          { value: 'pickup', label: 'Pick-up' },
+          { value: 'coupe', label: 'Coupé' },
+          { value: 'autre', label: 'Autre' },
+        ],
+      },
+      {
+        id: 'etatVehicule',
+        label: 'État',
+        type: 'select',
+        options: [
+          { value: 'neuf', label: 'Neuf' },
+          { value: 'occasion', label: 'Occasion' },
+          { value: 'accidente', label: 'Accidenté' },
         ],
       },
       {
@@ -267,7 +276,20 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         unit: 'km',
       },
       {
-        id: 'carburant',
+        id: 'couleurAutomobile',
+        label: 'Couleur',
+        type: 'select',
+        options: [
+          { value: 'noir', label: 'Noir' },
+          { value: 'blanc', label: 'Blanc' },
+          { value: 'gris', label: 'Gris' },
+          { value: 'rouge', label: 'Rouge' },
+          { value: 'bleu', label: 'Bleu' },
+          { value: 'autre', label: 'Autre' },
+        ],
+      },
+      {
+        id: 'typeCarburant',
         label: 'Carburant',
         type: 'select',
         options: [
@@ -278,13 +300,12 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         ],
       },
       {
-        id: 'etat',
-        label: 'État',
+        id: 'transmission',
+        label: 'Transmission',
         type: 'select',
         options: [
-          { value: 'neuf', label: 'Neuf' },
-          { value: 'occasion', label: 'Occasion' },
-          { value: 'accidente', label: 'Accidenté' },
+          { value: 'manuelle', label: 'Manuelle' },
+          { value: 'automatique', label: 'Automatique' },
         ],
       },
     ],
@@ -322,13 +343,57 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     },
     filters: [
       {
-        id: 'typeTransport',
+        id: 'compagnieTransport',
+        label: 'Compagnie',
+        type: 'select',
+        options: [
+          { value: 'touristique_express', label: 'Touristique Express' },
+          { value: 'centrale_voyage', label: 'Centrale Voyage' },
+          { value: 'autre', label: 'Autre' },
+        ],
+      },
+      {
+        id: 'typeVehiculeTransport',
         label: 'Type de transport',
         type: 'select',
         options: [
           { value: 'bus', label: 'Bus' },
           { value: 'train', label: 'Train' },
           { value: 'avion', label: 'Avion' },
+        ],
+      },
+      {
+        id: 'classeVoyage',
+        label: 'Classe',
+        type: 'select',
+        options: [
+          { value: 'economique', label: 'Économique' },
+          { value: 'vip', label: 'VIP' },
+          { value: 'business', label: 'Business' },
+        ],
+      },
+      {
+        id: 'depart',
+        label: 'Ville de départ',
+        type: 'select',
+        options: [
+          { value: 'douala', label: 'Douala' },
+          { value: 'yaounde', label: 'Yaoundé' },
+          { value: 'bafoussam', label: 'Bafoussam' },
+          { value: 'bamenda', label: 'Bamenda' },
+          { value: 'autre', label: 'Autre' },
+        ],
+      },
+      {
+        id: 'destination',
+        label: 'Destination',
+        type: 'select',
+        options: [
+          { value: 'douala', label: 'Douala' },
+          { value: 'yaounde', label: 'Yaoundé' },
+          { value: 'bafoussam', label: 'Bafoussam' },
+          { value: 'bamenda', label: 'Bamenda' },
+          { value: 'autre', label: 'Autre' },
         ],
       },
       {
@@ -340,24 +405,6 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         id: 'heureDepart',
         label: 'Heure de départ',
         type: 'time',
-      },
-      {
-        id: 'classe',
-        label: 'Classe',
-        type: 'select',
-        options: [
-          { value: 'economique', label: 'Économique' },
-          { value: 'vip', label: 'VIP' },
-          { value: 'business', label: 'Business' },
-        ],
-      },
-      {
-        id: 'placesDisponibles',
-        label: 'Places disponibles',
-        type: 'range',
-        min: 1,
-        max: 50,
-        unit: 'places',
       },
     ],
     style: {
