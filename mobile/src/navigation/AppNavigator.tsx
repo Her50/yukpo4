@@ -102,7 +102,7 @@ const MainStack = () => {
     >
       <Tab.Screen name="Home" component={HomeScreen} options={{ tabBarLabel: 'Accueil' }} />
       <Tab.Screen name="Services" component={ServicesScreen} options={{ 
-        tabBarLabel: 'Boutique',
+        tabBarLabel: 'Boutique | Services',
         title: 'Boutique | Services'
       }} />
       <Tab.Screen name="History" component={MesInteractionsScreen} options={{ tabBarLabel: 'Historique' }} />

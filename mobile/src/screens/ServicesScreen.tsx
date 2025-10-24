@@ -115,8 +115,14 @@ const ServicesScreen: React.FC = () => {
           const extractValue = (field: any): string => {
             if (!field) return '';
             if (typeof field === 'string') return field;
-            if (typeof field === 'object' && field.valeur) return String(field.valeur);
-            return '';
+            if (typeof field === 'number') return String(field);
+            if (typeof field === 'object' && field.valeur) {
+              // ✅ CORRECTION: Extraction récursive pour gérer les objets imbriqués
+              return extractValue(field.valeur);
+            }
+            // ✅ CORRECTION: Si c'est un objet sans propriété valeur, retourner chaîne vide
+            if (typeof field === 'object') return '';
+            return String(field);
           };
 
           return {
