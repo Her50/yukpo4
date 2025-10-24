@@ -1,7 +1,5 @@
 import React, { Component, ReactNode } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-// Migration vers Phosphor React Native pour un design moderne
-import { ArrowClockwise, Bug, Warning } from 'phosphor-react-native';
 
 interface Props {
     children: ReactNode;
@@ -40,7 +38,7 @@ class ErrorBoundary extends Component<Props, State> {
             return (
                 <View style={styles.container}>
                     <View style={styles.errorCard}>
-                        <Warning size={48} color="#DC2626" />
+                        <Text style={styles.errorIcon}>⚠️</Text>
 
                         <Text style={styles.errorTitle}>Oups ! Une erreur s'est produite</Text>
 
@@ -61,7 +59,7 @@ class ErrorBoundary extends Component<Props, State> {
                                 style={styles.retryButton}
                                 onPress={this.handleRetry}
                             >
-                                <ArrowClockwise size={20} color="#FFF" />
+                                <Text style={styles.buttonIcon}>🔄</Text>
                                 <Text style={styles.retryButtonText}>Redémarrer</Text>
                             </TouchableOpacity>
 
@@ -72,7 +70,7 @@ class ErrorBoundary extends Component<Props, State> {
                                     console.log('Report error:', this.state.error);
                                 }}
                             >
-                                <Bug size={20} color="#6366F1" />
+                                <Text style={styles.buttonIcon}>🐛</Text>
                                 <Text style={styles.reportButtonText}>Signaler</Text>
                             </TouchableOpacity>
                         </View>
@@ -105,6 +103,10 @@ const styles = StyleSheet.create({
         elevation: 4,
         maxWidth: 400,
         width: '100%',
+    },
+    errorIcon: {
+        fontSize: 48,
+        marginBottom: 16,
     },
     errorTitle: {
         fontSize: 20,
@@ -153,6 +155,9 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         borderRadius: 8,
         gap: 8,
+    },
+    buttonIcon: {
+        fontSize: 20,
     },
     retryButtonText: {
         color: '#FFF',

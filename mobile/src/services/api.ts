@@ -87,9 +87,14 @@ const apiCall = async <T>(
     console.log(`[Mobile API] Making request to: ${API_BASE_URL}${endpoint}`);
     console.log(`[Mobile API] Request headers:`, config.headers);
 
-    // ✅ CORRECTION: Timeout réduit pour éviter les blocages
+    // ✅ CORRECTION: Timeout adaptatif selon l'endpoint
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 secondes au lieu de 30
+    // Timeout adapté pour création service (upload médias + vectorisation + IA)
+    // 180s (3 min) nécessaire pour :
+    // - Upload 60-100 MB en 3G : 96-160s
+    // - Traitement backend : 20-50s
+    const timeoutDuration = endpoint.includes('/services/create') ? 180000 : 15000;
+    const timeoutId = setTimeout(() => controller.abort(), timeoutDuration);
 
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       ...config,
@@ -275,12 +280,13 @@ export const servicesApi = {
     // Retirer user_id de serviceData s'il existe pour éviter de le dupliquer
     const { user_id, ...dataOnly } = serviceData;
 
+    // ✅ CORRECTION: Timeout de 60s automatique pour /services/create
     return apiCall('/api/services/create', {
       method: 'POST',
       body: JSON.stringify({
         user_id: userId,
         data: dataOnly // ✅ Encapsuler les données dans 'data'
-      }),
+      })
     });
   },
 
@@ -451,6 +457,11 @@ export const userApi = {
   },
   updateServicePromotion: async (serviceId: number, promotionData: any) => {
     return apiCall(`/api/services/${serviceId}/promotion`, 'PATCH', promotionData);
+  },
+
+  // Obtenir les services de l'utilisateur (prestataire)
+  getUserServices: async () => {
+    return apiCall('/api/prestataire/services');
   },
 
   // Obtenir le budget utilisateur

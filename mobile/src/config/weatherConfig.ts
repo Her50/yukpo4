@@ -1,7 +1,8 @@
 // Configuration pour l'API météo OpenWeatherMap
 
 // URL de votre backend (ajustez selon votre configuration)
-const BACKEND_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
+// ✅ HARMONISÉ: Utiliser la même variable que eas.json
+const BACKEND_URL = process.env.EXPO_PUBLIC_API_URL || 'https://yukpomnang.onrender.com';
 
 // Fonction pour récupérer la clé API depuis le backend
 export const getWeatherApiKey = async (): Promise<string> => {

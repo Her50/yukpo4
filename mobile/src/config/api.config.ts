@@ -9,11 +9,12 @@
 // Ces variables sont définies dans .env et chargées automatiquement par Expo
 
 // Variables d'environnement depuis .env
-const EXPO_API_URL = process.env.EXPO_PUBLIC_API_BASE_URL;
+// ✅ HARMONISÉ: Utiliser EXPO_PUBLIC_API_URL (comme dans eas.json)
+const EXPO_API_URL = process.env.EXPO_PUBLIC_API_URL || process.env.EXPO_PUBLIC_API_BASE_URL;
 const EXPO_WS_URL = process.env.EXPO_PUBLIC_WS_URL;
 const EXPO_ENV = process.env.EXPO_PUBLIC_ENVIRONMENT || 'production';
 
-// ✅ Utiliser les variables d'environnement en priorité, avec fallback
+// ✅ Utiliser les variables d'environnement en priorité, avec fallback sécurisé
 export const API_BASE_URL = EXPO_API_URL || 'https://yukpomnang.onrender.com';
 export const WS_BASE_URL = EXPO_WS_URL || 'wss://yukpomnang.onrender.com';
 

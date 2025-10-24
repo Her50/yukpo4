@@ -42,11 +42,12 @@ const LazyManagers: React.FC = () => {
   const [loadManagers, setLoadManagers] = useState(false);
 
   useEffect(() => {
-    // Charger après 2 secondes (l'utilisateur a déjà vu l'écran)
+    // Charger après 5 secondes (l'utilisateur a bien vu l'écran et interagi)
+    // Délai augmenté pour éviter la surcharge au démarrage
     const timer = setTimeout(() => {
       console.log('[LazyManagers] 🔔 Chargement GPS et Push Notifications...');
       setLoadManagers(true);
-    }, 2000);
+    }, 5000);
 
     return () => clearTimeout(timer);
   }, []);
@@ -61,7 +62,7 @@ const LazyManagers: React.FC = () => {
       <ManagerErrorBoundary managerName="GPSTrackingManager">
         <GPSTrackingManager />
       </ManagerErrorBoundary>
-      
+
       <ManagerErrorBoundary managerName="PushNotificationManager">
         <PushNotificationManager />
       </ManagerErrorBoundary>

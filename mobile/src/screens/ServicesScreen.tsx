@@ -89,19 +89,60 @@ const ServicesScreen: React.FC = () => {
     try {
       setLoading(true);
 
+      console.log('[ServicesScreen] 🔄 Chargement des services...');
+
       // Charger les services de l'utilisateur
       const response = await userApi.getUserServices();
 
+      console.log('[ServicesScreen] 📡 Réponse API:', {
+        success: response.success,
+        hasData: !!response.data,
+        dataType: Array.isArray(response.data) ? 'array' : typeof response.data,
+        count: Array.isArray(response.data) ? response.data.length : 'N/A',
+        error: response.error
+      });
+
       if (response.success && response.data) {
-        const servicesData = response.data as Service[];
+        // ✅ TRANSFORMATION: Convertir le format backend vers le format frontend
+        const rawServices = Array.isArray(response.data) ? response.data : [];
+        console.log('[ServicesScreen] 📥 Services bruts reçus:', rawServices.length);
+
+        const servicesData: Service[] = rawServices.map((rawService: any) => {
+          // Extraire les données du champ 'data'
+          const serviceData = rawService.data || {};
+
+          // Construire le service au format attendu
+          const extractValue = (field: any): string => {
+            if (!field) return '';
+            if (typeof field === 'string') return field;
+            if (typeof field === 'object' && field.valeur) return String(field.valeur);
+            return '';
+          };
+
+          return {
+            id: String(rawService.id),
+            title: extractValue(serviceData.titre_service) || extractValue(serviceData.titre) || extractValue(serviceData.title) || 'Service sans titre',
+            description: extractValue(serviceData.description) || 'Aucune description',
+            status: rawService.actif ? 'active' : 'inactive',
+            createdAt: rawService.created_at,
+            views: 0, // TODO: récupérer depuis les stats
+            interactions: 0, // TODO: récupérer depuis les stats
+            user_id: String(user?.id || ''),
+            data: serviceData,
+            score: 0
+          };
+        });
+
+        console.log('[ServicesScreen] ✅ Services transformés:', servicesData.length, 'services');
+        console.log('[ServicesScreen] 📦 Premier service transformé:', servicesData[0]);
         setServices(servicesData);
         calculateStats(servicesData);
       } else {
-        console.error('Erreur chargement services:', response.error);
+        console.error('[ServicesScreen] ❌ Erreur chargement services:', response.error);
         setServices([]);
       }
     } catch (error) {
-      console.error('Erreur chargement services:', error);
+      console.error('[ServicesScreen] ❌ Exception lors du chargement:', error);
       setServices([]);
     } finally {
       setLoading(false);

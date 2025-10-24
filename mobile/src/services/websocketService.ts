@@ -143,7 +143,7 @@ class WebSocketManager implements WebSocketService {
 }
 
 // Instance singleton du service WebSocket
-const wsUrl = process.env.EXPO_PUBLIC_WS_URL || 'wss://yukpomnang.onrender.com/ws';
+const wsUrl = process.env.EXPO_PUBLIC_WS_URL || 'wss://yukpomnang.onrender.com';
 const websocketService = new WebSocketManager(wsUrl);
 
 export default websocketService;

@@ -57,18 +57,54 @@ const NotificationHistoryModal: React.FC<NotificationHistoryModalProps> = ({
       // ✅ Utilise la configuration centralisée
       const response = await apiGet(API_ENDPOINTS.NOTIFICATIONS.USER_NOTIFICATIONS(user?.id || ''));
 
+      console.log('[NotificationHistoryModal] Réponse API:', response);
+
       if (response.data && Array.isArray(response.data)) {
-        setNotifications(response.data);
+        // ✅ Mapper les données du backend vers le format attendu par le frontend
+        const mappedNotifications = response.data.map((notif: any) => ({
+          id: String(notif.id),
+          type: mapNotificationType(notif.type),
+          title: notif.title,
+          message: notif.message,
+          timestamp: notif.createdAt || notif.timestamp, // ✅ Support des deux formats
+          isRead: notif.isRead || notif.is_read || false,
+          category: mapNotificationCategory(notif.type),
+          actionUrl: notif.data?.actionUrl,
+          actionText: notif.data?.actionText
+        }));
+
+        console.log('[NotificationHistoryModal] Notifications mappées:', mappedNotifications);
+        setNotifications(mappedNotifications);
       } else {
         setNotifications([]);
       }
     } catch (error) {
-      console.error('Erreur chargement notifications:', error);
+      console.error('[NotificationHistoryModal] Erreur chargement notifications:', error);
       // En cas d'erreur API, afficher un tableau vide au lieu de données mockées
       setNotifications([]);
     } finally {
       setLoading(false);
     }
+  };
+
+  // ✅ Fonction pour mapper les types de notifications backend vers frontend
+  const mapNotificationType = (backendType: string): 'info' | 'warning' | 'success' | 'error' => {
+    if (backendType.includes('created') || backendType.includes('activated')) return 'success';
+    if (backendType.includes('deleted') || backendType.includes('deactivated')) return 'warning';
+    if (backendType.includes('low_balance')) return 'error';
+    if (backendType.includes('payment')) return 'success';
+    if (backendType.includes('message')) return 'info';
+    if (backendType.includes('review')) return 'info';
+    return 'info';
+  };
+
+  // ✅ Fonction pour mapper les catégories
+  const mapNotificationCategory = (backendType: string): 'service' | 'system' | 'payment' | 'security' => {
+    if (backendType.includes('service')) return 'service';
+    if (backendType.includes('payment')) return 'payment';
+    if (backendType.includes('balance')) return 'payment';
+    if (backendType.includes('message') || backendType.includes('review')) return 'service';
+    return 'system';
   };
 
   const filteredNotifications = notifications

@@ -7,7 +7,7 @@ export const ENVIRONMENT = {
     // Par défaut: Render (production)
     // Pour développement local: http://localhost:3000
     // Pour autre serveur: définir EXPO_PUBLIC_API_BASE_URL dans .env
-    API_URL: process.env.EXPO_PUBLIC_API_BASE_URL || 'https://yukpomnang.onrender.com',
+    API_URL: process.env.EXPO_PUBLIC_API_URL || process.env.EXPO_PUBLIC_API_BASE_URL || 'https://yukpomnang.onrender.com',
 
     // Environnement (development, production, staging)
     ENVIRONMENT: process.env.EXPO_PUBLIC_ENVIRONMENT || 'production',

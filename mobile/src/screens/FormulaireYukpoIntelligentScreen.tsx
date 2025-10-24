@@ -7,6 +7,8 @@ import React, { useEffect, useState } from 'react';
 import {
   Alert,
   Dimensions,
+  KeyboardAvoidingView,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -14,7 +16,7 @@ import {
   View
 } from 'react-native';
 import NetworkDiagnostics from '../components/NetworkDiagnostics';
-import { apiGet, apiPost, networkDiagnostics } from '../services/api';
+import { apiGet, apiPost } from '../services/api';
 // Code corrigé (remplace @ts-ignore)
 import BrandingManagerMobile from '../components/BrandingManagerMobile';
 // Code corrigé (remplace @ts-ignore)
@@ -24,6 +26,10 @@ import PaymentMethodSelector from '../components/PaymentMethodSelector';
 // Code corrigé (remplace @ts-ignore)
 import { NativeButton, NativeCard, NativeDivider, NativeInput } from '../components/NativeDesign';
 import ProductManagerMobile from '../components/ProductManagerMobile';
+// ✅ AJOUT: Composants pour modalités personnalisées et sélection multiple
+import EnhancedModalitySelector from '../components/EnhancedModalitySelector';
+import MultiSelectModalitySelector from '../components/MultiSelectModalitySelector';
+import ProductDuplicationModal from '../components/ProductDuplicationModal';
 // Code corrigé (remplace @ts-ignore)
 import SafeIcon from '../components/SafeIcon';
 import { useAuth } from '../contexts/AuthContext';
@@ -77,6 +83,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
   const [showGPSModal, setShowGPSModal] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [showNetworkDiagnostics, setShowNetworkDiagnostics] = useState(false);
+  const [showDuplicationModal, setShowDuplicationModal] = useState(false);
+  const [productToDuplicate, setProductToDuplicate] = useState<any | null>(null);
   const [mediaFiles, setMediaFiles] = useState<MediaFiles>({
     images: mediaData.base64_image || [],
     audios: mediaData.audio_base64 || [],
@@ -332,6 +340,13 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         errors.push('⚠️ Vous devez ajouter au moins 1 produit avant de continuer');
         return { isValid: false, errors, fieldErrors: {} };
       }
+
+      // ✅ CORRECTION: Vérifier que chaque produit a une catégorie
+      const produitsNonCategorises = products.filter(p => !p.type || p.type === '' || p.type === 'autre');
+      if (produitsNonCategorises.length > 0) {
+        errors.push(`⚠️ ${produitsNonCategorises.length} produit(s) n'ont pas de catégorie définie. Veuillez les catégoriser avant de continuer.`);
+        return { isValid: false, errors, fieldErrors: {} };
+      }
     }
 
     currentBlockData.fields.forEach(field => {
@@ -380,16 +395,34 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
   const goToBlock = (blockIndex: number) => {
     if (blockIndex >= 0 && blockIndex < blocks.length) {
-      // ✅ VALIDATION : Bloquer l'accès aux blocs 5 (Identité visuelle) et 6 (Promotion) sans produits
       const targetBlock = blocks[blockIndex];
-      if ((targetBlock.id === 'branding' || targetBlock.id === 'promotion') && products.length === 0) {
+
+      // ✅ CORRECTION: Trouver l'index du bloc "products"
+      const productsBlockIndex = blocks.findIndex(block => block.id === 'products');
+
+      // ✅ CORRECTION: Bloquer l'accès à TOUS les blocs après "products" si aucun produit
+      if (productsBlockIndex !== -1 && blockIndex > productsBlockIndex && products.length === 0) {
         Alert.alert(
           '⚠️ Produit requis',
-          'Vous devez ajouter au moins un produit avant d\'accéder à l\'identité visuelle ou à la promotion.',
+          'Vous devez ajouter au moins un produit avant d\'accéder aux étapes suivantes.',
           [{ text: 'OK' }]
         );
         return;
       }
+
+      // ✅ CORRECTION: Vérifier aussi que les produits ont une catégorie
+      if (productsBlockIndex !== -1 && blockIndex > productsBlockIndex && products.length > 0) {
+        const produitsNonCategorises = products.filter(p => !p.type || p.type === '' || p.type === 'autre');
+        if (produitsNonCategorises.length > 0) {
+          Alert.alert(
+            '⚠️ Catégorie requise',
+            `${produitsNonCategorises.length} produit(s) n'ont pas de catégorie définie. Veuillez les catégoriser avant de continuer.`,
+            [{ text: 'OK' }]
+          );
+          return;
+        }
+      }
+
       setCurrentBlock(blockIndex);
     }
   };
@@ -671,6 +704,10 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
             readonly={isReadonly}
             titreService={valeursFormulaire.titre_service}
             descriptionService={valeursFormulaire.description}
+            onDuplicate={(product) => {
+              setProductToDuplicate(product);
+              setShowDuplicationModal(true);
+            }}
           />
         </View>
       );
@@ -747,45 +784,48 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     switch (field.type) {
       case 'select':
       case 'dropdown':
-        // ✅ NOUVEAU: Composant moderne pour les champs multi-sélection
-        return (
-          <View key={field.name} style={styles.fieldContainer}>
-            <Text style={styles.fieldLabel}>
-              {field.label} {field.required && <Text style={styles.required}>*</Text>}
-            </Text>
+        // ✅ CORRECTION: Utiliser EnhancedModalitySelector ou MultiSelectModalitySelector
+        const productType = valeursFormulaire.category || 'autre';
+        const isMultiSelect = field.multiSelect || field.allowMultiple || false;
 
-            <TouchableOpacity
-              style={[styles.modernSelect, fieldErrors[field.name] && styles.fieldInputError]}
-              onPress={() => {
-                // Créer une liste d'options depuis field.options ou field.choices
-                const options = field.options || field.choices || [];
-                if (options.length === 0) return;
-
-                Alert.alert(
-                  field.label,
-                  'Sélectionnez une option :',
-                  options.map(option => ({
-                    text: option.label || option.value || option,
-                    onPress: () => handleFieldChange(field.name, option.value || option)
-                  })).concat([{ text: 'Annuler', style: 'cancel' }])
-                );
-              }}
-              disabled={isReadonly}
-            >
-              <Text style={[
-                styles.selectText,
-                !valeursFormulaire[field.name] && styles.selectPlaceholder
-              ]}>
-                {valeursFormulaire[field.name] || field.placeholder || 'Sélectionner...'}
-              </Text>
-              <SafeIcon name="chevron-down" size={20} color={modernColors.textSecondary} />
-            </TouchableOpacity>
-
-            {fieldErrors[field.name] && (
-              <Text style={styles.fieldErrorText}>⚠️ {String(fieldErrors[field.name])}</Text>
-            )}
-          </View>
-        );
+        if (isMultiSelect) {
+          // Sélection multiple avec possibilité d'ajouter des modalités
+          return (
+            <View key={field.name} style={styles.fieldContainer}>
+              <MultiSelectModalitySelector
+                label={field.label}
+                values={Array.isArray(valeursFormulaire[field.name]) ? valeursFormulaire[field.name] : []}
+                productType={productType}
+                fieldName={field.name}
+                onSelect={(values) => handleFieldChange(field.name, values)}
+                required={field.required}
+                placeholder={field.placeholder || 'Sélectionner...'}
+                maxSelections={field.maxSelections || 10}
+              />
+              {fieldErrors[field.name] && (
+                <Text style={styles.fieldErrorText}>⚠️ {String(fieldErrors[field.name])}</Text>
+              )}
+            </View>
+          );
+        } else {
+          // Sélection simple avec possibilité d'ajouter des modalités
+          return (
+            <View key={field.name} style={styles.fieldContainer}>
+              <EnhancedModalitySelector
+                label={field.label}
+                value={valeursFormulaire[field.name] || ''}
+                productType={productType}
+                fieldName={field.name}
+                onSelect={(value) => handleFieldChange(field.name, value)}
+                required={field.required}
+                placeholder={field.placeholder || 'Sélectionner...'}
+              />
+              {fieldErrors[field.name] && (
+                <Text style={styles.fieldErrorText}>⚠️ {String(fieldErrors[field.name])}</Text>
+              )}
+            </View>
+          );
+        }
 
       case 'text':
       case 'email':
@@ -1025,9 +1065,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       // ✅ MODE CRÉATION : Appel IA + Vérification solde + Coût
       console.log('[FormulaireYukpoIntelligentScreen] 🆕 MODE CRÉATION - Appel IA requis');
 
-      // ✅ NOUVEAU: Diagnostic réseau avant création
-      console.log('[FormulaireYukpoIntelligentScreen] 🔍 Diagnostic réseau...');
-      await networkDiagnostics.logNetworkStatus('Before service creation');
+      // ✅ Diagnostic réseau avant création
+      console.log('[FormulaireYukpoIntelligentScreen] 🔍 Diagnostic réseau - début création service');
 
       // 💰 ÉTAPE 1 : Appeler l'IA externe pour générer le JSON structuré ET obtenir le coût réel
 
@@ -1041,6 +1080,19 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         after: `${(compressedMedia.totalSizeAfter / (1024 * 1024)).toFixed(2)} MB`,
         saved: `${((1 - compressedMedia.totalSizeAfter / compressedMedia.totalSizeBefore) * 100).toFixed(1)}%`
       });
+
+      // ✅ NOUVEAU: Message informatif si payload volumineux
+      const payloadSizeMB = compressedMedia.totalSizeAfter / (1024 * 1024);
+      if (payloadSizeMB > 30) {
+        const estimatedTime = Math.ceil((payloadSizeMB * 8) / 5 / 60); // Upload à 5 Mbps en minutes
+        Alert.alert(
+          '⏳ Upload en cours',
+          `Votre service contient ${payloadSizeMB.toFixed(0)} MB de données (${compressedMedia.images.length} images, ${compressedMedia.videos.length} vidéos).\n\n` +
+          `⏱️ Temps estimé : ${estimatedTime}-${estimatedTime + 2} minutes\n\n` +
+          `✅ Ne fermez pas l'application pendant l'upload.`,
+          [{ text: 'Compris, continuer' }]
+        );
+      }
 
       const donneesService = {
         texte: (composants || []).map(c => `${c.name}: ${valeursFormulaire[c.name] || ''}`).join('\n'),
@@ -1623,7 +1675,11 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
         {/* Étape 2: Formulaire avec navigation par blocs */}
         {activeStep === 2 && (
-          <View style={{ flex: 1 }}>
+          <KeyboardAvoidingView
+            style={{ flex: 1 }}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+          >
             {/* Navigation par blocs - Sticky */}
             {blocks.length > 0 && (
               <>
@@ -1745,7 +1801,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                 </ScrollView>
               </>
             )}
-          </View>
+          </KeyboardAvoidingView>
         )}
       </View>
 
@@ -1804,6 +1860,27 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           </View>
         </View>
       )}
+
+      {/* ✅ Modal de duplication de produit */}
+      <ProductDuplicationModal
+        visible={showDuplicationModal}
+        onClose={() => {
+          setShowDuplicationModal(false);
+          setProductToDuplicate(null);
+        }}
+        product={productToDuplicate}
+        onDuplicate={(duplicatedProduct) => {
+          // Ajouter le produit dupliqué à la liste des produits
+          setProducts(prev => [...prev, duplicatedProduct]);
+          setShowDuplicationModal(false);
+          setProductToDuplicate(null);
+          Alert.alert(
+            '✅ Produit dupliqué',
+            'Le produit a été ajouté avec succès. Vous pouvez le modifier depuis la liste.',
+            [{ text: 'OK' }]
+          );
+        }}
+      />
     </View>
   );
 };
@@ -2032,26 +2109,33 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 12,
   },
   fieldContainer: {
-    marginBottom: 16,
+    marginBottom: 20,
   },
   fieldLabel: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '600',
     color: modernColors.text,
-    marginBottom: 8,
+    marginBottom: 10,
+    letterSpacing: 0.2,
   },
   required: {
     color: modernColors.error,
+    fontSize: 16,
   },
   fieldInput: {
-    backgroundColor: modernColors.background,
-    borderWidth: 1,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 2,
     borderColor: modernColors.border,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 14,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    fontSize: 15,
     color: modernColors.text,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
   },
   fieldInputError: {
     borderColor: '#EF4444',
@@ -2060,13 +2144,15 @@ const styles = StyleSheet.create({
   },
   fieldErrorText: {
     color: '#EF4444',
-    fontSize: 12,
-    marginTop: 4,
+    fontSize: 13,
+    marginTop: 6,
     marginLeft: 4,
+    fontWeight: '500',
   },
   textareaInput: {
-    minHeight: 80,
+    minHeight: 100,
     textAlignVertical: 'top',
+    paddingTop: 14,
   },
   navigationButtons: {
     flexDirection: 'row',
@@ -2079,13 +2165,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 12,
-    borderRadius: 8,
+    paddingVertical: 16,
+    borderRadius: 12,
     gap: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   navButtonSecondary: {
-    backgroundColor: modernColors.background,
-    borderWidth: 1,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 2,
     borderColor: modernColors.border,
   },
   navButtonPrimary: {
@@ -2096,20 +2187,21 @@ const styles = StyleSheet.create({
   },
   navButtonDisabled: {
     opacity: 0.5,
+    elevation: 0,
   },
   navButtonTextSecondary: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '600',
-    color: modernColors.textSecondary,
+    color: modernColors.text,
   },
   navButtonTextPrimary: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 15,
+    fontWeight: '700',
     color: '#FFFFFF',
   },
   navButtonTextSuccess: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 15,
+    fontWeight: '700',
     color: '#FFFFFF',
   },
   successOverlay: {
@@ -2159,18 +2251,24 @@ const styles = StyleSheet.create({
   checkboxContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    paddingVertical: 8,
+    gap: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 4,
   },
   checkbox: {
-    width: 24,
-    height: 24,
-    borderRadius: 6,
+    width: 28,
+    height: 28,
+    borderRadius: 8,
     borderWidth: 2,
     borderColor: modernColors.border,
-    backgroundColor: modernColors.surface,
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
   checkboxChecked: {
     backgroundColor: modernColors.primary,
@@ -2256,13 +2354,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: modernColors.background,
-    borderWidth: 1,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 2,
     borderColor: modernColors.primary,
-    borderRadius: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    gap: 8,
+    borderRadius: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    gap: 10,
+    shadowColor: modernColors.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 3,
   },
   gpsButtonText: {
     fontSize: 14,
@@ -2285,27 +2388,6 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 12,
     color: modernColors.text,
-  },
-  // Styles pour le select moderne
-  modernSelect: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: modernColors.background,
-    borderWidth: 1,
-    borderColor: modernColors.border,
-    borderRadius: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    marginTop: 8,
-  },
-  selectText: {
-    fontSize: 14,
-    color: modernColors.text,
-    flex: 1,
-  },
-  selectPlaceholder: {
-    color: modernColors.textSecondary,
   },
   // Styles pour les champs readonly
   readonlyCheckboxContainer: {

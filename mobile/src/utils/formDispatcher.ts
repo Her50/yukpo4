@@ -9,6 +9,11 @@ export interface DynamicField {
   options?: string[];
   placeholder?: string;
   value?: any;
+  // ✅ AJOUT: Support pour les sélections multiples et modalités personnalisées
+  multiSelect?: boolean;
+  allowMultiple?: boolean;
+  maxSelections?: number;
+  allowCustomModality?: boolean; // Permet d'ajouter de nouvelles modalités
 }
 
 export interface IAData {
@@ -72,10 +77,44 @@ export function processIASuggestion(suggestion: IASuggestion): DynamicField[] {
   return components;
 }
 
+// ✅ NOUVEAU: Liste des champs qui doivent être en multi-select par défaut
+const MULTI_SELECT_FIELDS = [
+  'couleurs', 'couleur', 'colors', 'color',
+  'tailles', 'taille', 'sizes', 'size',
+  'materiaux', 'materiau', 'materials', 'material',
+  'modalites_paiement', 'payment_methods', 'moyens_paiement',
+  'modalites_livraison', 'delivery_methods', 'modes_livraison',
+  'caractéristiques', 'caracteristiques', 'features',
+  'types', 'type', 'categories_produit',
+  'marques', 'marque', 'brands', 'brand',
+  'styles', 'style',
+  'capacites', 'capacite', 'capacities',
+  'garanties', 'garantie', 'warranties',
+  'certifications', 'certification',
+  'competences', 'skills',
+  'langues', 'langue', 'languages',
+  'services_inclus', 'included_services',
+  'options', 'option',
+  'finitions', 'finition', 'finishes',
+  'parfums', 'parfum', 'fragrances',
+  'saveurs', 'saveur', 'flavors'
+];
+
+// Vérifier si un champ doit être en multi-select
+function shouldBeMultiSelect(fieldName: string): boolean {
+  const normalizedName = fieldName.toLowerCase().trim();
+  return MULTI_SELECT_FIELDS.some(pattern => 
+    normalizedName.includes(pattern) || pattern.includes(normalizedName)
+  );
+}
+
 // Créer un composant de formulaire à partir des données IA
 function createFieldComponent(fieldName: string, fieldData: any): DynamicField | null {
   const typeDonnee = fieldData.type_donnee || 'string';
   const valeur = fieldData.valeur;
+  const isMultiSelectField = shouldBeMultiSelect(fieldName);
+
+  console.log(`[formDispatcher] Création champ ${fieldName}: type=${typeDonnee}, isMultiSelect=${isMultiSelectField}, valeur=`, valeur);
 
   // Mapping des noms de champs vers des labels français
   const fieldLabels: { [key: string]: string } = {
@@ -142,15 +181,51 @@ function createFieldComponent(fieldName: string, fieldData: any): DynamicField |
       };
 
     case 'array':
+      // ✅ Champ de type array = toujours multi-select avec modalités personnalisées
       return {
-        type: 'multiselect',
+        type: 'select',
         label,
         name: fieldName,
         options: Array.isArray(valeur) ? valeur : [],
-        value: Array.isArray(valeur) ? valeur : []
+        value: Array.isArray(valeur) ? valeur : [],
+        multiSelect: true,
+        allowMultiple: true,
+        allowCustomModality: true,
+        maxSelections: 20 // Par défaut, permettre jusqu'à 20 sélections
+      };
+
+    case 'select':
+    case 'dropdown':
+      // ✅ Champ select avec détection automatique du multi-select
+      const options = fieldData.options || [];
+      return {
+        type: 'select',
+        label,
+        name: fieldName,
+        options: Array.isArray(options) ? options : [],
+        value: isMultiSelectField && !Array.isArray(valeur) ? [valeur] : (valeur || (isMultiSelectField ? [] : '')),
+        multiSelect: isMultiSelectField,
+        allowMultiple: isMultiSelectField,
+        allowCustomModality: true, // Toujours permettre d'ajouter des modalités
+        maxSelections: isMultiSelectField ? 20 : 1
       };
 
     default:
+      // ✅ Pour les champs string qui devraient être multi-select
+      if (isMultiSelectField) {
+        return {
+          type: 'select',
+          label,
+          name: fieldName,
+          options: Array.isArray(valeur) ? valeur : [],
+          value: Array.isArray(valeur) ? valeur : (valeur ? [valeur] : []),
+          multiSelect: true,
+          allowMultiple: true,
+          allowCustomModality: true,
+          maxSelections: 20
+        };
+      }
+      
       return {
         type: 'text',
         label,

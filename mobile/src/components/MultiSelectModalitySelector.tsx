@@ -57,7 +57,7 @@ const MultiSelectModalitySelector: React.FC<MultiSelectModalitySelectorProps> = 
         }
     };
 
-    const toggleSelection = (option: string) => {
+    const toggleSelection = async (option: string) => {
         if (option.includes('🆕 Autre')) {
             // Proposer d'ajouter une nouvelle modalité
             Alert.prompt(

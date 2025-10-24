@@ -125,7 +125,7 @@ const ProfileScreen: React.FC = () => {
       title: 'Mon historique',
       icon: 'analytics-outline',
       color: '#F59E0B',
-      route: 'Historique',
+      route: 'History',
       description: 'Voir mon historique de transactions'
     },
     {

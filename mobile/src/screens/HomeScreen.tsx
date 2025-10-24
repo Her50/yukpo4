@@ -5,6 +5,7 @@ import React, { useState } from 'react';
 import ReactNative from 'react-native';
 import ChatHistoryModal from '../components/ChatHistoryModal';
 import ChatInputMobile from '../components/ChatInputMobile';
+import ErrorBoundary from '../components/ErrorBoundary';
 import LanguageSelector from '../components/LanguageSelector';
 import MixedContentCarousel from '../components/MixedContentCarousel'; // ✅ NOUVEAU: Carousel mixte
 import ModernBackground from '../components/ModernBackground';
@@ -19,7 +20,7 @@ import { apiGet } from '../services/api';
 import userBehaviorService from '../services/userBehaviorService';
 import { genererSuggestionsService, rechercherServices } from '../services/yukpoclient';
 
-const { Alert, Dimensions, ScrollView, StyleSheet, Text, TouchableOpacity, View, KeyboardAvoidingView, Platform } = ReactNative;
+const { Alert, Dimensions, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View, KeyboardAvoidingView, Platform } = ReactNative;
 
 const { width, height } = Dimensions.get('window');
 
@@ -556,24 +557,63 @@ const HomeScreen: React.FC = () => {
                 </ScrollView>
 
 
-                {/* Modal GPS Moderne avec support des zones */}
-                <ModernGPSModal
-                    visible={showGPSModal}
-                    onClose={() => setShowGPSModal(false)}
-                    onSelect={(coordinatesString) => {
-                        // Parser le premier point pour la météo
-                        const firstPoint = coordinatesString.split('|')[0].split(',');
-                        if (firstPoint.length === 2) {
-                            const lat = parseFloat(firstPoint[0]);
-                            const lng = parseFloat(firstPoint[1]);
-                            setSelectedLocation({ lat, lng });
+                {/* Modal GPS Moderne avec support des zones - AVEC ERROR BOUNDARY */}
+                {showGPSModal && (
+                    <ErrorBoundary
+                        fallback={
+                            <Modal visible={showGPSModal} transparent={true}>
+                                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.8)' }}>
+                                    <View style={{ backgroundColor: '#FFF', padding: 24, borderRadius: 16, maxWidth: 300 }}>
+                                        <Text style={{ fontSize: 20, fontWeight: 'bold', marginBottom: 12, textAlign: 'center' }}>❌</Text>
+                                        <Text style={{ fontSize: 16, fontWeight: 'bold', marginBottom: 12, textAlign: 'center' }}>
+                                            Erreur GPS
+                                        </Text>
+                                        <Text style={{ fontSize: 14, color: '#666', marginBottom: 20, textAlign: 'center' }}>
+                                            Le module GPS ne peut pas se charger. Vérifiez vos permissions et votre connexion.
+                                        </Text>
+                                        <TouchableOpacity
+                                            style={{ backgroundColor: '#6366F1', padding: 12, borderRadius: 8, alignItems: 'center' }}
+                                            onPress={() => setShowGPSModal(false)}
+                                        >
+                                            <Text style={{ color: '#FFF', fontWeight: '600' }}>Fermer</Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                </View>
+                            </Modal>
                         }
-                        setShowGPSModal(false);
-                    }}
-                    currentLocation={selectedLocation}
-                    title="Sélectionner votre localisation"
-                    allowZoneSelection={true}
-                />
+                    >
+                        <ModernGPSModal
+                            visible={showGPSModal}
+                            onClose={() => setShowGPSModal(false)}
+                            onSelect={(coordinatesString) => {
+                                try {
+                                    // Parser le premier point pour la météo
+                                    const firstPoint = coordinatesString.split('|')[0].split(',');
+                                    if (firstPoint.length === 2) {
+                                        const lat = parseFloat(firstPoint[0]);
+                                        const lng = parseFloat(firstPoint[1]);
+                                        if (!isNaN(lat) && !isNaN(lng)) {
+                                            setSelectedLocation({ lat, lng });
+                                            console.log('[HomeScreen] ✅ Localisation GPS définie:', { lat, lng });
+                                        } else {
+                                            console.error('[HomeScreen] ❌ Coordonnées GPS invalides');
+                                            Alert.alert('Erreur', 'Coordonnées GPS invalides');
+                                        }
+                                    } else {
+                                        console.error('[HomeScreen] ❌ Format de coordonnées invalide');
+                                    }
+                                } catch (error) {
+                                    console.error('[HomeScreen] ❌ Erreur parsing GPS:', error);
+                                    Alert.alert('Erreur', 'Impossible de lire les coordonnées GPS');
+                                }
+                                setShowGPSModal(false);
+                            }}
+                            currentLocation={selectedLocation}
+                            title="Sélectionner votre localisation"
+                            allowZoneSelection={true}
+                        />
+                    </ErrorBoundary>
+                )}
 
 
                 {/* Modal Notifications */}

@@ -581,6 +581,10 @@ const ResultatBesoinScreen: React.FC = () => {
         }
     };
 
+    // ❌ SUPPRIMÉ: Fallback inutile car l'endpoint n'existe pas
+    // Le vrai problème est que la recherche ne retourne rien
+    // Il faut débugger la recherche elle-même, pas créer un fallback
+
     // Traitement initial des résultats
     useEffect(() => {
         const processResults = async () => {
@@ -606,7 +610,15 @@ const ResultatBesoinScreen: React.FC = () => {
                         setPrestatairesLoaded(true);
                     }
                 } else {
-                    console.log('⚠️ Aucun résultat initial fourni');
+                    // ✅ CORRECTION: Afficher un message clair si aucun résultat
+                    console.log('⚠️ Aucun résultat de recherche fourni');
+                    console.warn('❌ PROBLÈME: La recherche n\'a retourné aucun résultat');
+                    console.warn('❌ Vérifiez que :');
+                    console.warn('   1. Il y a des services actifs en base PostgreSQL');
+                    console.warn('   2. Les services ont des embeddings vectoriels (pgvector)');
+                    console.warn('   3. La recherche /api/search/direct fonctionne correctement');
+                    
+                    setError('Aucun résultat trouvé. Vérifiez que des services existent en base de données.');
                     setLoading(false);
                     setPrestatairesLoaded(true);
                 }
@@ -1221,22 +1233,22 @@ const ResultatBesoinScreen: React.FC = () => {
                         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.modernSortScroll}>
                             <View style={styles.modernSortButtons}>
                                 {/* Bouton Pertinence */}
-                                    <TouchableOpacity
-                                        style={[
-                                            styles.modernSortChip,
+                                <TouchableOpacity
+                                    style={[
+                                        styles.modernSortChip,
                                         sortBy === 'relevance' && [styles.modernSortChipActive, { backgroundColor: categoryStyle.primaryColor }]
-                                        ]}
+                                    ]}
                                     onPress={() => setSortBy('relevance')}
-                                    >
-                                        <Text
-                                            style={[
-                                                styles.modernSortChipText,
+                                >
+                                    <Text
+                                        style={[
+                                            styles.modernSortChipText,
                                             sortBy === 'relevance' && styles.modernSortChipTextActive
-                                            ]}
-                                        >
+                                        ]}
+                                    >
                                         {terminology.sortLabels.relevance}
-                                        </Text>
-                                    </TouchableOpacity>
+                                    </Text>
+                                </TouchableOpacity>
 
                                 {/* Bouton Prix avec toggle */}
                                 <TouchableOpacity

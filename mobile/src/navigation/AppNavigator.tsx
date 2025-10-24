@@ -1,196 +1,185 @@
-// Navigation simplifiée et sécurisée
+// Navigation ULTRA-SIMPLIFIÉE avec TOUS les providers nécessaires
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
 import React from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { modernColors } from '../theme/modernTheme';
 
-// Contexts - seulement AuthContext pour éviter les conflits
+// ✅ Context minimal au démarrage
 import { useAuth } from '../contexts/AuthContext';
-
-// ✅ OPTIMISATION: Providers chargés progressivement après authentification
-import DeferredProviders from '../components/DeferredProviders';
-import LazyManagers from '../components/LazyManagers';
 import { LanguageProvider } from '../contexts/LanguageContext';
+import { LocationProvider } from '../contexts/LocationContext';
 
-// ✅ OPTIMISATION: Import direct (pas de lazy loading) pour éviter les problèmes
-// Auth screens - Direct import (essentiels au démarrage)
+// ✅ IMPORTS DIRECTS - Écrans d'authentification
 import LoginScreen from '../screens/auth/LoginScreen';
 import RegisterScreen from '../screens/auth/RegisterScreen';
 
-// Écrans principaux - Direct import (chargés uniquement après login)
-import ContactScreen from '../screens/ContactScreen';
+// ✅ IMPORTS DIRECTS - Écrans principaux
 import HomeScreen from '../screens/HomeScreen';
+import MesInteractionsScreen from '../screens/MesInteractionsScreen';
 import ProfileScreen from '../screens/ProfileScreen';
-import RechargeTokensScreen from '../screens/RechargeTokensScreen';
-import ServicesListScreen from '../screens/ServicesListScreen';
 import ServicesScreen from '../screens/ServicesScreen';
 
-// Autres écrans - Direct import
+// ✅ IMPORTS DIRECTS - Écrans secondaires
+import ContactScreen from '../screens/ContactScreen';
 import CreatePubliciteScreen from '../screens/CreatePubliciteScreen';
 import EnhancedSettingsScreen from '../screens/EnhancedSettingsScreen';
 import FormulaireYukpoIntelligentScreen from '../screens/FormulaireYukpoIntelligentScreen';
-import MesInteractionsScreen from '../screens/MesInteractionsScreen';
 import PubliciteDashboardScreen from '../screens/PubliciteDashboardScreen';
+import RechargeTokensScreen from '../screens/RechargeTokensScreen';
 import ResultatBesoinScreen from '../screens/ResultatBesoinScreen';
 import ServiceDetailSharedScreen from '../screens/ServiceDetailSharedScreen';
 import SoldeDetailScreen from '../screens/SoldeDetailScreen';
 import YukpoServicePlaceholderScreen from '../screens/YukpoServicePlaceholderScreen';
 
-// Theme
-
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
 
-// Composant de chargement simple
-const LoadingScreen = () => {
-  const [dots, setDots] = React.useState('');
+// Composant de chargement
+const LoadingScreen = () => (
+  <View style={styles.loadingContainer}>
+    <ActivityIndicator size="large" color={modernColors.primary} />
+    <Text style={styles.loadingText}>Chargement...</Text>
+  </View>
+);
 
-  React.useEffect(() => {
-    const interval = setInterval(() => {
-      setDots(prev => prev.length >= 3 ? '' : prev + '.');
-    }, 500);
-
-    return () => clearInterval(interval);
-  }, []);
-
-  return (
-    <View style={styles.loadingContainer}>
-      <ActivityIndicator size="large" color={modernColors.primary} />
-      <Text style={styles.loadingText}>Chargement{dots}</Text>
-    </View>
-  );
-};
-
-// Composant d'icône de tab sécurisé
+// Icône de tab simple
 const TabIcon: React.FC<{ name: string; focused: boolean }> = ({ name, focused }) => {
-  const getIcon = () => {
-    const iconMap: { [key: string]: string } = {
-      'home': '🏠',
-      'services': '🛍️',
-      'dashboard': '📊',
-      'history': '📋',
-      'profile': '👤',
-      'settings': '⚙️',
-      'tokens': '💰',
-    };
-    return iconMap[name] || '❓';
+  const icons: { [key: string]: string } = {
+    'home': '🏠',
+    'services': '🛍️',
+    'dashboard': '📊',
+    'history': '📋',
+    'profile': '👤',
   };
 
   return (
-    <Text style={[
-      styles.tabIcon,
-      { color: focused ? modernColors.primary : modernColors.textSecondary }
-    ]}>
-      {getIcon()}
+    <Text style={[styles.tabIcon, { color: focused ? modernColors.primary : modernColors.textSecondary }]}>
+      {icons[name] || '❓'}
     </Text>
   );
 };
 
-// Stack d'authentification
-const AuthStack = () => (
-  <Stack.Navigator screenOptions={{ headerShown: false }}>
-    <Stack.Screen name="Login" component={LoginScreen} />
-    <Stack.Screen name="Register" component={RegisterScreen} />
-  </Stack.Navigator>
-);
+// Stack d'authentification - Très léger
+const AuthStack = () => {
+  console.log('[AppNavigator] 📱 Rendu AuthStack');
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="Login" component={LoginScreen} />
+      <Stack.Screen name="Register" component={RegisterScreen} />
+    </Stack.Navigator>
+  );
+};
 
-// Stack principal avec tabs
-const MainStack = () => (
-  <Tab.Navigator
-    screenOptions={({ route }) => ({
-      headerShown: false,
-      tabBarIcon: ({ focused }) => (
-        <TabIcon name={route.name.toLowerCase()} focused={focused} />
-      ),
-      tabBarActiveTintColor: modernColors.primary,
-      tabBarInactiveTintColor: modernColors.textSecondary,
-      tabBarStyle: {
-        backgroundColor: modernColors.background,
-        borderTopColor: modernColors.border,
-        borderTopWidth: 1,
-        paddingBottom: 5,
-        paddingTop: 5,
-        height: 60,
-      },
-      tabBarLabelStyle: {
-        fontSize: 12,
-        fontWeight: '600',
-      },
-    })}
-  >
-    <Tab.Screen
-      name="Home"
-      component={HomeScreen}
-      options={{ tabBarLabel: 'Accueil' }}
-    />
-    <Tab.Screen
-      name="Services"
-      component={ServicesScreen}
-      options={{ tabBarLabel: 'Boutique' }}
-    />
-    <Tab.Screen
-      name="Dashboard"
-      component={ServicesListScreen}
-      options={{ tabBarLabel: 'Mes Services' }}
-    />
-    <Tab.Screen
-      name="History"
-      component={MesInteractionsScreen}
-      options={{ tabBarLabel: 'Historique' }}
-    />
-    <Tab.Screen
-      name="Profile"
-      component={ProfileScreen}
-      options={{ tabBarLabel: 'Mon Compte' }}
-    />
-  </Tab.Navigator>
-);
+// Tabs principaux
+const MainStack = () => {
+  console.log('[AppNavigator] 📱 Rendu MainStack');
+  return (
+    <Tab.Navigator
+      screenOptions={({ route }) => ({
+        headerShown: false,
+        tabBarIcon: ({ focused }) => (
+          <TabIcon name={route.name.toLowerCase()} focused={focused} />
+        ),
+        tabBarActiveTintColor: modernColors.primary,
+        tabBarInactiveTintColor: modernColors.textSecondary,
+        tabBarStyle: {
+          backgroundColor: modernColors.background,
+          borderTopColor: modernColors.border,
+          borderTopWidth: 1,
+          paddingBottom: 5,
+          paddingTop: 5,
+          height: 60,
+        },
+        tabBarLabelStyle: {
+          fontSize: 11,
+          fontWeight: '600',
+        },
+        tabBarItemStyle: {
+          paddingHorizontal: 2,
+        },
+      })}
+    >
+      <Tab.Screen name="Home" component={HomeScreen} options={{ tabBarLabel: 'Accueil' }} />
+      <Tab.Screen name="Services" component={ServicesScreen} options={{ 
+        tabBarLabel: 'Boutique',
+        title: 'Boutique | Services'
+      }} />
+      <Tab.Screen name="History" component={MesInteractionsScreen} options={{ tabBarLabel: 'Historique' }} />
+      <Tab.Screen name="Profile" component={ProfileScreen} options={{ tabBarLabel: 'Mon Compte' }} />
+    </Tab.Navigator>
+  );
+};
 
-// Stack de navigation secondaire
-const SecondaryStack = () => (
-  <Stack.Navigator screenOptions={{ headerShown: false }}>
-    <Stack.Screen name="Main" component={MainStack} />
-    <Stack.Screen name="Contact" component={ContactScreen} />
-    <Stack.Screen name="Settings" component={EnhancedSettingsScreen} />
-    <Stack.Screen name="RechargeTokens" component={RechargeTokensScreen} />
-    <Stack.Screen name="FormulaireYukpoIntelligent" component={FormulaireYukpoIntelligentScreen} />
-    <Stack.Screen name="ServiceDetailShared" component={ServiceDetailSharedScreen} />
-    <Stack.Screen name="ResultatBesoin" component={ResultatBesoinScreen} />
-    <Stack.Screen name="CreatePublicite" component={CreatePubliciteScreen} />
-    <Stack.Screen name="PubliciteDashboard" component={PubliciteDashboardScreen} />
-    <Stack.Screen name="SoldeDetail" component={SoldeDetailScreen} />
-    <Stack.Screen name="YukpoServicePlaceholder" component={YukpoServicePlaceholderScreen} />
-  </Stack.Navigator>
-);
+// Stack secondaire avec toutes les routes
+const SecondaryStack = () => {
+  console.log('[AppNavigator] 📱 Rendu SecondaryStack');
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="Main" component={MainStack} />
+      <Stack.Screen name="Contact" component={ContactScreen} />
+      <Stack.Screen name="Settings" component={EnhancedSettingsScreen} />
+      <Stack.Screen name="RechargeTokens" component={RechargeTokensScreen} />
+      <Stack.Screen name="FormulaireYukpoIntelligent" component={FormulaireYukpoIntelligentScreen} />
+      <Stack.Screen name="ServiceDetailShared" component={ServiceDetailSharedScreen} />
+      <Stack.Screen name="ResultatBesoin" component={ResultatBesoinScreen} />
+      <Stack.Screen name="CreatePublicite" component={CreatePubliciteScreen} />
+      <Stack.Screen name="PubliciteDashboard" component={PubliciteDashboardScreen} />
+      <Stack.Screen name="SoldeDetail" component={SoldeDetailScreen} />
+      <Stack.Screen name="YukpoServicePlaceholder" component={YukpoServicePlaceholderScreen} />
+    </Stack.Navigator>
+  );
+};
 
-// Composant principal de navigation OPTIMISÉ
+// Composant wrapper avec TOUS les providers nécessaires
+const AuthenticatedApp = () => {
+  const [providersReady, setProvidersReady] = React.useState(false);
+
+  React.useEffect(() => {
+    // Petit délai pour afficher le loading puis charger tous les providers
+    const timer = setTimeout(() => {
+      console.log('[AppNavigator] 📦 Chargement de TOUS les providers nécessaires...');
+      setProvidersReady(true);
+    }, 50); // Juste 50ms pour smooth UX
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (!providersReady) {
+    return <LoadingScreen />;
+  }
+
+  // ✅ TOUS les providers essentiels chargés AVANT l'affichage des écrans
+  console.log('[AppNavigator] ✅ Providers chargés: Language + Location');
+  return (
+    <LanguageProvider>
+      <LocationProvider>
+        <SecondaryStack />
+      </LocationProvider>
+    </LanguageProvider>
+  );
+};
+
+// Composant principal ULTRA-SIMPLIFIÉ
 const AppNavigator: React.FC = () => {
   const { user, loading } = useAuth();
 
-  // Affichage du loading pendant la vérification de l'authentification
+  console.log('[AppNavigator] 🚀 Rendu principal', { user: !!user, loading });
+
+  // Affichage du loading
   if (loading) {
     return <LoadingScreen />;
   }
 
-  // ✅ OPTIMISATION CRITIQUE: Si NON connecté, AUCUN provider lourd
+  // ✅ Si NON connecté: Seulement Login/Register
   if (!user) {
+    console.log('[AppNavigator] 📱 Mode Non-Connecté');
     return <AuthStack />;
   }
 
-  // ✅ CHARGEMENT PROGRESSIF OPTIMAL pour utilisateurs connectés
-  // Phase 1 (0ms): Écran visible immédiatement avec Language
-  // Phase 2 (+500ms): LocationProvider en arrière-plan
-  // Phase 3 (+1000ms): GlobalIAStats en arrière-plan
-  // Phase 4 (+2000ms): GPS et Push à la demande
-  return (
-    <LanguageProvider>
-      <DeferredProviders>
-        <LazyManagers />
-        <SecondaryStack />
-      </DeferredProviders>
-    </LanguageProvider>
-  );
+  // ✅ Si connecté: Charger TOUS les providers nécessaires
+  console.log('[AppNavigator] 👤 Mode Connecté - Chargement des providers');
+  return <AuthenticatedApp />;
 };
 
 const styles = StyleSheet.create({

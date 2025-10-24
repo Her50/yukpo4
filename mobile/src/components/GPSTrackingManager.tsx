@@ -1,37 +1,157 @@
-import React, { useEffect } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Location from 'expo-location';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { useGPSTracking } from '../hooks/useGPSTracking';
+import { apiPatch } from '../services/api';
 
 /**
- * Composant transparent qui gère automatiquement le tracking GPS en arrière-plan
+ * Composant GPS Manager réécrit pour éviter les crashes
  * 
  * Fonctionnalités:
- * - Démarre automatiquement si gpsEnabled = true (par défaut)
- * - S'arrête automatiquement si l'utilisateur désactive le GPS dans les paramètres
- * - Met à jour la position toutes les 5 minutes
- * - Envoie les coordonnées au backend automatiquement
- * - Ne rend aucun UI (composant invisible)
+ * - Démarre le GPS uniquement si activé dans les paramètres
+ * - Gestion d'erreur robuste
+ * - Pas de démarrage automatique au lancement
+ * - Tracking en arrière-plan sécurisé
  */
 const GPSTrackingManager: React.FC = () => {
     const { user } = useAuth();
-    const { isTracking, currentLocation, lastUpdate, error } = useGPSTracking();
+    const [isActive, setIsActive] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
-    // Logs de suivi pour le développement
+    // Vérifier si le GPS est activé dans les paramètres
     useEffect(() => {
-        if (user && isTracking) {
-            console.log('[GPSTrackingManager] 📍 Tracking GPS actif pour:', user.email);
-            if (currentLocation) {
-                console.log('[GPSTrackingManager] Position actuelle:', currentLocation);
+        const checkGPSStatus = async () => {
+            if (!user) {
+                setIsActive(false);
+                return;
             }
-            if (lastUpdate) {
-                console.log('[GPSTrackingManager] Dernière mise à jour:', lastUpdate.toLocaleString());
+
+            try {
+                const gpsEnabled = await AsyncStorage.getItem('gpsEnabled');
+                const isGPSEnabled = gpsEnabled !== null ? JSON.parse(gpsEnabled) : false;
+
+                console.log('[GPSTrackingManager] GPS activé:', isGPSEnabled);
+
+                if (isGPSEnabled) {
+                    // Délai pour éviter les blocages au démarrage
+                    // Réduit à 2 secondes car LazyManagers attend déjà 5 secondes
+                    setTimeout(() => {
+                        startGPSTracking();
+                    }, 2000); // 2 secondes après le chargement du manager
+                }
+            } catch (error) {
+                console.error('[GPSTrackingManager] Erreur vérification GPS:', error);
+                setError('Erreur vérification GPS');
             }
+        };
+
+        checkGPSStatus();
+    }, [user]);
+
+    const startGPSTracking = async () => {
+        try {
+            console.log('[GPSTrackingManager] 🚀 Démarrage du tracking GPS...');
+
+            // Vérifier les permissions
+            const { status } = await Location.requestForegroundPermissionsAsync();
+
+            if (status !== 'granted') {
+                console.log('[GPSTrackingManager] Permissions GPS refusées');
+                setError('Permissions GPS refusées');
+                return;
+            }
+
+            // Obtenir la position actuelle
+            const location = await Location.getCurrentPositionAsync({
+                accuracy: Location.Accuracy.Balanced,
+            });
+
+            const coords = {
+                lat: location.coords.latitude,
+                lng: location.coords.longitude
+            };
+
+            console.log('[GPSTrackingManager] 📍 Position actuelle:', coords);
+
+            // Envoyer au backend
+            await sendLocationToBackend(coords.lat, coords.lng);
+
+            // Démarrer le tracking en arrière-plan
+            const watchSubscription = await Location.watchPositionAsync(
+                {
+                    accuracy: Location.Accuracy.Balanced,
+                    timeInterval: 5 * 60 * 1000, // 5 minutes
+                    distanceInterval: 50, // 50 mètres
+                },
+                async (newLocation) => {
+                    try {
+                        const newCoords = {
+                            lat: newLocation.coords.latitude,
+                            lng: newLocation.coords.longitude
+                        };
+
+                        console.log('[GPSTrackingManager] 📍 Nouvelle position:', newCoords);
+
+                        // Envoyer au backend
+                        await sendLocationToBackend(newCoords.lat, newCoords.lng);
+                    } catch (error) {
+                        console.error('[GPSTrackingManager] Erreur mise à jour position:', error);
+                    }
+                }
+            );
+
+            setIsActive(true);
+            setError(null);
+            console.log('[GPSTrackingManager] ✅ Tracking GPS démarré avec succès');
+
+            // Cleanup function
+            return () => {
+                console.log('[GPSTrackingManager] 🛑 Arrêt du tracking GPS...');
+                watchSubscription.remove();
+                setIsActive(false);
+            };
+
+        } catch (error: any) {
+            console.error('[GPSTrackingManager] ❌ Erreur démarrage GPS:', error);
+            setError(error.message);
+            setIsActive(false);
         }
-    }, [user, isTracking, currentLocation, lastUpdate]);
+    };
+
+    const sendLocationToBackend = async (latitude: number, longitude: number) => {
+        if (!user?.token) {
+            console.warn('[GPSTrackingManager] Pas de token utilisateur');
+            return;
+        }
+
+        try {
+            const response = await apiPatch('/api/user/me/gps_location', {
+                latitude,
+                longitude,
+                accuracy: 10,
+                timestamp: new Date().toISOString()
+            });
+
+            if (response.ok) {
+                console.log('[GPSTrackingManager] ✅ Position envoyée au backend');
+            } else {
+                console.warn('[GPSTrackingManager] ⚠️ Erreur backend:', response.status);
+            }
+        } catch (error) {
+            console.error('[GPSTrackingManager] ❌ Erreur réseau:', error);
+        }
+    };
+
+    // Logs de suivi
+    useEffect(() => {
+        if (user && isActive) {
+            console.log('[GPSTrackingManager] 📍 Tracking GPS actif pour:', user.email);
+        }
+    }, [user, isActive]);
 
     useEffect(() => {
         if (error) {
-            console.error('[GPSTrackingManager] ❌ Erreur tracking GPS:', error);
+            console.error('[GPSTrackingManager] ❌ Erreur GPS:', error);
         }
     }, [error]);
 
@@ -40,4 +160,3 @@ const GPSTrackingManager: React.FC = () => {
 };
 
 export default GPSTrackingManager;
-

@@ -26,6 +26,7 @@ use axum::{
     routing::get,
     Json,
     extract::State,
+    extract::DefaultBodyLimit,
 };
 use chrono;
 use tracing_subscriber::{EnvFilter, fmt, layer::SubscriberExt, util::SubscriberInitExt};
@@ -189,7 +190,8 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .merge(modalities)  // ✅ Routes des modalités personnalisées
         .nest("/api", recommendation_routes())  // ✅ NOUVEAU : Routes recommandations
         .route("/fournitures/gestion", axum::routing::post(fournitures_axum_handler))
-        .layer(axum::middleware::from_fn(cors_middleware))  // ← AJOUTER CETTE LIGNE
+        .layer(axum::middleware::from_fn(cors_middleware))  // CORS middleware
+        .layer(DefaultBodyLimit::max(10 * 1024 * 1024))  // ✅ CRITIQUE: Augmenter limite à 10MB (de 2MB par défaut)
         .with_state(state);    // Ajouter les routes WebSocket s?par?ment
     // let app = app.merge(websocket);
     app
