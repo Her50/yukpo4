@@ -3572,12 +3572,13 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         </View>
 
                         {/* Nombre de déménageurs */}
-                        <ProductFieldSelector
-                            label="Nombre de déménageurs"
-                            fieldName="nombre_demenageurs"
-                            productType="demenagement"
+                        <Text style={styles.fieldLabel}>Nombre de déménageurs</Text>
+                        <NativeInput
+                            placeholder="Ex: 3"
                             value={newProduct.nbDemenageurs || ''}
-                            onSelect={(value) => setNewProduct({ ...newProduct, nbDemenageurs: value })}
+                            onChangeText={(text) => setNewProduct({ ...newProduct, nbDemenageurs: text })}
+                            style={styles.fieldInput}
+                            keyboardType="numeric"
                         />
 
                         {/* Services inclus */}
@@ -3720,12 +3721,13 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         />
 
                         {/* Âge recommandé */}
-                        <ProductFieldSelector
-                            label="Âge recommandé"
-                            fieldName="ages"
-                            productType="cosmetique_parfum"
+                        <Text style={styles.fieldLabel}>Âge recommandé (années)</Text>
+                        <NativeInput
+                            placeholder="Ex: 18"
                             value={newProduct.ageRecommandé || ''}
-                            onSelect={(value) => setNewProduct({ ...newProduct, ageRecommandé: value })}
+                            onChangeText={(text) => setNewProduct({ ...newProduct, ageRecommandé: text })}
+                            style={styles.fieldInput}
+                            keyboardType="numeric"
                         />
 
                         {/* Ingrédients principaux */}
@@ -3968,12 +3970,13 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
-                                    label="Durée de vie"
-                                    fieldName="dureeVie"
-                                    productType="coiffure_beaute"
+                                <Text style={styles.fieldLabel}>Durée de vie (jours)</Text>
+                                <NativeInput
+                                    placeholder="Ex: 30"
                                     value={newProduct.dureeVie || ''}
-                                    onSelect={(value) => setNewProduct({ ...newProduct, dureeVie: value })}
+                                    onChangeText={(text) => setNewProduct({ ...newProduct, dureeVie: text })}
+                                    style={styles.fieldInput}
+                                    keyboardType="numeric"
                                 />
                             </View>
                         </View>
@@ -4056,12 +4059,13 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             </View>
                         </View>
 
-                        <ProductFieldSelector
-                            label="Durée du contrat"
-                            fieldName="durees"
-                            productType="assurance"
+                        <Text style={styles.fieldLabel}>Durée du contrat (mois)</Text>
+                        <NativeInput
+                            placeholder="Ex: 12"
                             value={newProduct.dureeContrat || ''}
-                            onSelect={(value) => setNewProduct({ ...newProduct, dureeContrat: value })}
+                            onChangeText={(text) => setNewProduct({ ...newProduct, dureeContrat: text })}
+                            style={styles.fieldInput}
+                            keyboardType="numeric"
                         />
 
                         <View style={styles.fieldContainer}>
@@ -4359,12 +4363,13 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
-                                    label="Durée"
-                                    fieldName="durees"
-                                    productType="formation_education"
+                                <Text style={styles.fieldLabel}>Durée (heures)</Text>
+                                <NativeInput
+                                    placeholder="Ex: 40"
                                     value={newProduct.dureeFormation || ''}
-                                    onSelect={(value) => setNewProduct({ ...newProduct, dureeFormation: value })}
+                                    onChangeText={(text) => setNewProduct({ ...newProduct, dureeFormation: text })}
+                                    style={styles.fieldInput}
+                                    keyboardType="numeric"
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
@@ -4532,12 +4537,13 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
-                                    label="Durée"
-                                    fieldName="durees"
-                                    productType="sport_fitness"
+                                <Text style={styles.fieldLabel}>Durée (minutes)</Text>
+                                <NativeInput
+                                    placeholder="Ex: 60"
                                     value={newProduct.dureeSport || ''}
-                                    onSelect={(value) => setNewProduct({ ...newProduct, dureeSport: value })}
+                                    onChangeText={(text) => setNewProduct({ ...newProduct, dureeSport: text })}
+                                    style={styles.fieldInput}
+                                    keyboardType="numeric"
                                 />
                             </View>
                         </View>
@@ -4582,12 +4588,13 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
-                                    label="Durée"
-                                    fieldName="durees"
-                                    productType="bien_etre_spa"
+                                <Text style={styles.fieldLabel}>Durée (minutes)</Text>
+                                <NativeInput
+                                    placeholder="Ex: 90"
                                     value={newProduct.dureeBienEtre || ''}
-                                    onSelect={(value) => setNewProduct({ ...newProduct, dureeBienEtre: value })}
+                                    onChangeText={(text) => setNewProduct({ ...newProduct, dureeBienEtre: text })}
+                                    style={styles.fieldInput}
+                                    keyboardType="numeric"
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
@@ -4632,12 +4639,13 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
-                                    label="Âge"
-                                    fieldName="ages"
-                                    productType="animaux_veterinaire"
+                                <Text style={styles.fieldLabel}>Âge (années)</Text>
+                                <NativeInput
+                                    placeholder="Ex: 5"
                                     value={newProduct.ageAnimal || ''}
-                                    onSelect={(value) => setNewProduct({ ...newProduct, ageAnimal: value })}
+                                    onChangeText={(text) => setNewProduct({ ...newProduct, ageAnimal: text })}
+                                    style={styles.fieldInput}
+                                    keyboardType="numeric"
                                 />
                             </View>
                         </View>
@@ -4782,12 +4790,13 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
-                                    label="Durée du contrat"
-                                    fieldName="durees"
-                                    productType="securite_surveillance"
+                                <Text style={styles.fieldLabel}>Durée du contrat (mois)</Text>
+                                <NativeInput
+                                    placeholder="Ex: 12"
                                     value={newProduct.dureeSecurite || ''}
-                                    onSelect={(value) => setNewProduct({ ...newProduct, dureeSecurite: value })}
+                                    onChangeText={(text) => setNewProduct({ ...newProduct, dureeSecurite: text })}
+                                    style={styles.fieldInput}
+                                    keyboardType="numeric"
                                 />
                             </View>
                         </View>
@@ -4873,12 +4882,13 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
-                                    label="Puissance"
-                                    fieldName="puissances"
-                                    productType="electricite"
+                                <Text style={styles.fieldLabel}>Puissance (watts)</Text>
+                                <NativeInput
+                                    placeholder="Ex: 1500"
                                     value={newProduct.puissanceElectricite || ''}
-                                    onSelect={(value) => setNewProduct({ ...newProduct, puissanceElectricite: value })}
+                                    onChangeText={(text) => setNewProduct({ ...newProduct, puissanceElectricite: text })}
+                                    style={styles.fieldInput}
+                                    keyboardType="numeric"
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
@@ -5181,12 +5191,13 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
-                                    label="Taille écran"
-                                    fieldName="taillesEcran"
-                                    productType="image_son"
+                                <Text style={styles.fieldLabel}>Taille écran (pouces)</Text>
+                                <NativeInput
+                                    placeholder="Ex: 55"
                                     value={newProduct.diagonaleEcran || ''}
-                                    onSelect={(value) => setNewProduct({ ...newProduct, diagonaleEcran: value })}
+                                    onChangeText={(text) => setNewProduct({ ...newProduct, diagonaleEcran: text })}
+                                    style={styles.fieldInput}
+                                    keyboardType="numeric"
                                 />
                             </View>
                         </View>
@@ -5341,12 +5352,13 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
-                                    label="Âge recommandé"
-                                    fieldName="ages"
-                                    productType="jouets_enfants"
+                                <Text style={styles.fieldLabel}>Âge recommandé (années)</Text>
+                                <NativeInput
+                                    placeholder="Ex: 5"
                                     value={newProduct.ageJouet || ''}
-                                    onSelect={(value) => setNewProduct({ ...newProduct, ageJouet: value })}
+                                    onChangeText={(text) => setNewProduct({ ...newProduct, ageJouet: text })}
+                                    style={styles.fieldInput}
+                                    keyboardType="numeric"
                                 />
                             </View>
                         </View>
