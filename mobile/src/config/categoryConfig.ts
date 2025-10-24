@@ -4,687 +4,687 @@
  */
 
 export interface CategoryFilter {
-    id: string;
-    label: string;
-    type: 'range' | 'select' | 'multiselect' | 'toggle' | 'date' | 'time';
-    options?: { value: string; label: string }[];
-    min?: number;
-    max?: number;
-    unit?: string;
-    placeholder?: string;
+  id: string;
+  label: string;
+  type: 'range' | 'select' | 'multiselect' | 'toggle' | 'date' | 'time';
+  options?: { value: string; label: string }[];
+  min?: number;
+  max?: number;
+  unit?: string;
+  placeholder?: string;
 }
 
 export interface CategoryTerminology {
-    productLabel: string; // Ex: "Bien immobilier", "Véhicule", "Article"
-    productsLabel: string; // Ex: "Biens immobiliers", "Véhicules", "Articles"
-    priceLabel: string; // Ex: "Loyer", "Prix", "Tarif"
-    locationLabel: string; // Ex: "Quartier", "Localisation", "Adresse"
-    providerLabel: string; // Ex: "Propriétaire", "Vendeur", "Prestataire"
-    searchPlaceholder: string;
-    emptyMessage: string;
-    sortLabels: {
-        relevance: string;
-        price_asc: string;
-        price_desc: string;
-        distance: string;
-        date?: string;
-    };
+  productLabel: string; // Ex: "Bien immobilier", "Véhicule", "Article"
+  productsLabel: string; // Ex: "Biens immobiliers", "Véhicules", "Articles"
+  priceLabel: string; // Ex: "Loyer", "Prix", "Tarif"
+  locationLabel: string; // Ex: "Quartier", "Localisation", "Adresse"
+  providerLabel: string; // Ex: "Propriétaire", "Vendeur", "Prestataire"
+  searchPlaceholder: string;
+  emptyMessage: string;
+  sortLabels: {
+    relevance: string;
+    price_asc: string;
+    price_desc: string;
+    distance: string;
+    date?: string;
+  };
 }
 
 export interface CategoryStyle {
-    primaryColor: string;
-    gradientColors: string[];
-    icon: string;
-    badgeColor: string;
-    accentColor: string;
+  primaryColor: string;
+  gradientColors: string[];
+  icon: string;
+  badgeColor: string;
+  accentColor: string;
 }
 
 export interface CategoryConfig {
-    terminology: CategoryTerminology;
-    filters: CategoryFilter[];
-    style: CategoryStyle;
-    displayPriority: string[]; // Ordre d'affichage des informations importantes
-    contactMethods: ('whatsapp' | 'phone' | 'message' | 'email')[];
-    showDistance: boolean;
-    showRating: boolean;
-    cardLayout: 'horizontal' | 'vertical' | 'grid';
+  terminology: CategoryTerminology;
+  filters: CategoryFilter[];
+  style: CategoryStyle;
+  displayPriority: string[]; // Ordre d'affichage des informations importantes
+  contactMethods: ('whatsapp' | 'phone' | 'message' | 'email')[];
+  showDistance: boolean;
+  showRating: boolean;
+  cardLayout: 'horizontal' | 'vertical' | 'grid';
 }
 
 // Configuration par catégorie
 export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
-    // 🏢 IMMOBILIER - BÂTIMENTS
-    immobilier_batiment: {
-        terminology: {
-            productLabel: 'Bien immobilier',
-            productsLabel: 'Biens immobiliers',
-            priceLabel: 'Prix/Loyer',
-            locationLabel: 'Quartier',
-            providerLabel: 'Propriétaire',
-            searchPlaceholder: 'Rechercher un appartement, villa...',
-            emptyMessage: 'Aucun bien immobilier trouvé dans cette zone',
-            sortLabels: {
-                relevance: 'Pertinence',
-                price_asc: 'Prix croissant',
-                price_desc: 'Prix décroissant',
-                distance: 'Proximité',
-            },
-        },
-        filters: [
-            {
-                id: 'typeTransaction',
-                label: 'Type de transaction',
-                type: 'select',
-                options: [
-                    { value: 'vente', label: 'Vente' },
-                    { value: 'location', label: 'Location' },
-                    { value: 'colocation', label: 'Colocation' },
-                ],
-            },
-            {
-                id: 'typeBatiment',
-                label: 'Type de bien',
-                type: 'select',
-                options: [
-                    { value: 'appartement', label: 'Appartement' },
-                    { value: 'villa', label: 'Villa' },
-                    { value: 'studio', label: 'Studio' },
-                    { value: 'duplex', label: 'Duplex' },
-                    { value: 'immeuble', label: 'Immeuble' },
-                    { value: 'bureau', label: 'Bureau' },
-                    { value: 'commerce', label: 'Local commercial' },
-                ],
-            },
-            {
-                id: 'nbPieces',
-                label: 'Nombre de pièces',
-                type: 'range',
-                min: 1,
-                max: 10,
-                unit: 'pièces',
-            },
-            {
-                id: 'superficie',
-                label: 'Superficie',
-                type: 'range',
-                min: 0,
-                max: 1000,
-                unit: 'm²',
-            },
-            {
-                id: 'meuble',
-                label: 'Meublé',
-                type: 'toggle',
-            },
-            {
-                id: 'equipements',
-                label: 'Équipements',
-                type: 'multiselect',
-                options: [
-                    { value: 'climatisation', label: 'Climatisation' },
-                    { value: 'piscine', label: 'Piscine' },
-                    { value: 'jardin', label: 'Jardin' },
-                    { value: 'parking', label: 'Parking' },
-                    { value: 'gardien', label: 'Gardien' },
-                    { value: 'eau_courante', label: 'Eau courante' },
-                    { value: 'electricite', label: 'Électricité' },
-                ],
-            },
-        ],
-        style: {
-            primaryColor: '#3B82F6',
-            gradientColors: ['#3B82F6', '#1D4ED8'],
-            icon: '🏢',
-            badgeColor: '#EFF6FF',
-            accentColor: '#2563EB',
-        },
-        displayPriority: ['superficie', 'nbPieces', 'quartier', 'prix', 'equipements'],
-        contactMethods: ['whatsapp', 'phone', 'message'],
-        showDistance: true,
-        showRating: true,
-        cardLayout: 'horizontal',
+  // 🏢 IMMOBILIER - BÂTIMENTS
+  immobilier_batiment: {
+    terminology: {
+      productLabel: 'Bien immobilier',
+      productsLabel: 'Biens immobiliers',
+      priceLabel: 'Prix/Loyer',
+      locationLabel: 'Quartier',
+      providerLabel: 'Propriétaire',
+      searchPlaceholder: 'Rechercher un appartement, villa...',
+      emptyMessage: 'Aucun bien immobilier trouvé dans cette zone',
+      sortLabels: {
+        relevance: 'Pertinence',
+        price_asc: 'Prix croissant',
+        price_desc: 'Prix décroissant',
+        distance: 'Proximité',
+      },
     },
+    filters: [
+      {
+        id: 'typeTransaction',
+        label: 'Type de transaction',
+        type: 'select',
+        options: [
+          { value: 'vente', label: 'Vente' },
+          { value: 'location', label: 'Location' },
+          { value: 'colocation', label: 'Colocation' },
+        ],
+      },
+      {
+        id: 'typeBatiment',
+        label: 'Type de bien',
+        type: 'select',
+        options: [
+          { value: 'appartement', label: 'Appartement' },
+          { value: 'villa', label: 'Villa' },
+          { value: 'studio', label: 'Studio' },
+          { value: 'duplex', label: 'Duplex' },
+          { value: 'immeuble', label: 'Immeuble' },
+          { value: 'bureau', label: 'Bureau' },
+          { value: 'commerce', label: 'Local commercial' },
+        ],
+      },
+      {
+        id: 'nbPieces',
+        label: 'Nombre de pièces',
+        type: 'range',
+        min: 1,
+        max: 10,
+        unit: 'pièces',
+      },
+      {
+        id: 'superficie',
+        label: 'Superficie',
+        type: 'range',
+        min: 0,
+        max: 1000,
+        unit: 'm²',
+      },
+      {
+        id: 'meuble',
+        label: 'Meublé',
+        type: 'toggle',
+      },
+      {
+        id: 'equipements',
+        label: 'Équipements',
+        type: 'multiselect',
+        options: [
+          { value: 'climatisation', label: 'Climatisation' },
+          { value: 'piscine', label: 'Piscine' },
+          { value: 'jardin', label: 'Jardin' },
+          { value: 'parking', label: 'Parking' },
+          { value: 'gardien', label: 'Gardien' },
+          { value: 'eau_courante', label: 'Eau courante' },
+          { value: 'electricite', label: 'Électricité' },
+        ],
+      },
+    ],
+    style: {
+      primaryColor: '#3B82F6',
+      gradientColors: ['#3B82F6', '#1D4ED8'],
+      icon: '🏢',
+      badgeColor: '#EFF6FF',
+      accentColor: '#2563EB',
+    },
+    displayPriority: ['superficie', 'nbPieces', 'quartier', 'prix', 'equipements'],
+    contactMethods: ['whatsapp', 'phone', 'message'],
+    showDistance: true,
+    showRating: true,
+    cardLayout: 'horizontal',
+  },
 
-    // 🏞️ IMMOBILIER - TERRAINS
-    immobilier_terrain: {
-        terminology: {
-            productLabel: 'Terrain',
-            productsLabel: 'Terrains',
-            priceLabel: 'Prix au m²',
-            locationLabel: 'Localisation',
-            providerLabel: 'Propriétaire',
-            searchPlaceholder: 'Rechercher un terrain...',
-            emptyMessage: 'Aucun terrain disponible dans cette zone',
-            sortLabels: {
-                relevance: 'Pertinence',
-                price_asc: 'Prix croissant',
-                price_desc: 'Prix décroissant',
-                distance: 'Proximité',
-            },
-        },
-        filters: [
-            {
-                id: 'superficie',
-                label: 'Superficie',
-                type: 'range',
-                min: 0,
-                max: 10000,
-                unit: 'm²',
-            },
-            {
-                id: 'typeTerrain',
-                label: 'Type de terrain',
-                type: 'select',
-                options: [
-                    { value: 'constructible', label: 'Constructible' },
-                    { value: 'agricole', label: 'Agricole' },
-                    { value: 'commercial', label: 'Commercial' },
-                    { value: 'industriel', label: 'Industriel' },
-                ],
-            },
-            {
-                id: 'viabilise',
-                label: 'Viabilisé',
-                type: 'toggle',
-            },
-            {
-                id: 'titreFoncier',
-                label: 'Titre foncier',
-                type: 'toggle',
-            },
-        ],
-        style: {
-            primaryColor: '#10B981',
-            gradientColors: ['#10B981', '#059669'],
-            icon: '🏞️',
-            badgeColor: '#D1FAE5',
-            accentColor: '#059669',
-        },
-        displayPriority: ['superficie', 'typeTerrain', 'viabilise', 'titreFoncier', 'prix'],
-        contactMethods: ['whatsapp', 'phone', 'message'],
-        showDistance: true,
-        showRating: true,
-        cardLayout: 'horizontal',
+  // 🏞️ IMMOBILIER - TERRAINS
+  immobilier_terrain: {
+    terminology: {
+      productLabel: 'Terrain',
+      productsLabel: 'Terrains',
+      priceLabel: 'Prix au m²',
+      locationLabel: 'Localisation',
+      providerLabel: 'Propriétaire',
+      searchPlaceholder: 'Rechercher un terrain...',
+      emptyMessage: 'Aucun terrain disponible dans cette zone',
+      sortLabels: {
+        relevance: 'Pertinence',
+        price_asc: 'Prix croissant',
+        price_desc: 'Prix décroissant',
+        distance: 'Proximité',
+      },
     },
+    filters: [
+      {
+        id: 'superficie',
+        label: 'Superficie',
+        type: 'range',
+        min: 0,
+        max: 10000,
+        unit: 'm²',
+      },
+      {
+        id: 'typeTerrain',
+        label: 'Type de terrain',
+        type: 'select',
+        options: [
+          { value: 'constructible', label: 'Constructible' },
+          { value: 'agricole', label: 'Agricole' },
+          { value: 'commercial', label: 'Commercial' },
+          { value: 'industriel', label: 'Industriel' },
+        ],
+      },
+      {
+        id: 'viabilise',
+        label: 'Viabilisé',
+        type: 'toggle',
+      },
+      {
+        id: 'titreFoncier',
+        label: 'Titre foncier',
+        type: 'toggle',
+      },
+    ],
+    style: {
+      primaryColor: '#10B981',
+      gradientColors: ['#10B981', '#059669'],
+      icon: '🏞️',
+      badgeColor: '#D1FAE5',
+      accentColor: '#059669',
+    },
+    displayPriority: ['superficie', 'typeTerrain', 'viabilise', 'titreFoncier', 'prix'],
+    contactMethods: ['whatsapp', 'phone', 'message'],
+    showDistance: true,
+    showRating: true,
+    cardLayout: 'horizontal',
+  },
 
-    // 🚗 AUTOMOBILE
-    automobile: {
-        terminology: {
-            productLabel: 'Véhicule',
-            productsLabel: 'Véhicules',
-            priceLabel: 'Prix',
-            locationLabel: 'Localisation',
-            providerLabel: 'Vendeur',
-            searchPlaceholder: 'Rechercher une voiture, moto...',
-            emptyMessage: 'Aucun véhicule disponible',
-            sortLabels: {
-                relevance: 'Pertinence',
-                price_asc: 'Prix croissant',
-                price_desc: 'Prix décroissant',
-                distance: 'Proximité',
-            },
-        },
-        filters: [
-            {
-                id: 'typeVehicule',
-                label: 'Type de véhicule',
-                type: 'select',
-                options: [
-                    { value: 'voiture', label: 'Voiture' },
-                    { value: 'moto', label: 'Moto' },
-                    { value: 'camion', label: 'Camion' },
-                    { value: 'bus', label: 'Bus' },
-                    { value: 'tricycle', label: 'Tricycle' },
-                ],
-            },
-            {
-                id: 'marque',
-                label: 'Marque',
-                type: 'select',
-                options: [
-                    { value: 'toyota', label: 'Toyota' },
-                    { value: 'mercedes', label: 'Mercedes' },
-                    { value: 'bmw', label: 'BMW' },
-                    { value: 'nissan', label: 'Nissan' },
-                    { value: 'honda', label: 'Honda' },
-                    { value: 'yamaha', label: 'Yamaha' },
-                    { value: 'autre', label: 'Autre' },
-                ],
-            },
-            {
-                id: 'annee',
-                label: 'Année',
-                type: 'range',
-                min: 1990,
-                max: new Date().getFullYear() + 1,
-                unit: '',
-            },
-            {
-                id: 'kilometrage',
-                label: 'Kilométrage',
-                type: 'range',
-                min: 0,
-                max: 500000,
-                unit: 'km',
-            },
-            {
-                id: 'carburant',
-                label: 'Carburant',
-                type: 'select',
-                options: [
-                    { value: 'essence', label: 'Essence' },
-                    { value: 'diesel', label: 'Diesel' },
-                    { value: 'hybride', label: 'Hybride' },
-                    { value: 'electrique', label: 'Électrique' },
-                ],
-            },
-            {
-                id: 'etat',
-                label: 'État',
-                type: 'select',
-                options: [
-                    { value: 'neuf', label: 'Neuf' },
-                    { value: 'occasion', label: 'Occasion' },
-                    { value: 'accidente', label: 'Accidenté' },
-                ],
-            },
-        ],
-        style: {
-            primaryColor: '#EF4444',
-            gradientColors: ['#EF4444', '#DC2626'],
-            icon: '🚗',
-            badgeColor: '#FEE2E2',
-            accentColor: '#DC2626',
-        },
-        displayPriority: ['marque', 'modele', 'annee', 'kilometrage', 'carburant', 'prix'],
-        contactMethods: ['whatsapp', 'phone', 'message'],
-        showDistance: true,
-        showRating: true,
-        cardLayout: 'horizontal',
+  // 🚗 AUTOMOBILE
+  automobile: {
+    terminology: {
+      productLabel: 'Véhicule',
+      productsLabel: 'Véhicules',
+      priceLabel: 'Prix',
+      locationLabel: 'Localisation',
+      providerLabel: 'Vendeur',
+      searchPlaceholder: 'Rechercher une voiture, moto...',
+      emptyMessage: 'Aucun véhicule disponible',
+      sortLabels: {
+        relevance: 'Pertinence',
+        price_asc: 'Prix croissant',
+        price_desc: 'Prix décroissant',
+        distance: 'Proximité',
+      },
     },
+    filters: [
+      {
+        id: 'typeVehicule',
+        label: 'Type de véhicule',
+        type: 'select',
+        options: [
+          { value: 'voiture', label: 'Voiture' },
+          { value: 'moto', label: 'Moto' },
+          { value: 'camion', label: 'Camion' },
+          { value: 'bus', label: 'Bus' },
+          { value: 'tricycle', label: 'Tricycle' },
+        ],
+      },
+      {
+        id: 'marque',
+        label: 'Marque',
+        type: 'select',
+        options: [
+          { value: 'toyota', label: 'Toyota' },
+          { value: 'mercedes', label: 'Mercedes' },
+          { value: 'bmw', label: 'BMW' },
+          { value: 'nissan', label: 'Nissan' },
+          { value: 'honda', label: 'Honda' },
+          { value: 'yamaha', label: 'Yamaha' },
+          { value: 'autre', label: 'Autre' },
+        ],
+      },
+      {
+        id: 'annee',
+        label: 'Année',
+        type: 'range',
+        min: 1990,
+        max: new Date().getFullYear() + 1,
+        unit: '',
+      },
+      {
+        id: 'kilometrage',
+        label: 'Kilométrage',
+        type: 'range',
+        min: 0,
+        max: 500000,
+        unit: 'km',
+      },
+      {
+        id: 'carburant',
+        label: 'Carburant',
+        type: 'select',
+        options: [
+          { value: 'essence', label: 'Essence' },
+          { value: 'diesel', label: 'Diesel' },
+          { value: 'hybride', label: 'Hybride' },
+          { value: 'electrique', label: 'Électrique' },
+        ],
+      },
+      {
+        id: 'etat',
+        label: 'État',
+        type: 'select',
+        options: [
+          { value: 'neuf', label: 'Neuf' },
+          { value: 'occasion', label: 'Occasion' },
+          { value: 'accidente', label: 'Accidenté' },
+        ],
+      },
+    ],
+    style: {
+      primaryColor: '#EF4444',
+      gradientColors: ['#EF4444', '#DC2626'],
+      icon: '🚗',
+      badgeColor: '#FEE2E2',
+      accentColor: '#DC2626',
+    },
+    displayPriority: ['marque', 'modele', 'annee', 'kilometrage', 'carburant', 'prix'],
+    contactMethods: ['whatsapp', 'phone', 'message'],
+    showDistance: true,
+    showRating: true,
+    cardLayout: 'horizontal',
+  },
 
-    // 🎫 TICKET VOYAGE
-    ticket_voyage: {
-        terminology: {
-            productLabel: 'Billet',
-            productsLabel: 'Billets',
-            priceLabel: 'Tarif',
-            locationLabel: 'Itinéraire',
-            providerLabel: 'Compagnie',
-            searchPlaceholder: 'Rechercher un trajet...',
-            emptyMessage: 'Aucun billet disponible pour cet itinéraire',
-            sortLabels: {
-                relevance: 'Pertinence',
-                price_asc: 'Tarif croissant',
-                price_desc: 'Tarif décroissant',
-                distance: 'Durée du trajet',
-                date: 'Date de départ',
-            },
-        },
-        filters: [
-            {
-                id: 'typeTransport',
-                label: 'Type de transport',
-                type: 'select',
-                options: [
-                    { value: 'bus', label: 'Bus' },
-                    { value: 'train', label: 'Train' },
-                    { value: 'avion', label: 'Avion' },
-                ],
-            },
-            {
-                id: 'dateDepart',
-                label: 'Date de départ',
-                type: 'date',
-            },
-            {
-                id: 'heureDepart',
-                label: 'Heure de départ',
-                type: 'time',
-            },
-            {
-                id: 'classe',
-                label: 'Classe',
-                type: 'select',
-                options: [
-                    { value: 'economique', label: 'Économique' },
-                    { value: 'vip', label: 'VIP' },
-                    { value: 'business', label: 'Business' },
-                ],
-            },
-            {
-                id: 'placesDisponibles',
-                label: 'Places disponibles',
-                type: 'range',
-                min: 1,
-                max: 50,
-                unit: 'places',
-            },
-        ],
-        style: {
-            primaryColor: '#8B5CF6',
-            gradientColors: ['#8B5CF6', '#7C3AED'],
-            icon: '🎫',
-            badgeColor: '#F3E8FF',
-            accentColor: '#7C3AED',
-        },
-        displayPriority: ['depart', 'destination', 'dateDepart', 'heureDepart', 'classe', 'prix'],
-        contactMethods: ['whatsapp', 'phone', 'message'],
-        showDistance: false,
-        showRating: true,
-        cardLayout: 'vertical',
+  // 🎫 TICKET VOYAGE
+  ticket_voyage: {
+    terminology: {
+      productLabel: 'Billet',
+      productsLabel: 'Billets',
+      priceLabel: 'Tarif',
+      locationLabel: 'Itinéraire',
+      providerLabel: 'Compagnie',
+      searchPlaceholder: 'Rechercher un trajet...',
+      emptyMessage: 'Aucun billet disponible pour cet itinéraire',
+      sortLabels: {
+        relevance: 'Pertinence',
+        price_asc: 'Tarif croissant',
+        price_desc: 'Tarif décroissant',
+        distance: 'Durée du trajet',
+        date: 'Date de départ',
+      },
     },
+    filters: [
+      {
+        id: 'typeTransport',
+        label: 'Type de transport',
+        type: 'select',
+        options: [
+          { value: 'bus', label: 'Bus' },
+          { value: 'train', label: 'Train' },
+          { value: 'avion', label: 'Avion' },
+        ],
+      },
+      {
+        id: 'dateDepart',
+        label: 'Date de départ',
+        type: 'date',
+      },
+      {
+        id: 'heureDepart',
+        label: 'Heure de départ',
+        type: 'time',
+      },
+      {
+        id: 'classe',
+        label: 'Classe',
+        type: 'select',
+        options: [
+          { value: 'economique', label: 'Économique' },
+          { value: 'vip', label: 'VIP' },
+          { value: 'business', label: 'Business' },
+        ],
+      },
+      {
+        id: 'placesDisponibles',
+        label: 'Places disponibles',
+        type: 'range',
+        min: 1,
+        max: 50,
+        unit: 'places',
+      },
+    ],
+    style: {
+      primaryColor: '#8B5CF6',
+      gradientColors: ['#8B5CF6', '#7C3AED'],
+      icon: '🎫',
+      badgeColor: '#F3E8FF',
+      accentColor: '#7C3AED',
+    },
+    displayPriority: ['depart', 'destination', 'dateDepart', 'heureDepart', 'classe', 'prix'],
+    contactMethods: ['whatsapp', 'phone', 'message'],
+    showDistance: false,
+    showRating: true,
+    cardLayout: 'vertical',
+  },
 
-    // 🏥 HOPITAL/CLINIQUE
-    hopital_clinique: {
-        terminology: {
-            productLabel: 'Établissement de santé',
-            productsLabel: 'Établissements de santé',
-            priceLabel: 'Tarif consultation',
-            locationLabel: 'Adresse',
-            providerLabel: 'Établissement',
-            searchPlaceholder: 'Rechercher un hôpital, clinique...',
-            emptyMessage: 'Aucun établissement de santé trouvé',
-            sortLabels: {
-                relevance: 'Pertinence',
-                price_asc: 'Tarif croissant',
-                price_desc: 'Tarif décroissant',
-                distance: 'Proximité',
-            },
-        },
-        filters: [
-            {
-                id: 'typeEtablissement',
-                label: 'Type d\'établissement',
-                type: 'select',
-                options: [
-                    { value: 'hopital', label: 'Hôpital' },
-                    { value: 'clinique', label: 'Clinique' },
-                    { value: 'centre_sante', label: 'Centre de santé' },
-                    { value: 'cabinet', label: 'Cabinet médical' },
-                ],
-            },
-            {
-                id: 'specialites',
-                label: 'Spécialités',
-                type: 'multiselect',
-                options: [
-                    { value: 'generaliste', label: 'Médecine générale' },
-                    { value: 'pediatrie', label: 'Pédiatrie' },
-                    { value: 'gynecologie', label: 'Gynécologie' },
-                    { value: 'cardiologie', label: 'Cardiologie' },
-                    { value: 'chirurgie', label: 'Chirurgie' },
-                    { value: 'dentaire', label: 'Dentaire' },
-                    { value: 'ophtalmologie', label: 'Ophtalmologie' },
-                    { value: 'dermatologie', label: 'Dermatologie' },
-                ],
-            },
-            {
-                id: 'banqueSang',
-                label: 'Banque de sang',
-                type: 'toggle',
-            },
-            {
-                id: 'urgences24h',
-                label: 'Urgences 24h/24',
-                type: 'toggle',
-            },
-            {
-                id: 'rdvEnLigne',
-                label: 'RDV en ligne',
-                type: 'toggle',
-            },
-            {
-                id: 'assurancesAcceptees',
-                label: 'Assurances acceptées',
-                type: 'multiselect',
-                options: [
-                    { value: 'cnps', label: 'CNPS' },
-                    { value: 'allianz', label: 'Allianz' },
-                    { value: 'saar', label: 'SAAR' },
-                    { value: 'activa', label: 'Activa' },
-                    { value: 'autre', label: 'Autre' },
-                ],
-            },
-        ],
-        style: {
-            primaryColor: '#DC2626',
-            gradientColors: ['#DC2626', '#B91C1C'],
-            icon: '🏥',
-            badgeColor: '#FEE2E2',
-            accentColor: '#B91C1C',
-        },
-        displayPriority: ['typeEtablissement', 'specialites', 'banqueSang', 'urgences24h', 'horaires'],
-        contactMethods: ['phone', 'whatsapp', 'message'],
-        showDistance: true,
-        showRating: true,
-        cardLayout: 'vertical',
+  // 🏥 HOPITAL/CLINIQUE
+  hopital_clinique: {
+    terminology: {
+      productLabel: 'Établissement de santé',
+      productsLabel: 'Établissements de santé',
+      priceLabel: 'Tarif consultation',
+      locationLabel: 'Adresse',
+      providerLabel: 'Établissement',
+      searchPlaceholder: 'Rechercher un hôpital, clinique...',
+      emptyMessage: 'Aucun établissement de santé trouvé',
+      sortLabels: {
+        relevance: 'Pertinence',
+        price_asc: 'Tarif croissant',
+        price_desc: 'Tarif décroissant',
+        distance: 'Proximité',
+      },
     },
+    filters: [
+      {
+        id: 'typeEtablissement',
+        label: 'Type d\'établissement',
+        type: 'select',
+        options: [
+          { value: 'hopital', label: 'Hôpital' },
+          { value: 'clinique', label: 'Clinique' },
+          { value: 'centre_sante', label: 'Centre de santé' },
+          { value: 'cabinet', label: 'Cabinet médical' },
+        ],
+      },
+      {
+        id: 'specialites',
+        label: 'Spécialités',
+        type: 'multiselect',
+        options: [
+          { value: 'generaliste', label: 'Médecine générale' },
+          { value: 'pediatrie', label: 'Pédiatrie' },
+          { value: 'gynecologie', label: 'Gynécologie' },
+          { value: 'cardiologie', label: 'Cardiologie' },
+          { value: 'chirurgie', label: 'Chirurgie' },
+          { value: 'dentaire', label: 'Dentaire' },
+          { value: 'ophtalmologie', label: 'Ophtalmologie' },
+          { value: 'dermatologie', label: 'Dermatologie' },
+        ],
+      },
+      {
+        id: 'banqueSang',
+        label: 'Banque de sang',
+        type: 'toggle',
+      },
+      {
+        id: 'urgences24h',
+        label: 'Urgences 24h/24',
+        type: 'toggle',
+      },
+      {
+        id: 'rdvEnLigne',
+        label: 'RDV en ligne',
+        type: 'toggle',
+      },
+      {
+        id: 'assurancesAcceptees',
+        label: 'Assurances acceptées',
+        type: 'multiselect',
+        options: [
+          { value: 'cnps', label: 'CNPS' },
+          { value: 'allianz', label: 'Allianz' },
+          { value: 'saar', label: 'SAAR' },
+          { value: 'activa', label: 'Activa' },
+          { value: 'autre', label: 'Autre' },
+        ],
+      },
+    ],
+    style: {
+      primaryColor: '#DC2626',
+      gradientColors: ['#DC2626', '#B91C1C'],
+      icon: '🏥',
+      badgeColor: '#FEE2E2',
+      accentColor: '#B91C1C',
+    },
+    displayPriority: ['typeEtablissement', 'specialites', 'banqueSang', 'urgences24h', 'horaires'],
+    contactMethods: ['phone', 'whatsapp', 'message'],
+    showDistance: true,
+    showRating: true,
+    cardLayout: 'vertical',
+  },
 
-    // 💊 PHARMACIE
-    pharmacie: {
-        terminology: {
-            productLabel: 'Pharmacie',
-            productsLabel: 'Pharmacies',
-            priceLabel: 'Prix moyen',
-            locationLabel: 'Adresse',
-            providerLabel: 'Pharmacie',
-            searchPlaceholder: 'Rechercher une pharmacie...',
-            emptyMessage: 'Aucune pharmacie trouvée à proximité',
-            sortLabels: {
-                relevance: 'Pertinence',
-                price_asc: 'Prix croissant',
-                price_desc: 'Prix décroissant',
-                distance: 'Proximité',
-            },
-        },
-        filters: [
-            {
-                id: 'typePharmacie',
-                label: 'Type de pharmacie',
-                type: 'select',
-                options: [
-                    { value: 'classique', label: 'Classique' },
-                    { value: 'garde', label: 'De garde' },
-                    { value: '24h', label: '24h/24' },
-                ],
-            },
-            {
-                id: 'deGarde',
-                label: 'De garde aujourd\'hui',
-                type: 'toggle',
-            },
-            {
-                id: 'livraison',
-                label: 'Livraison à domicile',
-                type: 'toggle',
-            },
-            {
-                id: 'services',
-                label: 'Services',
-                type: 'multiselect',
-                options: [
-                    { value: 'test_rapide', label: 'Tests rapides' },
-                    { value: 'vaccination', label: 'Vaccination' },
-                    { value: 'conseil', label: 'Conseil pharmaceutique' },
-                    { value: 'dermato', label: 'Produits dermatologiques' },
-                    { value: 'pediatrie', label: 'Pédiatrie' },
-                ],
-            },
-        ],
-        style: {
-            primaryColor: '#059669',
-            gradientColors: ['#059669', '#047857'],
-            icon: '💊',
-            badgeColor: '#D1FAE5',
-            accentColor: '#047857',
-        },
-        displayPriority: ['typePharmacie', 'deGarde', 'horaires', 'telephoneUrgence', 'services'],
-        contactMethods: ['phone', 'whatsapp'],
-        showDistance: true,
-        showRating: true,
-        cardLayout: 'vertical',
+  // 💊 PHARMACIE
+  pharmacie: {
+    terminology: {
+      productLabel: 'Pharmacie',
+      productsLabel: 'Pharmacies',
+      priceLabel: 'Prix moyen',
+      locationLabel: 'Adresse',
+      providerLabel: 'Pharmacie',
+      searchPlaceholder: 'Rechercher une pharmacie...',
+      emptyMessage: 'Aucune pharmacie trouvée à proximité',
+      sortLabels: {
+        relevance: 'Pertinence',
+        price_asc: 'Prix croissant',
+        price_desc: 'Prix décroissant',
+        distance: 'Proximité',
+      },
     },
+    filters: [
+      {
+        id: 'typePharmacie',
+        label: 'Type de pharmacie',
+        type: 'select',
+        options: [
+          { value: 'classique', label: 'Classique' },
+          { value: 'garde', label: 'De garde' },
+          { value: '24h', label: '24h/24' },
+        ],
+      },
+      {
+        id: 'deGarde',
+        label: 'De garde aujourd\'hui',
+        type: 'toggle',
+      },
+      {
+        id: 'livraison',
+        label: 'Livraison à domicile',
+        type: 'toggle',
+      },
+      {
+        id: 'services',
+        label: 'Services',
+        type: 'multiselect',
+        options: [
+          { value: 'test_rapide', label: 'Tests rapides' },
+          { value: 'vaccination', label: 'Vaccination' },
+          { value: 'conseil', label: 'Conseil pharmaceutique' },
+          { value: 'dermato', label: 'Produits dermatologiques' },
+          { value: 'pediatrie', label: 'Pédiatrie' },
+        ],
+      },
+    ],
+    style: {
+      primaryColor: '#059669',
+      gradientColors: ['#059669', '#047857'],
+      icon: '💊',
+      badgeColor: '#D1FAE5',
+      accentColor: '#047857',
+    },
+    displayPriority: ['typePharmacie', 'deGarde', 'horaires', 'telephoneUrgence', 'services'],
+    contactMethods: ['phone', 'whatsapp'],
+    showDistance: true,
+    showRating: true,
+    cardLayout: 'vertical',
+  },
 
-    // 🎯 PRESTATION SERVICE
-    prestation_service: {
-        terminology: {
-            productLabel: 'Prestation',
-            productsLabel: 'Prestations',
-            priceLabel: 'Tarif à partir de',
-            locationLabel: 'Zone d\'intervention',
-            providerLabel: 'Prestataire',
-            searchPlaceholder: 'Rechercher un prestataire...',
-            emptyMessage: 'Aucun prestataire disponible',
-            sortLabels: {
-                relevance: 'Pertinence',
-                price_asc: 'Tarif croissant',
-                price_desc: 'Tarif décroissant',
-                distance: 'Proximité',
-            },
-        },
-        filters: [
-            {
-                id: 'categorie',
-                label: 'Catégorie',
-                type: 'select',
-                options: [
-                    { value: 'batiment', label: 'Bâtiment' },
-                    { value: 'beaute', label: 'Beauté' },
-                    { value: 'informatique', label: 'Informatique' },
-                    { value: 'mecanique', label: 'Mécanique' },
-                    { value: 'menage', label: 'Ménage' },
-                    { value: 'education', label: 'Éducation' },
-                    { value: 'autre', label: 'Autre' },
-                ],
-            },
-            {
-                id: 'experience',
-                label: 'Expérience (années)',
-                type: 'range',
-                min: 0,
-                max: 30,
-                unit: 'ans',
-            },
-            {
-                id: 'certifie',
-                label: 'Certifié/Diplômé',
-                type: 'toggle',
-            },
-            {
-                id: 'deplacement',
-                label: 'Se déplace',
-                type: 'toggle',
-            },
-            {
-                id: 'disponibilite',
-                label: 'Disponibilité',
-                type: 'select',
-                options: [
-                    { value: 'immediat', label: 'Immédiate' },
-                    { value: 'semaine', label: 'Cette semaine' },
-                    { value: 'mois', label: 'Ce mois' },
-                ],
-            },
-        ],
-        style: {
-            primaryColor: '#8B5CF6',
-            gradientColors: ['#8B5CF6', '#7C3AED'],
-            icon: '🎯',
-            badgeColor: '#F3E8FF',
-            accentColor: '#7C3AED',
-        },
-        displayPriority: ['prestations', 'experience', 'certifications', 'tarif'],
-        contactMethods: ['whatsapp', 'phone', 'message'],
-        showDistance: true,
-        showRating: true,
-        cardLayout: 'vertical',
+  // 🎯 PRESTATION SERVICE
+  prestation_service: {
+    terminology: {
+      productLabel: 'Prestation',
+      productsLabel: 'Prestations',
+      priceLabel: 'Tarif à partir de',
+      locationLabel: 'Zone d\'intervention',
+      providerLabel: 'Prestataire',
+      searchPlaceholder: 'Rechercher un prestataire...',
+      emptyMessage: 'Aucun prestataire disponible',
+      sortLabels: {
+        relevance: 'Pertinence',
+        price_asc: 'Tarif croissant',
+        price_desc: 'Tarif décroissant',
+        distance: 'Proximité',
+      },
     },
+    filters: [
+      {
+        id: 'categorie',
+        label: 'Catégorie',
+        type: 'select',
+        options: [
+          { value: 'batiment', label: 'Bâtiment' },
+          { value: 'beaute', label: 'Beauté' },
+          { value: 'informatique', label: 'Informatique' },
+          { value: 'mecanique', label: 'Mécanique' },
+          { value: 'menage', label: 'Ménage' },
+          { value: 'education', label: 'Éducation' },
+          { value: 'autre', label: 'Autre' },
+        ],
+      },
+      {
+        id: 'experience',
+        label: 'Expérience (années)',
+        type: 'range',
+        min: 0,
+        max: 30,
+        unit: 'ans',
+      },
+      {
+        id: 'certifie',
+        label: 'Certifié/Diplômé',
+        type: 'toggle',
+      },
+      {
+        id: 'deplacement',
+        label: 'Se déplace',
+        type: 'toggle',
+      },
+      {
+        id: 'disponibilite',
+        label: 'Disponibilité',
+        type: 'select',
+        options: [
+          { value: 'immediat', label: 'Immédiate' },
+          { value: 'semaine', label: 'Cette semaine' },
+          { value: 'mois', label: 'Ce mois' },
+        ],
+      },
+    ],
+    style: {
+      primaryColor: '#8B5CF6',
+      gradientColors: ['#8B5CF6', '#7C3AED'],
+      icon: '🎯',
+      badgeColor: '#F3E8FF',
+      accentColor: '#7C3AED',
+    },
+    displayPriority: ['prestations', 'experience', 'certifications', 'tarif'],
+    contactMethods: ['whatsapp', 'phone', 'message'],
+    showDistance: true,
+    showRating: true,
+    cardLayout: 'vertical',
+  },
 
-    // 👟 CHAUSSURE
-    chaussure: {
-        terminology: {
-            productLabel: 'Chaussure',
-            productsLabel: 'Chaussures',
-            priceLabel: 'Prix',
-            locationLabel: 'Boutique',
-            providerLabel: 'Vendeur',
-            searchPlaceholder: 'Rechercher des chaussures...',
-            emptyMessage: 'Aucune chaussure disponible',
-            sortLabels: {
-                relevance: 'Pertinence',
-                price_asc: 'Prix croissant',
-                price_desc: 'Prix décroissant',
-                distance: 'Proximité',
-            },
-        },
-        filters: [
-            {
-                id: 'type',
-                label: 'Type',
-                type: 'select',
-                options: [
-                    { value: 'baskets', label: 'Baskets' },
-                    { value: 'chaussures_ville', label: 'Chaussures de ville' },
-                    { value: 'sandales', label: 'Sandales' },
-                    { value: 'bottes', label: 'Bottes' },
-                    { value: 'talons', label: 'Talons' },
-                    { value: 'sport', label: 'Sport' },
-                ],
-            },
-            {
-                id: 'genre',
-                label: 'Genre',
-                type: 'select',
-                options: [
-                    { value: 'homme', label: 'Homme' },
-                    { value: 'femme', label: 'Femme' },
-                    { value: 'enfant', label: 'Enfant' },
-                    { value: 'unisexe', label: 'Unisexe' },
-                ],
-            },
-            {
-                id: 'taille',
-                label: 'Pointure',
-                type: 'range',
-                min: 20,
-                max: 50,
-                unit: '',
-            },
-            {
-                id: 'marque',
-                label: 'Marque',
-                type: 'select',
-                options: [
-                    { value: 'nike', label: 'Nike' },
-                    { value: 'adidas', label: 'Adidas' },
-                    { value: 'puma', label: 'Puma' },
-                    { value: 'clarks', label: 'Clarks' },
-                    { value: 'autre', label: 'Autre' },
-                ],
-            },
-            {
-                id: 'etat',
-                label: 'État',
-                type: 'select',
-                options: [
-                    { value: 'neuf', label: 'Neuf' },
-                    { value: 'occasion', label: 'Occasion' },
-                ],
-            },
-        ],
-        style: {
-            primaryColor: '#F97316',
-            gradientColors: ['#F97316', '#EA580C'],
-            icon: '👟',
-            badgeColor: '#FFEDD5',
-            accentColor: '#EA580C',
-        },
-        displayPriority: ['type', 'marque', 'taille', 'couleur', 'prix'],
-        contactMethods: ['whatsapp', 'message', 'phone'],
-        showDistance: true,
-        showRating: true,
-        cardLayout: 'grid',
+  // 👟 CHAUSSURE
+  chaussure: {
+    terminology: {
+      productLabel: 'Chaussure',
+      productsLabel: 'Chaussures',
+      priceLabel: 'Prix',
+      locationLabel: 'Boutique',
+      providerLabel: 'Vendeur',
+      searchPlaceholder: 'Rechercher des chaussures...',
+      emptyMessage: 'Aucune chaussure disponible',
+      sortLabels: {
+        relevance: 'Pertinence',
+        price_asc: 'Prix croissant',
+        price_desc: 'Prix décroissant',
+        distance: 'Proximité',
+      },
     },
+    filters: [
+      {
+        id: 'type',
+        label: 'Type',
+        type: 'select',
+        options: [
+          { value: 'baskets', label: 'Baskets' },
+          { value: 'chaussures_ville', label: 'Chaussures de ville' },
+          { value: 'sandales', label: 'Sandales' },
+          { value: 'bottes', label: 'Bottes' },
+          { value: 'talons', label: 'Talons' },
+          { value: 'sport', label: 'Sport' },
+        ],
+      },
+      {
+        id: 'genre',
+        label: 'Genre',
+        type: 'select',
+        options: [
+          { value: 'homme', label: 'Homme' },
+          { value: 'femme', label: 'Femme' },
+          { value: 'enfant', label: 'Enfant' },
+          { value: 'unisexe', label: 'Unisexe' },
+        ],
+      },
+      {
+        id: 'taille',
+        label: 'Pointure',
+        type: 'range',
+        min: 20,
+        max: 50,
+        unit: '',
+      },
+      {
+        id: 'marque',
+        label: 'Marque',
+        type: 'select',
+        options: [
+          { value: 'nike', label: 'Nike' },
+          { value: 'adidas', label: 'Adidas' },
+          { value: 'puma', label: 'Puma' },
+          { value: 'clarks', label: 'Clarks' },
+          { value: 'autre', label: 'Autre' },
+        ],
+      },
+      {
+        id: 'etat',
+        label: 'État',
+        type: 'select',
+        options: [
+          { value: 'neuf', label: 'Neuf' },
+          { value: 'occasion', label: 'Occasion' },
+        ],
+      },
+    ],
+    style: {
+      primaryColor: '#F97316',
+      gradientColors: ['#F97316', '#EA580C'],
+      icon: '👟',
+      badgeColor: '#FFEDD5',
+      accentColor: '#EA580C',
+    },
+    displayPriority: ['type', 'marque', 'taille', 'couleur', 'prix'],
+    contactMethods: ['whatsapp', 'message', 'phone'],
+    showDistance: true,
+    showRating: true,
+    cardLayout: 'grid',
+  },
 
   // 🍎 ALIMENTS
   aliments: {
@@ -2045,28 +2045,29 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         ],
       },
       {
-        id: 'etoiles',
+        id: 'categorieHotel',
         label: 'Classement',
         type: 'select',
         options: [
-          { value: '1', label: '1 étoile' },
-          { value: '2', label: '2 étoiles' },
-          { value: '3', label: '3 étoiles' },
-          { value: '4', label: '4 étoiles' },
-          { value: '5', label: '5 étoiles' },
+          { value: '1_etoile', label: '1 étoile' },
+          { value: '2_etoiles', label: '2 étoiles' },
+          { value: '3_etoiles', label: '3 étoiles' },
+          { value: '4_etoiles', label: '4 étoiles' },
+          { value: '5_etoiles', label: '5 étoiles' },
+          { value: 'palace', label: 'Palace' },
         ],
       },
       {
-        id: 'nbPersonnes',
-        label: 'Nombre de personnes',
+        id: 'nbChambresHotel',
+        label: 'Nombre de chambres',
         type: 'range',
         min: 1,
-        max: 10,
-        unit: 'personnes',
+        max: 100,
+        unit: 'chambres',
       },
       {
-        id: 'services',
-        label: 'Services',
+        id: 'equipementsHotel',
+        label: 'Équipements et services',
         type: 'multiselect',
         options: [
           { value: 'petit_dejeuner', label: 'Petit-déjeuner' },
@@ -2076,6 +2077,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
           { value: 'restaurant', label: 'Restaurant' },
           { value: 'spa', label: 'Spa' },
           { value: 'climatisation', label: 'Climatisation' },
+          { value: 'salle_sport', label: 'Salle de sport' },
         ],
       },
     ],
@@ -2112,40 +2114,62 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     },
     filters: [
       {
-        id: 'typeRestaurant',
-        label: 'Type',
-        type: 'select',
-        options: [
-          { value: 'restaurant', label: 'Restaurant' },
-          { value: 'traiteur', label: 'Traiteur' },
-          { value: 'food_truck', label: 'Food truck' },
-          { value: 'cafe', label: 'Café' },
-          { value: 'bar', label: 'Bar' },
-          { value: 'fast_food', label: 'Fast-food' },
-        ],
-      },
-      {
-        id: 'cuisineType',
+        id: 'typeCuisine',
         label: 'Type de cuisine',
-        type: 'multiselect',
+        type: 'select',
         options: [
           { value: 'camerounaise', label: 'Camerounaise' },
           { value: 'africaine', label: 'Africaine' },
           { value: 'europeenne', label: 'Européenne' },
           { value: 'asiatique', label: 'Asiatique' },
-          { value: 'pizza', label: 'Pizza' },
+          { value: 'italienne', label: 'Italienne' },
+          { value: 'libanaise', label: 'Libanaise' },
           { value: 'grillades', label: 'Grillades' },
         ],
       },
       {
-        id: 'livraison',
-        label: 'Livraison',
-        type: 'toggle',
+        id: 'specialites',
+        label: 'Spécialités',
+        type: 'multiselect',
+        options: [
+          { value: 'poisson', label: 'Poisson' },
+          { value: 'viande', label: 'Viande' },
+          { value: 'pizza', label: 'Pizza' },
+          { value: 'vegetarien', label: 'Végétarien' },
+          { value: 'fruits_mer', label: 'Fruits de mer' },
+        ],
       },
       {
-        id: 'terrasse',
-        label: 'Terrasse',
-        type: 'toggle',
+        id: 'servicesRestau',
+        label: 'Services proposés',
+        type: 'multiselect',
+        options: [
+          { value: 'livraison', label: 'Livraison' },
+          { value: 'terrasse', label: 'Terrasse' },
+          { value: 'wifi', label: 'Wi-Fi' },
+          { value: 'parking', label: 'Parking' },
+          { value: 'climatisation', label: 'Climatisation' },
+          { value: 'traiteur', label: 'Service traiteur' },
+        ],
+      },
+      {
+        id: 'gammePrix',
+        label: 'Gamme de prix',
+        type: 'select',
+        options: [
+          { value: 'economique', label: 'Économique' },
+          { value: 'moyen', label: 'Moyen' },
+          { value: 'eleve', label: 'Élevé' },
+          { value: 'luxe', label: 'Luxe' },
+        ],
+      },
+      {
+        id: 'capacite',
+        label: 'Capacité',
+        type: 'range',
+        min: 10,
+        max: 500,
+        unit: 'personnes',
       },
     ],
     style: {
@@ -2192,22 +2216,42 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
           { value: 'crossfit', label: 'CrossFit' },
           { value: 'boxe', label: 'Boxe' },
           { value: 'natation', label: 'Natation' },
+          { value: 'danse', label: 'Danse' },
         ],
       },
       {
-        id: 'niveau',
+        id: 'niveauSport',
         label: 'Niveau',
         type: 'select',
         options: [
           { value: 'debutant', label: 'Débutant' },
           { value: 'intermediaire', label: 'Intermédiaire' },
           { value: 'avance', label: 'Avancé' },
+          { value: 'expert', label: 'Expert' },
         ],
       },
       {
-        id: 'coaching',
-        label: 'Coaching personnel',
-        type: 'toggle',
+        id: 'dureeSport',
+        label: 'Durée',
+        type: 'select',
+        options: [
+          { value: '30min', label: '30 minutes' },
+          { value: '1h', label: '1 heure' },
+          { value: '1h30', label: '1h30' },
+          { value: '2h', label: '2 heures' },
+        ],
+      },
+      {
+        id: 'equipementsSport',
+        label: 'Équipements fournis',
+        type: 'multiselect',
+        options: [
+          { value: 'tapis', label: 'Tapis de yoga' },
+          { value: 'halteres', label: 'Haltères' },
+          { value: 'vestiaire', label: 'Vestiaire' },
+          { value: 'douche', label: 'Douches' },
+          { value: 'casiers', label: 'Casiers' },
+        ],
       },
     ],
     style: {
@@ -2243,8 +2287,8 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     },
     filters: [
       {
-        id: 'domaine',
-        label: 'Domaine',
+        id: 'typeFormation',
+        label: 'Type de formation',
         type: 'select',
         options: [
           { value: 'informatique', label: 'Informatique' },
@@ -2252,20 +2296,45 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
           { value: 'management', label: 'Management' },
           { value: 'bureautique', label: 'Bureautique' },
           { value: 'comptabilite', label: 'Comptabilité' },
+          { value: 'marketing', label: 'Marketing' },
         ],
       },
       {
-        id: 'format',
-        label: 'Format',
+        id: 'niveauFormation',
+        label: 'Niveau',
+        type: 'select',
+        options: [
+          { value: 'debutant', label: 'Débutant' },
+          { value: 'intermediaire', label: 'Intermédiaire' },
+          { value: 'avance', label: 'Avancé' },
+          { value: 'expert', label: 'Expert' },
+        ],
+      },
+      {
+        id: 'modeFormation',
+        label: 'Mode',
         type: 'select',
         options: [
           { value: 'presentiel', label: 'Présentiel' },
           { value: 'en_ligne', label: 'En ligne' },
           { value: 'hybride', label: 'Hybride' },
+          { value: 'classe_virtuelle', label: 'Classe virtuelle' },
         ],
       },
       {
-        id: 'certification',
+        id: 'dureeFormation',
+        label: 'Durée',
+        type: 'select',
+        options: [
+          { value: '1_jour', label: '1 jour' },
+          { value: '1_semaine', label: '1 semaine' },
+          { value: '1_mois', label: '1 mois' },
+          { value: '3_mois', label: '3 mois' },
+          { value: '6_mois', label: '6+ mois' },
+        ],
+      },
+      {
+        id: 'certificationFormation',
         label: 'Avec certification',
         type: 'toggle',
       },
@@ -2309,18 +2378,44 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         options: [
           { value: 'mariage', label: 'Mariage' },
           { value: 'anniversaire', label: 'Anniversaire' },
+          { value: 'bapteme', label: 'Baptême' },
           { value: 'entreprise', label: 'Événement d\'entreprise' },
           { value: 'conference', label: 'Conférence' },
           { value: 'concert', label: 'Concert' },
+          { value: 'gala', label: 'Gala' },
         ],
       },
       {
-        id: 'nbPersonnes',
-        label: 'Nombre de personnes',
+        id: 'capaciteEvenement',
+        label: 'Capacité',
         type: 'range',
         min: 10,
         max: 1000,
         unit: 'personnes',
+      },
+      {
+        id: 'servicesEvenement',
+        label: 'Services inclus',
+        type: 'multiselect',
+        options: [
+          { value: 'decoration', label: 'Décoration' },
+          { value: 'traiteur', label: 'Traiteur' },
+          { value: 'sono', label: 'Sonorisation' },
+          { value: 'animation', label: 'Animation' },
+          { value: 'photographie', label: 'Photographie' },
+          { value: 'location_salle', label: 'Location salle' },
+        ],
+      },
+      {
+        id: 'dureeEvenement',
+        label: 'Durée',
+        type: 'select',
+        options: [
+          { value: 'demi_journee', label: 'Demi-journée' },
+          { value: 'journee', label: 'Journée' },
+          { value: 'soiree', label: 'Soirée' },
+          { value: 'week_end', label: 'Week-end' },
+        ],
       },
     ],
     style: {
@@ -2365,6 +2460,29 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
           { value: 'prise', label: 'Prises' },
           { value: 'lampe', label: 'Lampes' },
           { value: 'disjoncteur', label: 'Disjoncteurs' },
+        ],
+      },
+      {
+        id: 'marqueElectrique',
+        label: 'Marque',
+        type: 'select',
+        options: [
+          { value: 'legrand', label: 'Legrand' },
+          { value: 'schneider', label: 'Schneider Electric' },
+          { value: 'nexans', label: 'Nexans' },
+          { value: 'hager', label: 'Hager' },
+          { value: 'abb', label: 'ABB' },
+        ],
+      },
+      {
+        id: 'tension',
+        label: 'Tension',
+        type: 'select',
+        options: [
+          { value: '12v', label: '12V' },
+          { value: '24v', label: '24V' },
+          { value: '220v', label: '220V' },
+          { value: '380v', label: '380V (Triphasé)' },
         ],
       },
     ],
@@ -2416,6 +2534,17 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: 'Dépannage 24h/24',
         type: 'toggle',
       },
+      {
+        id: 'equipementsPlomberie',
+        label: 'Équipements',
+        type: 'multiselect',
+        options: [
+          { value: 'camera', label: 'Caméra d\'inspection' },
+          { value: 'detecteur', label: 'Détecteur de fuite' },
+          { value: 'deboucheur', label: 'Déboucheur professionnel' },
+          { value: 'soudure', label: 'Équipement de soudure' },
+        ],
+      },
     ],
     style: {
       primaryColor: '#00BCD4',
@@ -2461,6 +2590,30 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
           { value: 'charpente', label: 'Charpente' },
         ],
       },
+      {
+        id: 'materiaux',
+        label: 'Matériaux',
+        type: 'multiselect',
+        options: [
+          { value: 'chene', label: 'Chêne' },
+          { value: 'pin', label: 'Pin' },
+          { value: 'acajou', label: 'Acajou' },
+          { value: 'mdf', label: 'MDF' },
+          { value: 'contreplaque', label: 'Contreplaqué' },
+        ],
+      },
+      {
+        id: 'finitions',
+        label: 'Finitions',
+        type: 'select',
+        options: [
+          { value: 'vernis', label: 'Vernis' },
+          { value: 'peinture', label: 'Peinture' },
+          { value: 'lasure', label: 'Lasure' },
+          { value: 'naturel', label: 'Naturel' },
+          { value: 'laque', label: 'Laqué' },
+        ],
+      },
     ],
     style: {
       primaryColor: '#F97316',
@@ -2495,7 +2648,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     },
     filters: [
       {
-        id: 'typeService',
+        id: 'typeJardinage',
         label: 'Type de service',
         type: 'multiselect',
         options: [
@@ -2504,7 +2657,28 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
           { value: 'elagage', label: 'Élagage' },
           { value: 'plantation', label: 'Plantation' },
           { value: 'creation', label: 'Création espaces verts' },
+          { value: 'entretien', label: 'Entretien régulier' },
         ],
+      },
+      {
+        id: 'saisonJardinage',
+        label: 'Saison recommandée',
+        type: 'select',
+        options: [
+          { value: 'printemps', label: 'Printemps' },
+          { value: 'ete', label: 'Été' },
+          { value: 'automne', label: 'Automne' },
+          { value: 'hiver', label: 'Hiver' },
+          { value: 'toute_annee', label: 'Toute l\'année' },
+        ],
+      },
+      {
+        id: 'surfaceJardinage',
+        label: 'Surface',
+        type: 'range',
+        min: 10,
+        max: 5000,
+        unit: 'm²',
       },
     ],
     style: {
@@ -2541,23 +2715,43 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     filters: [
       {
         id: 'typeNettoyage',
-        label: 'Type',
-        type: 'multiselect',
+        label: 'Type de service',
+        type: 'select',
         options: [
           { value: 'menage', label: 'Ménage' },
           { value: 'bureaux', label: 'Bureaux' },
           { value: 'vitres', label: 'Vitres' },
           { value: 'fin_chantier', label: 'Fin de chantier' },
+          { value: 'industriel', label: 'Nettoyage industriel' },
         ],
       },
       {
-        id: 'frequence',
+        id: 'frequenceNettoyage',
         label: 'Fréquence',
         type: 'select',
         options: [
           { value: 'ponctuel', label: 'Ponctuel' },
           { value: 'hebdomadaire', label: 'Hebdomadaire' },
+          { value: 'bi_hebdomadaire', label: 'Bi-hebdomadaire' },
           { value: 'mensuel', label: 'Mensuel' },
+        ],
+      },
+      {
+        id: 'surfaceNettoyage',
+        label: 'Surface',
+        type: 'range',
+        min: 10,
+        max: 1000,
+        unit: 'm²',
+      },
+      {
+        id: 'equipementsNettoyage',
+        label: 'Équipements fournis',
+        type: 'multiselect',
+        options: [
+          { value: 'aspirateur', label: 'Aspirateur' },
+          { value: 'produits', label: 'Produits d\'entretien' },
+          { value: 'materiel', label: 'Matériel professionnel' },
         ],
       },
     ],
@@ -2992,6 +3186,40 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: '24h/24',
         type: 'toggle',
       },
+      {
+        id: 'zoneSecurite',
+        label: 'Type de zone',
+        type: 'select',
+        options: [
+          { value: 'residentiel', label: 'Résidentiel' },
+          { value: 'commercial', label: 'Commercial' },
+          { value: 'industriel', label: 'Industriel' },
+          { value: 'evenementiel', label: 'Événementiel' },
+        ],
+      },
+      {
+        id: 'dureeSecurite',
+        label: 'Durée du contrat',
+        type: 'select',
+        options: [
+          { value: '1_mois', label: '1 mois' },
+          { value: '3_mois', label: '3 mois' },
+          { value: '6_mois', label: '6 mois' },
+          { value: '1_an', label: '1 an' },
+          { value: 'longue_duree', label: 'Longue durée' },
+        ],
+      },
+      {
+        id: 'equipementsSecurite',
+        label: 'Équipements',
+        type: 'multiselect',
+        options: [
+          { value: 'cameras', label: 'Caméras' },
+          { value: 'alarme', label: 'Système d\'alarme' },
+          { value: 'badge', label: 'Badges d\'accès' },
+          { value: 'centrale', label: 'Centrale de surveillance' },
+        ],
+      },
     ],
     style: {
       primaryColor: '#DC2626',
@@ -3026,8 +3254,20 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     },
     filters: [
       {
-        id: 'typeService',
-        label: 'Type de service',
+        id: 'typeAnimal',
+        label: 'Type d\'animal',
+        type: 'select',
+        options: [
+          { value: 'chien', label: 'Chien' },
+          { value: 'chat', label: 'Chat' },
+          { value: 'oiseau', label: 'Oiseau' },
+          { value: 'rongeur', label: 'Rongeur' },
+          { value: 'reptile', label: 'Reptile' },
+        ],
+      },
+      {
+        id: 'servicesVeterinaire',
+        label: 'Services',
         type: 'multiselect',
         options: [
           { value: 'consultation', label: 'Consultation' },
@@ -3035,17 +3275,30 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
           { value: 'toilettage', label: 'Toilettage' },
           { value: 'dressage', label: 'Dressage' },
           { value: 'pension', label: 'Pension' },
+          { value: 'urgence', label: 'Urgences' },
         ],
       },
       {
-        id: 'typeAnimal',
-        label: 'Animal',
+        id: 'raceAnimal',
+        label: 'Race',
         type: 'select',
         options: [
-          { value: 'chien', label: 'Chien' },
-          { value: 'chat', label: 'Chat' },
-          { value: 'oiseau', label: 'Oiseau' },
-          { value: 'rongeur', label: 'Rongeur' },
+          { value: 'labrador', label: 'Labrador' },
+          { value: 'berger', label: 'Berger Allemand' },
+          { value: 'siamois', label: 'Siamois' },
+          { value: 'persan', label: 'Persan' },
+          { value: 'autre', label: 'Autre' },
+        ],
+      },
+      {
+        id: 'ageAnimal',
+        label: 'Tranche d\'âge',
+        type: 'select',
+        options: [
+          { value: 'chiot_chaton', label: 'Chiot/Chaton' },
+          { value: 'jeune', label: 'Jeune (1-3 ans)' },
+          { value: 'adulte', label: 'Adulte (3-10 ans)' },
+          { value: 'senior', label: 'Senior (10+ ans)' },
         ],
       },
     ],
@@ -3065,71 +3318,71 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
 
   // Configuration par défaut pour les catégories non spécifiées
   default: {
-        terminology: {
-            productLabel: 'Produit',
-            productsLabel: 'Produits',
-            priceLabel: 'Prix',
-            locationLabel: 'Localisation',
-            providerLabel: 'Vendeur',
-            searchPlaceholder: 'Rechercher...',
-            emptyMessage: 'Aucun résultat trouvé',
-            sortLabels: {
-                relevance: 'Pertinence',
-                price_asc: 'Prix croissant',
-                price_desc: 'Prix décroissant',
-                distance: 'Proximité',
-            },
-        },
-        filters: [
-            {
-                id: 'etat',
-                label: 'État',
-                type: 'select',
-                options: [
-                    { value: 'neuf', label: 'Neuf' },
-                    { value: 'occasion', label: 'Occasion' },
-                ],
-            },
-        ],
-        style: {
-            primaryColor: '#6B7280',
-            gradientColors: ['#6B7280', '#4B5563'],
-            icon: '📦',
-            badgeColor: '#F3F4F6',
-            accentColor: '#4B5563',
-        },
-        displayPriority: ['nom', 'description', 'prix'],
-        contactMethods: ['whatsapp', 'phone', 'message'],
-        showDistance: true,
-        showRating: true,
-        cardLayout: 'horizontal',
+    terminology: {
+      productLabel: 'Produit',
+      productsLabel: 'Produits',
+      priceLabel: 'Prix',
+      locationLabel: 'Localisation',
+      providerLabel: 'Vendeur',
+      searchPlaceholder: 'Rechercher...',
+      emptyMessage: 'Aucun résultat trouvé',
+      sortLabels: {
+        relevance: 'Pertinence',
+        price_asc: 'Prix croissant',
+        price_desc: 'Prix décroissant',
+        distance: 'Proximité',
+      },
     },
+    filters: [
+      {
+        id: 'etat',
+        label: 'État',
+        type: 'select',
+        options: [
+          { value: 'neuf', label: 'Neuf' },
+          { value: 'occasion', label: 'Occasion' },
+        ],
+      },
+    ],
+    style: {
+      primaryColor: '#6B7280',
+      gradientColors: ['#6B7280', '#4B5563'],
+      icon: '📦',
+      badgeColor: '#F3F4F6',
+      accentColor: '#4B5563',
+    },
+    displayPriority: ['nom', 'description', 'prix'],
+    contactMethods: ['whatsapp', 'phone', 'message'],
+    showDistance: true,
+    showRating: true,
+    cardLayout: 'horizontal',
+  },
 };
 
 /**
  * Récupère la configuration pour une catégorie donnée
  */
 export const getCategoryConfig = (category: string): CategoryConfig => {
-    return CATEGORY_CONFIGS[category] || CATEGORY_CONFIGS.default;
+  return CATEGORY_CONFIGS[category] || CATEGORY_CONFIGS.default;
 };
 
 /**
  * Récupère la terminologie pour une catégorie donnée
  */
 export const getCategoryTerminology = (category: string): CategoryTerminology => {
-    return getCategoryConfig(category).terminology;
+  return getCategoryConfig(category).terminology;
 };
 
 /**
  * Récupère les filtres pour une catégorie donnée
  */
 export const getCategoryFilters = (category: string): CategoryFilter[] => {
-    return getCategoryConfig(category).filters;
+  return getCategoryConfig(category).filters;
 };
 
 /**
  * Récupère le style pour une catégorie donnée
  */
 export const getCategoryStyle = (category: string): CategoryStyle => {
-    return getCategoryConfig(category).style;
+  return getCategoryConfig(category).style;
 };
