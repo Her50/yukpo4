@@ -242,5 +242,5 @@ pub fn create_modalities_router() -> Router<Arc<AppState>> {
         .route("/api/modalities/usage", post(increment_usage))
         .route("/api/modalities/popular", get(get_popular_modalities))
         .route("/api/modalities/stats", get(get_modality_stats))
-        .route("/api/modalities/custom/:id", axum::routing::delete(delete_custom_modality))
+        .route("/api/modalities/custom/{id}", axum::routing::delete(delete_custom_modality))
 }
