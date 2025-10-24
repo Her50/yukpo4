@@ -234,11 +234,14 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
                     </TouchableOpacity>
                 </LinearGradient>
 
-                {/* ✅ NOUVEAU: Barre de contrôles horizontale en haut */}
+                {/* ✅ REFONTE COMPLÈTE: Barre de contrôles ultra-intuitive */}
                 <View style={styles.topControlBar}>
-                    {/* Mode de sélection */}
-                    <View style={[styles.topControlSection, { flex: 0.75 }]}>
-                        <Text style={styles.topControlLabel}>MODE</Text>
+                    {/* Mode de sélection - ULTRA CLAIR */}
+                    <View style={[styles.topControlSection, { flex: 1 }]}>
+                        <View style={styles.controlHeader}>
+                            <SafeIcon name="target" size={14} color={modernColors.primary} />
+                            <Text style={styles.topControlLabel}>MODE</Text>
+                        </View>
                         <View style={styles.topModeButtons}>
                             <TouchableOpacity
                                 style={[
@@ -247,7 +250,11 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
                                 ]}
                                 onPress={() => setZoneType('point')}
                             >
-                                <Text style={styles.topModeIcon}>📍</Text>
+                                <SafeIcon 
+                                    name="map-pin" 
+                                    size={18} 
+                                    color={zoneType === 'point' ? '#FFFFFF' : modernColors.primary} 
+                                />
                                 <Text style={[
                                     styles.topModeButtonText,
                                     zoneType === 'point' && styles.topModeButtonTextActive
@@ -264,7 +271,11 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
                                     ]}
                                     onPress={() => setZoneType('polygon')}
                                 >
-                                    <Text style={styles.topModeIcon}>⬛</Text>
+                                    <SafeIcon 
+                                        name="square" 
+                                        size={18} 
+                                        color={zoneType === 'polygon' ? '#FFFFFF' : modernColors.primary} 
+                                    />
                                     <Text style={[
                                         styles.topModeButtonText,
                                         zoneType === 'polygon' && styles.topModeButtonTextActive
@@ -276,9 +287,12 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
                         </View>
                     </View>
 
-                    {/* Recherche d'adresse - PLUS D'ESPACE */}
-                    <View style={[styles.topControlSection, { flex: 1.6 }]}>
-                        <Text style={styles.topControlLabel}>RECHERCHE</Text>
+                    {/* Recherche d'adresse - ULTRA CLAIRE */}
+                    <View style={[styles.topControlSection, { flex: 2 }]}>
+                        <View style={styles.controlHeader}>
+                            <SafeIcon name="search" size={14} color={modernColors.success} />
+                            <Text style={styles.topControlLabel}>RECHERCHE</Text>
+                        </View>
                         <View style={styles.topSearchContainer}>
                             <TextInput
                                 style={styles.topSearchInput}
@@ -299,19 +313,24 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
                         </View>
                     </View>
 
-                    {/* Ma position GPS */}
-                    <View style={[styles.topControlSection, { flex: 1 }]}>
-                        <Text style={styles.topControlLabel}>POSITION</Text>
+                    {/* Ma position GPS - ULTRA CLAIRE */}
+                    <View style={[styles.topControlSection, { flex: 1.2 }]}>
+                        <View style={styles.controlHeader}>
+                            <SafeIcon name="crosshair" size={14} color={modernColors.warning} />
+                            <Text style={styles.topControlLabel}>POSITION</Text>
+                        </View>
                         <TouchableOpacity
                             style={styles.topGPSButton}
                             onPress={handleGetCurrentLocation}
                             disabled={loading}
                         >
-                            <Text style={styles.topGPSIcon}>
-                                {loading ? '⏳' : '🎯'}
-                            </Text>
+                            <SafeIcon 
+                                name={loading ? "loader" : "crosshair"} 
+                                size={22} 
+                                color="#FFFFFF" 
+                            />
                             <Text style={styles.topGPSButtonText}>
-                                Me localiser
+                                {loading ? 'Localisation...' : 'Me localiser'}
                             </Text>
                         </TouchableOpacity>
                     </View>
@@ -513,11 +532,16 @@ const styles = StyleSheet.create({
         flex: 1,
         minWidth: 0, // ✅ Pour permettre au flex de bien fonctionner
     },
+    controlHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        marginBottom: 8,
+    },
     topControlLabel: {
         fontSize: 11,
         fontWeight: '800',
         color: '#1F2937',
-        marginBottom: 6,
         letterSpacing: 0.5,
         textTransform: 'uppercase',
     },
@@ -530,35 +554,38 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        paddingVertical: 12,
-        paddingHorizontal: 12,
-        borderRadius: 12,
+        paddingVertical: 14,
+        paddingHorizontal: 14,
+        borderRadius: 14,
         borderWidth: 2.5,
         borderColor: modernColors.primary,
         backgroundColor: '#FFFFFF',
-        gap: 6,
+        gap: 10, // ✅ Plus d'espace entre icône et texte
+        minHeight: 48, // ✅ Cible tactile confortable
         shadowColor: modernColors.primary,
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-        elevation: 2,
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.15,
+        shadowRadius: 6,
+        elevation: 3,
     },
     topModeButtonActive: {
         backgroundColor: modernColors.primary,
         borderColor: modernColors.primary,
-        shadowOpacity: 0.3,
+        shadowOpacity: 0.4,
+        elevation: 5,
     },
     topModeIcon: {
-        fontSize: 20,
+        fontSize: 20, // Ancien style emoji, conservé pour compat
     },
     topModeButtonText: {
-        fontSize: 14,
-        fontWeight: '700',
+        fontSize: 15,
+        fontWeight: '800',
         color: modernColors.primary,
-        letterSpacing: 0.3,
+        letterSpacing: 0.4,
     },
     topModeButtonTextActive: {
         color: '#FFFFFF',
+        fontWeight: '900',
     },
     topSearchContainer: {
         flexDirection: 'row',
