@@ -1366,7 +1366,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         ],
       },
       {
-        id: 'materiau',
+        id: 'materiauMobilier',
         label: 'Matériau',
         type: 'select',
         options: [
@@ -1379,19 +1379,30 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         ],
       },
       {
-        id: 'style',
-        label: 'Style',
+        id: 'dimensionsMobilier',
+        label: 'Dimensions',
         type: 'select',
         options: [
-          { value: 'moderne', label: 'Moderne' },
-          { value: 'classique', label: 'Classique' },
-          { value: 'rustique', label: 'Rustique' },
-          { value: 'industriel', label: 'Industriel' },
-          { value: 'scandinave', label: 'Scandinave' },
+          { value: 'petit', label: 'Petit' },
+          { value: 'moyen', label: 'Moyen' },
+          { value: 'grand', label: 'Grand' },
         ],
       },
       {
-        id: 'etat',
+        id: 'couleurMobilier',
+        label: 'Couleur',
+        type: 'select',
+        options: [
+          { value: 'blanc', label: 'Blanc' },
+          { value: 'noir', label: 'Noir' },
+          { value: 'marron', label: 'Marron' },
+          { value: 'gris', label: 'Gris' },
+          { value: 'beige', label: 'Beige' },
+          { value: 'autre', label: 'Autre' },
+        ],
+      },
+      {
+        id: 'etatMobilier',
         label: 'État',
         type: 'select',
         options: [
@@ -1407,7 +1418,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
       badgeColor: '#FFEDD5',
       accentColor: '#EA580C',
     },
-    displayPriority: ['typeMobilier', 'materiau', 'dimensions', 'style', 'prix'],
+    displayPriority: ['typeMobilier', 'materiauMobilier', 'dimensionsMobilier', 'couleurMobilier', 'prix'],
     contactMethods: ['message', 'whatsapp', 'phone'],
     showDistance: true,
     showRating: true,
@@ -1447,7 +1458,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         ],
       },
       {
-        id: 'style',
+        id: 'styleDecoration',
         label: 'Style',
         type: 'select',
         options: [
@@ -1471,6 +1482,29 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
           { value: 'jaune', label: 'Jaune' },
         ],
       },
+      {
+        id: 'dimensionsDecoration',
+        label: 'Dimensions',
+        type: 'select',
+        options: [
+          { value: 'petit', label: 'Petit' },
+          { value: 'moyen', label: 'Moyen' },
+          { value: 'grand', label: 'Grand' },
+        ],
+      },
+      {
+        id: 'materiauDecoration',
+        label: 'Matériau',
+        type: 'select',
+        options: [
+          { value: 'bois', label: 'Bois' },
+          { value: 'metal', label: 'Métal' },
+          { value: 'verre', label: 'Verre' },
+          { value: 'tissu', label: 'Tissu' },
+          { value: 'ceramique', label: 'Céramique' },
+          { value: 'autre', label: 'Autre' },
+        ],
+      },
     ],
     style: {
       primaryColor: '#E91E63',
@@ -1479,7 +1513,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
       badgeColor: '#FCE4EC',
       accentColor: '#C2185B',
     },
-    displayPriority: ['typeDecoration', 'style', 'couleurDecoration', 'prix'],
+    displayPriority: ['typeDecoration', 'styleDecoration', 'couleurDecoration', 'dimensionsDecoration', 'prix'],
     contactMethods: ['message', 'whatsapp', 'phone'],
     showDistance: true,
     showRating: true,
