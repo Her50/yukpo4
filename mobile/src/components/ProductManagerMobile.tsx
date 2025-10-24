@@ -2191,23 +2191,54 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                 );
 
             case 'ticket_voyage':
+                const busConfig = newProduct.busConfiguration || { rows: 12, seatsPerRow: 4, aislePosition: 2 };
+                const totalSeats = busConfig.rows * busConfig.seatsPerRow;
+                
+                // Générer le plan de sièges si pas déjà fait
+                if (!newProduct.seatMap || newProduct.seatMap.length === 0) {
+                    const seatMap = [];
+                    let seatNumber = 1;
+                    for (let row = 1; row <= busConfig.rows; row++) {
+                        for (let col = 1; col <= busConfig.seatsPerRow; col++) {
+                            seatMap.push({
+                                id: `${row}-${col}`,
+                                number: seatNumber++,
+                                row,
+                                col,
+                                status: 'available', // available, reserved, occupied
+                                type: 'standard', // standard, vip, handicapped
+                            });
+                        }
+                    }
+                    if (newProduct.nom) { // Only update if product exists
+                        newProduct.seatMap = seatMap;
+                        newProduct.totalSeats = totalSeats;
+                    }
+                }
+                
                 return (
                     <>
-                        {/* Compagnie et Type de véhicule sur la même ligne */}
+                        <View style={styles.hintBox}>
+                            <Text style={styles.hintText}>
+                                🚌 <Text style={styles.hintBold}>Système Pro de Réservation:</Text> Configurez votre bus, générez le plan des sièges et gérez les réservations en temps réel.
+                            </Text>
+                        </View>
+
+                        {/* Compagnie et Type de véhicule */}
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <ProductFieldSelector
-                                    label="Compagnie de transport"
+                                    label="Compagnie"
                                     fieldName="compagnies"
                                     productType="voyage"
-                                    value={newProduct.compagnie || ''}
-                                    onSelect={(value) => setNewProduct({ ...newProduct, compagnie: value })}
+                                    value={newProduct.compagnieTransport || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, compagnieTransport: value })}
                                     required
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <ProductFieldSelector
-                                    label="Type de véhicule"
+                                    label="Type véhicule"
                                     fieldName="vehicules"
                                     productType="voyage"
                                     value={newProduct.typeVehiculeTransport || ''}
@@ -2215,6 +2246,93 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                     required
                                 />
                             </View>
+                        </View>
+
+                        {/* Configuration du Bus */}
+                        <View style={styles.busConfigSection}>
+                            <View style={styles.sectionHeaderWithIcon}>
+                                <SafeIcon name="settings" size={20} color={modernColors.primary} />
+                                <Text style={styles.sectionTitleMedium}>Configuration du Bus</Text>
+                            </View>
+                            
+                            <View style={styles.fieldRow}>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <Text style={styles.fieldLabel}>Rangées <Text style={styles.required}>*</Text></Text>
+                                    <NativeInput
+                                        placeholder="12"
+                                        value={busConfig.rows?.toString() || ''}
+                                        onChangeText={(text) => {
+                                            const rows = parseInt(text) || 0;
+                                            setNewProduct({ 
+                                                ...newProduct, 
+                                                busConfiguration: { ...busConfig, rows },
+                                                seatMap: [] // Reset seat map
+                                            });
+                                        }}
+                                        style={styles.fieldInput}
+                                        keyboardType="numeric"
+                                    />
+                                </View>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <Text style={styles.fieldLabel}>Sièges/rangée <Text style={styles.required}>*</Text></Text>
+                                    <NativeInput
+                                        placeholder="4"
+                                        value={busConfig.seatsPerRow?.toString() || ''}
+                                        onChangeText={(text) => {
+                                            const seatsPerRow = parseInt(text) || 0;
+                                            setNewProduct({ 
+                                                ...newProduct, 
+                                                busConfiguration: { ...busConfig, seatsPerRow },
+                                                seatMap: [] // Reset seat map
+                                            });
+                                        }}
+                                        style={styles.fieldInput}
+                                        keyboardType="numeric"
+                                    />
+                                </View>
+                            </View>
+
+                            <View style={styles.busConfigSummary}>
+                                <SafeIcon name="info" size={16} color={modernColors.info} />
+                                <Text style={styles.busConfigText}>
+                                    Total: <Text style={styles.busConfigBold}>{totalSeats} places</Text>
+                                </Text>
+                            </View>
+
+                            {/* Aperçu du plan de bus */}
+                            {newProduct.seatMap && newProduct.seatMap.length > 0 && (
+                                <View style={styles.busPreviewContainer}>
+                                    <Text style={styles.busPreviewTitle}>📋 Aperçu du Plan</Text>
+                                    <View style={styles.busLayout}>
+                                        <View style={styles.busFront}>
+                                            <SafeIcon name="navigation" size={16} color="#FFFFFF" />
+                                            <Text style={styles.busFrontText}>Avant</Text>
+                                        </View>
+                                        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                                            <View style={styles.busSeatsGrid}>
+                                                {Array.from({ length: busConfig.rows }).map((_, rowIndex) => (
+                                                    <View key={rowIndex} style={styles.busRow}>
+                                                        <Text style={styles.rowNumber}>{rowIndex + 1}</Text>
+                                                        {Array.from({ length: busConfig.seatsPerRow }).map((_, colIndex) => {
+                                                            const isAisle = colIndex === Math.floor(busConfig.seatsPerRow / 2);
+                                                            return (
+                                                                <React.Fragment key={colIndex}>
+                                                                    {isAisle && <View style={styles.busAisle} />}
+                                                                    <View style={styles.busSeatMini}>
+                                                                        <Text style={styles.busSeatNumber}>
+                                                                            {rowIndex * busConfig.seatsPerRow + colIndex + 1}
+                                                                        </Text>
+                                                                    </View>
+                                                                </React.Fragment>
+                                                            );
+                                                        })}
+                                                    </View>
+                                                ))}
+                                            </View>
+                                        </ScrollView>
+                                    </View>
+                                </View>
+                            )}
                         </View>
 
                         {/* Classe de voyage */}
@@ -2227,12 +2345,12 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             required
                         />
 
-                        {/* Départ et Destination */}
+                        {/* Trajet */}
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Ville de départ <Text style={styles.required}>*</Text></Text>
+                                <Text style={styles.fieldLabel}>Départ <Text style={styles.required}>*</Text></Text>
                                 <NativeInput
-                                    placeholder="Ex: Douala"
+                                    placeholder="Douala"
                                     value={newProduct.depart || ''}
                                     onChangeText={(text) => setNewProduct({ ...newProduct, depart: text })}
                                     style={styles.fieldInput}
@@ -2241,7 +2359,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <Text style={styles.fieldLabel}>Destination <Text style={styles.required}>*</Text></Text>
                                 <NativeInput
-                                    placeholder="Ex: Yaoundé"
+                                    placeholder="Yaoundé"
                                     value={newProduct.destination || ''}
                                     onChangeText={(text) => setNewProduct({ ...newProduct, destination: text })}
                                     style={styles.fieldInput}
@@ -2252,7 +2370,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Date et Heure */}
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Date de départ <Text style={styles.required}>*</Text></Text>
+                                <Text style={styles.fieldLabel}>Date <Text style={styles.required}>*</Text></Text>
                                 <NativeInput
                                     placeholder="JJ/MM/AAAA"
                                     value={newProduct.dateDepart || ''}
@@ -2271,39 +2389,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             </View>
                         </View>
 
-                        {/* Sélection de place */}
-                        <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Numéro de place</Text>
-                            <View style={styles.seatSelectionContainer}>
-                                <NativeInput
-                                    placeholder="Ex: A12"
-                                    value={newProduct.numeroPlace || ''}
-                                    onChangeText={(text) => setNewProduct({ ...newProduct, numeroPlace: text })}
-                                    style={[styles.fieldInput, { flex: 1 }]}
-                                />
-                                <TouchableOpacity
-                                    style={styles.seatSelectorButton}
-                                    onPress={() => setShowSeatSelector(true)}
-                                >
-                                    <SafeIcon name="grid" size={20} color="#FFFFFF" />
-                                    <Text style={styles.seatSelectorButtonText}>Sélectionner</Text>
-                                </TouchableOpacity>
-                            </View>
-                        </View>
-
-                        {/* Nombre de places disponibles */}
-                        <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Places disponibles</Text>
-                            <NativeInput
-                                placeholder="Ex: 45"
-                                value={newProduct.nbPlacesDisponibles || ''}
-                                onChangeText={(text) => setNewProduct({ ...newProduct, nbPlacesDisponibles: text })}
-                                style={styles.fieldInput}
-                                keyboardType="numeric"
-                            />
-                        </View>
-
-                        {/* Escales (optionnel) */}
+                        {/* Escales */}
                         <View style={styles.fieldContainer}>
                             <Text style={styles.fieldLabel}>Escales (optionnel)</Text>
                             <NativeInput
@@ -2317,7 +2403,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         <View style={styles.hintBox}>
                             <Text style={styles.hintText}>
-                                💡 Utilisez le sélecteur de place pour choisir visuellement une place dans le véhicule
+                                ✅ <Text style={styles.hintBold}>Les clients pourront:</Text> Voir le plan du bus en temps réel, sélectionner leur place préférée, et réserver instantanément depuis ResultatBesoinScreen.
                             </Text>
                         </View>
                     </>
@@ -6807,6 +6893,110 @@ const styles = StyleSheet.create({
         paddingVertical: 8,
         fontSize: 13,
         color: modernColors.text,
+    },
+    // Styles pour système de réservation de bus
+    busConfigSection: {
+        backgroundColor: modernColors.surface,
+        borderWidth: 1,
+        borderColor: modernColors.border,
+        borderRadius: 12,
+        padding: 16,
+        marginBottom: 16,
+    },
+    sectionHeaderWithIcon: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        marginBottom: 16,
+    },
+    sectionTitleMedium: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: modernColors.text,
+    },
+    busConfigSummary: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        padding: 10,
+        backgroundColor: '#EFF6FF',
+        borderRadius: 8,
+        marginTop: 8,
+    },
+    busConfigText: {
+        fontSize: 13,
+        color: modernColors.text,
+    },
+    busConfigBold: {
+        fontWeight: '700',
+        color: modernColors.primary,
+        fontSize: 15,
+    },
+    busPreviewContainer: {
+        marginTop: 16,
+        padding: 12,
+        backgroundColor: '#F8FAFC',
+        borderRadius: 10,
+        borderWidth: 1,
+        borderColor: modernColors.border,
+    },
+    busPreviewTitle: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: modernColors.text,
+        marginBottom: 12,
+    },
+    busLayout: {
+        gap: 8,
+    },
+    busFront: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 6,
+        padding: 8,
+        backgroundColor: modernColors.primary,
+        borderRadius: 8,
+        marginBottom: 8,
+    },
+    busFrontText: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: '#FFFFFF',
+    },
+    busSeatsGrid: {
+        gap: 4,
+    },
+    busRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        marginBottom: 4,
+    },
+    rowNumber: {
+        width: 24,
+        fontSize: 11,
+        fontWeight: '600',
+        color: modernColors.textSecondary,
+        textAlign: 'center',
+    },
+    busAisle: {
+        width: 12,
+    },
+    busSeatMini: {
+        width: 32,
+        height: 32,
+        backgroundColor: '#10B981',
+        borderRadius: 6,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1,
+        borderColor: '#059669',
+    },
+    busSeatNumber: {
+        fontSize: 10,
+        fontWeight: '600',
+        color: '#FFFFFF',
     },
     // Style pour le rappel de catégorie
     categoryReminder: {
