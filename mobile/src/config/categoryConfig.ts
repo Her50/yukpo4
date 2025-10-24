@@ -666,7 +666,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     },
     filters: [
       {
-        id: 'type',
+        id: 'typeChaussure',
         label: 'Type',
         type: 'select',
         options: [
@@ -679,18 +679,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         ],
       },
       {
-        id: 'genre',
-        label: 'Genre',
-        type: 'select',
-        options: [
-          { value: 'homme', label: 'Homme' },
-          { value: 'femme', label: 'Femme' },
-          { value: 'enfant', label: 'Enfant' },
-          { value: 'unisexe', label: 'Unisexe' },
-        ],
-      },
-      {
-        id: 'taille',
+        id: 'pointure',
         label: 'Pointure',
         type: 'range',
         min: 20,
@@ -698,7 +687,20 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         unit: '',
       },
       {
-        id: 'marque',
+        id: 'couleurChaussure',
+        label: 'Couleur',
+        type: 'select',
+        options: [
+          { value: 'noir', label: 'Noir' },
+          { value: 'blanc', label: 'Blanc' },
+          { value: 'marron', label: 'Marron' },
+          { value: 'bleu', label: 'Bleu' },
+          { value: 'rouge', label: 'Rouge' },
+          { value: 'autre', label: 'Autre' },
+        ],
+      },
+      {
+        id: 'marqueChaussure',
         label: 'Marque',
         type: 'select',
         options: [
@@ -709,15 +711,6 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
           { value: 'autre', label: 'Autre' },
         ],
       },
-      {
-        id: 'etat',
-        label: 'État',
-        type: 'select',
-        options: [
-          { value: 'neuf', label: 'Neuf' },
-          { value: 'occasion', label: 'Occasion' },
-        ],
-      },
     ],
     style: {
       primaryColor: '#F97316',
@@ -726,7 +719,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
       badgeColor: '#FFEDD5',
       accentColor: '#EA580C',
     },
-    displayPriority: ['type', 'marque', 'taille', 'couleur', 'prix'],
+    displayPriority: ['typeChaussure', 'marqueChaussure', 'pointure', 'couleurChaussure', 'prix'],
     contactMethods: ['whatsapp', 'message', 'phone'],
     showDistance: true,
     showRating: true,
@@ -819,30 +812,6 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     },
     filters: [
       {
-        id: 'typeVetement',
-        label: 'Type',
-        type: 'select',
-        options: [
-          { value: 'haut', label: 'Haut' },
-          { value: 'pantalon', label: 'Pantalon' },
-          { value: 'robe', label: 'Robe' },
-          { value: 'veste', label: 'Veste' },
-          { value: 'costume', label: 'Costume' },
-          { value: 'sportswear', label: 'Sportswear' },
-        ],
-      },
-      {
-        id: 'genre',
-        label: 'Genre',
-        type: 'select',
-        options: [
-          { value: 'homme', label: 'Homme' },
-          { value: 'femme', label: 'Femme' },
-          { value: 'enfant', label: 'Enfant' },
-          { value: 'unisexe', label: 'Unisexe' },
-        ],
-      },
-      {
         id: 'taille',
         label: 'Taille',
         type: 'select',
@@ -856,7 +825,35 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         ],
       },
       {
-        id: 'marque',
+        id: 'couleurVetement',
+        label: 'Couleur',
+        type: 'multiselect',
+        options: [
+          { value: 'noir', label: 'Noir' },
+          { value: 'blanc', label: 'Blanc' },
+          { value: 'rouge', label: 'Rouge' },
+          { value: 'bleu', label: 'Bleu' },
+          { value: 'vert', label: 'Vert' },
+          { value: 'jaune', label: 'Jaune' },
+          { value: 'gris', label: 'Gris' },
+          { value: 'rose', label: 'Rose' },
+        ],
+      },
+      {
+        id: 'matiereVetement',
+        label: 'Matière',
+        type: 'select',
+        options: [
+          { value: 'coton', label: 'Coton' },
+          { value: 'polyester', label: 'Polyester' },
+          { value: 'lin', label: 'Lin' },
+          { value: 'soie', label: 'Soie' },
+          { value: 'laine', label: 'Laine' },
+          { value: 'jean', label: 'Jean' },
+        ],
+      },
+      {
+        id: 'marqueVetement',
         label: 'Marque',
         type: 'select',
         options: [
@@ -865,15 +862,6 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
           { value: 'zara', label: 'Zara' },
           { value: 'hm', label: 'H&M' },
           { value: 'autre', label: 'Autre' },
-        ],
-      },
-      {
-        id: 'etat',
-        label: 'État',
-        type: 'select',
-        options: [
-          { value: 'neuf', label: 'Neuf' },
-          { value: 'occasion', label: 'Occasion' },
         ],
       },
     ],
@@ -910,8 +898,8 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     },
     filters: [
       {
-        id: 'categorieElectro',
-        label: 'Catégorie',
+        id: 'typeElectro',
+        label: 'Type d\'appareil',
         type: 'select',
         options: [
           { value: 'refrigerateur', label: 'Réfrigérateur' },
@@ -923,7 +911,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         ],
       },
       {
-        id: 'marque',
+        id: 'marqueElectro',
         label: 'Marque',
         type: 'select',
         options: [
@@ -935,7 +923,17 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         ],
       },
       {
-        id: 'etatProduit',
+        id: 'modeleElectro',
+        label: 'Modèle',
+        type: 'select',
+        options: [
+          { value: 'standard', label: 'Standard' },
+          { value: 'premium', label: 'Premium' },
+          { value: 'autre', label: 'Autre' },
+        ],
+      },
+      {
+        id: 'etatElectro',
         label: 'État',
         type: 'select',
         options: [
@@ -945,9 +943,15 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         ],
       },
       {
-        id: 'garantie',
-        label: 'Avec garantie',
-        type: 'toggle',
+        id: 'garantieElectro',
+        label: 'Garantie',
+        type: 'select',
+        options: [
+          { value: '6_mois', label: '6 mois' },
+          { value: '1_an', label: '1 an' },
+          { value: '2_ans', label: '2 ans' },
+          { value: 'sans', label: 'Sans garantie' },
+        ],
       },
     ],
     style: {
