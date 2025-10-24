@@ -68,7 +68,7 @@ const ProductDuplicationModal: React.FC<ProductDuplicationModalProps> = ({
         <Modal
             visible={visible}
             animationType="slide"
-            presentationStyle="pageSheet"
+            presentationStyle="fullScreen"
             onRequestClose={onClose}
         >
             <View style={styles.container}>
@@ -85,7 +85,7 @@ const ProductDuplicationModal: React.FC<ProductDuplicationModalProps> = ({
                     showsVerticalScrollIndicator={false}
                     keyboardShouldPersistTaps="handled"
                     keyboardDismissMode="on-drag"
-                    contentContainerStyle={{ paddingBottom: 300 }}
+                    contentContainerStyle={{ paddingBottom: 20 }}
                 >
                     <NativeCard style={styles.infoCard}>
                         <View style={styles.infoHeader}>
@@ -294,6 +294,11 @@ const styles = StyleSheet.create({
         borderTopColor: modernColors.border,
         backgroundColor: modernColors.surface,
         gap: 12,
+        elevation: 8,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: -2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
     },
     cancelButton: {
         flex: 1,
