@@ -149,13 +149,52 @@ const EnhancedModalitySelector: React.FC<EnhancedModalitySelectorProps> = ({
         setIsOpen(true);
     };
 
-    // ✅ NOUVEAU : Filtrer les options selon la recherche
-    const filteredOptions = allOptions.filter(option => {
-        if (!searchQuery.trim()) return true;
-        const normalizedQuery = searchQuery.toLowerCase().trim();
-        const normalizedOption = option.toLowerCase();
-        return normalizedOption.includes(normalizedQuery);
-    });
+    // ✅ AMÉLIORATION : Recherche fuzzy intelligente avec tolérance aux fautes
+    const fuzzyMatch = (text: string, query: string): number => {
+        const textLower = text.toLowerCase();
+        const queryLower = query.toLowerCase();
+        
+        // Correspondance exacte = score parfait
+        if (textLower === queryLower) return 100;
+        
+        // Commence par la requête = très bon score
+        if (textLower.startsWith(queryLower)) return 90;
+        
+        // Contient la requête = bon score
+        if (textLower.includes(queryLower)) return 80;
+        
+        // Fuzzy matching : calcul de distance Levenshtein simplifiée
+        let score = 0;
+        let queryIndex = 0;
+        
+        for (let i = 0; i < textLower.length && queryIndex < queryLower.length; i++) {
+            if (textLower[i] === queryLower[queryIndex]) {
+                score += 10;
+                queryIndex++;
+            }
+        }
+        
+        // Bonus si tous les caractères de la requête sont trouvés dans l'ordre
+        if (queryIndex === queryLower.length) {
+            score += 30;
+        }
+        
+        return score;
+    };
+    
+    // ✅ Filtrer et trier les options selon le score de pertinence
+    const filteredOptions = !searchQuery.trim() 
+        ? allOptions
+        : allOptions
+            .map(option => ({ option, score: fuzzyMatch(option, searchQuery.trim()) }))
+            .filter(item => item.score > 30) // Seuil minimal de pertinence
+            .sort((a, b) => b.score - a.score) // Trier par score décroissant
+            .map(item => item.option);
+    
+    // ✅ Vérifier si la recherche correspond exactement à une option
+    const hasExactMatch = allOptions.some(
+        opt => opt.toLowerCase() === searchQuery.trim().toLowerCase()
+    );
 
     return (
         <View style={styles.container}>
@@ -232,12 +271,64 @@ const EnhancedModalitySelector: React.FC<EnhancedModalitySelectorProps> = ({
                             )}
                         </View>
 
-                        {/* ✅ Afficher le nombre de résultats */}
+                        {/* ✅ Afficher le nombre de résultats + bouton ajout intelligent */}
                         {searchQuery.trim() && (
                             <View style={styles.searchResultsInfo}>
                                 <Text style={styles.searchResultsText}>
                                     {filteredOptions.length} résultat{filteredOptions.length > 1 ? 's' : ''} trouvé{filteredOptions.length > 1 ? 's' : ''}
                                 </Text>
+                                {/* ✅ NOUVEAU : Proposer d'ajouter si pas de correspondance exacte */}
+                                {!hasExactMatch && searchQuery.trim().length > 2 && (
+                                    <TouchableOpacity
+                                        style={styles.addCustomButtonCompact}
+                                        onPress={() => {
+                                            Alert.alert(
+                                                'Ajouter une nouvelle modalité',
+                                                `Voulez-vous ajouter "${searchQuery.trim()}" comme nouvelle option pour ${label.toLowerCase()} ?\n\nCette modalité sera visible pour tous les utilisateurs.`,
+                                                [
+                                                    {
+                                                        text: 'Annuler',
+                                                        style: 'cancel'
+                                                    },
+                                                    {
+                                                        text: 'Confirmer l\'ajout',
+                                                        onPress: async () => {
+                                                            const newModality = searchQuery.trim();
+                                                            const success = await modalityService.addCustomModality(
+                                                                productType,
+                                                                fieldName,
+                                                                newModality
+                                                            );
+                                                            
+                                                            if (success) {
+                                                                await loadOptions();
+                                                                onSelect(newModality);
+                                                                setIsOpen(false);
+                                                                setSearchQuery('');
+                                                                Alert.alert(
+                                                                    '✅ Modalité ajoutée',
+                                                                    `"${newModality}" est maintenant disponible !`,
+                                                                    [{ text: 'OK' }]
+                                                                );
+                                                            } else {
+                                                                Alert.alert(
+                                                                    '❌ Erreur',
+                                                                    'Impossible d\'ajouter la modalité.',
+                                                                    [{ text: 'OK' }]
+                                                                );
+                                                            }
+                                                        }
+                                                    }
+                                                ]
+                                            );
+                                        }}
+                                    >
+                                        <SafeIcon name="plus-circle" size={16} color={modernColors.primary} />
+                                        <Text style={styles.addCustomButtonCompactText}>
+                                            Ajouter "{searchQuery.trim()}"
+                                        </Text>
+                                    </TouchableOpacity>
+                                )}
                             </View>
                         )}
 
@@ -246,20 +337,56 @@ const EnhancedModalitySelector: React.FC<EnhancedModalitySelectorProps> = ({
                                 <View style={styles.noResultsContainer}>
                                     <SafeIcon name="search" size={40} color={modernColors.textSecondary} />
                                     <Text style={styles.noResultsText}>
-                                        Aucun résultat pour "{searchQuery}"
+                                        Aucun résultat similaire trouvé
+                                    </Text>
+                                    <Text style={styles.noResultsSubtext}>
+                                        "{searchQuery}" ne correspond à aucune modalité existante
                                     </Text>
                                     <TouchableOpacity
                                         style={styles.addCustomButton}
                                         onPress={() => {
-                                            setIsOpen(false);
-                                            setSearchQuery('');
-                                            // Simuler le clic sur "🆕 Autre (ajouter)"
-                                            handleSelect('🆕 Autre (ajouter)');
+                                            Alert.alert(
+                                                'Ajouter une nouvelle modalité',
+                                                `Voulez-vous ajouter "${searchQuery.trim()}" comme nouvelle option pour ${label.toLowerCase()} ?`,
+                                                [
+                                                    {
+                                                        text: 'Annuler',
+                                                        style: 'cancel',
+                                                        onPress: () => {
+                                                            setIsOpen(false);
+                                                            setSearchQuery('');
+                                                        }
+                                                    },
+                                                    {
+                                                        text: 'Confirmer l\'ajout',
+                                                        onPress: async () => {
+                                                            const newModality = searchQuery.trim();
+                                                            const success = await modalityService.addCustomModality(
+                                                                productType,
+                                                                fieldName,
+                                                                newModality
+                                                            );
+                                                            
+                                                            if (success) {
+                                                                await loadOptions();
+                                                                onSelect(newModality);
+                                                                setIsOpen(false);
+                                                                setSearchQuery('');
+                                                                Alert.alert(
+                                                                    '✅ Modalité ajoutée',
+                                                                    `"${newModality}" est maintenant disponible !`,
+                                                                    [{ text: 'OK' }]
+                                                                );
+                                                            }
+                                                        }
+                                                    }
+                                                ]
+                                            );
                                         }}
                                     >
                                         <SafeIcon name="plus-circle" size={20} color={modernColors.primary} />
                                         <Text style={styles.addCustomButtonText}>
-                                            Ajouter "{searchQuery}" comme nouvelle modalité
+                                            Ajouter "{searchQuery.trim()}"
                                         </Text>
                                     </TouchableOpacity>
                                 </View>
@@ -451,8 +578,15 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: modernColors.textSecondary,
         marginTop: 12,
+        marginBottom: 8,
+        textAlign: 'center',
+    },
+    noResultsSubtext: {
+        fontSize: 12,
+        color: modernColors.textSecondary,
         marginBottom: 20,
         textAlign: 'center',
+        fontStyle: 'italic',
     },
     addCustomButton: {
         flexDirection: 'row',
@@ -471,6 +605,23 @@ const styles = StyleSheet.create({
         color: modernColors.primary,
         fontWeight: '600',
         flex: 1,
+    },
+    addCustomButtonCompact: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        paddingVertical: 8,
+        paddingHorizontal: 12,
+        backgroundColor: modernColors.primary + '15',
+        borderRadius: 6,
+        marginTop: 8,
+        borderWidth: 1,
+        borderColor: modernColors.primary + '40',
+    },
+    addCustomButtonCompactText: {
+        fontSize: 13,
+        color: modernColors.primary,
+        fontWeight: '600',
     },
 });
 
