@@ -81,21 +81,6 @@ const ServiceCardModern: React.FC<ServiceCardModernProps> = ({
         );
     };
 
-    const handleToggleStatus = () => {
-        const newStatus = service.status === 'active' ? 'inactive' : 'active';
-        Alert.alert(
-            newStatus === 'active' ? 'Activer le service' : 'Désactiver le service',
-            `Voulez-vous ${newStatus === 'active' ? 'activer' : 'désactiver'} ce service ?`,
-            [
-                { text: 'Annuler', style: 'cancel' },
-                {
-                    text: newStatus === 'active' ? 'Activer' : 'Désactiver',
-                    onPress: () => onToggleStatus(service)
-                }
-            ]
-        );
-    };
-
     return (
         <View style={styles.container}>
             {/* Header avec titre et statut */}
@@ -207,18 +192,6 @@ const ServiceCardModern: React.FC<ServiceCardModernProps> = ({
                             <Text style={styles.promotionIcon}>🎉</Text>
                         </TouchableOpacity>
                     )}
-
-                    {/* Activer/Désactiver */}
-                    <TouchableOpacity
-                        style={styles.actionIcon}
-                        onPress={handleToggleStatus}
-                    >
-                        {service.status === 'active' ? (
-                            <SafeIcon name="power-off" size={20} color="#EF4444" />
-                        ) : (
-                            <SafeIcon name="power" size={20} color="#10B981" />
-                        )}
-                    </TouchableOpacity>
 
                     {/* Supprimer */}
                     <TouchableOpacity

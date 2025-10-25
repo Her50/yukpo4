@@ -629,22 +629,33 @@ const MesProduitsScreen: React.FC = () => {
                                 {/* Actions principales */}
                                 <View style={styles.productActions}>
                                     {/* Activer/Désactiver */}
-                                    <TouchableOpacity
-                                        style={[
-                                            styles.actionButton,
-                                            product.is_active ? styles.deactivateButton : styles.activateButton
-                                        ]}
-                                        onPress={() => handleToggleProduct(product)}
-                                    >
-                                        <SafeIcon 
-                                            name={product.is_active ? 'pause-circle' : 'play-circle'} 
-                                            size={18} 
-                                            color="#FFFFFF" 
-                                        />
-                                        <Text style={styles.actionButtonText}>
-                                            {product.is_active ? 'Désactiver' : 'Activer'}
-                                        </Text>
-                                    </TouchableOpacity>
+                                    {product.type === 'ticket_voyage' ? (
+                                        // 🚌 TICKET DE VOYAGE: Gestion automatique (grisé)
+                                        <View style={[styles.actionButton, styles.actionButtonDisabled]}>
+                                            <SafeIcon name="clock" size={18} color="#9CA3AF" />
+                                            <Text style={styles.actionButtonTextDisabled}>
+                                                Gestion auto
+                                            </Text>
+                                        </View>
+                                    ) : (
+                                        // Autres produits: Toggle normal
+                                        <TouchableOpacity
+                                            style={[
+                                                styles.actionButton,
+                                                product.is_active ? styles.deactivateButton : styles.activateButton
+                                            ]}
+                                            onPress={() => handleToggleProduct(product)}
+                                        >
+                                            <SafeIcon 
+                                                name={product.is_active ? 'pause-circle' : 'play-circle'} 
+                                                size={18} 
+                                                color="#FFFFFF" 
+                                            />
+                                            <Text style={styles.actionButtonText}>
+                                                {product.is_active ? 'Désactiver' : 'Activer'}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    )}
 
                                     {/* Modifier */}
                                     <TouchableOpacity
@@ -935,6 +946,17 @@ const styles = StyleSheet.create({
         fontSize: 13,
         fontWeight: '600',
         color: '#FFFFFF',
+    },
+    actionButtonDisabled: {
+        backgroundColor: '#E5E7EB',
+        borderWidth: 1,
+        borderColor: '#D1D5DB',
+        opacity: 0.7,
+    },
+    actionButtonTextDisabled: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: '#9CA3AF',
     },
     secondaryActions: {
         flexDirection: 'row',
