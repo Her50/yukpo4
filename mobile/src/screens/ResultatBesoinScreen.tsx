@@ -546,7 +546,8 @@ const ResultatBesoinScreen: React.FC = () => {
                 const userGPS = location?.coords ? `${location.coords.latitude},${location.coords.longitude}` : null;
 
                 validServices.forEach((service) => {
-                    const serviceProduits = service.data?.produits || [];
+                    // ✅ CORRECTION: Gérer structure {valeur: [...]} ET array direct
+                    const serviceProduits = service.data?.produits?.valeur || service.data?.produits || [];
                     if (Array.isArray(serviceProduits)) {
                         serviceProduits.forEach((product: any) => {
                             // GPS prioritaire : produit > service gps_fixe > service gps

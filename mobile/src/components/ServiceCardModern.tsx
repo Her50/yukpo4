@@ -134,6 +134,20 @@ const ServiceCardModern: React.FC<ServiceCardModernProps> = ({
                         <Text style={styles.infoText}>📊 {service.interactions} interactions</Text>
                     </View>
                 )}
+                {/* Nombre de produits - Cliquable comme statistique */}
+                {service.data?.produits?.valeur && Array.isArray(service.data.produits.valeur) && service.data.produits.valeur.length > 0 && (
+                    <TouchableOpacity 
+                        style={styles.productsStatRow}
+                        onPress={() => onViewProducts && onViewProducts(service)}
+                        activeOpacity={0.6}
+                    >
+                        <SafeIcon name="package" size={14} color="#6366F1" />
+                        <Text style={styles.productsStatText}>
+                            {service.data.produits.valeur.length} produit{service.data.produits.valeur.length > 1 ? 's' : ''}
+                        </Text>
+                        <SafeIcon name="chevron-right" size={12} color="#6366F1" />
+                    </TouchableOpacity>
+                )}
             </View>
 
             {/* Badge Produits - Bien visible */}
@@ -282,6 +296,23 @@ const styles = StyleSheet.create({
         fontSize: 12,
         color: '#666',
         marginLeft: 6,
+    },
+    productsStatRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        backgroundColor: '#EEF2FF',
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#C7D2FE',
+        alignSelf: 'flex-start',
+    },
+    productsStatText: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: '#6366F1',
     },
     productsBadge: {
         marginTop: 12,
