@@ -5,18 +5,18 @@
  */
 
 /**
- * Génère un QR Code en base64
- * Utilise une API publique pour générer le QR code
+ * Génère un QR Code complet pour validation du ticket
+ * Encode toutes les informations critiques du voyage
  */
 async function generateQRCode(data: string): Promise<string> {
     try {
-        // Option 1: Utiliser une API publique (rapide et simple)
-        const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(data)}`;
+        // API gratuite QR Server avec paramètres optimaux pour tickets
+        const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(data)}&format=png&bgcolor=FFFFFF&color=000000&qzone=3&margin=15&ecc=H`;
         return qrCodeUrl;
     } catch (error) {
         console.error('Erreur génération QR code:', error);
-        // Fallback: retourner un placeholder
-        return 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCI+PC9zdmc+';
+        // Fallback: QR code basique
+        return `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(data)}`;
     }
 }
 
@@ -56,8 +56,24 @@ export interface BusTicketData {
  */
 export async function generateBusTicketHTML(ticketData: BusTicketData): Promise<string> {
     const now = new Date().toLocaleString('fr-FR');
-    const qrCodeUrl = await generateQRCode(ticketData.qrCodeData || ticketData.reservationId);
     
+    // Créer le contenu structuré du QR Code
+    const qrData = JSON.stringify({
+        type: 'BUS_TICKET_YUKPOMNANG',
+        id: ticketData.reservationId,
+        passenger: ticketData.passengerName,
+        seat: ticketData.seatNumber,
+        bus: ticketData.numeroBus,
+        route: `${ticketData.depart}-${ticketData.destination}`,
+        departure: `${ticketData.dateDepart} ${ticketData.heureDepart}`,
+        price: ticketData.prix,
+        companycompagnie: ticketData.compagnie,
+        validated: false,
+        timestamp: new Date().toISOString()
+    });
+    
+    const qrCodeUrl = await generateQRCode(qrData);
+
     return `
 <!DOCTYPE html>
 <html>
@@ -418,14 +434,14 @@ export async function generateAndDownloadTicket(ticketData: BusTicketData): Prom
     try {
         // Dynamically import expo-print
         const { printToFileAsync } = await import('expo-print');
-        
+
         const html = await generateBusTicketHTML(ticketData);
-        
+
         const { uri } = await printToFileAsync({
             html,
             base64: false
         });
-        
+
         console.log('✅ Ticket PDF généré avec QR Code:', uri);
         return uri;
     } catch (error) {

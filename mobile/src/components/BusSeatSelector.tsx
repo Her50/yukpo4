@@ -87,7 +87,7 @@ const BusSeatSelector: React.FC<BusSeatSelectorProps> = ({
     useEffect(() => {
         const currentLength = passengerNames.length;
         const neededLength = selectedSeats.length;
-        
+
         if (neededLength > currentLength) {
             // Ajouter des noms vides
             setPassengerNames([...passengerNames, ...Array(neededLength - currentLength).fill('')]);
@@ -144,7 +144,7 @@ const BusSeatSelector: React.FC<BusSeatSelectorProps> = ({
     const handleConfirm = async () => {
         // Vérifier que tous les noms sont remplis
         const allNamesFilled = passengerNames.every((name, idx) => idx >= selectedSeats.length || name.trim().length > 0);
-        
+
         if (selectedSeats.length > 0 && allNamesFilled) {
             // Sauvegarder le premier nom pour les prochaines fois
             if (passengerNames[0] && passengerNames[0].trim()) {
@@ -155,13 +155,13 @@ const BusSeatSelector: React.FC<BusSeatSelectorProps> = ({
                     console.error('Erreur sauvegarde nom:', error);
                 }
             }
-            
+
             // Attacher les noms aux sièges
             const seatsWithNames = selectedSeats.map((seat, idx) => ({
                 ...seat,
                 passengerName: passengerNames[idx].trim()
             }));
-            
+
             // Retourner un seul ou plusieurs sièges
             onSelectSeat(isMultipleMode ? seatsWithNames : seatsWithNames[0]);
             onClose();
@@ -180,7 +180,7 @@ const BusSeatSelector: React.FC<BusSeatSelectorProps> = ({
         >
             <View style={styles.modalContainer}>
                 <View style={styles.modalContent}>
-                {/* Header */}
+                    {/* Header */}
                     <View style={styles.header}>
                         <View>
                             <Text style={styles.headerTitle}>🚌 Sélectionnez votre place</Text>
@@ -193,7 +193,7 @@ const BusSeatSelector: React.FC<BusSeatSelectorProps> = ({
                         </View>
                         <TouchableOpacity onPress={onClose} style={styles.closeButton}>
                             <SafeIcon name="x" size={24} color={modernColors.text} />
-                    </TouchableOpacity>
+                        </TouchableOpacity>
                     </View>
 
                     {/* Statistiques et Toggle Mode */}
@@ -228,10 +228,10 @@ const BusSeatSelector: React.FC<BusSeatSelectorProps> = ({
                                 }
                             }}
                         >
-                            <SafeIcon 
-                                name={isMultipleMode ? "users" : "user"} 
-                                size={16} 
-                                color={isMultipleMode ? '#FFFFFF' : modernColors.primary} 
+                            <SafeIcon
+                                name={isMultipleMode ? "users" : "user"}
+                                size={16}
+                                color={isMultipleMode ? '#FFFFFF' : modernColors.primary}
                             />
                             <Text style={[styles.modeToggleText, isMultipleMode && styles.modeToggleTextActive]}>
                                 {isMultipleMode ? 'Multiple' : 'Simple'}
@@ -262,7 +262,7 @@ const BusSeatSelector: React.FC<BusSeatSelectorProps> = ({
                                             return (
                                                 <React.Fragment key={seat.id}>
                                                     {isAisle && <View style={styles.aisle} />}
-                    <TouchableOpacity
+                                                    <TouchableOpacity
                                                         style={[styles.seat, getSeatStyle(seat)]}
                                                         onPress={() => handleSeatPress(seat)}
                                                         disabled={seat.status !== 'available' || seat.type === 'driver'}
@@ -273,14 +273,14 @@ const BusSeatSelector: React.FC<BusSeatSelectorProps> = ({
                                                         ]}>
                                                             {getSeatIcon(seat)}
                                                         </Text>
-                    </TouchableOpacity>
+                                                    </TouchableOpacity>
                                                 </React.Fragment>
                                             );
                                         })}
                                     </View>
                                 );
                             })}
-                </View>
+                        </View>
 
                         {/* Arrière du bus */}
                         <View style={styles.busBack}>
@@ -288,21 +288,21 @@ const BusSeatSelector: React.FC<BusSeatSelectorProps> = ({
                         </View>
                     </ScrollView>
 
-                {/* Légende */}
-                <View style={styles.legend}>
-                    <View style={styles.legendItem}>
-                        <View style={[styles.legendSeat, styles.seatAvailable]} />
-                        <Text style={styles.legendText}>Disponible</Text>
+                    {/* Légende */}
+                    <View style={styles.legend}>
+                        <View style={styles.legendItem}>
+                            <View style={[styles.legendSeat, styles.seatAvailable]} />
+                            <Text style={styles.legendText}>Disponible</Text>
+                        </View>
+                        <View style={styles.legendItem}>
+                            <View style={[styles.legendSeat, styles.seatSelected]} />
+                            <Text style={styles.legendText}>Sélectionnée</Text>
+                        </View>
+                        <View style={styles.legendItem}>
+                            <View style={[styles.legendSeat, styles.seatOccupied]} />
+                            <Text style={styles.legendText}>Occupée</Text>
+                        </View>
                     </View>
-                    <View style={styles.legendItem}>
-                        <View style={[styles.legendSeat, styles.seatSelected]} />
-                        <Text style={styles.legendText}>Sélectionnée</Text>
-                    </View>
-                    <View style={styles.legendItem}>
-                        <View style={[styles.legendSeat, styles.seatOccupied]} />
-                        <Text style={styles.legendText}>Occupée</Text>
-                    </View>
-                </View>
 
                     {/* Formulaire noms passagers */}
                     {selectedSeats.length > 0 && (
@@ -310,12 +310,12 @@ const BusSeatSelector: React.FC<BusSeatSelectorProps> = ({
                             <View style={styles.passengerFormHeader}>
                                 <SafeIcon name={isMultipleMode ? "users" : "user"} size={18} color={modernColors.primary} />
                                 <Text style={styles.passengerFormTitle}>
-                                    {isMultipleMode 
-                                        ? `Informations des ${selectedSeats.length} passagers` 
+                                    {isMultipleMode
+                                        ? `Informations des ${selectedSeats.length} passagers`
                                         : 'Informations du passager'}
                                 </Text>
                             </View>
-                            
+
                             {selectedSeats.map((seat, index) => (
                                 <View key={seat.id} style={styles.passengerInputContainer}>
                                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -345,7 +345,7 @@ const BusSeatSelector: React.FC<BusSeatSelectorProps> = ({
                                     )}
                                 </View>
                             ))}
-                            
+
                             <View style={styles.cautionInfo}>
                                 <SafeIcon name="info" size={14} color={modernColors.warning} />
                                 <Text style={styles.cautionInfoText}>
@@ -359,12 +359,12 @@ const BusSeatSelector: React.FC<BusSeatSelectorProps> = ({
 
                     {/* Boutons d'action */}
                     <View style={styles.actions}>
-                                    <TouchableOpacity
+                        <TouchableOpacity
                             style={styles.cancelButton}
                             onPress={onClose}
                         >
                             <Text style={styles.cancelButtonText}>Annuler</Text>
-                                    </TouchableOpacity>
+                        </TouchableOpacity>
                         <TouchableOpacity
                             style={[
                                 styles.confirmButton,
@@ -382,9 +382,9 @@ const BusSeatSelector: React.FC<BusSeatSelectorProps> = ({
                                     : `Sélectionnez ${isMultipleMode ? 'les places' : 'une place'}`}
                             </Text>
                         </TouchableOpacity>
-                                            </View>
                     </View>
                 </View>
+            </View>
         </Modal>
     );
 };
