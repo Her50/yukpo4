@@ -1131,7 +1131,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
                     {product.type === 'ticket_voyage' && product.seatMap && product.busConfiguration && onBookSeat && (() => {
                         const validation = isTicketStillValid(product);
                         const warning = validation.daysUntilDeparture ? getDepartureWarning(validation.daysUntilDeparture) : null;
-                        
+
                         if (!validation.valid) {
                             // Ticket expiré ou complet
                             return (
@@ -1143,7 +1143,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
                                 </View>
                             );
                         }
-                        
+
                         return (
                             <>
                                 {warning && (

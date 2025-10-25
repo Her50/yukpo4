@@ -24,24 +24,24 @@ function parseDepartureDateTime(dateStr: string, timeStr: string): Date | null {
         // Parser date DD/MM/YYYY
         const dateParts = dateStr.split('/');
         if (dateParts.length !== 3) return null;
-        
+
         const day = parseInt(dateParts[0]);
         const month = parseInt(dateParts[1]) - 1; // Mois commence à 0
         const year = parseInt(dateParts[2]);
-        
+
         // Parser heure HH:MM
         const timeParts = timeStr.split(':');
         if (timeParts.length !== 2) return null;
-        
+
         const hours = parseInt(timeParts[0]);
         const minutes = parseInt(timeParts[1]);
-        
+
         // Créer la date
         const departureDate = new Date(year, month, day, hours, minutes);
-        
+
         // Vérifier que la date est valide
         if (isNaN(departureDate.getTime())) return null;
-        
+
         return departureDate;
     } catch (error) {
         console.error('Erreur parse date départ:', error);
@@ -133,15 +133,15 @@ export function getDepartureWarning(daysUntilDeparture: number): string | null {
 export function formatTimeUntilDeparture(dateStr: string, timeStr: string): string {
     const departureDate = parseDepartureDateTime(dateStr, timeStr);
     if (!departureDate) return 'Date invalide';
-    
+
     const now = new Date();
     const msRemaining = departureDate.getTime() - now.getTime();
-    
+
     if (msRemaining <= 0) return 'Départ passé';
-    
+
     const daysRemaining = Math.floor(msRemaining / (1000 * 60 * 60 * 24));
     const hoursRemaining = Math.floor((msRemaining % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-    
+
     if (daysRemaining > 0) {
         return `Dans ${daysRemaining}j ${hoursRemaining}h`;
     } else {

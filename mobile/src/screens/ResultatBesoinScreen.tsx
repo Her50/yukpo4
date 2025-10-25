@@ -184,11 +184,11 @@ const ResultatBesoinScreen: React.FC = () => {
             try {
                 const AsyncStorage = await import('@react-native-async-storage/async-storage').then(m => m.default);
                 const pendingData = await AsyncStorage.getItem('@yukpomnang:pending_bus_reservation');
-                
+
                 if (pendingData && user) {
                     const context = JSON.parse(pendingData);
                     const ageMinutes = (Date.now() - context.timestamp) / (1000 * 60);
-                    
+
                     // Si moins de 10 minutes, proposer de continuer
                     if (ageMinutes < 10) {
                         Alert.alert(
@@ -222,7 +222,7 @@ const ResultatBesoinScreen: React.FC = () => {
                 console.error('Erreur vérification réservation en attente:', error);
             }
         };
-        
+
         // Vérifier seulement si on vient de RechargeTokens
         if (routeParams.fromRecharge && user) {
             checkPendingReservation();
@@ -1678,7 +1678,7 @@ const ResultatBesoinScreen: React.FC = () => {
 
                             Alert.alert(
                                 '🎫 Confirmer la réservation',
-                                `${nbPlaces} place${nbPlaces > 1 ? 's' : ''} à réserver:\n\n${passengersList}\n\n💰 Montant total: ${totalAmount.toLocaleString()} FCFA\n✅ Paiement complet immédiat\n📄 Tickets PDF générés instantanément\n\n🏢 Vous pourrez aussi retirer vos tickets physiques à l'agence si nécessaire.`,
+                                `${nbPlaces} place${nbPlaces > 1 ? 's' : ''} à réserver:\n\n${passengersList}\n\n💰 Montant total: ${totalAmount.toLocaleString()} FCFA\n✅ Paiement complet immédiat\n📄 Tickets PDF générés instantanément\n\n🏢 Vous pourrez aussi retirer vos tickets physiques à l'agence avec une pièce d'identité valide.`,
                                 [
                                     { text: 'Annuler', style: 'cancel' },
                                     {
@@ -1767,7 +1767,7 @@ const ResultatBesoinScreen: React.FC = () => {
                                                 // Afficher confirmation
                                                 Alert.alert(
                                                     '✅ Réservation confirmée!',
-                                                    `${nbPlaces} ticket${nbPlaces > 1 ? 's' : ''} généré${nbPlaces > 1 ? 's' : ''} avec succès!\n\n💰 ${totalAmount.toLocaleString()} FCFA débités\n📱 Tickets PDF dans vos téléchargements\n\n🏢 Vous pouvez aussi retirer vos tickets physiques directement à l'agence avec votre pièce d'identité.`,
+                                                    `${nbPlaces} ticket${nbPlaces > 1 ? 's' : ''} généré${nbPlaces > 1 ? 's' : ''} avec succès!\n\n💰 ${totalAmount.toLocaleString()} FCFA débités\n📱 Tickets PDF dans vos téléchargements\n\n🏢 Vous pouvez aussi retirer vos tickets physiques directement à l'agence avec une pièce d'identité valide.`,
                                                     [
                                                         {
                                                             text: 'Contacter l\'agence',
