@@ -9,6 +9,7 @@ import { modernColors } from '../theme/modernTheme';
 import { useAuth } from '../contexts/AuthContext';
 import { LanguageProvider } from '../contexts/LanguageContext';
 import { LocationProvider } from '../contexts/LocationContext';
+import { useDeepLinkRedirect } from '../hooks/useDeepLinkRedirect';
 
 // ✅ IMPORTS DIRECTS - Écrans d'authentification
 import LoginScreen from '../screens/auth/LoginScreen';
@@ -113,12 +114,19 @@ const MainStack = () => {
   );
 };
 
+// Composant wrapper pour gérer les deep links après connexion
+const DeepLinkHandler = ({ children }: { children: React.ReactNode }) => {
+  useDeepLinkRedirect(); // ✅ Hook pour redirection automatique après login/register
+  return <>{children}</>;
+};
+
 // Stack secondaire avec toutes les routes
 const SecondaryStack = () => {
   console.log('[AppNavigator] 📱 Rendu SecondaryStack');
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="Main" component={MainStack} />
+    <DeepLinkHandler>
+      <Stack.Navigator screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="Main" component={MainStack} />
       <Stack.Screen name="Contact" component={ContactScreen} />
       <Stack.Screen name="Settings" component={EnhancedSettingsScreen} />
       <Stack.Screen name="RechargeTokens" component={RechargeTokensScreen} />
@@ -131,7 +139,8 @@ const SecondaryStack = () => {
       <Stack.Screen name="PubliciteDashboard" component={PubliciteDashboardScreen} />
       <Stack.Screen name="SoldeDetail" component={SoldeDetailScreen} />
       <Stack.Screen name="YukpoServicePlaceholder" component={YukpoServicePlaceholderScreen} />
-    </Stack.Navigator>
+      </Stack.Navigator>
+    </DeepLinkHandler>
   );
 };
 
