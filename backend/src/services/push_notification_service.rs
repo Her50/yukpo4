@@ -368,3 +368,123 @@ pub async fn cleanup_old_push_tokens(
     Ok(count)
 }
 
+/// ✅ NOUVEAU: Notifier un utilisateur qu'un bus retour correspondant est disponible
+pub async fn notify_return_bus_available(
+    pool: &PgPool,
+    user_id: i32,
+    bus_id: &str,
+    departure_city: &str,
+    arrival_city: &str,
+    departure_date: &str,
+    departure_time: &str,
+) -> Result<usize, Box<dyn std::error::Error>> {
+    info!("[PushService] 🚌 Notification bus retour disponible pour user {}", user_id);
+    
+    let title = "🚌 Bus Retour Disponible!";
+    let body = format!(
+        "{} → {} le {} à {}. Réservez votre place maintenant!",
+        departure_city, arrival_city, departure_date, departure_time
+    );
+    
+    let data = serde_json::json!({
+        "type": "return_bus_available",
+        "busId": bus_id,
+        "departureCity": departure_city,
+        "arrivalCity": arrival_city,
+        "departureDate": departure_date,
+        "departureTime": departure_time,
+    });
+
+    send_push_notification(pool, user_id, title, body, Some(data), Some("default".to_string())).await
+}
+
+/// ✅ NOUVEAU: Vérifier et notifier tous les utilisateurs en attente d'un bus retour
+pub async fn check_and_notify_return_requests(
+    pool: &PgPool,
+    new_bus_id: &str,
+    departure_city: &str,
+    arrival_city: &str,
+    departure_date: &str,
+    departure_time: &str,
+) -> Result<i32, Box<dyn std::error::Error>> {
+    info!("[PushService] 🔍 Vérification demandes de retour pour bus {} ({} → {})", 
+        new_bus_id, departure_city, arrival_city);
+    
+    // Récupérer toutes les demandes de retour correspondantes
+    // Tolérance de ±1 heure sur l'heure préférée
+    let matching_requests: Vec<(i32, String, String, String)> = sqlx::query_as(
+        r#"
+        SELECT 
+            rtr.id,
+            rtr.user_id,
+            rtr.preferred_return_date,
+            rtr.preferred_return_time
+        FROM return_trip_requests rtr
+        WHERE rtr.status = 'pending'
+          AND rtr.return_departure_city = $1
+          AND rtr.return_arrival_city = $2
+          AND rtr.preferred_return_date = $3
+          AND ABS(EXTRACT(EPOCH FROM (rtr.preferred_return_time::time - $4::time))) < 3600
+        "#,
+    )
+    .bind(departure_city)
+    .bind(arrival_city)
+    .bind(departure_date)
+    .bind(departure_time)
+    .fetch_all(pool)
+    .await?;
+
+    let count = matching_requests.len();
+    info!("[PushService] 📊 {} demandes de retour correspondantes trouvées", count);
+    
+    for (request_id, user_id_str, _, _) in matching_requests {
+        // Convertir user_id en i32
+        if let Ok(user_id) = user_id_str.parse::<i32>() {
+            // Envoyer la notification
+            match notify_return_bus_available(
+                pool,
+                user_id,
+                new_bus_id,
+                departure_city,
+                arrival_city,
+                departure_date,
+                departure_time,
+            ).await {
+                Ok(sent) => {
+                    info!("[PushService] ✅ {} notifications envoyées à user {}", sent, user_id);
+                }
+                Err(e) => {
+                    error!("[PushService] ❌ Erreur notification user {}: {:?}", user_id, e);
+                }
+            }
+
+            // Mettre à jour le statut de la demande
+            let update_result = sqlx::query(
+                r#"
+                UPDATE return_trip_requests
+                SET status = 'matched',
+                    matched_bus_id = $1,
+                    updated_at = NOW()
+                WHERE id = $2
+                "#,
+            )
+            .bind(new_bus_id)
+            .bind(request_id)
+            .execute(pool)
+            .await;
+
+            match update_result {
+                Ok(_) => {
+                    info!("[PushService] ✅ Statut mis à jour pour demande {}", request_id);
+                }
+                Err(e) => {
+                    error!("[PushService] ❌ Erreur mise à jour statut demande {}: {:?}", request_id, e);
+                }
+            }
+        }
+    }
+
+    info!("[PushService] 📢 {} utilisateurs notifiés pour le nouveau bus {}", count, new_bus_id);
+    Ok(count as i32)
+}
+

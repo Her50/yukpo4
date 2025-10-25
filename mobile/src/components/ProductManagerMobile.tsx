@@ -2470,10 +2470,10 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                     ]}
                                     onPress={() => setNewProduct({ ...newProduct, proposeAllerRetour: false })}
                                 >
-                                    <SafeIcon 
-                                        name="arrow-right" 
-                                        size={20} 
-                                        color={!newProduct.proposeAllerRetour ? '#FFFFFF' : modernColors.primary} 
+                                    <SafeIcon
+                                        name="arrow-right"
+                                        size={20}
+                                        color={!newProduct.proposeAllerRetour ? '#FFFFFF' : modernColors.primary}
                                     />
                                     <Text style={[
                                         styles.tripTypeButtonText,
@@ -2490,10 +2490,10 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                     ]}
                                     onPress={() => setNewProduct({ ...newProduct, proposeAllerRetour: true })}
                                 >
-                                    <SafeIcon 
-                                        name="refresh-cw" 
-                                        size={20} 
-                                        color={newProduct.proposeAllerRetour ? '#FFFFFF' : modernColors.primary} 
+                                    <SafeIcon
+                                        name="refresh-cw"
+                                        size={20}
+                                        color={newProduct.proposeAllerRetour ? '#FFFFFF' : modernColors.primary}
                                     />
                                     <Text style={[
                                         styles.tripTypeButtonText,
@@ -2530,12 +2530,12 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                             />
                                         </View>
                                     </View>
-                                    
+
                                     {newProduct.prixAllerSimple && newProduct.prixAllerRetour && (
                                         <View style={styles.savingsIndicator}>
                                             <SafeIcon name="trending-down" size={16} color={modernColors.success} />
                                             <Text style={styles.savingsText}>
-                                                Économie: {(parseInt(newProduct.prixAllerSimple) * 2 - parseInt(newProduct.prixAllerRetour)).toLocaleString()} FCFA 
+                                                Économie: {(parseInt(newProduct.prixAllerSimple) * 2 - parseInt(newProduct.prixAllerRetour)).toLocaleString()} FCFA
                                                 ({Math.round((1 - parseInt(newProduct.prixAllerRetour) / (parseInt(newProduct.prixAllerSimple) * 2)) * 100)}%)
                                             </Text>
                                         </View>

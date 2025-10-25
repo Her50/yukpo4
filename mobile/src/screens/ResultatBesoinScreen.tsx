@@ -27,6 +27,7 @@ import { apiGet, apiPost } from '../services/api';
 import { theme } from '../theme/theme';
 import { generateAndDownloadTicket, shareTicketPDF } from '../utils/busTicketPdfGenerator';
 import { normalizeProduct } from '../utils/productNormalizer';
+import { useNotifications } from '../hooks/useNotifications';
 import {
     detectDominantCategoryWeighted,
     generateSmartFilterSuggestions,
@@ -77,6 +78,7 @@ const ResultatBesoinScreen: React.FC = () => {
     const route = useRoute();
     const { user } = useAuth();
     const { location } = useLocation();
+    const { subscribeToReturnBusNotifications } = useNotifications(user?.id);
 
     // États
     const [services, setServices] = useState<Service[]>([]);
