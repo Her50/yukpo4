@@ -12,7 +12,7 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
-import BusSeatSelector from '../components/BusSeatSelector';
+import BusSeatSelectorMulti from '../components/BusSeatSelectorMulti';
 import CategoryFilters from '../components/CategoryFilters';
 import ChatModalMobile from '../components/ChatModalMobile';
 import ProductCard from '../components/ProductCard';
@@ -1564,124 +1564,145 @@ const ResultatBesoinScreen: React.FC = () => {
 
             {/* Seat Selector Modal pour ticket_voyage */}
             {selectedProduct && selectedProduct.type === 'ticket_voyage' && selectedProduct.seatMap && (
-                <BusSeatSelector
+                <BusSeatSelectorMulti
                     visible={showSeatSelector}
                     onClose={() => setShowSeatSelector(false)}
-                    busConfiguration={selectedProduct.busConfiguration || { rows: 12, seatsPerRow: 4, aislePosition: 2 }}
+                    busConfiguration={selectedProduct.busConfiguration || { rows: 12, seatsPerRow: 4, aislePosition: 2, firstRowSeats: 2 }}
                     seatMap={selectedProduct.seatMap || []}
                     product={selectedProduct}
-                    onSelectSeat={async (seatWithName) => {
+                    onSelectSeats={async (reservations) => {
                         try {
-                            const cautionAmount = selectedProduct.cautionReservation || 500;
+                            const ticketPrice = parseInt(selectedProduct.prix);
+                            const nbPlaces = reservations.length;
+                            const totalAmount = ticketPrice * nbPlaces;
                             
-                            // Vérifier le solde de l'utilisateur
-                            if (!user || !user.tokens_balance || user.tokens_balance < cautionAmount) {
+                            // Vérifier le solde (paiement complet immédiat)
+                            if (!user || !user.tokens_balance || user.tokens_balance < totalAmount) {
                                 Alert.alert(
                                     'Solde insuffisant',
-                                    `Vous avez besoin de ${cautionAmount} FCFA pour payer la caution.\n\nSolde actuel: ${user?.tokens_balance || 0} FCFA`,
+                                    `Montant requis: ${totalAmount.toLocaleString()} FCFA\n(${nbPlaces} place${nbPlaces > 1 ? 's' : ''} × ${ticketPrice.toLocaleString()} FCFA)\n\nSolde actuel: ${user?.tokens_balance || 0} FCFA`,
                                     [
-                                        {
-                                            text: 'Recharger',
-                                            onPress: () => navigation.navigate('RechargeTokens')
-                                        },
+                                        { text: 'Recharger', onPress: () => navigation.navigate('RechargeTokens') },
                                         { text: 'Annuler' }
                                     ]
                                 );
                                 return;
                             }
 
-                            // Confirmer le paiement de la caution
+                            // Confirmer le paiement complet
+                            const passengersList = reservations.map(r => `- Place ${r.seat.number}: ${r.passengerName}`).join('\n');
+                            
                             Alert.alert(
                                 '🎫 Confirmer la réservation',
-                                `Place n°${seatWithName.number}\nPassager: ${seatWithName.passengerName}\n\n💰 Caution: ${cautionAmount} FCFA\n⏱️ Validité: 30 minutes\n\nVous devrez payer le prix total du ticket (${selectedProduct.prix} FCFA) dans les 30 minutes pour confirmer définitivement votre réservation.`,
+                                `${nbPlaces} place${nbPlaces > 1 ? 's' : ''} à réserver:\n\n${passengersList}\n\n💰 Montant total: ${totalAmount.toLocaleString()} FCFA\n✅ Paiement complet immédiat\n📄 Tickets PDF générés instantanément`,
                                 [
                                     { text: 'Annuler', style: 'cancel' },
                                     {
-                                        text: 'Payer la caution',
+                                        text: 'Payer et obtenir tickets',
                                         onPress: async () => {
                                             try {
-                                                // Mettre à jour localement le statut de la place
-                                                const updatedSeatMap = selectedProduct.seatMap.map(s =>
-                                                    s.id === seatWithName.id ? { ...s, status: 'reserved', passengerName: seatWithName.passengerName } : s
-                                                );
+                                                // Mettre à jour localement toutes les places
+                                                let updatedSeatMap = [...selectedProduct.seatMap];
+                                                const reservationResults = [];
 
-                                                // Mettre à jour le produit localement
+                                                for (const reservation of reservations) {
+                                                    updatedSeatMap = updatedSeatMap.map(s =>
+                                                        s.id === reservation.seat.id 
+                                                            ? { ...s, status: 'reserved', passengerName: reservation.passengerName }
+                                                            : s
+                                                    );
+
+                                                    // Appeler l'API pour chaque réservation
+                                                    try {
+                                                        const result = await apiPost('/bus-reservations/reserve', {
+                                                            seat_id: reservation.seat.id,
+                                                            user_id: user?.id || '',
+                                                            product_id: selectedProduct.id,
+                                                            passenger_name: reservation.passengerName,
+                                                            total_price: ticketPrice,
+                                                            payment_status: 'fully_paid' // Paiement complet immédiat
+                                                        });
+
+                                                        reservationResults.push({
+                                                            id: result.data?.reservation_id || result.reservation_id,
+                                                            ...reservation,
+                                                            ticketPrice
+                                                        });
+
+                                                        console.log(`✅ Réservation créée pour ${reservation.passengerName}`);
+                                                    } catch (apiError) {
+                                                        console.error(`⚠️ Erreur API pour ${reservation.passengerName}:`, apiError);
+                                                    }
+                                                }
+
+                                                // Mettre à jour l'interface
                                                 setSelectedProduct({
                                                     ...selectedProduct,
-                                                    seatMap: updatedSeatMap,
-                                                    selectedSeat: seatWithName.number
+                                                    seatMap: updatedSeatMap
                                                 });
 
-                                                // Mettre à jour dans la liste des produits
                                                 setProducts(prevProducts =>
                                                     prevProducts.map(p =>
                                                         p.id === selectedProduct.id
-                                                            ? { ...p, seatMap: updatedSeatMap, selectedSeat: seatWithName.number }
+                                                            ? { ...p, seatMap: updatedSeatMap }
                                                             : p
                                                     )
                                                 );
 
-                                                // Appeler l'API pour persister la réservation
-                                                try {
-                                                    const reservationResult = await apiPost('/bus-reservations/reserve', {
-                                                        seat_id: seatWithName.id,
-                                                        user_id: user?.id || '',
-                                                        product_id: selectedProduct.id,
-                                                        passenger_name: seatWithName.passengerName,
-                                                        caution_amount: cautionAmount
-                                                    });
-
-                                                    console.log('✅ Réservation créée:', reservationResult);
-                                                    
-                                                    // Stocker l'ID de réservation
-                                                    const newReservation = {
-                                                        id: reservationResult.data?.reservation_id || reservationResult.reservation_id,
-                                                        product: selectedProduct,
-                                                        passengerName: seatWithName.passengerName,
-                                                        seatNumber: seatWithName.number,
-                                                        cautionAmount: cautionAmount,
-                                                        expiresAt: new Date(Date.now() + 30 * 60 * 1000) // 30 minutes
+                                                // Générer les tickets PDF
+                                                for (const res of reservationResults) {
+                                                    const ticketData = {
+                                                        reservationId: res.id,
+                                                        passengerName: res.passengerName,
+                                                        seatNumber: res.seat.number,
+                                                        compagnie: selectedProduct.compagnieTransport || 'Compagnie de Transport',
+                                                        logoAgence: selectedProduct.logoAgence,
+                                                        numeroBus: selectedProduct.numeroBus || 'N/A',
+                                                        depart: selectedProduct.depart,
+                                                        destination: selectedProduct.destination,
+                                                        dateDepart: selectedProduct.dateDepart,
+                                                        heureDepart: selectedProduct.heureDepart,
+                                                        classeVoyage: selectedProduct.classeVoyage,
+                                                        prix: ticketPrice,
+                                                        devise: selectedProduct.devise || 'FCFA',
+                                                        cautionPaid: ticketPrice,
+                                                        totalPaid: ticketPrice,
+                                                        escales: selectedProduct.escales,
+                                                        conditionsVoyage: selectedProduct.conditionsVoyage,
+                                                        qrCodeData: res.id
                                                     };
-                                                    
-                                                    // Afficher confirmation avec timer
-                                                    Alert.alert(
-                                                        '✅ Caution payée!',
-                                                        `Place n°${seatWithName.number} réservée pour ${seatWithName.passengerName}\n\n⏰ Vous avez 30 minutes pour payer le prix total (${selectedProduct.prix} FCFA) et confirmer votre voyage.\n\nCaution: ${cautionAmount} FCFA débités`,
-                                                        [
-                                                            {
-                                                                text: 'Payer et obtenir ticket',
-                                                                onPress: () => {
-                                                                    // Confirmer et générer le ticket
-                                                                    confirmBusReservation(newReservation.id, newReservation);
-                                                                }
-                                                            },
-                                                            { 
-                                                                text: 'Plus tard',
-                                                                onPress: () => {
-                                                                    Alert.alert(
-                                                                        '⏰ Rappel',
-                                                                        'N\'oubliez pas de finaliser votre paiement dans les 30 minutes pour obtenir votre ticket!',
-                                                                        [{ text: 'OK' }]
-                                                                    );
-                                                                }
-                                                            }
-                                                        ]
-                                                    );
-                                                } catch (apiError) {
-                                                    console.error('⚠️ Erreur API réservation:', apiError);
-                                                    Alert.alert('Erreur', 'Impossible de créer la réservation. Veuillez réessayer.');
+
+                                                    try {
+                                                        const pdfUri = await generateAndDownloadTicket(ticketData);
+                                                        console.log(`✅ Ticket PDF généré pour ${res.passengerName}:`, pdfUri);
+                                                    } catch (pdfError) {
+                                                        console.error('Erreur génération PDF:', pdfError);
+                                                    }
                                                 }
+
+                                                // Afficher confirmation
+                                                Alert.alert(
+                                                    '✅ Réservation confirmée!',
+                                                    `${nbPlaces} ticket${nbPlaces > 1 ? 's' : ''} généré${nbPlaces > 1 ? 's' : ''} avec succès!\n\n${totalAmount.toLocaleString()} FCFA débités\n\nVos tickets PDF sont disponibles dans vos téléchargements.`,
+                                                    [
+                                                        {
+                                                            text: 'Contacter prestataire',
+                                                            onPress: () => setShowChatModal(true)
+                                                        },
+                                                        { text: 'OK' }
+                                                    ]
+                                                );
                                             } catch (error) {
-                                                console.error('Erreur réservation place:', error);
-                                                Alert.alert('Erreur', 'Impossible de réserver cette place. Veuillez réessayer.');
+                                                console.error('Erreur réservation:', error);
+                                                Alert.alert('Erreur', 'Impossible de finaliser les réservations');
                                             }
                                         }
                                     }
                                 ]
                             );
                         } catch (error) {
-                            console.error('Erreur réservation place:', error);
-                            Alert.alert('Erreur', 'Impossible de réserver cette place. Veuillez réessayer.');
+                            console.error('Erreur réservation places:', error);
+                            Alert.alert('Erreur', 'Impossible de réserver ces places');
                         }
                     }}
                 />

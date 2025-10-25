@@ -2509,45 +2509,33 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Escales */}
                         <View style={styles.fieldContainer}>
                             <Text style={styles.fieldLabel}>Escales (optionnel)</Text>
-                            <NativeInput
+                                <NativeInput
                                 placeholder="Ex: Bafoussam, Bertoua..."
                                 value={newProduct.escales || ''}
                                 onChangeText={(text) => setNewProduct({ ...newProduct, escales: text })}
                                 style={styles.fieldInput}
                                 multiline
                             />
-                        </View>
+                            </View>
 
                         {/* Informations Ticket PDF */}
                         <View style={styles.ticketInfoSection}>
                             <View style={styles.sectionHeaderWithIcon}>
                                 <SafeIcon name="file-text" size={20} color={modernColors.primary} />
                                 <Text style={styles.sectionTitleMedium}>Informations Ticket de Voyage</Text>
-                            </View>
+                        </View>
 
-                            <View style={styles.fieldRow}>
-                                <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                    <Text style={styles.fieldLabel}>Numéro/Code du bus <Text style={styles.required}>*</Text></Text>
-                                    <NativeInput
-                                        placeholder="Ex: BUS-237-DLA"
-                                        value={newProduct.numeroBus || ''}
-                                        onChangeText={(text) => setNewProduct({ ...newProduct, numeroBus: text })}
-                                        style={styles.fieldInput}
-                                    />
-                                </View>
-                                <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                    <Text style={styles.fieldLabel}>Caution réservation (FCFA)</Text>
-                                    <NativeInput
-                                        placeholder="500"
-                                        value={newProduct.cautionReservation?.toString() || '500'}
-                                        onChangeText={(text) => setNewProduct({ ...newProduct, cautionReservation: parseInt(text) || 500 })}
-                                        style={styles.fieldInput}
-                                        keyboardType="numeric"
-                                    />
-                                </View>
-                            </View>
+                        <View style={styles.fieldContainer}>
+                                <Text style={styles.fieldLabel}>Numéro/Code du bus <Text style={styles.required}>*</Text></Text>
+                            <NativeInput
+                                    placeholder="Ex: BUS-237-DLA"
+                                    value={newProduct.numeroBus || ''}
+                                    onChangeText={(text) => setNewProduct({ ...newProduct, numeroBus: text })}
+                                style={styles.fieldInput}
+                            />
+                        </View>
 
-                            <View style={styles.fieldContainer}>
+                        <View style={styles.fieldContainer}>
                                 <Text style={styles.fieldLabel}>Logo de l'agence (optionnel)</Text>
                                 <TouchableOpacity
                                     style={styles.logoUploadButton}
@@ -2579,12 +2567,12 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                             <View style={styles.fieldContainer}>
                                 <Text style={styles.fieldLabel}>Conditions de voyage (optionnel)</Text>
-                                <NativeInput
+                            <NativeInput
                                     placeholder="Ex: Bagages inclus 20kg max, Arrivée garantie, Remboursement si annulation 24h avant..."
                                     value={newProduct.conditionsVoyage || ''}
                                     onChangeText={(text) => setNewProduct({ ...newProduct, conditionsVoyage: text })}
                                     style={[styles.fieldInput, styles.textareaInput]}
-                                    multiline
+                                multiline
                                     numberOfLines={3}
                                 />
                             </View>
@@ -2592,14 +2580,14 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             <View style={styles.infoCard}>
                                 <SafeIcon name="info" size={16} color={modernColors.info} />
                                 <Text style={styles.infoCardText}>
-                                    Le client paiera une caution de <Text style={{ fontWeight: '700' }}>{newProduct.cautionReservation || 500} FCFA</Text> pour bloquer sa place. Le ticket PDF sera généré après confirmation du paiement complet.
+                                    💰 <Text style={{ fontWeight: '700' }}>Nouveau système:</Text> Le client paie le montant complet du ticket dès la réservation (plus de caution). L'argent est versé à votre structure automatiquement.
                                 </Text>
                             </View>
                         </View>
 
                         <View style={styles.hintBox}>
                             <Text style={styles.hintText}>
-                                🎫 <Text style={styles.hintBold}>Système Pro:</Text> Caution → Réservation temporaire → Paiement complet → Ticket PDF généré avec logo, infos bus et nom du passager.
+                                🎫 <Text style={styles.hintBold}>Système Pro:</Text> Paiement complet immédiat → Ticket PDF instantané → Places multiples possibles (famille/amis) → QR Code de validation.
                             </Text>
                         </View>
                     </>
@@ -3225,17 +3213,17 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                         <SafeIcon name="layers" size={18} color={modernColors.primary} />
                                         <Text style={styles.addPrestationTextSecondary}>+3 offres</Text>
                                     </TouchableOpacity>
-                                    <TouchableOpacity
-                                        style={styles.addPrestationButton}
-                                        onPress={() => {
-                                            const prestations = newProduct.prestations || [];
-                                            prestations.push({ nom: '', prixAPartirDe: '', description: '' });
-                                            setNewProduct({ ...newProduct, prestations });
-                                        }}
-                                    >
+                                <TouchableOpacity
+                                    style={styles.addPrestationButton}
+                                    onPress={() => {
+                                        const prestations = newProduct.prestations || [];
+                                        prestations.push({ nom: '', prixAPartirDe: '', description: '' });
+                                        setNewProduct({ ...newProduct, prestations });
+                                    }}
+                                >
                                         <SafeIcon name="plus-circle" size={20} color="#FFFFFF" />
                                         <Text style={styles.addPrestationText}>Ajouter</Text>
-                                    </TouchableOpacity>
+                                </TouchableOpacity>
                                 </View>
                             </View>
 
@@ -3261,16 +3249,16 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                             >
                                                 <SafeIcon name="copy" size={16} color={modernColors.success} />
                                             </TouchableOpacity>
-                                            <TouchableOpacity
-                                                style={styles.deletePrestationButton}
-                                                onPress={() => {
-                                                    const prestations = [...(newProduct.prestations || [])];
-                                                    prestations.splice(index, 1);
-                                                    setNewProduct({ ...newProduct, prestations });
-                                                }}
-                                            >
+                                        <TouchableOpacity
+                                            style={styles.deletePrestationButton}
+                                            onPress={() => {
+                                                const prestations = [...(newProduct.prestations || [])];
+                                                prestations.splice(index, 1);
+                                                setNewProduct({ ...newProduct, prestations });
+                                            }}
+                                        >
                                                 <SafeIcon name="trash-2" size={16} color={modernColors.error} />
-                                            </TouchableOpacity>
+                                        </TouchableOpacity>
                                         </View>
                                     </View>
 
@@ -3305,16 +3293,16 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                         </View>
                                         <View style={[styles.prestationFieldContainerCompact, { flex: 2 }]}>
                                             <Text style={styles.prestationFieldLabelCompact}>Description (opt.)</Text>
-                                            <NativeInput
+                                        <NativeInput
                                                 placeholder="Ex: Comprend installation + câblage..."
-                                                value={prestation.description}
-                                                onChangeText={(text) => {
-                                                    const prestations = [...(newProduct.prestations || [])];
-                                                    prestations[index].description = text;
-                                                    setNewProduct({ ...newProduct, prestations });
-                                                }}
+                                            value={prestation.description}
+                                            onChangeText={(text) => {
+                                                const prestations = [...(newProduct.prestations || [])];
+                                                prestations[index].description = text;
+                                                setNewProduct({ ...newProduct, prestations });
+                                            }}
                                                 style={styles.fieldInputCompact}
-                                            />
+                                        />
                                         </View>
                                     </View>
                                 </View>

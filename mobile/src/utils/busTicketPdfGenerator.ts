@@ -1,14 +1,31 @@
 /**
  * Générateur de ticket PDF pour les réservations de bus
  * Génère un ticket de voyage professionnel avec toutes les informations
+ * Inclut un QR Code pour validation du ticket
  */
+
+/**
+ * Génère un QR Code en base64
+ * Utilise une API publique pour générer le QR code
+ */
+async function generateQRCode(data: string): Promise<string> {
+    try {
+        // Option 1: Utiliser une API publique (rapide et simple)
+        const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(data)}`;
+        return qrCodeUrl;
+    } catch (error) {
+        console.error('Erreur génération QR code:', error);
+        // Fallback: retourner un placeholder
+        return 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCI+PC9zdmc+';
+    }
+}
 
 export interface BusTicketData {
     // Informations réservation
     reservationId: string;
     passengerName: string;
     seatNumber: number;
-    
+
     // Informations voyage
     compagnie: string;
     logoAgence?: string;
@@ -18,17 +35,17 @@ export interface BusTicketData {
     dateDepart: string;
     heureDepart: string;
     classeVoyage: string;
-    
+
     // Informations paiement
     prix: number;
     devise: string;
     cautionPaid: number;
     totalPaid: number;
-    
+
     // Informations supplémentaires
     escales?: string;
     conditionsVoyage?: string;
-    
+
     // QR Code pour validation
     qrCodeData?: string;
 }
@@ -37,8 +54,9 @@ export interface BusTicketData {
  * Génère le HTML du ticket de voyage
  * Ce HTML sera converti en PDF par le backend ou par expo-print
  */
-export function generateBusTicketHTML(ticketData: BusTicketData): string {
+export async function generateBusTicketHTML(ticketData: BusTicketData): Promise<string> {
     const now = new Date().toLocaleString('fr-FR');
+    const qrCodeUrl = await generateQRCode(ticketData.qrCodeData || ticketData.reservationId);
     
     return `
 <!DOCTYPE html>
@@ -368,10 +386,8 @@ export function generateBusTicketHTML(ticketData: BusTicketData): string {
 
             <!-- QR Code -->
             <div class="qr-code-section">
-                <div class="qr-placeholder">
-                    🎫
-                </div>
-                <div style="font-size: 12px; color: #6B7280;">Scannez pour valider le ticket</div>
+                <img src="${qrCodeUrl}" alt="QR Code" style="width: 180px; height: 180px; border-radius: 10px; border: 3px solid #E5E7EB;" />
+                <div style="font-size: 13px; color: #6B7280; margin-top: 12px; font-weight: 600;">📱 Scannez pour valider le ticket</div>
                 <div class="reservation-id">
                     ID: ${ticketData.reservationId}
                 </div>
@@ -403,14 +419,14 @@ export async function generateAndDownloadTicket(ticketData: BusTicketData): Prom
         // Dynamically import expo-print
         const { printToFileAsync } = await import('expo-print');
         
-        const html = generateBusTicketHTML(ticketData);
+        const html = await generateBusTicketHTML(ticketData);
         
         const { uri } = await printToFileAsync({
             html,
             base64: false
         });
         
-        console.log('✅ Ticket PDF généré:', uri);
+        console.log('✅ Ticket PDF généré avec QR Code:', uri);
         return uri;
     } catch (error) {
         console.error('❌ Erreur génération PDF:', error);
@@ -424,13 +440,13 @@ export async function generateAndDownloadTicket(ticketData: BusTicketData): Prom
 export async function shareTicketPDF(pdfUri: string, passengerName: string) {
     try {
         const { shareAsync } = await import('expo-sharing');
-        
+
         await shareAsync(pdfUri, {
             mimeType: 'application/pdf',
             dialogTitle: `Ticket de voyage - ${passengerName}`,
             UTI: 'com.adobe.pdf'
         });
-        
+
         console.log('✅ Ticket partagé');
     } catch (error) {
         console.error('❌ Erreur partage PDF:', error);

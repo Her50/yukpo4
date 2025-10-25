@@ -1,5 +1,6 @@
 // @ts-nocheck
-import React, { useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import React, { useEffect, useState } from 'react';
 import {
     Modal,
     ScrollView,
@@ -10,6 +11,8 @@ import {
     View
 } from 'react-native';
 import SafeIcon from './SafeIcon';
+
+const PASSENGER_NAME_KEY = '@yukpomnang:passenger_name';
 
 const modernColors = {
     primary: '#6366F1',
@@ -43,9 +46,10 @@ interface BusSeatSelectorProps {
     onClose: () => void;
     busConfiguration: BusConfiguration;
     seatMap: Seat[];
-    onSelectSeat: (seat: Seat) => void;
+    onSelectSeat: (seat: Seat | Seat[]) => void; // Peut être une ou plusieurs places
     selectedSeatNumber?: number;
     product: any;
+    multipleMode?: boolean; // Mode réservation multiple
 }
 
 const BusSeatSelector: React.FC<BusSeatSelectorProps> = ({
@@ -55,10 +59,43 @@ const BusSeatSelector: React.FC<BusSeatSelectorProps> = ({
     seatMap,
     onSelectSeat,
     selectedSeatNumber,
-    product
+    product,
+    multipleMode = false
 }) => {
-    const [selectedSeat, setSelectedSeat] = useState<Seat | null>(null);
-    const [passengerName, setPassengerName] = useState('');
+    const [selectedSeats, setSelectedSeats] = useState<Seat[]>([]);
+    const [passengerNames, setPassengerNames] = useState<string[]>([]);
+    const [savedName, setSavedName] = useState('');
+    const [isMultipleMode, setIsMultipleMode] = useState(multipleMode);
+
+    // Charger le nom sauvegardé au démarrage
+    useEffect(() => {
+        const loadSavedName = async () => {
+            try {
+                const saved = await AsyncStorage.getItem(PASSENGER_NAME_KEY);
+                if (saved) {
+                    setSavedName(saved);
+                    setPassengerNames([saved]); // Proposer par défaut pour la première place
+                }
+            } catch (error) {
+                console.error('Erreur chargement nom sauvegardé:', error);
+            }
+        };
+        loadSavedName();
+    }, []);
+
+    // Mettre à jour passengerNames quand selectedSeats change
+    useEffect(() => {
+        const currentLength = passengerNames.length;
+        const neededLength = selectedSeats.length;
+        
+        if (neededLength > currentLength) {
+            // Ajouter des noms vides
+            setPassengerNames([...passengerNames, ...Array(neededLength - currentLength).fill('')]);
+        } else if (neededLength < currentLength) {
+            // Réduire les noms
+            setPassengerNames(passengerNames.slice(0, neededLength));
+        }
+    }, [selectedSeats.length]);
 
     const getSeatStyle = (seat: Seat) => {
         if (seat.type === 'driver') {
@@ -67,7 +104,7 @@ const BusSeatSelector: React.FC<BusSeatSelectorProps> = ({
         if (seat.status === 'occupied' || seat.status === 'reserved') {
             return styles.seatOccupied;
         }
-        if (selectedSeat?.id === seat.id || seat.number === selectedSeatNumber) {
+        if (selectedSeats.find(s => s.id === seat.id) || seat.number === selectedSeatNumber) {
             return styles.seatSelected;
         }
         return styles.seatAvailable;
@@ -80,21 +117,53 @@ const BusSeatSelector: React.FC<BusSeatSelectorProps> = ({
         if (seat.status === 'occupied' || seat.status === 'reserved') {
             return '🔒';
         }
-        if (selectedSeat?.id === seat.id || seat.number === selectedSeatNumber) {
-            return '✓';
+        const selectedIndex = selectedSeats.findIndex(s => s.id === seat.id);
+        if (selectedIndex >= 0) {
+            return isMultipleMode ? (selectedIndex + 1).toString() : '✓';
         }
         return seat.number;
     };
 
     const handleSeatPress = (seat: Seat) => {
         if (seat.status === 'available' && seat.type !== 'driver') {
-            setSelectedSeat(seat);
+            if (isMultipleMode) {
+                // Mode multiple: toggle la sélection
+                const isSelected = selectedSeats.find(s => s.id === seat.id);
+                if (isSelected) {
+                    setSelectedSeats(selectedSeats.filter(s => s.id !== seat.id));
+                } else {
+                    setSelectedSeats([...selectedSeats, seat]);
+                }
+            } else {
+                // Mode simple: remplace la sélection
+                setSelectedSeats([seat]);
+            }
         }
     };
 
-    const handleConfirm = () => {
-        if (selectedSeat && passengerName.trim()) {
-            onSelectSeat({ ...selectedSeat, passengerName: passengerName.trim() });
+    const handleConfirm = async () => {
+        // Vérifier que tous les noms sont remplis
+        const allNamesFilled = passengerNames.every((name, idx) => idx >= selectedSeats.length || name.trim().length > 0);
+        
+        if (selectedSeats.length > 0 && allNamesFilled) {
+            // Sauvegarder le premier nom pour les prochaines fois
+            if (passengerNames[0] && passengerNames[0].trim()) {
+                try {
+                    await AsyncStorage.setItem(PASSENGER_NAME_KEY, passengerNames[0].trim());
+                    console.log('✅ Nom passager sauvegardé:', passengerNames[0].trim());
+                } catch (error) {
+                    console.error('Erreur sauvegarde nom:', error);
+                }
+            }
+            
+            // Attacher les noms aux sièges
+            const seatsWithNames = selectedSeats.map((seat, idx) => ({
+                ...seat,
+                passengerName: passengerNames[idx].trim()
+            }));
+            
+            // Retourner un seul ou plusieurs sièges
+            onSelectSeat(isMultipleMode ? seatsWithNames : seatsWithNames[0]);
             onClose();
         }
     };
@@ -111,7 +180,7 @@ const BusSeatSelector: React.FC<BusSeatSelectorProps> = ({
         >
             <View style={styles.modalContainer}>
                 <View style={styles.modalContent}>
-                    {/* Header */}
+                {/* Header */}
                     <View style={styles.header}>
                         <View>
                             <Text style={styles.headerTitle}>🚌 Sélectionnez votre place</Text>
@@ -124,25 +193,50 @@ const BusSeatSelector: React.FC<BusSeatSelectorProps> = ({
                         </View>
                         <TouchableOpacity onPress={onClose} style={styles.closeButton}>
                             <SafeIcon name="x" size={24} color={modernColors.text} />
-                        </TouchableOpacity>
+                    </TouchableOpacity>
                     </View>
 
-                    {/* Statistiques */}
-                    <View style={styles.statsContainer}>
-                        <View style={styles.statItem}>
-                            <View style={[styles.statIndicator, { backgroundColor: modernColors.success }]} />
-                            <Text style={styles.statText}>{availableSeats} disponibles</Text>
-                        </View>
-                        <View style={styles.statItem}>
-                            <View style={[styles.statIndicator, { backgroundColor: '#9CA3AF' }]} />
-                            <Text style={styles.statText}>{reservedSeats} réservées</Text>
-                        </View>
-                        {selectedSeat && (
+                    {/* Statistiques et Toggle Mode */}
+                    <View style={styles.statsContainerWithToggle}>
+                        <View style={styles.statsContainer}>
                             <View style={styles.statItem}>
-                                <View style={[styles.statIndicator, { backgroundColor: modernColors.primary }]} />
-                                <Text style={styles.statText}>Place {selectedSeat.number}</Text>
+                                <View style={[styles.statIndicator, { backgroundColor: modernColors.success }]} />
+                                <Text style={styles.statText}>{availableSeats} disponibles</Text>
                             </View>
-                        )}
+                            <View style={styles.statItem}>
+                                <View style={[styles.statIndicator, { backgroundColor: '#9CA3AF' }]} />
+                                <Text style={styles.statText}>{reservedSeats} réservées</Text>
+                            </View>
+                            {selectedSeats.length > 0 && (
+                                <View style={styles.statItem}>
+                                    <View style={[styles.statIndicator, { backgroundColor: modernColors.primary }]} />
+                                    <Text style={styles.statText}>
+                                        {selectedSeats.length} {selectedSeats.length > 1 ? 'sélectionnées' : 'sélectionnée'}
+                                    </Text>
+                                </View>
+                            )}
+                        </View>
+                        <TouchableOpacity
+                            style={[styles.modeToggle, isMultipleMode && styles.modeToggleActive]}
+                            onPress={() => {
+                                setIsMultipleMode(!isMultipleMode);
+                                if (!isMultipleMode) {
+                                    // Passer en mode multiple: garder sélection
+                                } else {
+                                    // Passer en mode simple: garder seule la première
+                                    setSelectedSeats(selectedSeats.slice(0, 1));
+                                }
+                            }}
+                        >
+                            <SafeIcon 
+                                name={isMultipleMode ? "users" : "user"} 
+                                size={16} 
+                                color={isMultipleMode ? '#FFFFFF' : modernColors.primary} 
+                            />
+                            <Text style={[styles.modeToggleText, isMultipleMode && styles.modeToggleTextActive]}>
+                                {isMultipleMode ? 'Multiple' : 'Simple'}
+                            </Text>
+                        </TouchableOpacity>
                     </View>
 
                     {/* Plan du bus */}
@@ -168,7 +262,7 @@ const BusSeatSelector: React.FC<BusSeatSelectorProps> = ({
                                             return (
                                                 <React.Fragment key={seat.id}>
                                                     {isAisle && <View style={styles.aisle} />}
-                                                    <TouchableOpacity
+                    <TouchableOpacity
                                                         style={[styles.seat, getSeatStyle(seat)]}
                                                         onPress={() => handleSeatPress(seat)}
                                                         disabled={seat.status !== 'available' || seat.type === 'driver'}
@@ -179,14 +273,14 @@ const BusSeatSelector: React.FC<BusSeatSelectorProps> = ({
                                                         ]}>
                                                             {getSeatIcon(seat)}
                                                         </Text>
-                                                    </TouchableOpacity>
+                    </TouchableOpacity>
                                                 </React.Fragment>
                                             );
                                         })}
                                     </View>
                                 );
                             })}
-                        </View>
+                </View>
 
                         {/* Arrière du bus */}
                         <View style={styles.busBack}>
@@ -194,77 +288,103 @@ const BusSeatSelector: React.FC<BusSeatSelectorProps> = ({
                         </View>
                     </ScrollView>
 
-                    {/* Légende */}
-                    <View style={styles.legend}>
-                        <View style={styles.legendItem}>
-                            <View style={[styles.legendSeat, styles.seatAvailable]} />
-                            <Text style={styles.legendText}>Disponible</Text>
-                        </View>
-                        <View style={styles.legendItem}>
-                            <View style={[styles.legendSeat, styles.seatSelected]} />
-                            <Text style={styles.legendText}>Sélectionnée</Text>
-                        </View>
-                        <View style={styles.legendItem}>
-                            <View style={[styles.legendSeat, styles.seatOccupied]} />
-                            <Text style={styles.legendText}>Occupée</Text>
-                        </View>
+                {/* Légende */}
+                <View style={styles.legend}>
+                    <View style={styles.legendItem}>
+                        <View style={[styles.legendSeat, styles.seatAvailable]} />
+                        <Text style={styles.legendText}>Disponible</Text>
                     </View>
+                    <View style={styles.legendItem}>
+                        <View style={[styles.legendSeat, styles.seatSelected]} />
+                        <Text style={styles.legendText}>Sélectionnée</Text>
+                    </View>
+                    <View style={styles.legendItem}>
+                        <View style={[styles.legendSeat, styles.seatOccupied]} />
+                        <Text style={styles.legendText}>Occupée</Text>
+                    </View>
+                </View>
 
-                    {/* Formulaire nom passager */}
-                    {selectedSeat && (
-                        <View style={styles.passengerForm}>
+                    {/* Formulaire noms passagers */}
+                    {selectedSeats.length > 0 && (
+                        <ScrollView style={styles.passengerForm} nestedScrollEnabled>
                             <View style={styles.passengerFormHeader}>
-                                <SafeIcon name="user" size={18} color={modernColors.primary} />
-                                <Text style={styles.passengerFormTitle}>Informations du passager</Text>
+                                <SafeIcon name={isMultipleMode ? "users" : "user"} size={18} color={modernColors.primary} />
+                                <Text style={styles.passengerFormTitle}>
+                                    {isMultipleMode 
+                                        ? `Informations des ${selectedSeats.length} passagers` 
+                                        : 'Informations du passager'}
+                                </Text>
                             </View>
-                            <View style={styles.passengerInputContainer}>
-                                <Text style={styles.passengerInputLabel}>Nom complet <Text style={{ color: modernColors.error }}>*</Text></Text>
-                                <TextInput
-                                    style={styles.passengerInput}
-                                    placeholder="Ex: Jean MBARGA"
-                                    value={passengerName}
-                                    onChangeText={setPassengerName}
-                                    autoCapitalize="words"
-                                    placeholderTextColor="#9CA3AF"
-                                />
-                            </View>
+                            
+                            {selectedSeats.map((seat, index) => (
+                                <View key={seat.id} style={styles.passengerInputContainer}>
+                                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <Text style={styles.passengerInputLabel}>
+                                            {isMultipleMode && `Place ${seat.number} - `}Nom complet <Text style={{ color: modernColors.error }}>*</Text>
+                                        </Text>
+                                        {index === 0 && savedName && (
+                                            <Text style={styles.savedNameBadge}>✓ Sauvegardé</Text>
+                                        )}
+                                    </View>
+                                    <TextInput
+                                        style={styles.passengerInput}
+                                        placeholder={index === 0 ? "Ex: Jean MBARGA (vous)" : "Ex: Marie MBARGA"}
+                                        value={passengerNames[index] || ''}
+                                        onChangeText={(text) => {
+                                            const newNames = [...passengerNames];
+                                            newNames[index] = text;
+                                            setPassengerNames(newNames);
+                                        }}
+                                        autoCapitalize="words"
+                                        placeholderTextColor="#9CA3AF"
+                                    />
+                                    {index === 0 && savedName && passengerNames[0] === savedName && (
+                                        <Text style={styles.savedNameHint}>
+                                            💡 Modifiable si nécessaire
+                                        </Text>
+                                    )}
+                                </View>
+                            ))}
+                            
                             <View style={styles.cautionInfo}>
                                 <SafeIcon name="info" size={14} color={modernColors.warning} />
                                 <Text style={styles.cautionInfoText}>
-                                    Caution: <Text style={{ fontWeight: '700' }}>{product.cautionReservation || 500} FCFA</Text> • Validité: 30 min
+                                    Total: <Text style={{ fontWeight: '700' }}>
+                                        {((parseInt(product.prix) || 0) * selectedSeats.length).toLocaleString()} FCFA
+                                    </Text> pour {selectedSeats.length} {selectedSeats.length > 1 ? 'places' : 'place'}
                                 </Text>
                             </View>
-                        </View>
+                        </ScrollView>
                     )}
 
                     {/* Boutons d'action */}
                     <View style={styles.actions}>
-                        <TouchableOpacity
+                                    <TouchableOpacity
                             style={styles.cancelButton}
                             onPress={onClose}
                         >
                             <Text style={styles.cancelButtonText}>Annuler</Text>
-                        </TouchableOpacity>
+                                    </TouchableOpacity>
                         <TouchableOpacity
                             style={[
                                 styles.confirmButton,
-                                (!selectedSeat || !passengerName.trim()) && styles.confirmButtonDisabled
+                                (selectedSeats.length === 0 || !passengerNames.every((n, idx) => idx >= selectedSeats.length || n.trim().length > 0)) && styles.confirmButtonDisabled
                             ]}
                             onPress={handleConfirm}
-                            disabled={!selectedSeat || !passengerName.trim()}
+                            disabled={selectedSeats.length === 0 || !passengerNames.every((n, idx) => idx >= selectedSeats.length || n.trim().length > 0)}
                         >
                             <SafeIcon name="check" size={20} color="#FFFFFF" />
                             <Text style={styles.confirmButtonText}>
-                                {selectedSeat 
-                                    ? (passengerName.trim() 
-                                        ? `Payer caution ${product.cautionReservation || 500} FCFA` 
-                                        : 'Entrez votre nom')
-                                    : 'Sélectionnez une place'}
+                                {selectedSeats.length > 0
+                                    ? (passengerNames.every((n, idx) => idx >= selectedSeats.length || n.trim().length > 0)
+                                        ? `Payer ${((parseInt(product.prix) || 0) * selectedSeats.length).toLocaleString()} FCFA`
+                                        : `Entrez ${isMultipleMode ? 'les noms' : 'votre nom'}`)
+                                    : `Sélectionnez ${isMultipleMode ? 'les places' : 'une place'}`}
                             </Text>
                         </TouchableOpacity>
+                                            </View>
                     </View>
                 </View>
-            </View>
         </Modal>
     );
 };
@@ -310,12 +430,42 @@ const styles = StyleSheet.create({
     closeButton: {
         padding: 8,
     },
+    statsContainerWithToggle: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingHorizontal: 20,
+        paddingVertical: 12,
+        backgroundColor: modernColors.background,
+        borderBottomWidth: 1,
+        borderBottomColor: modernColors.border,
+    },
     statsContainer: {
         flexDirection: 'row',
-        gap: 16,
-        paddingHorizontal: 20,
-        paddingVertical: 16,
-        backgroundColor: modernColors.background,
+        gap: 12,
+        flex: 1,
+    },
+    modeToggle: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        backgroundColor: modernColors.surface,
+        borderWidth: 1.5,
+        borderColor: modernColors.primary,
+        borderRadius: 8,
+    },
+    modeToggleActive: {
+        backgroundColor: modernColors.primary,
+    },
+    modeToggleText: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: modernColors.primary,
+    },
+    modeToggleTextActive: {
+        color: '#FFFFFF',
     },
     statItem: {
         flexDirection: 'row',
@@ -538,6 +688,21 @@ const styles = StyleSheet.create({
         fontSize: 12,
         color: '#92400E',
         flex: 1,
+    },
+    savedNameBadge: {
+        fontSize: 11,
+        fontWeight: '600',
+        color: modernColors.success,
+        backgroundColor: '#D1FAE5',
+        paddingHorizontal: 8,
+        paddingVertical: 3,
+        borderRadius: 6,
+    },
+    savedNameHint: {
+        fontSize: 11,
+        color: modernColors.textSecondary,
+        marginTop: 6,
+        fontStyle: 'italic',
     },
 });
 
