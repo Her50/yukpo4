@@ -8,6 +8,8 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
+use std::sync::Arc;
+use crate::state::AppState;
 
 #[derive(Debug, Deserialize)]
 pub struct PhoneModelQuery {
@@ -31,8 +33,9 @@ pub struct CreatePhoneModel {
 /// Récupère les modèles de smartphones, optionnellement filtrés par marque
 pub async fn get_phone_models(
     Query(params): Query<PhoneModelQuery>,
-    State(pool): State<PgPool>,
+    State(state): State<Arc<AppState>>,
 ) -> Result<Json<Vec<PhoneModel>>, (StatusCode, String)> {
+    let pool = &state.pg;
     let models = if let Some(brand) = params.brand {
         // Recherche par marque spécifique
         sqlx::query_as!(
@@ -45,7 +48,7 @@ pub async fn get_phone_models(
             "#,
             brand
         )
-        .fetch_all(&pool)
+        .fetch_all(pool)
         .await
         .map_err(|e| {
             eprintln!("Erreur lors de la récupération des modèles par marque: {}", e);
@@ -64,7 +67,7 @@ pub async fn get_phone_models(
             ORDER BY brand, model
             "#
         )
-        .fetch_all(&pool)
+        .fetch_all(pool)
         .await
         .map_err(|e| {
             eprintln!("Erreur lors de la récupération de tous les modèles: {}", e);
@@ -81,9 +84,10 @@ pub async fn get_phone_models(
 /// POST /phone-models
 /// Crée un nouveau modèle de smartphone (ou met à jour updated_at si existe déjà)
 pub async fn create_phone_model(
-    State(pool): State<PgPool>,
+    State(state): State<Arc<AppState>>,
     Json(payload): Json<CreatePhoneModel>,
 ) -> Result<Json<PhoneModel>, (StatusCode, String)> {
+    let pool = &state.pg;
     // Validation des données
     if payload.brand.trim().is_empty() {
         return Err((
@@ -112,7 +116,7 @@ pub async fn create_phone_model(
         payload.brand.trim(),
         payload.model.trim()
     )
-    .fetch_one(&pool)
+    .fetch_one(pool)
     .await
     .map_err(|e| {
         eprintln!("Erreur lors de la création du modèle: {}", e);

@@ -6,6 +6,7 @@ use axum::{
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use std::sync::Arc;
+use crate::state::AppState;
 
 #[derive(Debug, Deserialize)]
 pub struct VehicleModelQuery {
@@ -29,8 +30,9 @@ pub struct VehicleModel {
 /// Récupérer les modèles de véhicules par marque
 pub async fn get_vehicle_models(
     Query(query): Query<VehicleModelQuery>,
-    State(pool): State<Arc<PgPool>>,
+    State(state): State<Arc<AppState>>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
+    let pool = &state.pg;
     let models = if let Some(brand) = query.brand {
         sqlx::query_as!(
             VehicleModel,
@@ -42,7 +44,7 @@ pub async fn get_vehicle_models(
             "#,
             brand
         )
-        .fetch_all(pool.as_ref())
+        .fetch_all(pool)
         .await
         .map_err(|e| {
             eprintln!("❌ Erreur récupération modèles pour marque {}: {:?}", brand, e);
@@ -61,7 +63,7 @@ pub async fn get_vehicle_models(
             ORDER BY brand ASC, model ASC
             "#
         )
-        .fetch_all(pool.as_ref())
+        .fetch_all(pool)
         .await
         .map_err(|e| {
             eprintln!("❌ Erreur récupération tous les modèles: {:?}", e);
@@ -81,9 +83,10 @@ pub async fn get_vehicle_models(
 
 /// Créer un nouveau modèle de véhicule
 pub async fn create_vehicle_model(
-    State(pool): State<Arc<PgPool>>,
+    State(state): State<Arc<AppState>>,
     Json(payload): Json<CreateVehicleModel>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
+    let pool = &state.pg;
     // Valider
     if payload.model.trim().len() < 2 {
         return Err((
@@ -108,7 +111,7 @@ pub async fn create_vehicle_model(
         payload.brand,
         payload.model.trim()
     )
-    .fetch_optional(pool.as_ref())
+    .fetch_optional(pool)
     .await
     .map_err(|e| {
         eprintln!("❌ Erreur vérification modèle existant: {:?}", e);
@@ -137,7 +140,7 @@ pub async fn create_vehicle_model(
         payload.brand,
         payload.model.trim()
     )
-    .fetch_one(pool.as_ref())
+    .fetch_one(pool)
     .await
     .map_err(|e| {
         eprintln!("❌ Erreur création modèle: {:?}", e);

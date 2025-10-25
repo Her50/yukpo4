@@ -149,10 +149,10 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .merge(weather_routes(state.clone()))
         .merge(nearby_services_routes(state.clone()))
         .merge(ai_chat_routes(state.clone()))
-        .merge(health_structure_routes(state.pool.clone()))
-        .merge(vehicle_model_routes(state.pool.clone()))
-        .merge(appliance_model_routes(state.pool.clone()))
-        .merge(phone_model_routes(state.pool.clone()));
+        .merge(health_structure_routes(state.clone()))
+        .merge(vehicle_model_routes(state.clone()))
+        .merge(appliance_model_routes(state.clone()))
+        .merge(phone_model_routes(state.clone()));
     
     // ✅ NOUVEAU: Routes pour @mentions et multi-participants conversations
     let conversation_routes_merged = crate::routes::conversation_routes::conversation_routes(state.clone());

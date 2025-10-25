@@ -6,6 +6,7 @@ use axum::{
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use std::sync::Arc;
+use crate::state::AppState;
 
 #[derive(Debug, Deserialize)]
 pub struct HealthStructureQuery {
@@ -31,8 +32,9 @@ pub struct HealthStructure {
 /// Récupérer toutes les structures de santé par type
 pub async fn get_health_structures(
     Query(query): Query<HealthStructureQuery>,
-    State(pool): State<Arc<PgPool>>,
+    State(state): State<Arc<AppState>>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
+    let pool = &state.pg;
     let structures = sqlx::query_as!(
         HealthStructure,
         r#"
@@ -43,7 +45,7 @@ pub async fn get_health_structures(
         "#,
         query.structure_type
     )
-    .fetch_all(pool.as_ref())
+    .fetch_all(pool)
     .await
     .map_err(|e| {
         eprintln!("❌ Erreur récupération structures de santé: {:?}", e);
@@ -62,9 +64,10 @@ pub async fn get_health_structures(
 
 /// Créer une nouvelle structure de santé
 pub async fn create_health_structure(
-    State(pool): State<Arc<PgPool>>,
+    State(state): State<Arc<AppState>>,
     Json(payload): Json<CreateHealthStructure>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
+    let pool = &state.pg;
     // Valider les données
     if payload.name.trim().len() < 3 {
         return Err((
@@ -91,7 +94,7 @@ pub async fn create_health_structure(
         payload.structure_type,
         payload.name.trim()
     )
-    .fetch_optional(pool.as_ref())
+    .fetch_optional(pool)
     .await
     .map_err(|e| {
         eprintln!("❌ Erreur vérification structure existante: {:?}", e);
@@ -120,7 +123,7 @@ pub async fn create_health_structure(
         payload.structure_type,
         payload.name.trim()
     )
-    .fetch_one(pool.as_ref())
+    .fetch_one(pool)
     .await
     .map_err(|e| {
         eprintln!("❌ Erreur création structure de santé: {:?}", e);
@@ -141,8 +144,9 @@ pub async fn create_health_structure(
 
 /// Récupérer toutes les structures (tous types)
 pub async fn get_all_health_structures(
-    State(pool): State<Arc<PgPool>>,
+    State(state): State<Arc<AppState>>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
+    let pool = &state.pg;
     let structures = sqlx::query_as!(
         HealthStructure,
         r#"
@@ -151,7 +155,7 @@ pub async fn get_all_health_structures(
         ORDER BY structure_type ASC, name ASC
         "#
     )
-    .fetch_all(pool.as_ref())
+    .fetch_all(pool)
     .await
     .map_err(|e| {
         eprintln!("❌ Erreur récupération toutes structures: {:?}", e);
