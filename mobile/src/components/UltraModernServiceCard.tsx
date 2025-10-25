@@ -1,3 +1,4 @@
+import { LinearGradient } from 'expo-linear-gradient';
 import React, { useState } from 'react';
 import {
     Alert,
@@ -7,15 +8,14 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 // Code corrigé (remplace @ts-ignore)
-import SafeIcon from './SafeIcon'
 import { useLocationDisplay } from '../hooks/useLocationDisplay';
 import { useServiceReviews } from '../hooks/useServiceReviews';
 import { useServiceStats } from '../hooks/useServiceStats';
 import { apiPost } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
 import ChatModalMobile from './ChatModalMobile';
+import SafeIcon from './SafeIcon';
 import ServiceMediaGallery from './ServiceMediaGallery';
 import ServiceRatingModal from './ServiceRatingModal';
 
@@ -351,16 +351,16 @@ const UltraModernServiceCard: React.FC<UltraModernServiceCardProps> = ({
 
                     {/* Informations de contact réelles */}
                     <View style={styles.contactInfoContainer}>
-                        {service.data?.whatsapp?.valeur && (
+                        {service.data?.whatsapp && getServiceFieldValue(service.data.whatsapp) !== 'Non spécifié' && (
                             <View style={styles.contactItem}>
                                 <SafeIcon name="message-circle" size={12} color={modernColors.success} />
-                                <Text style={styles.contactText}>WhatsApp: {service.data.whatsapp.valeur}</Text>
+                                <Text style={styles.contactText}>WhatsApp: {getServiceFieldValue(service.data.whatsapp)}</Text>
                             </View>
                         )}
-                        {service.data?.telephone?.valeur && (
+                        {service.data?.telephone && getServiceFieldValue(service.data.telephone) !== 'Non spécifié' && (
                             <View style={styles.contactItem}>
                                 <SafeIcon name="phone" size={12} color={modernColors.info} />
-                                <Text style={styles.contactText}>Tél: {service.data.telephone.valeur}</Text>
+                                <Text style={styles.contactText}>Tél: {getServiceFieldValue(service.data.telephone)}</Text>
                             </View>
                         )}
                     </View>

@@ -71,7 +71,7 @@ const BusSeatSelector: React.FC<BusSeatSelectorProps> = ({
     const [passengerNames, setPassengerNames] = useState<string[]>([]);
     const [savedName, setSavedName] = useState('');
     const [isMultipleMode, setIsMultipleMode] = useState(multipleMode);
-    
+
     // États pour la demande de retour
     const [wantReturn, setWantReturn] = useState(false);
     const [returnDate, setReturnDate] = useState('');
@@ -205,8 +205,9 @@ const BusSeatSelector: React.FC<BusSeatSelectorProps> = ({
         }
     };
 
-    const availableSeats = seatMap.filter(s => s.status === 'available').length;
-    const reservedSeats = seatMap.filter(s => s.status === 'reserved' || s.status === 'occupied').length;
+    // ✅ CORRECTION: Vérifier que seatMap existe avant de filtrer
+    const availableSeats = (seatMap || []).filter(s => s.status === 'available').length;
+    const reservedSeats = (seatMap || []).filter(s => s.status === 'reserved' || s.status === 'occupied').length;
 
     return (
         <Modal
@@ -217,21 +218,21 @@ const BusSeatSelector: React.FC<BusSeatSelectorProps> = ({
         >
             <View style={styles.modalContainer}>
                 <View style={styles.modalContent}>
-                {/* Header */}
+                    {/* Header */}
                     <View style={styles.header}>
                         <View>
                             <Text style={styles.headerTitle}>🚌 Sélectionnez votre place</Text>
                             <Text style={styles.headerSubtitle}>
                                 {product.depart} → {product.destination}
-                    </Text>
+                            </Text>
                             <Text style={styles.headerInfo}>
                                 {product.dateDepart} à {product.heureDepart}
-                    </Text>
+                            </Text>
                         </View>
                         <TouchableOpacity onPress={onClose} style={styles.closeButton}>
                             <SafeIcon name="x" size={24} color={modernColors.text} />
                         </TouchableOpacity>
-                </View>
+                    </View>
 
                     {/* Statistiques et Toggle Mode */}
                     <View style={styles.statsContainerWithToggle}>
@@ -239,18 +240,18 @@ const BusSeatSelector: React.FC<BusSeatSelectorProps> = ({
                             <View style={styles.statItem}>
                                 <View style={[styles.statIndicator, { backgroundColor: modernColors.success }]} />
                                 <Text style={styles.statText}>{availableSeats} disponibles</Text>
-                    </View>
+                            </View>
                             <View style={styles.statItem}>
                                 <View style={[styles.statIndicator, { backgroundColor: '#9CA3AF' }]} />
                                 <Text style={styles.statText}>{reservedSeats} réservées</Text>
-                    </View>
+                            </View>
                             {selectedSeats.length > 0 && (
                                 <View style={styles.statItem}>
                                     <View style={[styles.statIndicator, { backgroundColor: modernColors.primary }]} />
                                     <Text style={styles.statText}>
                                         {selectedSeats.length} {selectedSeats.length > 1 ? 'sélectionnées' : 'sélectionnée'}
                                     </Text>
-                    </View>
+                                </View>
                             )}
                         </View>
                         <TouchableOpacity
@@ -274,9 +275,9 @@ const BusSeatSelector: React.FC<BusSeatSelectorProps> = ({
                                 {isMultipleMode ? 'Multiple' : 'Simple'}
                             </Text>
                         </TouchableOpacity>
-                </View>
+                    </View>
 
-                {/* Plan du bus */}
+                    {/* Plan du bus */}
                     <ScrollView style={styles.busContainer} showsVerticalScrollIndicator={false}>
                         {/* Avant du bus */}
                         <View style={styles.busFront}>
@@ -286,9 +287,9 @@ const BusSeatSelector: React.FC<BusSeatSelectorProps> = ({
 
                         {/* Grille de sièges */}
                         <View style={styles.seatsGrid}>
-                            {Array.from({ length: busConfiguration.rows }).map((_, rowIndex) => {
+                            {Array.from({ length: busConfiguration?.rows || 0 }).map((_, rowIndex) => {
                                 // Première rangée peut avoir moins de sièges (chauffeur + passagers)
-                                const seatsInThisRow = seatMap.filter(s => s.row === rowIndex + 1);
+                                const seatsInThisRow = (seatMap || []).filter(s => s.row === rowIndex + 1);
 
                                 return (
                                     <View key={rowIndex} style={styles.seatRow}>
@@ -299,23 +300,23 @@ const BusSeatSelector: React.FC<BusSeatSelectorProps> = ({
                                             return (
                                                 <React.Fragment key={seat.id}>
                                                     {isAisle && <View style={styles.aisle} />}
-                                                <TouchableOpacity
+                                                    <TouchableOpacity
                                                         style={[styles.seat, getSeatStyle(seat)]}
-                                                    onPress={() => handleSeatPress(seat)}
+                                                        onPress={() => handleSeatPress(seat)}
                                                         disabled={
                                                             seat.type === 'driver' ||
                                                             seat.status === 'occupied' ||
                                                             seat.status === 'reserved' ||
                                                             ((seat.status === 'prebooked' || seat.prebooked) && seat.prebookedForUserId !== currentUserId)
                                                         }
-                                                >
-                                                    <Text style={[
+                                                    >
+                                                        <Text style={[
                                                             styles.seatNumber,
                                                             (seat.status === 'occupied' || seat.status === 'reserved' || ((seat.status === 'prebooked' || seat.prebooked) && seat.prebookedForUserId !== currentUserId) || seat.type === 'driver') && styles.seatNumberDisabled
-                                                    ]}>
+                                                        ]}>
                                                             {getSeatIcon(seat)}
-                                                    </Text>
-                                                </TouchableOpacity>
+                                                        </Text>
+                                                    </TouchableOpacity>
                                                 </React.Fragment>
                                             );
                                         })}
@@ -327,19 +328,19 @@ const BusSeatSelector: React.FC<BusSeatSelectorProps> = ({
                         {/* Arrière du bus */}
                         <View style={styles.busBack}>
                             <Text style={styles.busBackText}>ARRIÈRE</Text>
-                    </View>
-                </ScrollView>
+                        </View>
+                    </ScrollView>
 
                     {/* Légende */}
                     <View style={styles.legend}>
                         <View style={styles.legendItem}>
                             <View style={[styles.legendSeat, styles.seatAvailable]} />
                             <Text style={styles.legendText}>Disponible</Text>
-                                </View>
+                        </View>
                         <View style={styles.legendItem}>
                             <View style={[styles.legendSeat, styles.seatSelected]} />
                             <Text style={styles.legendText}>Sélectionnée</Text>
-                            </View>
+                        </View>
                         <View style={styles.legendItem}>
                             <View style={[styles.legendSeat, styles.seatPrebooked]} />
                             <Text style={styles.legendText}>Pré-réservée</Text>
@@ -347,8 +348,8 @@ const BusSeatSelector: React.FC<BusSeatSelectorProps> = ({
                         <View style={styles.legendItem}>
                             <View style={[styles.legendSeat, styles.seatOccupied]} />
                             <Text style={styles.legendText}>Occupée</Text>
-                </View>
-            </View>
+                        </View>
+                    </View>
 
                     {/* Formulaire noms passagers */}
                     {selectedSeats.length > 0 && (
@@ -359,8 +360,8 @@ const BusSeatSelector: React.FC<BusSeatSelectorProps> = ({
                                     {isMultipleMode
                                         ? `Informations des ${selectedSeats.length} passagers`
                                         : 'Informations du passager'}
-                            </Text>
-                        </View>
+                                </Text>
+                            </View>
 
                             {selectedSeats.map((seat, index) => (
                                 <View key={seat.id} style={styles.passengerInputContainer}>
@@ -370,8 +371,8 @@ const BusSeatSelector: React.FC<BusSeatSelectorProps> = ({
                                         </Text>
                                         {index === 0 && savedName && (
                                             <Text style={styles.savedNameBadge}>✓ Sauvegardé</Text>
-                    )}
-                </View>
+                                        )}
+                                    </View>
                                     <TextInput
                                         style={styles.passengerInput}
                                         placeholder={index === 0 ? "Ex: Jean MBARGA (vous)" : "Ex: Marie MBARGA"}
@@ -387,9 +388,9 @@ const BusSeatSelector: React.FC<BusSeatSelectorProps> = ({
                                     {index === 0 && savedName && passengerNames[0] === savedName && (
                                         <Text style={styles.savedNameHint}>
                                             💡 Modifiable si nécessaire
-                                    </Text>
+                                        </Text>
                                     )}
-            </View>
+                                </View>
                             ))}
 
                             <View style={styles.cautionInfo}>
@@ -398,8 +399,8 @@ const BusSeatSelector: React.FC<BusSeatSelectorProps> = ({
                                     Total: <Text style={{ fontWeight: '700' }}>
                                         {((parseInt(product.prix) || 0) * selectedSeats.length).toLocaleString()} FCFA
                                     </Text> pour {selectedSeats.length} {selectedSeats.length > 1 ? 'places' : 'place'}
-                            </Text>
-                    </View>
+                                </Text>
+                            </View>
                         </ScrollView>
                     )}
 
@@ -411,9 +412,9 @@ const BusSeatSelector: React.FC<BusSeatSelectorProps> = ({
                                 <Text style={styles.returnTripTitle}>
                                     Souhaitez-vous réserver votre retour ?
                                 </Text>
-                        </View>
+                            </View>
 
-                                <TouchableOpacity
+                            <TouchableOpacity
                                 style={styles.returnTripToggle}
                                 onPress={() => setWantReturn(!wantReturn)}
                             >
@@ -428,8 +429,8 @@ const BusSeatSelector: React.FC<BusSeatSelectorProps> = ({
                                 </View>
                                 <Text style={styles.returnToggleText}>
                                     {wantReturn ? '🔔 Oui, notifiez-moi' : 'Non, aller simple uniquement'}
-                                    </Text>
-                                </TouchableOpacity>
+                                </Text>
+                            </TouchableOpacity>
 
                             {wantReturn && (
                                 <View style={styles.returnFormContainer}>
@@ -437,14 +438,14 @@ const BusSeatSelector: React.FC<BusSeatSelectorProps> = ({
                                         <SafeIcon name="bell" size={16} color={modernColors.primary} />
                                         <Text style={styles.returnInfoText}>
                                             📲 Vous recevrez une notification dès qu'un bus correspondant sera créé!
-                            </Text>
+                                        </Text>
                                     </View>
 
                                     <View style={styles.returnFieldRow}>
                                         <View style={styles.returnFieldContainer}>
                                             <Text style={styles.returnFieldLabel}>
                                                 Date de retour souhaitée <Text style={styles.required}>*</Text>
-                                    </Text>
+                                            </Text>
                                             <View style={styles.returnInputWrapper}>
                                                 <SafeIcon name="calendar" size={16} color={modernColors.primary} />
                                                 <TextInput
@@ -456,7 +457,7 @@ const BusSeatSelector: React.FC<BusSeatSelectorProps> = ({
                                                     keyboardType="numeric"
                                                 />
                                             </View>
-                                </View>
+                                        </View>
 
                                         <View style={styles.returnFieldContainer}>
                                             <Text style={styles.returnFieldLabel}>
@@ -474,18 +475,18 @@ const BusSeatSelector: React.FC<BusSeatSelectorProps> = ({
                                                 />
                                             </View>
                                         </View>
-                                </View>
+                                    </View>
 
                                     <View style={styles.returnRouteInfo}>
                                         <SafeIcon name="arrow-right-left" size={14} color={modernColors.textSecondary} />
                                         <Text style={styles.returnRouteText}>
                                             Trajet retour: {product.destination} → {product.depart}
-                                            </Text>
-                                            </View>
-                                        </View>
+                                        </Text>
+                                    </View>
+                                </View>
                             )}
-                            </View>
-                        )}
+                        </View>
+                    )}
 
                     {/* Détails de paiement */}
                     {selectedSeats.length > 0 && passengerNames.every((n, idx) => idx >= selectedSeats.length || n.trim().length > 0) && (
@@ -493,11 +494,11 @@ const BusSeatSelector: React.FC<BusSeatSelectorProps> = ({
                             <View style={styles.breakdownRow}>
                                 <Text style={styles.breakdownLabel}>
                                     {selectedSeats.length} {selectedSeats.length > 1 ? 'billets' : 'billet'} × {(parseInt(product.prix) || 0).toLocaleString()} FCFA
-                            </Text>
+                                </Text>
                                 <Text style={styles.breakdownValue}>
                                     {((parseInt(product.prix) || 0) * selectedSeats.length).toLocaleString()} FCFA
-                            </Text>
-                                </View>
+                                </Text>
+                            </View>
                             <View style={styles.breakdownRow}>
                                 <View style={styles.feeLabel}>
                                     <SafeIcon name="credit-card" size={14} color={modernColors.primary} />
@@ -511,20 +512,20 @@ const BusSeatSelector: React.FC<BusSeatSelectorProps> = ({
                                 <Text style={styles.totalValue}>
                                     {((parseInt(product.prix) || 0) * selectedSeats.length + 500).toLocaleString()} FCFA
                                 </Text>
-                        </View>
+                            </View>
                         </View>
                     )}
 
                     {/* Boutons d'action */}
                     <View style={styles.actions}>
-                                    <TouchableOpacity
+                        <TouchableOpacity
                             style={styles.cancelButton}
                             onPress={onClose}
                         >
                             <Text style={styles.cancelButtonText}>Annuler</Text>
-                                    </TouchableOpacity>
-                                    <TouchableOpacity
-                                                        style={[
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={[
                                 styles.confirmButton,
                                 (selectedSeats.length === 0 || !passengerNames.every((n, idx) => idx >= selectedSeats.length || n.trim().length > 0)) && styles.confirmButtonDisabled
                             ]}
@@ -538,11 +539,11 @@ const BusSeatSelector: React.FC<BusSeatSelectorProps> = ({
                                         ? `Payer ${((parseInt(product.prix) || 0) * selectedSeats.length + 500).toLocaleString()} FCFA`
                                         : `Entrez ${isMultipleMode ? 'les noms' : 'votre nom'}`)
                                     : `Sélectionnez ${isMultipleMode ? 'les places' : 'une place'}`}
-                                                        </Text>
-                                                    </TouchableOpacity>
-                                            </View>
+                            </Text>
+                        </TouchableOpacity>
                     </View>
                 </View>
+            </View>
         </Modal>
     );
 };

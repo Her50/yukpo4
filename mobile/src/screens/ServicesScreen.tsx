@@ -166,7 +166,10 @@ const ServicesScreen: React.FC = () => {
     const categoryMap = new Map<string, CategoryStats>();
 
     servicesData.forEach(service => {
-      const category = service.data?.category || 'Autre';
+      // ✅ CORRECTION: Extraire la valeur de category qui peut être {valeur, type_donnee, origine_champs}
+      const categoryField = service.data?.category;
+      const category = getFieldValue(categoryField) || 'Autre';
+
       const existing = categoryMap.get(category) || {
         name: category,
         count: 0,
@@ -273,7 +276,10 @@ const ServicesScreen: React.FC = () => {
 
   const filteredServices = services.filter(service => {
     if (selectedCategory === 'all') return true;
-    return service.data?.category === selectedCategory;
+    // ✅ CORRECTION: Extraire la valeur de category avant comparaison
+    const categoryField = service.data?.category;
+    const category = getFieldValue(categoryField);
+    return category === selectedCategory;
   });
 
   const sortedServices = [...filteredServices].sort((a, b) => {

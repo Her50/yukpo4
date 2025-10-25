@@ -9557,14 +9557,43 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
             </Modal>
 
             {/* Modal de sélection de place pour tickets de voyage */}
-            <BusSeatSelector
-                visible={showSeatSelector}
-                onClose={() => setShowSeatSelector(false)}
-                onSelectSeat={(seatLabel) => {
-                    setNewProduct({ ...newProduct, numeroPlace: seatLabel });
-                }}
-                busType="standard"
-            />
+            {showSeatSelector && (
+                <BusSeatSelector
+                    visible={showSeatSelector}
+                    onClose={() => setShowSeatSelector(false)}
+                    onSelectSeat={(seat) => {
+                        // Gérer le siège sélectionné (peut être un seul ou un tableau)
+                        const seatNumber = Array.isArray(seat) ? seat.map(s => s.number).join(', ') : seat.number;
+                        setNewProduct({ ...newProduct, numeroPlace: String(seatNumber) });
+                        setShowSeatSelector(false);
+                    }}
+                    busConfiguration={{
+                        rows: 10,
+                        seatsPerRow: 4,
+                        aislePosition: 2
+                    }}
+                    seatMap={
+                        // Génération d'un plan de bus standard (40 places)
+                        Array.from({ length: 40 }, (_, i) => ({
+                            id: `seat-${i + 1}`,
+                            number: i + 1,
+                            row: Math.floor(i / 4) + 1,
+                            col: (i % 4) + 1,
+                            status: 'available' as const,
+                            type: i === 0 ? 'driver' as const : 'standard' as const
+                        }))
+                    }
+                    product={{
+                        ...newProduct,
+                        depart: newProduct.depart || 'Départ',
+                        destination: newProduct.destination || 'Destination',
+                        dateDepart: newProduct.dateDepart || new Date().toLocaleDateString('fr-FR'),
+                        heureDepart: newProduct.heureDepart || '00:00',
+                        prix: newProduct.prix || '0'
+                    }}
+                    multipleMode={false}
+                />
+            )}
 
             {/* Modal GPS pour immobilier et hôtellerie */}
             <ModernGPSModal
