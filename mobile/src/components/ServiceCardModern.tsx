@@ -21,6 +21,7 @@ interface ServiceCardModernProps {
     onToggleStatus: (service: any) => void;
     onDelete: (service: any) => void;
     onPromotion?: (service: any) => void;
+    onViewProducts?: (service: any) => void;
 }
 
 const ServiceCardModern: React.FC<ServiceCardModernProps> = ({
@@ -30,7 +31,8 @@ const ServiceCardModern: React.FC<ServiceCardModernProps> = ({
     onShare,
     onToggleStatus,
     onDelete,
-    onPromotion
+    onPromotion,
+    onViewProducts
 }) => {
     const getStatusColor = (status: string) => {
         switch (status) {
@@ -133,6 +135,27 @@ const ServiceCardModern: React.FC<ServiceCardModernProps> = ({
                     </View>
                 )}
             </View>
+
+            {/* Badge Produits - Bien visible */}
+            {service.data?.produits?.valeur && Array.isArray(service.data.produits.valeur) && service.data.produits.valeur.length > 0 && (
+                <TouchableOpacity
+                    style={styles.productsBadge}
+                    onPress={() => onViewProducts && onViewProducts(service)}
+                    activeOpacity={0.7}
+                >
+                    <View style={styles.productsBadgeContent}>
+                        <SafeIcon name="package" size={18} color="#FFFFFF" />
+                        <View style={styles.productsBadgeTextContainer}>
+                            <Text style={styles.productsBadgeCount}>
+                                {service.data.produits.valeur.length} produit{service.data.produits.valeur.length > 1 ? 's' : ''}
+                            </Text>
+                            <Text style={styles.productsBadgeAction}>
+                                Voir le détail →
+                            </Text>
+                        </View>
+                    </View>
+                </TouchableOpacity>
+            )}
 
             {/* Actions - Design comme le frontend */}
             <View style={styles.actionsContainer}>
@@ -259,6 +282,36 @@ const styles = StyleSheet.create({
         fontSize: 12,
         color: '#666',
         marginLeft: 6,
+    },
+    productsBadge: {
+        marginTop: 12,
+        marginBottom: 8,
+        backgroundColor: '#6366F1',
+        borderRadius: 12,
+        padding: 14,
+        shadowColor: '#6366F1',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
+        elevation: 3,
+    },
+    productsBadgeContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+    },
+    productsBadgeTextContainer: {
+        flex: 1,
+    },
+    productsBadgeCount: {
+        fontSize: 15,
+        fontWeight: '700',
+        color: '#FFFFFF',
+    },
+    productsBadgeAction: {
+        fontSize: 12,
+        color: '#E0E7FF',
+        marginTop: 2,
     },
     actionsContainer: {
         marginTop: 16,

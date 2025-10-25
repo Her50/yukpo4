@@ -534,6 +534,7 @@ const MesServicesScreen: React.FC = () => {
                 onToggleStatus={handleToggleServiceStatus}
                 onDelete={handleDeleteService}
                 onPromotion={handlePromotionService}
+                onViewProducts={() => navigation.navigate('MesProduits' as never)}
               />
             ))}
           </View>
