@@ -2191,26 +2191,26 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                 );
 
             case 'ticket_voyage':
-                const busConfig = newProduct.busConfiguration || { 
-                    rows: 12, 
-                    seatsPerRow: 4, 
+                const busConfig = newProduct.busConfiguration || {
+                    rows: 12,
+                    seatsPerRow: 4,
                     aislePosition: 2,
                     firstRowSeats: 2, // 2 ou 3 (chauffeur + passagers)
                     allSeatsAvailable: true // Par défaut toutes les places disponibles
                 };
-                
+
                 // Calculer le nombre total de sièges (première rangée différente)
                 const firstRowPassengerSeats = busConfig.firstRowSeats || 2;
                 const totalSeats = firstRowPassengerSeats + (busConfig.rows - 1) * busConfig.seatsPerRow;
-                
+
                 // Générer le plan de sièges si pas déjà fait
                 if (!newProduct.seatMap || newProduct.seatMap.length === 0) {
                     const seatMap = [];
                     let seatNumber = 1;
-                    
+
                     for (let row = 1; row <= busConfig.rows; row++) {
                         const seatsInRow = row === 1 ? firstRowPassengerSeats : busConfig.seatsPerRow;
-                        
+
                         for (let col = 1; col <= seatsInRow; col++) {
                             const isDriver = row === 1 && col === 1;
                             seatMap.push({
@@ -2268,7 +2268,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 <SafeIcon name="settings" size={20} color={modernColors.primary} />
                                 <Text style={styles.sectionTitleMedium}>Configuration du Bus</Text>
                             </View>
-                            
+
                             <View style={styles.fieldRow}>
                                 <View style={[styles.fieldContainer, { flex: 1 }]}>
                                     <Text style={styles.fieldLabel}>Rangées <Text style={styles.required}>*</Text></Text>
@@ -2277,8 +2277,8 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                         value={busConfig.rows?.toString() || ''}
                                         onChangeText={(text) => {
                                             const rows = parseInt(text) || 0;
-                                            setNewProduct({ 
-                                                ...newProduct, 
+                                            setNewProduct({
+                                                ...newProduct,
                                                 busConfiguration: { ...busConfig, rows },
                                                 seatMap: [] // Reset seat map
                                             });
@@ -2294,8 +2294,8 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                         value={busConfig.seatsPerRow?.toString() || ''}
                                         onChangeText={(text) => {
                                             const seatsPerRow = parseInt(text) || 0;
-                                            setNewProduct({ 
-                                                ...newProduct, 
+                                            setNewProduct({
+                                                ...newProduct,
                                                 busConfiguration: { ...busConfig, seatsPerRow },
                                                 seatMap: [] // Reset seat map
                                             });
@@ -2323,10 +2323,10 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                             });
                                         }}
                                     >
-                                        <SafeIcon 
-                                            name="user" 
-                                            size={18} 
-                                            color={busConfig.firstRowSeats === 2 ? '#FFFFFF' : modernColors.primary} 
+                                        <SafeIcon
+                                            name="user"
+                                            size={18}
+                                            color={busConfig.firstRowSeats === 2 ? '#FFFFFF' : modernColors.primary}
                                         />
                                         <Text style={[
                                             styles.busFirstRowButtonText,
@@ -2348,10 +2348,10 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                             });
                                         }}
                                     >
-                                        <SafeIcon 
-                                            name="users" 
-                                            size={18} 
-                                            color={busConfig.firstRowSeats === 3 ? '#FFFFFF' : modernColors.primary} 
+                                        <SafeIcon
+                                            name="users"
+                                            size={18}
+                                            color={busConfig.firstRowSeats === 3 ? '#FFFFFF' : modernColors.primary}
                                         />
                                         <Text style={[
                                             styles.busFirstRowButtonText,
@@ -2371,9 +2371,9 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                     onPress={() => {
                                         setNewProduct({
                                             ...newProduct,
-                                            busConfiguration: { 
-                                                ...busConfig, 
-                                                allSeatsAvailable: !busConfig.allSeatsAvailable 
+                                            busConfiguration: {
+                                                ...busConfig,
+                                                allSeatsAvailable: !busConfig.allSeatsAvailable
                                             },
                                             seatMap: []
                                         });
@@ -2389,8 +2389,8 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                         ]} />
                                     </View>
                                     <Text style={styles.availabilityToggleText}>
-                                        {busConfig.allSeatsAvailable 
-                                            ? '✅ Toutes les places disponibles' 
+                                        {busConfig.allSeatsAvailable
+                                            ? '✅ Toutes les places disponibles'
                                             : '⚠️ Sélection manuelle requise'}
                                     </Text>
                                 </TouchableOpacity>
@@ -2424,7 +2424,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                                                 const isDriver = rowIndex === 0 && colIndex === 0;
                                                                 const isAisle = !isDriver && colIndex === Math.floor(seatsInRow / 2);
                                                                 const seat = newProduct.seatMap.find(s => s.row === rowIndex + 1 && s.col === colIndex + 1);
-                                                                
+
                                                                 return (
                                                                     <React.Fragment key={colIndex}>
                                                                         {isAisle && <View style={styles.busAisle} />}
@@ -2518,9 +2518,88 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             />
                         </View>
 
+                        {/* Informations Ticket PDF */}
+                        <View style={styles.ticketInfoSection}>
+                            <View style={styles.sectionHeaderWithIcon}>
+                                <SafeIcon name="file-text" size={20} color={modernColors.primary} />
+                                <Text style={styles.sectionTitleMedium}>Informations Ticket de Voyage</Text>
+                            </View>
+
+                            <View style={styles.fieldRow}>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <Text style={styles.fieldLabel}>Numéro/Code du bus <Text style={styles.required}>*</Text></Text>
+                                    <NativeInput
+                                        placeholder="Ex: BUS-237-DLA"
+                                        value={newProduct.numeroBus || ''}
+                                        onChangeText={(text) => setNewProduct({ ...newProduct, numeroBus: text })}
+                                        style={styles.fieldInput}
+                                    />
+                                </View>
+                                <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                    <Text style={styles.fieldLabel}>Caution réservation (FCFA)</Text>
+                                    <NativeInput
+                                        placeholder="500"
+                                        value={newProduct.cautionReservation?.toString() || '500'}
+                                        onChangeText={(text) => setNewProduct({ ...newProduct, cautionReservation: parseInt(text) || 500 })}
+                                        style={styles.fieldInput}
+                                        keyboardType="numeric"
+                                    />
+                                </View>
+                            </View>
+
+                            <View style={styles.fieldContainer}>
+                                <Text style={styles.fieldLabel}>Logo de l'agence (optionnel)</Text>
+                                <TouchableOpacity
+                                    style={styles.logoUploadButton}
+                                    onPress={async () => {
+                                        const result = await handlePickImages();
+                                        if (result && result.length > 0) {
+                                            setNewProduct({ ...newProduct, logoAgence: result[0] });
+                                        }
+                                    }}
+                                >
+                                    {newProduct.logoAgence ? (
+                                        <View style={styles.logoPreview}>
+                                            <Image source={{ uri: newProduct.logoAgence }} style={styles.logoImage} />
+                                            <TouchableOpacity
+                                                style={styles.removeLogo}
+                                                onPress={() => setNewProduct({ ...newProduct, logoAgence: null })}
+                                            >
+                                                <SafeIcon name="x" size={16} color="#FFFFFF" />
+                                            </TouchableOpacity>
+                                        </View>
+                                    ) : (
+                                        <View style={styles.logoUploadContent}>
+                                            <SafeIcon name="upload" size={24} color={modernColors.primary} />
+                                            <Text style={styles.logoUploadText}>Ajouter logo agence</Text>
+                                        </View>
+                                    )}
+                                </TouchableOpacity>
+                            </View>
+
+                            <View style={styles.fieldContainer}>
+                                <Text style={styles.fieldLabel}>Conditions de voyage (optionnel)</Text>
+                                <NativeInput
+                                    placeholder="Ex: Bagages inclus 20kg max, Arrivée garantie, Remboursement si annulation 24h avant..."
+                                    value={newProduct.conditionsVoyage || ''}
+                                    onChangeText={(text) => setNewProduct({ ...newProduct, conditionsVoyage: text })}
+                                    style={[styles.fieldInput, styles.textareaInput]}
+                                    multiline
+                                    numberOfLines={3}
+                                />
+                            </View>
+
+                            <View style={styles.infoCard}>
+                                <SafeIcon name="info" size={16} color={modernColors.info} />
+                                <Text style={styles.infoCardText}>
+                                    Le client paiera une caution de <Text style={{ fontWeight: '700' }}>{newProduct.cautionReservation || 500} FCFA</Text> pour bloquer sa place. Le ticket PDF sera généré après confirmation du paiement complet.
+                                </Text>
+                            </View>
+                        </View>
+
                         <View style={styles.hintBox}>
                             <Text style={styles.hintText}>
-                                ✅ <Text style={styles.hintBold}>Les clients pourront:</Text> Voir le plan du bus en temps réel, sélectionner leur place préférée, et réserver instantanément depuis ResultatBesoinScreen.
+                                🎫 <Text style={styles.hintBold}>Système Pro:</Text> Caution → Réservation temporaire → Paiement complet → Ticket PDF généré avec logo, infos bus et nom du passager.
                             </Text>
                         </View>
                     </>
@@ -7190,6 +7269,70 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontWeight: '600',
         color: modernColors.text,
+    },
+    ticketInfoSection: {
+        backgroundColor: '#F0F9FF',
+        borderWidth: 1,
+        borderColor: '#BAE6FD',
+        borderRadius: 12,
+        padding: 16,
+        marginBottom: 16,
+    },
+    logoUploadButton: {
+        borderWidth: 2,
+        borderStyle: 'dashed',
+        borderColor: modernColors.primary,
+        borderRadius: 12,
+        padding: 20,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: modernColors.background,
+        marginTop: 8,
+    },
+    logoUploadContent: {
+        alignItems: 'center',
+        gap: 8,
+    },
+    logoUploadText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: modernColors.primary,
+    },
+    logoPreview: {
+        position: 'relative',
+        width: 120,
+        height: 120,
+    },
+    logoImage: {
+        width: 120,
+        height: 120,
+        borderRadius: 8,
+        resizeMode: 'contain',
+    },
+    removeLogo: {
+        position: 'absolute',
+        top: -8,
+        right: -8,
+        backgroundColor: modernColors.error,
+        borderRadius: 12,
+        padding: 4,
+    },
+    infoCard: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        gap: 10,
+        padding: 12,
+        backgroundColor: '#EFF6FF',
+        borderRadius: 8,
+        borderLeftWidth: 4,
+        borderLeftColor: modernColors.info,
+        marginTop: 12,
+    },
+    infoCardText: {
+        flex: 1,
+        fontSize: 13,
+        color: modernColors.text,
+        lineHeight: 20,
     },
     // Style pour le rappel de catégorie
     categoryReminder: {

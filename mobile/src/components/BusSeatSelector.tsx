@@ -5,6 +5,7 @@ import {
     ScrollView,
     StyleSheet,
     Text,
+    TextInput,
     TouchableOpacity,
     View
 } from 'react-native';
@@ -57,6 +58,7 @@ const BusSeatSelector: React.FC<BusSeatSelectorProps> = ({
     product
 }) => {
     const [selectedSeat, setSelectedSeat] = useState<Seat | null>(null);
+    const [passengerName, setPassengerName] = useState('');
 
     const getSeatStyle = (seat: Seat) => {
         if (seat.type === 'driver') {
@@ -91,8 +93,8 @@ const BusSeatSelector: React.FC<BusSeatSelectorProps> = ({
     };
 
     const handleConfirm = () => {
-        if (selectedSeat) {
-            onSelectSeat(selectedSeat);
+        if (selectedSeat && passengerName.trim()) {
+            onSelectSeat({ ...selectedSeat, passengerName: passengerName.trim() });
             onClose();
         }
     };
@@ -109,7 +111,7 @@ const BusSeatSelector: React.FC<BusSeatSelectorProps> = ({
         >
             <View style={styles.modalContainer}>
                 <View style={styles.modalContent}>
-                {/* Header */}
+                    {/* Header */}
                     <View style={styles.header}>
                         <View>
                             <Text style={styles.headerTitle}>🚌 Sélectionnez votre place</Text>
@@ -122,7 +124,7 @@ const BusSeatSelector: React.FC<BusSeatSelectorProps> = ({
                         </View>
                         <TouchableOpacity onPress={onClose} style={styles.closeButton}>
                             <SafeIcon name="x" size={24} color={modernColors.text} />
-                    </TouchableOpacity>
+                        </TouchableOpacity>
                     </View>
 
                     {/* Statistiques */}
@@ -156,7 +158,7 @@ const BusSeatSelector: React.FC<BusSeatSelectorProps> = ({
                             {Array.from({ length: busConfiguration.rows }).map((_, rowIndex) => {
                                 // Première rangée peut avoir moins de sièges (chauffeur + passagers)
                                 const seatsInThisRow = seatMap.filter(s => s.row === rowIndex + 1);
-                                
+
                                 return (
                                     <View key={rowIndex} style={styles.seatRow}>
                                         <Text style={styles.rowLabel}>{rowIndex + 1}</Text>
@@ -192,46 +194,77 @@ const BusSeatSelector: React.FC<BusSeatSelectorProps> = ({
                         </View>
                     </ScrollView>
 
-                {/* Légende */}
-                <View style={styles.legend}>
-                    <View style={styles.legendItem}>
-                        <View style={[styles.legendSeat, styles.seatAvailable]} />
-                        <Text style={styles.legendText}>Disponible</Text>
+                    {/* Légende */}
+                    <View style={styles.legend}>
+                        <View style={styles.legendItem}>
+                            <View style={[styles.legendSeat, styles.seatAvailable]} />
+                            <Text style={styles.legendText}>Disponible</Text>
+                        </View>
+                        <View style={styles.legendItem}>
+                            <View style={[styles.legendSeat, styles.seatSelected]} />
+                            <Text style={styles.legendText}>Sélectionnée</Text>
+                        </View>
+                        <View style={styles.legendItem}>
+                            <View style={[styles.legendSeat, styles.seatOccupied]} />
+                            <Text style={styles.legendText}>Occupée</Text>
+                        </View>
                     </View>
-                    <View style={styles.legendItem}>
-                        <View style={[styles.legendSeat, styles.seatSelected]} />
-                        <Text style={styles.legendText}>Sélectionnée</Text>
-                    </View>
-                    <View style={styles.legendItem}>
-                        <View style={[styles.legendSeat, styles.seatOccupied]} />
-                        <Text style={styles.legendText}>Occupée</Text>
-                    </View>
-                </View>
+
+                    {/* Formulaire nom passager */}
+                    {selectedSeat && (
+                        <View style={styles.passengerForm}>
+                            <View style={styles.passengerFormHeader}>
+                                <SafeIcon name="user" size={18} color={modernColors.primary} />
+                                <Text style={styles.passengerFormTitle}>Informations du passager</Text>
+                            </View>
+                            <View style={styles.passengerInputContainer}>
+                                <Text style={styles.passengerInputLabel}>Nom complet <Text style={{ color: modernColors.error }}>*</Text></Text>
+                                <TextInput
+                                    style={styles.passengerInput}
+                                    placeholder="Ex: Jean MBARGA"
+                                    value={passengerName}
+                                    onChangeText={setPassengerName}
+                                    autoCapitalize="words"
+                                    placeholderTextColor="#9CA3AF"
+                                />
+                            </View>
+                            <View style={styles.cautionInfo}>
+                                <SafeIcon name="info" size={14} color={modernColors.warning} />
+                                <Text style={styles.cautionInfoText}>
+                                    Caution: <Text style={{ fontWeight: '700' }}>{product.cautionReservation || 500} FCFA</Text> • Validité: 30 min
+                                </Text>
+                            </View>
+                        </View>
+                    )}
 
                     {/* Boutons d'action */}
                     <View style={styles.actions}>
-                                                <TouchableOpacity
+                        <TouchableOpacity
                             style={styles.cancelButton}
                             onPress={onClose}
                         >
                             <Text style={styles.cancelButtonText}>Annuler</Text>
-                                    </TouchableOpacity>
-                                    <TouchableOpacity
-                                                        style={[
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={[
                                 styles.confirmButton,
-                                !selectedSeat && styles.confirmButtonDisabled
+                                (!selectedSeat || !passengerName.trim()) && styles.confirmButtonDisabled
                             ]}
                             onPress={handleConfirm}
-                            disabled={!selectedSeat}
+                            disabled={!selectedSeat || !passengerName.trim()}
                         >
                             <SafeIcon name="check" size={20} color="#FFFFFF" />
                             <Text style={styles.confirmButtonText}>
-                                {selectedSeat ? `Réserver place ${selectedSeat.number}` : 'Sélectionnez une place'}
-                                                        </Text>
-                                                    </TouchableOpacity>
-                                            </View>
+                                {selectedSeat 
+                                    ? (passengerName.trim() 
+                                        ? `Payer caution ${product.cautionReservation || 500} FCFA` 
+                                        : 'Entrez votre nom')
+                                    : 'Sélectionnez une place'}
+                            </Text>
+                        </TouchableOpacity>
                     </View>
                 </View>
+            </View>
         </Modal>
     );
 };
@@ -453,6 +486,58 @@ const styles = StyleSheet.create({
         fontSize: 15,
         fontWeight: '700',
         color: '#FFFFFF',
+    },
+    passengerForm: {
+        paddingHorizontal: 20,
+        paddingVertical: 16,
+        backgroundColor: '#FEFCE8',
+        borderTopWidth: 1,
+        borderBottomWidth: 1,
+        borderColor: '#FDE047',
+    },
+    passengerFormHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        marginBottom: 12,
+    },
+    passengerFormTitle: {
+        fontSize: 15,
+        fontWeight: '700',
+        color: modernColors.text,
+    },
+    passengerInputContainer: {
+        marginBottom: 12,
+    },
+    passengerInputLabel: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: modernColors.text,
+        marginBottom: 6,
+    },
+    passengerInput: {
+        backgroundColor: '#FFFFFF',
+        borderWidth: 1.5,
+        borderColor: modernColors.primary,
+        borderRadius: 10,
+        paddingHorizontal: 14,
+        paddingVertical: 12,
+        fontSize: 15,
+        fontWeight: '500',
+        color: modernColors.text,
+    },
+    cautionInfo: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        padding: 10,
+        backgroundColor: '#FEF3C7',
+        borderRadius: 8,
+    },
+    cautionInfoText: {
+        fontSize: 12,
+        color: '#92400E',
+        flex: 1,
     },
 });
 

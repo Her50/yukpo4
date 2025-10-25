@@ -13,6 +13,7 @@ interface PaymentMethod {
     cardExpiry?: string;
     cardCVV?: string;
     cardHolder?: string;
+    taxId?: string; // Numéro de contribuable
 }
 
 interface PaymentMethodSelectorProps {
@@ -29,6 +30,7 @@ const PaymentMethodSelector: React.FC<PaymentMethodSelectorProps> = ({ onPayment
     const [cardExpiry, setCardExpiry] = useState('');
     const [cardCVV, setCardCVV] = useState('');
     const [cardHolder, setCardHolder] = useState('');
+    const [taxId, setTaxId] = useState(''); // Numéro de contribuable
 
     // Validation en temps réel
     const [phoneError, setPhoneError] = useState<string | null>(null);
@@ -47,7 +49,8 @@ const PaymentMethodSelector: React.FC<PaymentMethodSelectorProps> = ({ onPayment
             if (validation.valid) {
                 onPaymentChange({
                     type: selectedType,
-                    phoneNumber: validation.formattedNumber || phoneNumber
+                    phoneNumber: validation.formattedNumber || phoneNumber,
+                    taxId: taxId.trim() || undefined
                 });
                 setPhoneError(null);
             } else {
@@ -66,7 +69,8 @@ const PaymentMethodSelector: React.FC<PaymentMethodSelectorProps> = ({ onPayment
                     cardNumber,
                     cardExpiry,
                     cardCVV,
-                    cardHolder
+                    cardHolder,
+                    taxId: taxId.trim() || undefined
                 });
                 setCardError(null);
                 setExpiryError(null);
@@ -76,7 +80,7 @@ const PaymentMethodSelector: React.FC<PaymentMethodSelectorProps> = ({ onPayment
                 if (cardExpiry.length >= 4) setExpiryError(expiryValidation.error || null);
             }
         }
-    }, [selectedType, phoneNumber, cardNumber, cardExpiry, cardCVV, cardHolder]);
+    }, [selectedType, phoneNumber, cardNumber, cardExpiry, cardCVV, cardHolder, taxId]);
 
     // Auto-formatage numéro de carte (espaces tous les 4 chiffres)
     const handleCardNumberChange = (text: string) => {
@@ -318,6 +322,27 @@ const PaymentMethodSelector: React.FC<PaymentMethodSelectorProps> = ({ onPayment
                     </Text>
                 </View>
             )}
+
+            {/* Numéro de contribuable (optionnel) */}
+            {selectedType && (
+                <View style={styles.taxIdSection}>
+                    <View style={styles.taxIdHeader}>
+                        <SafeIcon name="file-text" size={18} color={modernColors.textSecondary} />
+                        <Text style={styles.taxIdTitle}>Numéro de contribuable (optionnel)</Text>
+                    </View>
+                    <NativeInput
+                        placeholder="Ex: M012345678901C"
+                        value={taxId}
+                        onChangeText={setTaxId}
+                        autoCapitalize="characters"
+                        style={styles.input}
+                        editable={!readonly}
+                    />
+                    <Text style={styles.taxIdHint}>
+                        Pour les entreprises: ajoutez votre numéro de contribuable pour vos factures
+                    </Text>
+                </View>
+            )}
         </View>
     );
 };
@@ -478,6 +503,30 @@ const styles = StyleSheet.create({
     },
     flex1: {
         flex: 1,
+    },
+    taxIdSection: {
+        padding: 16,
+        backgroundColor: '#F9FAFB',
+        borderRadius: 10,
+        borderWidth: 1,
+        borderColor: modernColors.border,
+        gap: 10,
+    },
+    taxIdHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    taxIdTitle: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: modernColors.text,
+    },
+    taxIdHint: {
+        fontSize: 11,
+        color: modernColors.textSecondary,
+        fontStyle: 'italic',
+        marginTop: 4,
     },
 });
 

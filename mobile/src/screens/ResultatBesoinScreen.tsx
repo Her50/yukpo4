@@ -1499,54 +1499,94 @@ const ResultatBesoinScreen: React.FC = () => {
                     busConfiguration={selectedProduct.busConfiguration || { rows: 12, seatsPerRow: 4, aislePosition: 2 }}
                     seatMap={selectedProduct.seatMap || []}
                     product={selectedProduct}
-                    onSelectSeat={async (seat) => {
+                    onSelectSeat={async (seatWithName) => {
                         try {
-                            // Mettre à jour localement le statut de la place
-                            const updatedSeatMap = selectedProduct.seatMap.map(s =>
-                                s.id === seat.id ? { ...s, status: 'reserved' } : s
-                            );
-
-                            // Mettre à jour le produit localement
-                            setSelectedProduct({
-                                ...selectedProduct,
-                                seatMap: updatedSeatMap,
-                                selectedSeat: seat.number
-                            });
-
-                            // Mettre à jour dans la liste des produits
-                            setProducts(prevProducts =>
-                                prevProducts.map(p =>
-                                    p.id === selectedProduct.id
-                                        ? { ...p, seatMap: updatedSeatMap, selectedSeat: seat.number }
-                                        : p
-                                )
-                            );
-
-                            // Appeler l'API pour persister la réservation
-                            try {
-                                const reservationResult = await apiPost('/bus-reservations/reserve', {
-                                    seat_id: seat.id,
-                                    user_id: user?.id || '',
-                                    product_id: selectedProduct.id
-                                });
-
-                                console.log('✅ Réservation créée:', reservationResult);
-                            } catch (apiError) {
-                                console.error('⚠️ Erreur API réservation (continuera localement):', apiError);
-                                // Continue avec la réservation locale même si l'API échoue
+                            const cautionAmount = selectedProduct.cautionReservation || 500;
+                            
+                            // Vérifier le solde de l'utilisateur
+                            if (!user || !user.tokens_balance || user.tokens_balance < cautionAmount) {
+                                Alert.alert(
+                                    'Solde insuffisant',
+                                    `Vous avez besoin de ${cautionAmount} FCFA pour payer la caution.\n\nSolde actuel: ${user?.tokens_balance || 0} FCFA`,
+                                    [
+                                        {
+                                            text: 'Recharger',
+                                            onPress: () => navigation.navigate('RechargeTokens')
+                                        },
+                                        { text: 'Annuler' }
+                                    ]
+                                );
+                                return;
                             }
 
+                            // Confirmer le paiement de la caution
                             Alert.alert(
-                                'Place réservée!',
-                                `Votre place n°${seat.number} a été réservée avec succès.\n\nContactez le prestataire pour finaliser votre réservation.`,
+                                '🎫 Confirmer la réservation',
+                                `Place n°${seatWithName.number}\nPassager: ${seatWithName.passengerName}\n\n💰 Caution: ${cautionAmount} FCFA\n⏱️ Validité: 30 minutes\n\nVous devrez payer le prix total du ticket (${selectedProduct.prix} FCFA) dans les 30 minutes pour confirmer définitivement votre réservation.`,
                                 [
+                                    { text: 'Annuler', style: 'cancel' },
                                     {
-                                        text: 'Discuter avec le prestataire',
-                                        onPress: () => {
-                                            setShowChatModal(true);
+                                        text: 'Payer la caution',
+                                        onPress: async () => {
+                                            try {
+                                                // Mettre à jour localement le statut de la place
+                                                const updatedSeatMap = selectedProduct.seatMap.map(s =>
+                                                    s.id === seatWithName.id ? { ...s, status: 'reserved', passengerName: seatWithName.passengerName } : s
+                                                );
+
+                                                // Mettre à jour le produit localement
+                                                setSelectedProduct({
+                                                    ...selectedProduct,
+                                                    seatMap: updatedSeatMap,
+                                                    selectedSeat: seatWithName.number
+                                                });
+
+                                                // Mettre à jour dans la liste des produits
+                                                setProducts(prevProducts =>
+                                                    prevProducts.map(p =>
+                                                        p.id === selectedProduct.id
+                                                            ? { ...p, seatMap: updatedSeatMap, selectedSeat: seatWithName.number }
+                                                            : p
+                                                    )
+                                                );
+
+                                                // Appeler l'API pour persister la réservation
+                                                try {
+                                                    const reservationResult = await apiPost('/bus-reservations/reserve', {
+                                                        seat_id: seatWithName.id,
+                                                        user_id: user?.id || '',
+                                                        product_id: selectedProduct.id,
+                                                        passenger_name: seatWithName.passengerName,
+                                                        caution_amount: cautionAmount
+                                                    });
+
+                                                    console.log('✅ Réservation créée:', reservationResult);
+                                                    
+                                                    // Afficher confirmation avec timer
+                                                    Alert.alert(
+                                                        '✅ Caution payée!',
+                                                        `Place n°${seatWithName.number} réservée pour ${seatWithName.passengerName}\n\n⏰ Vous avez 30 minutes pour payer le prix total (${selectedProduct.prix} FCFA) et confirmer votre voyage.\n\nCaution: ${cautionAmount} FCFA débités`,
+                                                        [
+                                                            {
+                                                                text: 'Payer maintenant',
+                                                                onPress: () => {
+                                                                    // TODO: Rediriger vers paiement complet
+                                                                    setShowChatModal(true);
+                                                                }
+                                                            },
+                                                            { text: 'Plus tard' }
+                                                        ]
+                                                    );
+                                                } catch (apiError) {
+                                                    console.error('⚠️ Erreur API réservation:', apiError);
+                                                    Alert.alert('Erreur', 'Impossible de créer la réservation. Veuillez réessayer.');
+                                                }
+                                            } catch (error) {
+                                                console.error('Erreur réservation place:', error);
+                                                Alert.alert('Erreur', 'Impossible de réserver cette place. Veuillez réessayer.');
+                                            }
                                         }
-                                    },
-                                    { text: 'OK' }
+                                    }
                                 ]
                             );
                         } catch (error) {
