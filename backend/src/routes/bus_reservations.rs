@@ -5,7 +5,6 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
-use uuid::Uuid;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Seat {
@@ -53,12 +52,12 @@ pub async fn reserve_seat(
     let seat_check = sqlx::query!(
         r#"
         SELECT 
-            p.id,
+            p.id::text as "id!",
             p.seat_map::jsonb as seat_map
         FROM products p
-        WHERE p.id = $1
+        WHERE p.id::text = $1
         "#,
-        Uuid::parse_str(&payload.product_id).map_err(|_| StatusCode::BAD_REQUEST)?
+        &payload.product_id
     )
     .fetch_optional(&pool)
     .await
@@ -113,32 +112,33 @@ pub async fn reserve_seat(
     }
 
     // Créer la réservation
-    let reservation_id = Uuid::new_v4();
-    
     let result = sqlx::query!(
         r#"
         INSERT INTO bus_reservations 
-            (id, product_id, user_id, seat_id, seat_number, status, created_at)
+            (product_id, user_id, seat_id, seat_number, status, created_at)
         VALUES 
-            ($1, $2, $3, $4, $5, 'reserved', NOW())
+            ($1, $2, $3, $4, 'reserved', NOW())
+        RETURNING id::text as "id!"
         "#,
-        reservation_id,
-        Uuid::parse_str(&payload.product_id).unwrap(),
-        Uuid::parse_str(&payload.user_id).map_err(|_| StatusCode::BAD_REQUEST)?,
-        payload.seat_id.clone(),
+        &payload.product_id,
+        payload.user_id.parse::<i32>().map_err(|_| StatusCode::BAD_REQUEST)?,
+        &payload.seat_id,
         seat.number
     )
-    .execute(&pool)
+    .fetch_one(&pool)
     .await;
 
-    if result.is_err() {
-        return Ok(Json(ReservationResponse {
-            success: false,
-            message: "Erreur lors de la création de la réservation".to_string(),
-            reservation_id: None,
-            updated_seat_map: None,
-        }));
-    }
+    let reservation = match result {
+        Ok(r) => r,
+        Err(_) => {
+            return Ok(Json(ReservationResponse {
+                success: false,
+                message: "Erreur lors de la création de la réservation".to_string(),
+                reservation_id: None,
+                updated_seat_map: None,
+            }));
+        }
+    };
 
     // Mettre à jour le statut de la place
     seat.status = "reserved".to_string();
@@ -150,11 +150,11 @@ pub async fn reserve_seat(
     sqlx::query!(
         r#"
         UPDATE products
-        SET seat_map = $1
-        WHERE id = $2
+        SET seat_map = $1::jsonb
+        WHERE id::text = $2
         "#,
         updated_seat_map_json,
-        Uuid::parse_str(&payload.product_id).unwrap()
+        &payload.product_id
     )
     .execute(&pool)
     .await
@@ -163,7 +163,7 @@ pub async fn reserve_seat(
     Ok(Json(ReservationResponse {
         success: true,
         message: format!("Place n°{} réservée avec succès", seat.number),
-        reservation_id: Some(reservation_id.to_string()),
+        reservation_id: Some(reservation.id),
         updated_seat_map: Some(seat_map),
     }))
 }
@@ -173,9 +173,6 @@ pub async fn cancel_reservation(
     State(pool): State<PgPool>,
     Path(reservation_id): Path<String>,
 ) -> Result<Json<ReservationResponse>, StatusCode> {
-    let reservation_uuid = Uuid::parse_str(&reservation_id)
-        .map_err(|_| StatusCode::BAD_REQUEST)?;
-
     // Récupérer la réservation
     let reservation = sqlx::query!(
         r#"
@@ -183,7 +180,7 @@ pub async fn cancel_reservation(
         FROM bus_reservations
         WHERE id = $1 AND status = 'reserved'
         "#,
-        reservation_uuid
+        &reservation_id
     )
     .fetch_optional(&pool)
     .await
@@ -205,9 +202,9 @@ pub async fn cancel_reservation(
         r#"
         SELECT seat_map::jsonb as seat_map
         FROM products
-        WHERE id = $1
+        WHERE id::text = $1
         "#,
-        reservation.product_id
+        &reservation.product_id
     )
     .fetch_one(&pool)
     .await
@@ -228,11 +225,11 @@ pub async fn cancel_reservation(
     sqlx::query!(
         r#"
         UPDATE products
-        SET seat_map = $1
-        WHERE id = $2
+        SET seat_map = $1::jsonb
+        WHERE id::text = $2
         "#,
         updated_seat_map_json,
-        reservation.product_id
+        &reservation.product_id
     )
     .execute(&pool)
     .await
@@ -245,7 +242,7 @@ pub async fn cancel_reservation(
         SET status = 'cancelled', updated_at = NOW()
         WHERE id = $1
         "#,
-        reservation_uuid
+        &reservation_id
     )
     .execute(&pool)
     .await
@@ -273,7 +270,7 @@ pub async fn get_user_reservations(
     State(pool): State<PgPool>,
     Path(user_id): Path<String>,
 ) -> Result<Json<Vec<UserReservation>>, StatusCode> {
-    let user_uuid = Uuid::parse_str(&user_id)
+    let user_id_int = user_id.parse::<i32>()
         .map_err(|_| StatusCode::BAD_REQUEST)?;
 
     let reservations = sqlx::query!(
@@ -283,7 +280,7 @@ pub async fn get_user_reservations(
         WHERE user_id = $1
         ORDER BY created_at DESC
         "#,
-        user_uuid
+        user_id_int
     )
     .fetch_all(&pool)
     .await
@@ -292,8 +289,8 @@ pub async fn get_user_reservations(
     let result = reservations
         .into_iter()
         .map(|r| UserReservation {
-            id: r.id.to_string(),
-            product_id: r.product_id.to_string(),
+            id: r.id,
+            product_id: r.product_id,
             seat_number: r.seat_number,
             status: r.status,
             created_at: r.created_at.to_string(),
