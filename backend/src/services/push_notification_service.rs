@@ -395,7 +395,7 @@ pub async fn notify_return_bus_available(
         "departureTime": departure_time,
     });
 
-    send_push_notification(pool, user_id, title, body, Some(data), Some("default".to_string())).await
+    send_push_notification(pool, user_id, title.to_string(), body, Some(data), Some("default".to_string())).await
 }
 
 /// ✅ NOUVEAU: Vérifier et notifier tous les utilisateurs en attente d'un bus retour

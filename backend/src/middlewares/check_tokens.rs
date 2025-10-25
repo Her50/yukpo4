@@ -16,7 +16,6 @@ use log::{info, warn, error, debug};
 use sqlx;
 use serde_json::Value;
 use std::time::Instant;
-use crate::utils::jwt_manager::generate_jwt;
 
 /// ?? Conversion tokens IA vers co?t en XAF selon l'intention (tarification diff?renci?e)
 /// L'application facture en multipliant la valeur FCFA du token OpenAI selon l'intention

@@ -1,7 +1,6 @@
 // Routes pour les modèles de smartphones
 
 use axum::{routing::{get, post}, Router};
-use sqlx::PgPool;
 use std::sync::Arc;
 use crate::state::AppState;
 
