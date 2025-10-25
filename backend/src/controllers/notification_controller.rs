@@ -1,8 +1,4 @@
 // Contrôleur pour les notifications utilisateur
-// ⚠️ TEMPORAIREMENT DÉSACTIVÉ - notification_service n'existe pas
-// TODO: Créer notification_service.rs ou utiliser push_notification_service
-
-/*
 use std::sync::Arc;
 use axum::{
     extract::{Path, Query, State},
@@ -96,4 +92,4 @@ pub async fn mark_all_notifications_as_read(
         }
     }
 }
-*/
+
