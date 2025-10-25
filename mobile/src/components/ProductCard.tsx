@@ -2,6 +2,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import React, { useState } from 'react';
 import { Alert, Dimensions, Image, Linking, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { getCategoryConfig, getCategoryStyle, getCategoryTerminology } from '../config/categoryConfig';
+import { getDepartureWarning, isTicketStillValid } from '../utils/ticketValidation';
 import SafeIcon from './SafeIcon';
 
 const { width } = Dimensions.get('window');
@@ -1127,20 +1128,43 @@ const ProductCard: React.FC<ProductCardProps> = ({
                     )}
 
                     {/* Bouton de réservation pour ticket_voyage */}
-                    {product.type === 'ticket_voyage' && product.seatMap && product.busConfiguration && onBookSeat && (
-                        <TouchableOpacity
-                            style={styles.bookSeatButton}
-                            onPress={onBookSeat}
-                        >
-                            <SafeIcon name="grid" size={20} color="#FFFFFF" />
-                            <Text style={styles.bookSeatButtonText}>🎫 Réserver une place</Text>
-                            {product.seatMap && (
-                                <Text style={styles.bookSeatSubtext}>
-                                    {product.seatMap.filter(s => s.status === 'available').length} places disponibles
-                                </Text>
-                            )}
-                        </TouchableOpacity>
-                    )}
+                    {product.type === 'ticket_voyage' && product.seatMap && product.busConfiguration && onBookSeat && (() => {
+                        const validation = isTicketStillValid(product);
+                        const warning = validation.daysUntilDeparture ? getDepartureWarning(validation.daysUntilDeparture) : null;
+                        
+                        if (!validation.valid) {
+                            // Ticket expiré ou complet
+                            return (
+                                <View style={styles.ticketExpiredBanner}>
+                                    <SafeIcon name="alert-circle" size={20} color="#EF4444" />
+                                    <Text style={styles.ticketExpiredText}>
+                                        {validation.reason}
+                                    </Text>
+                                </View>
+                            );
+                        }
+                        
+                        return (
+                            <>
+                                {warning && (
+                                    <View style={styles.departureWarningBanner}>
+                                        <SafeIcon name="clock" size={16} color="#F59E0B" />
+                                        <Text style={styles.departureWarningText}>{warning}</Text>
+                                    </View>
+                                )}
+                                <TouchableOpacity
+                                    style={styles.bookSeatButton}
+                                    onPress={onBookSeat}
+                                >
+                                    <SafeIcon name="grid" size={20} color="#FFFFFF" />
+                                    <Text style={styles.bookSeatButtonText}>🎫 Réserver une place</Text>
+                                    <Text style={styles.bookSeatSubtext}>
+                                        {validation.availableSeats} place{validation.availableSeats > 1 ? 's' : ''} • Départ dans {validation.daysUntilDeparture}j
+                                    </Text>
+                                </TouchableOpacity>
+                            </>
+                        );
+                    })()}
 
                     {/* Actions */}
                     <View style={styles.actions}>
@@ -1461,7 +1485,39 @@ const styles = StyleSheet.create({
         fontSize: 11,
         fontWeight: '600',
         color: '#D1FAE5',
-        marginLeft: 8,
+    },
+    ticketExpiredBanner: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 10,
+        backgroundColor: '#FEE2E2',
+        paddingVertical: 14,
+        paddingHorizontal: 16,
+        borderRadius: 12,
+        marginBottom: 12,
+        borderWidth: 2,
+        borderColor: '#EF4444',
+    },
+    ticketExpiredText: {
+        fontSize: 14,
+        fontWeight: '700',
+        color: '#DC2626',
+    },
+    departureWarningBanner: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        backgroundColor: '#FEF3C7',
+        paddingVertical: 8,
+        paddingHorizontal: 12,
+        borderRadius: 8,
+        marginBottom: 8,
+    },
+    departureWarningText: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: '#92400E',
     },
     secondaryActions: {
         flexDirection: 'row',

@@ -178,6 +178,57 @@ const ResultatBesoinScreen: React.FC = () => {
         });
     }, []);
 
+    // ✅ Vérifier s'il y a une réservation en attente après recharge
+    useEffect(() => {
+        const checkPendingReservation = async () => {
+            try {
+                const AsyncStorage = await import('@react-native-async-storage/async-storage').then(m => m.default);
+                const pendingData = await AsyncStorage.getItem('@yukpomnang:pending_bus_reservation');
+                
+                if (pendingData && user) {
+                    const context = JSON.parse(pendingData);
+                    const ageMinutes = (Date.now() - context.timestamp) / (1000 * 60);
+                    
+                    // Si moins de 10 minutes, proposer de continuer
+                    if (ageMinutes < 10) {
+                        Alert.alert(
+                            '🎫 Reprendre votre réservation?',
+                            `Vous aviez commencé une réservation:\n\n${context.productName}\n${context.reservations.length} place(s)\nMontant: ${context.totalAmount.toLocaleString()} FCFA\n\nVoulez-vous continuer?`,
+                            [
+                                {
+                                    text: 'Continuer',
+                                    onPress: () => {
+                                        // Rouvrir le sélecteur pour la même réservation
+                                        const product = products.find(p => p.id === context.productId);
+                                        if (product) {
+                                            setSelectedProduct(product);
+                                            setShowSeatSelector(true);
+                                        }
+                                    }
+                                },
+                                {
+                                    text: 'Annuler',
+                                    style: 'cancel',
+                                    onPress: () => AsyncStorage.removeItem('@yukpomnang:pending_bus_reservation')
+                                }
+                            ]
+                        );
+                    } else {
+                        // Trop vieux, supprimer
+                        await AsyncStorage.removeItem('@yukpomnang:pending_bus_reservation');
+                    }
+                }
+            } catch (error) {
+                console.error('Erreur vérification réservation en attente:', error);
+            }
+        };
+        
+        // Vérifier seulement si on vient de RechargeTokens
+        if (routeParams.fromRecharge && user) {
+            checkPendingReservation();
+        }
+    }, [user, routeParams.fromRecharge]);
+
     // Fonction pour calculer la distance entre deux points GPS (formule de Haversine)
     const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
         const R = 6371; // Rayon de la Terre en km
@@ -1575,15 +1626,48 @@ const ResultatBesoinScreen: React.FC = () => {
                             const ticketPrice = parseInt(selectedProduct.prix);
                             const nbPlaces = reservations.length;
                             const totalAmount = ticketPrice * nbPlaces;
-                            
+
                             // Vérifier le solde (paiement complet immédiat)
                             if (!user || !user.tokens_balance || user.tokens_balance < totalAmount) {
+                                // Sauvegarder le contexte de réservation pour retour après recharge
+                                const reservationContext = {
+                                    productId: selectedProduct.id,
+                                    productName: selectedProduct.nom,
+                                    reservations: reservations.map(r => ({
+                                        seatId: r.seat.id,
+                                        seatNumber: r.seat.number,
+                                        passengerName: r.passengerName
+                                    })),
+                                    totalAmount,
+                                    ticketPrice,
+                                    returnScreen: 'ResultatBesoin',
+                                    timestamp: Date.now()
+                                };
+
+                                // Sauvegarder dans AsyncStorage
+                                try {
+                                    const AsyncStorage = await import('@react-native-async-storage/async-storage').then(m => m.default);
+                                    await AsyncStorage.setItem('@yukpomnang:pending_bus_reservation', JSON.stringify(reservationContext));
+                                    console.log('✅ Contexte réservation sauvegardé');
+                                } catch (error) {
+                                    console.error('Erreur sauvegarde contexte:', error);
+                                }
+
+                                // Redirection AUTOMATIQUE vers recharge (pas de choix Annuler)
                                 Alert.alert(
-                                    'Solde insuffisant',
-                                    `Montant requis: ${totalAmount.toLocaleString()} FCFA\n(${nbPlaces} place${nbPlaces > 1 ? 's' : ''} × ${ticketPrice.toLocaleString()} FCFA)\n\nSolde actuel: ${user?.tokens_balance || 0} FCFA`,
+                                    '💰 Rechargez votre compte',
+                                    `Montant requis: ${totalAmount.toLocaleString()} FCFA\n(${nbPlaces} place${nbPlaces > 1 ? 's' : ''} × ${ticketPrice.toLocaleString()} FCFA)\n\nSolde actuel: ${user?.tokens_balance || 0} FCFA\n\n✅ Après recharge, vous reviendrez automatiquement à cette réservation.`,
                                     [
-                                        { text: 'Recharger', onPress: () => navigation.navigate('RechargeTokens') },
-                                        { text: 'Annuler' }
+                                        {
+                                            text: 'Recharger maintenant',
+                                            onPress: () => {
+                                                navigation.navigate('RechargeTokens', {
+                                                    returnTo: 'ResultatBesoin',
+                                                    minAmount: totalAmount,
+                                                    reason: 'bus_reservation'
+                                                });
+                                            }
+                                        }
                                     ]
                                 );
                                 return;
@@ -1591,10 +1675,10 @@ const ResultatBesoinScreen: React.FC = () => {
 
                             // Confirmer le paiement complet
                             const passengersList = reservations.map(r => `- Place ${r.seat.number}: ${r.passengerName}`).join('\n');
-                            
+
                             Alert.alert(
                                 '🎫 Confirmer la réservation',
-                                `${nbPlaces} place${nbPlaces > 1 ? 's' : ''} à réserver:\n\n${passengersList}\n\n💰 Montant total: ${totalAmount.toLocaleString()} FCFA\n✅ Paiement complet immédiat\n📄 Tickets PDF générés instantanément`,
+                                `${nbPlaces} place${nbPlaces > 1 ? 's' : ''} à réserver:\n\n${passengersList}\n\n💰 Montant total: ${totalAmount.toLocaleString()} FCFA\n✅ Paiement complet immédiat\n📄 Tickets PDF générés instantanément\n\n🏢 Vous pourrez aussi retirer vos tickets physiques à l'agence si nécessaire.`,
                                 [
                                     { text: 'Annuler', style: 'cancel' },
                                     {
@@ -1607,7 +1691,7 @@ const ResultatBesoinScreen: React.FC = () => {
 
                                                 for (const reservation of reservations) {
                                                     updatedSeatMap = updatedSeatMap.map(s =>
-                                                        s.id === reservation.seat.id 
+                                                        s.id === reservation.seat.id
                                                             ? { ...s, status: 'reserved', passengerName: reservation.passengerName }
                                                             : s
                                                     );
@@ -1683,10 +1767,10 @@ const ResultatBesoinScreen: React.FC = () => {
                                                 // Afficher confirmation
                                                 Alert.alert(
                                                     '✅ Réservation confirmée!',
-                                                    `${nbPlaces} ticket${nbPlaces > 1 ? 's' : ''} généré${nbPlaces > 1 ? 's' : ''} avec succès!\n\n${totalAmount.toLocaleString()} FCFA débités\n\nVos tickets PDF sont disponibles dans vos téléchargements.`,
+                                                    `${nbPlaces} ticket${nbPlaces > 1 ? 's' : ''} généré${nbPlaces > 1 ? 's' : ''} avec succès!\n\n💰 ${totalAmount.toLocaleString()} FCFA débités\n📱 Tickets PDF dans vos téléchargements\n\n🏢 Vous pouvez aussi retirer vos tickets physiques directement à l'agence avec votre pièce d'identité.`,
                                                     [
                                                         {
-                                                            text: 'Contacter prestataire',
+                                                            text: 'Contacter l\'agence',
                                                             onPress: () => setShowChatModal(true)
                                                         },
                                                         { text: 'OK' }
