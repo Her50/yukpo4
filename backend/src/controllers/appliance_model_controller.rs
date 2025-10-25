@@ -32,21 +32,15 @@ pub async fn get_appliance_models(
     State(state): State<Arc<AppState>>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
     let pool = &state.pg;
-    let models = if let Some(brand) = query.brand {
-        sqlx::query_as!(
-            ApplianceModel,
-            r#"
-            SELECT id, brand, model, created_at::text
-            FROM appliance_models
-            WHERE brand = $1
-            ORDER BY model ASC
-            "#,
-            brand
+    let rows = if let Some(brand) = query.brand {
+        sqlx::query(
+            "SELECT id, brand, model, created_at FROM appliance_models WHERE brand = $1 ORDER BY model ASC"
         )
+        .bind(brand)
         .fetch_all(pool)
         .await
         .map_err(|e| {
-            eprintln!("❌ Erreur récupération modèles électroménager pour marque {}: {:?}", brand, e);
+            eprintln!("❌ Erreur récupération modèles électroménager pour marque: {:?}", e);
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 format!("Erreur récupération modèles: {}", e),
@@ -54,13 +48,8 @@ pub async fn get_appliance_models(
         })?
     } else {
         // Tous les modèles
-        sqlx::query_as!(
-            ApplianceModel,
-            r#"
-            SELECT id, brand, model, created_at::text
-            FROM appliance_models
-            ORDER BY brand ASC, model ASC
-            "#
+        sqlx::query(
+            "SELECT id, brand, model, created_at FROM appliance_models ORDER BY brand ASC, model ASC"
         )
         .fetch_all(pool)
         .await
@@ -72,6 +61,17 @@ pub async fn get_appliance_models(
             )
         })?
     };
+    
+    use sqlx::Row;
+    let models: Vec<ApplianceModel> = rows.iter().map(|row| {
+        let created_at: chrono::NaiveDateTime = row.get("created_at");
+        ApplianceModel {
+            id: row.get("id"),
+            brand: row.get("brand"),
+            model: row.get("model"),
+            created_at: created_at.to_string(),
+        }
+    }).collect();
 
     Ok(Json(serde_json::json!({
         "success": true,
@@ -102,14 +102,11 @@ pub async fn create_appliance_model(
     }
 
     // Vérifier si existe déjà
-    let existing = sqlx::query!(
-        r#"
-        SELECT id FROM appliance_models
-        WHERE brand = $1 AND LOWER(model) = LOWER($2)
-        "#,
-        payload.brand,
-        payload.model.trim()
+    let existing = sqlx::query(
+        "SELECT id FROM appliance_models WHERE brand = $1 AND LOWER(model) = LOWER($2)"
     )
+    .bind(&payload.brand)
+    .bind(payload.model.trim())
     .fetch_optional(pool)
     .await
     .map_err(|e| {
@@ -129,16 +126,11 @@ pub async fn create_appliance_model(
     }
 
     // Créer
-    let model = sqlx::query_as!(
-        ApplianceModel,
-        r#"
-        INSERT INTO appliance_models (brand, model)
-        VALUES ($1, $2)
-        RETURNING id, brand, model, created_at::text
-        "#,
-        payload.brand,
-        payload.model.trim()
+    let row = sqlx::query(
+        "INSERT INTO appliance_models (brand, model) VALUES ($1, $2) RETURNING id, brand, model, created_at"
     )
+    .bind(&payload.brand)
+    .bind(payload.model.trim())
     .fetch_one(pool)
     .await
     .map_err(|e| {
@@ -148,6 +140,15 @@ pub async fn create_appliance_model(
             format!("Erreur création: {}", e),
         )
     })?;
+    
+    use sqlx::Row;
+    let created_at: chrono::NaiveDateTime = row.get("created_at");
+    let model = ApplianceModel {
+        id: row.get("id"),
+        brand: row.get("brand"),
+        model: row.get("model"),
+        created_at: created_at.to_string(),
+    };
 
     println!("✅ Modèle électroménager créé: {} {}", model.brand, model.model);
 

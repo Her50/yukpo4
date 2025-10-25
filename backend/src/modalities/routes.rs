@@ -257,7 +257,7 @@ pub async fn get_smart_suggestions(
     let search_pattern = format!("%{}%", query.search.to_lowercase());
     
     // Récupérer les suggestions depuis custom_modalities
-    let result = sqlx::query!(
+    let result = sqlx::query(
         r#"
         SELECT DISTINCT value
         FROM custom_modalities
@@ -265,16 +265,17 @@ pub async fn get_smart_suggestions(
           AND LOWER(value) LIKE $2
         ORDER BY usage_count DESC, value ASC
         LIMIT 10
-        "#,
-        query.field_type,
-        search_pattern
+        "#
     )
+    .bind(&query.field_type)
+    .bind(&search_pattern)
     .fetch_all(pool)
     .await;
 
     match result {
         Ok(records) => {
-            let suggestions: Vec<String> = records.into_iter().map(|r| r.value).collect();
+            use sqlx::Row;
+            let suggestions: Vec<String> = records.iter().map(|r| r.get("value")).collect();
             Ok(Json(SuggestionsResponse { suggestions }))
         }
         Err(e) => {
@@ -301,28 +302,23 @@ pub async fn create_smart_modality(
     let pool = &state.pg;
     
     // Vérifier si la modalité existe déjà
-    let existing = sqlx::query!(
-        r#"
-        SELECT id FROM custom_modalities
-        WHERE field_type = $1 AND LOWER(value) = LOWER($2)
-        "#,
-        request.field_type,
-        request.value
+    let existing = sqlx::query(
+        "SELECT id FROM custom_modalities WHERE field_type = $1 AND LOWER(value) = LOWER($2)"
     )
+    .bind(&request.field_type)
+    .bind(&request.value)
     .fetch_optional(pool)
     .await;
 
     match existing {
         Ok(Some(record)) => {
+            use sqlx::Row;
+            let id: i32 = record.get("id");
             // Si existe déjà, incrémenter usage_count
-            let _ = sqlx::query!(
-                r#"
-                UPDATE custom_modalities
-                SET usage_count = usage_count + 1
-                WHERE id = $1
-                "#,
-                record.id
+            let _ = sqlx::query(
+                "UPDATE custom_modalities SET usage_count = usage_count + 1 WHERE id = $1"
             )
+            .bind(id)
             .execute(pool)
             .await;
 
@@ -334,15 +330,12 @@ pub async fn create_smart_modality(
         }
         Ok(None) => {
             // Créer une nouvelle modalité
-            let result = sqlx::query!(
-                r#"
-                INSERT INTO custom_modalities (field_type, value, category, usage_count)
-                VALUES ($1, $2, $3, 1)
-                "#,
-                request.field_type,
-                request.value,
-                request.category
+            let result = sqlx::query(
+                "INSERT INTO custom_modalities (field_type, value, category, usage_count) VALUES ($1, $2, $3, 1)"
             )
+            .bind(&request.field_type)
+            .bind(&request.value)
+            .bind(&request.category)
             .execute(pool)
             .await;
 

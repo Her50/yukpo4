@@ -15,7 +15,7 @@ pub struct PhoneModelQuery {
     pub brand: Option<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize, sqlx::FromRow)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct PhoneModel {
     pub id: i32,
     pub brand: String,
@@ -35,18 +35,12 @@ pub async fn get_phone_models(
     State(state): State<Arc<AppState>>,
 ) -> Result<Json<Vec<PhoneModel>>, (StatusCode, String)> {
     let pool = &state.pg;
-    let models = if let Some(brand) = params.brand {
+    let rows = if let Some(brand) = params.brand {
         // Recherche par marque spécifique
-        sqlx::query_as!(
-            PhoneModel,
-            r#"
-            SELECT id, brand, model 
-            FROM phone_models 
-            WHERE brand = $1 
-            ORDER BY model
-            "#,
-            brand
+        sqlx::query(
+            "SELECT id, brand, model FROM phone_models WHERE brand = $1 ORDER BY model"
         )
+        .bind(brand)
         .fetch_all(pool)
         .await
         .map_err(|e| {
@@ -58,13 +52,8 @@ pub async fn get_phone_models(
         })?
     } else {
         // Tous les modèles
-        sqlx::query_as!(
-            PhoneModel,
-            r#"
-            SELECT id, brand, model 
-            FROM phone_models 
-            ORDER BY brand, model
-            "#
+        sqlx::query(
+            "SELECT id, brand, model FROM phone_models ORDER BY brand, model"
         )
         .fetch_all(pool)
         .await
@@ -76,6 +65,13 @@ pub async fn get_phone_models(
             )
         })?
     };
+    
+    use sqlx::Row;
+    let models: Vec<PhoneModel> = rows.iter().map(|row| PhoneModel {
+        id: row.get("id"),
+        brand: row.get("brand"),
+        model: row.get("model"),
+    }).collect();
 
     Ok(Json(models))
 }
@@ -103,18 +99,17 @@ pub async fn create_phone_model(
     }
 
     // Insertion avec ON CONFLICT pour éviter les doublons
-    let model = sqlx::query_as!(
-        PhoneModel,
+    let row = sqlx::query(
         r#"
         INSERT INTO phone_models (brand, model) 
         VALUES ($1, $2)
         ON CONFLICT (brand, model) 
         DO UPDATE SET updated_at = CURRENT_TIMESTAMP
         RETURNING id, brand, model
-        "#,
-        payload.brand.trim(),
-        payload.model.trim()
+        "#
     )
+    .bind(payload.brand.trim())
+    .bind(payload.model.trim())
     .fetch_one(pool)
     .await
     .map_err(|e| {
@@ -124,6 +119,13 @@ pub async fn create_phone_model(
             format!("Erreur base de données: {}", e),
         )
     })?;
+    
+    use sqlx::Row;
+    let model = PhoneModel {
+        id: row.get("id"),
+        brand: row.get("brand"),
+        model: row.get("model"),
+    };
 
     Ok(Json(model))
 }

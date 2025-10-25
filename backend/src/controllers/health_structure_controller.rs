@@ -34,16 +34,10 @@ pub async fn get_health_structures(
     State(state): State<Arc<AppState>>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
     let pool = &state.pg;
-    let structures = sqlx::query_as!(
-        HealthStructure,
-        r#"
-        SELECT id, structure_type, name, created_at::text
-        FROM health_structures
-        WHERE structure_type = $1
-        ORDER BY name ASC
-        "#,
-        query.structure_type
+    let rows = sqlx::query(
+        "SELECT id, structure_type, name, created_at FROM health_structures WHERE structure_type = $1 ORDER BY name ASC"
     )
+    .bind(&query.structure_type)
     .fetch_all(pool)
     .await
     .map_err(|e| {
@@ -53,6 +47,17 @@ pub async fn get_health_structures(
             format!("Erreur récupération structures: {}", e),
         )
     })?;
+    
+    use sqlx::Row;
+    let structures: Vec<HealthStructure> = rows.iter().map(|row| {
+        let created_at: chrono::NaiveDateTime = row.get("created_at");
+        HealthStructure {
+            id: row.get("id"),
+            structure_type: row.get("structure_type"),
+            name: row.get("name"),
+            created_at: created_at.to_string(),
+        }
+    }).collect();
 
     Ok(Json(serde_json::json!({
         "success": true,
@@ -85,14 +90,11 @@ pub async fn create_health_structure(
     }
 
     // Vérifier si la structure existe déjà (insensible à la casse)
-    let existing = sqlx::query!(
-        r#"
-        SELECT id FROM health_structures
-        WHERE structure_type = $1 AND LOWER(name) = LOWER($2)
-        "#,
-        payload.structure_type,
-        payload.name.trim()
+    let existing = sqlx::query(
+        "SELECT id FROM health_structures WHERE structure_type = $1 AND LOWER(name) = LOWER($2)"
     )
+    .bind(&payload.structure_type)
+    .bind(payload.name.trim())
     .fetch_optional(pool)
     .await
     .map_err(|e| {
@@ -112,16 +114,11 @@ pub async fn create_health_structure(
     }
 
     // Créer la structure
-    let structure = sqlx::query_as!(
-        HealthStructure,
-        r#"
-        INSERT INTO health_structures (structure_type, name)
-        VALUES ($1, $2)
-        RETURNING id, structure_type, name, created_at::text
-        "#,
-        payload.structure_type,
-        payload.name.trim()
+    let row = sqlx::query(
+        "INSERT INTO health_structures (structure_type, name) VALUES ($1, $2) RETURNING id, structure_type, name, created_at"
     )
+    .bind(&payload.structure_type)
+    .bind(payload.name.trim())
     .fetch_one(pool)
     .await
     .map_err(|e| {
@@ -131,6 +128,15 @@ pub async fn create_health_structure(
             format!("Erreur création structure: {}", e),
         )
     })?;
+    
+    use sqlx::Row;
+    let created_at: chrono::NaiveDateTime = row.get("created_at");
+    let structure = HealthStructure {
+        id: row.get("id"),
+        structure_type: row.get("structure_type"),
+        name: row.get("name"),
+        created_at: created_at.to_string(),
+    };
 
     println!("✅ Structure de santé créée: {} ({})", structure.name, structure.structure_type);
 
@@ -146,13 +152,8 @@ pub async fn get_all_health_structures(
     State(state): State<Arc<AppState>>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
     let pool = &state.pg;
-    let structures = sqlx::query_as!(
-        HealthStructure,
-        r#"
-        SELECT id, structure_type, name, created_at::text
-        FROM health_structures
-        ORDER BY structure_type ASC, name ASC
-        "#
+    let rows = sqlx::query(
+        "SELECT id, structure_type, name, created_at FROM health_structures ORDER BY structure_type ASC, name ASC"
     )
     .fetch_all(pool)
     .await
@@ -163,6 +164,17 @@ pub async fn get_all_health_structures(
             format!("Erreur récupération: {}", e),
         )
     })?;
+    
+    use sqlx::Row;
+    let structures: Vec<HealthStructure> = rows.iter().map(|row| {
+        let created_at: chrono::NaiveDateTime = row.get("created_at");
+        HealthStructure {
+            id: row.get("id"),
+            structure_type: row.get("structure_type"),
+            name: row.get("name"),
+            created_at: created_at.to_string(),
+        }
+    }).collect();
 
     Ok(Json(serde_json::json!({
         "success": true,
