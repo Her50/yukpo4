@@ -12,7 +12,7 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
-import BusSeatSelectorMulti from '../components/BusSeatSelectorMulti';
+import BusSeatSelector from '../components/BusSeatSelector';
 import CategoryFilters from '../components/CategoryFilters';
 import ChatModalMobile from '../components/ChatModalMobile';
 import ProductCard from '../components/ProductCard';
@@ -1617,13 +1617,16 @@ const ResultatBesoinScreen: React.FC = () => {
 
             {/* Seat Selector Modal pour ticket_voyage */}
             {selectedProduct && selectedProduct.type === 'ticket_voyage' && selectedProduct.seatMap && (
-                <BusSeatSelectorMulti
+                <BusSeatSelector
                     visible={showSeatSelector}
                     onClose={() => setShowSeatSelector(false)}
                     busConfiguration={selectedProduct.busConfiguration || { rows: 12, seatsPerRow: 4, aislePosition: 2, firstRowSeats: 2 }}
                     seatMap={selectedProduct.seatMap || []}
                     product={selectedProduct}
-                    onSelectSeats={async (reservations) => {
+                    multipleMode={true}
+                    currentUserId={user?.id}
+                    onSelectSeat={async (seatsData, returnTripData) => {
+                        const reservations = Array.isArray(seatsData) ? seatsData.map(seat => ({ seat, passengerName: seat.passengerName })) : [{ seat: seatsData, passengerName: seatsData.passengerName }];
                         try {
                             const ticketPrice = parseInt(selectedProduct.prix);
                             const nbPlaces = reservations.length;
@@ -1766,10 +1769,27 @@ const ResultatBesoinScreen: React.FC = () => {
                                                     }
                                                 }
 
+                                                // Enregistrer la demande de retour si demandée
+                                                if (returnTripData && returnTripData.wantReturn) {
+                                                    try {
+                                                        await subscribeToReturnBusNotifications(
+                                                            user?.id || '',
+                                                            selectedProduct.id, // original_bus_id
+                                                            returnTripData.returnDate,
+                                                            returnTripData.returnTime,
+                                                            selectedProduct.destination, // departure_city (inversé pour le retour)
+                                                            selectedProduct.depart // arrival_city (inversé pour le retour)
+                                                        );
+                                                        console.log('✅ Demande de retour enregistrée');
+                                                    } catch (error) {
+                                                        console.error('⚠️ Erreur enregistrement demande retour:', error);
+                                                    }
+                                                }
+
                                                 // Afficher confirmation
                                                 Alert.alert(
                                                     '✅ Réservation confirmée!',
-                                                    `${nbPlaces} ticket${nbPlaces > 1 ? 's' : ''} généré${nbPlaces > 1 ? 's' : ''} avec succès!\n\n💰 ${totalAmount.toLocaleString()} FCFA débités\n📱 Tickets PDF dans vos téléchargements\n\n🏢 Vous pouvez aussi retirer vos tickets physiques directement à l'agence avec une pièce d'identité valide.`,
+                                                    `${nbPlaces} ticket${nbPlaces > 1 ? 's' : ''} généré${nbPlaces > 1 ? 's' : ''} avec succès!\n\n💰 ${totalAmount.toLocaleString()} FCFA débités\n📱 Tickets PDF dans vos téléchargements\n\n🏢 Vous pouvez aussi retirer vos tickets physiques directement à l'agence avec une pièce d'identité valide.${returnTripData && returnTripData.wantReturn ? '\n\n🔔 Vous serez notifié dès qu\'un bus retour sera disponible!' : ''}`,
                                                     [
                                                         {
                                                             text: 'Contacter l\'agence',

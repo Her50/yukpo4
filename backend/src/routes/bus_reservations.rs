@@ -300,3 +300,62 @@ pub async fn get_user_reservations(
     Ok(Json(result))
 }
 
+/// Payload pour vérifier les demandes de retour
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CheckReturnRequestsPayload {
+    pub bus_id: String,
+    pub departure_city: String,
+    pub arrival_city: String,
+    pub departure_date: String,
+    pub departure_time: String,
+}
+
+/// Response pour vérifier les demandes de retour
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CheckReturnRequestsResponse {
+    pub success: bool,
+    pub message: String,
+    pub notified_count: i32,
+}
+
+/// Vérifier et notifier les utilisateurs en attente d'un bus retour
+/// POST /api/bus/check-return-requests
+pub async fn check_return_requests(
+    State(pool): State<PgPool>,
+    Json(payload): Json<CheckReturnRequestsPayload>,
+) -> Result<Json<CheckReturnRequestsResponse>, StatusCode> {
+    log::info!(
+        "🔍 Vérification demandes retour pour bus {} ({} → {})",
+        payload.bus_id,
+        payload.departure_city,
+        payload.arrival_city
+    );
+
+    // Appeler le service de notifications push
+    match crate::services::push_notification_service::check_and_notify_return_requests(
+        &pool,
+        &payload.bus_id,
+        &payload.departure_city,
+        &payload.arrival_city,
+        &payload.departure_date,
+        &payload.departure_time,
+    )
+    .await
+    {
+        Ok(count) => {
+            log::info!("✅ {} utilisateur(s) notifié(s)", count);
+            Ok(Json(CheckReturnRequestsResponse {
+                success: true,
+                message: format!("{} utilisateur(s) notifié(s)", count),
+                notified_count: count,
+            }))
+        }
+        Err(e) => {
+            log::error!("❌ Erreur vérification demandes retour: {:?}", e);
+            Err(StatusCode::INTERNAL_SERVER_ERROR)
+        }
+    }
+}
+
