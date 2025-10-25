@@ -539,8 +539,15 @@ const MesServicesScreen: React.FC = () => {
           </View>
         )}
 
-        {/* Bouton de retour à l'accueil */}
+        {/* Boutons de navigation */}
         <View style={styles.footerContainer}>
+          <NativeButton
+            title="📦 Gérer mes produits"
+            onPress={() => navigation.navigate('MesProduits' as never)}
+            variant="primary"
+            size="large"
+            style={styles.productsButton}
+          />
           <NativeButton
             title="🏠 Retour à l'accueil"
             onPress={() => navigation.navigate('Home' as never)}
@@ -692,6 +699,10 @@ const styles = StyleSheet.create({
     paddingTop: 24,
     borderTopWidth: 1,
     borderTopColor: modernColors.border,
+    gap: 12,
+  },
+  productsButton: {
+    alignSelf: 'stretch',
   },
   homeButton: {
     alignSelf: 'center',

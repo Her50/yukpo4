@@ -25,6 +25,7 @@ import ContactScreen from '../screens/ContactScreen';
 import CreatePubliciteScreen from '../screens/CreatePubliciteScreen';
 import EnhancedSettingsScreen from '../screens/EnhancedSettingsScreen';
 import FormulaireYukpoIntelligentScreen from '../screens/FormulaireYukpoIntelligentScreen';
+import MesProduitsScreen from '../screens/MesProduitsScreen';
 import PubliciteDashboardScreen from '../screens/PubliciteDashboardScreen';
 import RechargeTokensScreen from '../screens/RechargeTokensScreen';
 import ResultatBesoinScreen from '../screens/ResultatBesoinScreen';
@@ -121,6 +122,7 @@ const SecondaryStack = () => {
       <Stack.Screen name="Settings" component={EnhancedSettingsScreen} />
       <Stack.Screen name="RechargeTokens" component={RechargeTokensScreen} />
       <Stack.Screen name="FormulaireYukpoIntelligent" component={FormulaireYukpoIntelligentScreen} />
+      <Stack.Screen name="MesProduits" component={MesProduitsScreen} />
       <Stack.Screen name="ServiceDetailShared" component={ServiceDetailSharedScreen} />
       <Stack.Screen name="ResultatBesoin" component={ResultatBesoinScreen} />
       <Stack.Screen name="CreatePublicite" component={CreatePubliciteScreen} />

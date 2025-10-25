@@ -1,17 +1,12 @@
 // @ts-nocheck
-/**
- * Écran de gestion des produits
- * Affiche tous les produits de l'utilisateur avec options de management
- */
-import { useNavigation } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
-import * as React from 'react';
-import { useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
     Dimensions,
-    Image,
     RefreshControl,
     ScrollView,
     Share,
@@ -20,28 +15,25 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
-import { NativeButton } from '../components/NativeDesign';
+import { NativeButton, NativeCard } from '../components/NativeDesign';
 import SafeIcon from '../components/SafeIcon';
 import { useAuth } from '../contexts/AuthContext';
-import { apiGet, apiPatch } from '../services/api';
-import { modernColors } from '../theme/modernTheme';
+import { apiDelete, apiGet, apiPatch } from '../services/api';
+import { modernColors, modernStyles } from '../theme/modernTheme';
 
 const { width } = Dimensions.get('window');
 
 interface Product {
     id: string;
-    serviceId: string;
-    productIndex: number;
     nom: string;
     type: string;
-    prix: string;
-    devise: string;
+    prix: number | string;
+    devise?: string;
     description?: string;
+    is_active?: boolean;
+    serviceId: string;
+    serviceTitre: string;
     images?: string[];
-    isActive: boolean;
-    createdAt: string;
-    promotionActive?: boolean;
-    promotionValeur?: string;
     [key: string]: any;
 }
 
@@ -52,11 +44,9 @@ const MesProduitsScreen: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [filter, setFilter] = useState<'tous' | 'actif' | 'inactif'>('tous');
+    const [categoryFilter, setCategoryFilter] = useState<string>('tous');
 
-    useEffect(() => {
-        loadProducts();
-    }, []);
-
+    // Charger tous les produits de tous les services du prestataire
     const loadProducts = async (isRefresh = false) => {
         try {
             if (isRefresh) {
@@ -65,42 +55,42 @@ const MesProduitsScreen: React.FC = () => {
                 setLoading(true);
             }
 
-            // Récupérer tous les services de l'utilisateur
-            const response = await apiGet('/api/prestataire/services');
+            // Charger tous les services du prestataire
+            const servicesResponse = await apiGet('/api/prestataire/services');
 
-            if (response.ok) {
-                const services = await response.json();
+            if (servicesResponse.success && servicesResponse.data) {
+                const services = servicesResponse.data;
+                console.log('[MesProduitsScreen] 📦 Services reçus:', services.length);
 
                 // Extraire tous les produits de tous les services
                 const allProducts: Product[] = [];
-
+                
                 services.forEach((service: any) => {
-                    if (service.data?.produits && Array.isArray(service.data.produits)) {
-                        service.data.produits.forEach((product: any, index: number) => {
+                    const serviceId = service.id.toString();
+                    const serviceTitre = service.data?.titre_service?.valeur || service.titre || 'Service sans titre';
+                    const produits = service.data?.produits?.valeur;
+
+                    if (produits && Array.isArray(produits)) {
+                        produits.forEach((product: any) => {
                             allProducts.push({
                                 ...product,
-                                id: `${service.id}_${index}`,
-                                serviceId: service.id,
-                                productIndex: index,
-                                isActive: true, // TODO: Récupérer de products_lifecycle
-                                createdAt: service.created_at
+                                id: product.id || `${serviceId}_${product.nom}`,
+                                serviceId,
+                                serviceTitre,
+                                is_active: product.is_active !== undefined ? product.is_active : true
                             });
                         });
                     }
                 });
 
-                // Trier par date de création (plus récent en premier)
-                allProducts.sort((a, b) =>
-                    new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-                );
-
+                console.log('[MesProduitsScreen] 📦 Total produits extraits:', allProducts.length);
                 setProducts(allProducts);
             } else {
-                console.error('Erreur API:', response.status);
+                console.error('[MesProduitsScreen] Erreur chargement services:', servicesResponse.error);
                 setProducts([]);
             }
         } catch (error) {
-            console.error('Erreur chargement produits:', error);
+            console.error('[MesProduitsScreen] Erreur:', error);
             Alert.alert('Erreur', 'Impossible de charger vos produits');
             setProducts([]);
         } finally {
@@ -109,52 +99,155 @@ const MesProduitsScreen: React.FC = () => {
         }
     };
 
+    useFocusEffect(
+        useCallback(() => {
+            loadProducts();
+        }, [])
+    );
+
     const onRefresh = () => {
         loadProducts(true);
     };
 
-    const getTypeInfo = (type: string) => {
-        const types = {
-            immobilier_batiment: { icon: '🏢', label: 'Bâtiment', color: '#3B82F6' },
-            immobilier_terrain: { icon: '🏞️', label: 'Terrain', color: '#10B981' },
-            automobile: { icon: '🚗', label: 'Auto', color: '#F59E0B' },
-            ticket_voyage: { icon: '🚌', label: 'Voyage', color: '#8B5CF6' },
-            covoiturage: { icon: '🚕', label: 'Covoiturage', color: '#EC4899' },
-            vetement: { icon: '👔', label: 'Vêtement', color: '#EF4444' },
-            chaussure: { icon: '👟', label: 'Chaussure', color: '#F97316' },
-            electromenager: { icon: '📱', label: 'Électro', color: '#06B6D4' },
-            mobilier: { icon: '🪑', label: 'Mobilier', color: '#84CC16' },
-            aliments: { icon: '🍕', label: 'Aliment', color: '#F59E0B' },
-            livres_fournitures: { icon: '📚', label: 'Livre', color: '#6366F1' },
-            quincaillerie: { icon: '🔧', label: 'Quincaillerie', color: '#64748B' },
-            pharmacie: { icon: '💊', label: 'Pharmacie', color: '#059669' },
-            hopital_clinique: { icon: '🏥', label: 'Hôpital', color: '#DC2626' },
-            prestation_service: { icon: '💼', label: 'Service', color: '#8B5CF6' },
-            autre: { icon: '📦', label: 'Produit', color: '#6B7280' }
-        };
-        return types[type] || types.autre;
+    // Activer/Désactiver un produit spécifique
+    const handleToggleProduct = async (product: Product) => {
+        try {
+            const newStatus = !product.is_active;
+            
+            // Si RÉACTIVATION (inactif → actif)
+            if (newStatus) {
+                // 🚌 SPÉCIAL: Bloquer réactivation tickets de voyage expirés
+                if (product.type === 'ticket_voyage' && product.dateDepart) {
+                    try {
+                        const [day, month, year] = product.dateDepart.split('/');
+                        const departureDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+                        const now = new Date();
+                        
+                        if (departureDate < now) {
+                            Alert.alert(
+                                '⚠️ Réactivation impossible',
+                                `Ce ticket de voyage est expiré.\n\nDépart prévu: ${product.dateDepart}\nDate actuelle: ${now.toLocaleDateString('fr-FR')}\n\n🚫 Les tickets expirés ne peuvent pas être réactivés.\n\n✅ Créez un nouveau ticket avec une date future.`,
+                                [{ text: 'Compris' }]
+                            );
+                            return;
+                        }
+                    } catch (dateError) {
+                        console.warn('Erreur parsing date:', dateError);
+                        // Continuer si erreur de parsing
+                    }
+                }
+                
+                // Vérifier le solde et facturer 1000 FCFA
+                const activationCost = 1000;
+                const balanceResponse = await apiGet('/api/users/balance');
+                
+                if (!balanceResponse.success || !balanceResponse.data) {
+                    Alert.alert('Erreur', 'Impossible de vérifier votre solde');
+                    return;
+                }
+                
+                const currentBalance = balanceResponse.data.tokens_balance || 0;
+                
+                if (currentBalance < activationCost) {
+                    Alert.alert(
+                        '💰 Solde insuffisant',
+                        `Coût de réactivation: ${activationCost.toLocaleString()} FCFA\nVotre solde: ${currentBalance.toLocaleString()} FCFA\n\nVeuillez recharger votre compte.`
+                    );
+                    return;
+                }
+                
+                Alert.alert(
+                    '✅ Réactiver le produit',
+                    `"${product.nom}"\n\n💰 Coût: ${activationCost.toLocaleString()} FCFA\nSolde après: ${(currentBalance - activationCost).toLocaleString()} FCFA`,
+                    [
+                        { text: 'Annuler', style: 'cancel' },
+                        {
+                            text: 'Confirmer',
+                            onPress: async () => {
+                                try {
+                                    // Déduire le coût
+                                    const deductResponse = await apiPost('/api/users/deduct-balance', {
+                                        amount: activationCost,
+                                        reason: 'product_reactivation'
+                                    });
+                                    
+                                    if (!deductResponse.success) {
+                                        Alert.alert('Erreur', 'Impossible de déduire le montant');
+                                        return;
+                                    }
+                                    
+                                    // Toggle le produit
+                                    const response = await apiPatch(`/api/products/${product.id}/toggle-status`, {
+                                        is_active: newStatus
+                                    });
+
+                                    if (response.success) {
+                                        setProducts(prevProducts =>
+                                            prevProducts.map(p =>
+                                                p.id === product.id ? { ...p, is_active: newStatus } : p
+                                            )
+                                        );
+                                        
+                                        Alert.alert(
+                                            '✅ Produit réactivé',
+                                            `${activationCost.toLocaleString()} FCFA débités\nNouveau solde: ${(currentBalance - activationCost).toLocaleString()} FCFA`
+                                        );
+                                    } else {
+                                        Alert.alert('Erreur', response.error || 'Impossible de réactiver');
+                                    }
+                                } catch (error: any) {
+                                    console.error('[MesProduitsScreen] Erreur réactivation:', error);
+                                    Alert.alert('Erreur', error.message || 'Impossible de réactiver');
+                                }
+                            }
+                        }
+                    ]
+                );
+            } else {
+                // DÉSACTIVATION (actif → inactif) = GRATUIT
+                Alert.alert(
+                    '⏸️ Désactiver le produit',
+                    `"${product.nom}"\n\n✅ Désactivation gratuite\n\nLe produit ne sera plus visible dans les recherches.`,
+                    [
+                        { text: 'Annuler', style: 'cancel' },
+                        {
+                            text: 'Désactiver',
+                            onPress: async () => {
+                                try {
+                                    const response = await apiPatch(`/api/products/${product.id}/toggle-status`, {
+                                        is_active: newStatus
+                                    });
+
+                                    if (response.success) {
+                                        setProducts(prevProducts =>
+                                            prevProducts.map(p =>
+                                                p.id === product.id ? { ...p, is_active: newStatus } : p
+                                            )
+                                        );
+                                        
+                                        Alert.alert('✅ Succès', 'Produit désactivé avec succès');
+                                    } else {
+                                        Alert.alert('Erreur', response.error || 'Impossible de désactiver');
+                                    }
+                                } catch (error: any) {
+                                    console.error('[MesProduitsScreen] Erreur désactivation:', error);
+                                    Alert.alert('Erreur', error.message || 'Impossible de désactiver');
+                                }
+                            }
+                        }
+                    ]
+                );
+            }
+        } catch (error) {
+            console.error('[MesProduitsScreen] Erreur toggle product:', error);
+        }
     };
 
-    const handleViewProduct = (product: Product) => {
-        navigation.navigate('FormulaireYukpoIntelligent', {
-            mode: 'view',
-            serviceId: product.serviceId,
-            focusProductIndex: product.productIndex
-        });
-    };
-
-    const handleEditProduct = (product: Product) => {
-        navigation.navigate('FormulaireYukpoIntelligent', {
-            mode: 'edit',
-            serviceId: product.serviceId,
-            focusProductIndex: product.productIndex
-        });
-    };
-
-    const handleDeleteProduct = (product: Product) => {
+    // Supprimer un produit
+    const handleDeleteProduct = async (product: Product) => {
         Alert.alert(
             'Supprimer le produit',
-            `Êtes-vous sûr de vouloir supprimer "${product.nom}" ?`,
+            `Êtes-vous sûr de vouloir supprimer "${product.nom}" ?\n\nCette action est irréversible.`,
             [
                 { text: 'Annuler', style: 'cancel' },
                 {
@@ -162,33 +255,17 @@ const MesProduitsScreen: React.FC = () => {
                     style: 'destructive',
                     onPress: async () => {
                         try {
-                            // Récupérer le service complet
-                            const serviceResponse = await apiGet(`/api/services/${product.serviceId}`);
-                            if (!serviceResponse.ok) throw new Error('Service non trouvé');
-
-                            const service = await serviceResponse.json();
-
-                            // Supprimer le produit du tableau
-                            const updatedProducts = [...(service.data.produits || [])];
-                            updatedProducts.splice(product.productIndex, 1);
-
-                            // Mettre à jour le service
-                            const updateResponse = await apiPatch(`/api/services/${product.serviceId}`, {
-                                data: {
-                                    ...service.data,
-                                    produits: updatedProducts
-                                }
-                            });
-
-                            if (updateResponse.ok) {
-                                Alert.alert('Succès', 'Produit supprimé avec succès');
-                                loadProducts();
+                            const response = await apiDelete(`/api/products/${product.id}`);
+                            
+                            if (response.success) {
+                                setProducts(prevProducts => prevProducts.filter(p => p.id !== product.id));
+                                Alert.alert('✅ Succès', 'Produit supprimé avec succès');
                             } else {
-                                throw new Error('Échec de la suppression');
+                                Alert.alert('Erreur', response.error || 'Impossible de supprimer le produit');
                             }
-                        } catch (error) {
-                            console.error('Erreur suppression:', error);
-                            Alert.alert('Erreur', 'Impossible de supprimer le produit');
+                        } catch (error: any) {
+                            console.error('[MesProduitsScreen] Erreur suppression:', error);
+                            Alert.alert('Erreur', error.message || 'Impossible de supprimer le produit');
                         }
                     }
                 }
@@ -196,47 +273,193 @@ const MesProduitsScreen: React.FC = () => {
         );
     };
 
-    const handleToggleActivation = async (product: Product) => {
-        try {
-            const endpoint = product.isActive
-                ? `/api/products/${product.serviceId}/${product.productIndex}/deactivate`
-                : `/api/products/${product.serviceId}/${product.productIndex}/activate`;
-
-            const response = await apiPatch(endpoint, {});
-
-            if (response.ok) {
-                Alert.alert(
-                    'Succès',
-                    product.isActive ? 'Produit désactivé' : 'Produit activé'
-                );
-                loadProducts();
-            } else {
-                throw new Error('Échec de l\'opération');
-            }
-        } catch (error) {
-            console.error('Erreur activation/désactivation:', error);
-            Alert.alert('Erreur', 'Impossible de modifier le statut du produit');
-        }
+    // Modifier un produit (naviguer vers le service parent en mode édition)
+    const handleEditProduct = (product: Product) => {
+        Alert.alert(
+            'Modifier le produit',
+            `Pour modifier "${product.nom}", vous serez redirigé vers le service "${product.serviceTitre}".\n\nVous pourrez y modifier tous les produits.`,
+            [
+                { text: 'Annuler', style: 'cancel' },
+                {
+                    text: 'Continuer',
+                    onPress: () => {
+                        navigation.navigate('MesServices' as never);
+                        // L'utilisateur devra ensuite cliquer sur "Modifier" dans le service
+                    }
+                }
+            ]
+        );
     };
 
+    // Partager un produit
     const handleShareProduct = async (product: Product) => {
         try {
-            const message = `🔥 Découvrez mon produit !\n\n${getTypeInfo(product.type).icon} ${product.nom}\n\n${product.description || ''}\n\n💰 Prix: ${product.prix} ${product.devise}\n\n📱 Yukpomnang - Votre marketplace locale`;
+            const shareMessage = `🛍️ ${product.nom}\n\n` +
+                `💰 Prix: ${typeof product.prix === 'string' ? product.prix : product.prix.toLocaleString()} ${product.devise || 'FCFA'}\n\n` +
+                `${product.description || ''}\n\n` +
+                `📱 Disponible sur Yukpomnang!\n` +
+                `Service: ${product.serviceTitre}`;
 
             await Share.share({
-                message,
-                title: product.nom
+                message: shareMessage,
+                title: `Partagez ${product.nom}`,
             });
+            
+            console.log('✅ Produit partagé:', product.nom);
         } catch (error) {
-            console.error('Erreur partage:', error);
+            console.error('Erreur partage produit:', error);
         }
     };
 
+    // Dupliquer un produit
+    const handleDuplicateProduct = async (product: Product) => {
+        try {
+            const duplicationCost = 1000; // 1000 FCFA comme pour réactivation
+            
+            // Vérifier le solde
+            const balanceResponse = await apiGet('/api/users/balance');
+            
+            if (!balanceResponse.success || !balanceResponse.data) {
+                Alert.alert('Erreur', 'Impossible de vérifier votre solde');
+                return;
+            }
+            
+            const currentBalance = balanceResponse.data.tokens_balance || 0;
+            
+            if (currentBalance < duplicationCost) {
+                Alert.alert(
+                    '💰 Solde insuffisant',
+                    `Coût de duplication: ${duplicationCost.toLocaleString()} FCFA\nVotre solde: ${currentBalance.toLocaleString()} FCFA\n\nVeuillez recharger votre compte.`
+                );
+                return;
+            }
+            
+            Alert.alert(
+                '📋 Dupliquer le produit',
+                `"${product.nom}"\n\nLa copie sera ajoutée au service "${product.serviceTitre}"\n\n💰 Coût: ${duplicationCost.toLocaleString()} FCFA\nSolde après: ${(currentBalance - duplicationCost).toLocaleString()} FCFA`,
+                [
+                    { text: 'Annuler', style: 'cancel' },
+                    {
+                        text: 'Confirmer',
+                        onPress: async () => {
+                            try {
+                                // Déduire le coût
+                                const deductResponse = await apiPost('/api/users/deduct-balance', {
+                                    amount: duplicationCost,
+                                    reason: 'product_duplication'
+                                });
+                                
+                                if (!deductResponse.success) {
+                                    Alert.alert('Erreur', 'Impossible de déduire le montant');
+                                    return;
+                                }
+                                
+                                // Créer une copie du produit
+                                const duplicatedProduct = {
+                                    ...product,
+                                    id: `duplicate_${Date.now()}`,
+                                    nom: `${product.nom} (Copie)`,
+                                    images: [],
+                                    videos: [],
+                                    is_active: true, // Nouveau produit actif par défaut
+                                };
+
+                                // Appel API pour ajouter le produit dupliqué au service
+                                const response = await apiPatch(`/api/services/${product.serviceId}/add-product`, {
+                                    product: duplicatedProduct
+                                });
+
+                                if (response.success) {
+                                    Alert.alert(
+                                        '✅ Produit dupliqué',
+                                        `Coût: ${duplicationCost.toLocaleString()} FCFA\nNouveau solde: ${(currentBalance - duplicationCost).toLocaleString()} FCFA\n\nLe produit a été dupliqué avec succès.`,
+                                        [
+                                            {
+                                                text: 'Voir mes produits',
+                                                onPress: () => loadProducts(true)
+                                            }
+                                        ]
+                                    );
+                                } else {
+                                    // Si l'endpoint n'existe pas, proposer alternative
+                                    Alert.alert(
+                                        '⚠️ Fonctionnalité en développement',
+                                        'La duplication de produit nécessite de modifier le service parent.\n\nPour dupliquer ce produit:\n1. Allez dans "Boutique | Services"\n2. Modifiez le service\n3. Utilisez le bouton "Dupliquer" dans le bloc produits',
+                                        [{ text: 'Compris' }]
+                                    );
+                                }
+                            } catch (error: any) {
+                                console.error('[MesProduitsScreen] Erreur duplication:', error);
+                                Alert.alert('Erreur', error.message || 'Impossible de dupliquer le produit');
+                            }
+                        }
+                    }
+                ]
+            );
+        } catch (error) {
+            console.error('[MesProduitsScreen] Erreur duplication:', error);
+        }
+    };
+
+    // Promouvoir un produit
+    const handlePromoteProduct = (product: Product) => {
+        Alert.alert(
+            '🎉 Promouvoir le produit',
+            `Booster "${product.nom}" pour augmenter sa visibilité ?\n\n✨ Votre produit apparaîtra en tête des résultats de recherche.\n\n💰 Coût: À définir`,
+            [
+                { text: 'Annuler', style: 'cancel' },
+                {
+                    text: 'Créer une publicité',
+                    onPress: () => {
+                        navigation.navigate('CreatePublicite' as never, {
+                            productId: product.id,
+                            productName: product.nom,
+                            serviceId: product.serviceId
+                        });
+                    }
+                }
+            ]
+        );
+    };
+
+    // Voir les statistiques d'un produit
+    const handleViewStats = (product: Product) => {
+        const stats = `📊 Statistiques de "${product.nom}"\n\n` +
+            `👁️ Vues: ${product.views || 0}\n` +
+            `💬 Interactions: ${product.interactions || 0}\n` +
+            `📅 Créé le: ${product.createdAt ? new Date(product.createdAt).toLocaleDateString('fr-FR') : 'N/A'}\n` +
+            `✅ Statut: ${product.is_active ? 'Actif' : 'Inactif'}\n` +
+            `🏷️ Catégorie: ${getProductTypeLabel(product.type)}`;
+
+        Alert.alert('📊 Statistiques', stats, [{ text: 'OK' }]);
+    };
+
+    // Filtrer les produits
     const filteredProducts = products.filter(product => {
-        if (filter === 'actif') return product.isActive;
-        if (filter === 'inactif') return !product.isActive;
+        // Filtre par statut
+        if (filter === 'actif' && !product.is_active) return false;
+        if (filter === 'inactif' && product.is_active) return false;
+
+        // Filtre par catégorie
+        if (categoryFilter !== 'tous' && product.type !== categoryFilter) return false;
+
         return true;
     });
+
+    // Récupérer les catégories uniques
+    const categories = ['tous', ...new Set(products.map(p => p.type).filter(Boolean))];
+
+    const getProductTypeLabel = (type: string) => {
+        const labels: Record<string, string> = {
+            'ticket_voyage': '🚌 Ticket de voyage',
+            'covoiturage': '🚗 Covoiturage',
+            'immobilier_batiment': '🏢 Immobilier',
+            'automobile': '🚙 Automobile',
+            'prestation_service': '💼 Prestation',
+            // ... ajouter d'autres types selon besoin
+        };
+        return labels[type] || type;
+    };
 
     if (loading) {
         return (
@@ -249,34 +472,75 @@ const MesProduitsScreen: React.FC = () => {
 
     return (
         <View style={styles.container}>
-            {/* Header */}
+            {/* Header avec gradient */}
             <LinearGradient
-                colors={modernColors.primaryGradient}
+                colors={[modernColors.primary, '#8B5CF6']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
                 style={styles.header}
             >
-                <Text style={styles.headerTitle}>📦 Mes Produits</Text>
-                <Text style={styles.headerSubtitle}>
-                    {products.length} produit{products.length > 1 ? 's' : ''}
-                </Text>
+                <View style={styles.headerContent}>
+                    <TouchableOpacity
+                        style={styles.backButton}
+                        onPress={() => navigation.goBack()}
+                    >
+                        <SafeIcon name="arrow-left" size={24} color="#FFFFFF" />
+                    </TouchableOpacity>
+                    <View style={styles.headerTextContainer}>
+                        <Text style={styles.headerTitle}>Mes Produits</Text>
+                        <Text style={styles.headerSubtitle}>
+                            {filteredProducts.length} produit{filteredProducts.length > 1 ? 's' : ''}
+                        </Text>
+                    </View>
+                    <View style={styles.headerStats}>
+                        <View style={styles.statBadge}>
+                            <Text style={styles.statNumber}>{products.filter(p => p.is_active).length}</Text>
+                            <Text style={styles.statLabel}>actifs</Text>
+                        </View>
+                    </View>
+                </View>
             </LinearGradient>
 
             {/* Filtres */}
             <View style={styles.filtersContainer}>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                    {['tous', 'actif', 'inactif'].map((f) => (
+                {/* Filtre par statut */}
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterRow}>
+                    {['tous', 'actif', 'inactif'].map((filterOption) => (
                         <TouchableOpacity
-                            key={f}
+                            key={filterOption}
                             style={[
-                                styles.filterButton,
-                                filter === f && styles.filterButtonActive
+                                styles.filterChip,
+                                filter === filterOption && styles.filterChipActive
                             ]}
-                            onPress={() => setFilter(f as any)}
+                            onPress={() => setFilter(filterOption as any)}
                         >
                             <Text style={[
-                                styles.filterButtonText,
-                                filter === f && styles.filterButtonTextActive
+                                styles.filterChipText,
+                                filter === filterOption && styles.filterChipTextActive
                             ]}>
-                                {f === 'tous' ? '📋 Tous' : f === 'actif' ? '✅ Actifs' : '❌ Inactifs'}
+                                {filterOption === 'tous' ? '📦 Tous' : 
+                                 filterOption === 'actif' ? '✅ Actifs' : '⏸️ Inactifs'}
+                            </Text>
+                        </TouchableOpacity>
+                    ))}
+                </ScrollView>
+
+                {/* Filtre par catégorie */}
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterRow}>
+                    {categories.map((cat) => (
+                        <TouchableOpacity
+                            key={cat}
+                            style={[
+                                styles.categoryChip,
+                                categoryFilter === cat && styles.categoryChipActive
+                            ]}
+                            onPress={() => setCategoryFilter(cat)}
+                        >
+                            <Text style={[
+                                styles.categoryChipText,
+                                categoryFilter === cat && styles.categoryChipTextActive
+                            ]}>
+                                {cat === 'tous' ? '🏷️ Toutes catégories' : getProductTypeLabel(cat)}
                             </Text>
                         </TouchableOpacity>
                     ))}
@@ -285,154 +549,173 @@ const MesProduitsScreen: React.FC = () => {
 
             {/* Liste des produits */}
             <ScrollView
-                style={styles.content}
+                style={styles.scrollView}
                 refreshControl={
                     <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
                 }
             >
                 {filteredProducts.length === 0 ? (
-                    <View style={styles.emptyContainer}>
-                        <Text style={styles.emptyIcon}>📦</Text>
+                    <View style={styles.emptyState}>
+                        <SafeIcon name="package" size={64} color="#D1D5DB" />
                         <Text style={styles.emptyTitle}>Aucun produit</Text>
-                        <Text style={styles.emptyText}>
-                            {filter === 'actif' ? 'Vous n\'avez pas de produits actifs' :
-                                filter === 'inactif' ? 'Vous n\'avez pas de produits inactifs' :
-                                    'Créez votre premier produit pour commencer'}
+                        <Text style={styles.emptySubtitle}>
+                            {filter !== 'tous' 
+                                ? `Aucun produit ${filter}` 
+                                : 'Créez un service avec des produits'}
                         </Text>
                         <NativeButton
-                            title="➕ Créer un produit"
-                            onPress={() => navigation.navigate('FormulaireYukpoIntelligent')}
+                            title="➕ Créer un service"
+                            onPress={() => navigation.navigate('FormulaireYukpoIntelligent' as never)}
                             variant="primary"
+                            size="medium"
                             style={{ marginTop: 20 }}
                         />
                     </View>
                 ) : (
-                    filteredProducts.map((product) => {
-                        const typeInfo = getTypeInfo(product.type);
-                        return (
-                            <View key={product.id} style={styles.productCard}>
-                                {/* Image */}
-                                {product.images && product.images.length > 0 && (
-                                    <Image
-                                        source={{ uri: product.images[0] }}
-                                        style={styles.productImage}
-                                        resizeMode="cover"
-                                    />
-                                )}
-
-                                <View style={styles.productContent}>
-                                    {/* Header */}
-                                    <View style={styles.productHeader}>
-                                        <View style={{ flex: 1 }}>
-                                            <View style={[styles.typeBadge, { backgroundColor: typeInfo.color + '20' }]}>
-                                                <Text style={[styles.typeBadgeText, { color: typeInfo.color }]}>
-                                                    {typeInfo.icon} {typeInfo.label}
-                                                </Text>
-                                            </View>
-                                            <Text style={styles.productName}>{product.nom}</Text>
-                                            {product.description && (
-                                                <Text style={styles.productDescription} numberOfLines={2}>
-                                                    {product.description}
-                                                </Text>
-                                            )}
-                                        </View>
+                    <View style={styles.productsList}>
+                        {filteredProducts.map((product) => (
+                            <NativeCard key={product.id} style={styles.productCard}>
+                                {/* Header produit */}
+                                <View style={styles.productHeader}>
+                                    <View style={styles.productTitleContainer}>
+                                        <Text style={styles.productName} numberOfLines={2}>
+                                            {product.nom || 'Produit sans nom'}
+                                        </Text>
                                         <View style={[
-                                            styles.statusBadge,
-                                            { backgroundColor: product.isActive ? '#10B981' : '#9E9E9E' }
+                                            styles.productStatusBadge,
+                                            { backgroundColor: product.is_active ? '#10B981' : '#9CA3AF' }
                                         ]}>
-                                            <Text style={styles.statusText}>
-                                                {product.isActive ? 'Actif' : 'Inactif'}
+                                            <Text style={styles.productStatusText}>
+                                                {product.is_active ? 'Actif' : 'Inactif'}
                                             </Text>
                                         </View>
                                     </View>
+                                </View>
 
-                                    {/* Prix */}
-                                    <View style={styles.priceContainer}>
-                                        <Text style={styles.priceLabel}>💰 Prix:</Text>
-                                        <Text style={styles.priceValue}>
-                                            {product.prix} {product.devise}
+                                {/* Infos produit */}
+                                <View style={styles.productInfo}>
+                                    <View style={styles.productInfoRow}>
+                                        <SafeIcon name="folder" size={14} color="#6B7280" />
+                                        <Text style={styles.productServiceName} numberOfLines={1}>
+                                            {product.serviceTitre}
                                         </Text>
                                     </View>
-
-                                    {/* Promotion */}
-                                    {product.promotionActive && (
-                                        <View style={styles.promotionBadge}>
-                                            <SafeIcon name="tag" size={14} color="#EF4444" />
-                                            <Text style={styles.promotionText}>
-                                                🎁 {product.promotionValeur}
+                                    
+                                    {product.type && (
+                                        <View style={styles.productInfoRow}>
+                                            <SafeIcon name="tag" size={14} color="#6366F1" />
+                                            <Text style={styles.productType}>
+                                                {getProductTypeLabel(product.type)}
                                             </Text>
                                         </View>
                                     )}
 
-                                    {/* Actions */}
-                                    <View style={styles.actionsContainer}>
-                                        <TouchableOpacity
-                                            style={styles.actionButton}
-                                            onPress={() => handleViewProduct(product)}
-                                        >
-                                            <SafeIcon name="eye" size={18} color={modernColors.primary} />
-                                            <Text style={styles.actionText}>Voir</Text>
-                                        </TouchableOpacity>
-
-                                        <TouchableOpacity
-                                            style={styles.actionButton}
-                                            onPress={() => handleEditProduct(product)}
-                                        >
-                                            <SafeIcon name="edit-2" size={18} color={modernColors.warning} />
-                                            <Text style={styles.actionText}>Modifier</Text>
-                                        </TouchableOpacity>
-
-                                        <TouchableOpacity
-                                            style={styles.actionButton}
-                                            onPress={() => handleShareProduct(product)}
-                                        >
-                                            <SafeIcon name="share-2" size={18} color={modernColors.success} />
-                                            <Text style={styles.actionText}>Partager</Text>
-                                        </TouchableOpacity>
-
-                                        <TouchableOpacity
-                                            style={styles.actionButton}
-                                            onPress={() => handleToggleActivation(product)}
-                                        >
-                                            <SafeIcon
-                                                name={product.isActive ? "toggle-right" : "toggle-left"}
-                                                size={18}
-                                                color={product.isActive ? modernColors.success : modernColors.textSecondary}
-                                            />
-                                            <Text style={styles.actionText}>
-                                                {product.isActive ? 'Désactiver' : 'Activer'}
+                                    {product.prix && (
+                                        <View style={styles.productInfoRow}>
+                                            <SafeIcon name="dollar-sign" size={14} color="#10B981" />
+                                            <Text style={styles.productPrix}>
+                                                {typeof product.prix === 'string' ? product.prix : product.prix.toLocaleString()} {product.devise || 'FCFA'}
                                             </Text>
-                                        </TouchableOpacity>
+                                        </View>
+                                    )}
 
-                                        <TouchableOpacity
-                                            style={[styles.actionButton, styles.deleteButton]}
-                                            onPress={() => handleDeleteProduct(product)}
-                                        >
-                                            <SafeIcon name="trash-2" size={18} color={modernColors.error} />
-                                            <Text style={[styles.actionText, styles.deleteText]}>Supprimer</Text>
-                                        </TouchableOpacity>
-                                    </View>
+                                    {product.description && (
+                                        <Text style={styles.productDescription} numberOfLines={2}>
+                                            {product.description}
+                                        </Text>
+                                    )}
                                 </View>
-                            </View>
-                        );
-                    })
+
+                                {/* Actions principales */}
+                                <View style={styles.productActions}>
+                                    {/* Activer/Désactiver */}
+                                    <TouchableOpacity
+                                        style={[
+                                            styles.actionButton,
+                                            product.is_active ? styles.deactivateButton : styles.activateButton
+                                        ]}
+                                        onPress={() => handleToggleProduct(product)}
+                                    >
+                                        <SafeIcon 
+                                            name={product.is_active ? 'pause-circle' : 'play-circle'} 
+                                            size={18} 
+                                            color="#FFFFFF" 
+                                        />
+                                        <Text style={styles.actionButtonText}>
+                                            {product.is_active ? 'Désactiver' : 'Activer'}
+                                        </Text>
+                                    </TouchableOpacity>
+
+                                    {/* Modifier */}
+                                    <TouchableOpacity
+                                        style={[styles.actionButton, styles.editButton]}
+                                        onPress={() => handleEditProduct(product)}
+                                    >
+                                        <SafeIcon name="edit" size={18} color="#FFFFFF" />
+                                        <Text style={styles.actionButtonText}>Modifier</Text>
+                                    </TouchableOpacity>
+                                </View>
+
+                                {/* Actions secondaires */}
+                                <View style={styles.secondaryActions}>
+                                    {/* Partager */}
+                                    <TouchableOpacity
+                                        style={styles.iconButton}
+                                        onPress={() => handleShareProduct(product)}
+                                    >
+                                        <SafeIcon name="share-2" size={20} color="#3B82F6" />
+                                    </TouchableOpacity>
+
+                                    {/* Dupliquer */}
+                                    <TouchableOpacity
+                                        style={styles.iconButton}
+                                        onPress={() => handleDuplicateProduct(product)}
+                                    >
+                                        <SafeIcon name="copy" size={20} color="#8B5CF6" />
+                                    </TouchableOpacity>
+
+                                    {/* Statistiques */}
+                                    <TouchableOpacity
+                                        style={styles.iconButton}
+                                        onPress={() => handleViewStats(product)}
+                                    >
+                                        <SafeIcon name="bar-chart-2" size={20} color="#10B981" />
+                                    </TouchableOpacity>
+
+                                    {/* Promouvoir */}
+                                    <TouchableOpacity
+                                        style={styles.iconButton}
+                                        onPress={() => handlePromoteProduct(product)}
+                                    >
+                                        <SafeIcon name="trending-up" size={20} color="#F59E0B" />
+                                    </TouchableOpacity>
+
+                                    {/* Supprimer */}
+                                    <TouchableOpacity
+                                        style={styles.iconButton}
+                                        onPress={() => handleDeleteProduct(product)}
+                                    >
+                                        <SafeIcon name="trash-2" size={20} color="#EF4444" />
+                                    </TouchableOpacity>
+                                </View>
+                            </NativeCard>
+                        ))}
+                    </View>
                 )}
 
-                <View style={{ height: 100 }} />
+                {/* Bouton créer nouveau service */}
+                {filteredProducts.length > 0 && (
+                    <View style={styles.footerContainer}>
+                        <NativeButton
+                            title="➕ Créer un nouveau service"
+                            onPress={() => navigation.navigate('FormulaireYukpoIntelligent' as never)}
+                            variant="outline"
+                            size="large"
+                            style={styles.createButton}
+                        />
+                    </View>
+                )}
             </ScrollView>
-
-            {/* Bouton Créer */}
-            <TouchableOpacity
-                style={styles.fab}
-                onPress={() => navigation.navigate('FormulaireYukpoIntelligent')}
-            >
-                <LinearGradient
-                    colors={modernColors.primaryGradient}
-                    style={styles.fabGradient}
-                >
-                    <SafeIcon name="plus" size={24} color="#FFFFFF" />
-                </LinearGradient>
-            </TouchableOpacity>
         </View>
     );
 };
@@ -440,219 +723,262 @@ const MesProduitsScreen: React.FC = () => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F5F5F5'
-    },
-    loadingContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: '#F5F5F5'
-    },
-    loadingText: {
-        marginTop: 12,
-        fontSize: 14,
-        color: modernColors.textSecondary
+        backgroundColor: '#F9FAFB',
     },
     header: {
-        paddingTop: 60,
-        paddingBottom: 24,
+        paddingTop: Platform.OS === 'ios' ? 50 : 20,
+        paddingBottom: 20,
         paddingHorizontal: 20,
-        borderBottomLeftRadius: 24,
-        borderBottomRightRadius: 24
+    },
+    headerContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+    },
+    backButton: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    headerTextContainer: {
+        flex: 1,
+        marginLeft: 16,
     },
     headerTitle: {
-        fontSize: 28,
-        fontWeight: 'bold',
+        fontSize: 24,
+        fontWeight: '700',
         color: '#FFFFFF',
-        marginBottom: 4
     },
     headerSubtitle: {
         fontSize: 14,
-        color: '#FFFFFF',
-        opacity: 0.9
+        color: '#E0E7FF',
+        marginTop: 4,
     },
-    filtersContainer: {
-        paddingVertical: 16,
-        paddingHorizontal: 16,
-        backgroundColor: '#FFFFFF'
-    },
-    filterButton: {
-        paddingHorizontal: 20,
-        paddingVertical: 10,
-        borderRadius: 20,
-        backgroundColor: '#F3F4F6',
-        marginRight: 12
-    },
-    filterButtonActive: {
-        backgroundColor: modernColors.primary
-    },
-    filterButtonText: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: modernColors.textSecondary
-    },
-    filterButtonTextActive: {
-        color: '#FFFFFF'
-    },
-    content: {
-        flex: 1,
-        paddingHorizontal: 16
-    },
-    emptyContainer: {
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingVertical: 60
-    },
-    emptyIcon: {
-        fontSize: 64,
-        marginBottom: 16
-    },
-    emptyTitle: {
-        fontSize: 20,
-        fontWeight: 'bold',
-        color: modernColors.text,
-        marginBottom: 8
-    },
-    emptyText: {
-        fontSize: 14,
-        color: modernColors.textSecondary,
-        textAlign: 'center',
-        paddingHorizontal: 32
-    },
-    productCard: {
-        backgroundColor: '#FFFFFF',
-        borderRadius: 16,
-        marginTop: 16,
-        overflow: 'hidden',
-        elevation: 2,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4
-    },
-    productImage: {
-        width: '100%',
-        height: 200
-    },
-    productContent: {
-        padding: 16
-    },
-    productHeader: {
+    headerStats: {
         flexDirection: 'row',
-        alignItems: 'flex-start',
-        marginBottom: 12
+        gap: 12,
     },
-    typeBadge: {
-        alignSelf: 'flex-start',
+    statBadge: {
+        backgroundColor: 'rgba(255, 255, 255, 0.2)',
         paddingHorizontal: 12,
         paddingVertical: 6,
         borderRadius: 12,
-        marginBottom: 8
+        alignItems: 'center',
     },
-    typeBadgeText: {
-        fontSize: 12,
-        fontWeight: '600'
+    statNumber: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: '#FFFFFF',
+    },
+    statLabel: {
+        fontSize: 11,
+        color: '#E0E7FF',
+    },
+    loadingContainer: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#F9FAFB',
+    },
+    loadingText: {
+        marginTop: 16,
+        fontSize: 16,
+        color: modernColors.textSecondary,
+    },
+    filtersContainer: {
+        backgroundColor: '#FFFFFF',
+        paddingVertical: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: '#E5E7EB',
+    },
+    filterRow: {
+        paddingHorizontal: 16,
+        marginBottom: 8,
+    },
+    filterChip: {
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        backgroundColor: '#F3F4F6',
+        borderRadius: 20,
+        marginRight: 8,
+    },
+    filterChipActive: {
+        backgroundColor: modernColors.primary,
+    },
+    filterChipText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#6B7280',
+    },
+    filterChipTextActive: {
+        color: '#FFFFFF',
+    },
+    categoryChip: {
+        paddingHorizontal: 14,
+        paddingVertical: 6,
+        backgroundColor: '#EEF2FF',
+        borderRadius: 16,
+        marginRight: 8,
+        borderWidth: 1,
+        borderColor: '#C7D2FE',
+    },
+    categoryChipActive: {
+        backgroundColor: '#6366F1',
+        borderColor: '#6366F1',
+    },
+    categoryChipText: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: '#6366F1',
+    },
+    categoryChipTextActive: {
+        color: '#FFFFFF',
+    },
+    scrollView: {
+        flex: 1,
+    },
+    productsList: {
+        padding: 16,
+    },
+    productCard: {
+        marginBottom: 16,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+    },
+    productHeader: {
+        marginBottom: 12,
+    },
+    productTitleContainer: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'flex-start',
     },
     productName: {
-        fontSize: 18,
-        fontWeight: 'bold',
+        fontSize: 17,
+        fontWeight: '700',
         color: modernColors.text,
-        marginBottom: 4
+        flex: 1,
+        marginRight: 8,
+    },
+    productStatusBadge: {
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 12,
+    },
+    productStatusText: {
+        fontSize: 11,
+        fontWeight: '700',
+        color: '#FFFFFF',
+    },
+    productInfo: {
+        gap: 8,
+        marginBottom: 16,
+    },
+    productInfoRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+    },
+    productServiceName: {
+        fontSize: 13,
+        color: '#6B7280',
+        flex: 1,
+    },
+    productType: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: '#6366F1',
+    },
+    productPrix: {
+        fontSize: 14,
+        fontWeight: '700',
+        color: '#10B981',
     },
     productDescription: {
-        fontSize: 14,
-        color: modernColors.textSecondary,
-        lineHeight: 20
+        fontSize: 13,
+        color: '#9CA3AF',
+        lineHeight: 18,
+        marginTop: 4,
     },
-    statusBadge: {
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 12
-    },
-    statusText: {
-        fontSize: 12,
-        fontWeight: '600',
-        color: '#FFFFFF'
-    },
-    priceContainer: {
+    productActions: {
         flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 12
-    },
-    priceLabel: {
-        fontSize: 14,
-        color: modernColors.textSecondary,
-        marginRight: 8
-    },
-    priceValue: {
-        fontSize: 16,
-        fontWeight: 'bold',
-        color: modernColors.primary
-    },
-    promotionBadge: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#FEE2E2',
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 8,
-        alignSelf: 'flex-start',
-        marginBottom: 12
-    },
-    promotionText: {
-        fontSize: 12,
-        fontWeight: '600',
-        color: '#EF4444',
-        marginLeft: 4
-    },
-    actionsContainer: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
         gap: 8,
-        marginTop: 8
     },
     actionButton: {
+        flex: 1,
         flexDirection: 'row',
         alignItems: 'center',
+        justifyContent: 'center',
+        gap: 6,
+        paddingVertical: 10,
         paddingHorizontal: 12,
-        paddingVertical: 8,
         borderRadius: 8,
-        backgroundColor: '#F3F4F6',
-        gap: 6
     },
-    actionText: {
-        fontSize: 12,
-        fontWeight: '600',
-        color: modernColors.text
+    activateButton: {
+        backgroundColor: '#10B981',
+    },
+    deactivateButton: {
+        backgroundColor: '#F59E0B',
+    },
+    editButton: {
+        backgroundColor: '#6366F1',
     },
     deleteButton: {
-        backgroundColor: '#FEE2E2'
+        backgroundColor: '#EF4444',
+        flex: 0,
+        paddingHorizontal: 14,
     },
-    deleteText: {
-        color: modernColors.error
+    actionButtonText: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: '#FFFFFF',
     },
-    fab: {
-        position: 'absolute',
-        bottom: 24,
-        right: 24,
-        width: 64,
-        height: 64,
-        borderRadius: 32,
-        elevation: 8,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8
+    secondaryActions: {
+        flexDirection: 'row',
+        justifyContent: 'space-around',
+        alignItems: 'center',
+        marginTop: 12,
+        paddingTop: 12,
+        borderTopWidth: 1,
+        borderTopColor: '#E5E7EB',
     },
-    fabGradient: {
-        width: '100%',
-        height: '100%',
-        borderRadius: 32,
+    iconButton: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        backgroundColor: '#F3F4F6',
+        alignItems: 'center',
         justifyContent: 'center',
-        alignItems: 'center'
-    }
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+    },
+    emptyState: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 60,
+        paddingHorizontal: 40,
+    },
+    emptyTitle: {
+        fontSize: 20,
+        fontWeight: '700',
+        color: modernColors.text,
+        marginTop: 16,
+    },
+    emptySubtitle: {
+        fontSize: 14,
+        color: modernColors.textSecondary,
+        marginTop: 8,
+        textAlign: 'center',
+    },
+    footerContainer: {
+        padding: 16,
+    },
+    createButton: {
+        marginBottom: 20,
+    },
 });
 
 export default MesProduitsScreen;
-
-
