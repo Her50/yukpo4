@@ -294,20 +294,31 @@ const MesProduitsScreen: React.FC = () => {
     // Partager un produit
     const handleShareProduct = async (product: Product) => {
         try {
+            // Générer le lien deep link pour ouvrir l'app directement sur ce produit
+            const deepLink = `yukpomnang://product/${product.id}?serviceId=${product.serviceId}`;
+            const webLink = `https://yukpomnang.com/product/${product.id}`;
+            
             const shareMessage = `🛍️ ${product.nom}\n\n` +
                 `💰 Prix: ${typeof product.prix === 'string' ? product.prix : product.prix.toLocaleString()} ${product.devise || 'FCFA'}\n\n` +
                 `${product.description || ''}\n\n` +
-                `📱 Disponible sur Yukpomnang!\n` +
-                `Service: ${product.serviceTitre}`;
+                `📦 Service: ${product.serviceTitre}\n\n` +
+                `📱 Voir dans l'app: ${deepLink}\n` +
+                `🌐 Voir en ligne: ${webLink}`;
 
-            await Share.share({
+            const result = await Share.share({
                 message: shareMessage,
-                title: `Partagez ${product.nom}`,
+                title: `Découvrez: ${product.nom}`,
+                url: webLink, // URL pour partage sur réseaux sociaux
             });
             
-            console.log('✅ Produit partagé:', product.nom);
+            if (result.action === Share.sharedAction) {
+                console.log('✅ Produit partagé:', product.nom, 'via', result.activityType || 'partage natif');
+            } else if (result.action === Share.dismissedAction) {
+                console.log('⚠️ Partage annulé');
+            }
         } catch (error) {
             console.error('Erreur partage produit:', error);
+            Alert.alert('Erreur', 'Impossible de partager ce produit');
         }
     };
 

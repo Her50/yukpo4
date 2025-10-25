@@ -7,6 +7,7 @@ import {
     Linking,
     RefreshControl,
     ScrollView,
+    Share,
     StyleSheet,
     Text,
     TouchableOpacity,
@@ -1245,8 +1246,25 @@ const ResultatBesoinScreen: React.FC = () => {
                 user={user}
                 onPress={() => handleServiceClick(service.id)}
                 onContact={handleContact}
-                onShare={(service) => {
-                    Alert.alert('Partage', `Partager le service: ${service.titre}`);
+                onShare={async (service) => {
+                    try {
+                        const deepLink = `yukpomnang://service/${service.id}`;
+                        const webLink = `https://yukpomnang.com/service/${service.id}`;
+                        
+                        const shareMessage = `🏢 ${service.data?.titre_service?.valeur || service.titre || 'Service'}\n\n` +
+                            `${service.data?.description?.valeur || service.description || ''}\n\n` +
+                            `👤 Par: ${prestataires.get(service.user_id)?.nom_structure || 'Prestataire'}\n\n` +
+                            `📱 Voir dans l'app: ${deepLink}\n` +
+                            `🌐 Voir en ligne: ${webLink}`;
+
+                        await Share.share({
+                            message: shareMessage,
+                            title: `Découvrez: ${service.data?.titre_service?.valeur || service.titre}`,
+                            url: webLink,
+                        });
+                    } catch (error) {
+                        console.error('Erreur partage service:', error);
+                    }
                 }}
                 onFavorite={(service) => {
                     Alert.alert('Favoris', `Service ${service.titre} ajouté aux favoris`);

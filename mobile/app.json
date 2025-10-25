@@ -3,6 +3,7 @@
     "name": "Yukpomnang",
     "slug": "yukpomnang-mobile",
     "version": "1.0.0",
+    "scheme": "yukpomnang",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -16,7 +17,18 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.yukpomnang.mobile"
+      "bundleIdentifier": "com.yukpomnang.mobile",
+      "associatedDomains": [
+        "applinks:yukpomnang.com",
+        "applinks:www.yukpomnang.com"
+      ],
+      "infoPlist": {
+        "CFBundleURLTypes": [
+          {
+            "CFBundleURLSchemes": ["yukpomnang"]
+          }
+        ]
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -32,6 +44,28 @@
         "android.permission.WRITE_EXTERNAL_STORAGE",
         "android.permission.READ_EXTERNAL_STORAGE",
         "android.permission.INTERNET"
+      ],
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "yukpomnang.com",
+              "pathPrefix": "/product"
+            },
+            {
+              "scheme": "https",
+              "host": "yukpomnang.com",
+              "pathPrefix": "/service"
+            },
+            {
+              "scheme": "yukpomnang"
+            }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
       ],
       "config": {
         "encoding": "UTF-8",

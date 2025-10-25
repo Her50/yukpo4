@@ -265,4 +265,96 @@ pub async fn add_product_to_service(
     }))
 }
 
+/// Modifier un produit spécifique dans un service (GRATUIT)
+/// PATCH /api/products/:id/update
+#[derive(Debug, Deserialize)]
+pub struct UpdateProductRequest {
+    pub service_id: String,
+    pub product_index: i32, // Index dans produits.valeur[]
+    pub updated_product: serde_json::Value,
+}
+
+pub async fn update_product(
+    State(state): State<Arc<AppState>>,
+    Path(product_id): Path<String>,
+    Json(payload): Json<UpdateProductRequest>,
+) -> Result<Json<ApiResponse>, StatusCode> {
+    let pool = &state.pg;
+    
+    log::info!("✏️ Modification produit {} dans service {}", product_id, payload.service_id);
+
+    // Récupérer le service
+    let service = sqlx::query!(
+        r#"
+        SELECT data
+        FROM services
+        WHERE id = $1
+        "#,
+        payload.service_id.parse::<i32>().unwrap_or(0)
+    )
+    .fetch_optional(pool)
+    .await
+    .map_err(|e| {
+        log::error!("❌ Erreur récupération service: {:?}", e);
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+
+    if service.is_none() {
+        log::warn!("⚠️ Service {} non trouvé", payload.service_id);
+        return Ok(Json(ApiResponse {
+            success: false,
+            message: "Service non trouvé".to_string(),
+            data: None,
+        }));
+    }
+
+    // Parser le JSON data
+    let mut service_data: serde_json::Value = service.unwrap().data;
+    
+    // Mettre à jour le produit dans produits.valeur[index]
+    if let Some(produits) = service_data.get_mut("produits") {
+        if let Some(valeur) = produits.get_mut("valeur") {
+            if let Some(arr) = valeur.as_array_mut() {
+                if payload.product_index >= 0 && (payload.product_index as usize) < arr.len() {
+                    arr[payload.product_index as usize] = payload.updated_product.clone();
+                    log::info!("✅ Produit modifié à l'index {}", payload.product_index);
+                } else {
+                    log::error!("❌ Index {} invalide (total: {})", payload.product_index, arr.len());
+                    return Ok(Json(ApiResponse {
+                        success: false,
+                        message: "Index de produit invalide".to_string(),
+                        data: None,
+                    }));
+                }
+            }
+        }
+    }
+
+    // Mettre à jour le service (GRATUIT - pas de déduction de tokens)
+    sqlx::query!(
+        r#"
+        UPDATE services
+        SET data = $1,
+            updated_at = NOW()
+        WHERE id = $2
+        "#,
+        service_data,
+        payload.service_id.parse::<i32>().unwrap_or(0)
+    )
+    .execute(pool)
+    .await
+    .map_err(|e| {
+        log::error!("❌ Erreur mise à jour service: {:?}", e);
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+
+    log::info!("✅ Produit {} modifié avec succès (GRATUIT)", product_id);
+
+    Ok(Json(ApiResponse {
+        success: true,
+        message: "Produit modifié avec succès (gratuit)".to_string(),
+        data: None,
+    }))
+}
+
 

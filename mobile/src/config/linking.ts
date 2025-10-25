@@ -26,7 +26,15 @@ const linking: LinkingOptions<any> = {
       Settings: 'settings',
       RechargeTokens: 'recharge',
       FormulaireYukpoIntelligent: 'create-service',
-      ResultatBesoin: 'search/:query',
+      ResultatBesoin: {
+        path: 'search/:query',
+        parse: {
+          query: (query: string) => query,
+          productId: (productId: string) => productId,
+          serviceId: (serviceId: string) => serviceId,
+        },
+      },
+      ProductDetail: 'product/:productId',  // ✅ NOUVEAU: Deep link produit
       ServiceDetailShared: 'service/:id',
       SoldeDetail: 'balance',
       CreatePublicite: 'create-ad',

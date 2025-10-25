@@ -1,6 +1,6 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useState } from 'react';
-import { Alert, Dimensions, Image, Linking, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Dimensions, Image, Linking, Share, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { getCategoryConfig, getCategoryStyle, getCategoryTerminology } from '../config/categoryConfig';
 import { getDepartureWarning, isTicketStillValid } from '../utils/ticketValidation';
 import SafeIcon from './SafeIcon';
@@ -1215,8 +1215,32 @@ const ProductCard: React.FC<ProductCardProps> = ({
 
                             <TouchableOpacity
                                 style={styles.actionIconButton}
-                                onPress={() => {
-                                    // TODO: Implémenter partage
+                                onPress={async () => {
+                                    try {
+                                        // Générer les liens deep link et web
+                                        const deepLink = `yukpomnang://product/${product.id}?serviceId=${service.id}`;
+                                        const webLink = `https://yukpomnang.com/product/${product.id}`;
+                                        
+                                        const shareMessage = `🛍️ ${product.nom || 'Produit'}\n\n` +
+                                            `💰 Prix: ${formatPrice()}\n\n` +
+                                            `${product.description || ''}\n\n` +
+                                            `📦 Service: ${service.data?.titre_service?.valeur || service.titre || 'Service'}\n` +
+                                            `👤 Par: ${prestataire?.nom_structure || prestataire?.username || 'Prestataire'}\n\n` +
+                                            `📱 Voir dans l'app: ${deepLink}\n` +
+                                            `🌐 Voir en ligne: ${webLink}`;
+
+                                        const result = await Share.share({
+                                            message: shareMessage,
+                                            title: `Découvrez: ${product.nom || 'Produit'}`,
+                                            url: webLink,
+                                        });
+                                        
+                                        if (result.action === Share.sharedAction) {
+                                            console.log('✅ Produit partagé:', product.nom);
+                                        }
+                                    } catch (error) {
+                                        console.error('Erreur partage:', error);
+                                    }
                                 }}
                             >
                                 <SafeIcon name="share-2" size={16} color="#6B7280" />
