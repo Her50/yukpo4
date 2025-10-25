@@ -85,7 +85,7 @@ const BusSeatSelectorMulti: React.FC<BusSeatSelectorProps> = ({
                 console.error('Erreur chargement nom:', error);
             }
         };
-        
+
         if (visible) {
             loadSavedName();
         } else {
@@ -268,7 +268,7 @@ const BusSeatSelectorMulti: React.FC<BusSeatSelectorProps> = ({
                         <View style={styles.seatsGrid}>
                             {Array.from({ length: busConfiguration.rows }).map((_, rowIndex) => {
                                 const seatsInThisRow = seatMap.filter(s => s.row === rowIndex + 1);
-                                
+
                                 return (
                                     <View key={rowIndex} style={styles.seatRow}>
                                         <Text style={styles.rowLabel}>{rowIndex + 1}</Text>
@@ -407,11 +407,11 @@ const BusSeatSelectorMulti: React.FC<BusSeatSelectorProps> = ({
                         >
                             <SafeIcon name="check-circle" size={22} color="#FFFFFF" />
                             <Text style={styles.confirmButtonText}>
-                                {selectedSeats.length === 0 
+                                {selectedSeats.length === 0
                                     ? 'Sélectionnez des places'
                                     : !passengerNames.every(n => n.trim())
-                                    ? 'Remplissez les noms'
-                                    : `Payer ${totalPrice.toLocaleString()} FCFA`}
+                                        ? 'Remplissez les noms'
+                                        : `Payer ${totalPrice.toLocaleString()} FCFA`}
                             </Text>
                         </TouchableOpacity>
                     </View>

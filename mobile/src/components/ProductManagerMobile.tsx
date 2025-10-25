@@ -32,6 +32,8 @@ import SafeIcon from './SafeIcon';
 import BusSeatSelector from './BusSeatSelector';
 // Code corrigé (remplace @ts-ignore)
 import ModernGPSModal from './ModernGPSModal';
+// Code corrigé (remplace @ts-ignore)
+import { SmartModalityInput } from './SmartModalityInput';
 
 const { width } = Dimensions.get('window');
 
@@ -2241,12 +2243,13 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Compagnie et Type de véhicule */}
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
-                                    label="Compagnie"
-                                    fieldName="compagnies"
-                                    productType="ticket_voyage"
+                                <SmartModalityInput
+                                    label="Nom de l'agence"
                                     value={newProduct.compagnieTransport || ''}
-                                    onSelect={(value) => setNewProduct({ ...newProduct, compagnieTransport: value })}
+                                    onChangeText={(text) => setNewProduct({ ...newProduct, compagnieTransport: text })}
+                                    placeholder="Ex: Alliance Voyage"
+                                    modalityType="agency"
+                                    fieldKey="agency_name"
                                     required
                                 />
                             </View>
@@ -2452,6 +2455,95 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             )}
                         </View>
 
+                        {/* Option Aller-Retour */}
+                        <View style={styles.returnTripSection}>
+                            <View style={styles.sectionHeaderWithIcon}>
+                                <SafeIcon name="repeat" size={20} color={modernColors.primary} />
+                                <Text style={styles.sectionTitleMedium}>Type de Trajet</Text>
+                            </View>
+
+                            <View style={styles.tripTypeOptions}>
+                                <TouchableOpacity
+                                    style={[
+                                        styles.tripTypeButton,
+                                        !newProduct.proposeAllerRetour && styles.tripTypeButtonActive
+                                    ]}
+                                    onPress={() => setNewProduct({ ...newProduct, proposeAllerRetour: false })}
+                                >
+                                    <SafeIcon 
+                                        name="arrow-right" 
+                                        size={20} 
+                                        color={!newProduct.proposeAllerRetour ? '#FFFFFF' : modernColors.primary} 
+                                    />
+                                    <Text style={[
+                                        styles.tripTypeButtonText,
+                                        !newProduct.proposeAllerRetour && styles.tripTypeButtonTextActive
+                                    ]}>
+                                        Aller simple uniquement
+                                    </Text>
+                                </TouchableOpacity>
+
+                                <TouchableOpacity
+                                    style={[
+                                        styles.tripTypeButton,
+                                        newProduct.proposeAllerRetour && styles.tripTypeButtonActive
+                                    ]}
+                                    onPress={() => setNewProduct({ ...newProduct, proposeAllerRetour: true })}
+                                >
+                                    <SafeIcon 
+                                        name="refresh-cw" 
+                                        size={20} 
+                                        color={newProduct.proposeAllerRetour ? '#FFFFFF' : modernColors.primary} 
+                                    />
+                                    <Text style={[
+                                        styles.tripTypeButtonText,
+                                        newProduct.proposeAllerRetour && styles.tripTypeButtonTextActive
+                                    ]}>
+                                        Proposer aller-retour
+                                    </Text>
+                                </TouchableOpacity>
+                            </View>
+
+                            {newProduct.proposeAllerRetour && (
+                                <View style={styles.returnPricingContainer}>
+                                    <View style={styles.fieldRow}>
+                                        <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                            <Text style={styles.fieldLabel}>Prix aller simple <Text style={styles.required}>*</Text></Text>
+                                            <NativeInput
+                                                placeholder="5000"
+                                                value={newProduct.prixAllerSimple || newProduct.prix || ''}
+                                                onChangeText={(text) => {
+                                                    setNewProduct({ ...newProduct, prixAllerSimple: text, prix: text });
+                                                }}
+                                                style={styles.fieldInput}
+                                                keyboardType="numeric"
+                                            />
+                                        </View>
+                                        <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                            <Text style={styles.fieldLabel}>Prix aller-retour <Text style={styles.required}>*</Text></Text>
+                                            <NativeInput
+                                                placeholder="9000"
+                                                value={newProduct.prixAllerRetour || ''}
+                                                onChangeText={(text) => setNewProduct({ ...newProduct, prixAllerRetour: text })}
+                                                style={styles.fieldInput}
+                                                keyboardType="numeric"
+                                            />
+                                        </View>
+                                    </View>
+                                    
+                                    {newProduct.prixAllerSimple && newProduct.prixAllerRetour && (
+                                        <View style={styles.savingsIndicator}>
+                                            <SafeIcon name="trending-down" size={16} color={modernColors.success} />
+                                            <Text style={styles.savingsText}>
+                                                Économie: {(parseInt(newProduct.prixAllerSimple) * 2 - parseInt(newProduct.prixAllerRetour)).toLocaleString()} FCFA 
+                                                ({Math.round((1 - parseInt(newProduct.prixAllerRetour) / (parseInt(newProduct.prixAllerSimple) * 2)) * 100)}%)
+                                            </Text>
+                                        </View>
+                                    )}
+                                </View>
+                            )}
+                        </View>
+
                         {/* Classe de voyage */}
                         <ProductFieldSelector
                             label="Classe"
@@ -2465,21 +2557,25 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Trajet */}
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Départ <Text style={styles.required}>*</Text></Text>
-                                <NativeInput
-                                    placeholder="Douala"
+                                <SmartModalityInput
+                                    label="Ville de départ"
                                     value={newProduct.depart || ''}
                                     onChangeText={(text) => setNewProduct({ ...newProduct, depart: text })}
-                                    style={styles.fieldInput}
+                                    placeholder="Ex: Douala"
+                                    modalityType="city"
+                                    fieldKey="departure_city"
+                                    required
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Destination <Text style={styles.required}>*</Text></Text>
-                                <NativeInput
-                                    placeholder="Yaoundé"
+                                <SmartModalityInput
+                                    label="Ville de destination"
                                     value={newProduct.destination || ''}
                                     onChangeText={(text) => setNewProduct({ ...newProduct, destination: text })}
-                                    style={styles.fieldInput}
+                                    placeholder="Ex: Yaoundé"
+                                    modalityType="city"
+                                    fieldKey="arrival_city"
+                                    required
                                 />
                             </View>
                         </View>
@@ -7257,6 +7353,61 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontWeight: '600',
         color: modernColors.text,
+    },
+    returnTripSection: {
+        backgroundColor: '#F0F9FF',
+        borderWidth: 1,
+        borderColor: '#BFDBFE',
+        borderRadius: 12,
+        padding: 16,
+        marginBottom: 16,
+    },
+    tripTypeOptions: {
+        flexDirection: 'row',
+        gap: 12,
+    },
+    tripTypeButton: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        paddingVertical: 14,
+        paddingHorizontal: 12,
+        backgroundColor: modernColors.surface,
+        borderWidth: 2,
+        borderColor: modernColors.primary,
+        borderRadius: 10,
+    },
+    tripTypeButtonActive: {
+        backgroundColor: modernColors.primary,
+    },
+    tripTypeButtonText: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: modernColors.primary,
+    },
+    tripTypeButtonTextActive: {
+        color: '#FFFFFF',
+    },
+    returnPricingContainer: {
+        marginTop: 16,
+        gap: 12,
+    },
+    savingsIndicator: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        padding: 12,
+        backgroundColor: '#ECFDF5',
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: '#86EFAC',
+    },
+    savingsText: {
+        fontSize: 14,
+        fontWeight: '700',
+        color: modernColors.success,
     },
     ticketInfoSection: {
         backgroundColor: '#F0F9FF',

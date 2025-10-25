@@ -234,11 +234,151 @@ pub async fn delete_custom_modality(
     }
 }
 
+/// Query pour les suggestions intelligentes
+#[derive(Debug, Deserialize)]
+pub struct SuggestionsQuery {
+    #[serde(rename = "type")]
+    pub field_type: String,
+    pub search: String,
+}
+
+#[derive(Debug, serde::Serialize)]
+pub struct SuggestionsResponse {
+    pub suggestions: Vec<String>,
+}
+
+/// Obtenir des suggestions de modalités pour un champ spécifique (pour SmartModalityInput)
+/// GET /api/modalities/suggestions?type=departure_city&search=Yaoun
+pub async fn get_smart_suggestions(
+    State(state): State<Arc<AppState>>,
+    Query(query): Query<SuggestionsQuery>,
+) -> Result<Json<SuggestionsResponse>, StatusCode> {
+    let pool = &state.pg;
+    let search_pattern = format!("%{}%", query.search.to_lowercase());
+    
+    // Récupérer les suggestions depuis custom_modalities
+    let result = sqlx::query!(
+        r#"
+        SELECT DISTINCT value
+        FROM custom_modalities
+        WHERE field_type = $1
+          AND LOWER(value) LIKE $2
+        ORDER BY usage_count DESC, value ASC
+        LIMIT 10
+        "#,
+        query.field_type,
+        search_pattern
+    )
+    .fetch_all(pool)
+    .await;
+
+    match result {
+        Ok(records) => {
+            let suggestions: Vec<String> = records.into_iter().map(|r| r.value).collect();
+            Ok(Json(SuggestionsResponse { suggestions }))
+        }
+        Err(e) => {
+            log::error!("Erreur récupération suggestions: {:?}", e);
+            // Retourner une liste vide en cas d'erreur
+            Ok(Json(SuggestionsResponse { suggestions: vec![] }))
+        }
+    }
+}
+
+/// Créer une modalité via SmartModalityInput
+/// POST /api/modalities/custom
+#[derive(Debug, Deserialize)]
+pub struct SmartModalityRequest {
+    pub field_type: String,
+    pub value: String,
+    pub category: Option<String>,
+}
+
+pub async fn create_smart_modality(
+    State(state): State<Arc<AppState>>,
+    Json(request): Json<SmartModalityRequest>,
+) -> Result<Json<CustomModalityResponse>, StatusCode> {
+    let pool = &state.pg;
+    
+    // Vérifier si la modalité existe déjà
+    let existing = sqlx::query!(
+        r#"
+        SELECT id FROM custom_modalities
+        WHERE field_type = $1 AND LOWER(value) = LOWER($2)
+        "#,
+        request.field_type,
+        request.value
+    )
+    .fetch_optional(pool)
+    .await;
+
+    match existing {
+        Ok(Some(record)) => {
+            // Si existe déjà, incrémenter usage_count
+            let _ = sqlx::query!(
+                r#"
+                UPDATE custom_modalities
+                SET usage_count = usage_count + 1
+                WHERE id = $1
+                "#,
+                record.id
+            )
+            .execute(pool)
+            .await;
+
+            Ok(Json(CustomModalityResponse {
+                success: true,
+                data: None,
+                error: None,
+            }))
+        }
+        Ok(None) => {
+            // Créer une nouvelle modalité
+            let result = sqlx::query!(
+                r#"
+                INSERT INTO custom_modalities (field_type, value, category, usage_count)
+                VALUES ($1, $2, $3, 1)
+                "#,
+                request.field_type,
+                request.value,
+                request.category
+            )
+            .execute(pool)
+            .await;
+
+            match result {
+                Ok(_) => Ok(Json(CustomModalityResponse {
+                    success: true,
+                    data: None,
+                    error: None,
+                })),
+                Err(e) => {
+                    log::error!("Erreur création modalité: {:?}", e);
+                    Ok(Json(CustomModalityResponse {
+                        success: false,
+                        data: None,
+                        error: Some("Erreur création".to_string()),
+                    }))
+                }
+            }
+        }
+        Err(e) => {
+            log::error!("Erreur vérification modalité: {:?}", e);
+            Ok(Json(CustomModalityResponse {
+                success: false,
+                data: None,
+                error: Some("Erreur vérification".to_string()),
+            }))
+        }
+    }
+}
+
 /// Créer le routeur pour les modalités
 pub fn create_modalities_router() -> Router<Arc<AppState>> {
     Router::new()
         .route("/api/modalities/custom", get(get_custom_modalities))
-        .route("/api/modalities/custom", post(create_custom_modality))
+        .route("/api/modalities/custom", post(create_smart_modality)) // Utiliser la nouvelle fonction
+        .route("/api/modalities/suggestions", get(get_smart_suggestions)) // Nouveau endpoint
         .route("/api/modalities/usage", post(increment_usage))
         .route("/api/modalities/popular", get(get_popular_modalities))
         .route("/api/modalities/stats", get(get_modality_stats))

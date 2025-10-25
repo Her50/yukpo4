@@ -31,8 +31,11 @@ interface Seat {
     number: number;
     row: number;
     col: number;
-    status: 'available' | 'reserved' | 'occupied';
-    type: 'standard' | 'vip' | 'handicapped';
+    status: 'available' | 'reserved' | 'occupied' | 'prebooked';
+    type: 'standard' | 'vip' | 'handicapped' | 'driver';
+    prebooked?: boolean;
+    prebookedForUserId?: string; // ID de l'utilisateur qui a pré-réservé
+    passengerName?: string;
 }
 
 interface BusConfiguration {
@@ -50,6 +53,7 @@ interface BusSeatSelectorProps {
     selectedSeatNumber?: number;
     product: any;
     multipleMode?: boolean; // Mode réservation multiple
+    currentUserId?: string; // ID de l'utilisateur actuel
 }
 
 const BusSeatSelector: React.FC<BusSeatSelectorProps> = ({
@@ -60,7 +64,8 @@ const BusSeatSelector: React.FC<BusSeatSelectorProps> = ({
     onSelectSeat,
     selectedSeatNumber,
     product,
-    multipleMode = false
+    multipleMode = false,
+    currentUserId
 }) => {
     const [selectedSeats, setSelectedSeats] = useState<Seat[]>([]);
     const [passengerNames, setPassengerNames] = useState<string[]>([]);
@@ -104,6 +109,14 @@ const BusSeatSelector: React.FC<BusSeatSelectorProps> = ({
         if (seat.status === 'occupied' || seat.status === 'reserved') {
             return styles.seatOccupied;
         }
+        // Place pré-réservée pour retour
+        if (seat.status === 'prebooked' || seat.prebooked) {
+            // Si c'est pour l'utilisateur actuel, style spécial
+            if (seat.prebookedForUserId === currentUserId) {
+                return styles.seatPrebookedOwn;
+            }
+            return styles.seatPrebooked;
+        }
         if (selectedSeats.find(s => s.id === seat.id) || seat.number === selectedSeatNumber) {
             return styles.seatSelected;
         }
@@ -117,6 +130,9 @@ const BusSeatSelector: React.FC<BusSeatSelectorProps> = ({
         if (seat.status === 'occupied' || seat.status === 'reserved') {
             return '🔒';
         }
+        if (seat.status === 'prebooked' || seat.prebooked) {
+            return '⏳'; // Sablier pour pré-réservé
+        }
         const selectedIndex = selectedSeats.findIndex(s => s.id === seat.id);
         if (selectedIndex >= 0) {
             return isMultipleMode ? (selectedIndex + 1).toString() : '✓';
@@ -125,7 +141,16 @@ const BusSeatSelector: React.FC<BusSeatSelectorProps> = ({
     };
 
     const handleSeatPress = (seat: Seat) => {
-        if (seat.status === 'available' && seat.type !== 'driver') {
+        // Vérifier si la place est prebooked et si l'utilisateur peut la sélectionner
+        if (seat.status === 'prebooked' || seat.prebooked) {
+            // Si la place est pré-réservée, seul le propriétaire peut la sélectionner
+            if (seat.prebookedForUserId !== currentUserId) {
+                // Afficher un message d'erreur ou simplement ignorer
+                return;
+            }
+        }
+
+        if ((seat.status === 'available' || (seat.status === 'prebooked' && seat.prebookedForUserId === currentUserId)) && seat.type !== 'driver') {
             if (isMultipleMode) {
                 // Mode multiple: toggle la sélection
                 const isSelected = selectedSeats.find(s => s.id === seat.id);
@@ -265,11 +290,16 @@ const BusSeatSelector: React.FC<BusSeatSelectorProps> = ({
                                                     <TouchableOpacity
                                                         style={[styles.seat, getSeatStyle(seat)]}
                                                         onPress={() => handleSeatPress(seat)}
-                                                        disabled={seat.status !== 'available' || seat.type === 'driver'}
+                                                        disabled={
+                                                            seat.type === 'driver' ||
+                                                            seat.status === 'occupied' ||
+                                                            seat.status === 'reserved' ||
+                                                            ((seat.status === 'prebooked' || seat.prebooked) && seat.prebookedForUserId !== currentUserId)
+                                                        }
                                                     >
                                                         <Text style={[
                                                             styles.seatNumber,
-                                                            (seat.status === 'occupied' || seat.status === 'reserved' || seat.type === 'driver') && styles.seatNumberDisabled
+                                                            (seat.status === 'occupied' || seat.status === 'reserved' || ((seat.status === 'prebooked' || seat.prebooked) && seat.prebookedForUserId !== currentUserId) || seat.type === 'driver') && styles.seatNumberDisabled
                                                         ]}>
                                                             {getSeatIcon(seat)}
                                                         </Text>
@@ -297,6 +327,10 @@ const BusSeatSelector: React.FC<BusSeatSelectorProps> = ({
                         <View style={styles.legendItem}>
                             <View style={[styles.legendSeat, styles.seatSelected]} />
                             <Text style={styles.legendText}>Sélectionnée</Text>
+                        </View>
+                        <View style={styles.legendItem}>
+                            <View style={[styles.legendSeat, styles.seatPrebooked]} />
+                            <Text style={styles.legendText}>Pré-réservée</Text>
                         </View>
                         <View style={styles.legendItem}>
                             <View style={[styles.legendSeat, styles.seatOccupied]} />
@@ -357,6 +391,34 @@ const BusSeatSelector: React.FC<BusSeatSelectorProps> = ({
                         </ScrollView>
                     )}
 
+                    {/* Détails de paiement */}
+                    {selectedSeats.length > 0 && passengerNames.every((n, idx) => idx >= selectedSeats.length || n.trim().length > 0) && (
+                        <View style={styles.paymentBreakdown}>
+                            <View style={styles.breakdownRow}>
+                                <Text style={styles.breakdownLabel}>
+                                    {selectedSeats.length} {selectedSeats.length > 1 ? 'billets' : 'billet'} × {(parseInt(product.prix) || 0).toLocaleString()} FCFA
+                                </Text>
+                                <Text style={styles.breakdownValue}>
+                                    {((parseInt(product.prix) || 0) * selectedSeats.length).toLocaleString()} FCFA
+                                </Text>
+                            </View>
+                            <View style={styles.breakdownRow}>
+                                <View style={styles.feeLabel}>
+                                    <SafeIcon name="credit-card" size={14} color={modernColors.primary} />
+                                    <Text style={styles.breakdownLabel}>Frais de réservation en ligne</Text>
+                                </View>
+                                <Text style={styles.breakdownValue}>500 FCFA</Text>
+                            </View>
+                            <View style={styles.breakdownDivider} />
+                            <View style={styles.breakdownRow}>
+                                <Text style={styles.totalLabel}>TOTAL À PAYER</Text>
+                                <Text style={styles.totalValue}>
+                                    {((parseInt(product.prix) || 0) * selectedSeats.length + 500).toLocaleString()} FCFA
+                                </Text>
+                            </View>
+                        </View>
+                    )}
+
                     {/* Boutons d'action */}
                     <View style={styles.actions}>
                         <TouchableOpacity
@@ -377,7 +439,7 @@ const BusSeatSelector: React.FC<BusSeatSelectorProps> = ({
                             <Text style={styles.confirmButtonText}>
                                 {selectedSeats.length > 0
                                     ? (passengerNames.every((n, idx) => idx >= selectedSeats.length || n.trim().length > 0)
-                                        ? `Payer ${((parseInt(product.prix) || 0) * selectedSeats.length).toLocaleString()} FCFA`
+                                        ? `Payer ${((parseInt(product.prix) || 0) * selectedSeats.length + 500).toLocaleString()} FCFA`
                                         : `Entrez ${isMultipleMode ? 'les noms' : 'votre nom'}`)
                                     : `Sélectionnez ${isMultipleMode ? 'les places' : 'une place'}`}
                             </Text>
@@ -542,6 +604,16 @@ const styles = StyleSheet.create({
         borderColor: '#6B7280',
         opacity: 0.6,
     },
+    seatPrebooked: {
+        backgroundColor: '#F59E0B', // Orange pour pré-réservé
+        borderColor: '#D97706',
+        opacity: 0.7,
+    },
+    seatPrebookedOwn: {
+        backgroundColor: '#FBBF24', // Orange plus clair pour mes pré-réservations
+        borderColor: '#F59E0B',
+        borderWidth: 2,
+    },
     seatDriver: {
         backgroundColor: '#EF4444',
         borderColor: '#DC2626',
@@ -636,6 +708,51 @@ const styles = StyleSheet.create({
         fontSize: 15,
         fontWeight: '700',
         color: '#FFFFFF',
+    },
+    paymentBreakdown: {
+        marginTop: 16,
+        marginHorizontal: 20,
+        padding: 16,
+        backgroundColor: '#F0F9FF',
+        borderWidth: 1,
+        borderColor: '#BFDBFE',
+        borderRadius: 12,
+        gap: 8,
+    },
+    breakdownRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingVertical: 6,
+    },
+    breakdownLabel: {
+        fontSize: 13,
+        color: modernColors.textSecondary,
+    },
+    breakdownValue: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: modernColors.text,
+    },
+    feeLabel: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+    },
+    breakdownDivider: {
+        height: 1,
+        backgroundColor: '#BFDBFE',
+        marginVertical: 6,
+    },
+    totalLabel: {
+        fontSize: 15,
+        fontWeight: '700',
+        color: modernColors.text,
+    },
+    totalValue: {
+        fontSize: 18,
+        fontWeight: '800',
+        color: modernColors.primary,
     },
     passengerForm: {
         paddingHorizontal: 20,
