@@ -7,8 +7,12 @@ pub mod user_routes;
 pub mod prestataire_routes;
 pub mod echange_routes;
 pub mod fournitures_routes;
+pub mod health_structure_routes;
 pub mod history_routes;
 pub mod payment_routes;
+pub mod vehicle_model_routes;
+pub mod appliance_model_routes; // ✅ Routes pour modèles d'appareils électroménagers
+pub mod phone_model_routes; // ✅ Routes pour modèles de smartphones
 pub mod webhook_routes;
 pub mod image_search_routes;
 pub mod weather_routes;

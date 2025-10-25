@@ -138,41 +138,143 @@ export const VOYAGE_MODALITIES: ModalityCategory = {
   ]
 };
 
-// ✅ MODALITÉS VÊTEMENTS
+// ✅ MODALITÉS COVOITURAGE - NOUVEAU
+export const COVOITURAGE_MODALITIES: ModalityCategory = {
+  // Villes principales
+  villes: [
+    'Douala', 'Yaoundé', 'Bafoussam', 'Garoua', 'Bamenda', 'Maroua', 'Ngaoundéré',
+    'Bertoua', 'Kribi', 'Limbé', 'Edéa', 'Kumba', 'Nkongsamba', 'Ebolowa',
+    'Buéa', 'Foumban', 'Dschang', 'Mbalmayo', '🆕 Autre (ajouter)'
+  ],
+
+  // Types de véhicules
+  vehicules: [
+    'Berline', 'SUV', '4x4', 'Break', 'Minibus', 'Van', 'Pick-up', '🆕 Autre (ajouter)'
+  ],
+
+  // Préférences trajet
+  preferences: [
+    'Musique autorisée', 'Conversation', 'Silence/Calme', 'Climatisation',
+    'Pause café', 'Non-fumeur', 'Animaux acceptés', 'Bagages volumineux',
+    '🆕 Autre (ajouter)'
+  ],
+
+  // Jours de la semaine
+  jours: [
+    'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'
+  ]
+};
+
+// ✅ MODALITÉS VOYAGE & TOURISME - NOUVEAU
+export const VOYAGE_TOURISME_MODALITIES: ModalityCategory = {
+  // Types de voyages
+  types: [
+    'Séjour balnéaire', 'Safari', 'Circuit touristique', 'Trek/Randonnée', 'Croisière',
+    'City break', 'Voyage culturel', 'Écotourisme', 'Voyage aventure', 'Séjour détente',
+    'Voyage d\'affaires', 'Pèlerinage', '🆕 Autre (ajouter)'
+  ],
+
+  // Destinations populaires
+  destinations: [
+    'Kribi', 'Limbé', 'Parc Waza', 'Mont Cameroun', 'Réserve Dja', 'Chutes d\'Ekom',
+    'Lac Nyos', 'Foumban', 'Maroua', 'Douala', 'Yaoundé', 'Bamenda',
+    'International', '🆕 Autre (ajouter)'
+  ],
+
+  // Durées
+  durees: [
+    '1 jour', '2-3 jours', '4-7 jours', '1-2 semaines', '2-4 semaines',
+    'Plus d\'un mois', '🆕 Autre (ajouter)'
+  ],
+
+  // Services inclus
+  services: [
+    'Hébergement', 'Transport', 'Repas', 'Guide touristique', 'Activités',
+    'Visites guidées', 'Assurance voyage', 'Vol inclus', 'Location véhicule',
+    'Transferts aéroport', '🆕 Autre (ajouter)'
+  ],
+
+  // Types d'hébergement
+  hebergements: [
+    'Hôtel 3*', 'Hôtel 4*', 'Hôtel 5*', 'Resort', 'Chambre d\'hôte', 'Camping',
+    'Lodge', 'Auberge', 'Appartement', 'Villa', '🆕 Autre (ajouter)'
+  ]
+};
+
+// ✅ MODALITÉS VÊTEMENTS (TEXTILE) - ENRICHI
 export const VETEMENTS_MODALITIES: ModalityCategory = {
+  // Types de vêtements
+  types: [
+    'T-shirt', 'Polo', 'Chemise', 'Pantalon', 'Jean', 'Short', 'Bermuda',
+    'Robe', 'Jupe', 'Veste', 'Blazer', 'Manteau', 'Parka', 'Blouson',
+    'Pull', 'Sweat', 'Hoodie', 'Cardigan', 'Costume', 'Tailleur',
+    'Cravate', 'Écharpe', 'Foulard', 'Sous-vêtements', '🆕 Autre (ajouter)'
+  ],
+
+  // Genres
+  genres: [
+    'Homme', 'Femme', 'Enfant', 'Bébé', 'Unisexe', '🆕 Autre (ajouter)'
+  ],
+
   // Tailles
   tailles: [
     'XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', '28', '30', '32', '34', '36', '38',
     '40', '42', '44', '46', '48', '50', '52', '54', '56', '58', '60', '🆕 Autre (ajouter)'
   ],
 
+  // Couleurs
+  couleurs: [
+    'Blanc', 'Noir', 'Gris', 'Beige', 'Rouge', 'Bleu', 'Bleu marine', 'Vert',
+    'Jaune', 'Orange', 'Rose', 'Violet', 'Marron', 'Kaki', 'Bordeaux',
+    'Multicolore', 'Imprimé', 'Rayé', 'À pois', '🆕 Autre (ajouter)'
+  ],
+
   // Matières
   matieres: [
-    'Coton', 'Polyester', 'Laine', 'Soie', 'Lin', 'Cachemire', 'Cuir', 'Daim',
-    'Denim', 'Viscose', 'Acrylique', 'Nylon', 'Spandex', 'Mélange', '🆕 Autre (ajouter)'
+    'Coton', '100% Coton', 'Polyester', 'Laine', 'Soie', 'Lin', 'Cachemire',
+    'Cuir', 'Cuir synthétique', 'Daim', 'Denim', 'Viscose', 'Acrylique',
+    'Nylon', 'Spandex/Élasthanne', 'Mélange', 'Coton bio', '🆕 Autre (ajouter)'
   ],
 
   // Marques vêtements
   marques: [
     'Nike', 'Adidas', 'Puma', 'Reebok', 'Under Armour', 'Lacoste', 'Ralph Lauren',
     'Tommy Hilfiger', 'Calvin Klein', 'Levi\'s', 'Zara', 'H&M', 'Uniqlo', 'Gap',
-    '🆕 Autre (ajouter)'
+    'Mango', 'Bershka', 'Pull & Bear', 'Massimo Dutti', 'Hugo Boss', 'Gucci',
+    'Louis Vuitton', 'Versace', '🆕 Autre (ajouter)'
   ],
 
-  // Couleurs
-  couleurs: [
-    'Blanc', 'Noir', 'Gris', 'Rouge', 'Bleu', 'Vert', 'Jaune', 'Orange', 'Rose',
-    'Violet', 'Marron', 'Beige', 'Multicolore', 'Imprimé', '🆕 Autre (ajouter)'
+  // États
+  etats: [
+    'Neuf avec étiquette', 'Neuf sans étiquette', 'Occasion - Excellent état',
+    'Occasion - Bon état', 'Occasion - État moyen', 'Vintage', '🆕 Autre (ajouter)'
   ],
 
-  // Types de vêtements
-  types: [
-    'T-shirt', 'Polo', 'Chemise', 'Pantalon', 'Jean', 'Short', 'Robe', 'Jupe',
-    'Veste', 'Manteau', 'Pull', 'Sweat', 'Costume', 'Cravate', 'Cravate', '🆕 Autre (ajouter)'
+  // Styles
+  styles: [
+    'Casual', 'Formel', 'Sport', 'Streetwear', 'Chic', 'Élégant', 'Vintage',
+    'Bohème', 'Classique', 'Moderne', 'Minimaliste', '🆕 Autre (ajouter)'
+  ],
+
+  // Saisons
+  saisons: [
+    'Été', 'Hiver', 'Mi-saison', 'Toutes saisons', '🆕 Autre (ajouter)'
+  ],
+
+  // Patrons
+  patrons: [
+    'Uni', 'Rayé', 'À pois', 'À carreaux', 'Imprimé floral', 'Imprimé géométrique',
+    'Imprimé animal', 'Logo', '🆕 Autre (ajouter)'
+  ],
+
+  // Coupes
+  coupes: [
+    'Slim', 'Regular', 'Loose', 'Oversize', 'Skinny', 'Boyfriend', 'Mom fit',
+    'Droit', 'Évasé', '🆕 Autre (ajouter)'
   ]
 };
 
-// ✅ MODALITÉS CHAUSSURES
+// ✅ MODALITÉS CHAUSSURES - ENRICHI
 export const CHAUSSURES_MODALITIES: ModalityCategory = {
   // Pointures
   pointures: [
@@ -184,18 +286,42 @@ export const CHAUSSURES_MODALITIES: ModalityCategory = {
   types: [
     'Baskets', 'Chaussures de ville', 'Bottes', 'Sandales', 'Tongs', 'Mocassins',
     'Derbies', 'Escarpins', 'Tennis', 'Chaussures de sport', 'Chaussures de sécurité',
-    '🆕 Autre (ajouter)'
+    'Bottines', 'Ballerines', 'Talons', 'Chaussons', '🆕 Autre (ajouter)'
   ],
 
   // Marques chaussures
   marques: [
     'Nike', 'Adidas', 'Puma', 'Reebok', 'Converse', 'Vans', 'Timberland', 'Dr. Martens',
-    'Clarks', 'Geox', 'Ecco', 'Salomon', '🆕 Autre (ajouter)'
+    'Clarks', 'Geox', 'Ecco', 'Salomon', 'New Balance', 'Asics', '🆕 Autre (ajouter)'
   ],
 
   // Matériaux
   materiaux: [
-    'Cuir', 'Tissu', 'Synthétique', 'Caoutchouc', 'Plastique', 'Mélange', '🆕 Autre (ajouter)'
+    'Cuir', 'Cuir synthétique', 'Tissu', 'Synthétique', 'Toile', 'Daim', 'Caoutchouc',
+    'Plastique', 'Mesh', 'Mélange', '🆕 Autre (ajouter)'
+  ],
+
+  // Couleurs
+  couleurs: [
+    'Noir', 'Blanc', 'Marron', 'Beige', 'Gris', 'Bleu', 'Rouge', 'Rose', 'Vert',
+    'Jaune', 'Orange', 'Violet', 'Multicolore', '🆕 Autre (ajouter)'
+  ],
+
+  // États
+  etats: [
+    'Neuf avec boîte', 'Neuf sans boîte', 'Excellent état', 'Bon état',
+    'État moyen', 'À rénover', '🆕 Autre (ajouter)'
+  ],
+
+  // Genres
+  genres: [
+    'Homme', 'Femme', 'Enfant garçon', 'Enfant fille', 'Bébé', 'Unisexe', '🆕 Autre (ajouter)'
+  ],
+
+  // Usages
+  usages: [
+    'Sport', 'Running', 'Football', 'Basketball', 'Ville', 'Casual', 'Formel',
+    'Randonnée', 'Plage', 'Travail', 'Soirée', 'Quotidien', '🆕 Autre (ajouter)'
   ]
 };
 
@@ -226,100 +352,204 @@ export const ELECTROMENAGER_MODALITIES: ModalityCategory = {
   ]
 };
 
-// ✅ MODALITÉS IMAGE & SON
+// ✅ MODALITÉS IMAGE & SON - ENRICHI
 export const IMAGE_SON_MODALITIES: ModalityCategory = {
   // Types d'équipements
   types: [
-    'TV', 'Home cinéma', 'Enceintes', 'Projecteur', 'Amplificateur', 'Récepteur',
-    'Lecteur Blu-ray', 'Lecteur DVD', 'Console de jeu', 'Casque', 'Microphone',
-    'Caméra', 'Appareil photo', '🆕 Autre (ajouter)'
+    'Télévision', 'TV', 'Home cinéma', 'Barre de son', 'Enceintes', 'Projecteur',
+    'Amplificateur', 'Récepteur', 'Lecteur Blu-ray', 'Lecteur DVD', 'Console de jeu',
+    'Casque', 'Microphone', 'Décodeur', '🆕 Autre (ajouter)'
   ],
 
   // Marques
   marques: [
     'Samsung', 'LG', 'Sony', 'Panasonic', 'Toshiba', 'Sharp', 'Philips', 'TCL',
     'Hisense', 'JBL', 'Bose', 'Harman Kardon', 'Yamaha', 'Denon', 'Marantz',
-    '🆕 Autre (ajouter)'
+    'Pioneer', '🆕 Autre (ajouter)'
   ],
 
   // Résolutions
   resolutions: [
-    'HD (720p)', 'Full HD (1080p)', '4K UHD', '8K UHD', '🆕 Autre (ajouter)'
+    'HD (720p)', 'Full HD (1080p)', '4K UHD', '4K (2160p)', '8K UHD', '8K',
+    'QHD', '🆕 Autre (ajouter)'
   ],
 
   // Tailles d'écran
   taillesEcran: [
-    '32"', '40"', '43"', '50"', '55"', '65"', '75"', '85"', '🆕 Autre (ajouter)'
+    '24"', '32"', '40"', '43"', '50"', '55"', '60"', '65"', '70"', '75"', '85"',
+    '🆕 Autre (ajouter)'
+  ],
+
+  // États
+  etats: [
+    'Neuf avec garantie', 'Neuf', 'Excellent état', 'Bon état', 'Occasion',
+    '🆕 Autre (ajouter)'
+  ],
+
+  // Fonctionnalités
+  fonctionnalites: [
+    'Smart TV', 'WiFi intégré', 'Bluetooth', 'HDR', 'Dolby Atmos',
+    '3D', 'USB', 'HDMI', 'Enregistrement', 'Chromecast', 'AirPlay',
+    '🆕 Autre (ajouter)'
   ]
 };
 
-// ✅ MODALITÉS TÉLÉPHONES
+// ✅ MODALITÉS TÉLÉPHONES (SMARTPHONES) - ENRICHI
 export const TELEPHONES_MODALITIES: ModalityCategory = {
   // Marques
   marques: [
     'Apple', 'Samsung', 'Huawei', 'Xiaomi', 'OnePlus', 'Google', 'Sony', 'LG',
-    'Motorola', 'Nokia', 'Realme', 'Oppo', 'Vivo', 'Honor', '🆕 Autre (ajouter)'
+    'Motorola', 'Nokia', 'Realme', 'Oppo', 'Vivo', 'Honor', 'Tecno', 'Infinix',
+    'Itel', 'Redmi', 'Poco', 'Nothing', 'Asus', 'ZTE', '🆕 Autre (ajouter)'
   ],
 
   // Capacités de stockage
   stockage: [
-    '32GB', '64GB', '128GB', '256GB', '512GB', '1TB', '🆕 Autre (ajouter)'
+    '32GB', '64GB', '128GB', '256GB', '512GB', '1TB', '2TB', '🆕 Autre (ajouter)'
   ],
 
   // Mémoire RAM
   ram: [
-    '2GB', '3GB', '4GB', '6GB', '8GB', '12GB', '16GB', '🆕 Autre (ajouter)'
+    '2GB', '3GB', '4GB', '6GB', '8GB', '12GB', '16GB', '18GB', '🆕 Autre (ajouter)'
   ],
 
   // Couleurs
   couleurs: [
     'Noir', 'Blanc', 'Gris', 'Argent', 'Or', 'Rose', 'Bleu', 'Rouge', 'Vert',
-    'Violet', '🆕 Autre (ajouter)'
+    'Violet', 'Titanium', 'Graphite', 'Corail', 'Lavande', '🆕 Autre (ajouter)'
   ],
 
   // États
   etats: [
-    'Neuf', 'Occasion - Excellent état', 'Occasion - Bon état', 'Occasion - État moyen',
+    'Neuf sous garantie', 'Neuf sans garantie', 'Reconditionné',
+    'Occasion - Excellent état', 'Occasion - Bon état', 'Occasion - État moyen',
     'À réparer', '🆕 Autre (ajouter)'
+  ],
+
+  // Opérateurs / Blocage
+  operateurs: [
+    'Débloqué (tous opérateurs)', 'Orange Cameroun', 'MTN Cameroun', 'Camtel',
+    'Nexttel', 'Bloqué opérateur', '🆕 Autre (ajouter)'
+  ],
+
+  // Accessoires
+  accessoires: [
+    'Chargeur original', 'Chargeur compatible', 'Écouteurs', 'Coque',
+    'Protège-écran', 'Câble USB', 'Adaptateur secteur', 'Manuel d\'utilisation',
+    'Carte SIM', 'Outil éjection SIM', 'Chargeur sans fil',
+    'Écouteurs sans fil', '🆕 Autre (ajouter)'
+  ],
+
+  // Types d'écran
+  typesEcran: [
+    'OLED', 'AMOLED', 'Super AMOLED', 'Dynamic AMOLED', 'LCD', 'IPS LCD',
+    'Retina', 'Super Retina XDR', 'LTPO', '🆕 Autre (ajouter)'
+  ],
+
+  // Tailles d'écran (pouces)
+  taillesEcran: [
+    '4.7"', '5.4"', '5.5"', '6.0"', '6.1"', '6.4"', '6.5"', '6.7"', '6.8"',
+    '7.0"', '7.6"', '🆕 Autre (ajouter)'
   ]
 };
 
-// ✅ MODALITÉS ORDINATEURS
+// ✅ MODALITÉS ORDINATEURS - ENRICHI
 export const ORDINATEURS_MODALITIES: ModalityCategory = {
   // Types d'ordinateurs
   types: [
-    'PC de bureau', 'Laptop', 'MacBook', 'iMac', 'Mac Pro', 'Tablette', 'iPad',
-    'Surface', 'Chromebook', 'Serveur', 'Workstation', '🆕 Autre (ajouter)'
+    'PC Portable', 'PC de bureau', 'MacBook', 'iMac', 'Mac Pro', 'Mac Mini',
+    'Tablette', 'iPad', 'Surface', 'Chromebook', 'Ultrabook', 'Gaming Laptop',
+    'Workstation', 'Serveur', 'Mini PC', 'All-in-One', '🆕 Autre (ajouter)'
   ],
 
   // Marques
   marques: [
     'Apple', 'Dell', 'HP', 'Lenovo', 'Asus', 'Acer', 'MSI', 'Razer', 'Alienware',
-    'Microsoft', 'Samsung', '🆕 Autre (ajouter)'
+    'Microsoft', 'Samsung', 'Huawei', 'LG', 'Gigabyte', 'Toshiba', 'Sony',
+    'Custom/Assemblé', '🆕 Autre (ajouter)'
   ],
 
   // Processeurs
   processeurs: [
-    'Intel Core i3', 'Intel Core i5', 'Intel Core i7', 'Intel Core i9', 'AMD Ryzen 3',
-    'AMD Ryzen 5', 'AMD Ryzen 7', 'AMD Ryzen 9', 'Apple M1', 'Apple M2', 'Apple M3',
-    '🆕 Autre (ajouter)'
+    'Intel Core i3', 'Intel Core i5', 'Intel Core i7', 'Intel Core i9',
+    'Intel Core Ultra', 'AMD Ryzen 3', 'AMD Ryzen 5', 'AMD Ryzen 7', 'AMD Ryzen 9',
+    'Apple M1', 'Apple M2', 'Apple M2 Pro', 'Apple M2 Max', 'Apple M3',
+    'Intel Celeron', 'Intel Pentium', 'AMD Athlon', '🆕 Autre (ajouter)'
   ],
 
   // Mémoire RAM
   ram: [
-    '4GB', '8GB', '16GB', '32GB', '64GB', '128GB', '🆕 Autre (ajouter)'
+    '4GB', '8GB', '16GB', '32GB', '64GB', '128GB', '256GB', '🆕 Autre (ajouter)'
   ],
 
   // Stockage
   stockage: [
-    '128GB SSD', '256GB SSD', '512GB SSD', '1TB SSD', '2TB SSD', '1TB HDD',
-    '2TB HDD', '4TB HDD', '🆕 Autre (ajouter)'
+    '128GB SSD', '256GB SSD', '512GB SSD', '1TB SSD', '2TB SSD', '4TB SSD',
+    '256GB HDD', '500GB HDD', '1TB HDD', '2TB HDD', '4TB HDD', '8TB HDD',
+    'Dual Storage (SSD+HDD)', '🆕 Autre (ajouter)'
   ],
 
   // Cartes graphiques
   cartesGraphiques: [
-    'Intel HD Graphics', 'Intel Iris', 'NVIDIA GeForce GTX', 'NVIDIA GeForce RTX',
-    'AMD Radeon', 'Apple GPU', '🆕 Autre (ajouter)'
+    'Intégrée Intel HD', 'Intel Iris', 'Intel Iris Xe', 'Intel Arc',
+    'NVIDIA GeForce GTX 1650', 'NVIDIA GeForce GTX 1660',
+    'NVIDIA GeForce RTX 3050', 'NVIDIA GeForce RTX 3060', 'NVIDIA GeForce RTX 3070',
+    'NVIDIA GeForce RTX 4060', 'NVIDIA GeForce RTX 4070', 'NVIDIA GeForce RTX 4080',
+    'NVIDIA GeForce RTX 4090', 'AMD Radeon RX 6600', 'AMD Radeon RX 6700',
+    'AMD Radeon RX 7600', 'AMD Radeon RX 7800', 'Apple GPU', 'Dédiée', '🆕 Autre (ajouter)'
+  ],
+
+  // Systèmes d'exploitation
+  systemesExploitation: [
+    'Windows 11', 'Windows 10', 'Windows 8', 'macOS Sonoma', 'macOS Ventura',
+    'macOS Monterey', 'Linux Ubuntu', 'Linux Fedora', 'ChromeOS', 'FreeDOS',
+    '🆕 Autre (ajouter)'
+  ],
+
+  // États
+  etats: [
+    'Neuf sous garantie', 'Neuf sans garantie', 'Reconditionné',
+    'Occasion - Excellent état', 'Occasion - Bon état', 'Occasion - État moyen',
+    'Pour pièces', '🆕 Autre (ajouter)'
+  ],
+
+  // Tailles d'écran
+  taillesEcran: [
+    '11"', '13"', '14"', '15"', '15.6"', '17"', '21"', '24"', '27"', '32"',
+    '34"', 'Sans écran', '🆕 Autre (ajouter)'
+  ],
+
+  // Types d'écran
+  typesEcran: [
+    'IPS', 'TN', 'VA', 'OLED', 'LED', 'LCD', 'Retina', 'QHD', '4K', 'Touch',
+    '🆕 Autre (ajouter)'
+  ],
+
+  // Accessoires
+  accessoires: [
+    'Souris', 'Clavier', 'Sac de transport', 'Chargeur original', 'Chargeur compatible',
+    'Support/Stand', 'Webcam', 'Casque', 'Hub USB', 'Adaptateur', 'Dock',
+    'Disque dur externe', 'Câble HDMI', '🆕 Autre (ajouter)'
+  ],
+
+  // Usages
+  usages: [
+    'Bureautique', 'Gaming', 'Développement', 'Design graphique', 'Montage vidéo',
+    'CAO/DAO', 'Musique/Audio', 'Streaming', 'Étudiant', 'Professionnel',
+    'Polyvalent', '🆕 Autre (ajouter)'
+  ],
+
+  // Logiciels inclus
+  logiciels: [
+    'Microsoft Office', 'LibreOffice', 'Adobe Creative Suite', 'Antivirus',
+    'Suite Apple (iWork)', 'AutoCAD', 'Photoshop', 'Lightroom', 'Premiere Pro',
+    'Final Cut Pro', 'Logic Pro', 'Aucun', '🆕 Autre (ajouter)'
+  ],
+
+  // Claviers
+  claviers: [
+    'AZERTY', 'QWERTY', 'QWERTZ', 'Rétroéclairé', 'Mécanique', 'Silencieux',
+    'Multimédia', 'Sans fil', '🆕 Autre (ajouter)'
   ]
 };
 
@@ -496,30 +726,45 @@ export const AGROALIMENTAIRE_MODALITIES: ModalityCategory = {
   ]
 };
 
-// ✅ MODALITÉS LIVRES & FOURNITURES
+// ✅ MODALITÉS LIVRES & FOURNITURES - ENRICHI
 export const LIVRES_FOURNITURES_MODALITIES: ModalityCategory = {
-  // Catégories
-  categories: [
-    'Livre scolaire', 'Roman', 'Livre technique', 'Cahier', 'Stylo', 'Crayon',
-    'Marqueur', 'Gomme', 'Règle', 'Calculatrice', 'Trousse', 'Cartable', '🆕 Autre (ajouter)'
+  // Types/Catégories
+  types: [
+    'Livre scolaire', 'Manuel scolaire', 'Roman', 'BD/Comics', 'Livre technique',
+    'Dictionnaire', 'Atlas', 'Encyclopédie', 'Cahier', 'Classeur', 'Stylo',
+    'Crayon', 'Marqueur', 'Gomme', 'Règle', 'Calculatrice', 'Trousse',
+    'Cartable', 'Sac à dos', 'Feuilles', 'Papier', '🆕 Autre (ajouter)'
   ],
 
   // Niveaux scolaires
   niveaux: [
-    'Maternelle', 'Primaire', 'Secondaire', 'Université', 'Formation professionnelle',
-    '🆕 Autre (ajouter)'
+    'Maternelle', 'Primaire', 'Secondaire', 'Lycée', 'Université',
+    'Formation professionnelle', 'Tous niveaux', '🆕 Autre (ajouter)'
   ],
 
   // Matières
   matieres: [
-    'Mathématiques', 'Français', 'Histoire', 'Géographie', 'Sciences', 'Anglais',
-    'Espagnol', 'Allemand', 'Physique', 'Chimie', 'Biologie', 'Philosophie',
-    '🆕 Autre (ajouter)'
+    'Mathématiques', 'Français', 'Anglais', 'Histoire', 'Géographie',
+    'Sciences', 'Physique', 'Chimie', 'Biologie', 'SVT', 'Philosophie',
+    'Économie', 'Informatique', 'Arts', 'Sport', 'Toutes matières', '🆕 Autre (ajouter)'
+  ],
+
+  // Éditeurs
+  editeurs: [
+    'Edicef', 'CIAM', 'Nathan', 'Hachette', 'Bordas', 'Hatier', 'Oxford',
+    'Bic', 'Stabilo', 'Maped', 'Clairefontaine', '🆕 Autre (ajouter)'
   ],
 
   // États
   etats: [
-    'Neuf', 'Bon état', 'Occasion', 'Usagé', '🆕 Autre (ajouter)'
+    'Neuf emballé', 'Neuf', 'Excellent état', 'Bon état', 'Occasion', 'Usagé',
+    'À rénover', '🆕 Autre (ajouter)'
+  ],
+
+  // Langues
+  langues: [
+    'Français', 'Anglais', 'Espagnol', 'Allemand', 'Arabe', 'Bilingue',
+    '🆕 Autre (ajouter)'
   ]
 };
 
@@ -645,7 +890,7 @@ export const COIFFURE_BEAUTE_MODALITIES: ModalityCategory = {
 
   // Longueurs
   longueurs: [
-    '10cm', '15cm', '20cm', '25cm', '30cm', '35cm', '40cm', '45cm', '50cm', 
+    '10cm', '15cm', '20cm', '25cm', '30cm', '35cm', '40cm', '45cm', '50cm',
     '55cm', '60cm', '65cm', '70cm', '75cm', '80cm+', '🆕 Autre (ajouter)'
   ],
 
@@ -698,23 +943,39 @@ export const COIFFURE_BEAUTE_MODALITIES: ModalityCategory = {
   ]
 };
 
-// ✅ MODALITÉS DÉMÉNAGEMENT
+// ✅ MODALITÉS DÉMÉNAGEMENT - ENRICHI
 export const DEMENAGEMENT_MODALITIES: ModalityCategory = {
   // Types de déménagement
   types: [
     'Déménagement local', 'Déménagement national', 'Déménagement international',
-    'Déménagement bureau', 'Déménagement partiel', '🆕 Autre (ajouter)'
+    'Déménagement bureau', 'Déménagement partiel', 'Garde-meubles',
+    '🆕 Autre (ajouter)'
   ],
 
   // Services
   services: [
-    'Emballage', 'Transport', 'Déballage', 'Montage meubles', 'Nettoyage',
-    'Assurance', '🆕 Autre (ajouter)'
+    'Emballage', 'Transport', 'Déballage', 'Montage meubles', 'Démontage meubles',
+    'Nettoyage', 'Assurance', 'Cartons fournis', 'Monte-meubles', 'Piano/Objets lourds',
+    '🆕 Autre (ajouter)'
   ],
 
   // Types de véhicules
   vehicules: [
-    'Camionnette', 'Camion', 'Fourgon', 'Remorque', '🆕 Autre (ajouter)'
+    'Camionnette', 'Camion', 'Fourgon', 'Remorque', 'Camionnette 10m³',
+    'Camionnette 20m³', 'Camion 30m³', 'Camion 40m³', '🆕 Autre (ajouter)'
+  ],
+
+  // Volumes approximatifs
+  volumes: [
+    'Studio (10-15m³)', 'F2 (20-30m³)', 'F3 (30-40m³)', 'F4 (40-50m³)',
+    'F5+ (50m³+)', 'Bureau petit (20m³)', 'Bureau moyen (40m³)', 'Bureau grand (60m³+)',
+    '🆕 Autre (ajouter)'
+  ],
+
+  // Distances
+  distances: [
+    'Moins de 10 km', '10-50 km', '50-100 km', '100-300 km',
+    'Plus de 300 km', 'International', '🆕 Autre (ajouter)'
   ]
 };
 
@@ -1215,25 +1476,109 @@ export const SECURITE_SURVEILLANCE_MODALITIES: ModalityCategory = {
   ]
 };
 
-// ✅ MODALITÉS PLOMBERIE
+// ✅ MODALITÉS PLOMBERIE - ENRICHI
 export const PLOMBERIE_MODALITIES: ModalityCategory = {
-  // Types de services
+  // Types de prestations
+  types: [
+    'Installation', 'Réparation', 'Entretien', 'Dépannage', 'Débouchage',
+    'Raccordement', 'Remplacement', 'Diagnostic', '🆕 Autre (ajouter)'
+  ],
+
+  // Types de services/Spécialités
   services: [
-    'Installation sanitaire', 'Réparation fuite', 'Débouchage', 'Installation chaudière',
-    'Installation chauffe-eau', 'Raccordement', 'Entretien', 'Dépannage d\'urgence',
-    '🆕 Autre (ajouter)'
+    'Installation sanitaire', 'Réparation fuite', 'Débouchage canalisations', 'Installation chaudière',
+    'Installation chauffe-eau', 'Raccordement eau', 'Entretien annuel', 'Dépannage d\'urgence',
+    'Détection de fuite', 'Rénovation salle de bain', '🆕 Autre (ajouter)'
   ],
 
   // Équipements
   equipements: [
     'Robinetterie', 'Lavabo', 'WC', 'Douche', 'Baignoire', 'Évier', 'Chauffe-eau',
-    'Chaudière', 'Tuyauterie', 'Siphon', 'Mitigeur', '🆕 Autre (ajouter)'
+    'Chaudière', 'Tuyauterie', 'Siphon', 'Mitigeur', 'Fosse septique', '🆕 Autre (ajouter)'
   ],
 
-  // Urgence
-  urgences: [
-    'Urgence 24h/24', 'Intervention rapide', 'Rendez-vous planifié',
-    'Devis gratuit', '🆕 Autre (ajouter)'
+  // Disponibilité
+  disponibilites: [
+    'Urgence 24h/24', 'Intervention rapide (2h)', 'Rendez-vous sous 24h',
+    'Rendez-vous planifié', 'Week-end', '🆕 Autre (ajouter)'
+  ],
+
+  // Garanties
+  garanties: [
+    '1 mois', '3 mois', '6 mois', '1 an', '2 ans', 'Garantie décennale',
+    '🆕 Autre (ajouter)'
+  ]
+};
+
+// ✅ MODALITÉS NETTOYAGE - NOUVEAU
+export const NETTOYAGE_MODALITIES: ModalityCategory = {
+  // Types de nettoyage
+  types: [
+    'Nettoyage résidentiel', 'Nettoyage bureaux', 'Nettoyage après travaux',
+    'Nettoyage vitres', 'Nettoyage façades', 'Nettoyage moquettes/tapis',
+    'Nettoyage climatisation', 'Désinfection', '🆕 Autre (ajouter)'
+  ],
+
+  // Fréquences
+  frequences: [
+    'Ponctuel', 'Hebdomadaire', 'Bi-mensuel', 'Mensuel',
+    'Trimestriel', 'Annuel', '🆕 Autre (ajouter)'
+  ],
+
+  // Services inclus
+  services: [
+    'Dépoussiérage', 'Aspiration', 'Lavage sols', 'Nettoyage sanitaires',
+    'Nettoyage cuisine', 'Repassage', 'Vitrerie', 'Désinfection',
+    'Détachage', 'Cirage', '🆕 Autre (ajouter)'
+  ],
+
+  // Surfaces
+  surfaces: [
+    'Moins de 50m²', '50-100m²', '100-200m²', '200-500m²',
+    'Plus de 500m²', '🆕 Autre (ajouter)'
+  ],
+
+  // Types de produits
+  produits: [
+    'Produits bio/écologiques', 'Produits professionnels', 'Produits standards',
+    'Vapeur/Sans chimique', '🆕 Autre (ajouter)'
+  ]
+};
+
+// ✅ MODALITÉS RÉPARATION - NOUVEAU
+export const REPARATION_MODALITIES: ModalityCategory = {
+  // Types de réparation
+  types: [
+    'Réparation électronique', 'Réparation électroménager', 'Réparation téléphone',
+    'Réparation ordinateur', 'Réparation automobile', 'Réparation moto',
+    'Réparation vélo', 'Réparation montre', 'Réparation bijoux',
+    'Réparation chaussures', 'Réparation vêtements', 'Réparation meubles',
+    '🆕 Autre (ajouter)'
+  ],
+
+  // Spécialités
+  specialites: [
+    'Écran cassé', 'Batterie', 'Carte mère', 'Connectique', 'Logiciel',
+    'Moteur', 'Freins', 'Embrayage', 'Suspension', 'Plomberie', 'Électricité',
+    'Menuiserie', 'Tapisserie', '🆕 Autre (ajouter)'
+  ],
+
+  // Délais d'intervention
+  delais: [
+    'Express (même jour)', '24-48h', '2-5 jours', '1-2 semaines',
+    'Sur devis', '🆕 Autre (ajouter)'
+  ],
+
+  // Garanties
+  garanties: [
+    '1 mois', '3 mois', '6 mois', '1 an', '2 ans',
+    'Garantie pièces', 'Garantie main d\'œuvre', '🆕 Autre (ajouter)'
+  ],
+
+  // Types de marques
+  marques: [
+    'Toutes marques', 'Samsung', 'Apple', 'LG', 'Sony', 'HP', 'Dell',
+    'Lenovo', 'Asus', 'Huawei', 'Xiaomi', '🆕 Autre (ajouter)'
   ]
 };
 
@@ -1256,6 +1601,174 @@ export const ELECTRICITE_MODALITIES: ModalityCategory = {
   urgences: [
     'Urgence 24h/24', 'Intervention rapide', 'Rendez-vous planifié',
     'Devis gratuit', '🆕 Autre (ajouter)'
+  ]
+};
+
+// ✅ MODALITÉS SANTÉ & BEAUTÉ - NOUVEAU
+export const SANTE_BEAUTE_MODALITIES: ModalityCategory = {
+  types: [
+    'Soins visage', 'Soins corps', 'Soins cheveux', 'Maquillage', 'Parfums',
+    'Hygiène', 'Compléments alimentaires', 'Équipement médical', '🆕 Autre (ajouter)'
+  ],
+  marques: [
+    'Nivea', 'L\'Oréal', 'Garnier', 'Dove', 'Neutrogena', 'Vichy',
+    '🆕 Autre (ajouter)'
+  ],
+  etats: [
+    'Neuf scellé', 'Neuf', 'Excellent état', '🆕 Autre (ajouter)'
+  ]
+};
+
+// ✅ MODALITÉS JURIDIQUE - NOUVEAU
+export const JURIDIQUE_MODALITIES: ModalityCategory = {
+  types: [
+    'Conseil juridique', 'Rédaction contrat', 'Contentieux', 'Divorce',
+    'Immobilier', 'Commercial', 'Pénal', 'Administratif', '🆕 Autre (ajouter)'
+  ],
+  specialites: [
+    'Droit des affaires', 'Droit du travail', 'Droit de la famille', 'Droit immobilier',
+    'Droit pénal', 'Droit fiscal', '🆕 Autre (ajouter)'
+  ]
+};
+
+// ✅ MODALITÉS MUSIQUE SERVICES - NOUVEAU
+export const MUSIQUE_SERVICES_MODALITIES: ModalityCategory = {
+  types: [
+    'Cours de musique', 'Animation musicale', 'DJ', 'Groupe live', 'Orchestre',
+    'Chanteur', 'Studio enregistrement', '🆕 Autre (ajouter)'
+  ],
+  genres: [
+    'Variété', 'Jazz', 'Rock', 'Pop', 'Classique', 'R&B', 'Hip-hop', 'Reggae',
+    'Afrobeat', 'Makossa', 'Coupé-décalé', '🆕 Autre (ajouter)'
+  ],
+  durees: [
+    '1h', '2h', '3h', '4h', 'Demi-journée', 'Journée complète', '🆕 Autre (ajouter)'
+  ]
+};
+
+// ✅ MODALITÉS PHOTOGRAPHIE - NOUVEAU
+export const PHOTOGRAPHIE_MODALITIES: ModalityCategory = {
+  types: [
+    'Mariage', 'Événement', 'Portrait', 'Famille', 'Grossesse', 'Naissance',
+    'Commercial', 'Immobilier', 'Mode', 'Reportage', '🆕 Autre (ajouter)'
+  ],
+  styles: [
+    'Classique', 'Moderne', 'Artistique', 'Naturel', 'Studio', '🆕 Autre (ajouter)'
+  ],
+  equipements: [
+    'Drone', 'Studio mobile', 'Éclairage professionnel', 'Photobooth',
+    '🆕 Autre (ajouter)'
+  ]
+};
+
+// ✅ MODALITÉS ENTREPRISE & INDUSTRIE - NOUVEAU
+export const ENTREPRISE_INDUSTRIE_MODALITIES: ModalityCategory = {
+  types: [
+    'Matériel bureau', 'Machines industrielles', 'Équipement professionnel',
+    'Fournitures', 'Services aux entreprises', '🆕 Autre (ajouter)'
+  ],
+  secteurs: [
+    'Industrie', 'Commerce', 'Services', 'BTP', 'Agriculture', 'Transport',
+    'Technologie', '🆕 Autre (ajouter)'
+  ],
+  etats: [
+    'Neuf', 'Excellent état', 'Bon état', 'Occasion', 'À rénover', '🆕 Autre (ajouter)'
+  ]
+};
+
+// ✅ MODALITÉS DÉCORATION - NOUVEAU
+export const DECORATION_MODALITIES: ModalityCategory = {
+  types: [
+    'Meubles déco', 'Luminaires', 'Rideaux & voilages', 'Tapis', 'Coussins',
+    'Tableaux & cadres', 'Miroirs', 'Vases', 'Bougies', 'Plantes', '🆕 Autre (ajouter)'
+  ],
+  styles: [
+    'Moderne', 'Classique', 'Scandinave', 'Industriel', 'Bohème', 'Vintage',
+    'Minimaliste', 'Ethnique', '🆕 Autre (ajouter)'
+  ],
+  pieces: [
+    'Salon', 'Chambre', 'Cuisine', 'Salle de bain', 'Bureau', 'Entrée',
+    'Jardin', 'Terrasse', '🆕 Autre (ajouter)'
+  ],
+  etats: [
+    'Neuf', 'Excellent état', 'Bon état', 'Occasion', '🆕 Autre (ajouter)'
+  ]
+};
+
+// ✅ MODALITÉS ENFANTS & BÉBÉS - NOUVEAU
+export const ENFANTS_BEBES_MODALITIES: ModalityCategory = {
+  categories: [
+    'Vêtements bébé', 'Vêtements enfant', 'Chaussures', 'Poussettes', 'Sièges auto',
+    'Lits & berceaux', 'Jouets', 'Alimentation', 'Hygiène', 'Puériculture',
+    '🆕 Autre (ajouter)'
+  ],
+  ages: [
+    '0-3 mois', '3-6 mois', '6-12 mois', '1-2 ans', '2-4 ans', '4-6 ans',
+    '6-8 ans', '8-10 ans', '10-12 ans', '🆕 Autre (ajouter)'
+  ],
+  etats: [
+    'Neuf avec étiquette', 'Neuf', 'Excellent état', 'Bon état', 'Occasion',
+    '🆕 Autre (ajouter)'
+  ]
+};
+
+// ✅ MODALITÉS BRICOLAGE - NOUVEAU
+export const BRICOLAGE_MODALITIES: ModalityCategory = {
+  types: [
+    'Outils manuels', 'Outils électriques', 'Matériaux construction', 'Peinture',
+    'Plomberie', 'Électricité', 'Quincaillerie', 'Visserie', 'Menuiserie',
+    'Jardinage', 'Sécurité', '🆕 Autre (ajouter)'
+  ],
+  marques: [
+    'Bosch', 'Makita', 'DeWalt', 'Stanley', 'Black & Decker', 'Ryobi',
+    'Einhell', 'Skil', 'Hitachi', '🆕 Autre (ajouter)'
+  ],
+  etats: [
+    'Neuf', 'Excellent état', 'Bon état', 'Occasion', '🆕 Autre (ajouter)'
+  ]
+};
+
+// ✅ MODALITÉS CARRELAGE - NOUVEAU
+export const CARRELAGE_MODALITIES: ModalityCategory = {
+  // Types de carrelage
+  types: [
+    'Carrelage sol', 'Carrelage mural', 'Carrelage extérieur', 'Carrelage piscine',
+    'Faïence', 'Mosaïque', 'Carrelage terrasse', '🆕 Autre (ajouter)'
+  ],
+
+  // Matériaux
+  materiaux: [
+    'Céramique', 'Porcelaine', 'Grès cérame', 'Grès émaillé', 'Marbre',
+    'Granit', 'Pierre naturelle', 'Terre cuite', '🆕 Autre (ajouter)'
+  ],
+
+  // Dimensions
+  dimensions: [
+    '10x10cm', '15x15cm', '20x20cm', '30x30cm', '40x40cm', '45x45cm',
+    '60x60cm', '80x80cm', '120x60cm', 'Sur mesure', '🆕 Autre (ajouter)'
+  ],
+
+  // Finitions
+  finitions: [
+    'Brillant', 'Mat', 'Satiné', 'Poli', 'Antidérapant', 'Structuré',
+    'Lappato', 'Adouci', '🆕 Autre (ajouter)'
+  ],
+
+  // Épaisseurs
+  epaisseurs: [
+    '6mm', '8mm', '9mm', '10mm', '12mm', '15mm', '20mm', '🆕 Autre (ajouter)'
+  ],
+
+  // Usage
+  usages: [
+    'Intérieur résidentiel', 'Intérieur commercial', 'Extérieur', 'Salle de bain',
+    'Cuisine', 'Piscine', 'Terrasse', 'Garage', '🆕 Autre (ajouter)'
+  ],
+
+  // Aspects
+  aspects: [
+    'Uni', 'Marbré', 'Bois', 'Pierre', 'Béton', 'Métallique',
+    'Motif géométrique', 'Imitation', '🆕 Autre (ajouter)'
   ]
 };
 
@@ -1314,6 +1827,54 @@ export const MUSIQUE_INSTRUMENTS_MODALITIES: ModalityCategory = {
   ]
 };
 
+// ✅ MODALITÉS EMPLOI & RECRUTEMENT
+export const EMPLOI_MODALITIES: ModalityCategory = {
+  // Types de contrat
+  types_contrat: [
+    'CDI', 'CDD', 'Stage', 'Freelance', 'Intérim', 'Alternance', 'Apprentissage',
+    'Contrat saisonnier', 'Vacation', '🆕 Autre (ajouter)'
+  ],
+
+  // Domaines d'activité
+  domaines: [
+    'Informatique/IT', 'Commerce/Vente', 'Marketing/Communication', 'Finance/Comptabilité',
+    'Ressources Humaines', 'Administration', 'Santé/Médical', 'Éducation/Formation',
+    'Ingénierie', 'BTP/Construction', 'Logistique/Transport', 'Hôtellerie/Restauration',
+    'Juridique', 'Agriculture', 'Industrie', 'Services', '🆕 Autre (ajouter)'
+  ],
+
+  // Niveaux d'expérience
+  niveaux_experience: [
+    'Débutant/Sans expérience', '1-2 ans', '2-5 ans', '5-10 ans', '10+ ans',
+    'Expert/Senior', '🆕 Autre (ajouter)'
+  ],
+
+  // Types d'emploi
+  types_emploi: [
+    'Temps plein', 'Temps partiel', 'Télétravail complet', 'Hybride (Télétravail partiel)',
+    'Sur site uniquement', 'Horaires flexibles', 'Horaires fixes', '🆕 Autre (ajouter)'
+  ],
+
+  // Diplômes
+  diplomes: [
+    'Sans diplôme', 'BEPC/Brevet', 'Baccalauréat', 'BTS/DUT', 'Licence',
+    'Master', 'Doctorat', 'MBA', '🆕 Autre (ajouter)'
+  ],
+
+  // Langues
+  langues: [
+    'Français', 'Anglais', 'Allemand', 'Espagnol', 'Arabe', 'Chinois',
+    'Fulfulde', 'Ewondo', 'Douala', 'Bamiléké', '🆕 Autre (ajouter)'
+  ],
+
+  // Avantages sociaux
+  avantages: [
+    'Assurance santé', 'Mutuelle', 'Primes', 'Tickets restaurant', '13ème mois',
+    'Formation continue', 'Véhicule de fonction', 'Téléphone professionnel',
+    'Congés payés', 'RTT', '🆕 Autre (ajouter)'
+  ]
+};
+
 // ✅ FONCTION POUR OBTENIR LES MODALITÉS PAR TYPE DE PRODUIT
 // Cette fonction fait le mapping entre la catégorie du produit et ses modalités spécifiques
 export const getModalitiesByProductType = (productType: string): ModalityCategory => {
@@ -1330,9 +1891,12 @@ export const getModalitiesByProductType = (productType: string): ModalityCategor
     case 'moto':
       return AUTOMOBILE_MODALITIES;
 
-    // ✅ IMMOBILIER
+    // ✅ IMMOBILIER (incluant location courte durée)
     case 'immobilier':
     case 'immobilier_batiment':
+    case 'immobilier_location_courte':
+    case 'location_courte':
+    case 'airbnb':
     case 'immobilier_terrain':
     case 'terrain':
     case 'maison':
@@ -1349,10 +1913,22 @@ export const getModalitiesByProductType = (productType: string): ModalityCategor
     // ✅ VOYAGE & TRANSPORT
     case 'voyage':
     case 'ticket_voyage':
-    case 'covoiturage':
     case 'transport':
     case 'billet':
       return VOYAGE_MODALITIES;
+
+    // ✅ COVOITURAGE
+    case 'covoiturage':
+    case 'carpooling':
+    case 'trajet':
+      return COVOITURAGE_MODALITIES;
+
+    // ✅ VOYAGE & TOURISME
+    case 'voyage_tourisme':
+    case 'tourisme':
+    case 'sejour':
+    case 'vacances':
+      return VOYAGE_TOURISME_MODALITIES;
 
     // ✅ VÊTEMENTS & MODE
     case 'vetement':
@@ -1624,7 +2200,7 @@ export const getModalitiesByProductType = (productType: string): ModalityCategor
     case 'entretien':
     case 'pressing':
     case 'lavage':
-      return NETTOYAGE_ENTRETIEN_MODALITIES;
+      return NETTOYAGE_MODALITIES;
 
     // ✅ JARDINAGE & PAYSAGISME
     case 'jardinage':
@@ -1650,6 +2226,14 @@ export const getModalitiesByProductType = (productType: string): ModalityCategor
     case 'sanitaire':
       return PLOMBERIE_MODALITIES;
 
+    // ✅ RÉPARATION
+    case 'reparation':
+    case 'réparation':
+    case 'depannage':
+    case 'dépannage':
+    case 'maintenance':
+      return REPARATION_MODALITIES;
+
     // ✅ ÉLECTRICITÉ
     case 'electricite':
     case 'électricité':
@@ -1657,6 +2241,72 @@ export const getModalitiesByProductType = (productType: string): ModalityCategor
     case 'électricien':
     case 'installation_electrique':
       return ELECTRICITE_MODALITIES;
+
+    // ✅ SANTÉ & BEAUTÉ
+    case 'sante':
+    case 'santé':
+    case 'sante_beaute':
+    case 'beaute':
+    case 'beauté':
+      return SANTE_BEAUTE_MODALITIES;
+
+    // ✅ JURIDIQUE
+    case 'juridique':
+    case 'avocat':
+    case 'droit':
+    case 'legal':
+      return JURIDIQUE_MODALITIES;
+
+    // ✅ MUSIQUE SERVICES
+    case 'musique_services':
+    case 'animation_musicale':
+    case 'dj':
+    case 'cours_musique':
+      return MUSIQUE_SERVICES_MODALITIES;
+
+    // ✅ PHOTOGRAPHIE
+    case 'photographie':
+    case 'photo':
+    case 'photographe':
+      return PHOTOGRAPHIE_MODALITIES;
+
+    // ✅ ENTREPRISE & INDUSTRIE
+    case 'entreprise':
+    case 'entreprise_industrie':
+    case 'industrie':
+    case 'professionnel':
+      return ENTREPRISE_INDUSTRIE_MODALITIES;
+
+    // ✅ DÉCORATION
+    case 'decoration':
+    case 'décoration':
+    case 'deco':
+    case 'déco':
+      return DECORATION_MODALITIES;
+
+    // ✅ ENFANTS & BÉBÉS
+    case 'enfants':
+    case 'enfants_bebes':
+    case 'bebe':
+    case 'bébé':
+    case 'puericulture':
+    case 'puériculture':
+      return ENFANTS_BEBES_MODALITIES;
+
+    // ✅ BRICOLAGE
+    case 'bricolage':
+    case 'outil':
+    case 'outillage':
+    case 'quincaillerie':
+      return BRICOLAGE_MODALITIES;
+
+    // ✅ CARRELAGE
+    case 'carrelage':
+    case 'carreau':
+    case 'faience':
+    case 'faïence':
+    case 'carreleur':
+      return CARRELAGE_MODALITIES;
 
     // ✅ MENUISERIE
     case 'menuiserie':
@@ -1674,6 +2324,15 @@ export const getModalitiesByProductType = (productType: string): ModalityCategor
     case 'audio':
     case 'concert':
       return MUSIQUE_INSTRUMENTS_MODALITIES;
+
+    // ✅ EMPLOI & RECRUTEMENT
+    case 'emploi':
+    case 'recrutement':
+    case 'job':
+    case 'offre':
+    case 'poste':
+    case 'travail':
+      return EMPLOI_MODALITIES;
 
     // ✅ PAR DÉFAUT - Aucune modalité spécifique
     default:

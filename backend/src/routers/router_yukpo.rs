@@ -23,6 +23,10 @@ use crate::{
         weather_routes::weather_routes,
         nearby_services_routes::nearby_services_routes,
         ai_chat_routes::ai_chat_routes,
+        health_structure_routes::health_structure_routes,
+        vehicle_model_routes::vehicle_model_routes,
+        appliance_model_routes::appliance_model_routes,
+        phone_model_routes::phone_model_routes,
     },
     core::types::{AppResult, AppError},
     services::creer_service,
@@ -144,7 +148,11 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
     let mobile_routes = Router::<Arc<AppState>>::new()
         .merge(weather_routes(state.clone()))
         .merge(nearby_services_routes(state.clone()))
-        .merge(ai_chat_routes(state.clone()));
+        .merge(ai_chat_routes(state.clone()))
+        .merge(health_structure_routes(state.pool.clone()))
+        .merge(vehicle_model_routes(state.pool.clone()))
+        .merge(appliance_model_routes(state.pool.clone()))
+        .merge(phone_model_routes(state.pool.clone()));
     
     // ✅ NOUVEAU: Routes pour @mentions et multi-participants conversations
     let conversation_routes_merged = crate::routes::conversation_routes::conversation_routes(state.clone());

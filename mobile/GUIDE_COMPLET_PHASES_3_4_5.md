@@ -455,3 +455,4 @@ Après les 3 phases :
 **Ce guide est indexable et réutilisable dans n'importe quelle session de chat !**
 
 
+

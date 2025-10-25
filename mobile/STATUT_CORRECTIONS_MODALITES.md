@@ -113,3 +113,4 @@ git checkout a14d1f3 -- mobile/src/components/ProductManagerMobile.tsx
 **Total** : 20/46 catégories optimisées (43%)
 
 
+

@@ -122,3 +122,4 @@ Si les commandes git échouent, nous pouvons :
 4. **Faire un merge manuel** des bonnes sections
 
 
+

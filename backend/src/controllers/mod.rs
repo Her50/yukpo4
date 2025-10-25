@@ -14,7 +14,11 @@ pub mod history_controller;
 pub mod payment_controller;
 pub mod webhook_controller;
 pub mod embedding_controller;
+pub mod health_structure_controller; // ✅ NOUVEAU: Contrôleur pour structures de santé (autocomplete)
 pub mod intelligent_service_controller;
+pub mod vehicle_model_controller; // ✅ NOUVEAU: Contrôleur pour modèles de véhicules (autocomplete)
+pub mod appliance_model_controller; // ✅ NOUVEAU: Contrôleur pour modèles d'appareils électroménagers (autocomplete)
+pub mod phone_model_controller; // ✅ NOUVEAU: Contrôleur pour modèles de smartphones (autocomplete)
 pub mod notification_controller; // ✅ Contrôleur de notifications
 pub mod push_controller; // ✅ Contrôleur de push notifications
 pub mod webrtc_controller; // ✅ NOUVEAU: Contrôleur WebRTC pour appels

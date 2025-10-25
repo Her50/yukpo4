@@ -1,17 +1,17 @@
-import React, { useState, useEffect, useRef } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import React, { useEffect, useRef, useState } from 'react';
 import {
-    View,
+    Animated,
+    FlatList,
+    Platform,
+    StyleSheet,
     Text,
     TouchableOpacity,
-    FlatList,
-    Modal,
-    StyleSheet,
-    Animated,
-    Platform,
+    View
 } from 'react-native';
+import { apiGet, apiPost } from '../services/api';
 import { NativeInput } from './NativeDesign';
 import { SafeIcon } from './SafeIcon';
-import { apiGet, apiPost } from '../services/api';
 
 const modernColors = {
     primary: '#6366F1',
@@ -31,6 +31,8 @@ interface SmartModalityInputProps {
     modalityType: 'city' | 'agency' | 'country';
     required?: boolean;
     fieldKey: string; // Clé unique pour le custom_modalities (ex: 'departure_city', 'arrival_city', 'agency_name')
+    autoLoadLastUsed?: boolean; // Charger automatiquement la dernière valeur utilisée
+    userId?: string; // ID utilisateur pour personnaliser
 }
 
 export const SmartModalityInput: React.FC<SmartModalityInputProps> = ({
@@ -41,11 +43,57 @@ export const SmartModalityInput: React.FC<SmartModalityInputProps> = ({
     modalityType,
     required = false,
     fieldKey,
+    autoLoadLastUsed = true,
+    userId,
 }) => {
     const [suggestions, setSuggestions] = useState<string[]>([]);
     const [showSuggestions, setShowSuggestions] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
+    const [lastUsedValue, setLastUsedValue] = useState<string>('');
     const fadeAnim = useRef(new Animated.Value(0)).current;
+
+    // Charger la dernière valeur utilisée au montage
+    useEffect(() => {
+        if (autoLoadLastUsed) {
+            loadLastUsedValue();
+        }
+    }, [fieldKey]);
+
+    // Charger la dernière valeur utilisée
+    const loadLastUsedValue = async () => {
+        try {
+            const storageKey = userId
+                ? `@yukpomnang_last_used_${fieldKey}_${userId}`
+                : `@yukpomnang_last_used_${fieldKey}`;
+            const lastUsed = await AsyncStorage.getItem(storageKey);
+
+            if (lastUsed) {
+                setLastUsedValue(lastUsed);
+
+                // Si le champ est vide et qu'on doit auto-charger, pré-remplir
+                if (autoLoadLastUsed && !value) {
+                    onChangeText(lastUsed);
+                    console.log(`💡 [SmartModalityInput] Dernière valeur chargée pour ${fieldKey}: ${lastUsed}`);
+                }
+            }
+        } catch (error) {
+            console.error('[SmartModalityInput] Erreur chargement dernière valeur:', error);
+        }
+    };
+
+    // Sauvegarder la dernière valeur utilisée
+    const saveLastUsedValue = async (modalityValue: string) => {
+        try {
+            const storageKey = userId
+                ? `@yukpomnang_last_used_${fieldKey}_${userId}`
+                : `@yukpomnang_last_used_${fieldKey}`;
+            await AsyncStorage.setItem(storageKey, modalityValue);
+            setLastUsedValue(modalityValue);
+            console.log(`✅ [SmartModalityInput] Dernière valeur mémorisée pour ${fieldKey}: ${modalityValue}`);
+        } catch (error) {
+            console.error('[SmartModalityInput] Erreur sauvegarde dernière valeur:', error);
+        }
+    };
 
     // Charger les suggestions en temps réel
     const loadSuggestions = async (searchText: string) => {
@@ -59,11 +107,22 @@ export const SmartModalityInput: React.FC<SmartModalityInputProps> = ({
         try {
             // Récupérer les modalités existantes depuis custom_modalities
             const response = await apiGet(`/api/modalities/suggestions?type=${fieldKey}&search=${encodeURIComponent(searchText)}`);
-            
+
             if (response && Array.isArray(response.suggestions)) {
-                setSuggestions(response.suggestions);
-                setShowSuggestions(response.suggestions.length > 0);
-                
+                // Trier intelligemment : dernière utilisée en premier
+                const sorted = response.suggestions.sort((a, b) => {
+                    if (lastUsedValue) {
+                        const aIsLastUsed = a.toLowerCase() === lastUsedValue.toLowerCase();
+                        const bIsLastUsed = b.toLowerCase() === lastUsedValue.toLowerCase();
+                        if (aIsLastUsed && !bIsLastUsed) return -1;
+                        if (!aIsLastUsed && bIsLastUsed) return 1;
+                    }
+                    return a.localeCompare(b);
+                });
+
+                setSuggestions(sorted);
+                setShowSuggestions(sorted.length > 0);
+
                 // Animation d'apparition
                 Animated.timing(fadeAnim, {
                     toValue: 1,
@@ -101,6 +160,7 @@ export const SmartModalityInput: React.FC<SmartModalityInputProps> = ({
     // Sélection d'une suggestion
     const handleSelectSuggestion = (suggestion: string) => {
         onChangeText(suggestion);
+        saveLastUsedValue(suggestion); // Mémoriser la sélection
         setShowSuggestions(false);
         Animated.timing(fadeAnim, {
             toValue: 0,
@@ -113,6 +173,7 @@ export const SmartModalityInput: React.FC<SmartModalityInputProps> = ({
     const handleAddNew = async () => {
         if (value.trim().length > 0) {
             await saveNewModality(value);
+            await saveLastUsedValue(value); // Mémoriser la nouvelle valeur
             setShowSuggestions(false);
             Animated.timing(fadeAnim, {
                 toValue: 0,
@@ -137,7 +198,7 @@ export const SmartModalityInput: React.FC<SmartModalityInputProps> = ({
             <Text style={styles.label}>
                 {label} {required && <Text style={styles.required}>*</Text>}
             </Text>
-            
+
             <View style={styles.inputWrapper}>
                 <SafeIcon name={getIcon()} size={18} color={modernColors.primary} />
                 <NativeInput
@@ -158,7 +219,7 @@ export const SmartModalityInput: React.FC<SmartModalityInputProps> = ({
 
             {/* Suggestions dropdown */}
             {showSuggestions && suggestions.length > 0 && (
-                <Animated.View 
+                <Animated.View
                     style={[
                         styles.suggestionsContainer,
                         { opacity: fadeAnim }
@@ -167,16 +228,32 @@ export const SmartModalityInput: React.FC<SmartModalityInputProps> = ({
                     <FlatList
                         data={suggestions}
                         keyExtractor={(item, index) => `suggestion-${index}`}
-                        renderItem={({ item }) => (
-                            <TouchableOpacity
-                                style={styles.suggestionItem}
-                                onPress={() => handleSelectSuggestion(item)}
-                            >
-                                <SafeIcon name={getIcon()} size={16} color={modernColors.text} />
-                                <Text style={styles.suggestionText}>{item}</Text>
-                                <SafeIcon name="check" size={14} color={modernColors.success} />
-                            </TouchableOpacity>
-                        )}
+                        renderItem={({ item }) => {
+                            const isLastUsed = lastUsedValue && item.toLowerCase() === lastUsedValue.toLowerCase();
+                            return (
+                                <TouchableOpacity
+                                    style={[styles.suggestionItem, isLastUsed && styles.suggestionItemLastUsed]}
+                                    onPress={() => handleSelectSuggestion(item)}
+                                >
+                                    <SafeIcon
+                                        name={isLastUsed ? "star" : getIcon()}
+                                        size={16}
+                                        color={isLastUsed ? modernColors.warning : modernColors.text}
+                                    />
+                                    <Text style={[styles.suggestionText, isLastUsed && styles.suggestionTextLastUsed]}>
+                                        {item}
+                                    </Text>
+                                    {isLastUsed && (
+                                        <View style={styles.lastUsedBadge}>
+                                            <Text style={styles.lastUsedBadgeText}>Récente</Text>
+                                        </View>
+                                    )}
+                                    {!isLastUsed && (
+                                        <SafeIcon name="check" size={14} color={modernColors.success} />
+                                    )}
+                                </TouchableOpacity>
+                            );
+                        }}
                         ListFooterComponent={
                             value.trim().length > 0 && !suggestions.includes(value.trim()) ? (
                                 <TouchableOpacity
@@ -306,6 +383,27 @@ const styles = StyleSheet.create({
         fontSize: 13,
         fontWeight: '600',
         color: modernColors.primary,
+    },
+    suggestionItemLastUsed: {
+        backgroundColor: '#FEF3C7',
+        borderLeftWidth: 3,
+        borderLeftColor: modernColors.warning,
+    },
+    suggestionTextLastUsed: {
+        fontWeight: '600',
+        color: '#92400E',
+    },
+    lastUsedBadge: {
+        backgroundColor: modernColors.warning,
+        paddingHorizontal: 8,
+        paddingVertical: 2,
+        borderRadius: 10,
+        marginLeft: 8,
+    },
+    lastUsedBadgeText: {
+        fontSize: 10,
+        color: '#FFFFFF',
+        fontWeight: '600',
     },
 });
 

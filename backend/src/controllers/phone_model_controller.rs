@@ -1,0 +1,128 @@
+// Controller pour la gestion des modèles de smartphones
+// Compatible avec autocomplete frontend
+
+use axum::{
+    extract::{Query, State},
+    http::StatusCode,
+    Json,
+};
+use serde::{Deserialize, Serialize};
+use sqlx::PgPool;
+
+#[derive(Debug, Deserialize)]
+pub struct PhoneModelQuery {
+    pub brand: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, sqlx::FromRow)]
+pub struct PhoneModel {
+    pub id: i32,
+    pub brand: String,
+    pub model: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct CreatePhoneModel {
+    pub brand: String,
+    pub model: String,
+}
+
+/// GET /phone-models?brand=Apple
+/// Récupère les modèles de smartphones, optionnellement filtrés par marque
+pub async fn get_phone_models(
+    Query(params): Query<PhoneModelQuery>,
+    State(pool): State<PgPool>,
+) -> Result<Json<Vec<PhoneModel>>, (StatusCode, String)> {
+    let models = if let Some(brand) = params.brand {
+        // Recherche par marque spécifique
+        sqlx::query_as!(
+            PhoneModel,
+            r#"
+            SELECT id, brand, model 
+            FROM phone_models 
+            WHERE brand = $1 
+            ORDER BY model
+            "#,
+            brand
+        )
+        .fetch_all(&pool)
+        .await
+        .map_err(|e| {
+            eprintln!("Erreur lors de la récupération des modèles par marque: {}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Erreur base de données: {}", e),
+            )
+        })?
+    } else {
+        // Tous les modèles
+        sqlx::query_as!(
+            PhoneModel,
+            r#"
+            SELECT id, brand, model 
+            FROM phone_models 
+            ORDER BY brand, model
+            "#
+        )
+        .fetch_all(&pool)
+        .await
+        .map_err(|e| {
+            eprintln!("Erreur lors de la récupération de tous les modèles: {}", e);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Erreur base de données: {}", e),
+            )
+        })?
+    };
+
+    Ok(Json(models))
+}
+
+/// POST /phone-models
+/// Crée un nouveau modèle de smartphone (ou met à jour updated_at si existe déjà)
+pub async fn create_phone_model(
+    State(pool): State<PgPool>,
+    Json(payload): Json<CreatePhoneModel>,
+) -> Result<Json<PhoneModel>, (StatusCode, String)> {
+    // Validation des données
+    if payload.brand.trim().is_empty() {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            "La marque ne peut pas être vide".to_string(),
+        ));
+    }
+
+    if payload.model.trim().is_empty() {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            "Le modèle ne peut pas être vide".to_string(),
+        ));
+    }
+
+    // Insertion avec ON CONFLICT pour éviter les doublons
+    let model = sqlx::query_as!(
+        PhoneModel,
+        r#"
+        INSERT INTO phone_models (brand, model) 
+        VALUES ($1, $2)
+        ON CONFLICT (brand, model) 
+        DO UPDATE SET updated_at = CURRENT_TIMESTAMP
+        RETURNING id, brand, model
+        "#,
+        payload.brand.trim(),
+        payload.model.trim()
+    )
+    .fetch_one(&pool)
+    .await
+    .map_err(|e| {
+        eprintln!("Erreur lors de la création du modèle: {}", e);
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Erreur base de données: {}", e),
+        )
+    })?;
+
+    Ok(Json(model))
+}
+
+

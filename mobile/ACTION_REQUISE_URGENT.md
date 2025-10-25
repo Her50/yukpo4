@@ -97,3 +97,4 @@ git reset --hard f0deadc
 **🎯 OBJECTIF** : Avoir un fichier ProductManagerMobile.tsx **SANS ERREUR** pour pouvoir continuer les phases 3-5 de compacité proprement !
 
 
+
