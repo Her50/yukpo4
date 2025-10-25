@@ -412,7 +412,7 @@ pub async fn check_and_notify_return_requests(
     
     // Récupérer toutes les demandes de retour correspondantes
     // Tolérance de ±1 heure sur l'heure préférée
-    let matching_requests: Vec<(i32, String, String, String)> = sqlx::query_as(
+    let matching_requests: Vec<(String, i32, String, String)> = sqlx::query_as(
         r#"
         SELECT 
             rtr.id,
@@ -421,8 +421,8 @@ pub async fn check_and_notify_return_requests(
             rtr.preferred_return_time
         FROM return_trip_requests rtr
         WHERE rtr.status = 'pending'
-          AND rtr.return_departure_city = $1
-          AND rtr.return_arrival_city = $2
+          AND rtr.return_from = $1
+          AND rtr.return_to = $2
           AND rtr.preferred_return_date = $3
           AND ABS(EXTRACT(EPOCH FROM (rtr.preferred_return_time::time - $4::time))) < 3600
         "#,
@@ -437,49 +437,49 @@ pub async fn check_and_notify_return_requests(
     let count = matching_requests.len();
     info!("[PushService] 📊 {} demandes de retour correspondantes trouvées", count);
     
-    for (request_id, user_id_str, _, _) in matching_requests {
-        // Convertir user_id en i32
-        if let Ok(user_id) = user_id_str.parse::<i32>() {
-            // Envoyer la notification
-            match notify_return_bus_available(
-                pool,
-                user_id,
-                new_bus_id,
-                departure_city,
-                arrival_city,
-                departure_date,
-                departure_time,
-            ).await {
-                Ok(sent) => {
-                    info!("[PushService] ✅ {} notifications envoyées à user {}", sent, user_id);
-                }
-                Err(e) => {
-                    error!("[PushService] ❌ Erreur notification user {}: {:?}", user_id, e);
-                }
+    for (request_id, user_id, _, _) in matching_requests {
+        // Envoyer la notification
+        match notify_return_bus_available(
+            pool,
+            user_id,
+            new_bus_id,
+            departure_city,
+            arrival_city,
+            departure_date,
+            departure_time,
+        ).await {
+            Ok(sent) => {
+                info!("[PushService] ✅ {} notifications envoyées à user {}", sent, user_id);
             }
+            Err(e) => {
+                error!("[PushService] ❌ Erreur notification user {}: {:?}", user_id, e);
+            }
+        }
 
-            // Mettre à jour le statut de la demande
-            let update_result = sqlx::query(
-                r#"
-                UPDATE return_trip_requests
-                SET status = 'matched',
-                    matched_bus_id = $1,
-                    updated_at = NOW()
-                WHERE id = $2
-                "#,
-            )
-            .bind(new_bus_id)
-            .bind(request_id)
-            .execute(pool)
-            .await;
+        // Mettre à jour le statut de la demande
+        let update_result = sqlx::query(
+            r#"
+            UPDATE return_trip_requests
+            SET status = 'matched',
+                matched_product_id = $1,
+                matched_at = NOW(),
+                notification_sent = TRUE,
+                notification_sent_at = NOW(),
+                updated_at = NOW()
+            WHERE id = $2
+            "#,
+        )
+        .bind(new_bus_id)
+        .bind(&request_id)
+        .execute(pool)
+        .await;
 
-            match update_result {
-                Ok(_) => {
-                    info!("[PushService] ✅ Statut mis à jour pour demande {}", request_id);
-                }
-                Err(e) => {
-                    error!("[PushService] ❌ Erreur mise à jour statut demande {}: {:?}", request_id, e);
-                }
+        match update_result {
+            Ok(_) => {
+                info!("[PushService] ✅ Statut mis à jour pour demande {}", request_id);
+            }
+            Err(e) => {
+                error!("[PushService] ❌ Erreur mise à jour statut demande {}: {:?}", request_id, e);
             }
         }
     }

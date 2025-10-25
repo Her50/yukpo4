@@ -4,12 +4,12 @@
 -- Table des tokens de notification push
 CREATE TABLE IF NOT EXISTS user_push_tokens (
     id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::TEXT,
-    user_id TEXT NOT NULL,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     push_token TEXT NOT NULL,
     platform TEXT NOT NULL, -- 'ios', 'android'
     is_active BOOLEAN DEFAULT TRUE,
-    created_at TIMESTAMP DEFAULT NOW(),
-    updated_at TIMESTAMP DEFAULT NOW(),
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     
     -- Index pour recherche rapide par utilisateur
     CONSTRAINT unique_user_push_token UNIQUE (user_id, push_token)

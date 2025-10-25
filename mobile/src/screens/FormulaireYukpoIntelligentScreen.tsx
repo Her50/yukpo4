@@ -17,6 +17,7 @@ import {
 } from 'react-native';
 import NetworkDiagnostics from '../components/NetworkDiagnostics';
 import { apiGet, apiPost } from '../services/api';
+import { handleBusCreated } from '../utils/busReturnNotifier';
 // Code corrigé (remplace @ts-ignore)
 import BrandingManagerMobile from '../components/BrandingManagerMobile';
 // Code corrigé (remplace @ts-ignore)
@@ -1107,6 +1108,30 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           throw new Error(response.error || 'Erreur lors de la modification');
         }
 
+        // ✅ NOUVEAU: Vérifier les demandes de retour pour les nouveaux tickets de voyage ajoutés
+        if (products && products.length > 0) {
+          const ticketsVoyage = products.filter(p => p.type === 'ticket_voyage');
+          
+          for (const ticket of ticketsVoyage) {
+            if (ticket.depart && ticket.destination && ticket.dateDepart && ticket.heureDepart) {
+              try {
+                await handleBusCreated(
+                  ticket.id || `${serviceId}_${ticket.nom}`,
+                  {
+                    depart: ticket.depart,
+                    destination: ticket.destination,
+                    dateDepart: ticket.dateDepart,
+                    heureDepart: ticket.heureDepart
+                  }
+                );
+                console.log('✅ Vérification demandes retour effectuée pour:', ticket.nom);
+              } catch (error) {
+                console.error('⚠️ Erreur vérification retour (non bloquant):', error);
+              }
+            }
+          }
+        }
+
         // ✅ Succès modification (pas de coût)
         Alert.alert(
           '✅ Service modifié',
@@ -1486,6 +1511,31 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                 // Il est sauvegardé dans AsyncStorage quand le header x-new-jwt est présent
                 // Voir mobile/src/services/api.ts lignes 102-105
                 // Le solde de tokens est aussi mis à jour automatiquement
+
+                // ✅ NOUVEAU: Vérifier les demandes de retour pour les tickets de voyage créés
+                if (products && products.length > 0) {
+                  const ticketsVoyage = products.filter(p => p.type === 'ticket_voyage');
+                  
+                  for (const ticket of ticketsVoyage) {
+                    if (ticket.depart && ticket.destination && ticket.dateDepart && ticket.heureDepart) {
+                      try {
+                        await handleBusCreated(
+                          ticket.id || `${result?.id || result?.service_id}_${ticket.nom}`,
+                          {
+                            depart: ticket.depart,
+                            destination: ticket.destination,
+                            dateDepart: ticket.dateDepart,
+                            heureDepart: ticket.heureDepart
+                          }
+                        );
+                        console.log('✅ Vérification demandes retour effectuée pour:', ticket.nom);
+                      } catch (error) {
+                        console.error('⚠️ Erreur vérification retour (non bloquant):', error);
+                        // Ne pas bloquer si la vérification échoue
+                      }
+                    }
+                  }
+                }
 
                 setSuccessData({ serviceId: result?.id || result?.service_id || 'nouveau', cout: coutReel });
                 setShowSuccessToast(true);
