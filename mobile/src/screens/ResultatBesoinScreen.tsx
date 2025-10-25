@@ -25,6 +25,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useLocation } from '../contexts/LocationContext';
 import { apiGet, apiPost } from '../services/api';
 import { theme } from '../theme/theme';
+import { generateAndDownloadTicket, shareTicketPDF } from '../utils/busTicketPdfGenerator';
 import { normalizeProduct } from '../utils/productNormalizer';
 import {
     detectDominantCategoryWeighted,
@@ -1053,6 +1054,76 @@ const ResultatBesoinScreen: React.FC = () => {
         return String(field);
     };
 
+    // Fonction pour confirmer le paiement complet et générer le ticket PDF
+    const confirmBusReservation = async (reservationId: string, reservation: any) => {
+        try {
+            const product = reservation.product;
+            const totalPrice = parseInt(product.prix);
+            const cautionPaid = reservation.cautionAmount || 500;
+            const remainingToPay = totalPrice - cautionPaid;
+
+            // Vérifier le solde
+            if (!user || user.tokens_balance < remainingToPay) {
+                Alert.alert(
+                    'Solde insuffisant',
+                    `Montant restant: ${remainingToPay} FCFA\nSolde: ${user?.tokens_balance || 0} FCFA`,
+                    [
+                        { text: 'Recharger', onPress: () => navigation.navigate('RechargeTokens') },
+                        { text: 'Annuler' }
+                    ]
+                );
+                return;
+            }
+
+            // Générer le ticket PDF
+            const ticketData = {
+                reservationId,
+                passengerName: reservation.passengerName,
+                seatNumber: reservation.seatNumber,
+                compagnie: product.compagnieTransport || 'Compagnie de Transport',
+                logoAgence: product.logoAgence,
+                numeroBus: product.numeroBus || 'N/A',
+                depart: product.depart,
+                destination: product.destination,
+                dateDepart: product.dateDepart,
+                heureDepart: product.heureDepart,
+                classeVoyage: product.classeVoyage,
+                prix: totalPrice,
+                devise: product.devise || 'FCFA',
+                cautionPaid,
+                totalPaid: totalPrice,
+                escales: product.escales,
+                conditionsVoyage: product.conditionsVoyage,
+                qrCodeData: reservationId
+            };
+
+            const pdfUri = await generateAndDownloadTicket(ticketData);
+
+            // Appeler l'API pour confirmer
+            await apiPost('/bus-reservations/confirm', {
+                reservation_id: reservationId,
+                total_price: totalPrice,
+                ticket_pdf_url: pdfUri
+            });
+
+            // Proposer de partager le ticket
+            Alert.alert(
+                '✅ Voyage confirmé!',
+                `Votre ticket a été généré avec succès.\n\nPassager: ${reservation.passengerName}\nPlace: ${reservation.seatNumber}\nTrajet: ${product.depart} → ${product.destination}`,
+                [
+                    {
+                        text: 'Partager le ticket',
+                        onPress: () => shareTicketPDF(pdfUri, reservation.passengerName)
+                    },
+                    { text: 'OK' }
+                ]
+            );
+        } catch (error) {
+            console.error('Erreur confirmation réservation:', error);
+            Alert.alert('Erreur', 'Impossible de confirmer la réservation');
+        }
+    };
+
     // Composant ServiceResultCard amélioré
     // Composant de rendu pour chaque produit
     const ProductCardComponent = ({ product }: { product: any }) => {
@@ -1562,19 +1633,38 @@ const ResultatBesoinScreen: React.FC = () => {
 
                                                     console.log('✅ Réservation créée:', reservationResult);
                                                     
+                                                    // Stocker l'ID de réservation
+                                                    const newReservation = {
+                                                        id: reservationResult.data?.reservation_id || reservationResult.reservation_id,
+                                                        product: selectedProduct,
+                                                        passengerName: seatWithName.passengerName,
+                                                        seatNumber: seatWithName.number,
+                                                        cautionAmount: cautionAmount,
+                                                        expiresAt: new Date(Date.now() + 30 * 60 * 1000) // 30 minutes
+                                                    };
+                                                    
                                                     // Afficher confirmation avec timer
                                                     Alert.alert(
                                                         '✅ Caution payée!',
                                                         `Place n°${seatWithName.number} réservée pour ${seatWithName.passengerName}\n\n⏰ Vous avez 30 minutes pour payer le prix total (${selectedProduct.prix} FCFA) et confirmer votre voyage.\n\nCaution: ${cautionAmount} FCFA débités`,
                                                         [
                                                             {
-                                                                text: 'Payer maintenant',
+                                                                text: 'Payer et obtenir ticket',
                                                                 onPress: () => {
-                                                                    // TODO: Rediriger vers paiement complet
-                                                                    setShowChatModal(true);
+                                                                    // Confirmer et générer le ticket
+                                                                    confirmBusReservation(newReservation.id, newReservation);
                                                                 }
                                                             },
-                                                            { text: 'Plus tard' }
+                                                            { 
+                                                                text: 'Plus tard',
+                                                                onPress: () => {
+                                                                    Alert.alert(
+                                                                        '⏰ Rappel',
+                                                                        'N\'oubliez pas de finaliser votre paiement dans les 30 minutes pour obtenir votre ticket!',
+                                                                        [{ text: 'OK' }]
+                                                                    );
+                                                                }
+                                                            }
                                                         ]
                                                     );
                                                 } catch (apiError) {
