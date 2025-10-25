@@ -2191,31 +2191,45 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                 );
 
             case 'ticket_voyage':
-                const busConfig = newProduct.busConfiguration || { rows: 12, seatsPerRow: 4, aislePosition: 2 };
-                const totalSeats = busConfig.rows * busConfig.seatsPerRow;
+                const busConfig = newProduct.busConfiguration || { 
+                    rows: 12, 
+                    seatsPerRow: 4, 
+                    aislePosition: 2,
+                    firstRowSeats: 2, // 2 ou 3 (chauffeur + passagers)
+                    allSeatsAvailable: true // Par défaut toutes les places disponibles
+                };
+                
+                // Calculer le nombre total de sièges (première rangée différente)
+                const firstRowPassengerSeats = busConfig.firstRowSeats || 2;
+                const totalSeats = firstRowPassengerSeats + (busConfig.rows - 1) * busConfig.seatsPerRow;
                 
                 // Générer le plan de sièges si pas déjà fait
                 if (!newProduct.seatMap || newProduct.seatMap.length === 0) {
                     const seatMap = [];
                     let seatNumber = 1;
+                    
                     for (let row = 1; row <= busConfig.rows; row++) {
-                        for (let col = 1; col <= busConfig.seatsPerRow; col++) {
+                        const seatsInRow = row === 1 ? firstRowPassengerSeats : busConfig.seatsPerRow;
+                        
+                        for (let col = 1; col <= seatsInRow; col++) {
+                            const isDriver = row === 1 && col === 1;
                             seatMap.push({
                                 id: `${row}-${col}`,
-                                number: seatNumber++,
+                                number: isDriver ? 0 : seatNumber++, // Chauffeur = 0
                                 row,
                                 col,
-                                status: 'available', // available, reserved, occupied
-                                type: 'standard', // standard, vip, handicapped
+                                status: isDriver ? 'occupied' : (busConfig.allSeatsAvailable ? 'available' : 'available'),
+                                type: isDriver ? 'driver' : 'standard',
+                                label: isDriver ? '🚗 Chauffeur' : undefined
                             });
                         }
                     }
                     if (newProduct.nom) { // Only update if product exists
                         newProduct.seatMap = seatMap;
-                        newProduct.totalSeats = totalSeats;
+                        newProduct.totalSeats = totalSeats - 1; // Moins le chauffeur
                     }
                 }
-                
+
                 return (
                     <>
                         <View style={styles.hintBox}>
@@ -2292,10 +2306,101 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 </View>
                             </View>
 
+                            {/* Configuration première rangée */}
+                            <View style={styles.fieldContainer}>
+                                <Text style={styles.fieldLabel}>1ère rangée (Chauffeur + passagers) <Text style={styles.required}>*</Text></Text>
+                                <View style={styles.busFirstRowOptions}>
+                                    <TouchableOpacity
+                                        style={[
+                                            styles.busFirstRowButton,
+                                            busConfig.firstRowSeats === 2 && styles.busFirstRowButtonActive
+                                        ]}
+                                        onPress={() => {
+                                            setNewProduct({
+                                                ...newProduct,
+                                                busConfiguration: { ...busConfig, firstRowSeats: 2 },
+                                                seatMap: []
+                                            });
+                                        }}
+                                    >
+                                        <SafeIcon 
+                                            name="user" 
+                                            size={18} 
+                                            color={busConfig.firstRowSeats === 2 ? '#FFFFFF' : modernColors.primary} 
+                                        />
+                                        <Text style={[
+                                            styles.busFirstRowButtonText,
+                                            busConfig.firstRowSeats === 2 && styles.busFirstRowButtonTextActive
+                                        ]}>
+                                            2 places (1+1)
+                                        </Text>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity
+                                        style={[
+                                            styles.busFirstRowButton,
+                                            busConfig.firstRowSeats === 3 && styles.busFirstRowButtonActive
+                                        ]}
+                                        onPress={() => {
+                                            setNewProduct({
+                                                ...newProduct,
+                                                busConfiguration: { ...busConfig, firstRowSeats: 3 },
+                                                seatMap: []
+                                            });
+                                        }}
+                                    >
+                                        <SafeIcon 
+                                            name="users" 
+                                            size={18} 
+                                            color={busConfig.firstRowSeats === 3 ? '#FFFFFF' : modernColors.primary} 
+                                        />
+                                        <Text style={[
+                                            styles.busFirstRowButtonText,
+                                            busConfig.firstRowSeats === 3 && styles.busFirstRowButtonTextActive
+                                        ]}>
+                                            3 places (1+2)
+                                        </Text>
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
+
+                            {/* Option disponibilité */}
+                            <View style={styles.fieldContainer}>
+                                <Text style={styles.fieldLabel}>Disponibilité des places</Text>
+                                <TouchableOpacity
+                                    style={styles.availabilityToggle}
+                                    onPress={() => {
+                                        setNewProduct({
+                                            ...newProduct,
+                                            busConfiguration: { 
+                                                ...busConfig, 
+                                                allSeatsAvailable: !busConfig.allSeatsAvailable 
+                                            },
+                                            seatMap: []
+                                        });
+                                    }}
+                                >
+                                    <View style={[
+                                        styles.toggleSwitch,
+                                        busConfig.allSeatsAvailable && styles.toggleSwitchActive
+                                    ]}>
+                                        <View style={[
+                                            styles.toggleThumb,
+                                            busConfig.allSeatsAvailable && styles.toggleThumbActive
+                                        ]} />
+                                    </View>
+                                    <Text style={styles.availabilityToggleText}>
+                                        {busConfig.allSeatsAvailable 
+                                            ? '✅ Toutes les places disponibles' 
+                                            : '⚠️ Sélection manuelle requise'}
+                                    </Text>
+                                </TouchableOpacity>
+                            </View>
+
                             <View style={styles.busConfigSummary}>
                                 <SafeIcon name="info" size={16} color={modernColors.info} />
                                 <Text style={styles.busConfigText}>
-                                    Total: <Text style={styles.busConfigBold}>{totalSeats} places</Text>
+                                    Total: <Text style={styles.busConfigBold}>{totalSeats - 1} places passagers</Text>
+                                    {' '}(+ 1 chauffeur)
                                 </Text>
                             </View>
 
@@ -2310,24 +2415,36 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                         </View>
                                         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                                             <View style={styles.busSeatsGrid}>
-                                                {Array.from({ length: busConfig.rows }).map((_, rowIndex) => (
-                                                    <View key={rowIndex} style={styles.busRow}>
-                                                        <Text style={styles.rowNumber}>{rowIndex + 1}</Text>
-                                                        {Array.from({ length: busConfig.seatsPerRow }).map((_, colIndex) => {
-                                                            const isAisle = colIndex === Math.floor(busConfig.seatsPerRow / 2);
-                                                            return (
-                                                                <React.Fragment key={colIndex}>
-                                                                    {isAisle && <View style={styles.busAisle} />}
-                                                                    <View style={styles.busSeatMini}>
-                                                                        <Text style={styles.busSeatNumber}>
-                                                                            {rowIndex * busConfig.seatsPerRow + colIndex + 1}
-                                                                        </Text>
-                                                                    </View>
-                                                                </React.Fragment>
-                                                            );
-                                                        })}
-                                                    </View>
-                                                ))}
+                                                {Array.from({ length: busConfig.rows }).map((_, rowIndex) => {
+                                                    const seatsInRow = rowIndex === 0 ? firstRowPassengerSeats : busConfig.seatsPerRow;
+                                                    return (
+                                                        <View key={rowIndex} style={styles.busRow}>
+                                                            <Text style={styles.rowNumber}>{rowIndex + 1}</Text>
+                                                            {Array.from({ length: seatsInRow }).map((_, colIndex) => {
+                                                                const isDriver = rowIndex === 0 && colIndex === 0;
+                                                                const isAisle = !isDriver && colIndex === Math.floor(seatsInRow / 2);
+                                                                const seat = newProduct.seatMap.find(s => s.row === rowIndex + 1 && s.col === colIndex + 1);
+                                                                
+                                                                return (
+                                                                    <React.Fragment key={colIndex}>
+                                                                        {isAisle && <View style={styles.busAisle} />}
+                                                                        <View style={[
+                                                                            styles.busSeatMini,
+                                                                            isDriver && styles.busSeatDriver
+                                                                        ]}>
+                                                                            <Text style={[
+                                                                                styles.busSeatNumber,
+                                                                                isDriver && styles.busSeatDriverText
+                                                                            ]}>
+                                                                                {isDriver ? '🚗' : (seat?.number || '')}
+                                                                            </Text>
+                                                                        </View>
+                                                                    </React.Fragment>
+                                                                );
+                                                            })}
+                                                        </View>
+                                                    );
+                                                })}
                                             </View>
                                         </ScrollView>
                                     </View>
@@ -6997,6 +7114,82 @@ const styles = StyleSheet.create({
         fontSize: 10,
         fontWeight: '600',
         color: '#FFFFFF',
+    },
+    busSeatDriver: {
+        backgroundColor: '#EF4444',
+        borderColor: '#DC2626',
+    },
+    busSeatDriverText: {
+        fontSize: 14,
+    },
+    busFirstRowOptions: {
+        flexDirection: 'row',
+        gap: 12,
+        marginTop: 8,
+    },
+    busFirstRowButton: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        backgroundColor: modernColors.surface,
+        borderWidth: 2,
+        borderColor: modernColors.primary,
+        borderRadius: 10,
+    },
+    busFirstRowButtonActive: {
+        backgroundColor: modernColors.primary,
+    },
+    busFirstRowButtonText: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: modernColors.primary,
+    },
+    busFirstRowButtonTextActive: {
+        color: '#FFFFFF',
+    },
+    availabilityToggle: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        padding: 12,
+        backgroundColor: modernColors.background,
+        borderRadius: 10,
+        marginTop: 8,
+    },
+    toggleSwitch: {
+        width: 50,
+        height: 28,
+        borderRadius: 14,
+        backgroundColor: '#D1D5DB',
+        padding: 2,
+        justifyContent: 'center',
+    },
+    toggleSwitchActive: {
+        backgroundColor: modernColors.success,
+    },
+    toggleThumb: {
+        width: 24,
+        height: 24,
+        borderRadius: 12,
+        backgroundColor: '#FFFFFF',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.2,
+        shadowRadius: 2,
+        elevation: 2,
+    },
+    toggleThumbActive: {
+        transform: [{ translateX: 22 }],
+    },
+    availabilityToggleText: {
+        flex: 1,
+        fontSize: 14,
+        fontWeight: '600',
+        color: modernColors.text,
     },
     // Style pour le rappel de catégorie
     categoryReminder: {

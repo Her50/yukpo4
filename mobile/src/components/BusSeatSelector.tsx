@@ -59,6 +59,9 @@ const BusSeatSelector: React.FC<BusSeatSelectorProps> = ({
     const [selectedSeat, setSelectedSeat] = useState<Seat | null>(null);
 
     const getSeatStyle = (seat: Seat) => {
+        if (seat.type === 'driver') {
+            return styles.seatDriver;
+        }
         if (seat.status === 'occupied' || seat.status === 'reserved') {
             return styles.seatOccupied;
         }
@@ -69,6 +72,9 @@ const BusSeatSelector: React.FC<BusSeatSelectorProps> = ({
     };
 
     const getSeatIcon = (seat: Seat) => {
+        if (seat.type === 'driver') {
+            return '🚗';
+        }
         if (seat.status === 'occupied' || seat.status === 'reserved') {
             return '🔒';
         }
@@ -79,7 +85,7 @@ const BusSeatSelector: React.FC<BusSeatSelectorProps> = ({
     };
 
     const handleSeatPress = (seat: Seat) => {
-        if (seat.status === 'available') {
+        if (seat.status === 'available' && seat.type !== 'driver') {
             setSelectedSeat(seat);
         }
     };
@@ -103,7 +109,7 @@ const BusSeatSelector: React.FC<BusSeatSelectorProps> = ({
         >
             <View style={styles.modalContainer}>
                 <View style={styles.modalContent}>
-                    {/* Header */}
+                {/* Header */}
                     <View style={styles.header}>
                         <View>
                             <Text style={styles.headerTitle}>🚌 Sélectionnez votre place</Text>
@@ -116,7 +122,7 @@ const BusSeatSelector: React.FC<BusSeatSelectorProps> = ({
                         </View>
                         <TouchableOpacity onPress={onClose} style={styles.closeButton}>
                             <SafeIcon name="x" size={24} color={modernColors.text} />
-                        </TouchableOpacity>
+                    </TouchableOpacity>
                     </View>
 
                     {/* Statistiques */}
@@ -147,36 +153,37 @@ const BusSeatSelector: React.FC<BusSeatSelectorProps> = ({
 
                         {/* Grille de sièges */}
                         <View style={styles.seatsGrid}>
-                            {Array.from({ length: busConfiguration.rows }).map((_, rowIndex) => (
-                                <View key={rowIndex} style={styles.seatRow}>
-                                    <Text style={styles.rowLabel}>{rowIndex + 1}</Text>
-                                    {Array.from({ length: busConfiguration.seatsPerRow }).map((_, colIndex) => {
-                                        const seatIndex = rowIndex * busConfiguration.seatsPerRow + colIndex;
-                                        const seat = seatMap[seatIndex];
-                                        const isAisle = colIndex === Math.floor(busConfiguration.seatsPerRow / 2);
+                            {Array.from({ length: busConfiguration.rows }).map((_, rowIndex) => {
+                                // Première rangée peut avoir moins de sièges (chauffeur + passagers)
+                                const seatsInThisRow = seatMap.filter(s => s.row === rowIndex + 1);
+                                
+                                return (
+                                    <View key={rowIndex} style={styles.seatRow}>
+                                        <Text style={styles.rowLabel}>{rowIndex + 1}</Text>
+                                        {seatsInThisRow.map((seat, colIndex) => {
+                                            const isAisle = seat.type !== 'driver' && colIndex === Math.floor(seatsInThisRow.length / 2);
 
-                                        return (
-                                            <React.Fragment key={colIndex}>
-                                                {isAisle && <View style={styles.aisle} />}
-                                                {seat && (
+                                            return (
+                                                <React.Fragment key={seat.id}>
+                                                    {isAisle && <View style={styles.aisle} />}
                                                     <TouchableOpacity
                                                         style={[styles.seat, getSeatStyle(seat)]}
                                                         onPress={() => handleSeatPress(seat)}
-                                                        disabled={seat.status !== 'available'}
+                                                        disabled={seat.status !== 'available' || seat.type === 'driver'}
                                                     >
                                                         <Text style={[
                                                             styles.seatNumber,
-                                                            (seat.status === 'occupied' || seat.status === 'reserved') && styles.seatNumberDisabled
+                                                            (seat.status === 'occupied' || seat.status === 'reserved' || seat.type === 'driver') && styles.seatNumberDisabled
                                                         ]}>
                                                             {getSeatIcon(seat)}
                                                         </Text>
                                                     </TouchableOpacity>
-                                                )}
-                                            </React.Fragment>
-                                        );
-                                    })}
-                                </View>
-                            ))}
+                                                </React.Fragment>
+                                            );
+                                        })}
+                                    </View>
+                                );
+                            })}
                         </View>
 
                         {/* Arrière du bus */}
@@ -185,32 +192,32 @@ const BusSeatSelector: React.FC<BusSeatSelectorProps> = ({
                         </View>
                     </ScrollView>
 
-                    {/* Légende */}
-                    <View style={styles.legend}>
-                        <View style={styles.legendItem}>
-                            <View style={[styles.legendSeat, styles.seatAvailable]} />
-                            <Text style={styles.legendText}>Disponible</Text>
-                        </View>
-                        <View style={styles.legendItem}>
-                            <View style={[styles.legendSeat, styles.seatSelected]} />
-                            <Text style={styles.legendText}>Sélectionnée</Text>
-                        </View>
-                        <View style={styles.legendItem}>
-                            <View style={[styles.legendSeat, styles.seatOccupied]} />
-                            <Text style={styles.legendText}>Occupée</Text>
-                        </View>
+                {/* Légende */}
+                <View style={styles.legend}>
+                    <View style={styles.legendItem}>
+                        <View style={[styles.legendSeat, styles.seatAvailable]} />
+                        <Text style={styles.legendText}>Disponible</Text>
                     </View>
+                    <View style={styles.legendItem}>
+                        <View style={[styles.legendSeat, styles.seatSelected]} />
+                        <Text style={styles.legendText}>Sélectionnée</Text>
+                    </View>
+                    <View style={styles.legendItem}>
+                        <View style={[styles.legendSeat, styles.seatOccupied]} />
+                        <Text style={styles.legendText}>Occupée</Text>
+                    </View>
+                </View>
 
                     {/* Boutons d'action */}
                     <View style={styles.actions}>
-                        <TouchableOpacity
+                                                <TouchableOpacity
                             style={styles.cancelButton}
                             onPress={onClose}
                         >
                             <Text style={styles.cancelButtonText}>Annuler</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                            style={[
+                                    </TouchableOpacity>
+                                    <TouchableOpacity
+                                                        style={[
                                 styles.confirmButton,
                                 !selectedSeat && styles.confirmButtonDisabled
                             ]}
@@ -220,11 +227,11 @@ const BusSeatSelector: React.FC<BusSeatSelectorProps> = ({
                             <SafeIcon name="check" size={20} color="#FFFFFF" />
                             <Text style={styles.confirmButtonText}>
                                 {selectedSeat ? `Réserver place ${selectedSeat.number}` : 'Sélectionnez une place'}
-                            </Text>
-                        </TouchableOpacity>
+                                                        </Text>
+                                                    </TouchableOpacity>
+                                            </View>
                     </View>
                 </View>
-            </View>
         </Modal>
     );
 };
@@ -351,6 +358,10 @@ const styles = StyleSheet.create({
         backgroundColor: '#9CA3AF',
         borderColor: '#6B7280',
         opacity: 0.6,
+    },
+    seatDriver: {
+        backgroundColor: '#EF4444',
+        borderColor: '#DC2626',
     },
     seatNumber: {
         fontSize: 13,

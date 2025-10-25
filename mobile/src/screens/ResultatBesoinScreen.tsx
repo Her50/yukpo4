@@ -29,8 +29,8 @@ import { normalizeProduct } from '../utils/productNormalizer';
 import {
     detectDominantCategoryWeighted,
     generateSmartFilterSuggestions,
-    saveFilterToHistory,
     getFilterHistory,
+    saveFilterToHistory,
     SmartFilterSuggestion
 } from '../utils/smartFilterSuggestions';
 
@@ -102,7 +102,7 @@ const ResultatBesoinScreen: React.FC = () => {
     const [showPriceFilter, setShowPriceFilter] = useState(false);
     const [showCategoryFilters, setShowCategoryFilters] = useState(false);
     const [categoryFilters, setCategoryFilters] = useState<Record<string, any>>({});
-    
+
     // ✅ NOUVEAUX ÉTATS: Suggestions intelligentes
     const [smartSuggestions, setSmartSuggestions] = useState<SmartFilterSuggestion[]>([]);
     const [showSmartSuggestions, setShowSmartSuggestions] = useState(false);
@@ -115,12 +115,12 @@ const ResultatBesoinScreen: React.FC = () => {
     // ✅ AMÉLIORATION: Déterminer la catégorie dominante avec pondération intelligente
     const dominantCategory = useMemo(() => {
         if (products.length === 0) return 'default';
-        
+
         // Utiliser la détection intelligente avec pondération
         const detected = detectDominantCategoryWeighted(products);
-        
+
         console.log(`🎯 [ResultatBesoinScreen] Catégorie dominante détectée: ${detected} (${products.length} produits)`);
-        
+
         return detected;
     }, [products]);
 
@@ -140,15 +140,15 @@ const ResultatBesoinScreen: React.FC = () => {
                 budget: routeParams.budget,
                 searchQuery: routeParams.searchQuery
             };
-            
+
             const suggestions = generateSmartFilterSuggestions(
                 products,
                 dominantCategory,
                 userContext
             );
-            
+
             setSmartSuggestions(suggestions);
-            
+
             console.log(`💡 [ResultatBesoinScreen] ${suggestions.length} suggestions intelligentes générées`);
         }
     }, [products, dominantCategory, location, routeParams.budget]);
@@ -160,7 +160,7 @@ const ResultatBesoinScreen: React.FC = () => {
             setFilterHistory(history);
             console.log(`📜 [ResultatBesoinScreen] ${history.length} filtres dans l'historique`);
         };
-        
+
         if (dominantCategory !== 'default') {
             loadFilterHistory();
         }
@@ -657,7 +657,7 @@ const ResultatBesoinScreen: React.FC = () => {
                     console.warn('   1. Il y a des services actifs en base PostgreSQL');
                     console.warn('   2. Les services ont des embeddings vectoriels (pgvector)');
                     console.warn('   3. La recherche /api/search/direct fonctionne correctement');
-                    
+
                     setError('Aucun résultat trouvé. Vérifiez que des services existent en base de données.');
                     setLoading(false);
                     setPrestatairesLoaded(true);
@@ -1377,15 +1377,15 @@ const ResultatBesoinScreen: React.FC = () => {
                         onClose={() => setShowCategoryFilters(false)}
                         onApply={async (filters) => {
                             setCategoryFilters(filters);
-                            
+
                             // ✅ AMÉLIORATION: Sauvegarder dans l'historique
                             const filteredResults = filterProducts(products);
                             await saveFilterToHistory(dominantCategory, filters, filteredResults.length);
-                            
+
                             // Recharger l'historique
                             const updatedHistory = await getFilterHistory(dominantCategory);
                             setFilterHistory(updatedHistory);
-                            
+
                             console.log(`✅ Filtres appliqués: ${Object.keys(filters).length} filtres → ${filteredResults.length} résultats`);
                         }}
                         initialFilters={categoryFilters}
@@ -1502,10 +1502,10 @@ const ResultatBesoinScreen: React.FC = () => {
                     onSelectSeat={async (seat) => {
                         try {
                             // Mettre à jour localement le statut de la place
-                            const updatedSeatMap = selectedProduct.seatMap.map(s => 
+                            const updatedSeatMap = selectedProduct.seatMap.map(s =>
                                 s.id === seat.id ? { ...s, status: 'reserved' } : s
                             );
-                            
+
                             // Mettre à jour le produit localement
                             setSelectedProduct({
                                 ...selectedProduct,
@@ -1514,16 +1514,27 @@ const ResultatBesoinScreen: React.FC = () => {
                             });
 
                             // Mettre à jour dans la liste des produits
-                            setProducts(prevProducts => 
-                                prevProducts.map(p => 
-                                    p.id === selectedProduct.id 
+                            setProducts(prevProducts =>
+                                prevProducts.map(p =>
+                                    p.id === selectedProduct.id
                                         ? { ...p, seatMap: updatedSeatMap, selectedSeat: seat.number }
                                         : p
                                 )
                             );
 
-                            // TODO: Appeler l'API pour persister la réservation
-                            // await apiPost(`/products/${selectedProduct.id}/reserve-seat`, { seatId: seat.id, userId: user.id });
+                            // Appeler l'API pour persister la réservation
+                            try {
+                                const reservationResult = await apiPost('/bus-reservations/reserve', {
+                                    seat_id: seat.id,
+                                    user_id: user?.id || '',
+                                    product_id: selectedProduct.id
+                                });
+
+                                console.log('✅ Réservation créée:', reservationResult);
+                            } catch (apiError) {
+                                console.error('⚠️ Erreur API réservation (continuera localement):', apiError);
+                                // Continue avec la réservation locale même si l'API échoue
+                            }
 
                             Alert.alert(
                                 'Place réservée!',
