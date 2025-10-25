@@ -36,8 +36,8 @@ pub mod mongo_history_service;
 pub mod semantic_exclusion;
 pub mod valider_echange;
 pub mod besoin_service;
-// pub mod notification_service; // Module non trouvé - commenté
-pub mod push_notification_service; // ✅ NOUVEAU: Service de push notifications
+pub mod notification_service; // ✅ Service de notifications en base de données
+pub mod push_notification_service; // ✅ Service de push notifications Expo
 pub mod service_lifecycle_manager;
 pub mod prestataire_service;
 pub mod llm_service;
