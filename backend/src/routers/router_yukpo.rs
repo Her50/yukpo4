@@ -182,14 +182,7 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route("/api/publicites/track-view", post(publicite_controller::track_publicite_view));
     
     // Routes pour product_modalities (modalités réutilisables)
-    let modality_routes = Router::new()
-        .route("/api/modalities/custom", get(router_modalities::get_custom_modalities))
-        .route("/api/modalities/custom", post(router_modalities::create_custom_modality)
-            .layer(axum::middleware::from_fn_with_state(state.clone(), jwt_auth)))
-        .route("/api/modalities/usage", post(router_modalities::increment_modality_usage))
-        .route("/api/modalities/popular", get(router_modalities::get_popular_modalities))
-        .route("/api/modalities/{id}", delete(router_modalities::delete_modality)
-            .layer(axum::middleware::from_fn_with_state(state.clone(), jwt_auth)));
+    let modality_routes = router_modalities::modality_routes(state.clone());
     
     // Combinaison des routes
     public_routes

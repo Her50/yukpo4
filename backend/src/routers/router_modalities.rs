@@ -1,13 +1,13 @@
 use axum::{
-    extract::{Path, Query, State},
+    extract::{Extension, Path, Query, State},
     http::StatusCode,
     Json,
 };
 use serde::{Deserialize, Serialize};
-use sqlx::PgPool;
 use std::sync::Arc;
 
-use crate::utils::auth::Claims;
+use crate::state::AppState;
+use crate::middlewares::jwt::AuthenticatedUser;
 
 // ===========================
 // STRUCTURES DE DONNÉES
@@ -60,7 +60,7 @@ pub struct ApiResponse<T> {
 /// GET /api/modalities/custom
 /// Récupérer toutes les modalités personnalisées (optionnellement filtrées)
 pub async fn get_custom_modalities(
-    State(pool): State<Arc<PgPool>>,
+    State(state): State<Arc<AppState>>,
     Query(params): Query<ModalityQueryParams>,
 ) -> Result<Json<ApiResponse<Vec<ProductModality>>>, StatusCode> {
     let mut query = String::from(
@@ -95,7 +95,7 @@ pub async fn get_custom_modalities(
                 pt,
                 fn_
             )
-            .fetch_all(pool.as_ref())
+            .fetch_all(&state.pg)
             .await
             .map_err(|e| {
                 eprintln!("Erreur récupération modalités: {:?}", e);
@@ -111,7 +111,7 @@ pub async fn get_custom_modalities(
                    ORDER BY usage_count DESC, modality ASC"#,
                 pt
             )
-            .fetch_all(pool.as_ref())
+            .fetch_all(&state.pg)
             .await
             .map_err(|e| {
                 eprintln!("Erreur récupération modalités: {:?}", e);
@@ -127,7 +127,7 @@ pub async fn get_custom_modalities(
                    ORDER BY usage_count DESC, modality ASC"#,
                 fn_
             )
-            .fetch_all(pool.as_ref())
+            .fetch_all(&state.pg)
             .await
             .map_err(|e| {
                 eprintln!("Erreur récupération modalités: {:?}", e);
@@ -141,7 +141,7 @@ pub async fn get_custom_modalities(
                    FROM product_modalities 
                    ORDER BY usage_count DESC, modality ASC"#
             )
-            .fetch_all(pool.as_ref())
+            .fetch_all(&state.pg)
             .await
             .map_err(|e| {
                 eprintln!("Erreur récupération modalités: {:?}", e);
@@ -160,8 +160,8 @@ pub async fn get_custom_modalities(
 /// POST /api/modalities/custom
 /// Créer une nouvelle modalité personnalisée
 pub async fn create_custom_modality(
-    State(pool): State<Arc<PgPool>>,
-    claims: Claims,
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
     Json(payload): Json<CreateModalityRequest>,
 ) -> Result<Json<ApiResponse<ProductModality>>, StatusCode> {
     // Validation
@@ -202,7 +202,7 @@ pub async fn create_custom_modality(
         field_name,
         modality
     )
-    .fetch_optional(pool.as_ref())
+    .fetch_optional(&state.pg)
     .await
     .map_err(|e| {
         eprintln!("Erreur vérification modalité existante: {:?}", e);
@@ -226,9 +226,9 @@ pub async fn create_custom_modality(
         product_type,
         field_name,
         modality,
-        claims.sub
+        user.id
     )
-    .fetch_one(pool.as_ref())
+    .fetch_one(&state.pg)
     .await
     .map_err(|e| {
         eprintln!("Erreur création modalité: {:?}", e);
@@ -250,7 +250,7 @@ pub async fn create_custom_modality(
 /// POST /api/modalities/usage
 /// Incrémenter le compteur d'utilisation d'une modalité
 pub async fn increment_modality_usage(
-    State(pool): State<Arc<PgPool>>,
+    State(state): State<Arc<AppState>>,
     Json(payload): Json<IncrementUsageRequest>,
 ) -> Result<Json<ApiResponse<()>>, StatusCode> {
     let product_type = payload.product_type.trim().to_lowercase();
@@ -265,7 +265,7 @@ pub async fn increment_modality_usage(
         field_name,
         modality
     )
-    .execute(pool.as_ref())
+    .execute(&state.pg)
     .await
     .map_err(|e| {
         eprintln!("Erreur incrément usage modalité: {:?}", e);
@@ -282,7 +282,7 @@ pub async fn increment_modality_usage(
 /// GET /api/modalities/popular
 /// Récupérer les modalités les plus populaires pour un type/champ donné
 pub async fn get_popular_modalities(
-    State(pool): State<Arc<PgPool>>,
+    State(state): State<Arc<AppState>>,
     Query(params): Query<ModalityQueryParams>,
 ) -> Result<Json<ApiResponse<Vec<ProductModality>>>, StatusCode> {
     let limit = params.limit.unwrap_or(10);
@@ -300,7 +300,7 @@ pub async fn get_popular_modalities(
                 fn_,
                 limit as i64
             )
-            .fetch_all(pool.as_ref())
+            .fetch_all(&state.pg)
             .await
             .map_err(|e| {
                 eprintln!("Erreur récupération modalités populaires: {:?}", e);
@@ -326,8 +326,8 @@ pub async fn get_popular_modalities(
 /// DELETE /api/modalities/:id
 /// Supprimer une modalité personnalisée (seulement si non-système)
 pub async fn delete_modality(
-    State(pool): State<Arc<PgPool>>,
-    claims: Claims,
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
     Path(id): Path<i32>,
 ) -> Result<Json<ApiResponse<()>>, StatusCode> {
     // Vérifier si la modalité existe et n'est pas système
@@ -335,7 +335,7 @@ pub async fn delete_modality(
         "SELECT is_system, added_by FROM product_modalities WHERE id = $1",
         id
     )
-    .fetch_optional(pool.as_ref())
+    .fetch_optional(&state.pg)
     .await
     .map_err(|e| {
         eprintln!("Erreur vérification modalité: {:?}", e);
@@ -360,7 +360,7 @@ pub async fn delete_modality(
             }
 
             // Vérifier que l'utilisateur est le créateur ou admin
-            if m.added_by != Some(claims.sub) {
+            if m.added_by != Some(user.id) {
                 // TODO: Vérifier si l'utilisateur est admin
                 return Ok(Json(ApiResponse {
                     success: false,
@@ -373,7 +373,7 @@ pub async fn delete_modality(
 
     // Supprimer la modalité
     sqlx::query!("DELETE FROM product_modalities WHERE id = $1", id)
-        .execute(pool.as_ref())
+        .execute(&state.pg)
         .await
         .map_err(|e| {
             eprintln!("Erreur suppression modalité: {:?}", e);
@@ -389,4 +389,22 @@ pub async fn delete_modality(
     }))
 }
 
+// ===========================
+// ROUTER BUILDER
+// ===========================
 
+/// Construit le routeur pour les modalités de produits
+pub fn modality_routes(state: Arc<AppState>) -> axum::Router<Arc<AppState>> {
+    use axum::{routing::{get, post, delete}, Router};
+    use crate::middlewares::jwt::jwt_auth;
+    
+    Router::<Arc<AppState>>::new()
+        .route("/api/modalities/custom", get(get_custom_modalities))
+        .route("/api/modalities/custom", post(create_custom_modality)
+            .layer(axum::middleware::from_fn_with_state(state.clone(), jwt_auth)))
+        .route("/api/modalities/usage", post(increment_modality_usage))
+        .route("/api/modalities/popular", get(get_popular_modalities))
+        .route("/api/modalities/{id}", delete(delete_modality)
+            .layer(axum::middleware::from_fn_with_state(state.clone(), jwt_auth)))
+        .with_state(state)
+}

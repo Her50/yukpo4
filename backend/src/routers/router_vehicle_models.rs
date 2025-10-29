@@ -1,16 +1,15 @@
 use axum::{
-    extract::{State, Json, Query, Path},
+    extract::{Extension, State, Json, Query, Path},
     routing::{get, post},
     Router, http::StatusCode,
 };
 use serde::{Deserialize, Serialize};
-use sqlx::PgPool;
 use std::sync::Arc;
 use log::{info, error};
 use crate::{
     state::AppState,
     core::types::{AppResult, AppError},
-    middlewares::jwt::Claims,
+    middlewares::jwt::AuthenticatedUser,
 };
 
 // ✅ Structures pour vehicle_models
@@ -73,7 +72,7 @@ pub async fn get_vehicle_models(
         .await
         .map_err(|e| {
             error!("Erreur récupération modèles par marque: {}", e);
-            AppError::DatabaseError(e.to_string())
+            AppError::Database(e.to_string())
         })?
     } else if let Some(category) = params.category {
         // Filtrer par catégorie
@@ -93,7 +92,7 @@ pub async fn get_vehicle_models(
         .await
         .map_err(|e| {
             error!("Erreur récupération modèles par catégorie: {}", e);
-            AppError::DatabaseError(e.to_string())
+            AppError::Database(e.to_string())
         })?
     } else {
         // Tous les modèles
@@ -111,7 +110,7 @@ pub async fn get_vehicle_models(
         .await
         .map_err(|e| {
             error!("Erreur récupération tous les modèles: {}", e);
-            AppError::DatabaseError(e.to_string())
+            AppError::Database(e.to_string())
         })?
     };
 
@@ -122,7 +121,7 @@ pub async fn get_vehicle_models(
 /// POST /api/vehicle-models - Créer un nouveau modèle de véhicule
 pub async fn create_vehicle_model(
     State(state): State<Arc<AppState>>,
-    claims: Claims,
+    Extension(user): Extension<AuthenticatedUser>,
     Json(payload): Json<CreateVehicleModelPayload>,
 ) -> AppResult<Json<VehicleModel>> {
     info!("Création modèle véhicule: {} {}", payload.brand, payload.model);
@@ -141,13 +140,13 @@ pub async fn create_vehicle_model(
         payload.model,
         payload.category,
         payload.fuel_type,
-        claims.user_id as i32
+        user.id
     )
     .fetch_one(&state.pg)
     .await
     .map_err(|e| {
         error!("Erreur création modèle véhicule: {}", e);
-        AppError::DatabaseError(e.to_string())
+        AppError::Database(e.to_string())
     })?;
 
     info!("✅ Modèle véhicule créé: {} {}", model.brand, model.model);
@@ -173,7 +172,7 @@ pub async fn increment_model_usage(
     .await
     .map_err(|e| {
         error!("Erreur incrémentation usage modèle: {}", e);
-        AppError::DatabaseError(e.to_string())
+        AppError::Database(e.to_string())
     })?;
 
     Ok(StatusCode::OK)
@@ -200,7 +199,7 @@ pub async fn get_popular_models(
     .await
     .map_err(|e| {
         error!("Erreur récupération modèles populaires: {}", e);
-        AppError::DatabaseError(e.to_string())
+        AppError::Database(e.to_string())
     })?;
 
     Ok(Json(models))
