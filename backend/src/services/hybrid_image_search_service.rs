@@ -51,7 +51,7 @@ impl HybridImageSearchService {
         let caracteristiques_json = serde_json::to_value(&analysis.caracteristiques_cles)
             .map_err(|e| AppError::Internal(format!("Erreur conversion JSON: {}", e)))?;
 
-        let result = sqlx::query!(
+        let result = sqlx::query(
             r#"
             INSERT INTO image_analyses (
                 service_id, media_id, user_id,
@@ -62,25 +62,25 @@ impl HybridImageSearchService {
                 analysis_type
             ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
             RETURNING id
-            "#,
-            service_id,
-            media_id,
-            user_id,
-            analysis.description,
-            &analysis.tags,
-            analysis.category_detected,
-            analysis.marque,
-            &analysis.couleurs,
-            caracteristiques_json,
-            analysis.search_query_exact,
-            analysis.search_query_broad,
-            analysis.search_query_semantic,
-            analysis.confiance,
-            cost.model_used,
-            cost.total_tokens as i32,
-            cost.cost_usd,
-            analysis_type
+            "#
         )
+        .bind(service_id)
+        .bind(media_id)
+        .bind(user_id)
+        .bind(&analysis.description)
+        .bind(&analysis.tags)
+        .bind(&analysis.category_detected)
+        .bind(&analysis.marque)
+        .bind(&analysis.couleurs)
+        .bind(caracteristiques_json)
+        .bind(&analysis.search_query_exact)
+        .bind(&analysis.search_query_broad)
+        .bind(&analysis.search_query_semantic)
+        .bind(analysis.confiance)
+        .bind(&cost.model_used)
+        .bind(cost.total_tokens as i32)
+        .bind(cost.cost_usd)
+        .bind(analysis_type)
         .fetch_one(&self.pool)
         .await
         .map_err(|e| {
@@ -88,12 +88,14 @@ impl HybridImageSearchService {
             AppError::Internal(format!("Erreur stockage analyse: {}", e))
         })?;
 
+        let analysis_id: i32 = result.get("id");
+
         log_info(&format!(
             "[HybridImageSearch] ✅ Analyse stockée avec ID: {}",
-            result.id
+            analysis_id
         ));
 
-        Ok(result.id)
+        Ok(analysis_id)
     }
 
     /// Recherche hybride: Analyse l'image de recherche + Compare avec analyses stockées
@@ -289,7 +291,7 @@ impl HybridImageSearchService {
         user_id: i32,
         limit: i32,
     ) -> AppResult<Vec<ImageAnalysis>> {
-        let rows = sqlx::query!(
+        let rows = sqlx::query(
             r#"
             SELECT 
                 description, tags, category_detected, marque, couleurs,
@@ -300,31 +302,42 @@ impl HybridImageSearchService {
             WHERE user_id = $1 AND analysis_type = 'search'
             ORDER BY created_at DESC
             LIMIT $2
-            "#,
-            user_id,
-            limit
+            "#
         )
+        .bind(user_id)
+        .bind(limit)
         .fetch_all(&self.pool)
         .await
         .map_err(|e| AppError::Internal(format!("Erreur historique: {}", e)))?;
 
         let mut history = Vec::new();
         for row in rows {
+            let caracteristiques_cles_value: serde_json::Value = row.get("caracteristiques_cles");
             let caracteristiques_cles: std::collections::HashMap<String, String> =
-                serde_json::from_value(row.caracteristiques_cles.clone()).unwrap_or_default();
+                serde_json::from_value(caracteristiques_cles_value).unwrap_or_default();
+
+            let description: String = row.get("description");
+            let tags: Vec<String> = row.get("tags");
+            let category_detected: Option<String> = row.get("category_detected");
+            let marque: Option<String> = row.get("marque");
+            let couleurs: Vec<String> = row.get("couleurs");
+            let confiance: Option<f64> = row.get("confiance");
+            let search_query_exact: Option<String> = row.get("search_query_exact");
+            let search_query_broad: Option<String> = row.get("search_query_broad");
+            let search_query_semantic: Option<String> = row.get("search_query_semantic");
 
             history.push(ImageAnalysis {
-                description: row.description,
-                tags: row.tags,
-                category_detected: row.category_detected.unwrap_or_default(),
-                marque: row.marque,
-                couleurs: row.couleurs,
+                description,
+                tags,
+                category_detected: category_detected.unwrap_or_default(),
+                marque,
+                couleurs,
                 caracteristiques_cles,
-                confiance: row.confiance.unwrap_or(0.0) as f32,
-                search_query: row.search_query_exact.clone().unwrap_or_default(),
-                search_query_exact: row.search_query_exact.unwrap_or_default(),
-                search_query_broad: row.search_query_broad.unwrap_or_default(),
-                search_query_semantic: row.search_query_semantic.unwrap_or_default(),
+                confiance: confiance.unwrap_or(0.0) as f32,
+                search_query: search_query_exact.clone().unwrap_or_default(),
+                search_query_exact: search_query_exact.unwrap_or_default(),
+                search_query_broad: search_query_broad.unwrap_or_default(),
+                search_query_semantic: search_query_semantic.unwrap_or_default(),
             });
         }
 
@@ -333,7 +346,7 @@ impl HybridImageSearchService {
 
     /// Statistiques des analyses pour amélioration continue
     pub async fn get_analysis_stats(&self) -> AppResult<Value> {
-        let stats = sqlx::query!(
+        let stats = sqlx::query(
             r#"
             SELECT 
                 analysis_type,
@@ -353,12 +366,18 @@ impl HybridImageSearchService {
         let stats_json: Vec<Value> = stats
             .into_iter()
             .map(|row| {
+                let analysis_type: String = row.get("analysis_type");
+                let total: Option<i64> = row.get("total");
+                let avg_confiance: Option<f64> = row.get("avg_confiance");
+                let avg_tokens: Option<f64> = row.get("avg_tokens");
+                let model_used: Option<String> = row.get("model_used");
+                
                 serde_json::json!({
-                    "analysis_type": row.analysis_type,
-                    "total": row.total,
-                    "avg_confiance": row.avg_confiance,
-                    "avg_tokens": row.avg_tokens,
-                    "model_used": row.model_used
+                    "analysis_type": analysis_type,
+                    "total": total,
+                    "avg_confiance": avg_confiance,
+                    "avg_tokens": avg_tokens,
+                    "model_used": model_used
                 })
             })
             .collect();
