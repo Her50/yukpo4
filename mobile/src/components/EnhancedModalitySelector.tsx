@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Alert, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { getFieldOptions } from '../data/productModalities';
+import { getFieldOptions, getModalitiesWithUserContext } from '../data/productModalities';
+import useUserCountry from '../hooks/useUserCountry';
 import { modalityService } from '../services/modalityService';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
@@ -29,16 +30,41 @@ const EnhancedModalitySelector: React.FC<EnhancedModalitySelectorProps> = ({
     const [loading, setLoading] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
 
+    // ✅ NOUVEAU: Détecter le pays de l'utilisateur pour adapter les lieux
+    const { countryCode } = useUserCountry();
+
     // Charger les options (statiques + personnalisées)
     useEffect(() => {
         loadOptions();
-    }, [productType, fieldName]);
+    }, [productType, fieldName, countryCode]); // Recharger si le pays change
 
     const loadOptions = async () => {
         setLoading(true);
         try {
-            // Options statiques de base
-            const staticOptions = getFieldOptions(productType, fieldName);
+            // ✅ NOUVEAU: Détecter si le champ nécessite adaptation au contexte utilisateur
+            const isContextualField = 
+                // Champs géographiques
+                fieldName.toLowerCase().includes('ville') ||
+                fieldName.toLowerCase().includes('quartier') ||
+                fieldName.toLowerCase().includes('zone') ||
+                fieldName.toLowerCase().includes('localisation') ||
+                // Champs éducatifs
+                fieldName.toLowerCase().includes('matiere') ||
+                (fieldName.toLowerCase().includes('niveau') && fieldName.toLowerCase().includes('scolaire')) ||
+                // Champs préparation concours
+                fieldName.toLowerCase().includes('concours');
+
+            // Options statiques de base (adaptées au contexte si nécessaire)
+            let staticOptions: string[];
+            if (isContextualField) {
+                // Utiliser les modalités contextualisées selon le pays de l'utilisateur
+                const contextualizedModalities = getModalitiesWithUserContext(productType, countryCode);
+                staticOptions = contextualizedModalities[fieldName] || getFieldOptions(productType, fieldName);
+                console.log(`[EnhancedModalitySelector] ✅ Modalités adaptées au pays ${countryCode}:`, staticOptions.length);
+            } else {
+                // Utiliser les modalités standard
+                staticOptions = getFieldOptions(productType, fieldName);
+            }
 
             // Options personnalisées depuis le serveur
             const customOptions = await modalityService.getModalitiesForField(productType, fieldName);
@@ -153,44 +179,44 @@ const EnhancedModalitySelector: React.FC<EnhancedModalitySelectorProps> = ({
     const fuzzyMatch = (text: string, query: string): number => {
         const textLower = text.toLowerCase();
         const queryLower = query.toLowerCase();
-        
+
         // Correspondance exacte = score parfait
         if (textLower === queryLower) return 100;
-        
+
         // Commence par la requête = très bon score
         if (textLower.startsWith(queryLower)) return 90;
-        
+
         // Contient la requête = bon score
         if (textLower.includes(queryLower)) return 80;
-        
+
         // Fuzzy matching : calcul de distance Levenshtein simplifiée
         let score = 0;
         let queryIndex = 0;
-        
+
         for (let i = 0; i < textLower.length && queryIndex < queryLower.length; i++) {
             if (textLower[i] === queryLower[queryIndex]) {
                 score += 10;
                 queryIndex++;
             }
         }
-        
+
         // Bonus si tous les caractères de la requête sont trouvés dans l'ordre
         if (queryIndex === queryLower.length) {
             score += 30;
         }
-        
+
         return score;
     };
-    
+
     // ✅ Filtrer et trier les options selon le score de pertinence
-    const filteredOptions = !searchQuery.trim() 
+    const filteredOptions = !searchQuery.trim()
         ? allOptions
         : allOptions
             .map(option => ({ option, score: fuzzyMatch(option, searchQuery.trim()) }))
             .filter(item => item.score > 30) // Seuil minimal de pertinence
             .sort((a, b) => b.score - a.score) // Trier par score décroissant
             .map(item => item.option);
-    
+
     // ✅ Vérifier si la recherche correspond exactement à une option
     const hasExactMatch = allOptions.some(
         opt => opt.toLowerCase() === searchQuery.trim().toLowerCase()
@@ -299,7 +325,7 @@ const EnhancedModalitySelector: React.FC<EnhancedModalitySelectorProps> = ({
                                                                 fieldName,
                                                                 newModality
                                                             );
-                                                            
+
                                                             if (success) {
                                                                 await loadOptions();
                                                                 onSelect(newModality);
@@ -366,7 +392,7 @@ const EnhancedModalitySelector: React.FC<EnhancedModalitySelectorProps> = ({
                                                                 fieldName,
                                                                 newModality
                                                             );
-                                                            
+
                                                             if (success) {
                                                                 await loadOptions();
                                                                 onSelect(newModality);

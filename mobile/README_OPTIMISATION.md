@@ -118,3 +118,9 @@ Chaque catégorie aura :
 **Prochaine étape** : Nouveau chat avec la commande ci-dessus pour continuer automatiquement ! 🚀
 
 
+
+
+
+
+
+

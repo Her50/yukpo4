@@ -102,6 +102,7 @@ type ProductType =
     | 'pieces_industrielles' // ✅ NOUVEAU
     | 'jouets_enfants' // ✅ NOUVEAU
     | 'aliments'
+    | 'agriculture_elevage' // ✅ NOUVEAU : Agriculture & Élevage
     | 'livres_fournitures'
     | 'quincaillerie'
     | 'prestation_service'
@@ -182,6 +183,7 @@ interface ProductManagerProps {
 }
 
 const PRODUCT_TYPES = [
+    { value: 'agriculture_elevage', label: 'Agriculture & Élevage', icon: '🌾', description: 'Produits agricoles, animaux d\'élevage, semences, intrants, matériel agricole' },
     { value: 'aliments', label: 'Aliments et Produits Frais', icon: '🍎', description: 'Fruits, légumes, viandes, poissons, produits frais et secs' },
     { value: 'automobile', label: 'Automobiles et Véhicules', icon: '🚗', description: 'Voitures, motos, camions, véhicules utilitaires' },
     { value: 'chaussure', label: 'Chaussures et Accessoires', icon: '👟', description: 'Chaussures, baskets, sandales, bottes' },

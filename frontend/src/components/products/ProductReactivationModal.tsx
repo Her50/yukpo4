@@ -205,6 +205,7 @@ const ProductReactivationModal: React.FC<ProductReactivationModalProps> = ({
             'aliments': '🍕',
             'livres_fournitures': '📚',
             'quincaillerie': '🔧',
+            'bien_etre_spa': '🧘',
             'prestation_service': '💼',
             'autre': '📦'
         };

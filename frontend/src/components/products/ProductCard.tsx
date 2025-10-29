@@ -76,6 +76,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
             quincaillerie: { icon: '🔧', color: 'bg-slate-50 text-slate-700 border-slate-200', label: 'Quincaillerie' },
             pharmacie: { icon: '💊', color: 'bg-emerald-50 text-emerald-700 border-emerald-200', label: 'Pharmacie' },
             hopital_clinique: { icon: '🏥', color: 'bg-red-50 text-red-700 border-red-200', label: 'Hôpital' },
+            bien_etre_spa: { icon: '🧘', color: 'bg-teal-50 text-teal-700 border-teal-200', label: 'Spa' },
             prestation_service: { icon: '💼', color: 'bg-violet-50 text-violet-700 border-violet-200', label: 'Service' },
             demenagement: { icon: '🚚', color: 'bg-orange-50 text-orange-700 border-orange-200', label: 'Déménagement' },
             cosmetique_parfum: { icon: '✨', color: 'bg-pink-50 text-pink-700 border-pink-200', label: 'Cosmétique' },

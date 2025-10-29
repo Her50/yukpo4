@@ -4,9 +4,9 @@ import { theme } from '../theme/theme';
 
 interface Product {
     id: string;
-    name: string;
-    price: string;
-    currency: string;
+    nom: string;
+    prix: number | string;
+    devise: string;
     images?: string[];
     videos?: string[];
 }
@@ -60,7 +60,7 @@ const ProductPricing: React.FC<ProductPricingProps> = ({
     const getPriceRange = () => {
         const prices = products
             .map(p => {
-                const price = p.price || p.prix;
+                const price = p.prix;
                 return typeof price === 'number' ? price : parseFloat(price);
             })
             .filter(p => !isNaN(p));
@@ -69,7 +69,7 @@ const ProductPricing: React.FC<ProductPricingProps> = ({
 
         const min = Math.min(...prices);
         const max = Math.max(...prices);
-        const currency = products[0].currency || products[0].devise || 'XAF';
+        const currency = products[0].devise || 'XAF';
 
         if (min === max) {
             return formatPrice(min, currency);
@@ -81,7 +81,7 @@ const ProductPricing: React.FC<ProductPricingProps> = ({
     const getAveragePrice = () => {
         const prices = products
             .map(p => {
-                const price = p.price || p.prix;
+                const price = p.prix;
                 return typeof price === 'number' ? price : parseFloat(price);
             })
             .filter(p => !isNaN(p));
@@ -89,7 +89,7 @@ const ProductPricing: React.FC<ProductPricingProps> = ({
         if (prices.length === 0) return null;
 
         const average = prices.reduce((sum, price) => sum + price, 0) / prices.length;
-        const currency = products[0].currency || products[0].devise || 'XAF';
+        const currency = products[0].devise || 'XAF';
         return formatPrice(average, currency);
     };
 
@@ -129,10 +129,10 @@ const ProductPricing: React.FC<ProductPricingProps> = ({
 
                 <View style={styles.productsList}>
                     {products.slice(0, maxDisplay).map((product, index) => {
-                        const name = product.name || product.nom || 'Produit';
-                        const price = product.price || product.prix;
-                        const currency = product.currency || product.devise || 'XAF';
-                        
+                        const name = product.nom || 'Produit';
+                        const price = product.prix;
+                        const currency = product.devise || 'XAF';
+
                         return (
                             <View key={product.id || index} style={styles.productItem}>
                                 <View style={styles.productInfo}>

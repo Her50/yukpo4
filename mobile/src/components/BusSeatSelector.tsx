@@ -291,35 +291,65 @@ const BusSeatSelector: React.FC<BusSeatSelectorProps> = ({
                                 // Première rangée peut avoir moins de sièges (chauffeur + passagers)
                                 const seatsInThisRow = (seatMap || []).filter(s => s.row === rowIndex + 1);
 
+                                // ✅ CORRECTION: Séparer explicitement en deux colonnes
+                                // Configuration standard: [2, 2] = 2 sièges à gauche, 2 à droite
+                                const isFirstRow = rowIndex === 0;
+                                const seatsPerSide = Math.floor(seatsInThisRow.length / 2);
+
+                                // Sièges de gauche et de droite
+                                const leftSeats = seatsInThisRow.slice(0, seatsPerSide);
+                                const rightSeats = seatsInThisRow.slice(seatsPerSide);
+
                                 return (
                                     <View key={rowIndex} style={styles.seatRow}>
                                         <Text style={styles.rowLabel}>{rowIndex + 1}</Text>
-                                        {seatsInThisRow.map((seat, colIndex) => {
-                                            const isAisle = seat.type !== 'driver' && colIndex === Math.floor(seatsInThisRow.length / 2);
 
-                                            return (
-                                                <React.Fragment key={seat.id}>
-                                                    {isAisle && <View style={styles.aisle} />}
-                                                    <TouchableOpacity
-                                                        style={[styles.seat, getSeatStyle(seat)]}
-                                                        onPress={() => handleSeatPress(seat)}
-                                                        disabled={
-                                                            seat.type === 'driver' ||
-                                                            seat.status === 'occupied' ||
-                                                            seat.status === 'reserved' ||
-                                                            ((seat.status === 'prebooked' || seat.prebooked) && seat.prebookedForUserId !== currentUserId)
-                                                        }
-                                                    >
-                                                        <Text style={[
-                                                            styles.seatNumber,
-                                                            (seat.status === 'occupied' || seat.status === 'reserved' || ((seat.status === 'prebooked' || seat.prebooked) && seat.prebookedForUserId !== currentUserId) || seat.type === 'driver') && styles.seatNumberDisabled
-                                                        ]}>
-                                                            {getSeatIcon(seat)}
-                                                        </Text>
-                                                    </TouchableOpacity>
-                                                </React.Fragment>
-                                            );
-                                        })}
+                                        {/* Colonne de gauche */}
+                                        {leftSeats.map((seat) => (
+                                            <TouchableOpacity
+                                                key={seat.id}
+                                                style={[styles.seat, getSeatStyle(seat)]}
+                                                onPress={() => handleSeatPress(seat)}
+                                                disabled={
+                                                    seat.type === 'driver' ||
+                                                    seat.status === 'occupied' ||
+                                                    seat.status === 'reserved' ||
+                                                    ((seat.status === 'prebooked' || seat.prebooked) && seat.prebookedForUserId !== currentUserId)
+                                                }
+                                            >
+                                                <Text style={[
+                                                    styles.seatNumber,
+                                                    (seat.status === 'occupied' || seat.status === 'reserved' || ((seat.status === 'prebooked' || seat.prebooked) && seat.prebookedForUserId !== currentUserId) || seat.type === 'driver') && styles.seatNumberDisabled
+                                                ]}>
+                                                    {getSeatIcon(seat)}
+                                                </Text>
+                                            </TouchableOpacity>
+                                        ))}
+
+                                        {/* Allée centrale */}
+                                        <View style={styles.aisle} />
+
+                                        {/* Colonne de droite */}
+                                        {rightSeats.map((seat) => (
+                                            <TouchableOpacity
+                                                key={seat.id}
+                                                style={[styles.seat, getSeatStyle(seat)]}
+                                                onPress={() => handleSeatPress(seat)}
+                                                disabled={
+                                                    seat.type === 'driver' ||
+                                                    seat.status === 'occupied' ||
+                                                    seat.status === 'reserved' ||
+                                                    ((seat.status === 'prebooked' || seat.prebooked) && seat.prebookedForUserId !== currentUserId)
+                                                }
+                                            >
+                                                <Text style={[
+                                                    styles.seatNumber,
+                                                    (seat.status === 'occupied' || seat.status === 'reserved' || ((seat.status === 'prebooked' || seat.prebooked) && seat.prebookedForUserId !== currentUserId) || seat.type === 'driver') && styles.seatNumberDisabled
+                                                ]}>
+                                                    {getSeatIcon(seat)}
+                                                </Text>
+                                            </TouchableOpacity>
+                                        ))}
                                     </View>
                                 );
                             })}

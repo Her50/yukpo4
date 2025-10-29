@@ -76,3 +76,9 @@ ON CONFLICT (product_type, field_name, LOWER(TRIM(modality))) DO NOTHING;
 
 
 
+
+
+
+
+
+

@@ -1,10 +1,9 @@
-﻿import * as React from "react";
+﻿import { useNavigation } from '@react-navigation/native';
+import * as React from "react";
 import { useState } from 'react';
-import { TouchableOpacity } from 'react-native';
-import { View, Text, StyleSheet, ScrollView, Alert } from 'react-native';
+import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Card, TextInput, Title } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Card, Title, TextInput, Button } from 'react-native-paper';
-import { useNavigation } from '@react-navigation/native';
 import { theme } from '../theme/theme';
 
 interface ServiceFormData {
@@ -29,14 +28,14 @@ const ServiceFormDynamic: React.FC = () => {
   const handleSubmit = async () => {
     try {
       setLoading(true);
-      
+
       if (!formData.title || !formData.description) {
         Alert.alert('Erreur', 'Veuillez remplir tous les champs obligatoires');
         return;
       }
 
       await new Promise(resolve => setTimeout(resolve, 2000));
-      
+
       Alert.alert('Succès', 'Service créé avec succès', [
         {
           text: 'OK',
@@ -103,20 +102,17 @@ const ServiceFormDynamic: React.FC = () => {
 
             <View style={styles.buttonContainer}>
               <TouchableOpacity
-                mode="outlined"
                 onPress={() => navigation.goBack()}
                 style={styles.cancelButton}
               >
-                Annuler
+                <Text>Annuler</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                mode="contained"
                 onPress={handleSubmit}
-                loading={loading}
                 disabled={loading}
                 style={styles.submitButton}
               >
-                Créer le service
+                <Text>{loading ? 'Création...' : 'Créer le service'}</Text>
               </TouchableOpacity>
             </View>
           </Card.Content>

@@ -11,6 +11,7 @@ const { NavigationContainer } = require('@react-navigation/native');
 import ErrorBoundary from './src/components/ErrorBoundary';
 import { linking } from './src/config/linking';
 import { AuthProvider } from './src/contexts/AuthContext';
+import { TOUS_LES_PAYS } from './src/data/africanLocations'; // ✅ OPTIMISATION 5
 import AppNavigator from './src/navigation/AppNavigator';
 import { theme } from './src/theme/theme';
 
@@ -29,6 +30,34 @@ import { theme } from './src/theme/theme';
  */
 export default function App() {
   console.log('[App] 🚀 Yukpomnang - Démarrage avec Deep Linking');
+
+  // ✅ OPTIMISATION 5: Prefetch des données de localisation au démarrage
+  React.useEffect(() => {
+    const prefetchLocationData = () => {
+      const startTime = Date.now();
+
+      // Compter les pays et villes
+      const nbPays = TOUS_LES_PAYS.length;
+      const nbVilles = TOUS_LES_PAYS.reduce((acc, pays) => acc + pays.villes.length, 0);
+      const nbQuartiers = TOUS_LES_PAYS.reduce((acc, pays) =>
+        acc + pays.villes.reduce((acc2, ville) =>
+          acc2 + (ville.quartiers?.length || 0), 0
+        ), 0
+      );
+
+      const endTime = Date.now();
+      const loadTime = endTime - startTime;
+
+      console.log(`📍 [App] Données de localisation préchargées en ${loadTime}ms:`);
+      console.log(`   - ${nbPays} pays`);
+      console.log(`   - ${nbVilles} villes`);
+      console.log(`   - ${nbQuartiers} quartiers`);
+      console.log(`   ✅ Accès instantané aux données africaines !`);
+    };
+
+    // Précharger immédiatement
+    prefetchLocationData();
+  }, []);
 
   return (
     <ErrorBoundary>

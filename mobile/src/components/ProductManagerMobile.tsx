@@ -27,17 +27,27 @@ import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 // Code corrigé (remplace @ts-ignore)
 import { modernColors } from '../theme/modernTheme';
 import AutocompleteStructure from './AutocompleteStructure';
+import BusSeatSelector from './BusSeatSelector';
 import { NativeButton, NativeInput } from './NativeDesign';
 import SafeIcon from './SafeIcon';
 import SmartApplianceInput from './SmartApplianceInput';
 import SmartPhoneModelInput from './SmartPhoneModelInput';
-import SmartVehicleModelInput from './SmartVehicleModelInput';
-// Code corrigé (remplace @ts-ignore)
-import BusSeatSelector from './BusSeatSelector';
 // Code corrigé (remplace @ts-ignore)
 import ModernGPSModal from './ModernGPSModal';
 // Code corrigé (remplace @ts-ignore)
 import { SmartModalityInput } from './SmartModalityInput';
+// ✅ NOUVEAU: Composants pour modalités réutilisables
+import AssuranceProduitSelector from './AssuranceProduitSelector';
+// ✅ NOUVEAU: Configuration conditionnelle des champs prestations
+import { getEncouragementMessage, getFieldsConfig } from '../utils/prestationFieldsConfig';
+import ChaussureVariantManager, { ChaussureVariant } from './ChaussureVariantManager';
+import HotelVariantManager, { HotelVariant } from './HotelVariantManager';
+import MultiSelectModalitySelector from './MultiSelectModalitySelector';
+import NativeDatePicker from './NativeDatePicker';
+import NativeTimePicker from './NativeTimePicker';
+import OptionsPrimesManager, { OptionPrime } from './OptionsPrimesManager';
+import ProductVariantManager, { ProductVariant } from './ProductVariantManager';
+import SelectModalitySelector from './SelectModalitySelector';
 
 const { width } = Dimensions.get('window');
 
@@ -132,6 +142,8 @@ type ProductType =
     | 'immobilier_terrain'
     | 'hotellerie' // ✅ NOUVEAU : Hôtels, Chambres d'hôtes, Auberges
     | 'automobile'
+    | 'mecanicien' // ✅ NOUVEAU : Mécanicien / Garage automobile
+    | 'mecanicien_moto' // ✅ NOUVEAU : Mécanicien spécialisé motos/tricycles
     | 'ticket_voyage'
     | 'covoiturage'
     | 'vetement'
@@ -139,7 +151,13 @@ type ProductType =
     | 'electromenager'
     | 'image_son'
     | 'telephone'
+    | 'reparateur_telephone' // ✅ NOUVEAU : Réparateur téléphone/smartphone/tablette
     | 'ordinateur'
+    | 'reparateur_informatique' // ✅ NOUVEAU : Réparateur ordinateur/imprimante/équipements informatiques
+    | 'reparateur_electromenager' // ✅ NOUVEAU : Réparateur électroménager (frigos, cuisinières, lave-linge, etc.)
+    | 'reparateur_frigo' // ✅ NOUVEAU : Frigoriste / Réparateur frigo & congélateur
+    | 'reparateur_climatiseur' // ✅ NOUVEAU : Réparateur/Maintenance climatiseur/AC
+    | 'reparateur_electronique' // ✅ NOUVEAU : Réparateur électronique (TV, radio, audio, vidéo)
     | 'mobilier'
     | 'decoration'
     | 'ustensiles_cuisine'
@@ -149,6 +167,7 @@ type ProductType =
     | 'aliments'
     | 'livres_fournitures'
     | 'quincaillerie'
+    | 'carrelage' // ✅ NOUVEAU : Carrelage, faïence, mosaïque
     | 'prestation_service'
     | 'assurance'
     | 'pharmacie'
@@ -158,6 +177,10 @@ type ProductType =
     | 'cosmetique_parfum'
     | 'bijoux'
     | 'coiffure_beaute'
+    | 'couturier'
+    | 'soutien_scolaire_repetiteur' // ✅ NOUVEAU : Soutien scolaire primaire/secondaire, Répétiteur, Cours particuliers
+    | 'formation_education' // ✅ NOUVEAU : Formation professionnelle, Préparation concours grandes écoles
+    | 'nettoyage_entretien' // ✅ NOUVEAU : Nettoyage & Entretien (Femme de ménage, Nounou, Blanchisseur, Gardien, Jardinier, Cuisinière, Chauffeur)
     | 'autre';
 
 interface Product {
@@ -171,12 +194,12 @@ interface Product {
     videos?: string[]; // Tableau de vidéos en Base64
 
     // Champs spécifiques par type
-    // Immobilier
-    typeImmobilier?: string; // Type (Appartement, Villa, etc.)
+    // Immobilier - ✅ REFONTE COMPLÈTE
+    typeImmobilier?: string; // Type (Appartement, Villa, F1, F2, F3, etc.)
     statutImmobilier?: string; // À vendre, À louer, etc.
-    standing?: string; // Économique, Standard, Haut standing, Luxe
-    etatGeneral?: string; // Neuf, Bon état, À rénover
-    ameublement?: string; // Meublé, Semi-meublé, Non meublé
+    standing?: string; // Économique, Standard, Bon standing, Haut standing, Luxe
+    etatGeneral?: string; // Neuf, Excellent état, Bon état, À rénover
+    ameublement?: string; // Non meublé, Semi-meublé, Meublé, etc.
     superficie?: string;
     nbChambres?: string;
     nbSallesBain?: string;
@@ -184,11 +207,11 @@ interface Product {
     nbEtages?: string; // Nombre d'étages (pour villas/immeubles)
     anneeConstruction?: string; // Année de construction
     adresse?: string;
-    quartier?: string;
-    ville?: string;
+    quartier?: string; // Quartier (sélection depuis listes quartiers_douala ou quartiers_yaounde)
+    ville?: string; // Ville (sélection depuis liste villes Cameroun 60+)
     gpsImmobilier?: string; // Coordonnées GPS de l'immobilier
     // Équipements et commodités
-    equipementsImmo?: string[]; // Cuisine équipée, Balcon, Terrasse, etc.
+    equipementsImmo?: string[]; // ✅ ENRICHI: Liste 35+ (Eau 24h, Groupe électrogène, etc.)
     parking?: boolean; // Garage/Parking disponible
     nbParkings?: string; // Nombre de places de parking
     ascenseur?: boolean; // Ascenseur disponible
@@ -197,6 +220,11 @@ interface Product {
     securite?: boolean; // Gardien/Sécurité 24h
     internet?: boolean; // Internet/Fibre
     climatisation?: boolean; // Climatisation
+    // ✅ NOUVEAUX CHAMPS
+    proximites?: string[]; // ✅ NOUVEAU: Commodités à proximité (École, Mahima, Banque...)
+    acces_route?: string; // ✅ NOUVEAU: Type d'accès routier (Route goudronnée, Zone inondable...)
+    type_bail?: string; // ✅ NOUVEAU: Durée du bail (1 an, 2 ans, 3 ans...)
+    conditions_location?: string[]; // ✅ NOUVEAU: Conditions (Caution 2 mois, Garant exigé...)
     // Informations location
     chargesMensuelles?: string; // Charges mensuelles (XAF)
     caution?: string; // Caution (nombre de mois ou montant)
@@ -219,6 +247,13 @@ interface Product {
     capacitePersonnes?: string; // Nombre maximum de voyageurs accueillis
     calendrierDispo?: string; // Périodes de disponibilité ou réservées
     reservationInstantanee?: boolean; // Confirmation immédiate sans validation manuelle du propriétaire
+    servicesLocationCourte?: string[]; // ✅ NOUVEAU: Services supplémentaires (Transfert aéroport, Petit-déj, etc.)
+    politiqueAnnulation?: string; // ✅ NOUVEAU: Politique d'annulation (Gratuite 24h, Flexible, Stricte, etc.)
+    reglesLocationCourte?: string[]; // ✅ NOUVEAU: Règles de la maison (Non-fumeur, Animaux interdits, etc.)
+    typeHote?: string; // ✅ NOUVEAU: Type d'hôte (Sur place, À proximité, À distance, Professionnel)
+    languesHote?: string[]; // ✅ NOUVEAU: Langues parlées par l'hôte
+    paiementsAcceptes?: string[]; // ✅ NOUVEAU: Modes de paiement acceptés
+    disponibiliteLocationCourte?: string; // ✅ NOUVEAU: Disponibilité (Toute l'année, Haute saison, etc.)
 
     // Terrain spécifique
     typeTerrain?: string; // Résidentiel, Commercial, Industriel, Agricole, Forestier, Mixte
@@ -285,15 +320,22 @@ interface Product {
     numeroBillet?: string; // Numéro de billet/référence
     codeReservation?: string; // Code de réservation
 
-    // Hôtellerie
-    categorieHotel?: string; // 1-5 étoiles, Palace
+    // Hôtellerie - ✅ REFONTE COMPLÈTE CONTEXTUALISÉE + VARIANTES
+    nomEtablissementHotel?: string; // ✅ NOUVEAU: Nom de l'établissement (liste)
     typeHebergement?: string; // Hôtel, Chambre d'hôte, Auberge, Resort, etc.
+    categorieHotel?: string; // 1-5 étoiles, Palace
+    zoneHotel?: string; // ✅ NOUVEAU: Zone/Quartier (Akwa, Bonanjo, Bastos...)
     nbChambresHotel?: string; // Nombre total de chambres
-    typesChambre?: string[]; // Simple, Double, Suite, Familiale, etc.
-    prixParNuit?: string; // Prix minimum par nuit
-    deviseHotel?: string; // Devise du prix
+    variantesChambres?: HotelVariant[]; // ✅ NOUVEAU: Variantes chambres (type × capacité × prix × image)
+    typesChambre?: string[]; // Simple, Double, Suite, Familiale, etc. (obsolète si variantes)
+    capaciteHotel?: string; // ✅ NOUVEAU: Capacité (nombre de personnes) (obsolète si variantes)
     equipementsHotel?: string[]; // Wi-Fi, Piscine, Spa, Gym, etc.
-    servicesHotel?: string[]; // Services disponibles
+    servicesHotel?: string[]; // ✅ NOUVEAU: Services (liste enrichie)
+    pensionHotel?: string; // ✅ NOUVEAU: Type de pension
+    prixParNuit?: string; // Prix minimum par nuit (obsolète si variantes)
+    deviseHotel?: string; // Devise du prix
+    politiquesHotel?: string[]; // ✅ NOUVEAU: Politiques (annulation, animaux...)
+    languesHotel?: string[]; // ✅ NOUVEAU: Langues parlées
     petitDejeuner?: boolean; // Petit-déjeuner inclus
     restaurantHotel?: boolean; // Restaurant sur place
     bar?: boolean; // Bar disponible
@@ -307,21 +349,25 @@ interface Product {
     gpsHotel?: string; // Coordonnées GPS
     noteHotel?: string; // Note moyenne (sur 5)
 
-    // Covoiturage
-    pointDepart?: string; // Point de départ
-    pointArrivee?: string; // Point d'arrivée
-    dateTrajet?: string; // Date du trajet
-    heureTrajet?: string; // Heure de départ
+    // Covoiturage - ✅ REFONTE COMPLÈTE
+    villeDepart?: string; // ✅ NOUVEAU: Ville de départ (Douala, Yaoundé...)
+    pointDepart?: string; // Point de départ précis (quartier, gare, lieu)
+    villeArrivee?: string; // ✅ NOUVEAU: Ville d'arrivée
+    pointArrivee?: string; // Point d'arrivée précis (quartier, gare, lieu)
+    dateTrajet?: string; // Date du trajet (format ISO ou date native)
+    heureTrajet?: string; // Heure de départ (HH:MM)
     nbPlacesDisponibles?: string; // Nombre de places disponibles
     prixParPlace?: string; // Prix par place
-    vehiculeInfo?: string; // Type/Modèle de véhicule
-    preferencesTrajet?: string; // Préférences (Musique, Conversation, Silence, etc.)
+    vehiculeInfo?: string; // Type/Modèle de véhicule (Berline, SUV...)
+    typeVehiculeCovoiturage?: string; // ✅ NOUVEAU: Type de véhicule (liste)
+    preferencesTrajet?: string[]; // ✅ NOUVEAU: Préférences (array)
+    frequenceTrajet?: string; // ✅ NOUVEAU: Fréquence (Quotidien, Hebdomadaire...)
 
-    // Vêtement (Textile) - ✅ ENRICHI
+    // Vêtement (Textile) - ✅ ENRICHI + SYSTÈME DE VARIANTES
     typeVetement?: string; // T-shirt, Pantalon, Robe, Veste, etc.
     genreVetement?: string; // Homme, Femme, Enfant, Unisexe
-    taille?: string; // XS, S, M, L, XL, XXL, tailles numériques
-    couleurVetement?: string;
+    taille?: string; // XS, S, M, L, XL, XXL, tailles numériques (obsolète si variantes)
+    couleurVetement?: string; // (obsolète si variantes)
     matiereVetement?: string; // Coton, Polyester, Laine, Soie, Lin
     marqueVetement?: string;
     etatVetement?: string; // Neuf avec étiquette, Neuf sans étiquette, Occasion - Excellent, Bon
@@ -330,48 +376,66 @@ interface Product {
     origineVetement?: string; // Made in..., Local, Importé
     lavable?: string; // Lavage machine, Lavage main, Nettoyage à sec
     patronVetement?: string; // Uni, Rayé, À pois, Imprimé, Floral
+    motifVetement?: string; // Motifs africains (Wax, Pagne, Kente, Bogolan, etc.)
     coupeVetement?: string; // Slim, Regular, Loose, Oversize
     longueurVetement?: string; // Court, Mi-long, Long (pour robes, manteaux)
     collectionVetement?: string; // Collection année, saison
+    occasionVetement?: string; // ✅ NOUVEAU: Quotidien, Soirée, Mariage, Sport, etc.
     certifieVetement?: string[]; // Bio, Équitable, Made in France, etc.
+    // ✅ SYSTÈME DE VARIANTES (Taille x Couleur x Prix x Images)
+    variantesVetements?: ProductVariant[]; // ✅ NOUVEAU: Tableau de variantes (taille, couleur, prix, images)
 
-    // Chaussure
+    // Chaussure - ✅ REFONTE avec système de variantes
+    nomChaussure?: string; // ✅ NOUVEAU: Nom de la chaussure (Basket Nike Air Max, Escarpin, etc.)
     typeChaussure?: string; // Baskets, Sandales, Bottes, Mocassins, Escarpins, etc.
-    pointure?: string; // Pointure (35-50)
-    couleurChaussure?: string; // Couleur principale
     marqueChaussure?: string; // Nike, Adidas, Clarks, etc.
     materiauChaussure?: string; // Cuir, Synthétique, Toile, Daim, etc.
     etatChaussure?: string; // Neuf, Excellent, Bon, Occasion
     genreChaussure?: string; // Homme, Femme, Enfant, Unisexe
     usageChaussure?: string; // Sport, Ville, Casual, Formel, Randonnée
+    styleChaussure?: string; // ✅ NOUVEAU: Casual, Sport, Élégant, etc.
+    // ✅ SYSTÈME DE VARIANTES (Pointure x Couleur x Prix x Images)
+    variantesChaussures?: ChaussureVariant[]; // ✅ NOUVEAU: Tableau de variantes
+    // Champs obsolètes (conservés pour compatibilité CSV)
+    pointure?: string; // Obsolète: utilisé seulement si pas de variantes
+    couleurChaussure?: string; // Obsolète: utilisé seulement si pas de variantes
 
-    // Électroménager
+    // Électroménager - ✅ REFONTE COMPLÈTE
+    nomProduitElectro?: string; // ✅ NOUVEAU: Nom du produit (liste)
     typeElectro?: string; // Réfrigérateur, Cuisinière, Four, etc.
-    categorieElectro?: string; // Gros électroménager, Petit électroménager
+    categorieElectro?: string; // Gros électroménager - Froid/Cuisson/Lavage...
     marqueElectro?: string;
     modeleElectro?: string;
     etatElectro?: string; // Neuf, Occasion, Reconditionné
     anneeAchat?: string; // Année d'achat
-    garantieElectro?: string; // Durée de garantie restante
+    garantieElectro?: string; // ✅ AMÉLIORÉ: Liste de garanties
     garantieConstructeur?: boolean; // Garantie constructeur valide
     consommationEnergetique?: string; // A+++, A++, A+, A, B, C, D
-    capacite?: string; // Capacité (litres pour frigo, kg pour lave-linge)
+    capaciteElectro?: string; // ✅ AMÉLIORÉ: Liste de capacités
     couleurElectro?: string; // Blanc, Inox, Noir, Gris
     dimensionsElectro?: string; // H x L x P
-    fonctionnalites?: string[]; // No Frost, Dégivrage auto, Smart, WiFi, etc.
+    fonctionnalitesElectro?: string[]; // ✅ AMÉLIORÉ: Liste de fonctionnalités
     facture?: boolean; // Facture disponible
     manuel?: boolean; // Manuel d'utilisation disponible
     accessoires?: string; // Accessoires fournis
 
-    // Image et Son (TV, Audio, etc.) - ✅ ENRICHI
-    typeImageSon?: string; // Télévision, Home cinéma, Barre de son, Ampli, etc.
+    // Image et Son (TV, Audio, etc.) - ✅ REFONTE COMPLÈTE
+    nomProduitImageSon?: string; // ✅ NOUVEAU: Nom du produit (TV Samsung QLED 55", Barre de son Sony, etc.)
+    categorieImageSon?: string; // ✅ NOUVEAU: Télévision, Home Cinéma, Barre de son, Enceintes, Projecteur
+    typeImageSon?: string; // Type spécifique (TV LED, TV OLED, Enceinte Bluetooth, etc.)
     marqueImageSon?: string; // Samsung, LG, Sony, Philips, etc.
-    modeleImageSon?: string; // Modèle spécifique
-    diagonaleEcran?: string; // 32", 43", 50", 55", 65", etc.
+    modeleImageSon?: string; // ✅ NOUVEAU: Entrée de gamme, Milieu de gamme, Haut de gamme, Premium
+    technologieEcran?: string; // ✅ NOUVEAU: LED, OLED, QLED, NanoCell, etc.
+    diagonaleEcran?: string; // Taille écran (24", 32", 43", 50", 55", 65", etc.)
     resolution?: string; // HD (720p), Full HD (1080p), 4K, 8K
-    etatImageSon?: string; // Neuf avec garantie, Excellent état, Bon état, etc.
-    garantieImageSon?: string; // Durée de garantie
-    fonctionnalitesImageSon?: string[]; // Smart TV, WiFi, Bluetooth, HDR, etc.
+    connectivitesImageSon?: string[]; // ✅ NOUVEAU: HDMI, USB, WiFi, Bluetooth, etc. (multiselect)
+    fonctionnalitesImageSon?: string[]; // Smart TV, WiFi, Bluetooth, HDR, Dolby Atmos, etc.
+    etatImageSon?: string; // Neuf scellé, Excellent état, Bon état, etc.
+    garantieImageSon?: string; // ✅ ENRICHI: Garantie constructeur 1 an, 2 ans, etc.
+    accessoiresImageSon?: string[]; // ✅ NOUVEAU: Télécommande, Câbles HDMI, Support mural, etc. (multiselect)
+    puissanceAudio?: string; // ✅ NOUVEAU: Puissance audio (pour enceintes, barres de son) en Watts
+    nbEnceintes?: string; // ✅ NOUVEAU: Nombre d'enceintes (pour home cinéma: 2.1, 5.1, 7.1)
+    anneeSortie?: string; // ✅ NOUVEAU: Année de sortie du modèle
 
     // Téléphones et Accessoires (Smartphones) - ✅ ENRICHI
     marqueTelephone?: string;
@@ -438,6 +502,49 @@ interface Product {
     usage?: string; // Gaming, Bureautique, Développement, Design graphique
     logicielsInclus?: string[]; // Office, Adobe, Antivirus, etc.
 
+    // Réparateur Informatique (Ordinateurs, Imprimantes, Équipements) - ✅ NOUVEAU 🌍 AFRIQUE
+    typesReparationInfo?: string[]; // ✅ Types de réparations proposées (hardware, software, réseau, imprimantes)
+    marquesOrdinateursReparees?: string[]; // ✅ Marques d'ordinateurs supportées (HP, Dell, Lenovo, Asus, Apple, etc.)
+    marquesImprimantesReparees?: string[]; // ✅ Marques d'imprimantes supportées (HP, Epson, Canon, Brother, etc.)
+    modelesOrdinateursSpecialises?: string[]; // ✅ Modèles spécifiques (HP EliteBook 840 G7, Dell Latitude 5510, etc.)
+    modelesImprimantesSpecialises?: string[]; // ✅ Modèles imprimantes (Epson L380, HP LaserJet Pro M28w, Canon G3010, etc.)
+    typesPannesReparees?: string[]; // ✅ Types de pannes traitées (écran cassé, virus, surchauffe, etc.)
+    delaiReparationInfo?: string; // ✅ Délai de réparation (Express 30min-2h, Rapide même jour, Standard 1-3j, etc.)
+    garantieReparation?: string; // ✅ Garantie offerte (1 mois, 3 mois, 6 mois, 1 an, etc.)
+    servicesAdditionnelsInfo?: string[]; // ✅ Services additionnels (Déplacement domicile, Support 24/7, Diagnostic gratuit, etc.)
+    certificationsInfo?: string[]; // ✅ Certifications (HP certified, Dell certified, Apple ACMT, CompTIA A+, etc.)
+    equipementsAtelierInfo?: string[]; // ✅ Équipements disponibles (Micro-soudure, Récupération données, etc.)
+    tarifDiagnostic?: string; // ✅ Tarif diagnostic (Gratuit, 1000 FCFA, 2000 FCFA, etc.)
+    tarifDeplacementInfo?: string; // ✅ Tarif déplacement (Gratuit zone, 2000 FCFA, selon distance, etc.)
+    interventionDomicile?: boolean; // ✅ Propose intervention à domicile/bureau
+    supportDistance?: boolean; // ✅ Support technique à distance disponible
+    paiementMobileMoney?: boolean; // ✅ Accepte Mobile Money (MTN/Orange)
+    paiementEchelonne?: boolean; // ✅ Propose paiement échelonné
+    anneesExperienceReparation?: string; // ✅ Années d'expérience (1-2 ans, 3-5 ans, 5-10 ans, 10+ ans)
+    languesServiceInfo?: string[]; // ✅ Langues parlées (Français, Anglais, Ewondo, Douala, etc.)
+
+    // Réparateur Électroménager (Frigos, Cuisinières, Lave-linge, etc.) - ✅ NOUVEAU 🌍 AFRIQUE
+    typesReparationElectro?: string[]; // ✅ Types de réparations (frigos, cuisinières, lave-linge, micro-ondes, etc.)
+    marquesElectromenagerReparees?: string[]; // ✅ Marques supportées (Binatone, Sokany, LG, Samsung, Hisense, etc.)
+    typesAppareilsElectro?: string[]; // ✅ Types d'appareils (réfrigérateur, cuisinière, lave-linge, climatiseur, etc.)
+    typesPannesElectro?: string[]; // ✅ Types de pannes traitées (ne refroidit plus, ne chauffe plus, fuite, etc.)
+    delaiReparationElectro?: string; // ✅ Délai (Express même jour, Rapide 24-48h, Standard 2-5j, etc.)
+    garantieReparationElectro?: string; // ✅ Garantie offerte (1 an, 6 mois, 3 mois, 1 mois, etc.)
+    servicesAdditionnelsElectro?: string[]; // ✅ Services (Déplacement gratuit, Diagnostic gratuit, Urgence 24/7, etc.)
+    certificationsElectro?: string[]; // ✅ Certifications (Frigoriste certifié, Gaz, Agrément constructeur, etc.)
+    equipementsAtelierElectro?: string[]; // ✅ Équipements (Manifold, Pompe à vide, Poste à souder, etc.)
+    tarifDiagnosticElectro?: string; // ✅ Tarif diagnostic (Gratuit, payant, etc.)
+    tarifDeplacementElectro?: string; // ✅ Tarif déplacement (Gratuit zone, selon distance, etc.)
+    interventionDomicileElectro?: boolean; // ✅ Propose intervention à domicile
+    urgenceDisponibleElectro?: boolean; // ✅ Urgence 24/7 disponible
+    paiementMobileMoneyElectro?: boolean; // ✅ Accepte Mobile Money
+    paiementEchelonneElectro?: boolean; // ✅ Paiement échelonné
+    specialiteFroid?: boolean; // ✅ Spécialiste froid (frigos, congélateurs, climatiseurs)
+    specialiteCuisson?: boolean; // ✅ Spécialiste cuisson (cuisinières, fours, micro-ondes)
+    specialiteLavage?: boolean; // ✅ Spécialiste lavage (lave-linge, lave-vaisselle, sèche-linge)
+    anneesExperienceElectro?: string; // ✅ Années d'expérience
+    zonesInterventionElectro?: string[]; // ✅ Zones d'intervention (quartiers Douala, Yaoundé, etc.)
+
     // Décoration d'Intérieur
     typeDecoration?: string; // Tableau, Luminaire, Tapis, etc.
     styleDecoration?: string; // ✅ Spécifique à la décoration
@@ -445,19 +552,27 @@ interface Product {
     dimensionsDecoration?: string;
     materiauDecoration?: string; // Toile, Bois, Métal, etc.
 
-    // Ustensiles de Cuisine
+    // Ustensiles de Cuisine - ✅ REFONTE COMPLÈTE
+    nomProduitUstensile?: string; // ✅ NOUVEAU: Nom du produit (liste 100+)
+    categorieUstensile?: string; // ✅ NOUVEAU: Catégorie (Traditionnel africain, Batterie, Cuisson, Vaisselle, etc.)
     typeUstensile?: string; // Casserole, Poêle, Couteau, Mixer, etc.
-    materiauUstensile?: string; // Inox, Aluminium, Plastique, Bois
-    marqueUstensile?: string;
-    capacite?: string; // Pour casseroles, mixers, etc.
-    piecesDansSet?: string; // Nombre de pièces si set
-    etatUstensile?: string;
+    materiauUstensile?: string; // Inox, Aluminium, Plastique, Bois, Terre cuite, etc.
+    marqueUstensile?: string; // Binatone, Sokany, Tefal, Moulinex, etc.
+    capaciteUstensile?: string; // ✅ AMÉLIORÉ: Liste de capacités (0.5L à 50L+, diamètres)
+    etatUstensile?: string; // ✅ AMÉLIORÉ: Neuf scellé, Excellent état, Bon état, etc.
+    usageUstensile?: string; // ✅ NOUVEAU: Domestique, Professionnel, Événementiel, Traditionnel africain, etc.
+    piecesDansSet?: string; // ✅ AMÉLIORÉ: Nombre de pièces (1 à 20+)
+    compatibiliteUstensile?: string[]; // ✅ NOUVEAU: Compatibilités (Tous feux, Gaz, Induction, Four, etc.)
+    // Champs obsolètes (conservés pour compatibilité CSV)
+    capacite?: string; // Obsolète: utilisé seulement si pas de capaciteUstensile
 
-    // Assurance - ✅ ENRICHI
-    categorieAssurance?: string; // Vie ou Non-Vie
-    typeAssurance?: string; // Auto, Santé, Habitation, Vie entière, etc.
+    // Assurance - ✅ REFONTE COMPLÈTE
+    typeAssuranceVie?: string; // ✅ NOUVEAU: VIE ou NON VIE (PREMIER CHAMP, OBLIGATOIRE)
+    produitAssurance?: string; // ✅ RENOMMÉ: Produit d'assurance (Auto, Santé, Vie entière, etc.)
     compagnieAssurance?: string; // Nom de la compagnie d'assurance
-    typeCouverture?: string; // Tous risques, Au tiers, Comprehensive, etc.
+    couverturesArray?: string[]; // ✅ NOUVEAU: Couvertures/Garanties en tableau (multi-select)
+    beneficesArray?: string[]; // ✅ NOUVEAU: Bénéfices en tableau (multi-select)
+    optionsPrimes?: OptionPrime[]; // ✅ NOUVEAU: Tableau options/primes/franchises
     franchise?: string; // Montant de la franchise
     franchiseAssurance?: string; // Montant de la franchise (alias)
     dureeContrat?: string; // 1 an, 2 ans, 5 ans, 10 ans, etc.
@@ -472,19 +587,36 @@ interface Product {
     materielSanitaire?: string; // Céramique, Inox, Plastique
     couleurSanitaire?: string;
 
-    // Électricité
-    typeElectricite?: string; // Câbles, Interrupteurs, Prises, Disjoncteurs, Lampes
+    // Électricité et éclairage - ✅ REFONTE COMPLÈTE
+    nomProduitElectrique?: string; // ✅ NOUVEAU: Nom du produit (liste)
+    categorieElectrique?: string; // Câblage, Éclairage, Protection...
+    typeElectricite?: string; // Type d'éclairage si applicable
     marqueElectricite?: string;
-    puissance?: string; // Watt, Ampère
-    voltage?: string; // 220V, 12V, etc.
-    norme?: string; // CE, NF, etc.
+    tensionElectrique?: string; // 12V, 220V, 380V...
+    puissanceElectrique?: string; // 3W, 10W, 100W...
+    culotAmpoule?: string; // E27, E14, GU10... (si ampoule)
+    couleurLumiere?: string; // Blanc chaud, Blanc froid, RGB...
+    normesElectrique?: string[]; // ✅ NOUVEAU: Array pour multi-select (CE, NF, IP44...)
+    garantieElectrique?: string; // 1 an, 2 ans, 5 ans...
+    etatElectrique?: string; // Neuf, Occasion...
+    utilisationElectrique?: string; // Résidentiel, Commercial...
 
-    // Pièces Détachées Automobile
-    typePieceAuto?: string; // Moteur, Freins, Suspension, Carrosserie, etc.
-    marquePieceAuto?: string;
-    referenceAuto?: string;
-    compatibilite?: string; // Modèles compatibles
-    etatPieceAuto?: string; // Neuf, Occasion, Reconditionné
+    // Pièces Détachées Automobile - ✅ REFONTE COMPLÈTE
+    nomProduitPieceAuto?: string; // ✅ NOUVEAU: Nom de la pièce (liste)
+    categoriePieceAuto?: string; // Catégorie principale (Moteur, Freinage, etc.)
+    typePieceAuto?: string; // Type de pièce détaillé
+    marquePieceAuto?: string; // Marque de la pièce (Bosch, Valeo, etc.)
+    marqueVehiculeCompatible?: string; // Marque du véhicule compatible
+    modeleVehicule?: string; // Modèle du véhicule (si spécifique)
+    niveauCompatibilite?: string; // Niveau de compatibilité
+    referenceAuto?: string; // Référence constructeur
+    anneesCompatibles?: string; // Années compatibles (Ex: 2015-2020)
+    compatibiliteDetaillee?: string; // Compatibilité détaillée (texte libre)
+    materiauPiece?: string; // Matériau de fabrication
+    originePiece?: string; // Origine de fabrication
+    etatPieceAuto?: string; // État de la pièce
+    garantiePiece?: string; // Garantie
+    typeFournisseur?: string; // Type de fournisseur
 
     // Pièces Détachées Industrielles
     typePieceIndustrielle?: string; // Roulement, Courroie, Moteur, Pompe, etc.
@@ -492,6 +624,9 @@ interface Product {
     referencePiece?: string;
     applicationIndustrielle?: string; // Type de machine/industrie
     materielPiece?: string;
+    etatPieceIndustrielle?: string; // Neuf d'origine, Neuf équivalent, Reconditionné, Occasion...
+    garantiePieceIndustrielle?: string; // Garantie constructeur, 1 an, 2 ans...
+    normePieceIndustrielle?: string; // ISO 9001, CE, DIN, ANSI...
 
     // Jouets pour Enfants
     typeJouet?: string; // Éducatif, Peluche, Jeu de société, Puzzle, etc.
@@ -500,41 +635,43 @@ interface Product {
     materielJouet?: string; // Plastique, Bois, Tissu, etc.
     normeSecurite?: string; // CE, EN71, etc.
 
-    // Mobilier
+    // Mobilier - ✅ REFONTE COMPLÈTE
     typeMobilier?: string; // Canapé, Lit, Table, Chaise, Armoire, etc.
     categorieMobilier?: string; // Salon, Chambre, Salle à manger, Bureau, Rangement
     styleMobilier?: string; // Moderne, Classique, Scandinave, Industriel, Vintage
     materiauMobilier?: string; // Bois, Métal, Tissu, Cuir, Verre
-    couleurMobilier?: string;
-    dimensionsMobilier?: string; // H x L x P
+    couleurMobilier?: string; // ✅ AMÉLIORÉ: Liste de couleurs
+    dimensionsMobilier?: string; // H x L x P ou dimension standard
     etatMobilier?: string; // Neuf, Excellent, Bon état, À rénover
+    marqueMobilier?: string; // ✅ NOUVEAU: Marque/Fabricant (IKEA, Artisan local, etc.)
+    caracteristiquesMobilier?: string[]; // ✅ NOUVEAU: Caractéristiques spéciales (Démontable, Extensible, etc.)
     nombrePlaces?: string; // Pour canapés, tables, etc.
     montageRequis?: boolean; // Montage nécessaire
     livraison?: boolean; // Livraison disponible
     fraisLivraison?: string; // Montant des frais de livraison
-    garantieMobilier?: string; // Garantie (mois/années)
+    garantieMobilier?: string; // ✅ AMÉLIORÉ: Garantie (liste)
     poids?: string; // Poids en kg
     demontable?: boolean; // Facilement démontable
 
     // Aliments & Agroalimentaire
     categorieAliment?: string; // Fruits, Légumes, Viande, Poisson, Céréales, etc.
     typeAliment?: string; // Frais, Surgelé, Séché, En conserve
+    marqueAliment?: string; // ✅ NOUVEAU: Marque du produit alimentaire (Maggi, Nestlé, etc.)
     origine?: string; // Locale, Importée (pays)
     bio?: boolean; // Agriculture biologique
-    dateExpiration?: string; // Date de péremption
-    dateProduction?: string; // Date de production/conditionnement
+    dateExpiration?: string; // Date de péremption (format JJ/MM/AAAA)
+    dateProduction?: string; // Date de production/conditionnement (format JJ/MM/AAAA)
     conservation?: string; // Température ambiante, Réfrigéré, Congelé
     poids?: string; // Poids net
+    uniteMesure?: string; // ✅ Unité de mesure (kg, g, L, etc.)
     conditionnement?: string; // Vrac, Emballé, Sous vide, Barquette
     labelQualite?: string[]; // Bio, Label Rouge, AOC, AOP, IGP
     valeurNutritionnelle?: string; // Informations nutritionnelles
-    allergenes?: string; // Allergènes présents
+    allergenes?: string; // Allergènes présents (string pour compatibilité)
+    allergenesArray?: string[]; // ✅ NOUVEAU: Allergènes en tableau pour MultiSelect
     certifications?: string[]; // Halal, Casher, Vegan, Sans gluten
     stockDisponible?: number; // Quantité disponible
-    uniteMesure?: string; // Kg, Litre, Pièce, Carton, Sac
-    poids?: string; // Poids ou quantité
-    conservation?: string; // Frais, Surgelé, Sec
-    certification?: string; // Bio, Halal, Kasher, etc.
+    variants?: ProductVariant[]; // ✅ NOUVEAU: Variantes de conditionnement/quantité/prix avec images
 
     // Livres et Fournitures Scolaires - ✅ ENRICHI
     categorieLivre?: string; // Livre scolaire, Roman, Cahier, Stylo, etc.
@@ -546,32 +683,246 @@ interface Product {
     anneeEdition?: string; // Année de publication
     etatLivre?: string; // Neuf emballé, Neuf, Excellent état, Bon état, Occasion
     langue?: string; // Français, Anglais, Bilingue, etc.
+    typeCalculatrice?: string; // Calculatrice simple, scientifique, graphique, etc.
 
-    // Quincaillerie et Matériaux
-    categorieQuincaillerie?: string; // Outils, Matériaux, Peinture, etc.
-    marqueQuincaillerie?: string;
-    referenceQuincaillerie?: string;
-    unite?: string; // Pièce, Sac, Litre, etc.
-    stockDisponible?: string;
+    // Vin et Liqueur (Commercialisation) - ✅ NOUVEAU
+    typeProduitVin?: string; // Type de produit (Vin rouge, Vin blanc, Champagne, Spiritueux, Liqueur)
+    categorieVin?: string; // Catégorie principale (Vins rouges, Champagnes & Effervescents, etc.)
+    regionVin?: string; // Région/Appellation (Bordeaux, Champagne, Afrique du Sud, etc.)
+    marqueVin?: string; // Marque/Producteur (Moët & Chandon, Baron de Lestac, etc.)
+    cepageVin?: string; // Cépage (Cabernet Sauvignon, Chardonnay, Merlot, etc.)
+    millesimeVin?: string; // Millésime (2024, 2020, Non millésimé, etc.)
+    formatVin?: string; // Format/Contenance (75cl, 1,5L Magnum, Carton 6 bouteilles, etc.)
+    degreAlcool?: string; // Degré d'alcool (12-13%, 40-50%, etc.)
+    typeCommercialisation?: string; // Type de commercialisation (Détail, Grossiste, Palette, etc.)
+    certificationVin?: string; // Certification/Label (AOC, Bio, IGP, etc.)
+    etatVin?: string; // État (Neuf scellé, Excellent état cave climatisée, Collection, etc.)
+    emballageVin?: string; // Type d'emballage (Bouteille verre, Carton 6 bouteilles, Caisse bois, etc.)
+    paysOrigineVin?: string; // Pays d'origine (France, Afrique du Sud, Chili, etc.)
+    occasionVin?: string; // Occasion/Utilisation (Mariage, Apéritif, Bar/Restaurant, etc.)
+    temperatureService?: string; // Température de service (6-8°C, 16-18°C, etc.)
+    accordMetsVin?: string; // Accords mets-vins (Viandes rouges, Poissons, Fromages, etc.)
+    quantiteMinimale?: string; // Quantité minimale (1 bouteille, 6 bouteilles carton, 50 bouteilles, etc.)
 
-    // Prestation de Service - ✅ ENRICHI
-    imagesRealisations?: string[]; // Images de réalisations
-    videosRealisations?: string[]; // Vidéos de réalisations
+    // Quincaillerie - ✅ REFONTE COMPLÈTE
+    nomProduitQuincaillerie?: string; // ✅ NOUVEAU: Nom du produit (liste 70+)
+    categorieQuincaillerie?: string; // Catégorie principale
+    typeQuincaillerie?: string; // Type de produit
+    marqueQuincaillerie?: string; // Marque
+    materiauQuincaillerie?: string; // Matériau
+    dimensionQuincaillerie?: string; // Dimension/Diamètre
+    finitionQuincaillerie?: string; // Finition/Couleur
+    referenceQuincaillerie?: string; // Référence fabricant
+    usageQuincaillerie?: string; // Usage recommandé
+    normeQuincaillerie?: string; // Norme/Certification
+    etatQuincaillerie?: string; // État
+    garantieQuincaillerie?: string; // Garantie
+    uniteVente?: string; // Unité de vente
+    stockDisponible?: number; // Stock disponible
+    typeFournisseurQuincaillerie?: string; // Type de fournisseur
+
+    // Sanitaire - ✅ NOUVELLE CATÉGORIE COMPLÈTE
+    nomProduitSanitaire?: string; // ✅ NOUVEAU: Nom du produit sanitaire (liste 140+)
+    categorieSanitaire?: string; // Catégorie principale (Robinetterie, Éviers, WC, etc.)
+    typeSanitaire?: string; // Type de produit
+    marqueSanitaire?: string; // Marque
+    materiauSanitaire?: string; // Matériau
+    finitionSanitaire?: string; // Finition/Couleur
+    dimensionSanitaire?: string; // Dimension standard
+    etatSanitaire?: string; // État
+    garantieSanitaire?: string; // Garantie
+    normeSanitaire?: string; // Norme/Certification
+    typeInstallation?: string; // Type d'installation
+    caracteristiquesSanitaire?: string[]; // Caractéristiques techniques (Array pour MultiSelect)
+    usageSanitaire?: string; // Usage
+    diametreTuyauterie?: string; // Diamètre (pour tuyauterie)
+    typeFournisseurSanitaire?: string; // Type de fournisseur
+
+    // ✅ PRESTATION DE SERVICE - ULTRA-ENRICHI CONTEXTE AFRIQUE FRANCOPHONE
+    // Images & Réalisations (Portfolio)
+    imagesRealisations?: string[]; // Images de réalisations/portfolio
+    videosRealisations?: string[]; // Vidéos de réalisations/portfolio
     titreService?: string; // Rempli automatiquement depuis bloc info générale
     descriptionService?: string; // Rempli automatiquement depuis bloc info générale
-    categoriePrestation?: string; // Bâtiment, Beauté, Informatique, etc.
-    typePrestation?: string; // Consultation, Formation, Maintenance, etc.
-    dureePrestation?: string; // 1 heure, 2 heures, 1 jour, etc.
-    zoneIntervention?: string; // Yaoundé, Douala, Tout le Cameroun, etc.
-    experienceAnnees?: number; // Années d'expérience
-    certifie?: boolean; // Certifié/Diplômé
-    deplacement?: boolean; // Se déplace
-    disponibilitePrestation?: string; // Immédiate, Cette semaine, Ce mois
+
+    // Catégorisation (40+ catégories métiers locaux)
+    categoriePrestation?: string; // 🏗️ Maçonnerie, 💇 Coiffure, 🔧 Mécanique, 💻 Informatique... (40+)
+
+    // Types de prestation (30+)
+    typePrestation?: string; // Consultation, Installation, Réparation, Formation... (30+)
+
+    // Zones d'intervention (100+ villes Afrique francophone)
+    zoneIntervention?: string; // 🇨🇲 Douala, Yaoundé, quartiers, 🇨🇮 Abidjan, 🇸🇳 Dakar... (100+)
+    zonesMultiples?: string[]; // ✅ NOUVEAU: Zones multiples possibles (array)
+    deplacementPossible?: boolean; // ✅ RENOMMÉ: Se déplace (ancien: deplacement)
+    modaliteDeplacement?: string; // ✅ NOUVEAU: Je me déplace / Client vient / Les deux / À distance
+    fraisDeplacementInclus?: boolean; // ✅ NOUVEAU: Frais de déplacement inclus ou en sus
+    rayonDeplacementKm?: string; // ✅ NOUVEAU: Rayon de déplacement en km
+
+    // Expérience & Qualifications (12 niveaux + certifications)
+    niveauExperience?: string; // ✅ NOUVEAU: Débutant, 1-2 ans, 5-10 ans, Expert, Maître artisan... (12)
+    experienceAnnees?: number; // Années d'expérience (pour compatibilité)
+    certification?: string; // ✅ NOUVEAU: CAP, BTS, Habilitation électrique, CETIC... (30+)
+    certifications?: string[]; // ✅ NOUVEAU: Certifications multiples (array)
+    certifie?: boolean; // Certifié/Diplômé (pour compatibilité)
+    diplomeProfessionnel?: string; // ✅ NOUVEAU: Diplôme précis si applicable
+
+    // Disponibilités & Horaires (15+)
+    disponibilitePrestation?: string; // ✅ ENRICHI: Immédiate, Sous 2h, Sous 24h, Cette semaine... (15+)
+    horairesService?: string; // ✅ NOUVEAU: Lundi-Vendredi 8h-18h, 24h/24, Weekend...
+    urgencesAcceptees?: boolean; // ✅ NOUVEAU: Accepte les urgences
+    service24h?: boolean; // ✅ NOUVEAU: Service 24h/24
+    disponibleWeekend?: boolean; // ✅ NOUVEAU: Disponible le weekend
+    disponibleJoursFeries?: boolean; // ✅ NOUVEAU: Disponible jours fériés
+    planningFlexible?: boolean; // ✅ NOUVEAU: Planning flexible
+
+    // Tarification (12 modes)
+    modeTarification?: string; // ✅ NOUVEAU: Prix fixe, À l'heure, À la journée, Au m², Forfaitaire... (12)
+    prixMinimum?: string; // ✅ NOUVEAU: Prix minimum (pour "à partir de")
+    prixHoraire?: string; // ✅ NOUVEAU: Tarif horaire
+    prixJournalier?: string; // ✅ NOUVEAU: Tarif journalier
+    devisGratuit?: boolean; // ✅ NOUVEAU: Devis gratuit proposé
+    prixNegociable?: boolean; // ✅ NOUVEAU: Prix négociable
+
+    // Paiement (15+ modes contextualisés Afrique)
+    modesPaiement?: string[]; // ✅ NOUVEAU: Espèces, Mobile Money (MTN, Orange), Virement... (15+)
+    acompteRequis?: boolean; // ✅ NOUVEAU: Acompte requis
+    montantAcompte?: string; // ✅ NOUVEAU: Montant acompte (% ou XAF)
+    paiementEchelonne?: boolean; // ✅ NOUVEAU: Paiement échelonné possible
+
+    // Équipements & Outils (20+)
+    equipementsPrestation?: string[]; // ✅ NOUVEAU: Équipement professionnel, Outillage, Véhicule... (20+)
+    fournitEquipement?: boolean; // ✅ NOUVEAU: Fournit son équipement
+    clientFournitMateriel?: boolean; // ✅ NOUVEAU: Client doit fournir le matériel
+
+    // Garanties & Assurances (10)
+    garantiePrestation?: string; // ✅ NOUVEAU: Garantie 3 mois, 1 an, SAV assuré... (10)
+    assuranceProfessionnelle?: string; // ✅ NOUVEAU: RC Pro, Tous risques, Décennale... (6)
+    assure?: boolean; // ✅ NOUVEAU: Assuré oui/non
+
+    // Références & Portfolio (8)
+    portfolioDisponible?: boolean; // ✅ NOUVEAU: Portfolio disponible
+    photosRealisations?: boolean; // ✅ NOUVEAU: Photos de réalisations
+    videosRealisations2?: boolean; // ✅ NOUVEAU: Vidéos de travaux (différent de videosRealisations array)
+    referencesClients?: boolean; // ✅ NOUVEAU: Références clients vérifiables
+    avisClients?: string; // ✅ NOUVEAU: Avis clients / note moyenne
+    travauxEntreprises?: boolean; // ✅ NOUVEAU: Travaux pour entreprises
+    travauxParticuliers?: boolean; // ✅ NOUVEAU: Travaux pour particuliers
+    projetsPublics?: boolean; // ✅ NOUVEAU: Projets publics réalisés
+
+    // Durées d'intervention (15)
+    dureePrestation?: string; // ✅ ENRICHI: Moins de 1h, 1-2h, 1 jour, Sur devis... (15)
+    dureeEstimee?: string; // ✅ NOUVEAU: Durée estimée précise
+    interventionRapide?: boolean; // ✅ NOUVEAU: Intervention rapide possible
+
+    // Types de clients (8)
+    typesClients?: string[]; // ✅ NOUVEAU: Particuliers, Entreprises, Administrations, ONG... (8)
+
+    // Langues parlées (15+)
+    languesParlees?: string[]; // ✅ NOUVEAU: Français, Anglais, Douala, Bamiléké, Ewondo... (15+)
+
+    // Services supplémentaires
+    conseilInclus?: boolean; // ✅ NOUVEAU: Conseil inclus
+    formationIncluse?: boolean; // ✅ NOUVEAU: Formation du client incluse
+    maintenanceIncluse?: boolean; // ✅ NOUVEAU: Maintenance incluse
+    suiviApresVente?: boolean; // ✅ NOUVEAU: Suivi après-vente
+
+    // Contact & Communication
+    telephonePrestation?: string; // ✅ NOUVEAU: Téléphone de contact
+    whatsappPrestation?: string; // ✅ NOUVEAU: WhatsApp de contact
+    emailPrestation?: string; // ✅ NOUVEAU: Email de contact
+    siteWebPrestation?: string; // ✅ NOUVEAU: Site web / portfolio en ligne
+    reseauxSociaux?: string[]; // ✅ NOUVEAU: Facebook, Instagram, LinkedIn...
+
+    // ════════════════════════════════════════════════════════════
+    // ✅ CHAMPS SPÉCIFIQUES FORMATION & ÉDUCATION - ULTRA-ENRICHI
+    // ════════════════════════════════════════════════════════════
+    // 🎓 Contexte : Formation professionnelle, Cours particuliers, Préparation concours,
+    //              Langues, Informatique, Métiers techniques, Certifications
+    // 🌍 Contexte Afrique francophone : Cameroun, CI, Sénégal, Mali, RDC, etc.
+    // ════════════════════════════════════════════════════════════
+
+    // ✅ TYPE DE FORMATION
+    typeFormation?: string; // Formation académique, Professionnelle, Technique, Langues, Arts...
+
+    // ✅ NIVEAUX SCOLAIRES (cours particuliers, aide aux devoirs)
+    niveauxScolaires?: string[]; // CP, CE1, 6ème, Terminale S, Licence... (multi-select)
+
+    // ✅ MATIÈRES ENSEIGNÉES (cours particuliers, soutien scolaire)
+    matieresEnseignees?: string[]; // Mathématiques, Français, Anglais, SVT... (multi-select)
+
+    // ✅ FORMATS DE FORMATION
+    formatFormation?: string; // Présentiel, En ligne, Hybride, Cours particuliers...
+    formatCoursDetail?: string; // Cours particuliers (1-1), Petit groupe (3-5), Classe (15-30)...
+    modaliteFormation?: string; // À domicile, En centre, En entreprise, En ligne...
+
+    // ✅ DURÉES & RYTHMES
+    dureeFormation?: string; // 1 heure, 1 semaine, 1 mois, 3 mois, 1 an...
+    rythmeFormation?: string; // Intensif, Semi-intensif, Hebdomadaire, Horaires flexibles...
+    horairesFormation?: string; // Matin (8h-12h), Après-midi (14h-18h), Soir (18h-21h)...
+
+    // ✅ LANGUES D'ENSEIGNEMENT
+    languesEnseignement?: string[]; // Français, Anglais, Bilingue (Fr-En), Langues nationales...
+
+    // ✅ PRÉPARATION CONCOURS GRANDES ÉCOLES
+    typeConcours?: string; // Écoles d'Ingénieurs, Médecine, Commerce, Administration...
+    concoursCibles?: string[]; // Polytechnique Yaoundé, ENAM, ENS, HEC Paris... (multi-select)
+    matieresPreparationConcours?: string[]; // Maths Sup, Physique, Chimie, Culture générale... (multi-select)
+    niveauPreparationConcours?: string; // Préparation intensive (3-6 mois), Prépa Maths Sup...
+    typeAccompagnementConcours?: string; // Stage intensif, Cours hebdomadaires, Cours particuliers...
+    supportsPedagogiques?: string[]; // Annales, Fiches, Vidéos, QCM, Concours blancs... (multi-select)
+    tauxReussiteConcours?: string; // Taux de réussite (%) - optionnel
+    anciensCandidatsAdmis?: number; // Nombre d'élèves admis - optionnel
+    preparateurAgree?: boolean; // Préparateur agréé/reconnu
+    concoursBlancsProposes?: boolean; // Propose des concours blancs
+
+    // ✅ CERTIFICATIONS & DIPLÔMES
+    certificationObtenue?: string; // Attestation, Certificat, Diplôme d'État, TOEFL, IELTS...
+    certificationInternationale?: boolean; // Certification internationale (TOEFL, IELTS, MOS...)
+
+    // ✅ NIVEAUX DE COMPÉTENCE (pour formations professionnelles/langues)
+    niveauCompetence?: string; // Grand débutant, Débutant, Intermédiaire, Avancé, Expert...
+
+    // ✅ ÉQUIPEMENTS & SUPPORTS
+    equipementsSupports?: string[]; // Manuels fournis, PDF, Vidéos, Ordinateurs, Plateformes e-learning... (multi-select)
+
+    // ✅ SERVICES INCLUS
+    servicesInclus?: string[]; // Évaluation initiale, Suivi personnalisé, Correction devoirs, Coaching... (multi-select)
+
+    // ✅ MÉTHODES PÉDAGOGIQUES
+    methodesPedagogiques?: string[]; // Cours magistraux, Travaux pratiques, Projets réels, Tutorat... (multi-select)
+
+    // ✅ PROFIL FORMATEUR
+    profilFormateur?: string; // Enseignant diplômé, Professeur certifié, Expert métier, Ingénieur...
+    experienceFormateur?: string; // Moins de 2 ans, 2-5 ans, 5-10 ans, 10-20 ans, +20 ans
+
+    // ✅ PUBLIC CIBLE
+    publicCible?: string[]; // Enfants (Maternelle-Primaire), Collégiens, Lycéens, Étudiants, Professionnels... (multi-select)
+
+    // ✅ TARIFICATIONS
+    modePaiement?: string; // Paiement unique, Mensuel, Par session, À l'heure, Échelonné...
+    moyensPaiementAcceptes?: string[]; // Espèces, Mobile Money, Virement, Carte bancaire... (multi-select)
+    reductions?: string[]; // Réduction groupe, Réduction longue durée, Premier cours gratuit... (multi-select)
+
+    // Informations complémentaires
+    nombreInterventions?: number; // ✅ NOUVEAU: Nombre d'interventions réalisées
+    tauxSatisfaction?: number; // ✅ NOUVEAU: Taux de satisfaction (%)
+    membresEquipe?: number; // ✅ NOUVEAU: Nombre de personnes dans l'équipe
+    entrepriseEnregistree?: boolean; // ✅ NOUVEAU: Entreprise officiellement enregistrée
+    numeroRegistreCommerce?: string; // ✅ NOUVEAU: N° de registre de commerce
+    numeroPatente?: string; // ✅ NOUVEAU: N° de patente
+
+    // Déplacement (anciens champs compatibilité)
+    deplacement?: boolean; // Se déplace (pour compatibilité CSV - obsolète)
+
+    // Liste des offres de service (array)
     prestations?: Array<{
         nom: string;
         prixAPartirDe: string;
         description?: string;
-    }>; // Liste des prestations possibles pour ce service
+        duree?: string; // ✅ NOUVEAU: Durée de cette offre spécifique
+        inclus?: string[]; // ✅ NOUVEAU: Ce qui est inclus dans cette offre
+    }>; // Liste des offres de prestations possibles pour ce prestataire
 
     // Promotion (pour tous les types de produits)
     promotionActive?: boolean;
@@ -581,20 +932,32 @@ interface Product {
     promotionDateFin?: string;
     promotionConditions?: string;
 
-    // Pharmacie
-    typePharmacie?: string; // Garde, Normale
+    // Pharmacie - ✅ ENRICHI
+    nomPharmacie?: string; // ✅ NOUVEAU: Nom de la pharmacie (liste)
+    typePharmacie?: string; // Pharmacie normale, de garde (nuit), de garde (weekend), 24h/24...
+    servicesPharmacie?: string[]; // ✅ NOUVEAU: Array des services disponibles
+    joursOuverturePharmacie?: string[]; // ✅ NOUVEAU: Array des jours d'ouverture
     heuresOuverture?: string;
     heuresFermeture?: string;
-    joursGarde?: string; // Jours de garde
+    joursGarde?: string; // Jours de garde (pour compatibilité)
     telephoneUrgence?: string;
-    services?: string; // Services disponibles
+    services?: string; // Services disponibles (pour compatibilité - obsolète)
 
-    // Hôpital/Clinique
-    typeEtablissement?: string; // Hôpital, Clinique, Centre de santé
-    specialites?: string[]; // Liste des spécialités
+    // Hôpital/Clinique - ✅ REFONTE COMPLÈTE
+    nomEtablissement?: string; // ✅ NOUVEAU: Nom de l'établissement (liste)
+    typeEtablissement?: string; // Hôpital, Clinique, Centre de santé (liste)
+    prestationsGenerales?: string[]; // ✅ NOUVEAU: Urgences, Hospitalisation, Chirurgie...
+    consultationsSpecialisees?: string[]; // ✅ NOUVEAU: Gynécologie, Cardiologie, ORL... (30+)
+    joursOuverture?: string[]; // ✅ NOUVEAU: Array des jours (Lundi, Mardi...)
+    heuresOuverture?: string; // Heure d'ouverture (format HH:MM)
+    heuresFermeture?: string; // Heure de fermeture (format HH:MM)
+    servicesAnnexes?: string[]; // ✅ NOUVEAU: Laboratoire, Pharmacie, Ambulance...
+    equipementsHopital?: string[]; // ✅ NOUVEAU: Scanner, IRM, Échographie...
+    urgencesDisponible?: boolean; // Urgences 24h/24
+    // Champs obsolètes (conservés pour compatibilité)
+    specialites?: string[]; // Obsolète: remplacé par consultationsSpecialisees
     medecinsDisponibles?: string;
     horairesConsultation?: string;
-    urgencesDisponible?: boolean;
     rdvEnLigne?: boolean;
     banqueSang?: boolean; // Disponibilité d'une banque de sang
     prestationsMedicales?: string[]; // Liste des prestations médicales disponibles
@@ -628,16 +991,28 @@ interface Product {
     reservation?: boolean; // Réservation possible
     adresseRestaurant?: string; // Adresse du restaurant
 
-    // Déménagement - ✅ ENRICHI
+    // Déménagement - ✅ REFONTE COMPLÈTE CONTEXTE AFRIQUE
     typeDemenagement?: string; // Déménagement local, national, international, bureau, etc.
     volumeDemenagement?: string; // Studio (10-15m³), F2 (20-30m³), etc.
     typeVehiculeDemenagement?: string; // Camionnette 10m³, Camion 30m³, etc.
     distanceDemenagement?: string; // Moins de 10 km, 10-50 km, etc.
     nbDemenageurs?: string; // Nombre de déménageurs
     servicesDemenagement?: string[]; // Emballage, Transport, Déballage, etc.
-    assuranceDemenagement?: boolean; // Assurance marchandise incluse
-    montageInclus?: boolean; // Montage/Démontage meubles
-    cartonsInclus?: boolean; // Cartons fournis
+    // ✅ NOUVEAUX CHAMPS
+    trajetDemenagement?: string; // Trajet populaire (Douala → Yaoundé, etc.)
+    villeDepartDemenagement?: string; // Ville de départ
+    villeArriveeDemenagement?: string; // Ville d'arrivée
+    quartierDepartDemenagement?: string; // Quartier de départ
+    quartierArriveeDemenagement?: string; // Quartier d'arrivée
+    compagnieDemenagement?: string; // Compagnie de déménagement
+    dureeDemenagement?: string; // Durée estimée
+    typeAssuranceDemenagement?: string; // Type d'assurance
+    accessibiliteDemenagement?: string; // Accessibilité/Étages
+    disponibiliteDemenagement?: string; // Disponibilité
+    // Champs obsolètes (conservés pour compatibilité)
+    assuranceDemenagement?: boolean; // Obsolète: remplacé par typeAssuranceDemenagement
+    montageInclus?: boolean; // Inclus dans servicesDemenagement
+    cartonsInclus?: boolean; // Inclus dans servicesDemenagement
     dateDebut?: string; // Date de début souhaitée
     serviceManutention?: boolean;
     montageDemontage?: boolean;
@@ -656,15 +1031,37 @@ interface Product {
     certificationPlombier?: string; // Certifié, Agréé, etc.
     dateDemenagementDisponible?: string;
 
-    // Nettoyage - ✅ ENRICHI
-    typeNettoyage?: string; // Résidentiel, Bureaux, Après travaux, etc.
-    frequenceNettoyage?: string; // Ponctuel, Hebdomadaire, Mensuel, etc.
-    servicesNettoyage?: string[]; // Dépoussiérage, Aspiration, Lavage sols, etc.
-    surfaceNettoyage?: string; // Moins de 50m², 50-100m², etc.
-    produitsNettoyage?: string; // Produits bio/écologiques, Professionnels, etc.
-    produitsBio?: boolean; // Utilisation de produits bio/écologiques
-    materielInclus?: boolean; // Matériel de nettoyage inclus
-    assuranceResponsabiliteCivile?: boolean; // Assurance RC
+    // ════════════════════════════════════════════════════════════
+    // 🧹 NETTOYAGE & ENTRETIEN - ULTRA-ENRICHI AFRIQUE FRANCOPHONE
+    // ════════════════════════════════════════════════════════════
+    // Synchronisé avec categoryConfig.ts (16 filtres complets)
+    // ════════════════════════════════════════════════════════════
+    typeServiceNettoyage?: string; // Femme de ménage, Nounou, Blanchisseur, Gardien, Jardinier, Cuisinière, Chauffeur, etc.
+    frequenceService?: string; // Ponctuel, Quotidien, Lun-Ven, Hebdomadaire, etc.
+    modaliteEmploi?: string; // Live-out, Live-in (logée), Logée+nourrie, Autonome
+    horairesService?: string; // Temps plein 8h-17h, Temps partiel, Matin, Après-midi, Nuit, 24h/24
+    nombreEnfants?: string; // 1 enfant, 2 enfants, 3 enfants, 4+ enfants (pour nounou)
+    ageEnfants?: string; // Nouveau-né, Bébé, Tout-petit, Enfant, Pré-ado, Adolescent (pour nounou)
+    tachesSpecifiques?: string[]; // Nettoyage sols, Dépoussiérage, Cuisine, Repassage, Garde d'enfants, Jardin, etc.
+    experienceNettoyage?: string; // Débutant(e), 6 mois-1 an, 1-2 ans, 3-5 ans, 5-10 ans, 10-15 ans, 15+ ans
+    languesParlees?: string[]; // Français, Anglais, Bilingue, Bamiléké, Ewondo, Fulfuldé, Lingala, Wolof, Dioula, Pidgin
+    certificationNettoyage?: string[]; // Références vérifiées, Formation, Premiers secours, Casier judiciaire vierge, etc.
+    equipementsFournis?: string[]; // Produits d'entretien, Aspirateur, Balai, Matériel pro, Outils jardinage
+    surfaceEntretien?: string; // < 50m², 50-100m², 100-200m², Villa 300-500m², Bureau, Immeuble
+    zoneInterventionNettoyage?: string; // Douala Akwa, Yaoundé Bastos, Abidjan Cocody, Dakar Almadies, etc. (100+ quartiers)
+    disponibiliteImmediateNettoyage?: string; // Immédiate, Cette semaine, Dans 2 semaines, Dans 1 mois, Préavis
+    salaireSouhaite?: string; // Salaire mensuel en FCFA (30000-500000)
+    typeContratNettoyage?: string; // CDI, CDD, Temporaire, Remplacement, Freelance, Période d'essai
+
+    // ✅ Champs legacy (compatibilité ancienne version)
+    typeNettoyage?: string; // DÉPRÉCIÉ - Utiliser typeServiceNettoyage
+    frequenceNettoyage?: string; // DÉPRÉCIÉ - Utiliser frequenceService
+    servicesNettoyage?: string[]; // DÉPRÉCIÉ - Utiliser tachesSpecifiques
+    surfaceNettoyage?: string; // DÉPRÉCIÉ - Utiliser surfaceEntretien
+    produitsNettoyage?: string; // DÉPRÉCIÉ
+    produitsBio?: boolean; // DÉPRÉCIÉ
+    materielInclus?: boolean; // DÉPRÉCIÉ - Utiliser equipementsFournis
+    assuranceResponsabiliteCivile?: boolean; // DÉPRÉCIÉ
 
     // Réparation - ✅ ENRICHI
     typeReparation?: string; // Électronique, Électroménager, Téléphone, Ordinateur, etc.
@@ -714,13 +1111,20 @@ interface Product {
     marqueEnfant?: string; // Marque
     securiteNorme?: boolean; // Conforme normes sécurité
 
-    // Décoration - ✅ NOUVEAU
-    typeDecoration?: string; // Meubles, Luminaires, Tapis, etc.
-    styleDecoration?: string; // Moderne, Scandinave, Vintage, etc.
-    pieceDecoration?: string; // Salon, Chambre, Cuisine, etc.
-    materiauDecoration?: string; // Bois, Métal, Tissu, etc.
-    couleurDecoration?: string; // Couleur principale
-    dimensionsDecoration?: string; // Dimensions
+    // Décoration - ✅ COMPLET CONTEXTE AFRIQUE
+    nomArticleDecoration?: string; // ✅ Nom de l'article (liste complète)
+    categorieDecoration?: string; // ✅ Catégorie (Tableaux, Luminaires, Vases, etc.)
+    styleDecoration?: string; // Moderne, Ethnique africain, Afro-chic, Vintage, etc.
+    pieceDecoration?: string; // Salon, Chambre, Véranda, Jardin/Cour, etc.
+    matiereDecoration?: string; // ✅ Matière (Bois, Raphia, Pagne/Wax, Terre cuite, etc.)
+    couleurDecoration?: string; // Blanc, Terracotta, Motifs africains, etc.
+    tailleDecoration?: string; // ✅ Taille (Petit, Moyen, Grand, XL, Set/Lot)
+    etatDecoration?: string; // ✅ État (Neuf, Artisanal fait main, Vintage authentique, Import Afrique)
+    marqueDecoration?: string; // ✅ Marque/Origine (Ikea, Artisan local camerounais, Fait main, etc.)
+    dimensionsDecoration?: string; // Dimensions exactes (texte libre)
+    // Champs legacy (compatibilité)
+    typeDecoration?: string; // Obsolète: remplacé par categorieDecoration
+    materiauDecoration?: string; // Obsolète: remplacé par matiereDecoration
 
     // Santé & Beauté - ✅ NOUVEAU
     typeProduitBeaute?: string;
@@ -766,31 +1170,51 @@ interface Product {
     ageRecommandé?: string;
     ingredientsCosmetique?: string;
     origineCosmetique?: string;
-    // Champs bijoux
-    typeBijou?: string;
-    matiereBijou?: string;
-    poidsBijou?: string;
-    unitePoids?: string;
-    tailleBijou?: string;
+    // Champs bijoux - ✅ ENRICHI
+    typeBijou?: string; // Type de bijou (Bague, Collier, Montre, etc.)
+    matiereBijou?: string; // Matière principale (Or, Argent, Platine, etc.)
+    poidsBijou?: string; // Poids exact en grammes
+    poidsApproxBijou?: string; // Fourchette de poids (5-10g, 10-20g, etc.)
+    unitePoids?: string; // Unité de poids (deprecated, remplacé par poidsApproxBijou)
+    tailleBijou?: string; // Taille/Dimensions selon le type
+    longueurBijou?: string; // Longueur (colliers, bracelets)
+    diametreMontre?: string; // Diamètre boîtier pour montres
+    caratsBijou?: string; // Carats pour l'or (9k, 14k, 18k, etc.)
+    pureteArgent?: string; // Pureté de l'argent (925, 950, etc.)
+    styleBijou?: string; // Style (Moderne, Vintage, Ethnique, etc.)
+    pourQuiBijou?: string; // Destinataire (Femme, Homme, Enfant, etc.)
+    occasionBijou?: string; // Occasion (Mariage, Quotidien, etc.)
+    marqueBijou?: string; // Marque (Rolex, Cartier, Pandora, etc.)
+    etatBijou?: string; // État (Neuf, Excellent, etc.)
+    certificationBijou?: string; // Type de certification
+    garantieBijou?: string; // Durée garantie
+    origineBijou?: string; // Pays d'origine/fabrication
+    certificatBijou?: string; // Oui/Non (deprecated, remplacé par certificationBijou)
+    bijouxVariants?: ProductVariant[]; // ✅ Variantes avec images multiples
 
-    // Musique & Instruments
-    typeInstrument?: string; // Guitare, Piano, Batterie, Vent, Cordes, Percussion, etc.
-    categorieInstrument?: string; // Instrument, Accessoire, Sonorisation, Studio
-    marqueInstrument?: string; // Yamaha, Fender, Gibson, Roland, etc.
+    // Musique & Instruments - ✅ ENRICHI AFRIQUE
+    categorieInstrument?: string; // Instrument, Accessoire, Sonorisation, DJ, Studio, Traditionnel africain
+    typeInstrument?: string; // Guitare, Piano, Batterie, Djembé, Kora, etc.
+    marqueInstrument?: string; // Yamaha, Fender, Gibson, Roland, Artisan local, etc.
     modeleInstrument?: string; // Modèle spécifique
-    etatInstrument?: string; // Neuf, Excellent, Bon, À réviser
+    etatInstrument?: string; // Neuf, Excellent, Bon, À réviser, Vintage
+    niveauInstrument?: string; // Débutant, Intermédiaire, Avancé, Professionnel
     anneeInstrument?: string; // Année de fabrication
-    materiauInstrument?: string; // Bois, Métal, Plastique, Composite
+    materiauInstrument?: string; // Bois, Métal, Calebasse, Peau de chèvre, etc.
     couleurInstrument?: string; // Couleur de l'instrument
-    tailleInstrument?: string; // Taille (1/4, 1/2, 3/4, 4/4 pour violon, etc.)
-    nombreCordes?: string; // Pour guitares, basses, violons
+    tailleInstrument?: string; // 4/4, 3/4, 1/2, Dreadnought, etc.
+    nombreCordes?: string; // Pour guitares, basses, violons, kora
     typeAmplification?: string; // Acoustique, Électrique, Électro-acoustique
-    puissanceAmpli?: string; // Puissance en Watts pour amplis
+    puissanceAmpli?: string; // Puissance en Watts pour amplis/sono
+    utilisationInstrument?: string; // Apprentissage, Concert, Studio, Église, etc.
+    genreMusical?: string; // Jazz, Rock, Afrobeat, Makossa, Classique, etc.
+    alimentationInstrument?: string; // Secteur 220V, Batterie, Piles, USB
+    connectiquesInstrument?: string[]; // Jack, XLR, MIDI, Bluetooth, etc.
     accessoiresInclus?: string[]; // Étui, Archet, Câbles, Pédalier, etc.
     garantieInstrument?: string; // Garantie restante
     facture?: boolean; // Facture d'achat disponible
     revisionRecente?: boolean; // Révision/entretien récent
-    origineInstrument?: string; // Pays de fabrication
+    origineInstrument?: string; // Pays de fabrication (France, Japon, Sénégal, Mali, etc.)
     styleBijou?: string;
     origineBijou?: string;
     certificatBijou?: string;
@@ -844,6 +1268,85 @@ interface Product {
     entretienMech?: string; // conseils d'entretien
     dureeVie?: string; // durée de vie du produit
     typeCheveux?: string; // type de cheveux (naturel, synthétique, mixte)
+
+    // ✅ COUTURIER - AFRIQUE FRANCOPHONE
+    typeCouture?: string; // Type de service (Robe sur mesure, Boubou, Retouche, etc.)
+    tissuCouture?: string; // Tissu utilisé (Bazin, Wax, Coton, Soie, etc.)
+    styleCouture?: string; // Style (Traditionnel africain, Afro-fusion, Moderne, etc.)
+    categorieCouture?: string; // Catégorie vêtement (Robe, Costume, Boubou, etc.)
+    genreCouture?: string; // Genre (Femme, Homme, Enfant, Couple assorti, etc.)
+    occasionCouture?: string; // Occasion (Mariage, Soirée, Quotidien, Église, etc.)
+    delaiCouture?: string; // Délai de confection (Express 24-48h, Standard 1-2 semaines, etc.)
+    specialiteCouturier?: string; // Spécialité (Robes de mariée, Bazin, Wax/pagne, etc.)
+    experienceCouturier?: string; // Expérience (Débutant, Confirmé, Maître couturier, etc.)
+    finitionCouture?: string; // Niveau de finition (Haute couture, Soignée, Standard, etc.)
+    lieuTravailCouturier?: string; // Lieu de travail (Atelier professionnel, Domicile, À domicile client, etc.)
+    tailleCouture?: string; // Taille (S, M, L, Sur mesure, etc.)
+    couleurCouture?: string; // Couleur principale
+    serviceCoutureInclus?: string[]; // Services inclus (Prise de mesures, Essayage, Retouches, etc.)
+    tarificationCouture?: string; // Mode de tarification (À la pièce, Forfait, Au mètre, Sur devis, etc.)
+    equipementsCouturier?: string[]; // Équipements disponibles (Machine à broder, Surjeteuse, etc.)
+
+    // ✅ MÉCANICIEN / GARAGE AUTOMOBILE - AFRIQUE FRANCOPHONE
+    nomGarage?: string; // Nom du garage/atelier
+    typeServiceMecanique?: string[]; // Services proposés (Vidange, Frein, Diagnostic, etc.)
+    specialitesGarage?: string[]; // Spécialités (Toutes marques, Japonaises, 4x4, etc.)
+    marquesVehicules?: string[]; // Marques traitées (Toyota, Nissan, Peugeot, etc.)
+    typesVehiculesMeca?: string[]; // Types véhicules (Voitures, SUV, Camions, Motos, etc.)
+    certificationsMeca?: string[]; // Certifications (CAP, BTS, Formation constructeur, etc.)
+    equipementsGarage?: string[]; // Équipements (Pont élévateur, Valise diagnostic, etc.)
+    servicesComplementaires?: string[]; // Services en plus (Vente pièces, Lavage, etc.)
+    horairesGarage?: string; // Horaires d'ouverture
+    delaisIntervention?: string; // Délais (Immédiat, Même jour, Sous 24h, etc.)
+    urgenceMeca?: string; // Dépannage d'urgence (24h/24, Jour uniquement, etc.)
+    zonesInterventionMeca?: string[]; // ✅ CORRIGÉ: Zone géographique MULTIPLE (système intelligent)
+    languesMeca?: string[]; // Langues parlées
+    modesPaiement?: string[]; // Modes de paiement acceptés
+    tarifHoraireMeca?: string; // Tarif horaire (optionnel)
+    devisGratuit?: boolean; // Devis gratuit
+    garantieReparations?: boolean; // Garantie sur réparations
+    vehiculeCourtoisie?: boolean; // Véhicule de courtoisie
+    enlevementVehicule?: boolean; // Enlèvement véhicule en panne
+
+    // ✅ CHAMPS SPÉCIALISÉS MÉCANICIEN MOTO/TRICYCLE
+    nomGarageMoto?: string; // Nom du garage spécialisé motos
+    typeServiceMoto?: string[]; // Types de services motos
+    specialitesMoto?: string[]; // Spécialités du garage moto
+    marquesMotos?: string[]; // Marques de motos traitées
+    typesMotos?: string[]; // Types de motos/tricycles traités
+    cylindreesMotos?: string[]; // Cylindrées spécialisées
+    certificationsMoto?: string[]; // Certifications spécialisées motos
+    equipementsMoto?: string[]; // Équipements spécialisés garage moto
+    piecesDetacheesMoto?: string[]; // Pièces détachées spécialisées
+    servicesComplementairesMoto?: string[]; // Services complémentaires spécialisés
+    horairesMoto?: string; // Horaires spécialisés
+    delaisMoto?: string; // Délais d'intervention spécialisés
+    urgenceMoto?: string; // Prestations d'urgence spécialisées
+    zonesInterventionMoto?: string[]; // ✅ CORRIGÉ: Zone géographique spécialisée MULTIPLE (système intelligent)
+    languesMoto?: string[]; // Langues parlées spécialisées
+    modesPaiementMoto?: string[]; // Modes de paiement spécialisés
+    tarifHoraireMoto?: string; // Tarif horaire spécialisé (optionnel)
+    devisGratuitMoto?: boolean; // Devis gratuit spécialisé
+    garantieReparationsMoto?: boolean; // Garantie sur réparations spécialisées
+    motoCourtoisie?: boolean; // Moto de courtoisie
+    enlevementMoto?: boolean; // Enlèvement moto en panne
+
+    // ✅ CARRELEUR (SERVICE - POSE DE CARRELAGE)
+    typeCarreleur?: string; // Type de prestation (Pose, Rénovation, etc.)
+    servicesCarreleur?: string[]; // Services proposés (Sol intérieur, Mural salle de bain, etc.)
+    surfacesCarreleur?: string[]; // Surfaces d'application (Sol, Mur, Terrasse, etc.)
+    typesCarrelageCarreleur?: string[]; // Types de carrelage posés (Céramique, Grès, Marbre, etc.)
+    formatsCarreleur?: string[]; // Formats/Dimensions (Petit, Standard, Grand, etc.)
+    techniquesCarreleur?: string[]; // Techniques de pose (Droite, Diagonale, Chevron, etc.)
+    finitionsCarreleur?: string[]; // Finitions (Joint blanc, Joint époxy, etc.)
+    equipementsCarreleur?: string[]; // Équipements et outils
+    experienceCarreleur?: string; // Expérience (Années)
+    disponibilitesCarreleur?: string; // Disponibilité
+    garantiesCarreleur?: string; // Garanties
+    certificationsCarreleur?: string[]; // Certifications
+    servicesAdditionnelsCarreleur?: string[]; // Services additionnels
+    tarificationCarreleur?: string; // Mode de tarification
+    zonesInterventionCarreleur?: string[]; // ✅ Zones d'intervention MULTIPLES (système intelligent)
 }
 
 interface ProductManagerMobileProps {
@@ -858,8 +1361,7 @@ interface ProductManagerMobileProps {
 
 // Configuration des types de produits avec noms adaptés
 const PRODUCT_TYPES = [
-    { value: 'agroalimentaire', label: 'Agroalimentaire & Produits Secs', icon: '🌾', color: '#F59E0B', description: 'Riz, pâtes, farine, huile, sucre, épices, conserves, boissons, produits transformés', keywords: ['riz', 'pâtes', 'macaroni', 'spaghetti', 'farine', 'huile', 'arachide', 'palme', 'tournesol', 'olive', 'sucre', 'sel', 'épices', 'poivre', 'curry', 'curcuma', 'gingembre', 'piment', 'sauce', 'ketchup', 'mayonnaise', 'moutarde', 'maggi', 'jumbo', 'bouillon', 'cube', 'conserve', 'sardine', 'thon', 'maquereau', 'tomate', 'haricot', 'pois', 'maïs', 'boisson', 'eau', 'jus', 'soda', 'cola', 'sprite', 'fanta', 'café', 'nescafé', 'thé', 'lipton', 'lait', 'nido', 'peak', 'chocolat', 'cacao', 'biscuit', 'chips', 'snack', 'bonbon', 'confiserie', 'céréale', 'avoine', 'blé', 'maïs', 'mil', 'sorgho', 'manioc', 'couscous', 'semoule', 'légume', 'sec', 'lentille', 'fève', 'pois chiche', 'condiment', 'vinaigre', 'miel', 'confiture', 'beurre', 'cacahuète', 'arachide', 'noix', 'cajou', 'amande', 'produit', 'alimentaire', 'agro', 'transformation', 'conserverie', 'biscuiterie', 'huilerie', 'meunerie', 'rizerie', 'sucrerie', 'chocolaterie', 'confiserie'] },
-    { value: 'aliments', label: 'Aliments Frais & Produits du Marché', icon: '🍎', color: '#84CC16', description: 'Fruits frais, légumes frais, viandes, poissons, volailles, produits du marché', keywords: ['fruit', 'légume', 'viande', 'poisson', 'bœuf', 'poulet', 'porc', 'mouton', 'chèvre', 'tomate', 'oignon', 'pomme', 'banane', 'orange', 'mangue', 'avocat', 'ananas', 'carotte', 'chou', 'salade', 'frais', 'marché'] },
+    { value: 'agroalimentaire', label: 'Alimentation & Produits Alimentaires', icon: '🍽️', color: '#10B981', description: 'Alimentation complète : produits frais (fruits, légumes, viandes, poissons) et produits secs/transformés (riz, pâtes, conserves, boissons)', keywords: ['riz', 'pâtes', 'macaroni', 'spaghetti', 'farine', 'huile', 'arachide', 'palme', 'tournesol', 'olive', 'sucre', 'sel', 'épices', 'poivre', 'curry', 'curcuma', 'gingembre', 'piment', 'sauce', 'ketchup', 'mayonnaise', 'moutarde', 'maggi', 'jumbo', 'bouillon', 'cube', 'conserve', 'sardine', 'thon', 'maquereau', 'haricot', 'pois', 'maïs', 'boisson', 'eau', 'jus', 'soda', 'cola', 'sprite', 'fanta', 'café', 'nescafé', 'thé', 'lipton', 'lait', 'nido', 'peak', 'chocolat', 'cacao', 'biscuit', 'chips', 'snack', 'bonbon', 'confiserie', 'céréale', 'avoine', 'blé', 'mil', 'sorgho', 'manioc', 'couscous', 'semoule', 'légume', 'sec', 'lentille', 'fève', 'pois chiche', 'condiment', 'vinaigre', 'miel', 'confiture', 'beurre', 'cacahuète', 'noix', 'cajou', 'amande', 'produit', 'alimentaire', 'agro', 'transformation', 'conserverie', 'biscuiterie', 'huilerie', 'meunerie', 'rizerie', 'sucrerie', 'chocolaterie', 'confiserie', 'fruit', 'légume', 'viande', 'poisson', 'bœuf', 'poulet', 'porc', 'mouton', 'chèvre', 'tomate', 'oignon', 'pomme', 'banane', 'orange', 'mangue', 'avocat', 'ananas', 'carotte', 'chou', 'salade', 'frais', 'marché', 'alimentaire', 'épicerie', 'supermarché', 'nourriture', 'aliment', 'consommation', 'nutrition'] },
     { value: 'assurance', label: 'Assurance et Protection', icon: '🛡️', color: '#14B8A6', description: 'Assurance auto, santé, habitation, vie, protection sociale', keywords: ['assurance', 'protection', 'garantie', 'prime', 'contrat', 'couverture', 'police', 'assureur', 'sinistre', 'indemnisation', 'franchise', 'souscription', 'mutuelle', 'prévoyance', 'responsabilité civile', 'tous risques'] },
     { value: 'automobile', label: 'Automobiles et Véhicules', icon: '🚗', color: '#EF4444', description: 'Voitures, motos, camions, véhicules utilitaires', keywords: ['voiture', 'auto', 'véhicule', 'automobile', 'moto', 'scooter', 'camion', '4x4', 'SUV', 'berline', 'coupé', 'cabriolet', 'Toyota', 'Honda', 'Mercedes', 'Peugeot', 'Renault', 'Nissan', 'occasion', 'neuf', 'kilométrage', 'essence', 'diesel', 'hybride', 'électrique', 'automatique', 'manuelle'] },
     { value: 'chaussure', label: 'Chaussures et Accessoires', icon: '👟', color: '#6366F1', description: 'Chaussures, baskets, sandales, bottes', keywords: ['chaussure', 'soulier', 'basket', 'sneaker', 'sandale', 'tong', 'botte', 'bottine', 'escarpin', 'talon', 'mocassin', 'ballerine', 'pointure', 'semelle', 'cuir', 'sport', 'ville', 'Nike', 'Adidas', 'Puma'] },
@@ -885,8 +1387,14 @@ const PRODUCT_TYPES = [
     { value: 'coiffure_beaute', label: 'Coiffure & Beauté', icon: '💇‍♀️', color: '#E91E63', description: 'Mèches, extensions, perruques, accessoires de coiffure, soins cheveux', keywords: ['coiffure', 'cheveu', 'mèche', 'extension', 'perruque', 'tissage', 'tresse', 'défrisage', 'lissage', 'bouclage', 'coloration', 'teinture', 'balayage', 'coupe', 'brushing', 'lisse', 'bouclé', 'naturel', 'synthétique', 'brésilienne', 'indienne', 'remy hair', 'clip', 'pose'] },
     { value: 'pieces_auto', label: 'Pièces Détachées Auto', icon: '🔧', color: '#607D8B', description: 'Pièces moteur, freins, carrosserie, filtres, batteries', keywords: ['pièce auto', 'pièce détachée', 'pièce automobile', 'moteur', 'frein', 'disque', 'plaquette', 'carrosserie', 'pare-choc', 'aile', 'capot', 'phare', 'feu', 'filtre', 'huile', 'batterie', 'alternateur', 'bougie', 'courroie', 'embrayage', 'suspension', 'amortisseur', 'vidange', 'garage'] },
     { value: 'pieces_industrielles', label: 'Pièces Industrielles', icon: '⚙️', color: '#455A64', description: 'Roulements, courroies, moteurs, pompes, pièces machines', keywords: ['pièce industrielle', 'pièce machine', 'roulement', 'palier', 'courroie', 'chaîne', 'poulie', 'pignon', 'engrenage', 'moteur électrique', 'hydraulique', 'pneumatique', 'pompe', 'compresseur', 'vanne', 'vérin', 'tuyau', 'joint', 'acier', 'inox', 'industriel', 'usine', 'maintenance'] },
-    { value: 'prestation_service', label: 'Prestation de Service', icon: '🎯', color: '#8B5CF6', description: 'Plombier, électricien, mécanicien, coiffeur, développeur...', keywords: ['plombier', 'électricien', 'mécanicien', 'menuisier', 'peintre', 'maçon', 'carreleur', 'soudeur', 'serrurier', 'vitrier', 'plâtrier', 'couvreur', 'charpentier', 'ébéniste', 'tapissier', 'décorateur', 'jardinier', 'paysagiste', 'élagueur', 'coiffeur', 'barbier', 'esthéticienne', 'manucure', 'massage', 'spa', 'kinésithérapeute', 'ostéopathe', 'infirmier', 'sage-femme', 'aide-soignant', 'auxiliaire', 'photographe', 'vidéaste', 'graphiste', 'designer', 'développeur', 'programmeur', 'webmaster', 'informaticien', 'technicien', 'réparateur', 'dépanneur', 'installateur', 'monteur', 'agent', 'nettoyage', 'entretien', 'ménage', 'repassage', 'cuisinier', 'traiteur', 'pâtissier', 'boulanger', 'serveur', 'barman', 'chauffeur', 'livreur', 'coursier', 'déménageur', 'manutentionnaire', 'gardien', 'vigile', 'agent de sécurité', 'coach', 'formateur', 'professeur', 'enseignant', 'répétiteur', 'tuteur', 'traducteur', 'interprète', 'rédacteur', 'correcteur', 'secrétaire', 'assistant', 'comptable', 'auditeur', 'consultant', 'conseiller', 'expert', 'avocat', 'juriste', 'notaire', 'huissier', 'architecte', 'ingénieur', 'géomètre', 'topographe', 'vétérinaire', 'dresseur', 'toiletteur', 'DJ', 'musicien', 'animateur', 'présentateur', 'artiste', 'comédien', 'danseur', 'maquilleur', 'styliste', 'couturier', 'tailleur', 'cordonnier', 'tapissier', 'sellier', 'bijoutier', 'horloger', 'opticien', 'prothésiste', 'dentiste', 'orthodontiste', 'pédicure', 'podologue', 'sophrologue', 'psychologue', 'psychiatre', 'nutritionniste', 'diététicien', 'coach sportif', 'personal trainer', 'yoga', 'pilates', 'danse', 'sport', 'guide', 'accompagnateur', 'moniteur', 'instructeur', 'analyste', 'data scientist', 'statisticien', 'économiste', 'chercheur', 'scientifique', 'laborantin', 'pharmacien', 'préparateur', 'radiologiste', 'échographiste', 'technicien médical', 'ambulancier', 'secouriste', 'pompier', 'agent immobilier', 'promoteur', 'syndic', 'gestionnaire', 'administrateur', 'directeur', 'manager', 'chef de projet', 'coordinateur', 'superviseur', 'contrôleur', 'inspecteur', 'évaluateur', 'expert-comptable', 'fiscaliste', 'commissaire aux comptes', 'assureur', 'courtier', 'agent général', 'banquier', 'conseiller financier', 'trader', 'cambiste', 'caissier', 'guichetier', 'vendeur', 'commercial', 'télévendeur', 'VRP', 'représentant', 'agent commercial', 'négociateur', 'acheteur', 'approvisionneur', 'logisticien', 'magasinier', 'gestionnaire de stock', 'préparateur de commandes', 'cariste', 'grutier', 'conducteur', 'opérateur', 'machiniste', 'usineur', 'tourneur', 'fraiseur', 'ajusteur', 'monteur', 'assembleur', 'câbleur', 'électronicien', 'automaticien', 'roboticien', 'mécanicien auto', 'mécanicien moto', 'carrossier', 'peintre auto', 'tôlier', 'mécanicien poids lourds', 'mécanicien agricole', 'dépanneur auto', 'garagiste', 'vulcanisateur', 'climaticien', 'frigoriste', 'chauffagiste', 'sanitaire', 'zingueur'] },
-    { value: 'quincaillerie', label: 'Quincaillerie, Sanitaire & Électricité', icon: '🔨', color: '#F59E0B', description: 'Outils, matériaux, plomberie, électricité, construction', keywords: ['quincaillerie', 'outil', 'marteau', 'tournevis', 'clé', 'pince', 'scie', 'perceuse', 'visseuse', 'meuleuse', 'ponceuse', 'raboteuse', 'tronçonneuse', 'matériaux', 'ciment', 'sable', 'gravier', 'brique', 'parpaing', 'fer', 'acier', 'béton', 'mortier', 'chaux', 'plâtre', 'peinture', 'vernis', 'colle', 'mastic', 'silicone', 'joint', 'sanitaire', 'plomberie', 'robinet', 'robinetterie', 'mitigeur', 'mélangeur', 'douche', 'baignoire', 'lavabo', 'évier', 'WC', 'toilette', 'chasse', 'tuyau', 'canalisation', 'raccord', 'coude', 'té', 'vanne', 'électricité', 'électrique', 'câble', 'fil', 'interrupteur', 'prise', 'disjoncteur', 'tableau', 'lampe', 'ampoule', 'LED', 'néon', 'spot', 'applique', 'lustre', 'plafonnier', 'variateur', 'minuterie', 'détecteur', 'sonnette', 'multiprise', 'rallonge', 'domino', 'gaine', 'conduit'] },
+    { value: 'prestation_service', label: 'Prestation de Service', icon: '🎯', color: '#8B5CF6', description: 'Menuisier, peintre, coiffeur, développeur, professeur...', keywords: ['menuisier', 'peintre', 'carreleur', 'soudeur', 'serrurier', 'vitrier', 'plâtrier', 'couvreur', 'charpentier', 'ébéniste', 'tapissier', 'décorateur', 'jardinier', 'paysagiste', 'élagueur', 'coiffeur', 'barbier', 'esthéticienne', 'manucure', 'massage', 'spa', 'kinésithérapeute', 'ostéopathe', 'infirmier', 'sage-femme', 'aide-soignant', 'auxiliaire', 'photographe', 'vidéaste', 'graphiste', 'designer', 'développeur', 'programmeur', 'webmaster', 'informaticien', 'technicien', 'réparateur', 'dépanneur', 'installateur', 'monteur', 'agent', 'nettoyage', 'entretien', 'ménage', 'repassage', 'cuisinier', 'traiteur', 'pâtissier', 'boulanger', 'serveur', 'barman', 'chauffeur', 'livreur', 'coursier', 'déménageur', 'manutentionnaire', 'gardien', 'vigile', 'agent de sécurité', 'coach', 'formateur', 'professeur', 'enseignant', 'répétiteur', 'tuteur', 'traducteur', 'interprète', 'rédacteur', 'correcteur', 'secrétaire', 'assistant', 'comptable', 'auditeur', 'consultant', 'conseiller', 'expert', 'avocat', 'juriste', 'notaire', 'huissier', 'vétérinaire', 'dresseur', 'toiletteur', 'DJ', 'musicien', 'animateur', 'présentateur', 'artiste', 'comédien', 'danseur', 'maquilleur', 'styliste', 'couturier', 'tailleur', 'cordonnier', 'sellier', 'bijoutier', 'horloger', 'opticien', 'prothésiste', 'dentiste', 'orthodontiste', 'pédicure', 'podologue', 'sophrologue', 'psychologue', 'psychiatre', 'nutritionniste', 'diététicien', 'coach sportif', 'personal trainer', 'yoga', 'pilates', 'danse', 'sport', 'guide', 'accompagnateur', 'moniteur', 'instructeur', 'analyste', 'data scientist', 'statisticien', 'économiste', 'chercheur', 'scientifique', 'laborantin', 'pharmacien', 'préparateur', 'radiologiste', 'échographiste', 'technicien médical', 'ambulancier', 'secouriste', 'pompier', 'agent immobilier', 'promoteur', 'syndic', 'gestionnaire', 'administrateur', 'directeur', 'manager', 'chef de projet', 'coordinateur', 'superviseur', 'contrôleur', 'inspecteur', 'évaluateur', 'expert-comptable', 'fiscaliste', 'commissaire aux comptes', 'assureur', 'courtier', 'agent général', 'banquier', 'conseiller financier', 'trader', 'cambiste', 'caissier', 'guichetier', 'vendeur', 'commercial', 'télévendeur', 'VRP', 'représentant', 'agent commercial', 'négociateur', 'acheteur', 'approvisionneur', 'logisticien', 'magasinier', 'gestionnaire de stock', 'préparateur de commandes', 'cariste', 'grutier', 'conducteur', 'opérateur', 'machiniste', 'usineur', 'tourneur', 'fraiseur', 'ajusteur', 'monteur', 'assembleur', 'câbleur', 'électronicien', 'automaticien', 'roboticien', 'vulcanisateur', 'climaticien', 'frigoriste', 'chauffagiste', 'zingueur'] },
+    { value: 'ingenieur_archi', label: 'Ingénieur / Architecte', icon: '📐', color: '#0891B2', description: 'Bureau d\'études, plans, conception, suivi chantier, permis de construire', keywords: ['architecte', 'ingénieur', 'ingénieur bâtiment', 'ingénieur génie civil', 'bureau d\'études', 'bureau étude', 'BET', 'plan architecte', 'plan maison', 'plan architecture', 'conception architecturale', 'étude architecturale', 'permis de construire', 'dossier permis', 'déclaration préalable', 'étude technique', 'étude de sol', 'étude géotechnique', 'calcul structure', 'calcul béton', 'note de calcul', 'dimensionnement', 'maîtrise d\'œuvre', 'maître d\'œuvre', 'MOE', 'suivi de chantier', 'supervision travaux', 'coordination chantier', 'réception chantier', 'métrés', 'quantitatifs', 'avant-projet', 'APD', 'APS', 'plans d\'exécution', 'plans techniques', 'géomètre', 'topographe', 'levé topographique', 'bornage', 'implantation', 'urbanisme', 'étude urbanisme', 'PLU', 'rénovation énergétique', 'audit énergétique', 'thermique', 'RT2012', 'conception 3D', 'modélisation 3D', 'maquette 3D', 'dessinateur', 'projeteur', 'architecte d\'intérieur', 'aménagement intérieur', 'décoration architecturale'] },
+    1172 | { value: 'macon', label: 'Maçon', icon: '🧱', color: '#78716C', description: 'Maçonnerie, béton, construction, fondations, murs, dalles', keywords: ['maçon', 'maçonnerie', 'service maçonnerie', 'construction', 'bâtiment', 'fondation', 'dalle', 'mur', 'béton', 'ciment', 'parpaing', 'brique', 'agglo', 'coffrage', 'ferraillage', 'coulage béton', 'gros œuvre', 'soubassement', 'chaînage', 'linteau', 'poteau', 'poutre', 'plancher', 'chape', 'enduit', 'crépi', 'mortier', 'jointoiement', 'maçon urgence', 'dépanneur maçonnerie', 'réparation fissure', 'reprise sous-œuvre', 'rénovation mur', 'extension maison', 'surélévation', 'agrandissement', 'maçon qualifié', 'entreprise maçonnerie', 'travaux maçonnerie', 'devis maçonnerie', 'maçonnerie générale', 'maçonnerie traditionnelle', 'maçonnerie moderne'] },
+    { value: 'plombier', label: 'Plombier', icon: '🔧', color: '#00BCD4', description: 'Services de plomberie : installation, réparation, dépannage urgence', keywords: ['plombier', 'plomberie', 'service plomberie', 'dépannage plomberie', 'urgence plomberie', 'installation plomberie', 'réparation plomberie', 'fuite eau', 'fuite', 'débouchage', 'déboucher', 'canalisation', 'tuyau', 'robinet', 'chauffe-eau', 'ballon eau chaude', 'chaudière', 'WC bouché', 'toilette bouchée', 'évier bouché', 'douche bouchée', 'lavabo', 'évier', 'salle de bain', 'sanitaire installation', 'raccordement eau', 'vidange', 'évacuation', 'siphon', 'mitigeur', 'installation sanitaire', 'rénovation salle de bain', 'plombier urgence', 'dépanneur plomberie', 'plombier 24h', 'intervention rapide', 'détection fuite', 'recherche fuite'] },
+    { value: 'electricien', label: 'Électricien', icon: '⚡', color: '#FFC107', description: 'Services électricité : installation, dépannage, mise aux normes, urgence', keywords: ['électricien', 'électricité service', 'service électricité', 'dépannage électricité', 'urgence électricité', 'installation électrique', 'réparation électrique', 'panne électricité', 'panne courant', 'court-circuit', 'disjoncteur saute', 'tableau électrique', 'câblage maison', 'mise aux normes', 'norme électrique', 'raccordement électrique', 'branchement électrique', 'électricité bâtiment', 'installation lampe', 'lustre', 'plafonnier', 'éclairage maison', 'prise électrique installation', 'interrupteur installation', 'électricien urgence', 'dépanneur électricité', 'électricien 24h', 'intervention rapide électricité', 'diagnostic électrique', 'recherche panne', 'rénovation électrique', 'travaux électricité'] },
+    { value: 'electricien_auto', label: 'Électricien Automobile', icon: '🔋', color: '#FF6B35', description: 'Électricité auto : diagnostic, réparation, installation équipements électroniques', keywords: ['électricien auto', 'électricité automobile', 'électricité voiture', 'électricité moto', 'électronique auto', 'diagnostic électronique', 'réparation électronique voiture', 'batterie auto', 'alternateur', 'démarreur', 'faisceau électrique', 'câblage auto', 'phare voiture', 'feu arrière', 'clignotant', 'klaxon', 'essuie-glace moteur', 'lève-vitre électrique', 'centralisation', 'autoradio installation', 'alarme voiture', 'GPS voiture', 'caméra recul installation', 'capteur parking', 'OBD diagnostic', 'valise diagnostic', 'calculateur moteur', 'boîtier électronique', 'panne électrique voiture', 'court-circuit auto', 'problème batterie', 'alternateur défaillant', 'voyant moteur', 'diagnostic panne électrique', 'réparation faisceau', 'installation équipement électronique'] },
+    { value: 'quincaillerie', label: 'Quincaillerie & Accessoires Construction', icon: '🔨', color: '#F59E0B', description: 'Outils, matériaux construction, visserie, peinture, accessoires électriques, accessoires plomberie', keywords: ['quincaillerie', 'outil', 'marteau', 'tournevis', 'clé', 'pince', 'scie', 'vis', 'boulon', 'écrou', 'cheville', 'serrure', 'cadenas', 'verrou', 'charnière', 'matériaux', 'ciment', 'sable', 'gravier', 'brique', 'parpaing', 'fer', 'acier', 'béton', 'mortier', 'chaux', 'plâtre', 'peinture', 'vernis', 'colle', 'mastic', 'silicone', 'joint', 'colle carrelage', 'joint carrelage', 'croisillon', 'peigne colle', 'domino électrique', 'wago', 'gaine', 'douille', 'rallonge', 'multiprise', 'téflon', 'pâte joint', 'raccord', 'coude', 'flexible', 'collier', 'siphon', 'ruban isolant'] },
+    { value: 'carrelage', label: 'Carrelage & Revêtements de Sol', icon: '🏗️', color: '#78716C', description: 'Carrelage sol, mural, faïence, mosaïque, grès cérame, marbre', keywords: ['carrelage', 'carreau', 'carreaux', 'faïence', 'faience', 'mosaïque', 'mosaique', 'revêtement sol', 'revetement sol', 'revêtement mural', 'dalle', 'dalles', 'pavé', 'paves', 'grès', 'grès cérame', 'gres cerame', 'céramique', 'ceramique', 'porcelaine', 'marbre', 'granit', 'granite', 'pierre naturelle', 'pierre', 'travertin', 'ardoise', 'terre cuite', 'tomette', 'zellige', 'carrelage piscine', 'carrelage extérieur', 'carrelage exterieur', 'carrelage terrasse', 'carrelage salle de bain', 'carrelage cuisine', 'carrelage intérieur', 'carrelage interieur', 'carrelage commercial', 'carrelage résidentiel', 'residentiel', 'brillant', 'mat', 'antidérapant', 'antiderapant', 'anti-glisse', 'glissant', '10x10', '15x15', '20x20', '25x25', '30x30', '40x40', '45x45', '60x60', '80x80', '120x60', 'grand format', 'petit format', 'dimensions', 'format', 'finition', 'poli', 'satiné', 'satine', 'structuré', 'structure', 'lappato', 'adouci', 'effet bois', 'imitation bois', 'effet pierre', 'imitation pierre', 'effet marbre', 'imitation marbre', 'effet béton', 'beton', 'imitation', 'uni', 'marbré', 'veiné', 'veine', 'motif', 'géométrique', 'geometrique', 'hexagonal', 'métro', 'décor', 'decor', 'durable', 'résistant', 'resistant', 'qualité', 'qualite', 'premium', 'luxe', 'haut de gamme', 'économique', 'economique', 'neuf', 'stock', 'disponible', 'promotion', 'destockage', 'déstockage', 'import', 'importation', 'espagne', 'espagnol', 'italie', 'italien', 'portugal', 'portugais', 'turquie', 'turc', 'chine', 'chinois', 'inde', 'indien', 'egypte', 'égypte', 'egyptien', 'maroc', 'marocain', 'tunisie', 'tunisien', 'afrique du sud', 'sud-africain'] },
     { value: 'telephone', label: 'Téléphones et Accessoires', icon: '📱', color: '#FF9800', description: 'Smartphones, accessoires, coques, écouteurs', keywords: ['téléphone', 'smartphone', 'mobile', 'portable', 'cellulaire', 'iPhone', 'Samsung', 'Huawei', 'Xiaomi', 'Oppo', 'Tecno', 'Infinix', 'Nokia', 'Galaxy', 'Android', 'iOS', 'écran', 'tactile', 'appareil photo', 'caméra', 'double SIM', '4G', '5G', 'Wi-Fi', 'Bluetooth', 'stockage', '64GB', '128GB', '256GB', 'RAM', 'batterie', 'chargeur', 'coque', 'écouteurs', 'neuf', 'occasion', 'débloqué'] },
     { value: 'ticket_voyage', label: 'Tickets et Billets de Transport', icon: '🎫', color: '#8B5CF6', description: 'Bus, train, avion avec sélection de place', keywords: ['ticket', 'billet', 'voyage', 'transport', 'bus', 'car', 'autobus', 'train', 'avion', 'vol', 'bateau', 'ferry', 'départ', 'arrivée', 'destination', 'trajet', 'place', 'siège', 'réservation', 'aller simple', 'aller-retour', 'économique', 'affaires', 'première classe', 'VIP', 'escale', 'direct', 'compagnie', 'horaire'] },
     { value: 'ustensiles_cuisine', label: 'Ustensiles de Cuisine', icon: '🍴', color: '#FF5722', description: 'Casseroles, poêles, couteaux, mixers, batterie cuisine', keywords: ['ustensile', 'cuisine', 'casserole', 'poêle', 'faitout', 'marmite', 'cocotte', 'wok', 'couteau', 'planche à découper', 'râpe', 'fouet', 'louche', 'spatule', 'cuillère', 'mixer', 'mixeur', 'blender', 'robot cuisine', 'balance', 'batterie cuisine', 'inox', 'aluminium', 'téflon', 'anti-adhésif', 'set'] },
@@ -894,7 +1402,8 @@ const PRODUCT_TYPES = [
     { value: 'restauration', label: 'Restauration & Traiteur', icon: '🍽️', color: '#F97316', description: 'Restaurants, cafés, bars, traiteurs, food trucks', keywords: ['restaurant', 'resto', 'café', 'bar', 'traiteur', 'food truck', 'cuisine', 'menu', 'plat', 'repas', 'déjeuner', 'dîner', 'petit-déjeuner', 'brunch', 'buffet', 'chef', 'cuisinier', 'gastronomie', 'mets', 'service', 'réservation', 'table', 'terrasse', 'livraison', 'à emporter', 'fast-food', 'snack', 'brasserie', 'bistrot', 'pizzeria', 'boulangerie', 'pâtisserie'] },
     { value: 'electronique', label: 'Électronique & High-Tech', icon: '⚡', color: '#00BCD4', description: 'Appareils électroniques, gadgets, accessoires tech', keywords: ['électronique', 'high-tech', 'technologie', 'gadget', 'appareil', 'accessoire', 'tech', 'numérique', 'digital', 'connecté', 'smart', 'intelligent', 'console', 'PlayStation', 'Xbox', 'Nintendo', 'drone', 'caméra', 'GoPro', 'stabilisateur', 'microphone', 'audio', 'vidéo', 'streaming', 'gaming', 'esport'] },
     { value: 'musique_instruments', label: 'Musique & Instruments', icon: '🎸', color: '#9C27B0', description: 'Instruments de musique, équipements audio, accessoires', keywords: ['musique', 'instrument', 'musical', 'guitare', 'piano', 'clavier', 'synthétiseur', 'batterie', 'percussion', 'saxophone', 'trompette', 'violon', 'flûte', 'harmonica', 'accordéon', 'djembé', 'tam-tam', 'balafon', 'kora', 'ampli', 'amplificateur', 'enceinte', 'micro', 'table de mixage', 'sono', 'sonorisation', 'studio', 'enregistrement'] },
-    { value: 'formation_education', label: 'Formation & Éducation', icon: '🎓', color: '#7C3AED', description: 'Cours, formations, coaching, enseignement', keywords: ['formation', 'éducation', 'cours', 'leçon', 'enseignement', 'apprentissage', 'école', 'académie', 'institut', 'centre de formation', 'coaching', 'tutorat', 'soutien scolaire', 'répétition', 'professeur', 'enseignant', 'formateur', 'instructeur', 'mentor', 'coach', 'certification', 'diplôme', 'stage', 'atelier', 'séminaire', 'workshop', 'webinaire', 'e-learning', 'en ligne', 'langue', 'informatique', 'bureautique', 'management'] },
+    { value: 'soutien_scolaire_repetiteur', label: 'Soutien Scolaire / Répétiteur', icon: '📚', color: '#10B981', description: 'Cours particuliers primaire/secondaire, aide aux devoirs, répétiteur', keywords: ['soutien scolaire', 'répétiteur', 'cours particuliers', 'aide devoirs', 'rattrapage scolaire', 'révisions', 'professeur particulier', 'enseignant', 'prof à domicile', 'cours à domicile', 'maths', 'français', 'anglais', 'physique', 'primaire', 'collège', 'lycée', 'CP', 'CE1', 'CE2', 'CM1', 'CM2', '6ème', '5ème', '4ème', '3ème', 'seconde', 'première', 'terminale', 'BEPC', 'probatoire', 'baccalauréat', 'bac'] },
+    { value: 'formation_education', label: 'Formation & Éducation', icon: '🎓', color: '#7C3AED', description: 'Formation professionnelle, préparation concours, certifications', keywords: ['formation', 'éducation', 'formation professionnelle', 'certification', 'diplôme', 'stage', 'atelier', 'séminaire', 'workshop', 'préparation concours', 'polytechnique', 'ENAM', 'ENS', 'grandes écoles', 'concours', 'webinaire', 'e-learning', 'en ligne', 'langue', 'informatique', 'bureautique', 'management', 'formateur', 'coach', 'mentor'] },
     { value: 'evenementiel', label: 'Événementiel & Organisation', icon: '🎉', color: '#EC4899', description: 'Organisation d\'événements, mariages, fêtes, célébrations', keywords: ['événement', 'évènement', 'organisation', 'mariage', 'fête', 'anniversaire', 'baptême', 'communion', 'célébration', 'cérémonie', 'réception', 'soirée', 'gala', 'conférence', 'séminaire', 'salon', 'exposition', 'concert', 'spectacle', 'animation', 'DJ', 'sono', 'décoration', 'traiteur', 'location', 'salle', 'tente', 'chapiteau', 'wedding planner', 'organisateur'] },
     { value: 'agriculture', label: 'Agriculture & Élevage', icon: '🌱', color: '#10B981', description: 'Produits agricoles, élevage, matériel agricole', keywords: ['agriculture', 'agricole', 'ferme', 'exploitation', 'élevage', 'culture', 'plantation', 'récolte', 'moisson', 'semence', 'graine', 'engrais', 'pesticide', 'herbicide', 'tracteur', 'charrue', 'moissonneuse', 'batteuse', 'irrigation', 'arrosage', 'serre', 'pépinière', 'maraîchage', 'légume', 'fruit', 'céréale', 'maïs', 'riz', 'mil', 'sorgho', 'manioc', 'bétail', 'vache', 'bœuf', 'mouton', 'chèvre', 'porc', 'volaille', 'poulet', 'canard', 'lapin'] },
     { value: 'sport_fitness', label: 'Sport & Fitness', icon: '💪', color: '#EF4444', description: 'Salles de sport, coaching, équipements sportifs', keywords: ['sport', 'fitness', 'gym', 'salle de sport', 'musculation', 'cardio', 'crossfit', 'yoga', 'pilates', 'zumba', 'danse', 'aerobic', 'spinning', 'cycling', 'running', 'course', 'jogging', 'marathon', 'natation', 'piscine', 'aquagym', 'tennis', 'foot', 'football', 'basketball', 'volleyball', 'handball', 'rugby', 'boxe', 'MMA', 'arts martiaux', 'karaté', 'judo', 'taekwondo', 'coach sportif', 'personal trainer', 'entraîneur', 'préparateur physique', 'nutrition', 'diététique'] },
@@ -902,10 +1411,12 @@ const PRODUCT_TYPES = [
     { value: 'nettoyage_entretien', label: 'Nettoyage & Entretien', icon: '🧹', color: '#6B7280', description: 'Services de nettoyage, ménage, entretien', keywords: ['nettoyage', 'ménage', 'entretien', 'propreté', 'nettoyeur', 'femme de ménage', 'homme de ménage', 'agent d\'entretien', 'société de nettoyage', 'lavage', 'dépoussiérage', 'aspirateur', 'balai', 'serpillière', 'désinfection', 'décontamination', 'vitre', 'carrelage', 'moquette', 'tapis', 'canapé', 'bureaux', 'locaux', 'immeuble', 'copropriété', 'commercial', 'industriel', 'après chantier', 'fin de chantier'] },
     { value: 'jardinage_paysagisme', label: 'Jardinage & Paysagisme', icon: '🌳', color: '#059669', description: 'Entretien jardins, création espaces verts, paysagiste', keywords: ['jardinage', 'jardin', 'paysagisme', 'paysagiste', 'espaces verts', 'entretien', 'création', 'aménagement', 'plantation', 'arbre', 'arbuste', 'fleur', 'plante', 'pelouse', 'gazon', 'tonte', 'taille', 'élagage', 'débroussaillage', 'arrosage', 'irrigation', 'clôture', 'haie', 'allée', 'terrasse', 'pergola', 'potager', 'verger', 'compost', 'engrais', 'tondeuse', 'taille-haie', 'tronçonneuse'] },
     { value: 'securite_surveillance', label: 'Sécurité & Surveillance', icon: '🛡️', color: '#DC2626', description: 'Agents de sécurité, gardiennage, vidéosurveillance', keywords: ['sécurité', 'surveillance', 'gardiennage', 'agent de sécurité', 'vigile', 'garde', 'protection', 'sûreté', 'ronde', 'patrouille', 'contrôle', 'accès', 'badge', 'portique', 'caméra', 'vidéosurveillance', 'CCTV', 'alarme', 'détecteur', 'sirène', 'télésurveillance', 'centrale', 'digicode', 'interphone', 'portail', 'barrière', 'gardien', 'concierge', 'veilleur', 'nuit', 'événement', 'magasin', 'entreprise', 'chantier'] },
-    { value: 'plomberie', label: 'Plomberie & Sanitaire', icon: '🚰', color: '#00BCD4', description: 'Installation, réparation, dépannage plomberie', keywords: ['plomberie', 'plombier', 'sanitaire', 'eau', 'canalisation', 'tuyauterie', 'robinetterie', 'robinet', 'fuite', 'débouchage', 'dégorgement', 'évier', 'lavabo', 'douche', 'baignoire', 'WC', 'toilette', 'chauffe-eau', 'ballon', 'cumulus', 'chaudière', 'installation', 'réparation', 'dépannage', 'urgence', 'tuyau', 'PVC', 'cuivre', 'joint', 'siphon', 'vidange', 'évacuation', 'raccord'] },
+    { value: 'plomberie_sanitaire', label: 'Plomberie & Sanitaire', icon: '🚰', color: '#00BCD4', description: 'Vente de matériel plomberie et sanitaire', keywords: ['plomberie', 'sanitaire', 'matériel', 'robinet', 'robinetterie', 'lavabo', 'évier', 'WC', 'toilette', 'douche', 'baignoire', 'chauffe-eau', 'tuyauterie', 'canalisation', 'raccord', 'joint', 'siphon', 'vidange', 'évacuation', 'cuivre', 'PVC', 'inox', 'chrome', 'céramique', 'porcelaine', 'grohe', 'geberit', 'roca', 'hansgrohe', 'duravit', 'installation', 'garantie', 'neuf', 'occasion'] },
     { value: 'menuiserie', label: 'Menuiserie & Ébénisterie', icon: '🪵', color: '#F97316', description: 'Fabrication, pose, réparation bois et meubles', keywords: ['menuiserie', 'menuisier', 'ébénisterie', 'ébéniste', 'bois', 'boiserie', 'charpente', 'charpentier', 'parquet', 'plancher', 'lambris', 'porte', 'fenêtre', 'volet', 'portail', 'portillon', 'clôture', 'pergola', 'terrasse', 'deck', 'escalier', 'garde-corps', 'rambarde', 'placard', 'dressing', 'bibliothèque', 'meuble', 'sur mesure', 'fabrication', 'pose', 'installation', 'réparation', 'restauration', 'rénovation', 'agencement', 'aménagement'] },
+    { value: 'reparateur_frigo', label: 'Frigoriste / Réparateur Frigo', icon: '❄️', color: '#06B6D4', description: 'Réparation frigos, congélateurs, dépannage urgence, recharge gaz, toutes marques', keywords: ['frigoriste', 'réparateur', 'dépanneur', 'frigo', 'réfrigérateur', 'congélateur', 'dépannage', 'réparation', 'panne', 'fuite', 'gaz', 'recharge', 'compresseur', 'thermostat', 'Samsung', 'LG', 'Hisense', 'Haier', 'Bosch', 'Whirlpool', 'Beko', 'TCL', 'Midea', 'urgence', 'intervention', 'technicien', 'froid', 'climatisation', 'No Frost', 'Inverter', 'service', 'diagnostic', 'réparation circuit', 'gaz réfrigérant', 'R134a', 'R600a', 'entretien', 'maintenance', 'installation', 'domicile', '24h/24'] },
+    { value: 'reparateur_climatiseur', label: 'Réparateur Climatiseur / AC', icon: '❄️', color: '#0EA5E9', description: 'Réparation, installation, maintenance climatiseurs, dépannage urgence 24h/24, toutes marques', keywords: ['climatiseur', 'climatisation', 'clim', 'AC', 'air conditionné', 'réparateur', 'dépanneur', 'frigoriste', 'technicien', 'dépannage', 'réparation', 'installation', 'maintenance', 'entretien', 'nettoyage', 'recharge gaz', 'R22', 'R410A', 'R32', 'fuite', 'panne', 'compresseur', 'ventilateur', 'filtre', 'drainage', 'condensats', 'split', 'window', 'cassette', 'inverter', 'Midea', 'Gree', 'Haier', 'Hisense', 'LG', 'Samsung', 'Daikin', 'Mitsubishi', 'urgence', '24h/24', 'diagnostic', 'devis gratuit', 'intervention', 'domicile', 'bureau', 'froid', 'BTU'] },
+    { value: 'reparateur_electronique', label: 'Réparateur Électronique (TV/Radio)', icon: '📺', color: '#9C27B0', description: 'Réparation TV, radio, home cinéma, décodeur satellite, vidéoprojecteur, toutes marques', keywords: ['réparateur', 'dépanneur', 'technicien', 'électronique', 'TV', 'télévision', 'téléviseur', 'écran', 'réparation TV', 'dépannage TV', 'panne TV', 'TV cassée', 'Samsung TV', 'LG TV', 'Hisense TV', 'TCL TV', 'Sony TV', 'Nasco', 'Bruhm', 'Polystar', 'QLED', 'OLED', 'LED', 'Smart TV', '4K', 'dalle', 'écran noir', 'lignes', 'pixels', 'rétro-éclairage', 'carte mère', 'alimentation', 'HDMI', 'radio', 'poste radio', 'transistor', 'home cinéma', 'barre de son', 'enceinte', 'amplificateur', 'audio', 'son', 'vidéo', 'décodeur', 'satellite', 'CANAL+', 'TNT', 'parabole', 'antenne', 'vidéoprojecteur', 'projecteur', 'DVD', 'lecteur', 'diagnostic', 'intervention', 'domicile', 'urgence', 'service', 'installation', 'configuration', 'Smart TV'] },
     { value: 'animaux_veterinaire', label: 'Animaux & Vétérinaire', icon: '🐾', color: '#FF69B4', description: 'Vétérinaires, toilettage, dressage, accessoires animaux', keywords: ['animal', 'animaux', 'vétérinaire', 'véto', 'clinique vétérinaire', 'soin', 'consultation', 'vaccination', 'stérilisation', 'castration', 'vermifuge', 'antiparasitaire', 'urgence', 'chirurgie', 'toilettage', 'toiletteur', 'coupe', 'lavage', 'brushing', 'chien', 'chat', 'chiot', 'chaton', 'oiseau', 'lapin', 'rongeur', 'reptile', 'dressage', 'éducation', 'comportementaliste', 'pension', 'garde', 'promenade', 'dog sitter', 'accessoire', 'collier', 'laisse', 'gamelle', 'cage', 'niche', 'litière', 'jouet', 'nourriture', 'croquette', 'pâtée'] },
-    { value: 'autre', label: 'Autres Produits', icon: '📦', color: '#6B7280', description: 'Autres types de produits et services', keywords: ['autre', 'divers', 'varié', 'mixte', 'général', 'non classé', 'produit', 'service', 'article', 'objet'] },
 ] as const;
 
 // Modèles Excel pour chaque type de produit
@@ -1016,11 +1527,12 @@ Plaquettes de frein Bosch,18000,XAF,Plaquettes avant céramique,Freins,Bosch,098
 Filtre à huile Mann,2500,XAF,Filtre huile moteur haute filtration,Filtres,Mann-Filter,HU 819 x,BMW Série 3,Neuf
 Amortisseur avant Bilstein,125,EUR,Amortisseur gaz haute performance,Suspension,Bilstein,B4,Audi A4,Neuf`,
 
-    pieces_industrielles: `Nom,Prix,Devise,Description,Type,Marque,Référence,Application,Matériel
-Roulement SKF 6205,8500,XAF,Roulement à billes étanche haute vitesse,Roulement,SKF,6205-2RS,Machines outils|Pompes,Acier
-Courroie trapézoïdale,4500,XAF,Courroie transmission résistante chaleur,Courroie,Gates,XPZ1120,Compresseurs|Ventilateurs,Caoutchouc
-Moteur électrique 5.5kW,285000,XAF,Moteur asynchrone triphasé rendement,Moteur,ABB,M2QA 132M,Machines diverses,Fonte/Cuivre
-Pompe centrifuge,95,USD,Pompe eau centrifuge débit 50m³/h,Pompe,Grundfos,CR 5-11,Irrigation|Industrie,Fonte/Inox`,
+    pieces_industrielles: `Nom,Prix,Devise,Description,Type,Marque,Référence,Application,Matériau,État,Garantie,Norme
+Roulement SKF 6205,8500,XAF,Roulement à billes étanche haute vitesse,Roulement à billes,SKF,6205-2RS,Machines-outils,Acier,Neuf d'origine (OEM),2 ans,ISO 9001
+Courroie trapézoïdale Gates,4500,XAF,Courroie transmission résistante chaleur,Courroie trapézoïdale,Gates,XPZ1120,Compresseur d'air,Caoutchouc synthétique (NBR),Neuf équivalent,1 an,CE
+Moteur électrique ABB 5.5kW,285000,XAF,Moteur asynchrone triphasé rendement,Moteur électrique triphasé,ABB,M2QA 132M,Machines-outils,Fonte/Cuivre,Neuf d'origine (OEM),3 ans et plus,CE
+Pompe centrifuge Grundfos,95000,XAF,Pompe eau centrifuge débit 50m³/h,Pompe centrifuge,Grundfos,CR 5-11,Irrigation,Acier inoxydable (Inox 304),Neuf d'origine (OEM),2 ans,ISO 9001
+Vérin hydraulique Parker,185000,XAF,Vérin hydraulique double effet,Vérin hydraulique,Parker,25333P,Garage et mécanique,Inox 316,Occasion - Révisé,6 mois,DIN`,
 
     agroalimentaire: `Nom,Prix,Devise,Description,Type,Marque,Format,Origine,Certification,Conservation
 Riz parfumé Royal 5kg,6500,XAF,Riz parfumé thaï long grain qualité premium,Riz et céréales,Uncle Ben's,5kg,Thaïlande,Sans OGM,Température ambiante
@@ -1060,9 +1572,9 @@ Exemple Coiffure Domicile,15000,XAF,Coiffure professionnelle à domicile hommes 
 Exemple Cours Informatique,25000,XAF,Formation bureautique Word Excel PowerPoint débutants,Éducation,Formation,4 heures,Tout le Cameroun,8,Oui,Non,Ce mois
 Exemple Réparation Climatisation,40000,XAF,Réparation et maintenance climatisation toutes marques,Mécanique,Réparation,Sur devis,Yaoundé,15,Oui,Oui,Immédiate`,
 
-    pharmacie: `Nom,Prix,Devise,Description,Type,Heures ouverture,Heures fermeture,Jours de garde,Téléphone urgence,Services
-Exemple Pharmacie garde,0,XAF,Exemple de pharmacie de garde 24h/24,Permanence nuit,00:00,23:59,Tous les jours,+237 6XX XX XX XX,Garde|Délivrance|Conseil
-Exemple Pharmacie normale,0,XAF,Exemple de pharmacie de proximité,Normale,08:00,20:00,Lun, Mar, Mer, Jeu, Ven, Sam,+237 6XX XX XX XX,Délivrance|Conseil`,
+    pharmacie: `Nom,Prix,Devise,Description,Type,Heures ouverture,Heures fermeture,Jours ouverture,Téléphone urgence,Services
+Exemple Pharmacie garde,0,XAF,Pharmacie de garde avec service 24h/24 et tests rapides,Pharmacie de garde (nuit),20:00,08:00,Lundi|Mardi|Mercredi|Jeudi|Vendredi|Samedi|Dimanche,+237 699 XX XX XX,Garde de nuit (20h-8h)|Délivrance urgente|Test de glycémie rapide|Paiement Mobile Money
+Exemple Pharmacie normale,0,XAF,Pharmacie de quartier avec livraison à domicile,Pharmacie normale,08:00,20:00,Lundi|Mardi|Mercredi|Jeudi|Vendredi|Samedi,+237 677 XX XX XX,Vente de médicaments sur ordonnance|Conseil pharmaceutique gratuit|Livraison à domicile|Paiement Orange Money`,
 
     hopital_clinique: `Nom,Prix,Devise,Description,Type,Banque de sang,Prestations médicales,Planning,Urgences 24h/24,RDV en ligne
 Exemple Hôpital,0,XAF,Exemple d'établissement avec urgences et banque de sang,Hôpital,Oui,Chirurgie|Consultation générale|Radiologie,Lun-Ven 08:00-18:00,Oui,Non
@@ -1073,16 +1585,25 @@ Exemple Labo Analyses,0,XAF,Exemple de laboratoire d'analyses médicales,Laborat
 Exemple Centre Imagerie,0,XAF,Exemple de centre d'imagerie médicale,Centre d'imagerie médicale,Scanner|IRM|Radiographie|Échographie,Lun-Ven 08:00-18:00,Non,Oui,Oui
 Exemple Centre Mixte,0,XAF,Exemple de centre mixte analyses et imagerie,Laboratoire & Imagerie (Mixte),Hématologie|Biochimie|Scanner|IRM,Lun-Dim 24h/24,Oui,Oui,Oui`,
 
-    demenagement: `Nom,Prix,Devise,Description,Type,Volume,Type véhicule,Distance,Services,Nb déménageurs,Assurance,Montage,Cartons,Date début
-Exemple Déménagement Express,50000,XAF,Déménagement local rapide avec équipe professionnelle,Déménagement local,F2 (20-30m³),Camionnette 20m³,10-50 km,Emballage|Transport|Déballage,3,Oui,Oui,Oui,15/11/2025
-Exemple Trans-Afrique Déménagement,150000,XAF,Déménagement international avec assurance tous risques,Déménagement international,F4 (40-50m³),Camion 40m³,Plus de 300 km,Emballage|Transport|Déballage|Montage meubles|Assurance,5,Oui,Oui,Oui,20/11/2025
-Exemple Garde-Meubles Sécurisé,25000,XAF,Service garde-meubles avec accès 24/7 sécurisé,Garde-meubles,F3 (30-40m³),Camion 30m³,Moins de 10 km,Transport|Assurance,2,Oui,Non,Non,01/11/2025`,
+    demenagement: `Nom,Prix,Devise,Description,Type,Volume,Type véhicule,Distance,Services,Nb déménageurs,Trajet,Ville départ,Ville arrivée,Compagnie,Durée,Disponibilité,Type assurance,Accessibilité
+Déménagement Express Douala,45000,XAF,Déménagement local rapide avec équipe pro,Déménagement local (même ville),F2/2 pièces (20-30m³),Camionnette 15m³,Ville proche (5-20 km),Emballage professionnel|Transport sécurisé|Déballage et installation,2 déménageurs,,Douala,Douala,Pro Déménagement,2-4 heures,Immédiat (24-48h),Assurance de base (responsabilité civile),1er étage sans ascenseur
+Déménagement Douala-Yaoundé,180000,XAF,Trajet national populaire avec équipe expérimentée,Déménagement national,F3/3 pièces (30-40m³),Camion 30m³,Longue distance (150-500 km),Emballage professionnel|Transport sécurisé|Déballage et installation|Montage meubles|Démontage meubles,4-5 déménageurs,Douala → Yaoundé (250 km),Douala,Yaoundé,Camtrans Déménagement,1 journée,Cette semaine,Assurance tous risques,Villa/Maison (étages)
+Déménagement Yaoundé-Bafoussam,220000,XAF,Service professionnel avec assurance complète,Déménagement national,F4/4 pièces (40-50m³),Camion 40m³,Longue distance (150-500 km),Emballage professionnel|Transport sécurisé|Déballage et installation|Montage meubles|Démontage meubles|Assurance tous risques|Cartons fournis,6+ déménageurs (grande équipe),Yaoundé → Bafoussam (290 km),Yaoundé,Bafoussam,Global Moving Cameroun,2-3 jours,Semaine prochaine,Assurance tous risques,Villa/Maison (étages)
+Express 24h Bafoussam,35000,XAF,Déménagement express en 24h chrono,Déménagement express (24h),Studio/Chambre simple (10-15m³),Camionnette 10m³ (petits trajets),Même quartier (moins de 5 km),Transport sécurisé|Cartons fournis,1 déménageur,,Bafoussam,Bafoussam,Express Déménagement Cameroun,Moins de 2h,Immédiat (24-48h),Sans assurance,Rez-de-chaussée
+Garde-Meubles Sécurisé Douala,30000,XAF,Stockage sécurisé 24/7 avec assurance,Garde-meubles sécurisé,F3/3 pièces (30-40m³),Camion 25m³,Même quartier (moins de 5 km),Transport sécurisé|Assurance tous risques,2 déménageurs,,Douala,Douala,Garde-Meubles Sécurisés Douala,2-4 heures,Flexible,Assurance objets de valeur,Avec ascenseur
+Déménagement Bureau Yaoundé,250000,XAF,Déménagement professionnel d'entreprise,Déménagement bureau/entreprise,Bureau moyen (30-40m³),Camion 40m³,Intercommunal (20-50 km),Emballage professionnel|Transport sécurisé|Déballage et installation|Montage meubles|Démontage meubles|Cartons fournis|Monte-meubles (grue),6+ déménageurs (grande équipe),,Yaoundé,Yaoundé,Move Masters Cameroun,1 journée,Cette semaine,Assurance tous risques,3e+ étage sans ascenseur
+Déménagement Douala-Kribi,85000,XAF,Trajet côtier avec équipe spécialisée,Déménagement national,F2/2 pièces (20-30m³),Camionnette 20m³,Régional (50-150 km),Emballage professionnel|Transport sécurisé|Déballage et installation|Cartons fournis,3 déménageurs,Douala → Kribi (150 km),Douala,Kribi,Africa Déménagement Services,4-6 heures,Flexible,Assurance de base (responsabilité civile),Villa/Maison (plain-pied)
+Déménageur Indépendant Garoua,25000,XAF,Service local économique et rapide,Déménagement local (même ville),F1/1 pièce (15-20m³),Camionnette 10m³ (petits trajets),Même quartier (moins de 5 km),Transport sécurisé|Portage étages,2 déménageurs,,Garoua,Garoua,Déménageur indépendant certifié,Moins de 2h,Immédiat (24-48h),Sans assurance,2e étage sans ascenseur`,
 
-    cosmetique_parfum: `Nom,Prix,Devise,Description,Type,Marque,Volume,Concentration,Peau,Âge,Ingrédients,Origine
-Crème Hydratante Nivea,15000,XAF,Crème hydratante pour peau normale,Soin visage,Nivea,50ml,24h,Toutes,18+,Vitamine E,France
-Parfum Chanel N°5,85000,XAF,Parfum féminin iconique aux notes florales,Parfum,Chanel,50ml,EDP,Femme,18+,Rose jasmin,France
-Huile d'Argan Bio,25000,XAF,Huile d'argan pure 100% bio pour cheveux et corps,Soin corps,Argania,100ml,100%,Toutes,16+,Argan pur,Maroc
-Rouge à Lèvres MAC,18000,XAF,Rouge à lèvres mat longue tenue,Maquillage,MAC,3g,Mat,Femme,16+,Cire d'abeille,Canada`,
+    cosmetique_parfum: `Nom,Prix,Devise,Description,Type,Marque,Genre,Volume,Unité,Concentration,TypePeau,TypeCheveux,Teinte,Finition,Ingrédients,Certifications,Origine
+Crème Hydratante Nivea,15000,XAF,Crème hydratante quotidienne pour peau normale,Crème visage,Nivea,Mixte/Unisexe,50,ml,Non applicable,Peau normale,,,,Vitamine E|Aloe Vera,Dermatologiquement testé,France
+Parfum Chanel N°5,85000,XAF,Parfum féminin iconique aux notes florales,Parfum,Chanel,Femme,50,ml,Eau de parfum (EDP) 15-20%,,,,,Rose jasmin,,France
+Huile d'Argan Bio,25000,XAF,Huile d'argan pure 100% bio pour cheveux et corps,Huile corporelle,Palmer's,Mixte/Unisexe,100,ml,100%,Tous types de peau,Tous types,,,Argan pur,Bio|Naturel,Maroc
+Rouge à Lèvres MAC,18000,XAF,Rouge à lèvres mat longue tenue,Rouge à lèvres,MAC,Femme,3,g,Non applicable,,,Rouge,Mat,Cire d'abeille|Vitamine E,Cruelty-free,Canada
+Fair & White Lait Corps,12000,XAF,Lait corporel éclaircissant à la vitamine C,Lait corporel,Fair & White,Mixte/Unisexe,500,ml,Non applicable,Peau noire/métissée,,,,Vitamine C|Glutathion,Dermatologiquement testé,France
+Fond de Teint L'Oréal,22000,XAF,Fond de teint longue tenue 24h,Fond de teint,L'Oréal,Femme,30,ml,Non applicable,Peau mixte,,Caramel,Mat,Acide hyaluronique,Non comédogène,France
+Shampoing Cantu Afro,8500,XAF,Shampoing sans sulfate pour cheveux crépus,Shampoing,Cantu,Mixte/Unisexe,400,ml,Non applicable,,Cheveux crépus,,,Beurre de karité|Huile de coco,Sans sulfates|Cruelty-free,États-Unis
+Déodorant Dove Roll-on,3500,XAF,Déodorant roll-on 48h protection,Déodorant roll-on,Dove,Femme,50,ml,Non applicable,Peau sensible,,,,Aloe Vera,Dermatologiquement testé,Royaume-Uni`,
 
     bijoux: `Nom,Prix,Devise,Description,Type,Matière,Poids,Carat,Taille,Style,Origine,Certificat
 Collier Or 18 carats,450000,XAF,Collier en or jaune 18 carats avec pendentif,Collier,Or,15g,18,16 pouces,Classique,Italie,Oui
@@ -1142,7 +1663,7 @@ Engrais NPK 20-10-10,35000,XAF,Engrais complet cultures céréales et maraîchè
 Tracteur 75CV occasion,8500000,XAF,Tracteur agricole bon état révision récente avec outils,Matériel agricole,Toutes cultures,Toutes saisons,Unité,Contrôle technique,Bafoussam
 Poulets de chair 1 mois,3500,XAF,Poulets vaccinés nourris grain qualité fermière,Élevage volaille,Volaille,Toutes saisons,Pièce,Contrôle vétérinaire,Dschang`,
 
-    sport_fitness: `Nom,Prix,Devise,Description,Type,Niveau,Durée,Équipements,Tarif,Horaires
+    sport_fitness: `Nom,Prix,Devise,Description,Type,Niveau,Durée,Service,Équipements,Objectif,Jours,Horaires
 Abonnement Salle Sport,25000,XAF,Accès illimité musculation cardio avec vestiaires,Abonnement salle,Tous niveaux,1 mois,Fournis et modernes,Standard,06:00-22:00
 Cours Yoga collectif,15000,XAF,Séances yoga débutant 2 fois par semaine avec prof certifié,Cours collectif,Débutant,1 mois,Tapis fourni,Économique,Mar-Jeu 18:00-19:30
 Coach Sportif Personnel,50000,XAF,Coaching personnalisé avec programme nutrition,Coaching individuel,Tous niveaux,1 mois,Fournis selon objectifs,Premium,Flexible sur RDV
@@ -1247,6 +1768,21 @@ Fenêtre Double Vitrage,150000,XAF,Fenêtre bois double vitrage isolation thermi
 Placard Sur Mesure,250000,XAF,Placard bois avec étagères penderie et tiroirs,Placard,Contreplaqué,Mélaminé chêne,Moderne,200x60x240cm,4 semaines
 Escalier Bois Massif,850000,XAF,Escalier sur mesure avec rampe et contre-marches,Escalier,Iroko,Vernie mate,Classique,Variable selon hauteur,6 semaines`,
 
+    reparateur_frigo: `Nom,Prix,Devise,Description,Marque,Modèle,Type appareil,Type service,Type panne,Gaz,Garantie,Délai,Zone,Disponibilité,Urgence
+Diagnostic Panne Frigo,5000,XAF,Diagnostic complet avec rapport détaillé toutes marques,Toutes marques,,Réfrigérateur simple porte,Diagnostic panne réfrigérateur,Frigo ne refroidit pas,,,Même jour,Douala - Akwa,Lundi-Samedi 8h-20h,Oui
+Recharge Gaz R134a,25000,XAF,Recharge gaz R134a avec test étanchéité circuit,Samsung,Samsung RT,Réfrigérateur double porte,Recharge gaz réfrigérant,Fuite de gaz réfrigérant,R134a,6 mois,Sous 24h,Douala - Bonabéri,Lundi-Vendredi 8h-18h,Oui
+Remplacement Compresseur,85000,XAF,Changement compresseur d'origine avec garantie pièce,LG,LG Door-in-Door,Réfrigérateur américain,Remplacement compresseur,Compresseur grillé,,2 ans,Selon disponibilité pièces,Yaoundé - Bastos,Urgence 24h/24 - 7j/7,Oui
+Réparation Thermostat,12000,XAF,Remplacement thermostat électronique réglage température,Hisense,Hisense REF-25,Réfrigérateur No Frost,Remplacement thermostat électronique,Thermostat ne fonctionne pas,,3 mois,Sous 48h,Douala - Makepe,Lundi-Samedi 8h-20h,Non
+Nettoyage Circuit Complet,18000,XAF,Nettoyage évaporateur condenseur avec désinfection,Toutes marques,,Congélateur coffre,Nettoyage complet frigo,Givre excessif dans congélateur,,1 mois,Rendez-vous sous 24h,Yaoundé - Melen,Lundi-Vendredi 8h-18h,Non`,
+
+    reparateur_electronique: `Nom,Prix,Devise,Description,Marque TV,Modèle TV,Type appareil,Type service,Type panne,Garantie,Délai,Zone,Disponibilité,Urgence
+Diagnostic Panne TV,6000,XAF,Diagnostic complet avec rapport détaillé toutes marques TV,Toutes marques TV,,Téléviseur LED,Diagnostic panne TV,TV ne s'allume pas,,Même jour,Douala - Akwa,Lundi-Samedi 8h-20h,Oui
+Réparation Écran Noir TV,15000,XAF,Réparation écran noir avec test rétro-éclairage et cartes,Samsung,Samsung Crystal UHD,Smart TV,Réparation écran noir,Écran noir (LED allumée),3 mois,Sous 24h,Douala - Bonabéri,Lundi-Vendredi 8h-18h,Oui
+Remplacement Dalle TV,75000,XAF,Changement dalle d'origine avec garantie pièce,LG,LG OLED,TV OLED 55 pouces,Remplacement dalle TV,Écran cassé,6 mois,Selon disponibilité pièces,Yaoundé - Bastos,Urgence 24h/24 - 7j/7,Oui
+Réparation Port HDMI,10000,XAF,Remplacement port HDMI défectueux micro-soudure,Hisense,Hisense VIDAA,Smart TV 43 pouces,Réparation port HDMI,Port HDMI ne fonctionne pas,3 mois,Sous 48h,Douala - Makepe,Lundi-Samedi 8h-20h,Non
+Installation Home Cinéma,25000,XAF,Installation complète home cinéma avec calibration son,Toutes marques,,Home cinéma,Installation home cinéma,,,Rendez-vous sous 24h,Yaoundé - Melen,Lundi-Vendredi 8h-18h,Non
+Configuration Smart TV,8000,XAF,Configuration Wi-Fi applications Netflix YouTube etc,TCL,TCL Android TV,Smart TV,Configuration Smart TV,Wi-Fi ne fonctionne pas,1 mois,Même jour,Douala - Bonanjo,Lundi-Samedi 8h-20h,Non`,
+
     animaux_veterinaire: `Nom,Prix,Devise,Description,Type animal,Race,Services vétérinaire,Tarif
 Consultation Vétérinaire,15000,XAF,Examen clinique complet avec conseil personnalisé,Chien|Chat,Toutes races,Consultation générale,Standard
 Vaccination Antirabique,8000,XAF,Vaccin antirabique avec carnet de santé,Chien,Toutes races,Vaccination,Standard
@@ -1254,11 +1790,11 @@ Toilettage Canin Complet,18000,XAF,Bain coupe brushing coupe griffes nettoyage o
 Garde Pension Animaux,5000,XAF,Pension journalière alimentation soins et promenade,Chien|Chat,Toutes races,Pension,Standard par jour
 Stérilisation Chat,25000,XAF,Opération stérilisation avec suivi post-opératoire,Chat,Toutes races,Chirurgie,Standard`,
 
-    electricite: `Nom,Prix,Devise,Description,Type,Puissance,Garantie,Certifications,Urgence
-Installation Tableau Électrique,150000,XAF,Pose tableau disjoncteurs différentiels aux normes,Installation,Monophasé 220V,2 ans,Conforme NF C15-100,Non
-Dépannage Électrique Urgent,25000,XAF,Intervention rapide panne électrique diagnostic gratuit,Dépannage,N/A,Non,N/A,Oui 24h/24
-Mise aux Normes Électriques,350000,XAF,Rénovation installation électrique complète maison,Rénovation,Triphasé 380V,5 ans,Conforme NF C15-100,Non sur devis
-Installation Éclairage LED,45000,XAF,Installation spots LED économiques avec variateur,Installation,12W par spot,3 ans,CE|RoHS,Non`
+    electricite: `Nom,Prix,Devise,Description,Catégorie,Type d'éclairage,Marque,Tension,Puissance,Culot,Couleur lumière,Normes,Garantie,État,Utilisation
+Ampoule LED E27 10W,3500,XAF,Ampoule LED blanc chaud économique,Ampoules et tubes,Ampoule LED,Philips,220V AC,10W,E27 (gros culot),Blanc chaud (2700K),CE|NF|A++,2 ans,Neuf en boîte,Résidentiel
+Câble électrique 2.5mm²,8500,XAF,Câble électrique souple au mètre,Câblage et fils,,Nexans,220V AC,,,,,1 an,Neuf,Commercial
+Interrupteur va-et-vient,4500,XAF,Interrupteur design blanc Legrand,Interrupteurs et commandes,,Legrand,220V AC,,,,CE|NF,2 ans,Neuf en boîte,Résidentiel
+Plafonnier LED,25000,XAF,Plafonnier moderne 3 spots orientables,Luminaires intérieurs,Plafonnier,Philips,220V AC,30W,,Blanc neutre (4000K),CE|IP20,3 ans,Neuf en boîte,Résidentiel`
 };
 
 const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
@@ -1290,6 +1826,18 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
         images: [],
         videos: []
     });
+
+    // ✅ NOUVEAU: Configuration conditionnelle des champs prestations
+    const [prestationFieldsConfig, setPrestationFieldsConfig] = useState(getFieldsConfig(''));
+
+    // ✅ NOUVEAU: Mise à jour de la configuration quand la catégorie change
+    React.useEffect(() => {
+        if (selectedType === 'prestation_service' && newProduct.categoriePrestation) {
+            const config = getFieldsConfig(newProduct.categoriePrestation);
+            setPrestationFieldsConfig(config);
+            console.log('[ProductManagerMobile] Configuration prestations mise à jour:', config);
+        }
+    }, [newProduct.categoriePrestation, selectedType]);
 
     // ✅ NOUVEAU: Détection automatique du type de produit depuis la catégorie du service
     React.useEffect(() => {
@@ -1353,6 +1901,8 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
             electricite: 'Nom du produit électrique',
             plomberie: 'Titre de la prestation',
             menuiserie: 'Titre de la prestation',
+            reparateur_frigo: 'Titre de la réparation frigo',
+            reparateur_electronique: 'Titre de la réparation électronique',
             jardinage_paysagisme: 'Titre de la prestation',
             securite_surveillance: 'Titre du service',
             animaux_veterinaire: 'Nom de l\'animal / Service',
@@ -1410,6 +1960,8 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
             electricite: 'Ex: Câble électrique 2.5mm',
             plomberie: 'Ex: Installation chauffe-eau',
             menuiserie: 'Ex: Porte sur mesure en chêne',
+            reparateur_frigo: 'Ex: Réparation frigo Samsung',
+            reparateur_electronique: 'Ex: Réparation TV Samsung 55"',
             jardinage_paysagisme: 'Ex: Tonte pelouse et entretien',
             securite_surveillance: 'Ex: Gardiennage 24h/24',
             animaux_veterinaire: 'Ex: Rex - Labrador 5 ans',
@@ -1717,21 +2269,31 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 superficie: columns[7],
                                 nbChambres: columns[8],
                                 nbSallesBain: columns[9],
-                                ameublement: columns[10],
-                                capacitePersonnes: columns[11],
-                                equipementsImmo: columns[12]?.split('|').map(e => e.trim()).filter(e => e),
-                                nettoyageInclus: columns[13]?.toLowerCase() === 'oui',
-                                lingeInclus: columns[14]?.toLowerCase() === 'oui',
-                                dureeMinimum: columns[15],
-                                dureeMaximum: columns[16],
-                                reservationInstantanee: columns[17]?.toLowerCase() === 'oui',
-                                parking: columns[18]?.toLowerCase() === 'oui',
-                                internet: columns[19]?.toLowerCase() === 'oui',
-                                climatisation: columns[20]?.toLowerCase() === 'oui',
-                                adresse: columns[21],
-                                quartier: columns[22],
-                                ville: columns[23],
-                                gpsImmobilier: columns[24]
+                                capacitePersonnes: columns[10],
+                                prixParNuit: columns[11],
+                                dureeMinimum: columns[12],
+                                dureeMaximum: columns[13],
+                                equipementsImmo: columns[14]?.split('|').map(e => e.trim()).filter(e => e),
+                                parking: columns[15]?.toLowerCase() === 'oui',
+                                internet: columns[16]?.toLowerCase() === 'oui',
+                                climatisation: columns[17]?.toLowerCase() === 'oui',
+                                piscine: columns[18]?.toLowerCase() === 'oui',
+                                securite: columns[19]?.toLowerCase() === 'oui',
+                                nettoyageInclus: columns[20]?.toLowerCase() === 'oui',
+                                lingeInclus: columns[21]?.toLowerCase() === 'oui',
+                                reservationInstantanee: columns[22]?.toLowerCase() === 'oui',
+                                servicesLocationCourte: columns[23]?.split('|').map(s => s.trim()).filter(s => s),
+                                politiqueAnnulation: columns[24],
+                                reglesLocationCourte: columns[25]?.split('|').map(r => r.trim()).filter(r => r),
+                                ville: columns[26],
+                                quartier: columns[27],
+                                adresse: columns[28],
+                                proximites: columns[29]?.split('|').map(p => p.trim()).filter(p => p),
+                                gpsImmobilier: columns[30],
+                                typeHote: columns[31],
+                                languesHote: columns[32]?.split('|').map(l => l.trim()).filter(l => l),
+                                paiementsAcceptes: columns[33]?.split('|').map(p => p.trim()).filter(p => p),
+                                disponibiliteLocationCourte: columns[34]
                             } as Product;
                             break;
 
@@ -1786,6 +2348,40 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 contreTechnique: columns[21]?.toLowerCase() === 'oui',
                                 garantie: columns[22],
                                 papiers: columns[23]
+                            } as Product;
+                            break;
+
+                        case 'mecanicien':
+                            specificProduct = {
+                                ...baseProduct,
+                                nomGarage: columns[4],
+                                typeServiceMecanique: columns[5]?.split('|').map(e => e.trim()).filter(e => e),
+                                specialitesGarage: columns[6]?.split('|').map(e => e.trim()).filter(e => e),
+                                marquesVehicules: columns[7]?.split('|').map(e => e.trim()).filter(e => e),
+                                typesVehiculesMeca: columns[8]?.split('|').map(e => e.trim()).filter(e => e),
+                                certificationsMeca: columns[9]?.split('|').map(e => e.trim()).filter(e => e),
+                                horairesGarage: columns[10],
+                                delaisIntervention: columns[11],
+                                urgenceMeca: columns[12],
+                                devisGratuit: columns[13]?.toLowerCase() === 'oui',
+                                garantieReparations: columns[14]?.toLowerCase() === 'oui'
+                            } as Product;
+                            break;
+
+                        case 'transport_intra_urbain':
+                            specificProduct = {
+                                ...baseProduct,
+                                typeVehiculeTransport: columns[4],
+                                villeService: columns[5],
+                                quartierService: columns[6],
+                                categorieService: columns[7],
+                                optionsConfort: columns[8]?.split('|').map(e => e.trim()).filter(e => e),
+                                modePaiement: columns[9]?.split('|').map(e => e.trim()).filter(e => e),
+                                disponibilite: columns[10],
+                                tarifBase: columns[11],
+                                etatVehicule: columns[12],
+                                languesChauffeur: columns[13]?.split('|').map(e => e.trim()).filter(e => e),
+                                zoneIntervention: columns[14]
                             } as Product;
                             break;
 
@@ -1882,25 +2478,44 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         case 'decoration':
                             specificProduct = {
                                 ...baseProduct,
+                                categorieDecoration: columns[4], // ✅ Catégorie
+                                styleDecoration: columns[5], // Style
+                                pieceDecoration: columns[6], // Pièce
+                                matiereDecoration: columns[7], // ✅ Matière
+                                couleurDecoration: columns[8], // Couleur
+                                tailleDecoration: columns[9], // ✅ Taille
+                                etatDecoration: columns[10], // ✅ État
+                                marqueDecoration: columns[11], // ✅ Marque
+                                dimensionsDecoration: columns[12], // Dimensions exactes
+                                // Legacy pour compatibilité
                                 typeDecoration: columns[4],
-                                styleDecoration: columns[5],
-                                couleurDecoration: columns[6],
-                                dimensionsDecoration: columns[7],
-                                materiauDecoration: columns[8]
+                                materiauDecoration: columns[7]
                             } as Product;
                             break;
 
                         case 'assurance':
                             specificProduct = {
                                 ...baseProduct,
-                                categorieAssurance: columns[4], // Catégorie
-                                typeAssurance: columns[5], // Type
+                                typeAssuranceVie: columns[4], // ✅ Type: VIE ou NON VIE
+                                produitAssurance: columns[5], // ✅ Produit d'assurance
                                 compagnieAssurance: columns[6], // Compagnie
-                                typeCouverture: columns[7], // Couverture
-                                primeAnnuelle: columns[8], // Prime annuelle
-                                franchiseAssurance: columns[9], // Franchise
-                                dureeContrat: columns[10], // Durée
-                                benefices: columns[11]?.split('|').map(b => b.trim()).filter(b => b) // Bénéfices
+                                couverturesArray: columns[7]?.split('|').map(c => c.trim()).filter(c => c), // ✅ Couvertures
+                                couverture: columns[7], // Pour compatibilité
+                                beneficesArray: columns[8]?.split('|').map(b => b.trim()).filter(b => b), // ✅ Bénéfices
+                                benefices: columns[8], // Pour compatibilité
+                                primeAnnuelle: columns[9], // Prime annuelle
+                                franchise: columns[10], // Franchise
+                                dureeContrat: columns[11], // Durée
+                                modePaiementAssurance: columns[12], // Mode paiement
+                                conditionAge: columns[13], // Condition d'âge
+                                // ✅ Support options/primes en JSON (optionnel)
+                                optionsPrimes: columns[14] ? (() => {
+                                    try {
+                                        return JSON.parse(columns[14]);
+                                    } catch {
+                                        return undefined;
+                                    }
+                                })() : undefined
                             } as Product;
                             break;
 
@@ -1914,34 +2529,45 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 dimensionsMobilier: columns[8],
                                 couleurMobilier: columns[9],
                                 etatMobilier: columns[10],
-                                nombrePlaces: columns[11],
-                                poids: columns[12],
-                                livraison: columns[13]?.toLowerCase() === 'oui',
-                                fraisLivraison: columns[14],
-                                montageRequis: columns[15]?.toLowerCase() === 'oui',
-                                demontable: columns[16]?.toLowerCase() === 'oui',
-                                garantieMobilier: columns[17]
+                                marqueMobilier: columns[11], // ✅ NOUVEAU
+                                nombrePlaces: columns[12],
+                                poids: columns[13],
+                                livraison: columns[14]?.toLowerCase() === 'oui',
+                                fraisLivraison: columns[15],
+                                montageRequis: columns[16]?.toLowerCase() === 'oui',
+                                demontable: columns[17]?.toLowerCase() === 'oui',
+                                garantieMobilier: columns[18],
+                                caracteristiquesMobilier: columns[19]?.split('|').map(c => c.trim()).filter(c => c) // ✅ NOUVEAU: Support multiselect
                             } as Product;
                             break;
 
-                        case 'aliments':
                         case 'agroalimentaire':
                             specificProduct = {
                                 ...baseProduct,
                                 categorieAliment: columns[4],
                                 typeAliment: columns[5],
-                                origine: columns[6],
-                                bio: columns[7]?.toLowerCase() === 'oui',
-                                dateProduction: columns[8],
-                                dateExpiration: columns[9],
-                                conservation: columns[10],
-                                poids: columns[11],
-                                uniteMesure: columns[12],
-                                conditionnement: columns[13],
-                                labelQualite: columns[14]?.split('|').map(l => l.trim()).filter(l => l),
-                                certifications: columns[15]?.split('|').map(c => c.trim()).filter(c => c),
-                                allergenes: columns[16],
-                                stockDisponible: columns[17] ? parseInt(columns[17]) : undefined
+                                marqueAliment: columns[6], // ✅ NOUVEAU: Marque (Maggi, Nestlé, Uncle Ben's...)
+                                origine: columns[7],
+                                bio: columns[8]?.toLowerCase() === 'oui',
+                                dateProduction: columns[9],
+                                dateExpiration: columns[10],
+                                conservation: columns[11],
+                                poids: columns[12],
+                                uniteMesure: columns[13],
+                                conditionnement: columns[14],
+                                labelQualite: columns[15]?.split('|').map(l => l.trim()).filter(l => l),
+                                certifications: columns[16]?.split('|').map(c => c.trim()).filter(c => c),
+                                allergenes: columns[17],
+                                allergenesArray: columns[17]?.split('|').map(a => a.trim()).filter(a => a), // ✅ NOUVEAU
+                                stockDisponible: columns[18] ? parseInt(columns[18]) : undefined,
+                                // ✅ NOUVEAU: Support variants en JSON (optionnel)
+                                variants: columns[19] ? (() => {
+                                    try {
+                                        return JSON.parse(columns[19]);
+                                    } catch {
+                                        return undefined;
+                                    }
+                                })() : undefined
                             } as Product;
                             break;
 
@@ -1975,12 +2601,23 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 ...baseProduct,
                                 categoriePrestation: columns[4], // Catégorie
                                 typePrestation: columns[5], // Type
-                                dureePrestation: columns[6], // Durée
-                                zoneIntervention: columns[7], // Zone
-                                experienceAnnees: columns[8] ? parseInt(columns[8]) : undefined, // Expérience
-                                certifie: columns[9]?.toLowerCase() === 'oui', // Certifié
-                                deplacement: columns[10]?.toLowerCase() === 'oui', // Déplacement
-                                disponibilitePrestation: columns[11] // Disponibilité
+                                zoneIntervention: columns[6], // Zone principale
+                                zonesMultiples: columns[7]?.split('|').map(s => s.trim()).filter(s => s), // Zones multiples
+                                niveauExperience: columns[8], // Niveau d'expérience
+                                certification: columns[9], // Certification principale
+                                disponibilitePrestation: columns[10], // Disponibilité
+                                modaliteDeplacement: columns[11], // Modalité déplacement
+                                modeTarification: columns[12], // Mode tarification
+                                prixHoraire: columns[13], // Prix horaire
+                                garantiePrestation: columns[14], // Garantie
+                                // Champs spécifiques éducation
+                                matieresEnseignees: columns[15]?.split('|').map(s => s.trim()).filter(s => s), // Matières
+                                niveauxScolaires: columns[16]?.split('|').map(s => s.trim()).filter(s => s), // Niveaux
+                                // Anciens champs (compatibilité)
+                                dureePrestation: columns[17], // Durée (obsolète)
+                                experienceAnnees: columns[18] ? parseInt(columns[18]) : undefined, // Expérience (obsolète)
+                                certifie: columns[19]?.toLowerCase() === 'oui', // Certifié (obsolète)
+                                deplacement: columns[20]?.toLowerCase() === 'oui' // Déplacement (obsolète)
                             } as Product;
                             break;
 
@@ -2029,24 +2666,36 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 distanceDemenagement: columns[7], // Distance
                                 servicesDemenagement: columns[8]?.split('|').map(s => s.trim()).filter(s => s), // Services
                                 nbDemenageurs: columns[9], // Nb déménageurs
-                                assuranceDemenagement: columns[10]?.toLowerCase() === 'oui', // Assurance
-                                montageInclus: columns[11]?.toLowerCase() === 'oui', // Montage
-                                cartonsInclus: columns[12]?.toLowerCase() === 'oui', // Cartons
-                                dateDebut: columns[13] // Date début
+                                trajetDemenagement: columns[10], // Trajet
+                                villeDepartDemenagement: columns[11], // Ville départ
+                                villeArriveeDemenagement: columns[12], // Ville arrivée
+                                compagnieDemenagement: columns[13], // Compagnie
+                                dureeDemenagement: columns[14], // Durée
+                                disponibiliteDemenagement: columns[15], // Disponibilité
+                                typeAssuranceDemenagement: columns[16], // Type assurance
+                                accessibiliteDemenagement: columns[17], // Accessibilité
+                                // Anciens champs (compatibilité)
+                                assuranceDemenagement: columns[16]?.includes('Assurance'), // Obsolète
+                                dateDebut: columns[18] // Date début (optionnel)
                             } as Product;
                             break;
 
                         case 'cosmetique_parfum':
                             specificProduct = {
                                 ...baseProduct,
-                                typeCosmetique: columns[4],
-                                marqueCosmetique: columns[5],
-                                volumeCosmetique: columns[6],
-                                uniteCosmetique: columns[7],
-                                typePeau: columns[8],
-                                ageRecommandé: columns[9],
-                                ingredientsCosmetique: columns[10],
-                                origineCosmetique: columns[11]
+                                typeCosmetique: columns[4], // Type
+                                marqueCosmetique: columns[5], // Marque
+                                genreCosmetique: columns[6], // Genre
+                                volumeCosmetique: columns[7], // Volume
+                                uniteCosmetique: columns[8], // Unité
+                                concentrationCosmetique: columns[9], // Concentration
+                                typePeau: columns[10], // TypePeau
+                                typeCheveuxCosmetique: columns[11], // TypeCheveux
+                                teinteCosmetique: columns[12], // Teinte
+                                finitionCosmetique: columns[13], // Finition
+                                ingredientsCosmetique: columns[14]?.split('|').map(s => s.trim()).filter(s => s), // Ingrédients
+                                certificationsCosmetique: columns[15]?.split('|').map(s => s.trim()).filter(s => s), // Certifications
+                                origineCosmetique: columns[16] // Origine
                             } as Product;
                             break;
 
@@ -2162,7 +2811,10 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 marquePieceIndustrielle: columns[5],
                                 referencePiece: columns[6],
                                 applicationIndustrielle: columns[7],
-                                materielPiece: columns[8]
+                                materielPiece: columns[8],
+                                etatPieceIndustrielle: columns[9],
+                                garantiePieceIndustrielle: columns[10],
+                                normePieceIndustrielle: columns[11]
                             } as Product;
                             break;
 
@@ -2192,12 +2844,16 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         case 'ustensiles_cuisine':
                             specificProduct = {
                                 ...baseProduct,
-                                typeUstensile: columns[4],
-                                materiauUstensile: columns[5],
-                                marqueUstensile: columns[6],
-                                capacite: columns[7],
-                                piecesDansSet: columns[8],
-                                etatUstensile: columns[9]
+                                nomProduitUstensile: columns[4],
+                                categorieUstensile: columns[5],
+                                typeUstensile: columns[6],
+                                materiauUstensile: columns[7],
+                                marqueUstensile: columns[8],
+                                capaciteUstensile: columns[9],
+                                etatUstensile: columns[10],
+                                usageUstensile: columns[11],
+                                piecesDansSet: columns[12],
+                                compatibiliteUstensile: columns[13]?.split('|').map(c => c.trim()).filter(c => c)
                             } as Product;
                             break;
 
@@ -2280,6 +2936,25 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             } as Product;
                             break;
 
+                        case 'soutien_scolaire_repetiteur':
+                            specificProduct = {
+                                ...baseProduct,
+                                typeSoutien: columns[4],
+                                niveauxScolaires: columns[5]?.split('|').map(s => s.trim()).filter(s => s),
+                                matieresEnseignees: columns[6]?.split('|').map(s => s.trim()).filter(s => s),
+                                formatSoutien: columns[7],
+                                dureeSeance: columns[8],
+                                modaliteDeplacement: columns[9],
+                                disponibilite: columns[10],
+                                modeTarification: columns[11],
+                                niveauExperience: columns[12],
+                                certifications: columns[13]?.split('|').map(s => s.trim()).filter(s => s),
+                                zonesIntervention: columns[14]?.split('|').map(s => s.trim()).filter(s => s),
+                                langueEnseignement: columns[15],
+                                objectifs: columns[16]
+                            } as Product;
+                            break;
+
                         case 'formation_education':
                             specificProduct = {
                                 ...baseProduct,
@@ -2352,9 +3027,11 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 typeSport: columns[4],
                                 niveauSport: columns[5],
                                 dureeSport: columns[6],
-                                equipementsSport: columns[7]?.split('|').map(s => s.trim()).filter(s => s),
-                                tarifSport: columns[8], // ✅ Ajouté
-                                horairesSport: columns[9] // ✅ Ajouté
+                                serviceSport: columns[7],
+                                equipementsSport: columns[8]?.split('|').map(s => s.trim()).filter(s => s),
+                                objectifSport: columns[9],
+                                joursSport: columns[10]?.split('|').map(s => s.trim()).filter(s => s),
+                                horairesSport: columns[11]
                             } as Product;
                             break;
 
@@ -2412,28 +3089,116 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             } as Product;
                             break;
 
-                        case 'plomberie':
+                        case 'plombier':
                             specificProduct = {
                                 ...baseProduct,
-                                typePrestation: columns[4], // Type prestation
+                                typePlomberie: columns[4], // Type prestation
                                 specialitesPlomberie: columns[5]?.split('|').map(s => s.trim()).filter(s => s), // Spécialités
                                 equipementsPlomberie: columns[6]?.split('|').map(s => s.trim()).filter(s => s), // Équipements
                                 disponibilitePlomberie: columns[7], // Disponibilité
-                                garantieTravaux: columns[8], // Garantie
-                                urgence: columns[9]?.toLowerCase() === 'oui', // Urgence
+                                garantiePlomberie: columns[8], // Garantie
+                                urgence24h: columns[9]?.toLowerCase() === 'oui', // Urgence 24h/24
                                 devisGratuit: columns[10]?.toLowerCase() === 'oui', // Devis gratuit
-                                certificationPlombier: columns[11] // Certification
+                                zonesInterventionPlombier: columns[11]?.split('|').map(s => s.trim()).filter(s => s) // Zones d'intervention
+                            } as Product;
+                            break;
+
+                        case 'plomberie_sanitaire':
+                            specificProduct = {
+                                ...baseProduct,
+                                categorieProduitPlomberie: columns[4], // Catégorie produit
+                                marquePlomberieSanitaire: columns[5], // Marque
+                                etatPlomberieSanitaire: columns[6], // État
+                                materiauPlomberieSanitaire: columns[7], // Matériau
+                                finitionPlomberieSanitaire: columns[8], // Finition
+                                garantiePlomberieSanitaire: columns[9], // Garantie
+                                livraisonPlomberieSanitaire: columns[10], // Livraison
+                                installationPlomberieSanitaire: columns[11], // Installation
+                                villeMagasinPlomberie: columns[12], // Ville du magasin
+                                quartierMagasinPlomberie: columns[13] // Quartier
+                            } as Product;
+                            break;
+
+                        case 'electricien':
+                            specificProduct = {
+                                ...baseProduct,
+                                typeElectricien: columns[4], // Type prestation
+                                specialitesElectricien: columns[5]?.split('|').map(s => s.trim()).filter(s => s), // Spécialités
+                                equipementsElectricien: columns[6]?.split('|').map(s => s.trim()).filter(s => s), // Équipements
+                                disponibiliteElectricien: columns[7], // Disponibilité
+                                garantieElectricien: columns[8], // Garantie
+                                urgence24hElec: columns[9]?.toLowerCase() === 'oui', // Urgence 24h/24
+                                devisGratuitElec: columns[10]?.toLowerCase() === 'oui', // Devis gratuit
+                                certificationsElectricien: columns[11]?.split('|').map(s => s.trim()).filter(s => s), // Certifications
+                                zonesInterventionElectricien: columns[12]?.split('|').map(s => s.trim()).filter(s => s) // Zones d'intervention
+                            } as Product;
+                            break;
+
+                        case 'electricien_auto':
+                            specificProduct = {
+                                ...baseProduct,
+                                typeElectricienAuto: columns[4], // Type prestation
+                                specialitesElectricienAuto: columns[5]?.split('|').map(s => s.trim()).filter(s => s), // Spécialités
+                                vehiculesElectricienAuto: columns[6]?.split('|').map(s => s.trim()).filter(s => s), // Véhicules
+                                equipementsElectricienAuto: columns[7]?.split('|').map(s => s.trim()).filter(s => s), // Équipements
+                                marquesSpecialeesElectricienAuto: columns[8]?.split('|').map(s => s.trim()).filter(s => s), // Marques
+                                equipementsDiagnosticAuto: columns[9]?.split('|').map(s => s.trim()).filter(s => s), // Équipements diagnostic
+                                disponibiliteElectricienAuto: columns[10], // Disponibilité
+                                garantieElectricienAuto: columns[11], // Garantie
+                                urgence24hElecAuto: columns[12]?.toLowerCase() === 'oui', // Urgence 24h/24
+                                deplacementDomicile: columns[13]?.toLowerCase() === 'oui', // Déplacement domicile
+                                zonesInterventionElectricienAuto: columns[14]?.split('|').map(s => s.trim()).filter(s => s) // Zones d'intervention
+                            } as Product;
+                            break;
+
+                        case 'macon':
+                            specificProduct = {
+                                ...baseProduct,
+                                typeMacon: columns[4], // Type prestation
+                                specialitesMacon: columns[5]?.split('|').map(s => s.trim()).filter(s => s), // Spécialités
+                                materiauxMacon: columns[6]?.split('|').map(s => s.trim()).filter(s => s), // Matériaux
+                                typesBatimentMacon: columns[7]?.split('|').map(s => s.trim()).filter(s => s), // Types bâtiment
+                                equipementsMacon: columns[8]?.split('|').map(s => s.trim()).filter(s => s), // Équipements
+                                disponibiliteMacon: columns[9], // Disponibilité
+                                garantieMacon: columns[10], // Garantie
+                                certificationsMacon: columns[11]?.split('|').map(s => s.trim()).filter(s => s), // Certifications
+                                assuranceDecennale: columns[12]?.toLowerCase() === 'oui', // Assurance décennale
+                                devisGratuitMacon: columns[13]?.toLowerCase() === 'oui', // Devis gratuit
+                                zonesInterventionMacon: columns[14]?.split('|').map(s => s.trim()).filter(s => s) // Zones d'intervention
+                            } as Product;
+                            break;
+
+                        case 'ingenieur_archi':
+                            specificProduct = {
+                                ...baseProduct,
+                                typeIngenieurArchi: columns[4], // Type prestation
+                                servicesIngenieurArchi: columns[5]?.split('|').map(s => s.trim()).filter(s => s), // Services
+                                typesProjetArchi: columns[6]?.split('|').map(s => s.trim()).filter(s => s), // Types projet
+                                domainesCompetenceArchi: columns[7]?.split('|').map(s => s.trim()).filter(s => s), // Domaines
+                                logicielsArchi: columns[8]?.split('|').map(s => s.trim()).filter(s => s), // Logiciels
+                                livrablesArchi: columns[9]?.split('|').map(s => s.trim()).filter(s => s), // Livrables
+                                tarificationArchi: columns[10], // Tarification
+                                certificationsArchi: columns[11]?.split('|').map(s => s.trim()).filter(s => s), // Certifications
+                                assuranceRCPro: columns[12]?.toLowerCase() === 'oui', // RC Pro
+                                assuranceDecennaleArchi: columns[13]?.toLowerCase() === 'oui', // Assurance décennale
+                                zonesInterventionArchi: columns[14]?.split('|').map(s => s.trim()).filter(s => s) // Zones d'intervention
                             } as Product;
                             break;
 
                         case 'electricite':
                             specificProduct = {
                                 ...baseProduct,
-                                typeElectrique: columns[4], // Type
-                                puissanceElectrique: columns[5], // Puissance
-                                garantieElectrique: columns[6], // Garantie
-                                certificationElectrique: columns[7], // Certifications
-                                urgenceElectrique: columns[8]?.toLowerCase().includes('oui') || columns[8]?.toLowerCase().includes('24') // Urgence
+                                categorieElectrique: columns[4], // Catégorie
+                                typeElectricite: columns[5], // Type d'éclairage
+                                marqueElectricite: columns[6], // Marque
+                                tensionElectrique: columns[7], // Tension
+                                puissanceElectrique: columns[8], // Puissance
+                                culotAmpoule: columns[9], // Culot
+                                couleurLumiere: columns[10], // Couleur lumière
+                                normesElectrique: columns[11]?.split('|').map(n => n.trim()).filter(n => n) || [], // Normes (multi)
+                                garantieElectrique: columns[12], // Garantie
+                                etatElectrique: columns[13], // État
+                                utilisationElectrique: columns[14] // Utilisation
                             } as Product;
                             break;
 
@@ -2508,12 +3273,18 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         case 'decoration':
                             specificProduct = {
                                 ...baseProduct,
+                                categorieDecoration: columns[4], // ✅ Catégorie
+                                styleDecoration: columns[5], // Style
+                                pieceDecoration: columns[6], // Pièce
+                                matiereDecoration: columns[7], // ✅ Matière
+                                couleurDecoration: columns[8], // Couleur
+                                tailleDecoration: columns[9], // ✅ Taille
+                                etatDecoration: columns[10], // ✅ État
+                                marqueDecoration: columns[11], // ✅ Marque
+                                dimensionsDecoration: columns[12], // Dimensions exactes
+                                // Legacy pour compatibilité
                                 typeDecoration: columns[4],
-                                styleDecoration: columns[5],
-                                pieceDecoration: columns[6],
-                                materiauDecoration: columns[7],
-                                couleurDecoration: columns[8],
-                                dimensionsDecoration: columns[9]
+                                materiauDecoration: columns[7]
                             } as Product;
                             break;
 
@@ -2587,6 +3358,39 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 styleMenuiserie: columns[7],
                                 dimensionsMenuiserie: columns[8],
                                 delaiMenuiserie: columns[9] // ✅ Ajouté
+                            } as Product;
+                            break;
+
+                        case 'reparateur_frigo':
+                            specificProduct = {
+                                ...baseProduct,
+                                marqueFrigo: columns[4],
+                                modeleFrigo: columns[5],
+                                typeAppareil: columns[6],
+                                typeServiceFrigoriste: columns[7],
+                                typePanne: columns[8],
+                                gazRefrigerant: columns[9],
+                                garantieFrigoriste: columns[10],
+                                delaisInterventionFrigoriste: columns[11],
+                                zonesInterventionFrigoriste: columns[12],
+                                disponibilitesFrigoriste: columns[13],
+                                urgenceFrigoriste: columns[14]?.toLowerCase() === 'oui'
+                            } as Product;
+                            break;
+
+                        case 'reparateur_electronique':
+                            specificProduct = {
+                                ...baseProduct,
+                                marqueTv: columns[4],
+                                modeleTv: columns[5],
+                                typeAppareilElectronique: columns[6],
+                                typeServiceElectronique: columns[7],
+                                typePanneElectronique: columns[8],
+                                garantieElectronique: columns[9],
+                                delaisInterventionElectronique: columns[10],
+                                zonesInterventionElectronique: columns[11],
+                                disponibilitesElectronique: columns[12],
+                                urgenceElectronique: columns[13]?.toLowerCase() === 'oui'
                             } as Product;
                             break;
 
@@ -3004,37 +3808,25 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             </TouchableOpacity>
                         </View>
 
-                        {/* Équipements additionnels - Liste */}
-                        <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Équipements additionnels</Text>
-                            <View style={styles.equipementsScrollContainer}>
-                                {['Cuisine équipée', 'Balcon', 'Terrasse', 'Eau courante', 'Électricité'].map((equip) => (
-                                    <TouchableOpacity
-                                        key={equip}
-                                        style={[
-                                            styles.equipementChip,
-                                            newProduct.equipementsImmo?.includes(equip) && styles.equipementChipActive,
-                                        ]}
-                                        onPress={() => {
-                                            const current = newProduct.equipementsImmo || [];
-                                            const updated = current.includes(equip)
-                                                ? current.filter((e) => e !== equip)
-                                                : [...current, equip];
-                                            setNewProduct({ ...newProduct, equipementsImmo: updated });
-                                        }}
-                                    >
-                                        <Text
-                                            style={[
-                                                styles.equipementChipText,
-                                                newProduct.equipementsImmo?.includes(equip) && styles.equipementChipTextActive,
-                                            ]}
-                                        >
-                                            {equip}
-                                        </Text>
-                                    </TouchableOpacity>
-                                ))}
-                            </View>
-                        </View>
+                        {/* ✅ NOUVEAU: Équipements additionnels - MultiSelect avec liste enrichie 35+ */}
+                        <MultiSelectModalitySelector
+                            label="Équipements additionnels"
+                            values={newProduct.equipementsImmo || []}
+                            productType="immobilier"
+                            fieldName="equipements"
+                            onSelect={(values) => setNewProduct({ ...newProduct, equipementsImmo: values })}
+                            placeholder="Ex: Eau courante 24h/24, Groupe électrogène, Climatisation..."
+                        />
+
+                        {/* ✅ NOUVEAU: Proximités */}
+                        <MultiSelectModalitySelector
+                            label="À proximité"
+                            values={newProduct.proximites || []}
+                            productType="immobilier"
+                            fieldName="proximites"
+                            onSelect={(values) => setNewProduct({ ...newProduct, proximites: values })}
+                            placeholder="Ex: École, Hôpital, Supermarché/Mahima, Marché..."
+                        />
 
                         {/* Titre de section : Localisation */}
                         <View style={styles.sectionHeader}>
@@ -3042,38 +3834,77 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             <Text style={styles.sectionTitle}>Localisation</Text>
                         </View>
 
+                        {/* ✅ REFONTE: Ville (sélection depuis liste 60+ villes Cameroun) */}
+                        <ProductFieldSelector
+                            label="Ville"
+                            fieldName="villes"
+                            productType="immobilier"
+                            value={newProduct.ville || ''}
+                            onSelect={(value) => setNewProduct({
+                                ...newProduct,
+                                ville: value,
+                                // Reset quartier si on change de ville
+                                quartier: value === newProduct.ville ? newProduct.quartier : ''
+                            })}
+                            required
+                            placeholder="Ex: Douala, Yaoundé, Bafoussam..."
+                        />
+
+                        {/* ✅ REFONTE: Quartier (sélection contextuelle selon la ville) */}
+                        {newProduct.ville === 'Douala' && (
+                            <ProductFieldSelector
+                                label="Quartier (Douala)"
+                                fieldName="quartiers_douala"
+                                productType="immobilier"
+                                value={newProduct.quartier || ''}
+                                onSelect={(value) => setNewProduct({ ...newProduct, quartier: value })}
+                                placeholder="Ex: Akwa, Bonanjo, Bonapriso, Makepe..."
+                            />
+                        )}
+
+                        {newProduct.ville === 'Yaoundé' && (
+                            <ProductFieldSelector
+                                label="Quartier (Yaoundé)"
+                                fieldName="quartiers_yaounde"
+                                productType="immobilier"
+                                value={newProduct.quartier || ''}
+                                onSelect={(value) => setNewProduct({ ...newProduct, quartier: value })}
+                                placeholder="Ex: Bastos, Nlongkak, Golf, Elig-Essono..."
+                            />
+                        )}
+
+                        {newProduct.ville && newProduct.ville !== 'Douala' && newProduct.ville !== 'Yaoundé' && (
+                            <View style={styles.fieldContainer}>
+                                <Text style={styles.fieldLabel}>Quartier / Zone</Text>
+                                <NativeInput
+                                    placeholder="Ex: Centre-ville, Zone résidentielle..."
+                                    value={newProduct.quartier || ''}
+                                    onChangeText={(text) => setNewProduct({ ...newProduct, quartier: text })}
+                                    style={styles.fieldInput}
+                                />
+                            </View>
+                        )}
+
                         {/* Adresse complète */}
                         <View style={styles.fieldContainer}>
                             <Text style={styles.fieldLabel}>Adresse <Text style={styles.required}>*</Text></Text>
                             <NativeInput
-                                placeholder="Ex: Rue des Jardins"
+                                placeholder="Ex: Rue des Jardins, Avenue de la Liberté..."
                                 value={newProduct.adresse || ''}
                                 onChangeText={(text) => setNewProduct({ ...newProduct, adresse: text })}
                                 style={styles.fieldInput}
                             />
                         </View>
 
-                        {/* Quartier et Ville */}
-                        <View style={styles.fieldRow}>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Quartier</Text>
-                                <NativeInput
-                                    placeholder="Ex: Bonanjo"
-                                    value={newProduct.quartier || ''}
-                                    onChangeText={(text) => setNewProduct({ ...newProduct, quartier: text })}
-                                    style={styles.fieldInput}
-                                />
-                            </View>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Ville <Text style={styles.required}>*</Text></Text>
-                                <NativeInput
-                                    placeholder="Ex: Douala"
-                                    value={newProduct.ville || ''}
-                                    onChangeText={(text) => setNewProduct({ ...newProduct, ville: text })}
-                                    style={styles.fieldInput}
-                                />
-                            </View>
-                        </View>
+                        {/* ✅ NOUVEAU: Accès routier */}
+                        <ProductFieldSelector
+                            label="Accès routier"
+                            fieldName="acces_route"
+                            productType="immobilier"
+                            value={newProduct.acces_route || ''}
+                            onSelect={(value) => setNewProduct({ ...newProduct, acces_route: value })}
+                            placeholder="Ex: Route goudronnée, Zone inondable saison pluies..."
+                        />
 
                         {/* GPS */}
                         <View style={styles.fieldContainer}>
@@ -3136,14 +3967,25 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                     </View>
                                 </View>
 
+                                {/* ✅ NOUVEAU: Type de bail */}
+                                <ProductFieldSelector
+                                    label="Type de bail"
+                                    fieldName="types_bail"
+                                    productType="immobilier"
+                                    value={newProduct.type_bail || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, type_bail: value })}
+                                    placeholder="Ex: 1 an, 2 ans, 3 ans..."
+                                />
+
                                 <View style={styles.fieldRow}>
                                     <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                        <Text style={styles.fieldLabel}>Bail minimum</Text>
+                                        <Text style={styles.fieldLabel}>Charges mensuelles (XAF)</Text>
                                         <NativeInput
-                                            placeholder="Ex: 1 an"
-                                            value={newProduct.bailMinimum || ''}
-                                            onChangeText={(text) => setNewProduct({ ...newProduct, bailMinimum: text })}
+                                            placeholder="Ex: 15000"
+                                            value={newProduct.chargesMensuelles || ''}
+                                            onChangeText={(text) => setNewProduct({ ...newProduct, chargesMensuelles: text })}
                                             style={styles.fieldInput}
+                                            keyboardType="numeric"
                                         />
                                     </View>
                                     <View style={[styles.fieldContainer, { flex: 1 }]}>
@@ -3156,6 +3998,16 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                         />
                                     </View>
                                 </View>
+
+                                {/* ✅ NOUVEAU: Conditions de location (MultiSelect) */}
+                                <MultiSelectModalitySelector
+                                    label="Conditions de location"
+                                    values={newProduct.conditions_location || []}
+                                    productType="immobilier"
+                                    fieldName="conditions_location"
+                                    onSelect={(values) => setNewProduct({ ...newProduct, conditions_location: values })}
+                                    placeholder="Ex: Caution 2 mois, Garant exigé, Fiche de paie..."
+                                />
 
                                 <View style={styles.fieldContainer}>
                                     <TouchableOpacity
@@ -3212,6 +4064,443 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                     </>
                 );
 
+            case 'immobilier_location_courte':
+                return (
+                    <>
+                        {/* Titre de section : Informations générales */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="home" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>Informations générales</Text>
+                        </View>
+
+                        {/* Type de logement et Standing */}
+                        <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Type de logement"
+                                    value={newProduct.typeImmobilier || ''}
+                                    productType="immobilier_location_courte"
+                                    fieldName="types"
+                                    onSelect={(value) => setNewProduct({ ...newProduct, typeImmobilier: value })}
+                                    required
+                                />
+                            </View>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Standing"
+                                    value={newProduct.standing || ''}
+                                    productType="immobilier_location_courte"
+                                    fieldName="standing"
+                                    onSelect={(value) => setNewProduct({ ...newProduct, standing: value })}
+                                />
+                            </View>
+                        </View>
+
+                        {/* État général */}
+                        <ProductFieldSelector
+                            label="État général"
+                            value={newProduct.etatGeneral || ''}
+                            productType="immobilier_location_courte"
+                            fieldName="etat"
+                            onSelect={(value) => setNewProduct({ ...newProduct, etatGeneral: value })}
+                        />
+
+                        {/* Titre de section : Caractéristiques */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="layout" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>Caractéristiques</Text>
+                        </View>
+
+                        {/* Superficie et Capacité personnes */}
+                        <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <Text style={styles.fieldLabel}>Superficie (m²) <Text style={styles.required}>*</Text></Text>
+                                <NativeInput
+                                    placeholder="Ex: 80"
+                                    value={newProduct.superficie || ''}
+                                    onChangeText={(text) => setNewProduct({ ...newProduct, superficie: text })}
+                                    style={styles.fieldInput}
+                                    keyboardType="numeric"
+                                />
+                            </View>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Capacité"
+                                    value={newProduct.capacitePersonnes || ''}
+                                    productType="immobilier_location_courte"
+                                    fieldName="capacites"
+                                    onSelect={(value) => setNewProduct({ ...newProduct, capacitePersonnes: value })}
+                                    required
+                                />
+                            </View>
+                        </View>
+
+                        {/* Chambres et Salles de bain */}
+                        <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <Text style={styles.fieldLabel}>Chambres <Text style={styles.required}>*</Text></Text>
+                                <NativeInput
+                                    placeholder="Ex: 2"
+                                    value={newProduct.nbChambres || ''}
+                                    onChangeText={(text) => setNewProduct({ ...newProduct, nbChambres: text })}
+                                    style={styles.fieldInput}
+                                    keyboardType="numeric"
+                                />
+                            </View>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <Text style={styles.fieldLabel}>Salles de bain</Text>
+                                <NativeInput
+                                    placeholder="Ex: 1"
+                                    value={newProduct.nbSallesBain || ''}
+                                    onChangeText={(text) => setNewProduct({ ...newProduct, nbSallesBain: text })}
+                                    style={styles.fieldInput}
+                                    keyboardType="numeric"
+                                />
+                            </View>
+                        </View>
+
+                        {/* Titre de section : Prix et Séjour */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="calendar" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>Prix et Durée de Séjour</Text>
+                        </View>
+
+                        {/* Prix par nuit */}
+                        <View style={styles.fieldContainer}>
+                            <Text style={styles.fieldLabel}>Prix par nuit (XAF) <Text style={styles.required}>*</Text></Text>
+                            <NativeInput
+                                placeholder="Ex: 25000"
+                                value={newProduct.prixParNuit || ''}
+                                onChangeText={(text) => setNewProduct({ ...newProduct, prixParNuit: text })}
+                                style={styles.fieldInput}
+                                keyboardType="numeric"
+                            />
+                        </View>
+
+                        {/* Durées minimum et maximum */}
+                        <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Séjour minimum"
+                                    value={newProduct.dureeMinimum || ''}
+                                    productType="immobilier_location_courte"
+                                    fieldName="durees_minimum"
+                                    onSelect={(value) => setNewProduct({ ...newProduct, dureeMinimum: value })}
+                                />
+                            </View>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Séjour maximum"
+                                    value={newProduct.dureeMaximum || ''}
+                                    productType="immobilier_location_courte"
+                                    fieldName="durees_maximum"
+                                    onSelect={(value) => setNewProduct({ ...newProduct, dureeMaximum: value })}
+                                />
+                            </View>
+                        </View>
+
+                        {/* Titre de section : Équipements */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="settings" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>Équipements & Commodités</Text>
+                        </View>
+
+                        {/* Toggles essentiels */}
+                        <View style={styles.togglesContainer}>
+                            <TouchableOpacity
+                                style={[styles.toggleOption, newProduct.parking && styles.toggleOptionActive]}
+                                onPress={() => setNewProduct({ ...newProduct, parking: !newProduct.parking })}
+                            >
+                                <SafeIcon
+                                    name="square-parking"
+                                    size={20}
+                                    color={newProduct.parking ? modernColors.primary : '#9CA3AF'}
+                                />
+                                <Text style={[styles.toggleLabel, newProduct.parking && styles.toggleLabelActive]}>
+                                    Parking
+                                </Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                style={[styles.toggleOption, newProduct.internet && styles.toggleOptionActive]}
+                                onPress={() => setNewProduct({ ...newProduct, internet: !newProduct.internet })}
+                            >
+                                <SafeIcon
+                                    name="wifi"
+                                    size={20}
+                                    color={newProduct.internet ? modernColors.primary : '#9CA3AF'}
+                                />
+                                <Text style={[styles.toggleLabel, newProduct.internet && styles.toggleLabelActive]}>
+                                    Wi-Fi
+                                </Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                style={[styles.toggleOption, newProduct.climatisation && styles.toggleOptionActive]}
+                                onPress={() => setNewProduct({ ...newProduct, climatisation: !newProduct.climatisation })}
+                            >
+                                <SafeIcon
+                                    name="wind"
+                                    size={20}
+                                    color={newProduct.climatisation ? modernColors.primary : '#9CA3AF'}
+                                />
+                                <Text style={[styles.toggleLabel, newProduct.climatisation && styles.toggleLabelActive]}>
+                                    Climatisation
+                                </Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                style={[styles.toggleOption, newProduct.piscine && styles.toggleOptionActive]}
+                                onPress={() => setNewProduct({ ...newProduct, piscine: !newProduct.piscine })}
+                            >
+                                <Text style={{ fontSize: 20 }}>{newProduct.piscine ? '🏊' : '🏊‍♂️'}</Text>
+                                <Text style={[styles.toggleLabel, newProduct.piscine && styles.toggleLabelActive]}>
+                                    Piscine
+                                </Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                style={[styles.toggleOption, newProduct.securite && styles.toggleOptionActive]}
+                                onPress={() => setNewProduct({ ...newProduct, securite: !newProduct.securite })}
+                            >
+                                <SafeIcon
+                                    name="shield-check"
+                                    size={20}
+                                    color={newProduct.securite ? modernColors.primary : '#9CA3AF'}
+                                />
+                                <Text style={[styles.toggleLabel, newProduct.securite && styles.toggleLabelActive]}>
+                                    Sécurité 24h
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
+
+                        {/* Équipements additionnels - MultiSelect */}
+                        <MultiSelectModalitySelector
+                            label="Équipements additionnels"
+                            values={newProduct.equipementsImmo || []}
+                            productType="immobilier_location_courte"
+                            fieldName="equipements"
+                            onSelect={(values) => setNewProduct({ ...newProduct, equipementsImmo: values })}
+                            placeholder="Ex: Cuisine équipée, Lave-linge, Draps fournis..."
+                        />
+
+                        {/* Titre de section : Services Inclus */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="star" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>Services Inclus</Text>
+                        </View>
+
+                        {/* Toggles services */}
+                        <View style={styles.togglesContainer}>
+                            <TouchableOpacity
+                                style={[styles.toggleOption, newProduct.nettoyageInclus && styles.toggleOptionActive]}
+                                onPress={() => setNewProduct({ ...newProduct, nettoyageInclus: !newProduct.nettoyageInclus })}
+                            >
+                                <Text style={{ fontSize: 20 }}>🧹</Text>
+                                <Text style={[styles.toggleLabel, newProduct.nettoyageInclus && styles.toggleLabelActive]}>
+                                    Ménage inclus
+                                </Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                style={[styles.toggleOption, newProduct.lingeInclus && styles.toggleOptionActive]}
+                                onPress={() => setNewProduct({ ...newProduct, lingeInclus: !newProduct.lingeInclus })}
+                            >
+                                <Text style={{ fontSize: 20 }}>🛏️</Text>
+                                <Text style={[styles.toggleLabel, newProduct.lingeInclus && styles.toggleLabelActive]}>
+                                    Linge fourni
+                                </Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                style={[styles.toggleOption, newProduct.reservationInstantanee && styles.toggleOptionActive]}
+                                onPress={() => setNewProduct({ ...newProduct, reservationInstantanee: !newProduct.reservationInstantanee })}
+                            >
+                                <SafeIcon
+                                    name="zap"
+                                    size={20}
+                                    color={newProduct.reservationInstantanee ? modernColors.primary : '#9CA3AF'}
+                                />
+                                <Text style={[styles.toggleLabel, newProduct.reservationInstantanee && styles.toggleLabelActive]}>
+                                    Réservation instantanée
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
+
+                        {/* Services supplémentaires */}
+                        <MultiSelectModalitySelector
+                            label="Services supplémentaires"
+                            values={newProduct.servicesLocationCourte || []}
+                            productType="immobilier_location_courte"
+                            fieldName="services"
+                            onSelect={(values) => setNewProduct({ ...newProduct, servicesLocationCourte: values })}
+                            placeholder="Ex: Transfert aéroport, Petit-déjeuner, Conciergerie..."
+                        />
+
+                        {/* Titre de section : Politiques & Règles */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="file-text" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>Politiques & Règles</Text>
+                        </View>
+
+                        {/* Politique d'annulation */}
+                        <ProductFieldSelector
+                            label="Politique d'annulation"
+                            value={newProduct.politiqueAnnulation || ''}
+                            productType="immobilier_location_courte"
+                            fieldName="politiques_annulation"
+                            onSelect={(value) => setNewProduct({ ...newProduct, politiqueAnnulation: value })}
+                        />
+
+                        {/* Règles de la maison */}
+                        <MultiSelectModalitySelector
+                            label="Règles de la maison"
+                            values={newProduct.reglesLocationCourte || []}
+                            productType="immobilier_location_courte"
+                            fieldName="regles"
+                            onSelect={(values) => setNewProduct({ ...newProduct, reglesLocationCourte: values })}
+                            placeholder="Ex: Non-fumeur, Animaux interdits, Calme après 22h..."
+                        />
+
+                        {/* Titre de section : Localisation */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>Localisation</Text>
+                        </View>
+
+                        {/* Ville */}
+                        <ProductFieldSelector
+                            label="Ville"
+                            fieldName="villes"
+                            productType="immobilier_location_courte"
+                            value={newProduct.ville || ''}
+                            onSelect={(value) => setNewProduct({ ...newProduct, ville: value })}
+                            required
+                        />
+
+                        {/* Quartier (conditionnel selon la ville) */}
+                        {newProduct.ville === 'Douala' && (
+                            <ProductFieldSelector
+                                label="Quartier (Douala)"
+                                fieldName="quartiers_douala"
+                                productType="immobilier_location_courte"
+                                value={newProduct.quartier || ''}
+                                onSelect={(value) => setNewProduct({ ...newProduct, quartier: value })}
+                            />
+                        )}
+
+                        {newProduct.ville === 'Yaoundé' && (
+                            <ProductFieldSelector
+                                label="Quartier (Yaoundé)"
+                                fieldName="quartiers_yaounde"
+                                productType="immobilier_location_courte"
+                                value={newProduct.quartier || ''}
+                                onSelect={(value) => setNewProduct({ ...newProduct, quartier: value })}
+                            />
+                        )}
+
+                        {newProduct.ville === 'Kribi' && (
+                            <ProductFieldSelector
+                                label="Zone (Kribi)"
+                                fieldName="zones_kribi"
+                                productType="immobilier_location_courte"
+                                value={newProduct.quartier || ''}
+                                onSelect={(value) => setNewProduct({ ...newProduct, quartier: value })}
+                            />
+                        )}
+
+                        {newProduct.ville === 'Limbe' && (
+                            <ProductFieldSelector
+                                label="Zone (Limbe)"
+                                fieldName="zones_limbe"
+                                productType="immobilier_location_courte"
+                                value={newProduct.quartier || ''}
+                                onSelect={(value) => setNewProduct({ ...newProduct, quartier: value })}
+                            />
+                        )}
+
+                        {/* Adresse */}
+                        <View style={styles.fieldContainer}>
+                            <Text style={styles.fieldLabel}>Adresse précise</Text>
+                            <NativeInput
+                                placeholder="Ex: Rue 234, Bonapriso"
+                                value={newProduct.adresse || ''}
+                                onChangeText={(text) => setNewProduct({ ...newProduct, adresse: text })}
+                                style={styles.fieldInput}
+                            />
+                        </View>
+
+                        {/* Proximités touristiques */}
+                        <MultiSelectModalitySelector
+                            label="À proximité"
+                            values={newProduct.proximites || []}
+                            productType="immobilier_location_courte"
+                            fieldName="proximites"
+                            onSelect={(values) => setNewProduct({ ...newProduct, proximites: values })}
+                            placeholder="Ex: Plage (à pied), Restaurants, Supermarché..."
+                        />
+
+                        {/* GPS */}
+                        <View style={styles.fieldContainer}>
+                            <Text style={styles.fieldLabel}>Coordonnées GPS</Text>
+                            <NativeInput
+                                placeholder="Ex: 4.0511,-9.7679"
+                                value={newProduct.gpsImmobilier || ''}
+                                onChangeText={(text) => setNewProduct({ ...newProduct, gpsImmobilier: text })}
+                                style={styles.fieldInput}
+                            />
+                        </View>
+
+                        {/* Titre de section : Hôte */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="user" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>Informations Hôte</Text>
+                        </View>
+
+                        {/* Type d'hôte et Langues */}
+                        <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Type d'hôte"
+                                    value={newProduct.typeHote || ''}
+                                    productType="immobilier_location_courte"
+                                    fieldName="type_hote"
+                                    onSelect={(value) => setNewProduct({ ...newProduct, typeHote: value })}
+                                />
+                            </View>
+                        </View>
+
+                        {/* Langues parlées */}
+                        <MultiSelectModalitySelector
+                            label="Langues parlées"
+                            values={newProduct.languesHote || []}
+                            productType="immobilier_location_courte"
+                            fieldName="langues_hote"
+                            onSelect={(values) => setNewProduct({ ...newProduct, languesHote: values })}
+                            placeholder="Ex: Français, Anglais, Langues locales..."
+                        />
+
+                        {/* Modes de paiement */}
+                        <MultiSelectModalitySelector
+                            label="Modes de paiement acceptés"
+                            values={newProduct.paiementsAcceptes || []}
+                            productType="immobilier_location_courte"
+                            fieldName="paiements"
+                            onSelect={(values) => setNewProduct({ ...newProduct, paiementsAcceptes: values })}
+                            placeholder="Ex: Espèces, Mobile Money, Virement..."
+                        />
+
+                        {/* Disponibilité */}
+                        <ProductFieldSelector
+                            label="Disponibilité"
+                            value={newProduct.disponibiliteLocationCourte || ''}
+                            productType="immobilier_location_courte"
+                            fieldName="disponibilites"
+                            onSelect={(value) => setNewProduct({ ...newProduct, disponibiliteLocationCourte: value })}
+                        />
+                    </>
+                );
+
             case 'immobilier_terrain':
                 return (
                     <>
@@ -3227,8 +4516,8 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 <ProductFieldSelector
                                     label="Type de terrain"
                                     value={newProduct.typeTerrain || ''}
-                                    productType="terrain"
-                                    fieldName="types"
+                                    productType="immobilier_terrain"
+                                    fieldName="types_terrain"
                                     onSelect={(value) => setNewProduct({ ...newProduct, typeTerrain: value })}
                                     required
                                 />
@@ -3237,7 +4526,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 <ProductFieldSelector
                                     label="Statut"
                                     value={newProduct.statutImmobilier || ''}
-                                    productType="immobilier"
+                                    productType="immobilier_terrain"
                                     fieldName="statuts"
                                     onSelect={(value) => setNewProduct({ ...newProduct, statutImmobilier: value })}
                                     required
@@ -3251,7 +4540,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 <ProductFieldSelector
                                     label="Viabilisation"
                                     value={newProduct.viabilisation || ''}
-                                    productType="terrain"
+                                    productType="immobilier_terrain"
                                     fieldName="viabilisation"
                                     onSelect={(value) => setNewProduct({ ...newProduct, viabilisation: value })}
                                 />
@@ -3260,7 +4549,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 <ProductFieldSelector
                                     label="Zonage"
                                     value={newProduct.zonage || ''}
-                                    productType="terrain"
+                                    productType="immobilier_terrain"
                                     fieldName="zonage"
                                     onSelect={(value) => setNewProduct({ ...newProduct, zonage: value })}
                                 />
@@ -3326,8 +4615,8 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             <ProductFieldSelector
                                 label="Forme du terrain"
                                 value={newProduct.formeTerrain || ''}
-                                productType="terrain"
-                                fieldName="forme"
+                                productType="immobilier_terrain"
+                                fieldName="forme_terrain"
                                 onSelect={(value) => setNewProduct({ ...newProduct, formeTerrain: value })}
                             />
                         </View>
@@ -3344,7 +4633,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 <ProductFieldSelector
                                     label="Topographie"
                                     value={newProduct.topographie || ''}
-                                    productType="terrain"
+                                    productType="immobilier_terrain"
                                     fieldName="topographie"
                                     onSelect={(value) => setNewProduct({ ...newProduct, topographie: value })}
                                 />
@@ -3353,8 +4642,8 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 <ProductFieldSelector
                                     label="Accès"
                                     value={newProduct.accesTerrain || ''}
-                                    productType="terrain"
-                                    fieldName="acces"
+                                    productType="immobilier_terrain"
+                                    fieldName="acces_terrain"
                                     onSelect={(value) => setNewProduct({ ...newProduct, accesTerrain: value })}
                                 />
                             </View>
@@ -3366,7 +4655,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 <ProductFieldSelector
                                     label="Végétation"
                                     value={newProduct.vegetation || ''}
-                                    productType="terrain"
+                                    productType="immobilier_terrain"
                                     fieldName="vegetation"
                                     onSelect={(value) => setNewProduct({ ...newProduct, vegetation: value })}
                                 />
@@ -3375,8 +4664,8 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 <ProductFieldSelector
                                     label="Usage actuel"
                                     value={newProduct.usageActuel || ''}
-                                    productType="terrain"
-                                    fieldName="usage"
+                                    productType="immobilier_terrain"
+                                    fieldName="usage_actuel"
                                     onSelect={(value) => setNewProduct({ ...newProduct, usageActuel: value })}
                                 />
                             </View>
@@ -3388,36 +4677,17 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             <Text style={styles.sectionTitle}>Réseaux & Services</Text>
                         </View>
 
-                        {/* Réseaux disponibles */}
+                        {/* Réseaux disponibles - Multi-sélection */}
                         <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Réseaux disponibles</Text>
-                            <View style={styles.equipementsScrollContainer}>
-                                {['Eau', 'Électricité', 'Assainissement', 'Fibre', 'Gaz'].map((reseau) => (
-                                    <TouchableOpacity
-                                        key={reseau}
-                                        style={[
-                                            styles.equipementChip,
-                                            newProduct.reseauxTerrain?.includes(reseau) && styles.equipementChipActive,
-                                        ]}
-                                        onPress={() => {
-                                            const current = newProduct.reseauxTerrain || [];
-                                            const updated = current.includes(reseau)
-                                                ? current.filter((r) => r !== reseau)
-                                                : [...current, reseau];
-                                            setNewProduct({ ...newProduct, reseauxTerrain: updated });
-                                        }}
-                                    >
-                                        <Text
-                                            style={[
-                                                styles.equipementChipText,
-                                                newProduct.reseauxTerrain?.includes(reseau) && styles.equipementChipTextActive,
-                                            ]}
-                                        >
-                                            {reseau}
-                                        </Text>
-                                    </TouchableOpacity>
-                                ))}
-                            </View>
+                            <ProductFieldSelector
+                                label="Réseaux disponibles"
+                                value={newProduct.reseauxTerrain || []}
+                                productType="immobilier_terrain"
+                                fieldName="reseaux_disponibles"
+                                onSelect={(values) => setNewProduct({ ...newProduct, reseauxTerrain: values })}
+                                multiSelect={true}
+                                maxSelections={12}
+                            />
                         </View>
 
                         {/* Titre de section : Informations juridiques */}
@@ -3510,15 +4780,116 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             </TouchableOpacity>
                         </View>
 
-                        {/* Servitudes */}
+                        {/* Documents fonciers - Multi-sélection */}
                         <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Servitudes ou restrictions</Text>
-                            <NativeInput
-                                placeholder="Ex: Droit de passage, servitude d'écoulement..."
-                                value={newProduct.servitudes || ''}
-                                onChangeText={(text) => setNewProduct({ ...newProduct, servitudes: text })}
-                                style={[styles.fieldInput, { height: 80 }]}
-                                multiline
+                            <ProductFieldSelector
+                                label="Documents fonciers disponibles"
+                                value={newProduct.documentsFonciers || []}
+                                productType="immobilier_terrain"
+                                fieldName="documents_fonciers"
+                                onSelect={(values) => setNewProduct({ ...newProduct, documentsFonciers: values })}
+                                multiSelect={true}
+                                maxSelections={6}
+                            />
+                        </View>
+
+                        {/* État du bornage */}
+                        <View style={styles.fieldContainer}>
+                            <ProductFieldSelector
+                                label="État du bornage"
+                                value={newProduct.etatBornage || ''}
+                                productType="immobilier_terrain"
+                                fieldName="bornage"
+                                onSelect={(value) => setNewProduct({ ...newProduct, etatBornage: value })}
+                            />
+                        </View>
+
+                        {/* Constructibilité détaillée */}
+                        <View style={styles.fieldContainer}>
+                            <ProductFieldSelector
+                                label="Constructibilité"
+                                value={newProduct.niveauConstructibilite || ''}
+                                productType="immobilier_terrain"
+                                fieldName="constructibilite"
+                                onSelect={(value) => setNewProduct({ ...newProduct, niveauConstructibilite: value })}
+                            />
+                        </View>
+
+                        {/* Type de clôture */}
+                        <View style={styles.fieldContainer}>
+                            <ProductFieldSelector
+                                label="Clôture et sécurisation"
+                                value={newProduct.typeCloture || ''}
+                                productType="immobilier_terrain"
+                                fieldName="cloture"
+                                onSelect={(value) => setNewProduct({ ...newProduct, typeCloture: value })}
+                            />
+                        </View>
+
+                        {/* Contraintes et servitudes - Multi-sélection */}
+                        <View style={styles.fieldContainer}>
+                            <ProductFieldSelector
+                                label="Contraintes ou servitudes"
+                                value={newProduct.contraintesTerrain || []}
+                                productType="immobilier_terrain"
+                                fieldName="contraintes"
+                                onSelect={(values) => setNewProduct({ ...newProduct, contraintesTerrain: values })}
+                                multiSelect={true}
+                                maxSelections={5}
+                            />
+                        </View>
+
+                        {/* Titre de section : Informations complémentaires */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="info" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>Informations complémentaires</Text>
+                        </View>
+
+                        {/* Nature du sol */}
+                        <View style={styles.fieldContainer}>
+                            <ProductFieldSelector
+                                label="Nature du sol"
+                                value={newProduct.natureSol || ''}
+                                productType="immobilier_terrain"
+                                fieldName="nature_sol"
+                                onSelect={(value) => setNewProduct({ ...newProduct, natureSol: value })}
+                            />
+                        </View>
+
+                        {/* Potentiel d'usage - Multi-sélection */}
+                        <View style={styles.fieldContainer}>
+                            <ProductFieldSelector
+                                label="Potentiel d'usage"
+                                value={newProduct.potentielUsage || []}
+                                productType="immobilier_terrain"
+                                fieldName="potentiel_usage"
+                                onSelect={(values) => setNewProduct({ ...newProduct, potentielUsage: values })}
+                                multiSelect={true}
+                                maxSelections={3}
+                            />
+                        </View>
+
+                        {/* Proximités - Multi-sélection */}
+                        <View style={styles.fieldContainer}>
+                            <ProductFieldSelector
+                                label="Proximités et commodités"
+                                value={newProduct.proximitesTerrain || []}
+                                productType="immobilier_terrain"
+                                fieldName="proximites"
+                                onSelect={(values) => setNewProduct({ ...newProduct, proximitesTerrain: values })}
+                                multiSelect={true}
+                                maxSelections={8}
+                            />
+                        </View>
+
+                        {/* Orientation */}
+                        <View style={styles.fieldContainer}>
+                            <ProductFieldSelector
+                                label="Orientation"
+                                value={newProduct.orientationTerrain || ''}
+                                productType="immobilier_terrain"
+                                fieldName="orientation"
+                                onSelect={(value) => setNewProduct({ ...newProduct, orientationTerrain: value })}
                             />
                         </View>
 
@@ -3539,26 +4910,27 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             />
                         </View>
 
-                        {/* Quartier et Ville */}
-                        <View style={styles.fieldRow}>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Quartier</Text>
-                                <NativeInput
-                                    placeholder="Ex: Logpom"
-                                    value={newProduct.quartier || ''}
-                                    onChangeText={(text) => setNewProduct({ ...newProduct, quartier: text })}
-                                    style={styles.fieldInput}
-                                />
-                            </View>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Ville <Text style={styles.required}>*</Text></Text>
-                                <NativeInput
-                                    placeholder="Ex: Douala"
-                                    value={newProduct.ville || ''}
-                                    onChangeText={(text) => setNewProduct({ ...newProduct, ville: text })}
-                                    style={styles.fieldInput}
-                                />
-                            </View>
+                        {/* Ville */}
+                        <View style={styles.fieldContainer}>
+                            <ProductFieldSelector
+                                label="Ville"
+                                value={newProduct.ville || ''}
+                                productType="immobilier_terrain"
+                                fieldName="villes"
+                                onSelect={(value) => setNewProduct({ ...newProduct, ville: value })}
+                                required
+                            />
+                        </View>
+
+                        {/* Quartier - Dynamique selon la ville */}
+                        <View style={styles.fieldContainer}>
+                            <ProductFieldSelector
+                                label="Quartier"
+                                value={newProduct.quartier || ''}
+                                productType="immobilier_terrain"
+                                fieldName={newProduct.ville?.toLowerCase().includes('douala') ? 'quartiers_douala' : newProduct.ville?.toLowerCase().includes('yaoundé') || newProduct.ville?.toLowerCase().includes('yaounde') ? 'quartiers_yaounde' : 'villes'}
+                                onSelect={(value) => setNewProduct({ ...newProduct, quartier: value })}
+                            />
                         </View>
 
                         {/* GPS */}
@@ -3593,90 +4965,81 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
             case 'automobile':
                 return (
                     <>
-                        {/* Type de véhicule et Type de carrosserie */}
+                        {/* Section 1: Identité du Véhicule */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="car" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>Identité du Véhicule</Text>
+                        </View>
+
+                        {/* Type et Carrosserie */}
                         <View style={styles.fieldRow}>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
+                            <View style={[{ flex: 1 }]}>
+                                <SelectModalitySelector
                                     label="Type de véhicule"
                                     value={newProduct.typeVehicule || ''}
                                     productType="automobile"
                                     fieldName="types"
                                     onSelect={(value) => setNewProduct({ ...newProduct, typeVehicule: value })}
                                     required
+                                    placeholder="Ex: Voiture, SUV..."
                                 />
                             </View>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
-                                    label="Type de carrosserie"
+                            <View style={[{ flex: 1 }]}>
+                                <SelectModalitySelector
+                                    label="Carrosserie"
                                     value={newProduct.typeCarrosserie || ''}
                                     productType="automobile"
                                     fieldName="carrosseries"
                                     onSelect={(value) => setNewProduct({ ...newProduct, typeCarrosserie: value })}
+                                    placeholder="Ex: Berline, SUV..."
                                 />
                             </View>
                         </View>
 
-                        {/* Marque et Modèle intelligent sur la même ligne */}
+                        {/* Marque et Modèle intelligent */}
                         <View style={styles.fieldRow}>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
+                            <View style={[{ flex: 1 }]}>
+                                <SelectModalitySelector
                                     label="Marque"
                                     value={newProduct.marqueAutomobile || ''}
                                     productType="automobile"
                                     fieldName="marques"
-                                    onSelect={(value) => setNewProduct({ ...newProduct, marqueAutomobile: value })}
+                                    onSelect={(value) => setNewProduct({
+                                        ...newProduct,
+                                        marqueAutomobile: value,
+                                        modeleAutomobile: '' // Reset modèle quand marque change
+                                    })}
                                     required
+                                    placeholder="Ex: Toyota, Peugeot..."
                                 />
                             </View>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <SmartVehicleModelInput
-                                    marque={newProduct.marqueAutomobile || ''}
-                                    value={newProduct.modeleAutomobile || ''}
-                                    onChangeText={(text) => setNewProduct({ ...newProduct, modeleAutomobile: text })}
-                                    placeholder="Ex: Corolla"
+                            <View style={[{ flex: 1 }]}>
+                                {/* ✅ NOUVEAU: VehicleModelSelector intelligent */}
+                                <VehicleModelSelector
                                     label="Modèle"
+                                    value={newProduct.modeleAutomobile || ''}
+                                    marque={newProduct.marqueAutomobile || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, modeleAutomobile: value })}
                                     required
-                                />
-                            </View>
-                        </View>
-
-                        {/* État et Couleur sur la même ligne */}
-                        <View style={styles.fieldRow}>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
-                                    label="État du véhicule"
-                                    value={newProduct.etatVehicule || ''}
-                                    productType="automobile"
-                                    fieldName="etat"
-                                    onSelect={(value) => setNewProduct({ ...newProduct, etatVehicule: value })}
-                                    required
-                                />
-                            </View>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
-                                    label="Couleur"
-                                    value={newProduct.couleurAutomobile || ''}
-                                    productType="automobile"
-                                    fieldName="couleur"
-                                    onSelect={(value) => setNewProduct({ ...newProduct, couleurAutomobile: value })}
+                                    placeholder="Ex: Corolla, 308..."
                                 />
                             </View>
                         </View>
 
                         {/* Année et Kilométrage */}
                         <View style={styles.fieldRow}>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                            <View style={[styles.fieldContainer, { flex: 1, marginBottom: 12 }]}>
                                 <Text style={styles.fieldLabel}>Année <Text style={styles.required}>*</Text></Text>
                                 <NativeInput
-                                    placeholder="Ex: 2018"
+                                    placeholder="Ex: 2020"
                                     value={newProduct.annee || ''}
                                     onChangeText={(text) => setNewProduct({ ...newProduct, annee: text })}
                                     style={styles.fieldInput}
                                     keyboardType="numeric"
                                 />
                             </View>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Kilométrage (km)</Text>
+                            <View style={[styles.fieldContainer, { flex: 1, marginBottom: 12 }]}>
+                                <Text style={styles.fieldLabel}>Kilométrage (km) <Text style={styles.required}>*</Text></Text>
                                 <NativeInput
                                     placeholder="Ex: 65000"
                                     value={newProduct.kilometrage || ''}
@@ -3687,55 +5050,67 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             </View>
                         </View>
 
-                        {/* Carburant et Transmission sur la même ligne */}
+                        {/* Couleur + État */}
                         <View style={styles.fieldRow}>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
+                            <View style={[{ flex: 1 }]}>
+                                <SelectModalitySelector
+                                    label="Couleur"
+                                    value={newProduct.couleurAutomobile || ''}
+                                    productType="automobile"
+                                    fieldName="couleurs"
+                                    onSelect={(value) => setNewProduct({ ...newProduct, couleurAutomobile: value })}
+                                    required
+                                    placeholder="Ex: Blanc, Noir..."
+                                />
+                            </View>
+                            <View style={[{ flex: 1 }]}>
+                                <SelectModalitySelector
+                                    label="État du véhicule"
+                                    value={newProduct.etatVehicule || ''}
+                                    productType="automobile"
+                                    fieldName="etat"
+                                    onSelect={(value) => setNewProduct({ ...newProduct, etatVehicule: value })}
+                                    required
+                                    placeholder="Ex: Excellent état..."
+                                />
+                            </View>
+                        </View>
+
+                        {/* Section 2: Caractéristiques Techniques */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="settings" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>Caractéristiques Techniques</Text>
+                        </View>
+
+                        {/* Carburant et Transmission */}
+                        <View style={styles.fieldRow}>
+                            <View style={[{ flex: 1 }]}>
+                                <SelectModalitySelector
                                     label="Carburant"
                                     value={newProduct.typeCarburant || ''}
                                     productType="automobile"
                                     fieldName="carburant"
                                     onSelect={(value) => setNewProduct({ ...newProduct, typeCarburant: value })}
                                     required
+                                    placeholder="Ex: Diesel, Essence..."
                                 />
                             </View>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
+                            <View style={[{ flex: 1 }]}>
+                                <SelectModalitySelector
                                     label="Transmission"
                                     value={newProduct.transmission || ''}
                                     productType="automobile"
                                     fieldName="transmission"
                                     onSelect={(value) => setNewProduct({ ...newProduct, transmission: value })}
                                     required
-                                />
-                            </View>
-                        </View>
-
-                        {/* Nombre de portes et places */}
-                        <View style={styles.fieldRow}>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
-                                    label="Nombre de portes"
-                                    value={newProduct.nbPortes || ''}
-                                    productType="automobile"
-                                    fieldName="portes"
-                                    onSelect={(value) => setNewProduct({ ...newProduct, nbPortes: value })}
-                                />
-                            </View>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
-                                    label="Nombre de places"
-                                    value={newProduct.nbPlaces || ''}
-                                    productType="automobile"
-                                    fieldName="places"
-                                    onSelect={(value) => setNewProduct({ ...newProduct, nbPlaces: value })}
+                                    placeholder="Ex: Automatique..."
                                 />
                             </View>
                         </View>
 
                         {/* Puissance et Cylindrée */}
                         <View style={styles.fieldRow}>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                            <View style={[styles.fieldContainer, { flex: 1, marginBottom: 12 }]}>
                                 <Text style={styles.fieldLabel}>Puissance (CV)</Text>
                                 <NativeInput
                                     placeholder="Ex: 110"
@@ -3745,7 +5120,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                     keyboardType="numeric"
                                 />
                             </View>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                            <View style={[styles.fieldContainer, { flex: 1, marginBottom: 12 }]}>
                                 <Text style={styles.fieldLabel}>Cylindrée (cm³)</Text>
                                 <NativeInput
                                     placeholder="Ex: 1600"
@@ -3757,62 +5132,79 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             </View>
                         </View>
 
-                        {/* Équipements et options */}
-                        <ProductFieldSelector
-                            label="Équipements et options"
-                            fieldName="equipements"
-                            productType="automobile"
-                            value={newProduct.equipementsAuto || []}
-                            onSelect={(value) => setNewProduct({ ...newProduct, equipementsAuto: value })}
-                            multiSelect
-                        />
+                        {/* Portes et Places */}
+                        <View style={styles.fieldRow}>
+                            <View style={[{ flex: 1 }]}>
+                                <SelectModalitySelector
+                                    label="Nombre de portes"
+                                    value={newProduct.nbPortes || ''}
+                                    productType="automobile"
+                                    fieldName="portes"
+                                    onSelect={(value) => setNewProduct({ ...newProduct, nbPortes: value })}
+                                    placeholder="Ex: 4 portes..."
+                                />
+                            </View>
+                            <View style={[{ flex: 1 }]}>
+                                <SelectModalitySelector
+                                    label="Nombre de places"
+                                    value={newProduct.nbPlaces || ''}
+                                    productType="automobile"
+                                    fieldName="places"
+                                    onSelect={(value) => setNewProduct({ ...newProduct, nbPlaces: value })}
+                                    placeholder="Ex: 5 places..."
+                                />
+                            </View>
+                        </View>
 
-                        {/* Options booléennes */}
-                        <View style={styles.fieldContainer}>
+                        {/* Section 3: État et Historique */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="clipboard" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>État et Historique</Text>
+                        </View>
+
+                        {/* Toggles État */}
+                        <View style={styles.togglesContainer}>
                             <TouchableOpacity
-                                style={styles.checkboxContainer}
+                                style={[styles.toggleOption, newProduct.premiereMain && styles.toggleOptionActive]}
                                 onPress={() => setNewProduct({ ...newProduct, premiereMain: !newProduct.premiereMain })}
                             >
-                                <View style={[styles.checkbox, newProduct.premiereMain && styles.checkboxChecked]}>
-                                    {newProduct.premiereMain && (
-                                        <SafeIcon name="check" size={16} color="#FFFFFF" />
-                                    )}
-                                </View>
-                                <Text style={styles.checkboxLabel}>⭐ Première main</Text>
+                                <SafeIcon name="star" size={20} color={newProduct.premiereMain ? modernColors.primary : '#9CA3AF'} />
+                                <Text style={[styles.toggleLabel, newProduct.premiereMain && styles.toggleLabelActive]}>
+                                    Première main
+                                </Text>
                             </TouchableOpacity>
+                            <Text style={styles.toggleHint}>✓ Cocher si 1er propriétaire</Text>
                         </View>
 
-                        <View style={styles.fieldContainer}>
+                        <View style={styles.togglesContainer}>
                             <TouchableOpacity
-                                style={styles.checkboxContainer}
+                                style={[styles.toggleOption, newProduct.historiqueEntretien && styles.toggleOptionActive]}
                                 onPress={() => setNewProduct({ ...newProduct, historiqueEntretien: !newProduct.historiqueEntretien })}
                             >
-                                <View style={[styles.checkbox, newProduct.historiqueEntretien && styles.checkboxChecked]}>
-                                    {newProduct.historiqueEntretien && (
-                                        <SafeIcon name="check" size={16} color="#FFFFFF" />
-                                    )}
-                                </View>
-                                <Text style={styles.checkboxLabel}>📋 Historique d'entretien disponible</Text>
+                                <SafeIcon name="book-open" size={20} color={newProduct.historiqueEntretien ? modernColors.primary : '#9CA3AF'} />
+                                <Text style={[styles.toggleLabel, newProduct.historiqueEntretien && styles.toggleLabelActive]}>
+                                    Historique d'entretien
+                                </Text>
                             </TouchableOpacity>
+                            <Text style={styles.toggleHint}>✓ Carnet d'entretien complet</Text>
                         </View>
 
-                        <View style={styles.fieldContainer}>
+                        <View style={styles.togglesContainer}>
                             <TouchableOpacity
-                                style={styles.checkboxContainer}
+                                style={[styles.toggleOption, newProduct.contreTechnique && styles.toggleOptionActive]}
                                 onPress={() => setNewProduct({ ...newProduct, contreTechnique: !newProduct.contreTechnique })}
                             >
-                                <View style={[styles.checkbox, newProduct.contreTechnique && styles.checkboxChecked]}>
-                                    {newProduct.contreTechnique && (
-                                        <SafeIcon name="check" size={16} color="#FFFFFF" />
-                                    )}
-                                </View>
-                                <Text style={styles.checkboxLabel}>✅ Contrôle technique valide</Text>
+                                <SafeIcon name="check-circle" size={20} color={newProduct.contreTechnique ? modernColors.primary : '#9CA3AF'} />
+                                <Text style={[styles.toggleLabel, newProduct.contreTechnique && styles.toggleLabelActive]}>
+                                    Contrôle technique valide
+                                </Text>
                             </TouchableOpacity>
+                            <Text style={styles.toggleHint}>✓ Contrôle technique à jour</Text>
                         </View>
 
-                        {/* Garantie et Papiers */}
+                        {/* Garantie + Papiers */}
                         <View style={styles.fieldRow}>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                            <View style={[styles.fieldContainer, { flex: 1, marginBottom: 12 }]}>
                                 <Text style={styles.fieldLabel}>Garantie</Text>
                                 <NativeInput
                                     placeholder="Ex: 6 mois constructeur"
@@ -3821,20 +5213,470 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                     style={styles.fieldInput}
                                 />
                             </View>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
+                            <View style={[{ flex: 1 }]}>
+                                <SelectModalitySelector
                                     label="État des papiers"
-                                    fieldName="papiers"
-                                    productType="automobile"
                                     value={newProduct.papiers || ''}
+                                    productType="automobile"
+                                    fieldName="papiers"
                                     onSelect={(value) => setNewProduct({ ...newProduct, papiers: value })}
+                                    placeholder="Ex: En règle..."
                                 />
                             </View>
                         </View>
 
+                        {/* Section 4: Équipements */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="tool" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>Équipements et Options</Text>
+                        </View>
+
+                        {/* ✅ Équipements multi-select */}
+                        <MultiSelectModalitySelector
+                            label="Équipements et options"
+                            values={newProduct.equipementsAuto || []}
+                            productType="automobile"
+                            fieldName="equipements"
+                            onSelect={(values) => setNewProduct({ ...newProduct, equipementsAuto: values })}
+                            placeholder="Sélectionner les équipements"
+                            maxSelections={15}
+                        />
+
                         <View style={styles.hintBox}>
+                            <SafeIcon name="info" size={16} color={modernColors.primary} />
                             <Text style={styles.hintText}>
-                                💡 Plus vous renseignez d'informations (équipements, état des papiers, historique), plus votre annonce sera attractive
+                                💡 <Text style={styles.hintBold}>Conseil :</Text> Plus vous détaillez les équipements et l'état du véhicule, plus votre annonce sera attractive et crédible
+                            </Text>
+                        </View>
+                    </>
+                );
+
+            case 'mecanicien':
+                return (
+                    <>
+                        {/* Section 1: Informations du Garage */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="tool" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>Informations du Garage</Text>
+                        </View>
+
+                        {/* Nom du garage */}
+                        <View style={styles.fieldContainer}>
+                            <Text style={styles.fieldLabel}>Nom du garage/atelier <Text style={styles.required}>*</Text></Text>
+                            <NativeInput
+                                placeholder="Ex: Garage Auto Plus, Méca Express..."
+                                value={newProduct.nomGarage || ''}
+                                onChangeText={(text) => setNewProduct({ ...newProduct, nomGarage: text })}
+                                style={styles.fieldInput}
+                            />
+                        </View>
+
+                        {/* Services proposés */}
+                        <ProductFieldSelector
+                            label="Services proposés"
+                            productType="mecanicien"
+                            fieldName="types_service_mecanique"
+                            selectedValues={newProduct.typeServiceMecanique || []}
+                            onSelect={(values) => setNewProduct({ ...newProduct, typeServiceMecanique: values })}
+                            required
+                            maxSelections={10}
+                        />
+
+                        {/* Spécialités du garage */}
+                        <ProductFieldSelector
+                            label="Spécialités du garage"
+                            productType="mecanicien"
+                            fieldName="specialites_garage"
+                            selectedValues={newProduct.specialitesGarage || []}
+                            onSelect={(values) => setNewProduct({ ...newProduct, specialitesGarage: values })}
+                            required
+                            maxSelections={5}
+                        />
+
+                        {/* Section 2: Compétences & Certifications */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="award" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>Compétences & Certifications</Text>
+                        </View>
+
+                        {/* Marques de véhicules traitées */}
+                        <ProductFieldSelector
+                            label="Marques de véhicules traitées"
+                            productType="mecanicien"
+                            fieldName="marques_vehicules"
+                            selectedValues={newProduct.marquesVehicules || []}
+                            onSelect={(values) => setNewProduct({ ...newProduct, marquesVehicules: values })}
+                            maxSelections={15}
+                        />
+
+                        {/* Types de véhicules */}
+                        <ProductFieldSelector
+                            label="Types de véhicules traités"
+                            productType="mecanicien"
+                            fieldName="types_vehicules"
+                            selectedValues={newProduct.typesVehiculesMeca || []}
+                            onSelect={(values) => setNewProduct({ ...newProduct, typesVehiculesMeca: values })}
+                            maxSelections={8}
+                        />
+
+                        {/* Certifications */}
+                        <ProductFieldSelector
+                            label="Certifications & Qualifications"
+                            productType="mecanicien"
+                            fieldName="certifications"
+                            selectedValues={newProduct.certificationsMeca || []}
+                            onSelect={(values) => setNewProduct({ ...newProduct, certificationsMeca: values })}
+                            maxSelections={5}
+                        />
+
+                        {/* Section 3: Équipements & Services */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="settings" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>Équipements & Services</Text>
+                        </View>
+
+                        {/* Équipements du garage */}
+                        <ProductFieldSelector
+                            label="Équipements disponibles"
+                            productType="mecanicien"
+                            fieldName="equipements"
+                            selectedValues={newProduct.equipementsGarage || []}
+                            onSelect={(values) => setNewProduct({ ...newProduct, equipementsGarage: values })}
+                            maxSelections={10}
+                        />
+
+                        {/* Services complémentaires */}
+                        <ProductFieldSelector
+                            label="Services complémentaires"
+                            productType="mecanicien"
+                            fieldName="services_complementaires"
+                            selectedValues={newProduct.servicesComplementaires || []}
+                            onSelect={(values) => setNewProduct({ ...newProduct, servicesComplementaires: values })}
+                            maxSelections={8}
+                        />
+
+                        {/* Section 4: Horaires & Disponibilité */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="clock" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>Horaires & Disponibilité</Text>
+                        </View>
+
+                        {/* Horaires */}
+                        <SelectModalitySelector
+                            label="Horaires d'ouverture"
+                            value={newProduct.horairesGarage || ''}
+                            productType="mecanicien"
+                            fieldName="horaires"
+                            onSelect={(value) => setNewProduct({ ...newProduct, horairesGarage: value })}
+                            required
+                            placeholder="Ex: Lundi-Samedi 8h-18h..."
+                        />
+
+                        {/* Délais */}
+                        <SelectModalitySelector
+                            label="Délais d'intervention"
+                            value={newProduct.delaisIntervention || ''}
+                            productType="mecanicien"
+                            fieldName="delais"
+                            onSelect={(value) => setNewProduct({ ...newProduct, delaisIntervention: value })}
+                            required
+                            placeholder="Ex: Intervention immédiate..."
+                        />
+
+                        {/* Urgence */}
+                        <SelectModalitySelector
+                            label="Dépannage d'urgence"
+                            value={newProduct.urgenceMeca || ''}
+                            productType="mecanicien"
+                            fieldName="urgence"
+                            onSelect={(value) => setNewProduct({ ...newProduct, urgenceMeca: value })}
+                            placeholder="Ex: Oui - 24h/24..."
+                        />
+
+                        {/* Section 5: Localisation intelligente - Zone d'intervention */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>📍 Zone d'Intervention</Text>
+                        </View>
+
+                        <View style={styles.hintBox}>
+                            <SafeIcon name="info" size={16} color={modernColors.info} />
+                            <Text style={styles.hintText}>
+                                🌍 <Text style={styles.hintBold}>Système intelligent :</Text> Sélectionnez vos zones d'intervention. Les villes de votre pays s'affichent en priorité !
+                            </Text>
+                        </View>
+
+                        {/* Zone d'intervention MULTIPLE avec système intelligent */}
+                        <MultiSelectModalitySelector
+                            label="Zones d'intervention *"
+                            values={newProduct.zonesInterventionMeca || []}
+                            productType="mecanicien"
+                            fieldName="zones_intervention"
+                            onSelect={(values) => setNewProduct({ ...newProduct, zonesInterventionMeca: values })}
+                            placeholder="Ex: Douala, Yaoundé, Tout le Cameroun..."
+                            maxSelections={15}
+                        />
+
+                        {/* Langues */}
+                        <ProductFieldSelector
+                            label="Langues parlées"
+                            productType="mecanicien"
+                            fieldName="langues"
+                            selectedValues={newProduct.languesMeca || []}
+                            onSelect={(values) => setNewProduct({ ...newProduct, languesMeca: values })}
+                            maxSelections={5}
+                        />
+
+                        {/* Section 6: Modes de paiement & Options */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="credit-card" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>Paiement & Options</Text>
+                        </View>
+
+                        {/* Modes de paiement */}
+                        <ProductFieldSelector
+                            label="Modes de paiement acceptés"
+                            productType="mecanicien"
+                            fieldName="modes_paiement"
+                            selectedValues={newProduct.modesPaiement || []}
+                            onSelect={(values) => setNewProduct({ ...newProduct, modesPaiement: values })}
+                            maxSelections={5}
+                        />
+
+                        {/* Tarif horaire (optionnel) */}
+                        <View style={styles.fieldContainer}>
+                            <Text style={styles.fieldLabel}>Tarif horaire (optionnel)</Text>
+                            <NativeInput
+                                placeholder="Ex: 5000 XAF/heure"
+                                value={newProduct.tarifHoraireMeca || ''}
+                                onChangeText={(text) => setNewProduct({ ...newProduct, tarifHoraireMeca: text })}
+                                style={styles.fieldInput}
+                            />
+                        </View>
+
+                        {/* Options checkbox */}
+                        <View style={styles.checkboxSection}>
+                            <TouchableOpacity
+                                style={styles.checkboxRow}
+                                onPress={() => setNewProduct({ ...newProduct, devisGratuit: !newProduct.devisGratuit })}
+                            >
+                                <View style={[styles.checkbox, newProduct.devisGratuit && styles.checkboxChecked]}>
+                                    {newProduct.devisGratuit && <SafeIcon name="check" size={14} color="#FFFFFF" />}
+                                </View>
+                                <Text style={styles.checkboxLabel}>Devis gratuit</Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                style={styles.checkboxRow}
+                                onPress={() => setNewProduct({ ...newProduct, garantieReparations: !newProduct.garantieReparations })}
+                            >
+                                <View style={[styles.checkbox, newProduct.garantieReparations && styles.checkboxChecked]}>
+                                    {newProduct.garantieReparations && <SafeIcon name="check" size={14} color="#FFFFFF" />}
+                                </View>
+                                <Text style={styles.checkboxLabel}>Garantie sur réparations</Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                style={styles.checkboxRow}
+                                onPress={() => setNewProduct({ ...newProduct, vehiculeCourtoisie: !newProduct.vehiculeCourtoisie })}
+                            >
+                                <View style={[styles.checkbox, newProduct.vehiculeCourtoisie && styles.checkboxChecked]}>
+                                    {newProduct.vehiculeCourtoisie && <SafeIcon name="check" size={14} color="#FFFFFF" />}
+                                </View>
+                                <Text style={styles.checkboxLabel}>Véhicule de courtoisie disponible</Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                style={styles.checkboxRow}
+                                onPress={() => setNewProduct({ ...newProduct, enlevementVehicule: !newProduct.enlevementVehicule })}
+                            >
+                                <View style={[styles.checkbox, newProduct.enlevementVehicule && styles.checkboxChecked]}>
+                                    {newProduct.enlevementVehicule && <SafeIcon name="check" size={14} color="#FFFFFF" />}
+                                </View>
+                                <Text style={styles.checkboxLabel}>Enlèvement véhicule en panne</Text>
+                            </TouchableOpacity>
+                        </View>
+
+                        <View style={styles.hintBox}>
+                            <SafeIcon name="info" size={16} color={modernColors.primary} />
+                            <Text style={styles.hintText}>
+                                💡 <Text style={styles.hintBold}>Conseil :</Text> Ajoutez des photos de votre atelier, équipements et exemples de réparations pour inspirer confiance
+                            </Text>
+                        </View>
+                    </>
+                );
+
+            case 'transport_intra_urbain':
+                return (
+                    <>
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="navigation" size={20} color="#F59E0B" />
+                            <Text style={styles.sectionTitle}>Véhicule et Zone de Service</Text>
+                        </View>
+                        <SelectModalitySelector
+                            label="Type de véhicule *"
+                            value={newProduct.typeVehiculeTransport || ''}
+                            productType="transport_intra_urbain"
+                            fieldName="types_vehicules"
+                            onSelect={(value) => setNewProduct({ ...newProduct, typeVehiculeTransport: value })}
+                            required
+                            placeholder="Ex: Moto-taxi, Berline..."
+                        />
+                        <SelectModalitySelector
+                            label="Ville de service *"
+                            value={newProduct.villeService || ''}
+                            productType="transport_intra_urbain"
+                            fieldName="villes"
+                            onSelect={(value) => setNewProduct({ ...newProduct, villeService: value, quartierService: '' })}
+                            required
+                            placeholder="Sélectionnez votre ville"
+                        />
+                        {newProduct.villeService && (
+                            <SelectModalitySelector
+                                label="Quartier principal"
+                                value={newProduct.quartierService || ''}
+                                productType="transport_intra_urbain"
+                                fieldName="quartiers"
+                                onSelect={(value) => setNewProduct({ ...newProduct, quartierService: value })}
+                                placeholder="Précisez votre quartier"
+                            />
+                        )}
+                        <SelectModalitySelector
+                            label="État du véhicule"
+                            value={newProduct.etatVehicule || ''}
+                            productType="transport_intra_urbain"
+                            fieldName="etat_vehicule"
+                            onSelect={(value) => setNewProduct({ ...newProduct, etatVehicule: value })}
+                            placeholder="Ex: Récent, Bon état..."
+                        />
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="briefcase" size={20} color="#F59E0B" />
+                            <Text style={styles.sectionTitle}>Services et Disponibilité</Text>
+                        </View>
+                        <SelectModalitySelector
+                            label="Catégorie de service *"
+                            value={newProduct.categorieService || ''}
+                            productType="transport_intra_urbain"
+                            fieldName="categories_service"
+                            onSelect={(value) => setNewProduct({ ...newProduct, categorieService: value })}
+                            required
+                            placeholder="Ex: Course simple, À la journée..."
+                        />
+                        <SelectModalitySelector
+                            label="Disponibilité *"
+                            value={newProduct.disponibilite || ''}
+                            productType="transport_intra_urbain"
+                            fieldName="disponibilite"
+                            onSelect={(value) => setNewProduct({ ...newProduct, disponibilite: value })}
+                            required
+                            placeholder="Ex: 24h/24, Jour uniquement..."
+                        />
+                        <View style={styles.field}>
+                            <Text style={styles.fieldLabel}>Tarif de base indicatif (FCFA)</Text>
+                            <TextInput
+                                style={styles.input}
+                                placeholder="Ex: 500, 1000, 2000..."
+                                value={newProduct.tarifBase || ''}
+                                onChangeText={(value) => setNewProduct({ ...newProduct, tarifBase: value })}
+                                keyboardType="numeric"
+                            />
+                            <Text style={styles.fieldHint}>
+                                💡 Tarif indicatif de départ. Le prix final sera négocié avec le client.
+                            </Text>
+                        </View>
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="star" size={20} color="#F59E0B" />
+                            <Text style={styles.sectionTitle}>Options de Confort</Text>
+                        </View>
+                        <MultiSelectModalitySelector
+                            label="Options de confort"
+                            values={newProduct.optionsConfort || []}
+                            productType="transport_intra_urbain"
+                            fieldName="options_confort"
+                            onSelect={(values) => setNewProduct({ ...newProduct, optionsConfort: values })}
+                            placeholder="Sélectionnez les options disponibles"
+                        />
+                        <MultiSelectModalitySelector
+                            label="Modes de paiement *"
+                            values={newProduct.modePaiement || []}
+                            productType="transport_intra_urbain"
+                            fieldName="modes_paiement"
+                            onSelect={(values) => setNewProduct({ ...newProduct, modePaiement: values })}
+                            required
+                            placeholder="Sélectionnez les modes de paiement acceptés"
+                        />
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="globe" size={20} color="#F59E0B" />
+                            <Text style={styles.sectionTitle}>Langues et Zone d'intervention</Text>
+                        </View>
+                        <MultiSelectModalitySelector
+                            label="Langues parlées"
+                            values={newProduct.languesChauffeur || []}
+                            productType="transport_intra_urbain"
+                            fieldName="langues_chauffeur"
+                            onSelect={(values) => setNewProduct({ ...newProduct, languesChauffeur: values })}
+                            placeholder="Langues que vous parlez"
+                        />
+                        <SelectModalitySelector
+                            label="Zone d'intervention étendue"
+                            value={newProduct.zoneIntervention || ''}
+                            productType="transport_intra_urbain"
+                            fieldName="zones_intervention"
+                            onSelect={(value) => setNewProduct({ ...newProduct, zoneIntervention: value })}
+                            placeholder="Zone géographique couverte"
+                        />
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="check-circle" size={20} color="#10B981" />
+                            <Text style={styles.sectionTitle}>Services Additionnels Innovants</Text>
+                        </View>
+                        <View style={styles.checkboxGroup}>
+                            <TouchableOpacity style={styles.checkboxRow} onPress={() => setNewProduct({ ...newProduct, gpsTempsReel: !newProduct.gpsTempsReel })}>
+                                <View style={[styles.checkbox, newProduct.gpsTempsReel && styles.checkboxChecked]}>
+                                    {newProduct.gpsTempsReel && <SafeIcon name="check" size={14} color="#FFFFFF" />}
+                                </View>
+                                <Text style={styles.checkboxLabel}>📍 GPS partagé en temps réel</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity style={styles.checkboxRow} onPress={() => setNewProduct({ ...newProduct, chatInstantane: !newProduct.chatInstantane })}>
+                                <View style={[styles.checkbox, newProduct.chatInstantane && styles.checkboxChecked]}>
+                                    {newProduct.chatInstantane && <SafeIcon name="check" size={14} color="#FFFFFF" />}
+                                </View>
+                                <Text style={styles.checkboxLabel}>💬 Chat instantané (WebSocket)</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity style={styles.checkboxRow} onPress={() => setNewProduct({ ...newProduct, appelVideoDisponible: !newProduct.appelVideoDisponible })}>
+                                <View style={[styles.checkbox, newProduct.appelVideoDisponible && styles.checkboxChecked]}>
+                                    {newProduct.appelVideoDisponible && <SafeIcon name="check" size={14} color="#FFFFFF" />}
+                                </View>
+                                <Text style={styles.checkboxLabel}>📞 Appel vidéo (WebRTC)</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity style={styles.checkboxRow} onPress={() => setNewProduct({ ...newProduct, calculDistanceGoogleMaps: !newProduct.calculDistanceGoogleMaps })}>
+                                <View style={[styles.checkbox, newProduct.calculDistanceGoogleMaps && styles.checkboxChecked]}>
+                                    {newProduct.calculDistanceGoogleMaps && <SafeIcon name="check" size={14} color="#FFFFFF" />}
+                                </View>
+                                <Text style={styles.checkboxLabel}>🗺️ Calcul distance (Google Maps)</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity style={styles.checkboxRow} onPress={() => setNewProduct({ ...newProduct, estimationRoutesNonGoudronnees: !newProduct.estimationRoutesNonGoudronnees })}>
+                                <View style={[styles.checkbox, newProduct.estimationRoutesNonGoudronnees && styles.checkboxChecked]}>
+                                    {newProduct.estimationRoutesNonGoudronnees && <SafeIcon name="check" size={14} color="#FFFFFF" />}
+                                </View>
+                                <Text style={styles.checkboxLabel}>🛣️ Estimation routes non goudronnées</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity style={styles.checkboxRow} onPress={() => setNewProduct({ ...newProduct, negociationPrixDirect: !newProduct.negociationPrixDirect })}>
+                                <View style={[styles.checkbox, newProduct.negociationPrixDirect && styles.checkboxChecked]}>
+                                    {newProduct.negociationPrixDirect && <SafeIcon name="check" size={14} color="#FFFFFF" />}
+                                </View>
+                                <Text style={styles.checkboxLabel}>💰 Négociation prix en direct</Text>
+                            </TouchableOpacity>
+                        </View>
+                        <View style={styles.hintBox}>
+                            <SafeIcon name="info" size={16} color="#F59E0B" />
+                            <Text style={styles.hintText}>
+                                💡 <Text style={styles.hintBold}>Conseil :</Text> Ajoutez des photos de votre véhicule. Le système calculera automatiquement la distance via Google Maps.
+                            </Text>
+                        </View>
+                        <View style={[styles.hintBox, { backgroundColor: '#FEF3C7', borderColor: '#F59E0B' }]}>
+                            <SafeIcon name="alert-circle" size={16} color="#F59E0B" />
+                            <Text style={styles.hintText}>
+                                <Text style={styles.hintBold}>Différence avec Covoiturage :</Text> Transport intra-urbain = courses courtes au sein d'une même ville avec négociation de prix.
                             </Text>
                         </View>
                     </>
@@ -4340,75 +6182,57 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
             case 'hotellerie':
                 return (
                     <>
-                        {/* Type et Catégorie sur la même ligne */}
+                        {/* Section 1: Identité de l'Établissement */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="home" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>Identité de l'Établissement</Text>
+                        </View>
+
+                        <SelectModalitySelector
+                            label="Nom de l'établissement"
+                            value={newProduct.nomEtablissementHotel || newProduct.name || ''}
+                            productType="hotellerie"
+                            fieldName="noms_etablissements"
+                            onSelect={(value) => setNewProduct({
+                                ...newProduct,
+                                nomEtablissementHotel: value,
+                                name: value // Synchronisation
+                            })}
+                            required
+                            placeholder="Ex: Hôtel Sawa, Hilton Yaoundé..."
+                        />
+
                         <View style={styles.fieldRow}>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
+                            <View style={[{ flex: 1 }]}>
+                                <SelectModalitySelector
                                     label="Type d'hébergement"
-                                    fieldName="types"
-                                    productType="hotellerie"
                                     value={newProduct.typeHebergement || ''}
+                                    productType="hotellerie"
+                                    fieldName="types"
                                     onSelect={(value) => setNewProduct({ ...newProduct, typeHebergement: value })}
                                     required
+                                    placeholder="Ex: Hôtel, Auberge..."
                                 />
                             </View>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
-                                    label="Catégorie"
-                                    fieldName="categories"
-                                    productType="hotellerie"
+                            <View style={[{ flex: 1 }]}>
+                                <SelectModalitySelector
+                                    label="Classement"
                                     value={newProduct.categorieHotel || ''}
+                                    productType="hotellerie"
+                                    fieldName="categories"
                                     onSelect={(value) => setNewProduct({ ...newProduct, categorieHotel: value })}
                                     required
+                                    placeholder="Ex: 3 étoiles, 4 étoiles..."
                                 />
                             </View>
                         </View>
 
-                        {/* Prix par nuit et Nombre de chambres sur la même ligne */}
-                        <View style={styles.fieldRow}>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Prix/nuit (min) <Text style={styles.required}>*</Text></Text>
-                                <NativeInput
-                                    placeholder="Ex: 35000"
-                                    value={newProduct.prixParNuit || ''}
-                                    onChangeText={(text) => setNewProduct({ ...newProduct, prixParNuit: text })}
-                                    style={styles.fieldInput}
-                                    keyboardType="numeric"
-                                />
-                            </View>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Nb chambres</Text>
-                                <NativeInput
-                                    placeholder="Ex: 25"
-                                    value={newProduct.nbChambresHotel || ''}
-                                    onChangeText={(text) => setNewProduct({ ...newProduct, nbChambresHotel: text })}
-                                    style={styles.fieldInput}
-                                    keyboardType="numeric"
-                                />
-                            </View>
+                        {/* Section 2: Localisation */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>Localisation</Text>
                         </View>
 
-                        {/* Types de chambres disponibles */}
-                        <ProductFieldSelector
-                            label="Types de chambres disponibles"
-                            fieldName="chambres"
-                            productType="hotellerie"
-                            value={newProduct.typesChambre || []}
-                            onSelect={(value) => setNewProduct({ ...newProduct, typesChambre: value })}
-                            multiSelect
-                        />
-
-                        {/* Équipements de l'hôtel */}
-                        <ProductFieldSelector
-                            label="Équipements et services"
-                            fieldName="equipements"
-                            productType="hotellerie"
-                            value={newProduct.equipementsHotel || []}
-                            onSelect={(value) => setNewProduct({ ...newProduct, equipementsHotel: value })}
-                            multiSelect
-                        />
-
-                        {/* Adresse et Ville sur la même ligne */}
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <Text style={styles.fieldLabel}>Adresse <Text style={styles.required}>*</Text></Text>
@@ -4430,6 +6254,15 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             </View>
                         </View>
 
+                        <SelectModalitySelector
+                            label="Zone/Quartier"
+                            value={newProduct.zoneHotel || ''}
+                            productType="hotellerie"
+                            fieldName="zones"
+                            onSelect={(value) => setNewProduct({ ...newProduct, zoneHotel: value })}
+                            placeholder="Ex: Akwa, Bonanjo, Bastos..."
+                        />
+
                         {/* GPS de l'hôtel */}
                         <View style={styles.fieldContainer}>
                             <Text style={styles.fieldLabel}>📍 Localisation GPS</Text>
@@ -4450,67 +6283,266 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                     </Text>
                                 </View>
                             )}
-                            <View style={styles.hintBox}>
-                                <Text style={styles.hintText}>
-                                    💡 La localisation GPS facilite la recherche de l'établissement par les clients
-                                </Text>
+                        </View>
+
+                        {/* Section 3: Chambres & Tarifs (Variantes) */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="bed" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>Chambres & Tarifs</Text>
+                        </View>
+
+                        <HotelVariantManager
+                            variants={newProduct.variantesChambres || []}
+                            onChange={(variantesChambres) => setNewProduct({ ...newProduct, variantesChambres })}
+                        />
+
+                        {/* Section 4: Équipements & Services */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="briefcase" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>Équipements & Services</Text>
+                        </View>
+
+                        <MultiSelectModalitySelector
+                            label="Équipements"
+                            values={newProduct.equipementsHotel || []}
+                            productType="hotellerie"
+                            fieldName="equipements"
+                            onSelect={(values) => setNewProduct({ ...newProduct, equipementsHotel: values })}
+                            placeholder="Ex: Wi-Fi, Piscine, Spa..."
+                            maxSelections={20}
+                        />
+
+                        <MultiSelectModalitySelector
+                            label="Services"
+                            values={newProduct.servicesHotel || []}
+                            productType="hotellerie"
+                            fieldName="services"
+                            onSelect={(values) => setNewProduct({ ...newProduct, servicesHotel: values })}
+                            placeholder="Ex: Concierge, Room service..."
+                            maxSelections={15}
+                        />
+
+                        <MultiSelectModalitySelector
+                            label="Langues parlées"
+                            values={newProduct.languesHotel || []}
+                            productType="hotellerie"
+                            fieldName="langues"
+                            onSelect={(values) => setNewProduct({ ...newProduct, languesHotel: values })}
+                            placeholder="Ex: Français, Anglais..."
+                            maxSelections={10}
+                        />
+
+                        {/* Section 5: Tarifs & Politiques */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="credit-card" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>Tarifs & Politiques</Text>
+                        </View>
+
+                        <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <Text style={styles.fieldLabel}>Prix/nuit (à partir de) <Text style={styles.required}>*</Text></Text>
+                                <NativeInput
+                                    placeholder="Ex: 35000"
+                                    value={newProduct.prixParNuit || ''}
+                                    onChangeText={(text) => setNewProduct({ ...newProduct, prixParNuit: text })}
+                                    style={styles.fieldInput}
+                                    keyboardType="numeric"
+                                />
                             </View>
+                            <View style={[{ flex: 1 }]}>
+                                <SelectModalitySelector
+                                    label="Type de pension"
+                                    value={newProduct.pensionHotel || ''}
+                                    productType="hotellerie"
+                                    fieldName="pensions"
+                                    onSelect={(value) => setNewProduct({ ...newProduct, pensionHotel: value })}
+                                    placeholder="Ex: Petit-déjeuner inclus..."
+                                />
+                            </View>
+                        </View>
+
+                        <MultiSelectModalitySelector
+                            label="Politiques"
+                            values={newProduct.politiquesHotel || []}
+                            productType="hotellerie"
+                            fieldName="politiques"
+                            onSelect={(values) => setNewProduct({ ...newProduct, politiquesHotel: values })}
+                            placeholder="Ex: Annulation gratuite, Animaux acceptés..."
+                            maxSelections={10}
+                        />
+
+                        <View style={styles.hintBox}>
+                            <SafeIcon name="info" size={14} color={modernColors.primary} />
+                            <Text style={styles.hintText}>
+                                💡 Plus vous renseignez de détails, plus votre établissement sera visible dans les recherches.
+                            </Text>
                         </View>
                     </>
                 );
 
             case 'covoiturage':
+                // ✅ Auto-génération du titre du trajet
+                React.useEffect(() => {
+                    if (newProduct.villeDepart && newProduct.villeArrivee) {
+                        const titre = `${newProduct.villeDepart} → ${newProduct.villeArrivee}`;
+                        if (newProduct.name !== titre) {
+                            setNewProduct(prev => ({ ...prev, name: titre }));
+                        }
+                    }
+                }, [newProduct.villeDepart, newProduct.villeArrivee]);
+
                 return (
                     <>
+                        {/* Section 1: Itinéraire */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>Itinéraire du Trajet</Text>
+                        </View>
+
+                        {/* Villes */}
                         <View style={styles.fieldRow}>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Point de départ</Text>
-                                <NativeInput
-                                    placeholder="Ex: Bonanjo"
-                                    value={newProduct.pointDepart || ''}
-                                    onChangeText={(text) => setNewProduct({ ...newProduct, pointDepart: text })}
-                                    style={styles.fieldInput}
+                            <View style={[{ flex: 1 }]}>
+                                <SelectModalitySelector
+                                    label="Ville de départ"
+                                    value={newProduct.villeDepart || ''}
+                                    productType="covoiturage"
+                                    fieldName="villes"
+                                    onSelect={(value) => setNewProduct({ ...newProduct, villeDepart: value })}
+                                    required
+                                    placeholder="Ex: Douala"
                                 />
                             </View>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Point d'arrivée</Text>
-                                <NativeInput
+                            <View style={[{ flex: 1 }]}>
+                                <SelectModalitySelector
+                                    label="Ville d'arrivée"
+                                    value={newProduct.villeArrivee || ''}
+                                    productType="covoiturage"
+                                    fieldName="villes"
+                                    onSelect={(value) => setNewProduct({ ...newProduct, villeArrivee: value })}
+                                    required
                                     placeholder="Ex: Yaoundé"
-                                    value={newProduct.pointArrivee || ''}
-                                    onChangeText={(text) => setNewProduct({ ...newProduct, pointArrivee: text })}
-                                    style={styles.fieldInput}
                                 />
                             </View>
                         </View>
+
+                        {/* Points précis */}
+                        <View style={styles.fieldRow}>
+                            <View style={[{ flex: 1 }]}>
+                                <SelectModalitySelector
+                                    label="Point de départ"
+                                    value={newProduct.pointDepart || ''}
+                                    productType="covoiturage"
+                                    fieldName="points_depart"
+                                    onSelect={(value) => setNewProduct({ ...newProduct, pointDepart: value })}
+                                    placeholder="Ex: Gare routière, Akwa..."
+                                />
+                            </View>
+                            <View style={[{ flex: 1 }]}>
+                                <SelectModalitySelector
+                                    label="Point d'arrivée"
+                                    value={newProduct.pointArrivee || ''}
+                                    productType="covoiturage"
+                                    fieldName="points_depart"
+                                    onSelect={(value) => setNewProduct({ ...newProduct, pointArrivee: value })}
+                                    placeholder="Ex: Gare, Bastos..."
+                                />
+                            </View>
+                        </View>
+
+                        {/* Section 2: Date et Heure */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="calendar" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>Date et Heure du Trajet</Text>
+                        </View>
+
+                        <View style={styles.fieldRow}>
+                            <View style={[{ flex: 1 }]}>
+                                <NativeDatePicker
+                                    label="Date du trajet"
+                                    value={newProduct.dateTrajet || ''}
+                                    onChange={(date) => setNewProduct({ ...newProduct, dateTrajet: date })}
+                                    required
+                                    placeholder="Sélectionner la date"
+                                />
+                            </View>
+                            <View style={[{ flex: 1 }]}>
+                                <NativeTimePicker
+                                    label="Heure de départ"
+                                    value={newProduct.heureTrajet || ''}
+                                    onChange={(time) => setNewProduct({ ...newProduct, heureTrajet: time })}
+                                    required
+                                    placeholder="Sélectionner l'heure"
+                                />
+                            </View>
+                        </View>
+
+                        <SelectModalitySelector
+                            label="Fréquence du trajet"
+                            value={newProduct.frequenceTrajet || ''}
+                            productType="covoiturage"
+                            fieldName="frequences"
+                            onSelect={(value) => setNewProduct({ ...newProduct, frequenceTrajet: value })}
+                            placeholder="Ex: Trajet unique, Quotidien..."
+                        />
+
+                        {/* Section 3: Véhicule et Places */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="car" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>Véhicule et Disponibilité</Text>
+                        </View>
+
+                        <SelectModalitySelector
+                            label="Type de véhicule"
+                            value={newProduct.typeVehiculeCovoiturage || ''}
+                            productType="covoiturage"
+                            fieldName="types_vehicule"
+                            onSelect={(value) => setNewProduct({ ...newProduct, typeVehiculeCovoiturage: value })}
+                            placeholder="Ex: Berline, SUV..."
+                        />
+
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Date du trajet</Text>
+                                <Text style={styles.fieldLabel}>Places disponibles <Text style={styles.required}>*</Text></Text>
                                 <NativeInput
-                                    placeholder="JJ/MM/AAAA"
-                                    value={newProduct.dateTrajet || ''}
-                                    onChangeText={(text) => setNewProduct({ ...newProduct, dateTrajet: text })}
+                                    placeholder="Ex: 3"
+                                    value={newProduct.nbPlacesDisponibles || ''}
+                                    onChangeText={(text) => setNewProduct({ ...newProduct, nbPlacesDisponibles: text })}
                                     style={styles.fieldInput}
+                                    keyboardType="numeric"
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Heure</Text>
+                                <Text style={styles.fieldLabel}>Prix par place</Text>
                                 <NativeInput
-                                    placeholder="HH:MM"
-                                    value={newProduct.heureTrajet || ''}
-                                    onChangeText={(text) => setNewProduct({ ...newProduct, heureTrajet: text })}
+                                    placeholder="Ex: 5000"
+                                    value={newProduct.prixParPlace || ''}
+                                    onChangeText={(text) => setNewProduct({ ...newProduct, prixParPlace: text })}
                                     style={styles.fieldInput}
+                                    keyboardType="numeric"
                                 />
                             </View>
                         </View>
-                        <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Places disponibles</Text>
-                            <NativeInput
-                                placeholder="Ex: 3"
-                                value={newProduct.nbPlacesDisponibles || ''}
-                                onChangeText={(text) => setNewProduct({ ...newProduct, nbPlacesDisponibles: text })}
-                                style={styles.fieldInput}
-                                keyboardType="numeric"
-                            />
+
+                        {/* Section 4: Préférences */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="settings" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>Préférences de Trajet</Text>
+                        </View>
+
+                        <MultiSelectModalitySelector
+                            label="Préférences"
+                            values={newProduct.preferencesTrajet || []}
+                            productType="covoiturage"
+                            fieldName="preferences"
+                            onSelect={(values) => setNewProduct({ ...newProduct, preferencesTrajet: values })}
+                            placeholder="Ex: Non-fumeur, Musique..."
+                        />
+
+                        <View style={styles.hintBox}>
+                            <SafeIcon name="info" size={14} color={modernColors.primary} />
+                            <Text style={styles.hintText}>
+                                💡 Précisez vos préférences pour un trajet agréable (musique, conversation, animaux, etc.)
+                            </Text>
                         </View>
                     </>
                 );
@@ -4518,46 +6550,790 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
             case 'vetement':
                 return (
                     <>
+                        {/* Section 1: Informations de base */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="shirt" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>Informations de base</Text>
+                        </View>
+
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
-                                    label="Taille"
-                                    value={newProduct.taille || ''}
+                                <SelectModalitySelector
+                                    label="Type de vêtement"
+                                    value={newProduct.typeVetement || ''}
                                     productType="vetement"
-                                    fieldName="tailles"
-                                    onSelect={(value) => setNewProduct({ ...newProduct, taille: value })}
+                                    fieldName="types"
+                                    onSelect={(value) => setNewProduct({ ...newProduct, typeVetement: value })}
+                                    placeholder="Ex: T-shirt, Robe..."
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
-                                    label="Couleur"
-                                    value={newProduct.couleurVetement || ''}
+                                <SelectModalitySelector
+                                    label="Genre"
+                                    value={newProduct.genreVetement || ''}
                                     productType="vetement"
-                                    fieldName="couleurs"
-                                    onSelect={(value) => setNewProduct({ ...newProduct, couleurVetement: value })}
-                                    multiSelect
+                                    fieldName="genres"
+                                    onSelect={(value) => setNewProduct({ ...newProduct, genreVetement: value })}
+                                    placeholder="Ex: Homme, Femme..."
                                 />
                             </View>
                         </View>
+
+                        {/* Section 2: Caractéristiques */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="info" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>Caractéristiques</Text>
+                        </View>
+
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
+                                <SelectModalitySelector
                                     label="Matière"
                                     value={newProduct.matiereVetement || ''}
                                     productType="vetement"
                                     fieldName="matieres"
                                     onSelect={(value) => setNewProduct({ ...newProduct, matiereVetement: value })}
+                                    placeholder="Ex: Coton, Wax..."
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
+                                <SelectModalitySelector
                                     label="Marque"
                                     value={newProduct.marqueVetement || ''}
                                     productType="vetement"
                                     fieldName="marques"
                                     onSelect={(value) => setNewProduct({ ...newProduct, marqueVetement: value })}
+                                    placeholder="Ex: Nike, Zara, Vlisco..."
                                 />
                             </View>
+                        </View>
+
+                        <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <SelectModalitySelector
+                                    label="Style"
+                                    value={newProduct.styleVetement || ''}
+                                    productType="vetement"
+                                    fieldName="styles"
+                                    onSelect={(value) => setNewProduct({ ...newProduct, styleVetement: value })}
+                                    placeholder="Ex: Casual, Africain..."
+                                />
+                            </View>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <SelectModalitySelector
+                                    label="Saison"
+                                    value={newProduct.saisonVetement || ''}
+                                    productType="vetement"
+                                    fieldName="saisons"
+                                    onSelect={(value) => setNewProduct({ ...newProduct, saisonVetement: value })}
+                                    placeholder="Ex: Été, Toutes saisons..."
+                                />
+                            </View>
+                        </View>
+
+                        <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <SelectModalitySelector
+                                    label="Motif"
+                                    value={newProduct.motifVetement || ''}
+                                    productType="vetement"
+                                    fieldName="motifs"
+                                    onSelect={(value) => setNewProduct({ ...newProduct, motifVetement: value })}
+                                    placeholder="Ex: Uni, Wax, Rayé..."
+                                />
+                            </View>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <SelectModalitySelector
+                                    label="Coupe"
+                                    value={newProduct.coupeVetement || ''}
+                                    productType="vetement"
+                                    fieldName="coupes"
+                                    onSelect={(value) => setNewProduct({ ...newProduct, coupeVetement: value })}
+                                    placeholder="Ex: Slim, Regular..."
+                                />
+                            </View>
+                        </View>
+
+                        <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <SelectModalitySelector
+                                    label="État"
+                                    value={newProduct.etatVetement || ''}
+                                    productType="vetement"
+                                    fieldName="etats"
+                                    onSelect={(value) => setNewProduct({ ...newProduct, etatVetement: value })}
+                                    placeholder="Ex: Neuf avec étiquette..."
+                                />
+                            </View>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <SelectModalitySelector
+                                    label="Occasion"
+                                    value={newProduct.occasionVetement || ''}
+                                    productType="vetement"
+                                    fieldName="occasions"
+                                    onSelect={(value) => setNewProduct({ ...newProduct, occasionVetement: value })}
+                                    placeholder="Ex: Quotidien, Mariage..."
+                                />
+                            </View>
+                        </View>
+
+                        <SelectModalitySelector
+                            label="Origine fabrication"
+                            value={newProduct.origineVetement || ''}
+                            productType="vetement"
+                            fieldName="origines"
+                            onSelect={(value) => setNewProduct({ ...newProduct, origineVetement: value })}
+                            placeholder="Ex: Made in China, Made in Africa..."
+                        />
+
+                        {/* Section 3: Variantes (Taille × Couleur × Prix × Images) */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="grid" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>Variantes Taille/Couleur (optionnel)</Text>
+                        </View>
+
+                        <View style={styles.hintBox}>
+                            <SafeIcon name="info" size={14} color={modernColors.primary} />
+                            <Text style={styles.hintText}>
+                                💡 <Text style={styles.hintBold}>Variantes :</Text> Ajoutez différentes tailles et couleurs avec leurs prix et photos spécifiques (ex: T-shirt M Blanc, L Noir, XL Rouge).
+                            </Text>
+                        </View>
+
+                        <ProductVariantManager
+                            variants={newProduct.variantesVetements || []}
+                            onChange={(variants) => setNewProduct({ ...newProduct, variantesVetements: variants })}
+                            variantLabel="variante"
+                            variantPlaceholder="Ex: Taille M - Blanc, Taille L - Noir, XL - Wax multicolore"
+                            maxVariants={15}
+                            minImagesPerVariant={3}
+                            maxImagesPerVariant={5}
+                        />
+
+                        <View style={styles.hintBox}>
+                            <SafeIcon name="info" size={14} color={modernColors.primary} />
+                            <Text style={styles.hintText}>
+                                📸 <Text style={styles.hintBold}>Photos :</Text> Ajoutez 3-5 photos par variante montrant la couleur, les détails et le rendu porté.
+                            </Text>
+                        </View>
+                    </>
+                );
+
+            case 'decoration':
+                return (
+                    <>
+                        {/* Section 1: Type d'Article */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="star" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>Type d'Article</Text>
+                        </View>
+
+                        <SelectModalitySelector
+                            label="Nom de l'article"
+                            value={newProduct.nomArticleDecoration || newProduct.name || ''}
+                            productType="decoration"
+                            fieldName="noms_articles"
+                            onSelect={(value) => setNewProduct({
+                                ...newProduct,
+                                nomArticleDecoration: value,
+                                name: value // Synchroniser avec le nom principal
+                            })}
+                            required
+                            placeholder="Ex: Vase décoratif, Coussin..."
+                        />
+
+                        <SelectModalitySelector
+                            label="Catégorie"
+                            value={newProduct.categorieDecoration || ''}
+                            productType="decoration"
+                            fieldName="categories"
+                            onSelect={(value) => setNewProduct({ ...newProduct, categorieDecoration: value })}
+                            placeholder="Ex: Décoration murale, Luminaires..."
+                        />
+
+                        <View style={styles.fieldRow}>
+                            <View style={[{ flex: 1 }]}>
+                                <SelectModalitySelector
+                                    label="Style"
+                                    value={newProduct.styleDecoration || ''}
+                                    productType="decoration"
+                                    fieldName="styles"
+                                    onSelect={(value) => setNewProduct({ ...newProduct, styleDecoration: value })}
+                                    placeholder="Ex: Moderne, Vintage..."
+                                />
+                            </View>
+                            <View style={[{ flex: 1 }]}>
+                                <SelectModalitySelector
+                                    label="Pièce"
+                                    value={newProduct.pieceDecoration || ''}
+                                    productType="decoration"
+                                    fieldName="pieces"
+                                    onSelect={(value) => setNewProduct({ ...newProduct, pieceDecoration: value })}
+                                    placeholder="Ex: Salon, Chambre..."
+                                />
+                            </View>
+                        </View>
+
+                        {/* Section 2: Caractéristiques */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="info" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>Caractéristiques</Text>
+                        </View>
+
+                        <View style={styles.fieldRow}>
+                            <View style={[{ flex: 1 }]}>
+                                <SelectModalitySelector
+                                    label="Matière"
+                                    value={newProduct.matiereDecoration || ''}
+                                    productType="decoration"
+                                    fieldName="matieres"
+                                    onSelect={(value) => setNewProduct({ ...newProduct, matiereDecoration: value })}
+                                    placeholder="Ex: Bois, Métal..."
+                                />
+                            </View>
+                            <View style={[{ flex: 1 }]}>
+                                <SelectModalitySelector
+                                    label="Couleur principale"
+                                    value={newProduct.couleurDecoration || ''}
+                                    productType="decoration"
+                                    fieldName="couleurs"
+                                    onSelect={(value) => setNewProduct({ ...newProduct, couleurDecoration: value })}
+                                    placeholder="Ex: Blanc, Doré..."
+                                />
+                            </View>
+                        </View>
+
+                        <View style={styles.fieldRow}>
+                            <View style={[{ flex: 1 }]}>
+                                <SelectModalitySelector
+                                    label="Taille"
+                                    value={newProduct.tailleDecoration || ''}
+                                    productType="decoration"
+                                    fieldName="tailles"
+                                    onSelect={(value) => setNewProduct({ ...newProduct, tailleDecoration: value })}
+                                    placeholder="Ex: Petit, Grand..."
+                                />
+                            </View>
+                            <View style={[{ flex: 1 }]}>
+                                <SelectModalitySelector
+                                    label="État"
+                                    value={newProduct.etatDecoration || ''}
+                                    productType="decoration"
+                                    fieldName="etat"
+                                    onSelect={(value) => setNewProduct({ ...newProduct, etatDecoration: value })}
+                                    placeholder="Ex: Neuf, Artisanal..."
+                                />
+                            </View>
+                        </View>
+
+                        <SelectModalitySelector
+                            label="Marque / Origine"
+                            value={newProduct.marqueDecoration || ''}
+                            productType="decoration"
+                            fieldName="marques"
+                            onSelect={(value) => setNewProduct({ ...newProduct, marqueDecoration: value })}
+                            placeholder="Ex: Ikea, Fait main..."
+                        />
+
+                        <View style={styles.hintBox}>
+                            <SafeIcon name="info" size={14} color={modernColors.primary} />
+                            <Text style={styles.hintText}>
+                                💡 Décrivez votre article dans le champ description (dimensions exactes, particularités, etc.)
+                            </Text>
+                        </View>
+                    </>
+                );
+
+            case 'hopital_clinique':
+                return (
+                    <>
+                        {/* Section 1: Identité de l'Établissement */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="activity" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>Identité de l'Établissement</Text>
+                        </View>
+
+                        <SelectModalitySelector
+                            label="Nom de l'établissement"
+                            value={newProduct.nomEtablissement || newProduct.name || ''}
+                            productType="hopital_clinique"
+                            fieldName="noms_etablissements"
+                            onSelect={(value) => setNewProduct({
+                                ...newProduct,
+                                nomEtablissement: value,
+                                name: value
+                            })}
+                            required
+                            placeholder="Ex: Hôpital Central, Clinique..."
+                        />
+
+                        <SelectModalitySelector
+                            label="Type d'établissement"
+                            value={newProduct.typeEtablissement || ''}
+                            productType="hopital_clinique"
+                            fieldName="types_etablissement"
+                            onSelect={(value) => setNewProduct({ ...newProduct, typeEtablissement: value })}
+                            required
+                            placeholder="Ex: Hôpital public, Clinique..."
+                        />
+
+                        {/* Section 2: Prestations Médicales */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="heart" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>Prestations Médicales</Text>
+                        </View>
+
+                        <MultiSelectModalitySelector
+                            label="Prestations générales"
+                            values={newProduct.prestationsGenerales || []}
+                            productType="hopital_clinique"
+                            fieldName="prestations_generales"
+                            onSelect={(values) => setNewProduct({ ...newProduct, prestationsGenerales: values })}
+                            placeholder="Ex: Urgences, Hospitalisation..."
+                        />
+
+                        <MultiSelectModalitySelector
+                            label="Consultations spécialisées"
+                            values={newProduct.consultationsSpecialisees || []}
+                            productType="hopital_clinique"
+                            fieldName="consultations_specialisees"
+                            onSelect={(values) => setNewProduct({ ...newProduct, consultationsSpecialisees: values })}
+                            placeholder="Ex: Gynécologie, Cardiologie..."
+                        />
+
+                        {/* Section 3: Planning Hebdomadaire */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="calendar" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>Planning Hebdomadaire</Text>
+                        </View>
+
+                        <View style={styles.fieldContainer}>
+                            <Text style={styles.fieldLabel}>Jours d'ouverture</Text>
+
+                            {/* ✅ NOUVEAU: Bouton "Tout sélectionner" */}
+                            <TouchableOpacity
+                                style={styles.selectAllButton}
+                                onPress={() => {
+                                    const joursSemaine = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
+                                    const tousSelectionnes = newProduct.joursOuverture?.length === 7;
+                                    setNewProduct({
+                                        ...newProduct,
+                                        joursOuverture: tousSelectionnes ? [] : joursSemaine
+                                    });
+                                }}
+                            >
+                                <SafeIcon
+                                    name={newProduct.joursOuverture?.length === 7 ? "check-square" : "square"}
+                                    size={18}
+                                    color={newProduct.joursOuverture?.length === 7 ? modernColors.primary : modernColors.textSecondary}
+                                />
+                                <Text style={[styles.selectAllText, newProduct.joursOuverture?.length === 7 && styles.selectAllTextActive]}>
+                                    {newProduct.joursOuverture?.length === 7 ? 'Tout désélectionner' : 'Sélectionner tous les jours'}
+                                </Text>
+                            </TouchableOpacity>
+
+                            {/* Jours individuels */}
+                            <View style={styles.weekDaysContainer}>
+                                {['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'].map((jour) => (
+                                    <TouchableOpacity
+                                        key={jour}
+                                        style={[
+                                            styles.dayButton,
+                                            newProduct.joursOuverture?.includes(jour) && styles.dayButtonActive
+                                        ]}
+                                        onPress={() => {
+                                            const current = newProduct.joursOuverture || [];
+                                            const updated = current.includes(jour)
+                                                ? current.filter(j => j !== jour)
+                                                : [...current, jour];
+                                            setNewProduct({ ...newProduct, joursOuverture: updated });
+                                        }}
+                                    >
+                                        <Text style={[
+                                            styles.dayButtonText,
+                                            newProduct.joursOuverture?.includes(jour) && styles.dayButtonTextActive
+                                        ]}>
+                                            {jour.substring(0, 3)}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        </View>
+
+                        <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <NativeTimePicker
+                                    label="Heure d'ouverture"
+                                    value={newProduct.heuresOuverture || ''}
+                                    onChange={(time) => setNewProduct({ ...newProduct, heuresOuverture: time })}
+                                    placeholder="Ex: 08:00"
+                                />
+                            </View>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <NativeTimePicker
+                                    label="Heure de fermeture"
+                                    value={newProduct.heuresFermeture || ''}
+                                    onChange={(time) => setNewProduct({ ...newProduct, heuresFermeture: time })}
+                                    placeholder="Ex: 18:00"
+                                />
+                            </View>
+                        </View>
+
+                        {/* Section 4: Services et Équipements */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="settings" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>Services et Équipements</Text>
+                        </View>
+
+                        <MultiSelectModalitySelector
+                            label="Services annexes"
+                            values={newProduct.servicesAnnexes || []}
+                            productType="hopital_clinique"
+                            fieldName="services_annexes"
+                            onSelect={(values) => setNewProduct({ ...newProduct, servicesAnnexes: values })}
+                            placeholder="Ex: Laboratoire, Pharmacie..."
+                        />
+
+                        <MultiSelectModalitySelector
+                            label="Équipements disponibles"
+                            values={newProduct.equipementsHopital || []}
+                            productType="hopital_clinique"
+                            fieldName="equipements"
+                            onSelect={(values) => setNewProduct({ ...newProduct, equipementsHopital: values })}
+                            placeholder="Ex: Scanner, IRM..."
+                        />
+
+                        {/* Section 5: Services Spéciaux */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="alert-circle" size={20} color={modernColors.error} />
+                            <Text style={styles.sectionTitle}>Services Spéciaux</Text>
+                        </View>
+
+                        <TouchableOpacity
+                            style={[styles.toggleOption, newProduct.urgencesDisponible && styles.toggleOptionActive]}
+                            onPress={() => setNewProduct({ ...newProduct, urgencesDisponible: !newProduct.urgencesDisponible })}
+                        >
+                            <SafeIcon
+                                name={newProduct.urgencesDisponible ? "check-circle" : "circle"}
+                                size={22}
+                                color={newProduct.urgencesDisponible ? modernColors.primary : '#9CA3AF'}
+                            />
+                            <Text style={[
+                                styles.toggleLabel,
+                                newProduct.urgencesDisponible && styles.toggleLabelActive
+                            ]}>
+                                Urgences 24h/24
+                            </Text>
+                        </TouchableOpacity>
+                        <Text style={styles.toggleHint}>✓ Cocher si l'établissement dispose d'un service d'urgences permanent</Text>
+
+                        <TouchableOpacity
+                            style={[styles.toggleOption, newProduct.banqueSang && styles.toggleOptionActive]}
+                            onPress={() => setNewProduct({ ...newProduct, banqueSang: !newProduct.banqueSang })}
+                        >
+                            <SafeIcon
+                                name={newProduct.banqueSang ? "check-circle" : "circle"}
+                                size={22}
+                                color={newProduct.banqueSang ? modernColors.primary : '#9CA3AF'}
+                            />
+                            <Text style={[
+                                styles.toggleLabel,
+                                newProduct.banqueSang && styles.toggleLabelActive
+                            ]}>
+                                Banque de sang
+                            </Text>
+                        </TouchableOpacity>
+                        <Text style={styles.toggleHint}>✓ Cocher si l'établissement dispose d'une banque de sang</Text>
+
+                        <TouchableOpacity
+                            style={[styles.toggleOption, newProduct.rdvEnLigne && styles.toggleOptionActive]}
+                            onPress={() => setNewProduct({ ...newProduct, rdvEnLigne: !newProduct.rdvEnLigne })}
+                        >
+                            <SafeIcon
+                                name={newProduct.rdvEnLigne ? "check-circle" : "circle"}
+                                size={22}
+                                color={newProduct.rdvEnLigne ? modernColors.primary : '#9CA3AF'}
+                            />
+                            <Text style={[
+                                styles.toggleLabel,
+                                newProduct.rdvEnLigne && styles.toggleLabelActive
+                            ]}>
+                                Prise de RDV en ligne
+                            </Text>
+                        </TouchableOpacity>
+                        <Text style={styles.toggleHint}>✓ Cocher si les patients peuvent prendre RDV en ligne</Text>
+
+                        <View style={styles.hintBox}>
+                            <SafeIcon name="info" size={14} color={modernColors.primary} />
+                            <Text style={styles.hintText}>
+                                💡 Les numéros d'urgence peuvent être ajoutés dans la description ou le profil de l'établissement
+                            </Text>
+                        </View>
+                    </>
+                );
+
+            case 'pharmacie':
+                return (
+                    <>
+                        {/* Section 1: Identité de la Pharmacie */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="heart" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>Identité de la Pharmacie</Text>
+                        </View>
+
+                        <SelectModalitySelector
+                            label="Nom de la pharmacie"
+                            value={newProduct.nomPharmacie || newProduct.name || ''}
+                            productType="pharmacie"
+                            fieldName="noms_pharmacies"
+                            onSelect={(value) => setNewProduct({
+                                ...newProduct,
+                                nomPharmacie: value,
+                                name: value
+                            })}
+                            required
+                            placeholder="Ex: Pharmacie Centrale..."
+                        />
+
+                        <SelectModalitySelector
+                            label="Type de pharmacie"
+                            value={newProduct.typePharmacie || ''}
+                            productType="pharmacie"
+                            fieldName="types_pharmacie"
+                            onSelect={(value) => setNewProduct({ ...newProduct, typePharmacie: value })}
+                            required
+                            placeholder="Ex: Pharmacie normale, Pharmacie de garde..."
+                        />
+
+                        {/* Section 2: Services */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="package" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>Services Proposés</Text>
+                        </View>
+
+                        <MultiSelectModalitySelector
+                            label="Services disponibles"
+                            values={newProduct.servicesPharmacie || []}
+                            productType="pharmacie"
+                            fieldName="services_pharmacie"
+                            onSelect={(values) => setNewProduct({ ...newProduct, servicesPharmacie: values })}
+                            placeholder="Ex: Garde de nuit, Livraison..."
+                        />
+
+                        {/* Section 3: Planning Hebdomadaire */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="calendar" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>Planning Hebdomadaire</Text>
+                        </View>
+
+                        <View style={styles.fieldContainer}>
+                            <Text style={styles.fieldLabel}>Jours d'ouverture</Text>
+
+                            {/* Bouton "Tout sélectionner" */}
+                            <TouchableOpacity
+                                style={styles.selectAllButton}
+                                onPress={() => {
+                                    const joursSemaine = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
+                                    const tousSelectionnes = newProduct.joursOuverturePharmacie?.length === 7;
+                                    setNewProduct({
+                                        ...newProduct,
+                                        joursOuverturePharmacie: tousSelectionnes ? [] : joursSemaine
+                                    });
+                                }}
+                            >
+                                <SafeIcon
+                                    name={newProduct.joursOuverturePharmacie?.length === 7 ? "check-square" : "square"}
+                                    size={18}
+                                    color={newProduct.joursOuverturePharmacie?.length === 7 ? modernColors.primary : modernColors.textSecondary}
+                                />
+                                <Text style={[styles.selectAllText, newProduct.joursOuverturePharmacie?.length === 7 && styles.selectAllTextActive]}>
+                                    {newProduct.joursOuverturePharmacie?.length === 7 ? 'Tout désélectionner' : 'Sélectionner tous les jours'}
+                                </Text>
+                            </TouchableOpacity>
+
+                            <View style={styles.weekDaysContainer}>
+                                {['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'].map((jour) => (
+                                    <TouchableOpacity
+                                        key={jour}
+                                        style={[
+                                            styles.dayButton,
+                                            newProduct.joursOuverturePharmacie?.includes(jour) && styles.dayButtonActive
+                                        ]}
+                                        onPress={() => {
+                                            const current = newProduct.joursOuverturePharmacie || [];
+                                            const updated = current.includes(jour)
+                                                ? current.filter(j => j !== jour)
+                                                : [...current, jour];
+                                            setNewProduct({ ...newProduct, joursOuverturePharmacie: updated });
+                                        }}
+                                    >
+                                        <Text style={[
+                                            styles.dayButtonText,
+                                            newProduct.joursOuverturePharmacie?.includes(jour) && styles.dayButtonTextActive
+                                        ]}>
+                                            {jour.substring(0, 3)}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        </View>
+
+                        <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <NativeTimePicker
+                                    label="Heure d'ouverture"
+                                    value={newProduct.heuresOuverture || ''}
+                                    onChange={(time) => setNewProduct({ ...newProduct, heuresOuverture: time })}
+                                    placeholder="Ex: 08:00"
+                                />
+                            </View>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <NativeTimePicker
+                                    label="Heure de fermeture"
+                                    value={newProduct.heuresFermeture || ''}
+                                    onChange={(time) => setNewProduct({ ...newProduct, heuresFermeture: time })}
+                                    placeholder="Ex: 20:00"
+                                />
+                            </View>
+                        </View>
+
+                        <View style={styles.hintBox}>
+                            <SafeIcon name="info" size={14} color={modernColors.primary} />
+                            <Text style={styles.hintText}>
+                                💡 Pour les pharmacies de garde, précisez les jours de garde et horaires dans la description
+                            </Text>
+                        </View>
+                    </>
+                );
+
+            case 'laboratoire':
+                return (
+                    <>
+                        {/* Section 1: Identité du Laboratoire */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="activity" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>Identité du Laboratoire</Text>
+                        </View>
+
+                        <SelectModalitySelector
+                            label="Nom du laboratoire"
+                            value={newProduct.nomLaboratoire || newProduct.name || ''}
+                            productType="laboratoire"
+                            fieldName="noms_laboratoires"
+                            onSelect={(value) => setNewProduct({
+                                ...newProduct,
+                                nomLaboratoire: value,
+                                name: value
+                            })}
+                            required
+                            placeholder="Ex: Laboratoire Central..."
+                        />
+
+                        <SelectModalitySelector
+                            label="Type de laboratoire"
+                            value={newProduct.typeLaboratoire || ''}
+                            productType="laboratoire"
+                            fieldName="types_laboratoire"
+                            onSelect={(value) => setNewProduct({ ...newProduct, typeLaboratoire: value })}
+                            required
+                            placeholder="Ex: Laboratoire d'analyses..."
+                        />
+
+                        {/* Section 2: Analyses Proposées */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="clipboard" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>Analyses Proposées</Text>
+                        </View>
+
+                        <MultiSelectModalitySelector
+                            label="Types d'analyses"
+                            values={newProduct.analysesProposees || []}
+                            productType="laboratoire"
+                            fieldName="analyses_proposees"
+                            onSelect={(values) => setNewProduct({ ...newProduct, analysesProposees: values })}
+                            placeholder="Ex: NFS, Glycémie, Sérologie..."
+                        />
+
+                        {/* Section 3: Planning Hebdomadaire */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="calendar" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>Planning Hebdomadaire</Text>
+                        </View>
+
+                        <View style={styles.fieldContainer}>
+                            <Text style={styles.fieldLabel}>Jours d'ouverture</Text>
+
+                            <TouchableOpacity
+                                style={styles.selectAllButton}
+                                onPress={() => {
+                                    const joursSemaine = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
+                                    const tousSelectionnes = newProduct.joursOuvertureLabo?.length === 7;
+                                    setNewProduct({
+                                        ...newProduct,
+                                        joursOuvertureLabo: tousSelectionnes ? [] : joursSemaine
+                                    });
+                                }}
+                            >
+                                <SafeIcon
+                                    name={newProduct.joursOuvertureLabo?.length === 7 ? "check-square" : "square"}
+                                    size={18}
+                                    color={newProduct.joursOuvertureLabo?.length === 7 ? modernColors.primary : modernColors.textSecondary}
+                                />
+                                <Text style={[styles.selectAllText, newProduct.joursOuvertureLabo?.length === 7 && styles.selectAllTextActive]}>
+                                    {newProduct.joursOuvertureLabo?.length === 7 ? 'Tout désélectionner' : 'Sélectionner tous les jours'}
+                                </Text>
+                            </TouchableOpacity>
+
+                            <View style={styles.weekDaysContainer}>
+                                {['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'].map((jour) => (
+                                    <TouchableOpacity
+                                        key={jour}
+                                        style={[
+                                            styles.dayButton,
+                                            newProduct.joursOuvertureLabo?.includes(jour) && styles.dayButtonActive
+                                        ]}
+                                        onPress={() => {
+                                            const current = newProduct.joursOuvertureLabo || [];
+                                            const updated = current.includes(jour)
+                                                ? current.filter(j => j !== jour)
+                                                : [...current, jour];
+                                            setNewProduct({ ...newProduct, joursOuvertureLabo: updated });
+                                        }}
+                                    >
+                                        <Text style={[
+                                            styles.dayButtonText,
+                                            newProduct.joursOuvertureLabo?.includes(jour) && styles.dayButtonTextActive
+                                        ]}>
+                                            {jour.substring(0, 3)}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        </View>
+
+                        <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <NativeTimePicker
+                                    label="Heure d'ouverture"
+                                    value={newProduct.heuresOuverture || ''}
+                                    onChange={(time) => setNewProduct({ ...newProduct, heuresOuverture: time })}
+                                    placeholder="Ex: 07:00"
+                                />
+                            </View>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <NativeTimePicker
+                                    label="Heure de fermeture"
+                                    value={newProduct.heuresFermeture || ''}
+                                    onChange={(time) => setNewProduct({ ...newProduct, heuresFermeture: time })}
+                                    placeholder="Ex: 18:00"
+                                />
+                            </View>
+                        </View>
+
+                        <View style={styles.hintBox}>
+                            <SafeIcon name="info" size={14} color={modernColors.primary} />
+                            <Text style={styles.hintText}>
+                                💡 Précisez les délais de rendu des résultats et les services de prélèvement à domicile dans la description
+                            </Text>
                         </View>
                     </>
                 );
@@ -4565,49 +7341,118 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
             case 'chaussure':
                 return (
                     <>
+                        {/* Section 1: Identité de la chaussure */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="shopping-bag" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>Identité de la Chaussure</Text>
+                        </View>
+
+                        <SelectModalitySelector
+                            label="Nom de la chaussure"
+                            value={newProduct.nomChaussure || newProduct.name || ''}
+                            productType="chaussure"
+                            fieldName="noms_chaussures"
+                            onSelect={(value) => setNewProduct({
+                                ...newProduct,
+                                nomChaussure: value,
+                                name: value // Synchroniser avec le nom principal
+                            })}
+                            required
+                            placeholder="Ex: Basket Nike Air Max, Escarpin..."
+                        />
+
                         <View style={styles.fieldRow}>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
+                            <View style={[{ flex: 1 }]}>
+                                <SelectModalitySelector
                                     label="Type"
                                     value={newProduct.typeChaussure || ''}
                                     productType="chaussure"
                                     fieldName="types"
                                     onSelect={(value) => setNewProduct({ ...newProduct, typeChaussure: value })}
                                     required
+                                    placeholder="Ex: Basket, Escarpin..."
                                 />
                             </View>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
+                            <View style={[{ flex: 1 }]}>
+                                <SelectModalitySelector
                                     label="Marque"
                                     value={newProduct.marqueChaussure || ''}
                                     productType="chaussure"
                                     fieldName="marques"
                                     onSelect={(value) => setNewProduct({ ...newProduct, marqueChaussure: value })}
+                                    placeholder="Ex: Nike, Adidas..."
                                 />
                             </View>
                         </View>
 
                         <View style={styles.fieldRow}>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
-                                    label="Pointure"
-                                    value={newProduct.pointure || ''}
+                            <View style={[{ flex: 1 }]}>
+                                <SelectModalitySelector
+                                    label="Genre"
+                                    value={newProduct.genreChaussure || ''}
                                     productType="chaussure"
-                                    fieldName="pointures"
-                                    onSelect={(value) => setNewProduct({ ...newProduct, pointure: value })}
-                                    multiSelect
-                                    maxSelections={10}
+                                    fieldName="genres"
+                                    onSelect={(value) => setNewProduct({ ...newProduct, genreChaussure: value })}
+                                    placeholder="Ex: Homme, Femme..."
                                 />
                             </View>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
-                                    label="Couleur"
-                                    value={newProduct.couleurChaussure || ''}
+                            <View style={[{ flex: 1 }]}>
+                                <SelectModalitySelector
+                                    label="Style"
+                                    value={newProduct.styleChaussure || ''}
                                     productType="chaussure"
-                                    fieldName="couleurs"
-                                    onSelect={(value) => setNewProduct({ ...newProduct, couleurChaussure: value })}
+                                    fieldName="styles"
+                                    onSelect={(value) => setNewProduct({ ...newProduct, styleChaussure: value })}
+                                    placeholder="Ex: Casual, Sport..."
                                 />
                             </View>
+                        </View>
+
+                        {/* Section 2: Caractéristiques */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="settings" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>Caractéristiques</Text>
+                        </View>
+
+                        <View style={styles.fieldRow}>
+                            <View style={[{ flex: 1 }]}>
+                                <SelectModalitySelector
+                                    label="Matière"
+                                    value={newProduct.materiauChaussure || ''}
+                                    productType="chaussure"
+                                    fieldName="matieres"
+                                    onSelect={(value) => setNewProduct({ ...newProduct, materiauChaussure: value })}
+                                    placeholder="Ex: Cuir, Toile..."
+                                />
+                            </View>
+                            <View style={[{ flex: 1 }]}>
+                                <SelectModalitySelector
+                                    label="État"
+                                    value={newProduct.etatChaussure || ''}
+                                    productType="chaussure"
+                                    fieldName="etat"
+                                    onSelect={(value) => setNewProduct({ ...newProduct, etatChaussure: value })}
+                                    placeholder="Ex: Neuf, Excellent..."
+                                />
+                            </View>
+                        </View>
+
+                        {/* Section 3: Pointures et Couleurs Disponibles (Variantes) */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="box" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>Pointures & Couleurs (Variantes)</Text>
+                        </View>
+
+                        <ChaussureVariantManager
+                            variants={newProduct.variantesChaussures || []}
+                            onChange={(variantesChaussures) => setNewProduct({ ...newProduct, variantesChaussures })}
+                        />
+
+                        <View style={styles.hintBox}>
+                            <SafeIcon name="info" size={14} color={modernColors.primary} />
+                            <Text style={styles.hintText}>
+                                💡 Ajoutez toutes les combinaisons disponibles (Ex: 38 Noir, 39 Blanc, 40 Marron)
+                            </Text>
                         </View>
                     </>
                 );
@@ -4615,45 +7460,63 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
             case 'electromenager':
                 return (
                     <>
-                        {/* Section 1: Informations Générales */}
+                        {/* Section 1: Identité du Produit */}
                         <View style={styles.sectionHeader}>
-                            <SafeIcon name="zap" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Informations Générales</Text>
+                            <SafeIcon name="package" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>Identité du Produit</Text>
                         </View>
 
+                        <SelectModalitySelector
+                            label="Nom du produit"
+                            value={newProduct.nomProduitElectro || newProduct.name || ''}
+                            productType="electromenager"
+                            fieldName="noms_produits"
+                            onSelect={(value) => setNewProduct({
+                                ...newProduct,
+                                nomProduitElectro: value,
+                                name: value // Synchronisation
+                            })}
+                            required
+                            placeholder="Ex: Réfrigérateur 2 portes, Lave-linge hublot..."
+                        />
+
                         <View style={styles.fieldRow}>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
+                            <View style={[{ flex: 1 }]}>
+                                <SelectModalitySelector
+                                    label="Catégorie"
+                                    value={newProduct.categorieElectro || ''}
+                                    productType="electromenager"
+                                    fieldName="categories"
+                                    onSelect={(value) => setNewProduct({ ...newProduct, categorieElectro: value })}
+                                    required
+                                    placeholder="Ex: Gros électroménager - Froid"
+                                />
+                            </View>
+                            <View style={[{ flex: 1 }]}>
+                                <SelectModalitySelector
                                     label="Type d'appareil"
                                     value={newProduct.typeElectro || ''}
                                     productType="electromenager"
                                     fieldName="types"
                                     onSelect={(value) => setNewProduct({ ...newProduct, typeElectro: value })}
                                     required
-                                />
-                            </View>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
-                                    label="Catégorie"
-                                    value={newProduct.categorieElectro || ''}
-                                    productType="electromenager"
-                                    fieldName="categories"
-                                    onSelect={(value) => setNewProduct({ ...newProduct, categorieElectro: value })}
+                                    placeholder="Ex: Réfrigérateur"
                                 />
                             </View>
                         </View>
 
                         <View style={styles.fieldRow}>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
+                            <View style={[{ flex: 1 }]}>
+                                <SelectModalitySelector
                                     label="Marque"
                                     value={newProduct.marqueElectro || ''}
                                     productType="electromenager"
                                     fieldName="marques"
                                     onSelect={(value) => setNewProduct({ ...newProduct, marqueElectro: value })}
+                                    placeholder="Ex: Samsung, LG, Bosch..."
                                 />
                             </View>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                            <View style={[{ flex: 1 }]}>
                                 <SmartApplianceInput
                                     brand={newProduct.marqueElectro || ''}
                                     value={newProduct.modeleElectro || ''}
@@ -4672,14 +7535,15 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         </View>
 
                         <View style={styles.fieldRow}>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
+                            <View style={[{ flex: 1 }]}>
+                                <SelectModalitySelector
                                     label="État"
                                     value={newProduct.etatElectro || ''}
                                     productType="electromenager"
                                     fieldName="etats"
                                     onSelect={(value) => setNewProduct({ ...newProduct, etatElectro: value })}
                                     required
+                                    placeholder="Ex: Neuf en boîte"
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
@@ -4694,26 +7558,30 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             </View>
                         </View>
 
-                        <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Garantie restante</Text>
-                            <NativeInput
-                                placeholder="Ex: 6 mois"
-                                value={newProduct.garantieElectro || ''}
-                                onChangeText={(text) => setNewProduct({ ...newProduct, garantieElectro: text })}
-                                style={styles.fieldInput}
-                            />
-                        </View>
-
-                        <View style={styles.togglesContainer}>
-                            <TouchableOpacity
-                                style={[styles.toggleOption, newProduct.garantieConstructeur && styles.toggleOptionActive]}
-                                onPress={() => setNewProduct({ ...newProduct, garantieConstructeur: !newProduct.garantieConstructeur })}
-                            >
-                                <SafeIcon name="shield-check" size={20} color={newProduct.garantieConstructeur ? modernColors.primary : '#9CA3AF'} />
-                                <Text style={[styles.toggleLabel, newProduct.garantieConstructeur && styles.toggleLabelActive]}>
-                                    Garantie constructeur valide
-                                </Text>
-                            </TouchableOpacity>
+                        <View style={styles.fieldRow}>
+                            <View style={[{ flex: 1 }]}>
+                                <SelectModalitySelector
+                                    label="Garantie"
+                                    value={newProduct.garantieElectro || ''}
+                                    productType="electromenager"
+                                    fieldName="garanties"
+                                    onSelect={(value) => setNewProduct({ ...newProduct, garantieElectro: value })}
+                                    placeholder="Ex: 2 ans"
+                                />
+                            </View>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <View style={styles.togglesContainer}>
+                                    <TouchableOpacity
+                                        style={[styles.toggleOption, newProduct.garantieConstructeur && styles.toggleOptionActive]}
+                                        onPress={() => setNewProduct({ ...newProduct, garantieConstructeur: !newProduct.garantieConstructeur })}
+                                    >
+                                        <SafeIcon name="shield-check" size={20} color={newProduct.garantieConstructeur ? modernColors.primary : '#9CA3AF'} />
+                                        <Text style={[styles.toggleLabel, newProduct.garantieConstructeur && styles.toggleLabelActive]}>
+                                            Garantie constructeur
+                                        </Text>
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
                         </View>
 
                         {/* Section 3: Caractéristiques Techniques */}
@@ -4723,35 +7591,37 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         </View>
 
                         <View style={styles.fieldRow}>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
+                            <View style={[{ flex: 1 }]}>
+                                <SelectModalitySelector
                                     label="Classe énergétique"
                                     value={newProduct.consommationEnergetique || ''}
                                     productType="electromenager"
                                     fieldName="classes_energetiques"
                                     onSelect={(value) => setNewProduct({ ...newProduct, consommationEnergetique: value })}
+                                    placeholder="Ex: A++, A++"
                                 />
                             </View>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Capacité (L/Kg)</Text>
-                                <NativeInput
-                                    placeholder="Ex: 350"
-                                    value={newProduct.capacite || ''}
-                                    onChangeText={(text) => setNewProduct({ ...newProduct, capacite: text })}
-                                    style={styles.fieldInput}
-                                    keyboardType="numeric"
+                            <View style={[{ flex: 1 }]}>
+                                <SelectModalitySelector
+                                    label="Capacité"
+                                    value={newProduct.capaciteElectro || ''}
+                                    productType="electromenager"
+                                    fieldName="capacites"
+                                    onSelect={(value) => setNewProduct({ ...newProduct, capaciteElectro: value })}
+                                    placeholder="Ex: 350L, 8kg..."
                                 />
                             </View>
                         </View>
 
                         <View style={styles.fieldRow}>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
+                            <View style={[{ flex: 1 }]}>
+                                <SelectModalitySelector
                                     label="Couleur"
                                     value={newProduct.couleurElectro || ''}
                                     productType="electromenager"
                                     fieldName="couleurs"
                                     onSelect={(value) => setNewProduct({ ...newProduct, couleurElectro: value })}
+                                    placeholder="Ex: Blanc, Inox..."
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
@@ -4771,35 +7641,21 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             <Text style={styles.sectionTitle}>Fonctionnalités</Text>
                         </View>
 
-                        <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Fonctionnalités spéciales</Text>
-                            <View style={styles.equipementsScrollContainer}>
-                                {['No Frost', 'Dégivrage auto', 'Smart/WiFi', 'Écran tactile', 'Programmable', 'Silencieux', 'Économie d\'énergie'].map((fonc) => (
-                                    <TouchableOpacity
-                                        key={fonc}
-                                        style={[
-                                            styles.equipementChip,
-                                            newProduct.fonctionnalites?.includes(fonc) && styles.equipementChipActive,
-                                        ]}
-                                        onPress={() => {
-                                            const current = newProduct.fonctionnalites || [];
-                                            const updated = current.includes(fonc)
-                                                ? current.filter((f) => f !== fonc)
-                                                : [...current, fonc];
-                                            setNewProduct({ ...newProduct, fonctionnalites: updated });
-                                        }}
-                                    >
-                                        <Text
-                                            style={[
-                                                styles.equipementChipText,
-                                                newProduct.fonctionnalites?.includes(fonc) && styles.equipementChipTextActive,
-                                            ]}
-                                        >
-                                            {fonc}
-                                        </Text>
-                                    </TouchableOpacity>
-                                ))}
-                            </View>
+                        <MultiSelectModalitySelector
+                            label="Fonctionnalités spéciales"
+                            values={newProduct.fonctionnalitesElectro || []}
+                            productType="electromenager"
+                            fieldName="fonctionnalites"
+                            onSelect={(values) => setNewProduct({ ...newProduct, fonctionnalitesElectro: values })}
+                            placeholder="Ex: No Frost, Smart/WiFi, Programmable..."
+                            maxSelections={15}
+                        />
+
+                        <View style={styles.hintBox}>
+                            <SafeIcon name="info" size={14} color={modernColors.primary} />
+                            <Text style={styles.hintText}>
+                                💡 Sélectionnez toutes les fonctionnalités de votre appareil.
+                            </Text>
                         </View>
 
                         {/* Section 5: Documents */}
@@ -4852,15 +7708,26 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
             case 'mobilier':
                 return (
                     <>
-                        {/* Section 1: Informations Générales */}
+                        {/* Section 1: Identification du meuble */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="package" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Informations Générales</Text>
+                            <Text style={styles.sectionTitle}>🪑 Identification du meuble</Text>
                         </View>
+
+                        {/* ✅ NOUVEAU: Nom du meuble avec liste intelligente */}
+                        <SelectModalitySelector
+                            label="Nom du meuble"
+                            value={newProduct.name || ''}
+                            productType="mobilier"
+                            fieldName="noms_produits"
+                            onSelect={(value) => setNewProduct({ ...newProduct, name: value })}
+                            required
+                            placeholder="Ex: Canapé 3 places, Table à manger 6 places..."
+                        />
 
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
+                                <SelectModalitySelector
                                     label="Type de meuble"
                                     value={newProduct.typeMobilier || ''}
                                     productType="mobilier"
@@ -4870,7 +7737,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
+                                <SelectModalitySelector
                                     label="Catégorie"
                                     value={newProduct.categorieMobilier || ''}
                                     productType="mobilier"
@@ -4883,7 +7750,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
+                                <SelectModalitySelector
                                     label="Style"
                                     value={newProduct.styleMobilier || ''}
                                     productType="mobilier"
@@ -4892,7 +7759,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
+                                <SelectModalitySelector
                                     label="État"
                                     value={newProduct.etatMobilier || ''}
                                     productType="mobilier"
@@ -4903,48 +7770,59 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             </View>
                         </View>
 
-                        {/* Section 2: Caractéristiques */}
+                        {/* ✅ NOUVEAU: Marque/Fabricant */}
+                        <SelectModalitySelector
+                            label="Marque / Fabricant"
+                            value={newProduct.marqueMobilier || ''}
+                            productType="mobilier"
+                            fieldName="marques"
+                            onSelect={(value) => setNewProduct({ ...newProduct, marqueMobilier: value })}
+                            placeholder="IKEA, Artisan local, Import Chine..."
+                        />
+
+                        {/* Section 2: Caractéristiques physiques */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="ruler" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Caractéristiques</Text>
+                            <Text style={styles.sectionTitle}>📏 Caractéristiques physiques</Text>
                         </View>
 
-                        <View style={styles.fieldContainer}>
-                            <ProductFieldSelector
-                                label="Matériau principal"
-                                value={newProduct.materiauMobilier || ''}
-                                productType="mobilier"
-                                fieldName="materiaux"
-                                onSelect={(value) => setNewProduct({ ...newProduct, materiauMobilier: value })}
-                            />
-                        </View>
+                        <SelectModalitySelector
+                            label="Matériau principal"
+                            value={newProduct.materiauMobilier || ''}
+                            productType="mobilier"
+                            fieldName="materiaux"
+                            onSelect={(value) => setNewProduct({ ...newProduct, materiauMobilier: value })}
+                        />
 
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Dimensions (H x L x P)</Text>
-                                <NativeInput
-                                    placeholder="Ex: 80 x 200 x 90 cm"
+                                {/* ✅ Possibilité de choisir dimension standard ou personnalisée */}
+                                <SelectModalitySelector
+                                    label="Dimensions"
                                     value={newProduct.dimensionsMobilier || ''}
-                                    onChangeText={(text) => setNewProduct({ ...newProduct, dimensionsMobilier: text })}
-                                    style={styles.fieldInput}
+                                    productType="mobilier"
+                                    fieldName="dimensions_standards"
+                                    onSelect={(value) => setNewProduct({ ...newProduct, dimensionsMobilier: value })}
+                                    placeholder="140x190 cm ou H x L x P personnalisé"
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Couleur</Text>
-                                <NativeInput
-                                    placeholder="Ex: Blanc cassé"
+                                {/* ✅ AMÉLIORÉ: Couleur en liste à choix */}
+                                <SelectModalitySelector
+                                    label="Couleur"
                                     value={newProduct.couleurMobilier || ''}
-                                    onChangeText={(text) => setNewProduct({ ...newProduct, couleurMobilier: text })}
-                                    style={styles.fieldInput}
+                                    productType="mobilier"
+                                    fieldName="couleurs"
+                                    onSelect={(value) => setNewProduct({ ...newProduct, couleurMobilier: value })}
                                 />
                             </View>
                         </View>
 
-                        {(newProduct.typeMobilier === 'Canapé' || newProduct.typeMobilier === 'Table' || newProduct.typeMobilier === 'Chaise') && (
+                        {(newProduct.typeMobilier === 'Canapé' || newProduct.typeMobilier === 'Table' || newProduct.typeMobilier === 'Chaise' || newProduct.typeMobilier === 'Fauteuil') && (
                             <View style={styles.fieldContainer}>
                                 <Text style={styles.fieldLabel}>Nombre de places</Text>
                                 <NativeInput
-                                    placeholder="Ex: 3"
+                                    placeholder="Ex: 3, 6, 8..."
                                     value={newProduct.nombrePlaces || ''}
                                     onChangeText={(text) => setNewProduct({ ...newProduct, nombrePlaces: text })}
                                     style={styles.fieldInput}
@@ -4954,7 +7832,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         )}
 
                         <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Poids (kg)</Text>
+                            <Text style={styles.fieldLabel}>Poids approximatif (kg)</Text>
                             <NativeInput
                                 placeholder="Ex: 45"
                                 value={newProduct.poids || ''}
@@ -4964,10 +7842,26 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             />
                         </View>
 
-                        {/* Section 3: Services */}
+                        {/* ✅ NOUVEAU: Caractéristiques spéciales multiselect */}
+                        <MultiSelectModalitySelector
+                            label="Caractéristiques spéciales"
+                            values={newProduct.caracteristiquesMobilier || []}
+                            productType="mobilier"
+                            fieldName="caracteristiques"
+                            onSelectMultiple={(values) => setNewProduct({ ...newProduct, caracteristiquesMobilier: values })}
+                            placeholder="Démontable, Extensible, Pliable..."
+                        />
+
+                        <View style={styles.hintBox}>
+                            <Text style={styles.hintText}>
+                                💡 <Text style={styles.hintBold}>Conseil :</Text> Plus vous renseignez de détails, plus votre meuble sera visible dans les recherches !
+                            </Text>
+                        </View>
+
+                        {/* Section 3: Services et livraison */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="truck" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Services</Text>
+                            <Text style={styles.sectionTitle}>🚚 Services et livraison</Text>
                         </View>
 
                         <View style={styles.togglesContainer}>
@@ -4985,11 +7879,10 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 <View style={[styles.fieldContainer, { marginTop: 8 }]}>
                                     <Text style={styles.fieldLabel}>Frais de livraison (XAF)</Text>
                                     <NativeInput
-                                        placeholder="Ex: 5000"
+                                        placeholder="Ex: 5000 (ou 'Gratuit')"
                                         value={newProduct.fraisLivraison || ''}
                                         onChangeText={(text) => setNewProduct({ ...newProduct, fraisLivraison: text })}
                                         style={styles.fieldInput}
-                                        keyboardType="numeric"
                                     />
                                 </View>
                             )}
@@ -5015,19 +7908,25 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             </TouchableOpacity>
                         </View>
 
-                        <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Garantie</Text>
-                            <NativeInput
-                                placeholder="Ex: 1 an constructeur"
-                                value={newProduct.garantieMobilier || ''}
-                                onChangeText={(text) => setNewProduct({ ...newProduct, garantieMobilier: text })}
-                                style={styles.fieldInput}
-                            />
+                        {/* ✅ AMÉLIORÉ: Garantie en liste à choix */}
+                        <SelectModalitySelector
+                            label="Garantie"
+                            value={newProduct.garantieMobilier || ''}
+                            productType="mobilier"
+                            fieldName="garanties"
+                            onSelect={(value) => setNewProduct({ ...newProduct, garantieMobilier: value })}
+                            placeholder="Garantie 1 an, 2 ans, Sans garantie..."
+                        />
+
+                        <View style={styles.hintBox}>
+                            <Text style={styles.hintText}>
+                                📸 <Text style={styles.hintBold}>Photos :</Text> Ajoutez 4 à 8 images (vue d'ensemble, détails matériaux, dimensions, défauts éventuels)
+                            </Text>
                         </View>
 
                         <View style={styles.hintBox}>
                             <Text style={styles.hintText}>
-                                💡 Précisez les conditions de livraison et de montage pour faciliter la décision
+                                ⭐ <Text style={styles.hintBold}>Astuce :</Text> Précisez la livraison et le montage pour rassurer vos clients !
                             </Text>
                         </View>
                     </>
@@ -5096,7 +7995,6 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                     </>
                 );
 
-            case 'aliments':
             case 'agroalimentaire':
                 return (
                     <>
@@ -5106,36 +8004,58 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             <Text style={styles.sectionTitle}>Informations Produit</Text>
                         </View>
 
+                        {/* ✅ NOUVEAU: Nom du produit en liste à choix unique */}
+                        <SelectModalitySelector
+                            label="Nom du produit"
+                            value={newProduct.name || ''}
+                            productType="agroalimentaire"
+                            fieldName="noms_produits"
+                            onSelect={(value) => setNewProduct({ ...newProduct, name: value })}
+                            required
+                            placeholder="Sélectionner ou ajouter un produit"
+                        />
+
                         <View style={styles.fieldRow}>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
+                            <View style={[styles.fieldContainer, { flex: 1, marginBottom: 12 }]}>
+                                <SelectModalitySelector
                                     label="Catégorie"
                                     value={newProduct.categorieAliment || ''}
-                                    productType="aliments"
+                                    productType="agroalimentaire"
                                     fieldName="categories"
                                     onSelect={(value) => setNewProduct({ ...newProduct, categorieAliment: value })}
                                     required
                                 />
                             </View>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
+                            <View style={[styles.fieldContainer, { flex: 1, marginBottom: 12 }]}>
+                                <SelectModalitySelector
                                     label="Type"
                                     value={newProduct.typeAliment || ''}
-                                    productType="aliments"
+                                    productType="agroalimentaire"
                                     fieldName="types"
                                     onSelect={(value) => setNewProduct({ ...newProduct, typeAliment: value })}
                                 />
                             </View>
                         </View>
 
-                        <View style={styles.fieldContainer}>
-                            <ProductFieldSelector
-                                label="Origine"
-                                value={newProduct.origine || ''}
-                                productType="aliments"
-                                fieldName="origines"
-                                onSelect={(value) => setNewProduct({ ...newProduct, origine: value })}
-                            />
+                        <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1, marginBottom: 12 }]}>
+                                <SelectModalitySelector
+                                    label="Marque"
+                                    value={newProduct.marqueAliment || ''}
+                                    productType="agroalimentaire"
+                                    fieldName="marques"
+                                    onSelect={(value) => setNewProduct({ ...newProduct, marqueAliment: value })}
+                                />
+                            </View>
+                            <View style={[styles.fieldContainer, { flex: 1, marginBottom: 12 }]}>
+                                <SelectModalitySelector
+                                    label="Origine"
+                                    value={newProduct.origine || ''}
+                                    productType="agroalimentaire"
+                                    fieldName="origines"
+                                    onSelect={(value) => setNewProduct({ ...newProduct, origine: value })}
+                                />
+                            </View>
                         </View>
 
                         {/* Section 2: Dates et Conservation */}
@@ -5144,36 +8064,36 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             <Text style={styles.sectionTitle}>Dates et Conservation</Text>
                         </View>
 
+                        {/* ✅ NOUVEAU: DatePickers natifs */}
                         <View style={styles.fieldRow}>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Date de production</Text>
-                                <NativeInput
-                                    placeholder="JJ/MM/AAAA"
+                            <View style={[{ flex: 1 }]}>
+                                <NativeDatePicker
+                                    label="Date de production"
                                     value={newProduct.dateProduction || ''}
-                                    onChangeText={(text) => setNewProduct({ ...newProduct, dateProduction: text })}
-                                    style={styles.fieldInput}
+                                    onChange={(date) => setNewProduct({ ...newProduct, dateProduction: date })}
+                                    placeholder="Sélectionner la date"
+                                    maximumDate={new Date()}
                                 />
                             </View>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Date d'expiration</Text>
-                                <NativeInput
-                                    placeholder="JJ/MM/AAAA"
+                            <View style={[{ flex: 1 }]}>
+                                <NativeDatePicker
+                                    label="Date d'expiration"
                                     value={newProduct.dateExpiration || ''}
-                                    onChangeText={(text) => setNewProduct({ ...newProduct, dateExpiration: text })}
-                                    style={styles.fieldInput}
+                                    onChange={(date) => setNewProduct({ ...newProduct, dateExpiration: date })}
+                                    placeholder="Sélectionner la date"
+                                    minimumDate={new Date()}
                                 />
                             </View>
                         </View>
 
-                        <View style={styles.fieldContainer}>
-                            <ProductFieldSelector
-                                label="Mode de conservation"
-                                value={newProduct.conservation || ''}
-                                productType="aliments"
-                                fieldName="conservations"
-                                onSelect={(value) => setNewProduct({ ...newProduct, conservation: value })}
-                            />
-                        </View>
+                        {/* ✅ Mode de conservation */}
+                        <SelectModalitySelector
+                            label="Mode de conservation"
+                            value={newProduct.conservation || ''}
+                            productType="agroalimentaire"
+                            fieldName="conservation"
+                            onSelect={(value) => setNewProduct({ ...newProduct, conservation: value })}
+                        />
 
                         {/* Section 3: Qualité et Certifications */}
                         <View style={styles.sectionHeader}>
@@ -5181,6 +8101,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             <Text style={styles.sectionTitle}>Qualité et Certifications</Text>
                         </View>
 
+                        {/* ✅ Toggle Bio conservé pour UX rapide */}
                         <View style={styles.togglesContainer}>
                             <TouchableOpacity
                                 style={[styles.toggleOption, newProduct.bio && styles.toggleOptionActive]}
@@ -5191,107 +8112,282 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                     Agriculture biologique
                                 </Text>
                             </TouchableOpacity>
+                            <Text style={styles.toggleHint}>✓ Cocher si le produit est bio</Text>
                         </View>
 
-                        <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Labels qualité</Text>
-                            <View style={styles.equipementsScrollContainer}>
-                                {['Bio', 'Label Rouge', 'AOC', 'AOP', 'IGP'].map((label) => (
-                                    <TouchableOpacity
-                                        key={label}
-                                        style={[
-                                            styles.equipementChip,
-                                            newProduct.labelQualite?.includes(label) && styles.equipementChipActive,
-                                        ]}
-                                        onPress={() => {
-                                            const current = newProduct.labelQualite || [];
-                                            const updated = current.includes(label)
-                                                ? current.filter((l) => l !== label)
-                                                : [...current, label];
-                                            setNewProduct({ ...newProduct, labelQualite: updated });
-                                        }}
-                                    >
-                                        <Text
-                                            style={[
-                                                styles.equipementChipText,
-                                                newProduct.labelQualite?.includes(label) && styles.equipementChipTextActive,
-                                            ]}
-                                        >
-                                            {label}
-                                        </Text>
-                                    </TouchableOpacity>
-                                ))}
-                            </View>
-                        </View>
+                        {/* ✅ NOUVEAU: Labels qualité avec MultiSelectModalitySelector */}
+                        <MultiSelectModalitySelector
+                            label="Labels qualité"
+                            values={newProduct.labelQualite || []}
+                            productType="agroalimentaire"
+                            fieldName="labels_qualite"
+                            onSelect={(values) => setNewProduct({ ...newProduct, labelQualite: values })}
+                            maxSelections={5}
+                        />
 
-                        <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Certifications</Text>
-                            <View style={styles.equipementsScrollContainer}>
-                                {['Halal', 'Casher', 'Vegan', 'Sans gluten', 'Fair Trade'].map((cert) => (
-                                    <TouchableOpacity
-                                        key={cert}
-                                        style={[
-                                            styles.equipementChip,
-                                            newProduct.certifications?.includes(cert) && styles.equipementChipActive,
-                                        ]}
-                                        onPress={() => {
-                                            const current = newProduct.certifications || [];
-                                            const updated = current.includes(cert)
-                                                ? current.filter((c) => c !== cert)
-                                                : [...current, cert];
-                                            setNewProduct({ ...newProduct, certifications: updated });
-                                        }}
-                                    >
-                                        <Text
-                                            style={[
-                                                styles.equipementChipText,
-                                                newProduct.certifications?.includes(cert) && styles.equipementChipTextActive,
-                                            ]}
-                                        >
-                                            {cert}
-                                        </Text>
-                                    </TouchableOpacity>
-                                ))}
-                            </View>
-                        </View>
+                        {/* ✅ NOUVEAU: Certifications avec MultiSelectModalitySelector */}
+                        <MultiSelectModalitySelector
+                            label="Certifications"
+                            values={newProduct.certifications || []}
+                            productType="agroalimentaire"
+                            fieldName="certifications"
+                            onSelect={(values) => setNewProduct({ ...newProduct, certifications: values })}
+                            maxSelections={5}
+                        />
 
-                        {/* Section 4: Quantité et Conditionnement */}
+                        {/* Section 4: Variantes de Conditionnement */}
                         <View style={styles.sectionHeader}>
                             <SafeIcon name="box" size={20} color={modernColors.primary} />
-                            <Text style={styles.sectionTitle}>Quantité et Conditionnement</Text>
+                            <Text style={styles.sectionTitle}>Variantes de Conditionnement</Text>
                         </View>
 
+                        {/* ✅ NOUVEAU: Gestionnaire de variantes */}
+                        <ProductVariantManager
+                            variants={newProduct.variants || []}
+                            onChange={(variants) => {
+                                setNewProduct({ ...newProduct, variants });
+                                // ✅ Auto-calcul du prix min/max pour affichage
+                                if (variants.length > 0) {
+                                    const prices = variants.map(v => parseFloat(v.prix) || 0).filter(p => p > 0);
+                                    if (prices.length > 0) {
+                                        setNewProduct(prev => ({
+                                            ...prev,
+                                            variants,
+                                            prix: Math.min(...prices), // Prix le plus bas
+                                            prixMax: Math.max(...prices) // Prix le plus haut
+                                        }));
+                                    }
+                                }
+                            }}
+                            productType="agroalimentaire"
+                        />
+
+                        {/* Section 5: Allergènes */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="alert-triangle" size={20} color={modernColors.error} />
+                            <Text style={styles.sectionTitle}>Allergènes et Restrictions</Text>
+                        </View>
+
+                        {/* ✅ Allergènes avec MultiSelectModalitySelector */}
+                        <MultiSelectModalitySelector
+                            label="Allergènes présents"
+                            values={newProduct.allergenesArray || []}
+                            productType="agroalimentaire"
+                            fieldName="allergenes"
+                            onSelect={(values) => {
+                                setNewProduct({
+                                    ...newProduct,
+                                    allergenesArray: values,
+                                    allergenes: values.join(', ') // Pour compatibilité avec l'ancien format
+                                });
+                            }}
+                            placeholder="Aucun allergène sélectionné"
+                            maxSelections={10}
+                        />
+
+                        <View style={styles.hintBox}>
+                            <Text style={styles.hintText}>
+                                💡 <Text style={styles.hintBold}>Important :</Text> Les informations sur l'origine, les certifications et les allergènes rassurent les acheteurs et sont obligatoires pour certains produits
+                            </Text>
+                        </View>
+                    </>
+                );
+
+            case 'quincaillerie':
+                return (
+                    <>
+                        {/* ✅ SECTION 1 : IDENTITÉ DU PRODUIT */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="package" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>Identité du produit</Text>
+                        </View>
+
+                        {/* Nom du produit - ✅ CRITIQUE: SelectModalitySelector */}
+                        <View style={styles.fieldContainer}>
+                            <SelectModalitySelector
+                                label="Nom du produit"
+                                value={newProduct.nomProduitQuincaillerie || newProduct.name || ''}
+                                productType="quincaillerie"
+                                fieldName="noms_produits"
+                                onSelect={(value) => setNewProduct({
+                                    ...newProduct,
+                                    nomProduitQuincaillerie: value,
+                                    name: value // ✅ SYNCHRONISATION CRITIQUE
+                                })}
+                                required
+                                placeholder="Ex: Vis acier, Marteau, Peinture acrylique..."
+                            />
+                        </View>
+
+                        {/* Catégorie et Type */}
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Poids/Quantité <Text style={styles.required}>*</Text></Text>
-                                <NativeInput
-                                    placeholder="Ex: 1"
-                                    value={newProduct.poids || ''}
-                                    onChangeText={(text) => setNewProduct({ ...newProduct, poids: text })}
-                                    style={styles.fieldInput}
-                                    keyboardType="numeric"
-                                />
-                            </View>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
-                                    label="Unité"
-                                    value={newProduct.uniteMesure || ''}
-                                    productType="aliments"
-                                    fieldName="unites"
-                                    onSelect={(value) => setNewProduct({ ...newProduct, uniteMesure: value })}
+                                <SelectModalitySelector
+                                    label="Catégorie"
+                                    value={newProduct.categorieQuincaillerie || ''}
+                                    productType="quincaillerie"
+                                    fieldName="categories"
+                                    onSelect={(value) => setNewProduct({ ...newProduct, categorieQuincaillerie: value })}
                                     required
+                                    placeholder="Ex: Visserie"
+                                />
+                            </View>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <SelectModalitySelector
+                                    label="Type de produit"
+                                    value={newProduct.typeQuincaillerie || ''}
+                                    productType="quincaillerie"
+                                    fieldName="types"
+                                    onSelect={(value) => setNewProduct({ ...newProduct, typeQuincaillerie: value })}
+                                    required
+                                    placeholder="Ex: Vis, Outils"
                                 />
                             </View>
                         </View>
 
+                        {/* ✅ SECTION 2 : CARACTÉRISTIQUES */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="sliders" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>Caractéristiques</Text>
+                        </View>
+
+                        {/* Marque et Matériau */}
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
-                                    label="Conditionnement"
-                                    value={newProduct.conditionnement || ''}
-                                    productType="aliments"
-                                    fieldName="conditionnements"
-                                    onSelect={(value) => setNewProduct({ ...newProduct, conditionnement: value })}
+                                <SelectModalitySelector
+                                    label="Marque"
+                                    value={newProduct.marqueQuincaillerie || ''}
+                                    productType="quincaillerie"
+                                    fieldName="marques"
+                                    onSelect={(value) => setNewProduct({ ...newProduct, marqueQuincaillerie: value })}
+                                    placeholder="Ex: Stanley, Bosch"
+                                />
+                            </View>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <SelectModalitySelector
+                                    label="Matériau"
+                                    value={newProduct.materiauQuincaillerie || ''}
+                                    productType="quincaillerie"
+                                    fieldName="materiaux"
+                                    onSelect={(value) => setNewProduct({ ...newProduct, materiauQuincaillerie: value })}
+                                    placeholder="Ex: Acier, Bois"
+                                />
+                            </View>
+                        </View>
+
+                        {/* Dimension et Finition */}
+                        <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <SelectModalitySelector
+                                    label="Dimension/Diamètre"
+                                    value={newProduct.dimensionQuincaillerie || ''}
+                                    productType="quincaillerie"
+                                    fieldName="dimensions"
+                                    onSelect={(value) => setNewProduct({ ...newProduct, dimensionQuincaillerie: value })}
+                                    placeholder="Ex: M10, 12mm"
+                                />
+                            </View>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <SelectModalitySelector
+                                    label="Finition"
+                                    value={newProduct.finitionQuincaillerie || ''}
+                                    productType="quincaillerie"
+                                    fieldName="finitions"
+                                    onSelect={(value) => setNewProduct({ ...newProduct, finitionQuincaillerie: value })}
+                                    placeholder="Ex: Chromé, Zingué"
+                                />
+                            </View>
+                        </View>
+
+                        {/* Référence */}
+                        <View style={styles.fieldContainer}>
+                            <Text style={styles.fieldLabel}>Référence fabricant</Text>
+                            <NativeInput
+                                placeholder="Ex: STHT0-51309, REF-ABC123"
+                                value={newProduct.referenceQuincaillerie || ''}
+                                onChangeText={(text) => setNewProduct({ ...newProduct, referenceQuincaillerie: text })}
+                                style={styles.fieldInput}
+                            />
+                        </View>
+
+                        {/* ✅ SECTION 3 : USAGE & CERTIFICATION */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="check-circle" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>Usage & Certification</Text>
+                        </View>
+
+                        {/* Usage et Norme */}
+                        <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <SelectModalitySelector
+                                    label="Usage recommandé"
+                                    value={newProduct.usageQuincaillerie || ''}
+                                    productType="quincaillerie"
+                                    fieldName="utilisations"
+                                    onSelect={(value) => setNewProduct({ ...newProduct, usageQuincaillerie: value })}
+                                    placeholder="Ex: Usage résidentiel"
+                                />
+                            </View>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <SelectModalitySelector
+                                    label="Norme/Certification"
+                                    value={newProduct.normeQuincaillerie || ''}
+                                    productType="quincaillerie"
+                                    fieldName="normes"
+                                    onSelect={(value) => setNewProduct({ ...newProduct, normeQuincaillerie: value })}
+                                    placeholder="Ex: CE, NF"
+                                />
+                            </View>
+                        </View>
+
+                        {/* ✅ SECTION 4 : ÉTAT & GARANTIE */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="shield" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>État & Garantie</Text>
+                        </View>
+
+                        {/* État et Garantie */}
+                        <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <SelectModalitySelector
+                                    label="État"
+                                    value={newProduct.etatQuincaillerie || ''}
+                                    productType="quincaillerie"
+                                    fieldName="etats"
+                                    onSelect={(value) => setNewProduct({ ...newProduct, etatQuincaillerie: value })}
+                                    required
+                                    placeholder="Ex: Neuf emballé"
+                                />
+                            </View>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <SelectModalitySelector
+                                    label="Garantie"
+                                    value={newProduct.garantieQuincaillerie || ''}
+                                    productType="quincaillerie"
+                                    fieldName="garanties"
+                                    onSelect={(value) => setNewProduct({ ...newProduct, garantieQuincaillerie: value })}
+                                    placeholder="Ex: Garantie 1 an"
+                                />
+                            </View>
+                        </View>
+
+                        {/* ✅ SECTION 5 : STOCK & FOURNISSEUR */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="box" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>Stock & Fournisseur</Text>
+                        </View>
+
+                        {/* Unité et Stock */}
+                        <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <SelectModalitySelector
+                                    label="Unité de vente"
+                                    value={newProduct.uniteVente || ''}
+                                    productType="quincaillerie"
+                                    fieldName="unites"
+                                    onSelect={(value) => setNewProduct({ ...newProduct, uniteVente: value })}
+                                    required
+                                    placeholder="Ex: Pièce, Lot de 10"
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
@@ -5306,79 +8402,23 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             </View>
                         </View>
 
+                        {/* Type de fournisseur */}
                         <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Allergènes présents</Text>
-                            <NativeInput
-                                placeholder="Ex: Gluten, lait, œufs, arachides..."
-                                value={newProduct.allergenes || ''}
-                                onChangeText={(text) => setNewProduct({ ...newProduct, allergenes: text })}
-                                style={[styles.fieldInput, { height: 60 }]}
-                                multiline
+                            <SelectModalitySelector
+                                label="Type de fournisseur"
+                                value={newProduct.typeFournisseurQuincaillerie || ''}
+                                productType="quincaillerie"
+                                fieldName="fournisseurs_types"
+                                onSelect={(value) => setNewProduct({ ...newProduct, typeFournisseurQuincaillerie: value })}
+                                placeholder="Ex: Quincaillerie spécialisée"
                             />
                         </View>
 
+                        {/* Message d'aide */}
                         <View style={styles.hintBox}>
+                            <SafeIcon name="info" size={14} color={modernColors.primary} />
                             <Text style={styles.hintText}>
-                                💡 Les informations sur l'origine, les certifications et les allergènes rassurent les acheteurs
-                            </Text>
-                        </View>
-                    </>
-                );
-
-            case 'quincaillerie':
-                return (
-                    <>
-                        <ProductFieldSelector
-                            label="Catégorie"
-                            fieldName="categories"
-                            productType="quincaillerie"
-                            value={newProduct.categorieQuincaillerie || ''}
-                            onSelect={(value) => setNewProduct({ ...newProduct, categorieQuincaillerie: value })}
-                        />
-                        <View style={styles.fieldRow}>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Marque</Text>
-                                <NativeInput
-                                    placeholder="Ex: Stanley"
-                                    value={newProduct.marqueQuincaillerie || ''}
-                                    onChangeText={(text) => setNewProduct({ ...newProduct, marqueQuincaillerie: text })}
-                                    style={styles.fieldInput}
-                                />
-                            </View>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Référence</Text>
-                                <NativeInput
-                                    placeholder="Ex: STHT0-51309"
-                                    value={newProduct.referenceQuincaillerie || ''}
-                                    onChangeText={(text) => setNewProduct({ ...newProduct, referenceQuincaillerie: text })}
-                                    style={styles.fieldInput}
-                                />
-                            </View>
-                        </View>
-                        <View style={styles.fieldRow}>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
-                                    label="Unité"
-                                    fieldName="unites"
-                                    productType="quincaillerie"
-                                    value={newProduct.unite || ''}
-                                    onSelect={(value) => setNewProduct({ ...newProduct, unite: value })}
-                                />
-                            </View>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Stock disponible</Text>
-                                <NativeInput
-                                    placeholder="Ex: 50"
-                                    value={newProduct.stockDisponible || ''}
-                                    onChangeText={(text) => setNewProduct({ ...newProduct, stockDisponible: text })}
-                                    style={styles.fieldInput}
-                                    keyboardType="numeric"
-                                />
-                            </View>
-                        </View>
-                        <View style={styles.hintBox}>
-                            <Text style={styles.hintText}>
-                                💡 Précisez la référence et le stock pour faciliter les commandes
+                                💡 Conseil : Ajoutez la référence fabricant et des photos claires pour vendre 3x plus vite. Indiquez le stock pour éviter les commandes à vide.
                             </Text>
                         </View>
                     </>
@@ -5387,6 +8427,726 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
             case 'prestation_service':
                 return (
                     <>
+                        {/* Message encourageant selon la catégorie */}
+                        {newProduct.categoriePrestation && (
+                            <View style={styles.hintBox}>
+                                <Text style={styles.hintText}>
+                                    {getEncouragementMessage(prestationFieldsConfig)}
+                                </Text>
+                            </View>
+                        )}
+
+                        {/* ============ SECTION 1: CATÉGORISATION ============ */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="layers" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>🎯 Catégorisation du Service</Text>
+                        </View>
+
+                        {/* Catégorie de prestation (40+ métiers locaux) */}
+                        <ProductFieldSelector
+                            label="Catégorie de prestation *"
+                            fieldName="categories"
+                            productType="prestation_service"
+                            value={newProduct.categoriePrestation || ''}
+                            onSelect={(value) => setNewProduct({ ...newProduct, categoriePrestation: value })}
+                            required
+                        />
+
+                        {/* Type de prestation (30+) */}
+                        {prestationFieldsConfig.showType && (
+                            <ProductFieldSelector
+                                label="Type de prestation"
+                                fieldName="types"
+                                productType="prestation_service"
+                                value={newProduct.typePrestation || ''}
+                                onSelect={(value) => setNewProduct({ ...newProduct, typePrestation: value })}
+                            />
+                        )}
+
+                        {/* ============ SECTION SPÉCIALE: PRÉPARATION CONCOURS GRANDES ÉCOLES ============ */}
+                        {(prestationFieldsConfig.showTypeConcours || prestationFieldsConfig.showConcoursCibles) && (
+                            <>
+                                <View style={styles.sectionHeader}>
+                                    <SafeIcon name="award" size={20} color={modernColors.warning} />
+                                    <Text style={styles.sectionTitle}>🎓 Préparation Concours Grandes Écoles</Text>
+                                </View>
+
+                                <View style={styles.hintBox}>
+                                    <SafeIcon name="trophy" size={16} color={modernColors.warning} />
+                                    <Text style={styles.hintText}>
+                                        🏆 <Text style={styles.hintBold}>Système ultra-spécialisé :</Text> Vos concours nationaux s'affichent en priorité selon votre pays !
+                                    </Text>
+                                </View>
+
+                                {/* Type de concours */}
+                                {prestationFieldsConfig.showTypeConcours && (
+                                    <ProductFieldSelector
+                                        label="Type de concours *"
+                                        fieldName="types_concours"
+                                        productType="prestation_service"
+                                        value={newProduct.typeConcours || ''}
+                                        onSelect={(value) => setNewProduct({ ...newProduct, typeConcours: value })}
+                                        required
+                                    />
+                                )}
+
+                                {/* Concours ciblés (multi-select) */}
+                                {prestationFieldsConfig.showConcoursCibles && (
+                                    <MultiSelectModalitySelector
+                                        label="Concours spécifiques préparés *"
+                                        values={newProduct.concoursCibles || []}
+                                        productType="prestation_service"
+                                        fieldName="concours_cibles"
+                                        onSelect={(values) => setNewProduct({ ...newProduct, concoursCibles: values })}
+                                        placeholder="Ex: Polytechnique Yaoundé, ENS, ENAM..."
+                                        maxSelections={10}
+                                    />
+                                )}
+
+                                {/* Matières de préparation (multi-select) */}
+                                {prestationFieldsConfig.showMatieresPreparationConcours && (
+                                    <MultiSelectModalitySelector
+                                        label="Matières de préparation *"
+                                        values={newProduct.matieresPreparationConcours || []}
+                                        productType="prestation_service"
+                                        fieldName="matieres_preparation_concours"
+                                        onSelect={(values) => setNewProduct({ ...newProduct, matieresPreparationConcours: values })}
+                                        placeholder="Ex: Maths supérieures, Physique, Culture générale..."
+                                        maxSelections={10}
+                                    />
+                                )}
+
+                                {/* Niveau de préparation */}
+                                {prestationFieldsConfig.showNiveauPreparationConcours && (
+                                    <ProductFieldSelector
+                                        label="Niveau de préparation"
+                                        fieldName="niveaux_preparation_concours"
+                                        productType="prestation_service"
+                                        value={newProduct.niveauPreparationConcours || ''}
+                                        onSelect={(value) => setNewProduct({ ...newProduct, niveauPreparationConcours: value })}
+                                    />
+                                )}
+
+                                {/* Type d'accompagnement */}
+                                {prestationFieldsConfig.showTypeAccompagnementConcours && (
+                                    <ProductFieldSelector
+                                        label="Type d'accompagnement"
+                                        fieldName="types_accompagnement_concours"
+                                        productType="prestation_service"
+                                        value={newProduct.typeAccompagnementConcours || ''}
+                                        onSelect={(value) => setNewProduct({ ...newProduct, typeAccompagnementConcours: value })}
+                                    />
+                                )}
+
+                                {/* Supports pédagogiques (multi-select) */}
+                                {prestationFieldsConfig.showSupportsPedagogiques && (
+                                    <MultiSelectModalitySelector
+                                        label="Supports pédagogiques fournis"
+                                        values={newProduct.supportsPedagogiques || []}
+                                        productType="prestation_service"
+                                        fieldName="supports_pedagogiques_concours"
+                                        onSelect={(values) => setNewProduct({ ...newProduct, supportsPedagogiques: values })}
+                                        placeholder="Ex: Annales, fiches, vidéos..."
+                                        maxSelections={8}
+                                    />
+                                )}
+
+                                {/* Taux de réussite */}
+                                {prestationFieldsConfig.showTauxReussiteConcours && (
+                                    <ProductFieldSelector
+                                        label="Taux de réussite de vos élèves"
+                                        fieldName="taux_reussite_concours"
+                                        productType="prestation_service"
+                                        value={newProduct.tauxReussiteConcours || ''}
+                                        onSelect={(value) => setNewProduct({ ...newProduct, tauxReussiteConcours: value })}
+                                    />
+                                )}
+
+                                {/* Options concours */}
+                                {prestationFieldsConfig.showConcoursBlancsProposes && (
+                                    <View style={styles.fieldRow}>
+                                        <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                            <TouchableOpacity
+                                                style={styles.checkboxContainer}
+                                                onPress={() => setNewProduct({ ...newProduct, concoursBlancsProposes: !newProduct.concoursBlancsProposes })}
+                                            >
+                                                <View style={[
+                                                    styles.checkbox,
+                                                    newProduct.concoursBlancsProposes && styles.checkboxChecked
+                                                ]}>
+                                                    {newProduct.concoursBlancsProposes && (
+                                                        <SafeIcon name="check" size={14} color="#FFFFFF" />
+                                                    )}
+                                                </View>
+                                                <Text style={styles.checkboxLabel}>📝 Concours blancs proposés</Text>
+                                            </TouchableOpacity>
+                                        </View>
+                                        <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                            <TouchableOpacity
+                                                style={styles.checkboxContainer}
+                                                onPress={() => setNewProduct({ ...newProduct, preparateurAgree: !newProduct.preparateurAgree })}
+                                            >
+                                                <View style={[
+                                                    styles.checkbox,
+                                                    newProduct.preparateurAgree && styles.checkboxChecked
+                                                ]}>
+                                                    {newProduct.preparateurAgree && (
+                                                        <SafeIcon name="check" size={14} color="#FFFFFF" />
+                                                    )}
+                                                </View>
+                                                <Text style={styles.checkboxLabel}>🏆 Préparateur agréé</Text>
+                                            </TouchableOpacity>
+                                        </View>
+                                    </View>
+                                )}
+
+                                <View style={styles.hintBox}>
+                                    <SafeIcon name="star" size={16} color={modernColors.warning} />
+                                    <Text style={styles.hintText}>
+                                        🌟 <Text style={styles.hintBold}>Valorisez vos résultats :</Text> Mentionnez vos élèves admis et votre taux de réussite pour rassurer les futurs candidats !
+                                    </Text>
+                                </View>
+                            </>
+                        )}
+
+                        {/* ============ SECTION SPÉCIALE: ÉDUCATION (Cours particuliers/Soutien scolaire) ============ */}
+                        {(prestationFieldsConfig.showMatieresEnseignees || prestationFieldsConfig.showNiveauxScolaires) && (
+                            <>
+                                <View style={styles.sectionHeader}>
+                                    <SafeIcon name="book-open" size={20} color={modernColors.secondary} />
+                                    <Text style={styles.sectionTitle}>📚 Détails Éducation</Text>
+                                </View>
+
+                                {/* Matières enseignées (multi-select) */}
+                                {prestationFieldsConfig.showMatieresEnseignees && (
+                                    <MultiSelectModalitySelector
+                                        label="Matières enseignées *"
+                                        values={newProduct.matieresEnseignees || []}
+                                        productType="formation_education"
+                                        fieldName="matieres_enseignees"
+                                        onSelect={(values) => setNewProduct({ ...newProduct, matieresEnseignees: values })}
+                                        placeholder="Sélectionnez les matières que vous enseignez"
+                                        maxSelections={10}
+                                    />
+                                )}
+
+                                {/* Niveaux scolaires (multi-select) */}
+                                {prestationFieldsConfig.showNiveauxScolaires && (
+                                    <MultiSelectModalitySelector
+                                        label="Niveaux enseignés *"
+                                        values={newProduct.niveauxScolaires || []}
+                                        productType="formation_education"
+                                        fieldName="niveaux_scolaires"
+                                        onSelect={(values) => setNewProduct({ ...newProduct, niveauxScolaires: values })}
+                                        placeholder="Sélectionnez les niveaux (ex: 6ème, 3ème, Terminale)"
+                                        maxSelections={15}
+                                    />
+                                )}
+
+                                <View style={styles.hintBox}>
+                                    <SafeIcon name="info" size={16} color={modernColors.primary} />
+                                    <Text style={styles.hintText}>
+                                        💡 Plus vous indiquez de matières et niveaux, plus vous serez visible auprès des élèves !
+                                    </Text>
+                                </View>
+                            </>
+                        )}
+
+                        {/* ============ SECTION 2: ZONES D'INTERVENTION ============ */}
+                        {prestationFieldsConfig.showZoneIntervention && (
+                            <>
+                                <View style={styles.sectionHeader}>
+                                    <SafeIcon name="map-pin" size={20} color={modernColors.success} />
+                                    <Text style={styles.sectionTitle}>📍 Zones d'intervention</Text>
+                                </View>
+
+                                <View style={styles.hintBox}>
+                                    <SafeIcon name="info" size={16} color={modernColors.primary} />
+                                    <Text style={styles.hintText}>
+                                        💡 <Text style={styles.hintBold}>Choix rapide :</Text> Sélectionnez "Toute l'Afrique francophone" ou "Tout le Cameroun" pour une couverture large. Ou choisissez plusieurs villes/quartiers spécifiques.
+                                    </Text>
+                                </View>
+
+                                {/* Zones d'intervention (sélection multiple possible) */}
+                                <MultiSelectModalitySelector
+                                    label="Zones d'intervention *"
+                                    values={newProduct.zonesMultiples || (newProduct.zoneIntervention ? [newProduct.zoneIntervention] : [])}
+                                    productType="prestation_service"
+                                    fieldName="zones_intervention"
+                                    onSelect={(values) => {
+                                        // Si l'utilisateur sélectionne "Toute l'Afrique" ou "Tout le pays", retirer les zones spécifiques
+                                        const hasLargeZone = values.some(v =>
+                                            v.includes('Toute l\'Afrique') ||
+                                            v.includes('Tout le') ||
+                                            v.includes('International')
+                                        );
+
+                                        if (hasLargeZone) {
+                                            // Garder uniquement les zones larges
+                                            const largeZones = values.filter(v =>
+                                                v.includes('Toute l\'Afrique') ||
+                                                v.includes('Tout le') ||
+                                                v.includes('International')
+                                            );
+                                            setNewProduct({
+                                                ...newProduct,
+                                                zonesMultiples: largeZones,
+                                                zoneIntervention: largeZones[0] || '' // Compatibilité
+                                            });
+                                        } else {
+                                            // Accepter plusieurs zones spécifiques
+                                            setNewProduct({
+                                                ...newProduct,
+                                                zonesMultiples: values,
+                                                zoneIntervention: values[0] || '' // Compatibilité
+                                            });
+                                        }
+                                    }}
+                                    placeholder="Sélectionnez vos zones (ou choisissez une zone large)"
+                                    maxSelections={15}
+                                />
+
+                                {/* Modalité de déplacement */}
+                                {prestationFieldsConfig.showModaliteDeplacement && (
+                                    <ProductFieldSelector
+                                        label="Modalité de déplacement"
+                                        fieldName="modalites_deplacement"
+                                        productType="prestation_service"
+                                        value={newProduct.modaliteDeplacement || ''}
+                                        onSelect={(value) => setNewProduct({ ...newProduct, modaliteDeplacement: value })}
+                                    />
+                                )}
+
+                                {/* Rayon de déplacement */}
+                                {prestationFieldsConfig.showRayonDeplacement && (
+                                    <View style={styles.fieldContainer}>
+                                        <Text style={styles.fieldLabel}>Rayon de déplacement (km)</Text>
+                                        <NativeInput
+                                            placeholder="Ex: 15 km"
+                                            value={newProduct.rayonDeplacementKm || ''}
+                                            onChangeText={(text) => setNewProduct({ ...newProduct, rayonDeplacementKm: text })}
+                                            style={styles.fieldInput}
+                                            keyboardType="numeric"
+                                        />
+                                    </View>
+                                )}
+
+                                {/* Frais de déplacement */}
+                                {prestationFieldsConfig.showFraisDeplacementInclus && (
+                                    <View style={styles.fieldContainer}>
+                                        <TouchableOpacity
+                                            style={styles.checkboxContainer}
+                                            onPress={() => setNewProduct({ ...newProduct, fraisDeplacementInclus: !newProduct.fraisDeplacementInclus })}
+                                        >
+                                            <View style={[
+                                                styles.checkbox,
+                                                newProduct.fraisDeplacementInclus && styles.checkboxChecked
+                                            ]}>
+                                                {newProduct.fraisDeplacementInclus && (
+                                                    <SafeIcon name="check" size={16} color="#FFFFFF" />
+                                                )}
+                                            </View>
+                                            <Text style={styles.checkboxLabel}>💰 Frais de déplacement inclus</Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                )}
+                            </>
+                        )}
+
+                        {/* ============ SECTION 3: EXPÉRIENCE & QUALIFICATIONS ============ */}
+                        {prestationFieldsConfig.showNiveauExperience && (
+                            <>
+                                <View style={styles.sectionHeader}>
+                                    <SafeIcon name="award" size={20} color={modernColors.warning} />
+                                    <Text style={styles.sectionTitle}>🏆 Expérience & Qualifications</Text>
+                                </View>
+
+                                {/* Niveau d'expérience (12 niveaux) */}
+                                <ProductFieldSelector
+                                    label="Niveau d'expérience"
+                                    fieldName="niveaux_experience"
+                                    productType="prestation_service"
+                                    value={newProduct.niveauExperience || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, niveauExperience: value })}
+                                />
+
+                                {/* Certification principale */}
+                                {prestationFieldsConfig.showCertification && (
+                                    <ProductFieldSelector
+                                        label="Certification / Diplôme principal"
+                                        fieldName="certifications"
+                                        productType="prestation_service"
+                                        value={newProduct.certification || ''}
+                                        onSelect={(value) => setNewProduct({ ...newProduct, certification: value })}
+                                    />
+                                )}
+
+                                {/* Certifications multiples */}
+                                {prestationFieldsConfig.showCertificationMultiple && (
+                                    <MultiSelectModalitySelector
+                                        label="Certifications supplémentaires"
+                                        values={newProduct.certifications || []}
+                                        productType="prestation_service"
+                                        fieldName="certifications"
+                                        onSelect={(values) => setNewProduct({ ...newProduct, certifications: values })}
+                                        placeholder="Aucune certification sélectionnée"
+                                        maxSelections={5}
+                                    />
+                                )}
+                            </>
+                        )}
+
+                        {/* ============ SECTION 4: DISPONIBILITÉS & HORAIRES ============ */}
+                        {prestationFieldsConfig.showDisponibilite && (
+                            <>
+                                <View style={styles.sectionHeader}>
+                                    <SafeIcon name="clock" size={20} color={modernColors.info} />
+                                    <Text style={styles.sectionTitle}>⏰ Disponibilités & Horaires</Text>
+                                </View>
+
+                                {/* Disponibilité */}
+                                <ProductFieldSelector
+                                    label="Disponibilité"
+                                    fieldName="disponibilites"
+                                    productType="prestation_service"
+                                    value={newProduct.disponibilitePrestation || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, disponibilitePrestation: value })}
+                                />
+
+                                {/* Horaires de service */}
+                                {prestationFieldsConfig.showHoraires && (
+                                    <View style={styles.fieldContainer}>
+                                        <Text style={styles.fieldLabel}>Horaires de service</Text>
+                                        <NativeInput
+                                            placeholder="Ex: Lundi-Vendredi 8h-18h"
+                                            value={newProduct.horairesService || ''}
+                                            onChangeText={(text) => setNewProduct({ ...newProduct, horairesService: text })}
+                                            style={styles.fieldInput}
+                                        />
+                                    </View>
+                                )}
+
+                                {/* Options disponibilité */}
+                                {(prestationFieldsConfig.showUrgences || prestationFieldsConfig.showService24h) && (
+                                    <View style={styles.fieldRow}>
+                                        {prestationFieldsConfig.showUrgences && (
+                                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                                <TouchableOpacity
+                                                    style={styles.checkboxContainer}
+                                                    onPress={() => setNewProduct({ ...newProduct, urgencesAcceptees: !newProduct.urgencesAcceptees })}
+                                                >
+                                                    <View style={[
+                                                        styles.checkbox,
+                                                        newProduct.urgencesAcceptees && styles.checkboxChecked
+                                                    ]}>
+                                                        {newProduct.urgencesAcceptees && (
+                                                            <SafeIcon name="check" size={14} color="#FFFFFF" />
+                                                        )}
+                                                    </View>
+                                                    <Text style={styles.checkboxLabel}>🚨 Urgences</Text>
+                                                </TouchableOpacity>
+                                            </View>
+                                        )}
+                                        {prestationFieldsConfig.showService24h && (
+                                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                                <TouchableOpacity
+                                                    style={styles.checkboxContainer}
+                                                    onPress={() => setNewProduct({ ...newProduct, service24h: !newProduct.service24h })}
+                                                >
+                                                    <View style={[
+                                                        styles.checkbox,
+                                                        newProduct.service24h && styles.checkboxChecked
+                                                    ]}>
+                                                        {newProduct.service24h && (
+                                                            <SafeIcon name="check" size={14} color="#FFFFFF" />
+                                                        )}
+                                                    </View>
+                                                    <Text style={styles.checkboxLabel}>⏰ 24h/24</Text>
+                                                </TouchableOpacity>
+                                            </View>
+                                        )}
+                                    </View>
+                                )}
+
+                                {(prestationFieldsConfig.showWeekend || prestationFieldsConfig.showJoursFeries) && (
+                                    <View style={styles.fieldRow}>
+                                        {prestationFieldsConfig.showWeekend && (
+                                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                                <TouchableOpacity
+                                                    style={styles.checkboxContainer}
+                                                    onPress={() => setNewProduct({ ...newProduct, disponibleWeekend: !newProduct.disponibleWeekend })}
+                                                >
+                                                    <View style={[
+                                                        styles.checkbox,
+                                                        newProduct.disponibleWeekend && styles.checkboxChecked
+                                                    ]}>
+                                                        {newProduct.disponibleWeekend && (
+                                                            <SafeIcon name="check" size={14} color="#FFFFFF" />
+                                                        )}
+                                                    </View>
+                                                    <Text style={styles.checkboxLabel}>📅 Weekend</Text>
+                                                </TouchableOpacity>
+                                            </View>
+                                        )}
+                                        {prestationFieldsConfig.showJoursFeries && (
+                                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                                <TouchableOpacity
+                                                    style={styles.checkboxContainer}
+                                                    onPress={() => setNewProduct({ ...newProduct, disponibleJoursFeries: !newProduct.disponibleJoursFeries })}
+                                                >
+                                                    <View style={[
+                                                        styles.checkbox,
+                                                        newProduct.disponibleJoursFeries && styles.checkboxChecked
+                                                    ]}>
+                                                        {newProduct.disponibleJoursFeries && (
+                                                            <SafeIcon name="check" size={14} color="#FFFFFF" />
+                                                        )}
+                                                    </View>
+                                                    <Text style={styles.checkboxLabel}>🎉 Jours fériés</Text>
+                                                </TouchableOpacity>
+                                            </View>
+                                        )}
+                                    </View>
+                                )}
+                            </>
+                        )}
+
+                        {/* ============ SECTION 5: TARIFICATION ============ */}
+                        {prestationFieldsConfig.showModeTarification && (
+                            <>
+                                <View style={styles.sectionHeader}>
+                                    <SafeIcon name="dollar-sign" size={20} color={modernColors.success} />
+                                    <Text style={styles.sectionTitle}>💵 Tarification</Text>
+                                </View>
+
+                                {/* Mode de tarification */}
+                                <ProductFieldSelector
+                                    label="Mode de tarification"
+                                    fieldName="modes_tarification"
+                                    productType="prestation_service"
+                                    value={newProduct.modeTarification || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, modeTarification: value })}
+                                />
+
+                                {/* Prix selon le mode */}
+                                {(prestationFieldsConfig.showPrixHoraire || prestationFieldsConfig.showPrixJournalier) && (
+                                    <View style={styles.fieldRow}>
+                                        {prestationFieldsConfig.showPrixHoraire && (
+                                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                                <Text style={styles.fieldLabel}>Prix horaire (XAF)</Text>
+                                                <NativeInput
+                                                    placeholder="5000"
+                                                    value={newProduct.prixHoraire || ''}
+                                                    onChangeText={(text) => setNewProduct({ ...newProduct, prixHoraire: text })}
+                                                    style={styles.fieldInput}
+                                                    keyboardType="numeric"
+                                                />
+                                            </View>
+                                        )}
+                                        {prestationFieldsConfig.showPrixJournalier && (
+                                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                                <Text style={styles.fieldLabel}>Prix journalier (XAF)</Text>
+                                                <NativeInput
+                                                    placeholder="25000"
+                                                    value={newProduct.prixJournalier || ''}
+                                                    onChangeText={(text) => setNewProduct({ ...newProduct, prixJournalier: text })}
+                                                    style={styles.fieldInput}
+                                                    keyboardType="numeric"
+                                                />
+                                            </View>
+                                        )}
+                                    </View>
+                                )}
+
+                                {/* Options tarification */}
+                                {(prestationFieldsConfig.showDevisGratuit || prestationFieldsConfig.showPrixNegociable) && (
+                                    <View style={styles.fieldRow}>
+                                        {prestationFieldsConfig.showDevisGratuit && (
+                                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                                <TouchableOpacity
+                                                    style={styles.checkboxContainer}
+                                                    onPress={() => setNewProduct({ ...newProduct, devisGratuit: !newProduct.devisGratuit })}
+                                                >
+                                                    <View style={[
+                                                        styles.checkbox,
+                                                        newProduct.devisGratuit && styles.checkboxChecked
+                                                    ]}>
+                                                        {newProduct.devisGratuit && (
+                                                            <SafeIcon name="check" size={14} color="#FFFFFF" />
+                                                        )}
+                                                    </View>
+                                                    <Text style={styles.checkboxLabel}>📋 Devis gratuit</Text>
+                                                </TouchableOpacity>
+                                            </View>
+                                        )}
+                                        {prestationFieldsConfig.showPrixNegociable && (
+                                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                                <TouchableOpacity
+                                                    style={styles.checkboxContainer}
+                                                    onPress={() => setNewProduct({ ...newProduct, prixNegociable: !newProduct.prixNegociable })}
+                                                >
+                                                    <View style={[
+                                                        styles.checkbox,
+                                                        newProduct.prixNegociable && styles.checkboxChecked
+                                                    ]}>
+                                                        {newProduct.prixNegociable && (
+                                                            <SafeIcon name="check" size={14} color="#FFFFFF" />
+                                                        )}
+                                                    </View>
+                                                    <Text style={styles.checkboxLabel}>💬 Prix négociable</Text>
+                                                </TouchableOpacity>
+                                            </View>
+                                        )}
+                                    </View>
+                                )}
+
+                                {/* NOTE: Les modes de paiement sont gérés dans FormulaireYukpointIntelligentScreen */}
+                                {/* On retire ce champ d'ici pour éviter la duplication */}
+                            </>
+                        )}
+
+                        {/* ============ SECTION 6: ÉQUIPEMENTS & OUTILS ============ */}
+                        {prestationFieldsConfig.showEquipements && (
+                            <>
+                                <View style={styles.sectionHeader}>
+                                    <SafeIcon name="tool" size={20} color={modernColors.secondary} />
+                                    <Text style={styles.sectionTitle}>🔧 Équipements & Outils</Text>
+                                </View>
+
+                                {/* Équipements */}
+                                <MultiSelectModalitySelector
+                                    label="Équipements disponibles"
+                                    values={newProduct.equipementsPrestation || []}
+                                    productType="prestation_service"
+                                    fieldName="equipements"
+                                    onSelect={(values) => setNewProduct({ ...newProduct, equipementsPrestation: values })}
+                                    placeholder="Sélectionnez vos équipements"
+                                    maxSelections={10}
+                                />
+
+                                {prestationFieldsConfig.showFournitEquipement && (
+                                    <View style={styles.fieldRow}>
+                                        <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                            <TouchableOpacity
+                                                style={styles.checkboxContainer}
+                                                onPress={() => setNewProduct({ ...newProduct, fournitEquipement: !newProduct.fournitEquipement })}
+                                            >
+                                                <View style={[
+                                                    styles.checkbox,
+                                                    newProduct.fournitEquipement && styles.checkboxChecked
+                                                ]}>
+                                                    {newProduct.fournitEquipement && (
+                                                        <SafeIcon name="check" size={14} color="#FFFFFF" />
+                                                    )}
+                                                </View>
+                                                <Text style={styles.checkboxLabel}>✅ Je fournis l'équipement</Text>
+                                            </TouchableOpacity>
+                                        </View>
+                                        <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                            <TouchableOpacity
+                                                style={styles.checkboxContainer}
+                                                onPress={() => setNewProduct({ ...newProduct, clientFournitMateriel: !newProduct.clientFournitMateriel })}
+                                            >
+                                                <View style={[
+                                                    styles.checkbox,
+                                                    newProduct.clientFournitMateriel && styles.checkboxChecked
+                                                ]}>
+                                                    {newProduct.clientFournitMateriel && (
+                                                        <SafeIcon name="check" size={14} color="#FFFFFF" />
+                                                    )}
+                                                </View>
+                                                <Text style={styles.checkboxLabel}>⚠️ Client fournit matériel</Text>
+                                            </TouchableOpacity>
+                                        </View>
+                                    </View>
+                                )}
+                            </>
+                        )}
+
+                        {/* ============ SECTION 7: GARANTIES & ASSURANCES ============ */}
+                        {(prestationFieldsConfig.showGarantie || prestationFieldsConfig.showAssurance) && (
+                            <>
+                                <View style={styles.sectionHeader}>
+                                    <SafeIcon name="shield" size={20} color={modernColors.success} />
+                                    <Text style={styles.sectionTitle}>🛡️ Garanties & Assurances</Text>
+                                </View>
+
+                                {/* Garantie */}
+                                {prestationFieldsConfig.showGarantie && (
+                                    <ProductFieldSelector
+                                        label="Garantie proposée"
+                                        fieldName="garanties"
+                                        productType="prestation_service"
+                                        value={newProduct.garantiePrestation || ''}
+                                        onSelect={(value) => setNewProduct({ ...newProduct, garantiePrestation: value })}
+                                    />
+                                )}
+
+                                {/* Assurance */}
+                                {prestationFieldsConfig.showAssurance && (
+                                    <ProductFieldSelector
+                                        label="Assurance professionnelle"
+                                        fieldName="assurances"
+                                        productType="prestation_service"
+                                        value={newProduct.assuranceProfessionnelle || ''}
+                                        onSelect={(value) => setNewProduct({ ...newProduct, assuranceProfessionnelle: value })}
+                                    />
+                                )}
+                            </>
+                        )}
+
+                        {/* ============ SECTION 8: CONTACT & COMMUNICATION ============ */}
+                        {prestationFieldsConfig.showContact && (
+                            <>
+                                <View style={styles.sectionHeader}>
+                                    <SafeIcon name="phone" size={20} color={modernColors.primary} />
+                                    <Text style={styles.sectionTitle}>📞 Contact & Communication</Text>
+                                </View>
+
+                                <View style={styles.fieldRow}>
+                                    <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                        <Text style={styles.fieldLabel}>Téléphone</Text>
+                                        <NativeInput
+                                            placeholder="Ex: 690123456"
+                                            value={newProduct.telephonePrestation || ''}
+                                            onChangeText={(text) => setNewProduct({ ...newProduct, telephonePrestation: text })}
+                                            style={styles.fieldInput}
+                                            keyboardType="phone-pad"
+                                        />
+                                    </View>
+                                    <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                        <Text style={styles.fieldLabel}>WhatsApp</Text>
+                                        <NativeInput
+                                            placeholder="Ex: 690123456"
+                                            value={newProduct.whatsappPrestation || ''}
+                                            onChangeText={(text) => setNewProduct({ ...newProduct, whatsappPrestation: text })}
+                                            style={styles.fieldInput}
+                                            keyboardType="phone-pad"
+                                        />
+                                    </View>
+                                </View>
+
+                                {/* Langues parlées */}
+                                {prestationFieldsConfig.showLangues && (
+                                    <MultiSelectModalitySelector
+                                        label="Langues parlées"
+                                        values={newProduct.languesParlees || []}
+                                        productType="prestation_service"
+                                        fieldName="langues"
+                                        onSelect={(values) => setNewProduct({ ...newProduct, languesParlees: values })}
+                                        placeholder="Sélectionnez les langues"
+                                        maxSelections={5}
+                                    />
+                                )}
+                            </>
+                        )}
+
+                        {/* ============ SECTION 9: OFFRES DE SERVICE ============ */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="briefcase" size={20} color={modernColors.warning} />
+                            <Text style={styles.sectionTitle}>💼 Offres de Service</Text>
+                        </View>
+
                         <View style={styles.hintBox}>
                             <Text style={styles.hintText}>
                                 💡 <Text style={styles.hintBold}>Portfolio de Réalisations :</Text> Ajoutez des images et vidéos de vos meilleures réalisations pour montrer votre savoir-faire. Le titre et la description sont automatiquement repris du service principal.
@@ -5464,7 +9224,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                     <View style={styles.prestationFieldContainerCompact}>
                                         <Text style={styles.prestationFieldLabelCompact}>Nom de l'offre *</Text>
                                         <NativeInput
-                                            placeholder="Ex: Installation électrique"
+                                            placeholder="Ex: Installation électrique complète"
                                             value={prestation.nom}
                                             onChangeText={(text) => {
                                                 const prestations = [...(newProduct.prestations || [])];
@@ -5528,6 +9288,182 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 💰 <Text style={styles.hintBold}>Conseil :</Text> Listez toutes vos offres de service avec leur montant minimum. Utilisez le bouton de duplication 📋 pour créer rapidement des variantes.
                             </Text>
                         </View>
+
+                        {/* Hint final */}
+                        <View style={styles.hintBox}>
+                            <Text style={styles.hintText}>
+                                ✅ <Text style={styles.hintBold}>Profil complet = Plus de clients !</Text> Remplissez un maximum de champs pour rassurer vos futurs clients et apparaître en tête des résultats de recherche.
+                            </Text>
+                        </View>
+                    </>
+                );
+
+            case 'vin_liqueur':
+            case 'vin_et_liqueur':
+            case 'vin':
+            case 'liqueur':
+            case 'champagne':
+            case 'spiritueux':
+                return (
+                    <>
+                        {/* SECTION 1: TYPE ET CATÉGORIE */}
+                        <Text style={styles.sectionTitle}>🍷 Type et Catégorie</Text>
+
+                        <ProductFieldSelector
+                            label="Type de produit *"
+                            fieldName="types_produits"
+                            productType="vin_liqueur"
+                            value={newProduct.typeProduitVin || ''}
+                            onSelect={(value) => setNewProduct({ ...newProduct, typeProduitVin: value })}
+                            required
+                        />
+
+                        <ProductFieldSelector
+                            label="Catégorie"
+                            fieldName="categories"
+                            productType="vin_liqueur"
+                            value={newProduct.categorieVin || ''}
+                            onSelect={(value) => setNewProduct({ ...newProduct, categorieVin: value })}
+                        />
+
+                        {/* SECTION 2: CARACTÉRISTIQUES PRODUIT */}
+                        <Text style={styles.sectionTitle}>📋 Caractéristiques Produit</Text>
+
+                        <ProductFieldSelector
+                            label="Marque / Producteur"
+                            fieldName="marques"
+                            productType="vin_liqueur"
+                            value={newProduct.marqueVin || ''}
+                            onSelect={(value) => setNewProduct({ ...newProduct, marqueVin: value })}
+                        />
+
+                        <ProductFieldSelector
+                            label="Région / Appellation"
+                            fieldName="regions"
+                            productType="vin_liqueur"
+                            value={newProduct.regionVin || ''}
+                            onSelect={(value) => setNewProduct({ ...newProduct, regionVin: value })}
+                        />
+
+                        <ProductFieldSelector
+                            label="Cépage"
+                            fieldName="cepages"
+                            productType="vin_liqueur"
+                            value={newProduct.cepageVin || ''}
+                            onSelect={(value) => setNewProduct({ ...newProduct, cepageVin: value })}
+                        />
+
+                        <ProductFieldSelector
+                            label="Millésime"
+                            fieldName="millesimes"
+                            productType="vin_liqueur"
+                            value={newProduct.millesimeVin || ''}
+                            onSelect={(value) => setNewProduct({ ...newProduct, millesimeVin: value })}
+                        />
+
+                        <ProductFieldSelector
+                            label="Format / Contenance *"
+                            fieldName="formats"
+                            productType="vin_liqueur"
+                            value={newProduct.formatVin || ''}
+                            onSelect={(value) => setNewProduct({ ...newProduct, formatVin: value })}
+                            required
+                        />
+
+                        <ProductFieldSelector
+                            label="Degré d'alcool"
+                            fieldName="degres_alcool"
+                            productType="vin_liqueur"
+                            value={newProduct.degreAlcool || ''}
+                            onSelect={(value) => setNewProduct({ ...newProduct, degreAlcool: value })}
+                        />
+
+                        <ProductFieldSelector
+                            label="Pays d'origine"
+                            fieldName="pays_origine"
+                            productType="vin_liqueur"
+                            value={newProduct.paysOrigineVin || ''}
+                            onSelect={(value) => setNewProduct({ ...newProduct, paysOrigineVin: value })}
+                        />
+
+                        <ProductFieldSelector
+                            label="Certification / Label"
+                            fieldName="certifications"
+                            productType="vin_liqueur"
+                            value={newProduct.certificationVin || ''}
+                            onSelect={(value) => setNewProduct({ ...newProduct, certificationVin: value })}
+                        />
+
+                        <ProductFieldSelector
+                            label="État"
+                            fieldName="etats"
+                            productType="vin_liqueur"
+                            value={newProduct.etatVin || ''}
+                            onSelect={(value) => setNewProduct({ ...newProduct, etatVin: value })}
+                        />
+
+                        {/* SECTION 3: COMMERCIALISATION */}
+                        <Text style={styles.sectionTitle}>💼 Commercialisation</Text>
+
+                        <ProductFieldSelector
+                            label="Type de commercialisation *"
+                            fieldName="types_commercialisation"
+                            productType="vin_liqueur"
+                            value={newProduct.typeCommercialisation || ''}
+                            onSelect={(value) => setNewProduct({ ...newProduct, typeCommercialisation: value })}
+                            required
+                        />
+
+                        <ProductFieldSelector
+                            label="Quantité minimale"
+                            fieldName="quantites_min"
+                            productType="vin_liqueur"
+                            value={newProduct.quantiteMinimale || ''}
+                            onSelect={(value) => setNewProduct({ ...newProduct, quantiteMinimale: value })}
+                        />
+
+                        <ProductFieldSelector
+                            label="Type d'emballage"
+                            fieldName="emballages"
+                            productType="vin_liqueur"
+                            value={newProduct.emballageVin || ''}
+                            onSelect={(value) => setNewProduct({ ...newProduct, emballageVin: value })}
+                        />
+
+                        <ProductFieldSelector
+                            label="Occasion / Utilisation"
+                            fieldName="occasions"
+                            productType="vin_liqueur"
+                            value={newProduct.occasionVin || ''}
+                            onSelect={(value) => setNewProduct({ ...newProduct, occasionVin: value })}
+                        />
+
+                        {/* SECTION 4: INFORMATIONS COMPLÉMENTAIRES (Optionnel) */}
+                        <Text style={styles.sectionTitle}>ℹ️ Informations Complémentaires (Optionnel)</Text>
+
+                        <ProductFieldSelector
+                            label="Température de service"
+                            fieldName="temperatures_service"
+                            productType="vin_liqueur"
+                            value={newProduct.temperatureService || ''}
+                            onSelect={(value) => setNewProduct({ ...newProduct, temperatureService: value })}
+                        />
+
+                        <ProductFieldSelector
+                            label="Accords mets-vins"
+                            fieldName="accords_mets"
+                            productType="vin_liqueur"
+                            value={newProduct.accordMetsVin || ''}
+                            onSelect={(value) => setNewProduct({ ...newProduct, accordMetsVin: value })}
+                        />
+
+                        {/* Hint final */}
+                        <View style={styles.hintBox}>
+                            <Text style={styles.hintText}>
+                                🍷 <Text style={styles.hintBold}>Commercialisation professionnelle</Text>{'\n'}
+                                Précisez le type de commercialisation (détail, grossiste, palette) et la quantité minimale pour attirer les bons acheteurs (particuliers, bars, restaurants, importateurs).
+                            </Text>
+                        </View>
                     </>
                 );
 
@@ -5549,39 +9485,60 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             value={newProduct.niveau || ''}
                             onSelect={(value) => setNewProduct({ ...newProduct, niveau: value })}
                         />
-                        {(newProduct.categorieLivre === 'Livre scolaire' || newProduct.categorieLivre === 'Livre') && (
-                            <>
-                                <View style={styles.fieldContainer}>
-                                    <Text style={styles.fieldLabel}>Matière</Text>
-                                    <NativeInput
-                                        placeholder="Ex: Mathématiques, Français, Histoire"
-                                        value={newProduct.matiereScolaire || ''}
-                                        onChangeText={(text) => setNewProduct({ ...newProduct, matiereScolaire: text })}
-                                        style={styles.fieldInput}
-                                    />
-                                </View>
-                                <View style={styles.fieldRow}>
-                                    <View style={[styles.fieldContainer, { flex: 1 }]}>
+                        {/* Matière (pour tous les articles scolaires) */}
+                        <ProductFieldSelector
+                            label="Matière"
+                            fieldName="matieres"
+                            productType="livres_fournitures"
+                            value={newProduct.matiereScolaire || ''}
+                            onSelect={(value) => setNewProduct({ ...newProduct, matiereScolaire: value })}
+                        />
+
+                        {/* Section Détails Livres (conditionnelle) */}
+                        {(newProduct.categorieLivre === 'Livre scolaire' ||
+                            newProduct.categorieLivre === 'Manuel scolaire' ||
+                            newProduct.categorieLivre === 'Livre de référence' ||
+                            newProduct.categorieLivre === 'Roman' ||
+                            newProduct.categorieLivre === 'BD/Comics' ||
+                            newProduct.categorieLivre === 'Livre technique' ||
+                            newProduct.categorieLivre === 'Dictionnaire') && (
+                                <>
+                                    <Text style={styles.sectionTitle}>📚 Informations Livre</Text>
+
+                                    {/* Auteur */}
+                                    <View style={styles.fieldContainer}>
                                         <Text style={styles.fieldLabel}>Auteur</Text>
                                         <NativeInput
-                                            placeholder="Ex: Collection CIAM"
+                                            placeholder="Ex: Collection CIAM, Jean Dupont"
                                             value={newProduct.auteur || ''}
                                             onChangeText={(text) => setNewProduct({ ...newProduct, auteur: text })}
                                             style={styles.fieldInput}
                                         />
                                     </View>
-                                    <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                        <Text style={styles.fieldLabel}>Éditeur</Text>
+
+                                    {/* Éditeur */}
+                                    <ProductFieldSelector
+                                        label="Éditeur"
+                                        fieldName="editeurs"
+                                        productType="livres_fournitures"
+                                        value={newProduct.editeur || ''}
+                                        onSelect={(value) => setNewProduct({ ...newProduct, editeur: value })}
+                                    />
+
+                                    {/* Année d'édition */}
+                                    <View style={styles.fieldContainer}>
+                                        <Text style={styles.fieldLabel}>Année d'édition</Text>
                                         <NativeInput
-                                            placeholder="Ex: Edicef"
-                                            value={newProduct.editeur || ''}
-                                            onChangeText={(text) => setNewProduct({ ...newProduct, editeur: text })}
+                                            placeholder="Ex: 2024"
+                                            value={newProduct.anneeEdition || ''}
+                                            onChangeText={(text) => setNewProduct({ ...newProduct, anneeEdition: text })}
                                             style={styles.fieldInput}
+                                            keyboardType="numeric"
                                         />
                                     </View>
-                                </View>
-                                <View style={styles.fieldRow}>
-                                    <View style={[styles.fieldContainer, { flex: 1 }]}>
+
+                                    {/* ISBN */}
+                                    <View style={styles.fieldContainer}>
                                         <Text style={styles.fieldLabel}>ISBN (optionnel)</Text>
                                         <NativeInput
                                             placeholder="Ex: 978-2-7531-0584-3"
@@ -5590,19 +9547,24 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                             style={styles.fieldInput}
                                         />
                                     </View>
-                                    <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                        <Text style={styles.fieldLabel}>Année d'édition</Text>
-                                        <NativeInput
-                                            placeholder="Ex: 2023"
-                                            value={newProduct.anneeEdition || ''}
-                                            onChangeText={(text) => setNewProduct({ ...newProduct, anneeEdition: text })}
-                                            style={styles.fieldInput}
-                                            keyboardType="numeric"
-                                        />
-                                    </View>
-                                </View>
-                            </>
-                        )}
+                                </>
+                            )}
+
+                        {/* Section Détails Calculatrice (conditionnelle) */}
+                        {(newProduct.categorieLivre === 'Calculatrice' ||
+                            newProduct.categorieLivre === 'Calculatrice scientifique') && (
+                                <>
+                                    <Text style={styles.sectionTitle}>🔢 Informations Calculatrice</Text>
+
+                                    <ProductFieldSelector
+                                        label="Type de calculatrice"
+                                        fieldName="typesCalculatrice"
+                                        productType="livres_fournitures"
+                                        value={newProduct.typeCalculatrice || ''}
+                                        onSelect={(value) => setNewProduct({ ...newProduct, typeCalculatrice: value })}
+                                    />
+                                </>
+                            )}
                         <ProductFieldSelector
                             label="État"
                             fieldName="etats"
@@ -5613,107 +9575,6 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         <View style={styles.hintBox}>
                             <Text style={styles.hintText}>
                                 💡 Précisez le niveau et la matière pour aider les étudiants à trouver le bon article
-                            </Text>
-                        </View>
-                    </>
-                );
-
-            case 'pharmacie':
-                return (
-                    <>
-                        {/* Planification nuit simplifiée */}
-                        <ProductFieldSelector
-                            label="🌙 Fonctionnement la nuit"
-                            fieldName="types"
-                            productType="pharmacie"
-                            value={newProduct.typePharmacie || ''}
-                            onSelect={(value) => setNewProduct({ ...newProduct, typePharmacie: value, joursGarde: value === 'Permanence nuit' ? 'Tous les jours' : undefined })}
-                            required
-                        />
-
-                        {/* Planning hebdomadaire de garde */}
-                        {newProduct.typePharmacie === 'Planning hebdomadaire' && (
-                            <View style={styles.fieldContainer}>
-                                <Text style={styles.fieldLabel}>Jours de garde la nuit</Text>
-                                <Text style={styles.fieldHint}>Sélectionnez les jours où votre pharmacie est de garde la nuit</Text>
-                                <View style={styles.weekDaysContainer}>
-                                    {['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'].map((jour, index) => {
-                                        const joursArray = (newProduct.joursGarde || '').split(',').map(j => j.trim());
-                                        const isSelected = joursArray.includes(jour);
-                                        return (
-                                            <TouchableOpacity
-                                                key={jour}
-                                                style={[
-                                                    styles.dayButton,
-                                                    isSelected && styles.dayButtonActive
-                                                ]}
-                                                onPress={() => {
-                                                    const current = (newProduct.joursGarde || '').split(',').map(j => j.trim()).filter(j => j);
-                                                    const updated = isSelected
-                                                        ? current.filter(j => j !== jour)
-                                                        : [...current, jour];
-                                                    setNewProduct({ ...newProduct, joursGarde: updated.join(', ') });
-                                                }}
-                                            >
-                                                <Text style={[
-                                                    styles.dayButtonText,
-                                                    isSelected && styles.dayButtonTextActive
-                                                ]}>
-                                                    {jour}
-                                                </Text>
-                                            </TouchableOpacity>
-                                        );
-                                    })}
-                                </View>
-                            </View>
-                        )}
-
-                        {/* Heures d'ouverture et fermeture sur la même ligne */}
-                        <View style={styles.fieldRow}>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Heure d'ouverture</Text>
-                                <NativeInput
-                                    placeholder="Ex: 08:00"
-                                    value={newProduct.heuresOuverture || ''}
-                                    onChangeText={(text) => setNewProduct({ ...newProduct, heuresOuverture: text })}
-                                    style={styles.fieldInput}
-                                />
-                            </View>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Heure de fermeture</Text>
-                                <NativeInput
-                                    placeholder="Ex: 20:00"
-                                    value={newProduct.heuresFermeture || ''}
-                                    onChangeText={(text) => setNewProduct({ ...newProduct, heuresFermeture: text })}
-                                    style={styles.fieldInput}
-                                />
-                            </View>
-                        </View>
-
-                        {/* Téléphone d'urgence */}
-                        <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Téléphone d'urgence</Text>
-                            <NativeInput
-                                placeholder="Ex: +237 6XX XX XX XX"
-                                value={newProduct.telephoneUrgence || ''}
-                                onChangeText={(text) => setNewProduct({ ...newProduct, telephoneUrgence: text })}
-                                style={styles.fieldInput}
-                            />
-                        </View>
-
-                        {/* Services disponibles avec multiSelect */}
-                        <ProductFieldSelector
-                            label="Services disponibles"
-                            fieldName="services"
-                            productType="pharmacie"
-                            value={newProduct.services || []}
-                            onSelect={(value) => setNewProduct({ ...newProduct, services: value })}
-                            multiSelect
-                        />
-
-                        <View style={styles.hintBox}>
-                            <Text style={styles.hintText}>
-                                💡 {newProduct.typePharmacie === 'Permanence nuit' ? 'Votre pharmacie est de garde tous les soirs' : 'Sélectionnez les jours de garde hebdomadaire'}
                             </Text>
                         </View>
                     </>
@@ -6493,103 +10354,263 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
             case 'bijoux':
                 return (
                     <>
-                        {/* Type de bijou */}
-                        <ProductFieldSelector
-                            label="Type de bijou"
-                            fieldName="types"
-                            productType="bijoux"
-                            value={newProduct.typeBijou || ''}
-                            onSelect={(value) => setNewProduct({ ...newProduct, typeBijou: value })}
-                        />
+                        {/* ====== INFORMATIONS PRINCIPALES ====== */}
 
-                        {/* Matière */}
-                        <ProductFieldSelector
-                            label="Matière principale"
-                            fieldName="matieres"
-                            productType="bijoux"
-                            value={newProduct.matiereBijou || ''}
-                            onSelect={(value) => setNewProduct({ ...newProduct, matiereBijou: value })}
-                        />
+                        {/* Type de bijou + Pour qui */}
+                        <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1.2 }]}>
+                                <ProductFieldSelector
+                                    label="Type de bijou"
+                                    fieldName="types"
+                                    productType="bijoux"
+                                    value={newProduct.typeBijou || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, typeBijou: value })}
+                                    required
+                                />
+                            </View>
+                            <View style={[styles.fieldContainer, { flex: 0.8 }]}>
+                                <ProductFieldSelector
+                                    label="Pour qui"
+                                    fieldName="pour_qui"
+                                    productType="bijoux"
+                                    value={newProduct.pourQuiBijou || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, pourQuiBijou: value })}
+                                />
+                            </View>
+                        </View>
+
+                        {/* Matière principale + Carats/Pureté selon le matériau */}
+                        <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Matière principale"
+                                    fieldName="materiaux"
+                                    productType="bijoux"
+                                    value={newProduct.matiereBijou || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, matiereBijou: value })}
+                                    required
+                                />
+                            </View>
+                            {/* Carats si Or */}
+                            {newProduct.matiereBijou?.toLowerCase().includes('or') && (
+                                <View style={[styles.fieldContainer, { flex: 0.8 }]}>
+                                    <ProductFieldSelector
+                                        label="Carats"
+                                        fieldName="carats"
+                                        productType="bijoux"
+                                        value={newProduct.caratsBijou || ''}
+                                        onSelect={(value) => setNewProduct({ ...newProduct, caratsBijou: value })}
+                                    />
+                                </View>
+                            )}
+                            {/* Pureté si Argent */}
+                            {newProduct.matiereBijou?.toLowerCase().includes('argent') && (
+                                <View style={[styles.fieldContainer, { flex: 0.8 }]}>
+                                    <ProductFieldSelector
+                                        label="Pureté"
+                                        fieldName="puretes_argent"
+                                        productType="bijoux"
+                                        value={newProduct.pureteArgent || ''}
+                                        onSelect={(value) => setNewProduct({ ...newProduct, pureteArgent: value })}
+                                    />
+                                </View>
+                            )}
+                        </View>
+
+                        {/* Marque (montres ou bijoux luxe) */}
+                        {(newProduct.typeBijou?.toLowerCase().includes('montre')) ? (
+                            <ProductFieldSelector
+                                label="Marque de montre"
+                                fieldName="marques_montres"
+                                productType="bijoux"
+                                value={newProduct.marqueBijou || ''}
+                                onSelect={(value) => setNewProduct({ ...newProduct, marqueBijou: value })}
+                            />
+                        ) : (
+                            <ProductFieldSelector
+                                label="Marque (optionnel)"
+                                fieldName="marques_bijoux_luxe"
+                                productType="bijoux"
+                                value={newProduct.marqueBijou || ''}
+                                onSelect={(value) => setNewProduct({ ...newProduct, marqueBijou: value })}
+                            />
+                        )}
+
+                        {/* Style + Occasion */}
+                        <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Style"
+                                    fieldName="styles"
+                                    productType="bijoux"
+                                    value={newProduct.styleBijou || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, styleBijou: value })}
+                                />
+                            </View>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Occasion"
+                                    fieldName="occasions"
+                                    productType="bijoux"
+                                    value={newProduct.occasionBijou || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, occasionBijou: value })}
+                                />
+                            </View>
+                        </View>
+
+                        {/* ====== DIMENSIONS & POIDS ====== */}
+
+                        {/* Taille/Longueur selon le type */}
+                        {newProduct.typeBijou?.toLowerCase().includes('bague') ||
+                            newProduct.typeBijou?.toLowerCase().includes('alliance') ||
+                            newProduct.typeBijou?.toLowerCase().includes('chevalière') ? (
+                            <ProductFieldSelector
+                                label="Taille de bague"
+                                fieldName="tailles_bagues"
+                                productType="bijoux"
+                                value={newProduct.tailleBijou || ''}
+                                onSelect={(value) => setNewProduct({ ...newProduct, tailleBijou: value })}
+                            />
+                        ) : newProduct.typeBijou?.toLowerCase().includes('collier') ||
+                            newProduct.typeBijou?.toLowerCase().includes('chaîne') ||
+                            newProduct.typeBijou?.toLowerCase().includes('pendentif') ? (
+                            <ProductFieldSelector
+                                label="Longueur collier/chaîne"
+                                fieldName="longueurs_colliers"
+                                productType="bijoux"
+                                value={newProduct.longueurBijou || ''}
+                                onSelect={(value) => setNewProduct({ ...newProduct, longueurBijou: value })}
+                            />
+                        ) : newProduct.typeBijou?.toLowerCase().includes('bracelet') ||
+                            newProduct.typeBijou?.toLowerCase().includes('gourmette') ||
+                            newProduct.typeBijou?.toLowerCase().includes('jonc') ? (
+                            <ProductFieldSelector
+                                label="Longueur bracelet"
+                                fieldName="longueurs_bracelets"
+                                productType="bijoux"
+                                value={newProduct.longueurBijou || ''}
+                                onSelect={(value) => setNewProduct({ ...newProduct, longueurBijou: value })}
+                            />
+                        ) : newProduct.typeBijou?.toLowerCase().includes('montre') ? (
+                            <View style={styles.fieldContainer}>
+                                <Text style={styles.fieldLabel}>Diamètre boîtier</Text>
+                                <NativeInput
+                                    placeholder="Ex: 40mm, 42mm"
+                                    value={newProduct.diametreMontre || ''}
+                                    onChangeText={(text) => setNewProduct({ ...newProduct, diametreMontre: text })}
+                                    style={styles.fieldInput}
+                                />
+                            </View>
+                        ) : (
+                            <View style={styles.fieldContainer}>
+                                <Text style={styles.fieldLabel}>Dimensions</Text>
+                                <NativeInput
+                                    placeholder="Ex: 2cm x 3cm"
+                                    value={newProduct.tailleBijou || ''}
+                                    onChangeText={(text) => setNewProduct({ ...newProduct, tailleBijou: text })}
+                                    style={styles.fieldInput}
+                                />
+                            </View>
+                        )}
 
                         {/* Poids */}
-                        <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Poids</Text>
-                            <View style={styles.inputRow}>
-                                <NativeInput
-                                    placeholder="Ex: 15"
-                                    value={newProduct.poidsBijou || ''}
-                                    onChangeText={(text) => setNewProduct({ ...newProduct, poidsBijou: text })}
-                                    keyboardType="numeric"
-                                    style={[styles.fieldInput, { flex: 1, marginRight: 8 }]}
-                                />
+                        <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <ProductFieldSelector
-                                    label="Unité"
-                                    fieldName="unites_poids"
+                                    label="Poids approximatif"
+                                    fieldName="poids_approximatifs"
                                     productType="bijoux"
-                                    value={newProduct.unitePoids || ''}
-                                    onSelect={(value) => setNewProduct({ ...newProduct, unitePoids: value })}
+                                    value={newProduct.poidsApproxBijou || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, poidsApproxBijou: value })}
+                                />
+                            </View>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <Text style={styles.fieldLabel}>Poids exact (optionnel)</Text>
+                                <View style={styles.inputRow}>
+                                    <NativeInput
+                                        placeholder="Ex: 15"
+                                        value={newProduct.poidsBijou || ''}
+                                        onChangeText={(text) => setNewProduct({ ...newProduct, poidsBijou: text })}
+                                        keyboardType="numeric"
+                                        style={[styles.fieldInput, { flex: 1, marginRight: 8 }]}
+                                    />
+                                    <Text style={styles.unitText}>grammes</Text>
+                                </View>
+                            </View>
+                        </View>
+
+                        {/* ====== AUTHENTICITÉ & GARANTIES ====== */}
+
+                        {/* État + Certification */}
+                        <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="État"
+                                    fieldName="etats"
+                                    productType="bijoux"
+                                    value={newProduct.etatBijou || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, etatBijou: value })}
+                                    required
+                                />
+                            </View>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Certification"
+                                    fieldName="certifications"
+                                    productType="bijoux"
+                                    value={newProduct.certificationBijou || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, certificationBijou: value })}
                                 />
                             </View>
                         </View>
 
-                        {/* Taille */}
-                        <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Taille / Dimensions</Text>
-                            <NativeInput
-                                placeholder="Ex: 54, 16 pouces, 40mm"
-                                value={newProduct.tailleBijou || ''}
-                                onChangeText={(text) => setNewProduct({ ...newProduct, tailleBijou: text })}
-                                style={styles.fieldInput}
-                            />
-                        </View>
-
-                        {/* Style */}
-                        <ProductFieldSelector
-                            label="Style"
-                            fieldName="styles"
-                            productType="bijoux"
-                            value={newProduct.styleBijou || ''}
-                            onSelect={(value) => setNewProduct({ ...newProduct, styleBijou: value })}
-                        />
-
-                        {/* Origine */}
-                        <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Origine / Pays de fabrication</Text>
-                            <NativeInput
-                                placeholder="Ex: Italie, Suisse, France, Thaïlande"
-                                value={newProduct.origineBijou || ''}
-                                onChangeText={(text) => setNewProduct({ ...newProduct, origineBijou: text })}
-                                style={styles.fieldInput}
-                            />
-                        </View>
-
-                        {/* Certificat */}
-                        <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Certificat d'authenticité</Text>
-                            <View style={styles.pickerButtons}>
-                                {['Oui', 'Non'].map((cert) => (
-                                    <TouchableOpacity
-                                        key={cert}
-                                        style={[
-                                            styles.pickerButton,
-                                            newProduct.certificatBijou === cert && styles.pickerButtonActive
-                                        ]}
-                                        onPress={() => setNewProduct({ ...newProduct, certificatBijou: cert })}
-                                    >
-                                        <Text style={[
-                                            styles.pickerButtonText,
-                                            newProduct.certificatBijou === cert && styles.pickerButtonTextActive
-                                        ]}>
-                                            {cert}
-                                        </Text>
-                                    </TouchableOpacity>
-                                ))}
+                        {/* Garantie + Origine */}
+                        <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Garantie"
+                                    fieldName="garanties"
+                                    productType="bijoux"
+                                    value={newProduct.garantieBijou || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, garantieBijou: value })}
+                                />
                             </View>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Origine / Fabrication"
+                                    fieldName="origines"
+                                    productType="bijoux"
+                                    value={newProduct.origineBijou || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, origineBijou: value })}
+                                />
+                            </View>
+                        </View>
+
+                        {/* ====== VARIANTES (Images multiples) ====== */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="image" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>Variantes du bijou (optionnel)</Text>
                         </View>
 
                         <View style={styles.hintBox}>
                             <Text style={styles.hintText}>
-                                💎 Précisez tous les détails pour rassurer les clients sur l'authenticité et la qualité
+                                💡 <Text style={styles.hintBold}>Variantes :</Text> Si vous proposez ce bijou en plusieurs finitions (or jaune/blanc/rose), couleurs de pierres, ou tailles, ajoutez des photos de chaque variante pour rassurer vos clients.
+                            </Text>
+                        </View>
+
+                        <ProductVariantManager
+                            variants={newProduct.bijouxVariants || []}
+                            onChange={(variants) => setNewProduct({ ...newProduct, bijouxVariants: variants })}
+                            variantLabel="variante"
+                            variantPlaceholder="Ex: Or blanc 18k, Or rose 18k, Argent 925"
+                            maxVariants={6}
+                            minImagesPerVariant={2}
+                            maxImagesPerVariant={4}
+                        />
+
+                        <View style={styles.hintBox}>
+                            <Text style={styles.hintText}>
+                                💎 <Text style={styles.hintBold}>Conseil :</Text> Des photos claires du bijou porté, des détails des pierres et du poinçon augmentent la confiance. Pour les montres, montrez le cadran, le bracelet et le fond du boîtier.
                             </Text>
                         </View>
                     </>
@@ -6625,12 +10646,12 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         {/* Couleur et Texture sur la même ligne */}
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Couleur</Text>
-                                <NativeInput
-                                    placeholder="Ex: Noir naturel"
+                                <ProductFieldSelector
+                                    label="Couleur"
+                                    fieldName="couleurs"
+                                    productType="coiffure_beaute"
                                     value={newProduct.couleurMech || ''}
-                                    onChangeText={(text) => setNewProduct({ ...newProduct, couleurMech: text })}
-                                    style={styles.fieldInput}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, couleurMech: value })}
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
@@ -6656,12 +10677,12 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Marque</Text>
-                                <NativeInput
-                                    placeholder="Ex: Remy Hair"
+                                <ProductFieldSelector
+                                    label="Marque"
+                                    fieldName="marques"
+                                    productType="coiffure_beaute"
                                     value={newProduct.marqueCoiffure || ''}
-                                    onChangeText={(text) => setNewProduct({ ...newProduct, marqueCoiffure: text })}
-                                    style={styles.fieldInput}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, marqueCoiffure: value })}
                                 />
                             </View>
                         </View>
@@ -6722,96 +10743,184 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
             case 'assurance':
                 return (
                     <>
-                        <ProductFieldSelector
+                        {/* Section 1: Type et Produit */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="shield" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>Type et Produit d'Assurance</Text>
+                        </View>
+
+                        {/* ✅ PREMIER CHAMP OBLIGATOIRE: Type VIE ou NON VIE */}
+                        <SelectModalitySelector
                             label="Type d'assurance"
-                            fieldName="categories"
+                            value={newProduct.typeAssuranceVie || ''}
                             productType="assurance"
-                            value={newProduct.categorieAssurance || ''}
-                            onSelect={(value) => setNewProduct({ ...newProduct, categorieAssurance: value, typeAssurance: '' })}
+                            fieldName="types_assurance"
+                            onSelect={(value) => setNewProduct({
+                                ...newProduct,
+                                typeAssuranceVie: value,
+                                produitAssurance: '' // Reset produit quand type change
+                            })}
                             required
+                            placeholder="Sélectionner VIE ou NON VIE"
                         />
 
-                        {/* Sous-catégories selon Vie ou Non-Vie */}
-                        {newProduct.categorieAssurance && (
-                            <ProductFieldSelector
-                                label="Sous-catégorie"
-                                fieldName="types"
-                                productType="assurance"
-                                value={newProduct.typeAssurance || ''}
-                                onSelect={(value) => setNewProduct({ ...newProduct, typeAssurance: value })}
-                                required
-                            />
-                        )}
+                        {/* ✅ SECOND CHAMP: Produit d'assurance (filtré selon type) */}
+                        <AssuranceProduitSelector
+                            label="Produit d'assurance"
+                            value={newProduct.produitAssurance || ''}
+                            typeAssurance={newProduct.typeAssuranceVie || ''}
+                            onSelect={(value) => setNewProduct({ ...newProduct, produitAssurance: value })}
+                            required
+                            disabled={!newProduct.typeAssuranceVie}
+                        />
 
+                        {/* Section 2: Compagnie et Informations */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="building" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>Compagnie et Contrat</Text>
+                        </View>
+
+                        {/* ✅ Compagnie d'assurance */}
+                        <SelectModalitySelector
+                            label="Compagnie d'assurance"
+                            value={newProduct.compagnieAssurance || ''}
+                            productType="assurance"
+                            fieldName="compagnies"
+                            onSelect={(value) => setNewProduct({ ...newProduct, compagnieAssurance: value })}
+                            required
+                            placeholder="Ex: AXA, ACTIVA, ALLIANZ..."
+                        />
+
+                        {/* ✅ Durée + Mode paiement (2 par ligne) */}
                         <View style={styles.fieldRow}>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Compagnie d'assurance</Text>
-                                <NativeInput
-                                    placeholder="Ex: AXA Assurances"
-                                    value={newProduct.compagnieAssurance || ''}
-                                    onChangeText={(text) => setNewProduct({ ...newProduct, compagnieAssurance: text })}
-                                    style={styles.fieldInput}
+                            <View style={[{ flex: 1 }]}>
+                                <SelectModalitySelector
+                                    label="Durée du contrat"
+                                    value={newProduct.dureeContrat || ''}
+                                    productType="assurance"
+                                    fieldName="durees"
+                                    onSelect={(value) => setNewProduct({ ...newProduct, dureeContrat: value })}
+                                    placeholder="Ex: 12 mois, 5 ans..."
+                                />
+                            </View>
+                            <View style={[{ flex: 1 }]}>
+                                <SelectModalitySelector
+                                    label="Mode de paiement"
+                                    value={newProduct.modePaiementAssurance || ''}
+                                    productType="assurance"
+                                    fieldName="modes_paiement"
+                                    onSelect={(value) => setNewProduct({ ...newProduct, modePaiementAssurance: value })}
+                                    placeholder="Ex: Mensuel, Annuel..."
                                 />
                             </View>
                         </View>
 
-                        <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Couverture / Garanties</Text>
-                            <NativeInput
-                                placeholder="Ex: Tous risques, Protection juridique, Assistance 24h/24"
-                                value={newProduct.couverture || ''}
-                                onChangeText={(text) => setNewProduct({ ...newProduct, couverture: text })}
-                                multiline
-                                style={[styles.fieldInput, styles.textareaInput]}
-                            />
+                        {/* Section 3: Couverture et Garanties */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="check-circle" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>Couverture et Garanties</Text>
                         </View>
 
+                        {/* ✅ Couvertures (multi-select) */}
+                        <MultiSelectModalitySelector
+                            label="Couvertures / Garanties"
+                            values={newProduct.couverturesArray || []}
+                            productType="assurance"
+                            fieldName="couvertures"
+                            onSelect={(values) => setNewProduct({
+                                ...newProduct,
+                                couverturesArray: values,
+                                couverture: values.join(', ') // Pour compatibilité
+                            })}
+                            placeholder="Sélectionner les garanties"
+                            maxSelections={10}
+                        />
+
+                        {/* ✅ Bénéfices (multi-select) */}
+                        <MultiSelectModalitySelector
+                            label="Principaux bénéfices"
+                            values={newProduct.beneficesArray || []}
+                            productType="assurance"
+                            fieldName="benefices"
+                            onSelect={(values) => setNewProduct({
+                                ...newProduct,
+                                beneficesArray: values,
+                                benefices: values.join(', ') // Pour compatibilité
+                            })}
+                            placeholder="Sélectionner les bénéfices"
+                            maxSelections={8}
+                        />
+
+                        {/* Section 4: Options et Primes */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="dollar-sign" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>Options et Primes</Text>
+                        </View>
+
+                        {/* ✅ Prime de base (à partir de) */}
                         <View style={styles.fieldRow}>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Prime annuelle (FCFA)</Text>
+                            <View style={[styles.fieldContainer, { flex: 1, marginBottom: 12 }]}>
+                                <Text style={styles.fieldLabel}>Prime (à partir de) <Text style={styles.required}>*</Text></Text>
                                 <NativeInput
-                                    placeholder="Ex: 150000"
+                                    placeholder="Ex: 50000"
                                     value={newProduct.primeAnnuelle || ''}
                                     onChangeText={(text) => setNewProduct({ ...newProduct, primeAnnuelle: text })}
                                     style={styles.fieldInput}
                                     keyboardType="numeric"
                                 />
+                                <Text style={styles.fieldHint}>Prime annuelle minimale en FCFA</Text>
                             </View>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                            <View style={[styles.fieldContainer, { flex: 1, marginBottom: 12 }]}>
                                 <Text style={styles.fieldLabel}>Franchise (FCFA)</Text>
                                 <NativeInput
-                                    placeholder="Ex: 50000"
+                                    placeholder="Ex: 25000"
                                     value={newProduct.franchise || ''}
                                     onChangeText={(text) => setNewProduct({ ...newProduct, franchise: text })}
                                     style={styles.fieldInput}
                                     keyboardType="numeric"
                                 />
+                                <Text style={styles.fieldHint}>Franchise moyenne</Text>
                             </View>
                         </View>
 
-                        <Text style={styles.fieldLabel}>Durée du contrat (mois)</Text>
-                        <NativeInput
-                            placeholder="Ex: 12"
-                            value={newProduct.dureeContrat || ''}
-                            onChangeText={(text) => setNewProduct({ ...newProduct, dureeContrat: text })}
-                            style={styles.fieldInput}
-                            keyboardType="numeric"
+                        {/* ✅ Tableau des options/formules */}
+                        <OptionsPrimesManager
+                            options={newProduct.optionsPrimes || []}
+                            onChange={(optionsPrimes) => {
+                                setNewProduct({ ...newProduct, optionsPrimes });
+                                // Auto-calcul de la prime minimale
+                                if (optionsPrimes.length > 0) {
+                                    const primes = optionsPrimes.map(o => parseFloat(o.prime) || 0).filter(p => p > 0);
+                                    if (primes.length > 0) {
+                                        setNewProduct(prev => ({
+                                            ...prev,
+                                            optionsPrimes,
+                                            primeAnnuelle: Math.min(...primes).toString()
+                                        }));
+                                    }
+                                }
+                            }}
                         />
 
-                        <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Principaux bénéfices</Text>
-                            <NativeInput
-                                placeholder="Ex: Capital décès, Rente invalidité, Assistance rapatriement..."
-                                value={newProduct.benefices || ''}
-                                onChangeText={(text) => setNewProduct({ ...newProduct, benefices: text })}
-                                multiline
-                                style={[styles.fieldInput, styles.textareaInput]}
-                            />
+                        {/* Section 5: Informations Complémentaires */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="file-text" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>Informations Complémentaires</Text>
                         </View>
 
+                        <SelectModalitySelector
+                            label="Condition d'âge"
+                            value={newProduct.conditionAge || ''}
+                            productType="assurance"
+                            fieldName="conditions_age"
+                            onSelect={(value) => setNewProduct({ ...newProduct, conditionAge: value })}
+                            placeholder="Ex: 18-30 ans, Tous âges..."
+                        />
+
                         <View style={styles.hintBox}>
+                            <SafeIcon name="info" size={16} color={modernColors.primary} />
                             <Text style={styles.hintText}>
-                                💡 <Text style={styles.hintBold}>Conseil :</Text> Détaillez bien les garanties et la couverture pour aider vos clients à comparer les offres.
+                                💡 <Text style={styles.hintBold}>Conseil :</Text> Ajoutez plusieurs formules (Basique, Standard, Premium) pour offrir plus de choix à vos clients
                             </Text>
                         </View>
                     </>
@@ -6820,6 +10929,24 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
             case 'restauration':
                 return (
                     <>
+                        {/* ========================================== */}
+                        {/* SECTION 1: TYPE D'ÉTABLISSEMENT & CUISINE */}
+                        {/* ========================================== */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="store" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>Établissement & Spécialisation</Text>
+                        </View>
+
+                        <ProductFieldSelector
+                            label="Type d'établissement"
+                            fieldName="types"
+                            productType="restauration"
+                            value={newProduct.typeRestaurant || ''}
+                            onSelect={(value) => setNewProduct({ ...newProduct, typeRestaurant: value })}
+                            required
+                            placeholder="Maquis, Restaurant, Traiteur..."
+                        />
+
                         <ProductFieldSelector
                             label="Type de cuisine"
                             fieldName="types_cuisine"
@@ -6827,16 +10954,162 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             value={newProduct.typeCuisine || ''}
                             onSelect={(value) => setNewProduct({ ...newProduct, typeCuisine: value })}
                             required
+                            placeholder="Camerounaise, Ivoirienne, Sénégalaise..."
+                        />
+
+                        {/* ========================================== */}
+                        {/* SECTION 2: PLATS PAR PAYS (400+ options) */}
+                        {/* ========================================== */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="utensils" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>🍽️ Carte & Spécialités</Text>
+                        </View>
+
+                        {/* Plats Camerounais */}
+                        <ProductFieldSelector
+                            label="🇨🇲 Plats camerounais"
+                            fieldName="plats_camerounais"
+                            productType="restauration"
+                            value={newProduct.platsCamerounais || []}
+                            onSelect={(values) => setNewProduct({ ...newProduct, platsCamerounais: values })}
+                            multiSelect
+                            maxSelections={20}
+                            placeholder="Ndolé, Eru, Poulet DG, Koki..."
+                        />
+
+                        {/* Plats Ivoiriens */}
+                        <ProductFieldSelector
+                            label="🇨🇮 Plats ivoiriens"
+                            fieldName="plats_ivoiriens"
+                            productType="restauration"
+                            value={newProduct.platsIvoiriens || []}
+                            onSelect={(values) => setNewProduct({ ...newProduct, platsIvoiriens: values })}
+                            multiSelect
+                            maxSelections={20}
+                            placeholder="Attiéké, Aloco, Garba, Kedjenou..."
+                        />
+
+                        {/* Plats Sénégalais */}
+                        <ProductFieldSelector
+                            label="🇸🇳 Plats sénégalais"
+                            fieldName="plats_senegalais"
+                            productType="restauration"
+                            value={newProduct.platsSenegalais || []}
+                            onSelect={(values) => setNewProduct({ ...newProduct, platsSenegalais: values })}
+                            multiSelect
+                            maxSelections={20}
+                            placeholder="Thiéboudienne, Yassa, Mafé..."
+                        />
+
+                        {/* Plats Maliens */}
+                        <ProductFieldSelector
+                            label="🇲🇱 Plats maliens"
+                            fieldName="plats_maliens"
+                            productType="restauration"
+                            value={newProduct.platsMaliens || []}
+                            onSelect={(values) => setNewProduct({ ...newProduct, platsMaliens: values })}
+                            multiSelect
+                            maxSelections={15}
+                            placeholder="Tô, Maafé, Fonio..."
+                        />
+
+                        {/* Plats Gabonais */}
+                        <ProductFieldSelector
+                            label="🇬🇦 Plats gabonais"
+                            fieldName="plats_gabonais"
+                            productType="restauration"
+                            value={newProduct.platsGabonais || []}
+                            onSelect={(values) => setNewProduct({ ...newProduct, platsGabonais: values })}
+                            multiSelect
+                            maxSelections={15}
+                            placeholder="Nyembwé, Moambe..."
+                        />
+
+                        {/* Plats Congolais */}
+                        <ProductFieldSelector
+                            label="🇨🇬 Plats congolais (RDC/RC)"
+                            fieldName="plats_congolais"
+                            productType="restauration"
+                            value={newProduct.platsCongolais || []}
+                            onSelect={(values) => setNewProduct({ ...newProduct, platsCongolais: values })}
+                            multiSelect
+                            maxSelections={20}
+                            placeholder="Pondu, Liboke, Saka-saka..."
+                        />
+
+                        {/* Plats Burkinabè */}
+                        <ProductFieldSelector
+                            label="🇧🇫 Plats burkinabè"
+                            fieldName="plats_burkinabe"
+                            productType="restauration"
+                            value={newProduct.platsBurkinabe || []}
+                            onSelect={(values) => setNewProduct({ ...newProduct, platsBurkinabe: values })}
+                            multiSelect
+                            maxSelections={15}
+                            placeholder="Riz gras, Tô..."
+                        />
+
+                        {/* Autres pays d'Afrique */}
+                        <ProductFieldSelector
+                            label="🌍 Autres pays africains"
+                            fieldName="plats_autres_pays"
+                            productType="restauration"
+                            value={newProduct.platsAutresPays || []}
+                            onSelect={(values) => setNewProduct({ ...newProduct, platsAutresPays: values })}
+                            multiSelect
+                            maxSelections={15}
+                            placeholder="Togo, Bénin, Niger, Tchad, Madagascar..."
+                        />
+
+                        {/* Cuisine Internationale */}
+                        <ProductFieldSelector
+                            label="🌍 Plats internationaux"
+                            fieldName="plats_internationaux"
+                            productType="restauration"
+                            value={newProduct.platsInternationaux || []}
+                            onSelect={(values) => setNewProduct({ ...newProduct, platsInternationaux: values })}
+                            multiSelect
+                            maxSelections={20}
+                            placeholder="Pizza, Burger, Sushi, Chawarma..."
+                        />
+
+                        {/* ========================================== */}
+                        {/* SECTION 3: BOISSONS & DESSERTS */}
+                        {/* ========================================== */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="coffee" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>🍹 Boissons & Desserts</Text>
+                        </View>
+
+                        <ProductFieldSelector
+                            label="Boissons locales & naturelles"
+                            fieldName="boissons_locales"
+                            productType="restauration"
+                            value={newProduct.boissonsLocales || []}
+                            onSelect={(values) => setNewProduct({ ...newProduct, boissonsLocales: values })}
+                            multiSelect
+                            maxSelections={15}
+                            placeholder="Jus de bissap, gingembre, coco..."
                         />
 
                         <ProductFieldSelector
-                            label="Spécialités"
-                            fieldName="specialites"
+                            label="Desserts & Pâtisseries"
+                            fieldName="desserts_locaux"
                             productType="restauration"
-                            value={newProduct.specialites || []}
-                            onSelect={(values) => setNewProduct({ ...newProduct, specialites: values })}
+                            value={newProduct.dessertsLocaux || []}
+                            onSelect={(values) => setNewProduct({ ...newProduct, dessertsLocaux: values })}
                             multiSelect
+                            maxSelections={10}
+                            placeholder="Puff-puff, Chin-chin, Thiakry..."
                         />
+
+                        {/* ========================================== */}
+                        {/* SECTION 4: SERVICES & HORAIRES */}
+                        {/* ========================================== */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="settings" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>💼 Services & Organisation</Text>
+                        </View>
 
                         <ProductFieldSelector
                             label="Services proposés"
@@ -6845,72 +11118,177 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             value={newProduct.servicesRestau || []}
                             onSelect={(values) => setNewProduct({ ...newProduct, servicesRestau: values })}
                             multiSelect
+                            placeholder="Sur place, Livraison, Traiteur..."
                         />
+
+                        <ProductFieldSelector
+                            label="Horaires de service"
+                            fieldName="horaires"
+                            productType="restauration"
+                            value={newProduct.horairesRestaurant || []}
+                            onSelect={(values) => setNewProduct({ ...newProduct, horairesRestaurant: values })}
+                            multiSelect
+                            placeholder="Petit-déjeuner, Déjeuner, Dîner..."
+                        />
+
+                        {/* ========================================== */}
+                        {/* SECTION 5: AMBIANCE & ÉQUIPEMENTS */}
+                        {/* ========================================== */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="heart" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>🏪 Ambiance & Équipements</Text>
+                        </View>
 
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <ProductFieldSelector
                                     label="Ambiance"
-                                    fieldName="ambiances"
+                                    fieldName="ambiance"
                                     productType="restauration"
-                                    value={newProduct.ambiance || ''}
-                                    onSelect={(value) => setNewProduct({ ...newProduct, ambiance: value })}
+                                    value={newProduct.ambianceRestau || []}
+                                    onSelect={(values) => setNewProduct({ ...newProduct, ambianceRestau: values })}
+                                    multiSelect
+                                    placeholder="Familial, Romantique..."
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <ProductFieldSelector
-                                    label="Gamme de prix"
-                                    fieldName="gammes_prix"
+                                    label="Capacité d'accueil"
+                                    fieldName="capacite_accueil"
                                     productType="restauration"
-                                    value={newProduct.gammePrix || ''}
-                                    onSelect={(value) => setNewProduct({ ...newProduct, gammePrix: value })}
+                                    value={newProduct.capaciteRestaurant || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, capaciteRestaurant: value })}
+                                    placeholder="Petit, Moyen, Grand..."
                                 />
                             </View>
+                        </View>
+
+                        {/* ========================================== */}
+                        {/* SECTION 6: TARIFS & RÉGIMES ALIMENTAIRES */}
+                        {/* ========================================== */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="dollar-sign" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>💰 Tarifs & Options Alimentaires</Text>
+                        </View>
+
+                        <ProductFieldSelector
+                            label="Gamme de prix"
+                            fieldName="gammes_prix"
+                            productType="restauration"
+                            value={newProduct.gammePrix || ''}
+                            onSelect={(value) => setNewProduct({ ...newProduct, gammePrix: value })}
+                            required
+                            placeholder="Économique, Moyen, Premium..."
+                        />
+
+                        <ProductFieldSelector
+                            label="Régimes alimentaires spéciaux"
+                            fieldName="regimes"
+                            productType="restauration"
+                            value={newProduct.regimesSpeciaux || []}
+                            onSelect={(values) => setNewProduct({ ...newProduct, regimesSpeciaux: values })}
+                            multiSelect
+                            placeholder="Halal, Végétarien, Vegan, Sans gluten..."
+                        />
+
+                        {/* ========================================== */}
+                        {/* SECTION 7: CHEF & CLIENTÈLE */}
+                        {/* ========================================== */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="users" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>👨‍🍳 Équipe & Clientèle</Text>
                         </View>
 
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Capacité (personnes)</Text>
-                                <NativeInput
-                                    placeholder="Ex: 50"
-                                    value={newProduct.capacite || ''}
-                                    onChangeText={(text) => setNewProduct({ ...newProduct, capacite: text })}
-                                    keyboardType="numeric"
-                                    style={styles.fieldInput}
+                                <ProductFieldSelector
+                                    label="Spécialisation du chef"
+                                    fieldName="specialisation_chef"
+                                    productType="restauration"
+                                    value={newProduct.specialisationChef || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, specialisationChef: value })}
+                                    placeholder="Chef camerounais, Chef français..."
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Horaires</Text>
-                                <NativeInput
-                                    placeholder="Ex: 11h-23h"
-                                    value={newProduct.horaires || ''}
-                                    onChangeText={(text) => setNewProduct({ ...newProduct, horaires: text })}
-                                    style={styles.fieldInput}
+                                <ProductFieldSelector
+                                    label="Type de clientèle"
+                                    fieldName="type_clientele"
+                                    productType="restauration"
+                                    value={newProduct.typeClientele || []}
+                                    onSelect={(values) => setNewProduct({ ...newProduct, typeClientele: values })}
+                                    multiSelect
+                                    placeholder="Familles, Étudiants..."
                                 />
                             </View>
                         </View>
 
+                        {/* ========================================== */}
+                        {/* SECTION 8: CERTIFICATIONS & PROMOTIONS */}
+                        {/* ========================================== */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="award" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>🎖️ Certifications & Promotions</Text>
+                        </View>
+
                         <ProductFieldSelector
-                            label="Certifications"
+                            label="Certifications & Labels"
                             fieldName="certifications"
                             productType="restauration"
                             value={newProduct.certificationsRestau || []}
                             onSelect={(values) => setNewProduct({ ...newProduct, certificationsRestau: values })}
                             multiSelect
+                            placeholder="Halal, Hygiène, ISO..."
                         />
 
                         <ProductFieldSelector
-                            label="Options alimentaires"
-                            fieldName="options_alimentaires"
+                            label="Promotions & Avantages"
+                            fieldName="promotions"
                             productType="restauration"
-                            value={newProduct.optionsAlimentaires || []}
-                            onSelect={(values) => setNewProduct({ ...newProduct, optionsAlimentaires: values })}
+                            value={newProduct.promotionsRestau || []}
+                            onSelect={(values) => setNewProduct({ ...newProduct, promotionsRestau: values })}
                             multiSelect
+                            placeholder="Menu du midi, Livraison gratuite..."
                         />
 
+                        {/* ========================================== */}
+                        {/* SECTION 9: ZONES DE LIVRAISON (Optionnel) */}
+                        {/* ========================================== */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>📍 Zones de Livraison</Text>
+                        </View>
+
+                        <ProductFieldSelector
+                            label="Zones de livraison Douala"
+                            fieldName="zones_livraison_douala"
+                            productType="restauration"
+                            value={newProduct.zonesLivraisonDouala || []}
+                            onSelect={(values) => setNewProduct({ ...newProduct, zonesLivraisonDouala: values })}
+                            multiSelect
+                            placeholder="Akwa, Bonanjo, Bonapriso..."
+                        />
+
+                        <ProductFieldSelector
+                            label="Zones de livraison Yaoundé"
+                            fieldName="zones_livraison_yaounde"
+                            productType="restauration"
+                            value={newProduct.zonesLivraisonYaounde || []}
+                            onSelect={(values) => setNewProduct({ ...newProduct, zonesLivraisonYaounde: values })}
+                            multiSelect
+                            placeholder="Bastos, Nlongkak, Essos..."
+                        />
+
+                        {/* ========================================== */}
+                        {/* HINT BOX FINAL */}
+                        {/* ========================================== */}
                         <View style={styles.hintBox}>
+                            <SafeIcon name="info" size={16} color={modernColors.primary} />
                             <Text style={styles.hintText}>
-                                💡 <Text style={styles.hintBold}>Conseil :</Text> Détaillez vos spécialités et services pour attirer plus de clients.
+                                💡 <Text style={styles.hintBold}>Conseil Restauration :</Text> Plus vous détaillez votre carte et vos spécialités locales, plus vous aurez de visibilité auprès des clients recherchant des plats spécifiques !{'\n\n'}
+                                🍽️ Ajoutez au minimum 3-5 plats phares de votre carte{'\n'}
+                                🍹 Précisez vos boissons locales (bissap, gingembre, etc.){'\n'}
+                                🚗 Indiquez vos zones de livraison pour attirer les clients à proximité
                             </Text>
                         </View>
                     </>
@@ -6990,20 +11368,66 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
             case 'musique_instruments':
                 return (
                     <>
+                        <Text style={styles.sectionTitle}>📍 Catégorie & Type</Text>
+
                         <ProductFieldSelector
-                            label="Type d'instrument"
-                            fieldName="types"
+                            label="Catégorie principale"
+                            fieldName="categories"
+                            productType="musique_instruments"
+                            value={newProduct.categorieInstrument || ''}
+                            onSelect={(value) => setNewProduct({ ...newProduct, categorieInstrument: value })}
+                            required
+                        />
+
+                        {/* ✅ Type d'instrument dynamique selon catégorie */}
+                        <ProductFieldSelector
+                            label={
+                                newProduct.categorieInstrument === 'Instrument traditionnel africain' ? 'Instrument africain' :
+                                    newProduct.categorieInstrument === 'Accessoire musical' ? 'Type d\'accessoire' :
+                                        newProduct.categorieInstrument === 'Sonorisation & Sono' ? 'Équipement sono' :
+                                            newProduct.categorieInstrument === 'Matériel DJ' ? 'Équipement DJ' :
+                                                newProduct.categorieInstrument === 'Studio & Enregistrement' ? 'Équipement studio' :
+                                                    'Type d\'instrument'
+                            }
+                            fieldName={
+                                newProduct.categorieInstrument === 'Instrument traditionnel africain' ? 'instruments_africains' :
+                                    newProduct.categorieInstrument === 'Accessoire musical' ? 'accessoires' :
+                                        newProduct.categorieInstrument === 'Sonorisation & Sono' ? 'equipement_sono_dj' :
+                                            newProduct.categorieInstrument === 'Matériel DJ' ? 'equipement_sono_dj' :
+                                                newProduct.categorieInstrument === 'Studio & Enregistrement' ? 'equipement_studio' :
+                                                    'types_cordes_guitares'
+                            }
                             productType="musique_instruments"
                             value={newProduct.typeInstrument || ''}
                             onSelect={(value) => setNewProduct({ ...newProduct, typeInstrument: value })}
                             required
                         />
 
+                        <Text style={styles.sectionTitle}>🏷️ Marque & Modèle</Text>
+
+                        {/* ✅ Marque dynamique selon type */}
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <ProductFieldSelector
                                     label="Marque"
-                                    fieldName="marques"
+                                    fieldName={
+                                        newProduct.typeInstrument?.toLowerCase().includes('guitare') ||
+                                            newProduct.typeInstrument?.toLowerCase().includes('basse') ||
+                                            newProduct.typeInstrument?.toLowerCase().includes('ukulélé') ? 'marques_guitares' :
+                                            newProduct.typeInstrument?.toLowerCase().includes('piano') ||
+                                                newProduct.typeInstrument?.toLowerCase().includes('clavier') ||
+                                                newProduct.typeInstrument?.toLowerCase().includes('synthé') ? 'marques_pianos' :
+                                                newProduct.typeInstrument?.toLowerCase().includes('batterie') ||
+                                                    newProduct.typeInstrument?.toLowerCase().includes('djembé') ||
+                                                    newProduct.typeInstrument?.toLowerCase().includes('percussion') ? 'marques_batteries' :
+                                                    newProduct.typeInstrument?.toLowerCase().includes('saxophone') ||
+                                                        newProduct.typeInstrument?.toLowerCase().includes('trompette') ||
+                                                        newProduct.typeInstrument?.toLowerCase().includes('flûte') ? 'marques_vents' :
+                                                        newProduct.categorieInstrument === 'Sonorisation & Sono' ||
+                                                            newProduct.categorieInstrument === 'Matériel DJ' ? 'marques_sono_dj' :
+                                                            newProduct.categorieInstrument === 'Studio & Enregistrement' ? 'marques_studio' :
+                                                                'marques_guitares'
+                                    }
                                     productType="musique_instruments"
                                     value={newProduct.marqueInstrument || ''}
                                     onSelect={(value) => setNewProduct({ ...newProduct, marqueInstrument: value })}
@@ -7020,6 +11444,8 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             </View>
                         </View>
 
+                        <Text style={styles.sectionTitle}>⚙️ Caractéristiques</Text>
+
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <ProductFieldSelector
@@ -7028,6 +11454,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                     productType="musique_instruments"
                                     value={newProduct.etatInstrument || ''}
                                     onSelect={(value) => setNewProduct({ ...newProduct, etatInstrument: value })}
+                                    required
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
@@ -7041,9 +11468,315 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             </View>
                         </View>
 
+                        {/* ✅ Matériau (si instrument acoustique) */}
+                        {newProduct.categorieInstrument !== 'Studio & Enregistrement' &&
+                            newProduct.categorieInstrument !== 'Matériel DJ' && (
+                                <ProductFieldSelector
+                                    label="Matériau principal"
+                                    fieldName="materiaux"
+                                    productType="musique_instruments"
+                                    value={newProduct.materiauInstrument || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, materiauInstrument: value })}
+                                />
+                            )}
+
+                        {/* ✅ Taille (si violon, guitare enfant, djembé) */}
+                        {(newProduct.typeInstrument?.toLowerCase().includes('violon') ||
+                            newProduct.typeInstrument?.toLowerCase().includes('alto') ||
+                            newProduct.typeInstrument?.toLowerCase().includes('violoncelle') ||
+                            newProduct.typeInstrument?.toLowerCase().includes('guitare') ||
+                            newProduct.typeInstrument?.toLowerCase().includes('ukulélé') ||
+                            newProduct.typeInstrument?.toLowerCase().includes('djembé')) && (
+                                <ProductFieldSelector
+                                    label="Taille"
+                                    fieldName="tailles"
+                                    productType="musique_instruments"
+                                    value={newProduct.tailleInstrument || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, tailleInstrument: value })}
+                                />
+                            )}
+
+                        {/* ✅ Nombre de cordes (si instrument à cordes) */}
+                        {(newProduct.typeInstrument?.toLowerCase().includes('guitare') ||
+                            newProduct.typeInstrument?.toLowerCase().includes('basse') ||
+                            newProduct.typeInstrument?.toLowerCase().includes('violon') ||
+                            newProduct.typeInstrument?.toLowerCase().includes('kora') ||
+                            newProduct.typeInstrument?.toLowerCase().includes('ngoni')) && (
+                                <View style={styles.fieldContainer}>
+                                    <Text style={styles.fieldLabel}>Nombre de cordes</Text>
+                                    <NativeInput
+                                        placeholder={newProduct.typeInstrument?.toLowerCase().includes('kora') ? 'Ex: 21' : 'Ex: 6'}
+                                        value={newProduct.nombreCordes || ''}
+                                        onChangeText={(text) => setNewProduct({ ...newProduct, nombreCordes: text })}
+                                        style={styles.fieldInput}
+                                        keyboardType="numeric"
+                                    />
+                                </View>
+                            )}
+
+                        <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <Text style={styles.fieldLabel}>Année de fabrication</Text>
+                                <NativeInput
+                                    placeholder="Ex: 2020"
+                                    value={newProduct.anneeInstrument || ''}
+                                    onChangeText={(text) => setNewProduct({ ...newProduct, anneeInstrument: text })}
+                                    style={styles.fieldInput}
+                                    keyboardType="numeric"
+                                />
+                            </View>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <Text style={styles.fieldLabel}>Couleur</Text>
+                                <NativeInput
+                                    placeholder="Ex: Noir, Bois naturel"
+                                    value={newProduct.couleurInstrument || ''}
+                                    onChangeText={(text) => setNewProduct({ ...newProduct, couleurInstrument: text })}
+                                    style={styles.fieldInput}
+                                />
+                            </View>
+                        </View>
+
+                        {/* ✅ Puissance (si ampli ou sono) */}
+                        {(newProduct.typeInstrument?.toLowerCase().includes('ampli') ||
+                            newProduct.typeInstrument?.toLowerCase().includes('enceinte') ||
+                            newProduct.typeInstrument?.toLowerCase().includes('sono')) && (
+                                <View style={styles.fieldContainer}>
+                                    <Text style={styles.fieldLabel}>Puissance (Watts)</Text>
+                                    <NativeInput
+                                        placeholder="Ex: 100"
+                                        value={newProduct.puissanceAmpli || ''}
+                                        onChangeText={(text) => setNewProduct({ ...newProduct, puissanceAmpli: text })}
+                                        style={styles.fieldInput}
+                                        keyboardType="numeric"
+                                    />
+                                </View>
+                            )}
+
+                        <Text style={styles.sectionTitle}>🎵 Utilisation & Style</Text>
+
+                        <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Utilisation prévue"
+                                    fieldName="utilisations"
+                                    productType="musique_instruments"
+                                    value={newProduct.utilisationInstrument || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, utilisationInstrument: value })}
+                                />
+                            </View>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Genre musical"
+                                    fieldName="genres_musicaux"
+                                    productType="musique_instruments"
+                                    value={newProduct.genreMusical || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, genreMusical: value })}
+                                />
+                            </View>
+                        </View>
+
+                        {/* ✅ Alimentation & Connectiques (si électronique) */}
+                        {(newProduct.categorieInstrument === 'Studio & Enregistrement' ||
+                            newProduct.categorieInstrument === 'Matériel DJ' ||
+                            newProduct.categorieInstrument === 'Sonorisation & Sono' ||
+                            newProduct.typeInstrument?.toLowerCase().includes('électrique') ||
+                            newProduct.typeInstrument?.toLowerCase().includes('électronique') ||
+                            newProduct.typeInstrument?.toLowerCase().includes('ampli') ||
+                            newProduct.typeInstrument?.toLowerCase().includes('clavier') ||
+                            newProduct.typeInstrument?.toLowerCase().includes('piano numérique')) && (
+                                <>
+                                    <ProductFieldSelector
+                                        label="Alimentation"
+                                        fieldName="alimentations"
+                                        productType="musique_instruments"
+                                        value={newProduct.alimentationInstrument || ''}
+                                        onSelect={(value) => setNewProduct({ ...newProduct, alimentationInstrument: value })}
+                                    />
+
+                                    <ProductFieldSelector
+                                        label="Connectiques disponibles"
+                                        fieldName="connectiques"
+                                        productType="musique_instruments"
+                                        value={newProduct.connectiquesInstrument || []}
+                                        onSelect={(values) => setNewProduct({ ...newProduct, connectiquesInstrument: values })}
+                                        multiSelect
+                                    />
+                                </>
+                            )}
+
+                        <Text style={styles.sectionTitle}>📦 Garantie & Origine</Text>
+
+                        <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Garantie"
+                                    fieldName="garanties"
+                                    productType="musique_instruments"
+                                    value={newProduct.garantieInstrument || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, garantieInstrument: value })}
+                                />
+                            </View>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Origine / Fabrication"
+                                    fieldName="origines"
+                                    productType="musique_instruments"
+                                    value={newProduct.origineInstrument || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, origineInstrument: value })}
+                                />
+                            </View>
+                        </View>
+
+                        <ProductFieldSelector
+                            label="Accessoires inclus"
+                            fieldName="inclusions"
+                            productType="musique_instruments"
+                            value={newProduct.accessoiresInclus || []}
+                            onSelect={(values) => setNewProduct({ ...newProduct, accessoiresInclus: values })}
+                            multiSelect
+                        />
+
+                        <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <Text style={styles.fieldLabel}>Facture disponible ?</Text>
+                                <TouchableOpacity
+                                    style={[styles.checkboxContainer, newProduct.facture && styles.checkboxChecked]}
+                                    onPress={() => setNewProduct({ ...newProduct, facture: !newProduct.facture })}
+                                >
+                                    <Text style={styles.checkboxText}>
+                                        {newProduct.facture ? '✓ Oui' : 'Non'}
+                                    </Text>
+                                </TouchableOpacity>
+                            </View>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <Text style={styles.fieldLabel}>Révision récente ?</Text>
+                                <TouchableOpacity
+                                    style={[styles.checkboxContainer, newProduct.revisionRecente && styles.checkboxChecked]}
+                                    onPress={() => setNewProduct({ ...newProduct, revisionRecente: !newProduct.revisionRecente })}
+                                >
+                                    <Text style={styles.checkboxText}>
+                                        {newProduct.revisionRecente ? '✓ Oui' : 'Non'}
+                                    </Text>
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+
                         <View style={styles.hintBox}>
                             <Text style={styles.hintText}>
-                                💡 Précisez si des accessoires sont inclus (étui, cordes, etc.).
+                                💡 <Text style={{ fontWeight: 'bold' }}>Photos recommandées (4-6) :</Text>{'\n'}
+                                • Vue complète de l'instrument{'\n'}
+                                • Détails (cordes, clés, mécaniques){'\n'}
+                                • Marque/modèle visible{'\n'}
+                                • Accessoires inclus{'\n'}
+                                • Instrument joué (si possible){'\n'}
+                                {newProduct.categorieInstrument === 'Instrument traditionnel africain' &&
+                                    '• Sculpture/motifs traditionnels'}
+                            </Text>
+                        </View>
+                    </>
+                );
+
+            case 'soutien_scolaire_repetiteur':
+                return (
+                    <>
+                        <ProductFieldSelector
+                            label="Type de soutien *"
+                            fieldName="types_soutien"
+                            productType="soutien_scolaire_repetiteur"
+                            value={newProduct.typeSoutien || ''}
+                            onSelect={(value) => setNewProduct({ ...newProduct, typeSoutien: value })}
+                            required
+                        />
+
+                        {/* Niveaux scolaires (multi-select) */}
+                        <MultiSelectModalitySelector
+                            label="Niveaux enseignés *"
+                            values={newProduct.niveauxScolaires || []}
+                            productType="soutien_scolaire_repetiteur"
+                            fieldName="niveaux_scolaires"
+                            onSelect={(values) => setNewProduct({ ...newProduct, niveauxScolaires: values })}
+                            placeholder="Sélectionnez les niveaux (ex: CP, 6ème, Terminale)"
+                            maxSelections={15}
+                        />
+
+                        {/* Matières enseignées (multi-select) */}
+                        <MultiSelectModalitySelector
+                            label="Matières enseignées *"
+                            values={newProduct.matieresEnseignees || []}
+                            productType="soutien_scolaire_repetiteur"
+                            fieldName="matieres_enseignees"
+                            onSelect={(values) => setNewProduct({ ...newProduct, matieresEnseignees: values })}
+                            placeholder="Sélectionnez les matières que vous enseignez"
+                            maxSelections={10}
+                        />
+
+                        <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Format"
+                                    fieldName="formats"
+                                    productType="soutien_scolaire_repetiteur"
+                                    value={newProduct.formatSoutien || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, formatSoutien: value })}
+                                />
+                            </View>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Durée séance"
+                                    fieldName="durees_seance"
+                                    productType="soutien_scolaire_repetiteur"
+                                    value={newProduct.dureeSeance || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, dureeSeance: value })}
+                                />
+                            </View>
+                        </View>
+
+                        <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Modalité déplacement"
+                                    fieldName="modalites_deplacement"
+                                    productType="soutien_scolaire_repetiteur"
+                                    value={newProduct.modaliteDeplacement || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, modaliteDeplacement: value })}
+                                />
+                            </View>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Disponibilité"
+                                    fieldName="disponibilites"
+                                    productType="soutien_scolaire_repetiteur"
+                                    value={newProduct.disponibilite || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, disponibilite: value })}
+                                />
+                            </View>
+                        </View>
+
+                        <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Mode tarification"
+                                    fieldName="modes_tarification"
+                                    productType="soutien_scolaire_repetiteur"
+                                    value={newProduct.modeTarification || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, modeTarification: value })}
+                                />
+                            </View>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Expérience"
+                                    fieldName="niveaux_experience"
+                                    productType="soutien_scolaire_repetiteur"
+                                    value={newProduct.niveauExperience || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, niveauExperience: value })}
+                                />
+                            </View>
+                        </View>
+
+                        <View style={styles.hintBox}>
+                            <SafeIcon name="info" size={16} color={modernColors.primary} />
+                            <Text style={styles.hintText}>
+                                💡 <Text style={styles.hintBold}>Astuce :</Text> Indiquez clairement vos matières et niveaux pour être facilement trouvé par les parents !
                             </Text>
                         </View>
                     </>
@@ -7248,7 +11981,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                 return (
                     <>
                         <ProductFieldSelector
-                            label="Type d'activité"
+                            label="Type d'activité sportive"
                             fieldName="types"
                             productType="sport_fitness"
                             value={newProduct.typeSport || ''}
@@ -7259,7 +11992,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <ProductFieldSelector
-                                    label="Niveau"
+                                    label="Niveau requis"
                                     fieldName="niveaux"
                                     productType="sport_fitness"
                                     value={newProduct.niveauSport || ''}
@@ -7267,19 +12000,26 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Durée (minutes)</Text>
-                                <NativeInput
-                                    placeholder="Ex: 60"
+                                <ProductFieldSelector
+                                    label="Durée séance"
+                                    fieldName="durees"
+                                    productType="sport_fitness"
                                     value={newProduct.dureeSport || ''}
-                                    onChangeText={(text) => setNewProduct({ ...newProduct, dureeSport: text })}
-                                    style={styles.fieldInput}
-                                    keyboardType="numeric"
+                                    onSelect={(value) => setNewProduct({ ...newProduct, dureeSport: value })}
                                 />
                             </View>
                         </View>
 
                         <ProductFieldSelector
-                            label="Équipements fournis"
+                            label="Type de service"
+                            fieldName="services"
+                            productType="sport_fitness"
+                            value={newProduct.serviceSport || ''}
+                            onSelect={(value) => setNewProduct({ ...newProduct, serviceSport: value })}
+                        />
+
+                        <ProductFieldSelector
+                            label="Équipements disponibles/fournis"
                             fieldName="equipements"
                             productType="sport_fitness"
                             value={newProduct.equipementsSport || []}
@@ -7287,9 +12027,34 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             multiSelect
                         />
 
+                        <ProductFieldSelector
+                            label="Objectif principal"
+                            fieldName="objectifs"
+                            productType="sport_fitness"
+                            value={newProduct.objectifSport || ''}
+                            onSelect={(value) => setNewProduct({ ...newProduct, objectifSport: value })}
+                        />
+
+                        <ProductFieldSelector
+                            label="Jours disponibles"
+                            fieldName="jours_disponibles"
+                            productType="sport_fitness"
+                            value={newProduct.joursSport || []}
+                            onSelect={(values) => setNewProduct({ ...newProduct, joursSport: values })}
+                            multiSelect
+                        />
+
+                        <ProductFieldSelector
+                            label="Horaires"
+                            fieldName="horaires"
+                            productType="sport_fitness"
+                            value={newProduct.horairesSport || ''}
+                            onSelect={(value) => setNewProduct({ ...newProduct, horairesSport: value })}
+                        />
+
                         <View style={styles.hintBox}>
                             <Text style={styles.hintText}>
-                                💡 Précisez si les équipements sont fournis ou si les participants doivent les apporter.
+                                💪 Décrivez votre activité sportive : type, niveau, équipements fournis et horaires disponibles.
                             </Text>
                         </View>
                     </>
@@ -7447,51 +12212,137 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                     </>
                 );
 
+            // ════════════════════════════════════════════════════════════
+            // 🌳 JARDINAGE & PAYSAGISME - ULTRA-ENRICHI AFRIQUE FRANCOPHONE
+            // ════════════════════════════════════════════════════════════
             case 'jardinage_paysagisme':
                 return (
                     <>
+                        {/* ✅ CHAMP 1 : Type de service (40+ options) - PRIORITÉ */}
                         <ProductFieldSelector
-                            label="Type de service"
-                            fieldName="types"
+                            label="Type de service *"
+                            fieldName="typeService"
                             productType="jardinage_paysagisme"
-                            value={newProduct.typeJardinage || ''}
-                            onSelect={(value) => setNewProduct({ ...newProduct, typeJardinage: value })}
+                            value={newProduct.typeService || ''}
+                            onSelect={(value) => setNewProduct({ ...newProduct, typeService: value })}
                             required
                         />
 
+                        {/* ✅ CHAMP 2 : Plantes africaines (multiselect) */}
+                        <ProductFieldSelector
+                            label="Plantes concernées"
+                            fieldName="plantesAfricaines"
+                            productType="jardinage_paysagisme"
+                            value={newProduct.plantesAfricaines || []}
+                            onSelect={(values) => setNewProduct({ ...newProduct, plantesAfricaines: values })}
+                            multiSelect
+                        />
+
                         <View style={styles.fieldRow}>
+                            {/* ✅ CHAMP 3 : Fréquence d'entretien */}
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <ProductFieldSelector
-                                    label="Saison recommandée"
-                                    fieldName="saisons"
+                                    label="Fréquence"
+                                    fieldName="frequenceEntretien"
                                     productType="jardinage_paysagisme"
-                                    value={newProduct.saisonJardinage || ''}
-                                    onSelect={(value) => setNewProduct({ ...newProduct, saisonJardinage: value })}
+                                    value={newProduct.frequenceEntretien || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, frequenceEntretien: value })}
                                 />
                             </View>
+
+                            {/* ✅ CHAMP 4 : Type de terrain */}
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <ProductFieldSelector
-                                    label="Surface"
-                                    fieldName="surfaces"
+                                    label="Type de terrain"
+                                    fieldName="typeTerrain"
                                     productType="jardinage_paysagisme"
-                                    value={newProduct.surfaceJardinage || ''}
-                                    onSelect={(value) => setNewProduct({ ...newProduct, surfaceJardinage: value })}
+                                    value={newProduct.typeTerrain || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, typeTerrain: value })}
                                 />
                             </View>
                         </View>
 
+                        {/* ✅ CHAMP 5 : Surface du terrain */}
                         <ProductFieldSelector
-                            label="Services inclus"
-                            fieldName="services"
+                            label="Surface terrain"
+                            fieldName="surfaceTerrain"
                             productType="jardinage_paysagisme"
-                            value={newProduct.servicesJardinage || []}
-                            onSelect={(values) => setNewProduct({ ...newProduct, servicesJardinage: values })}
+                            value={newProduct.surfaceTerrain || ''}
+                            onSelect={(value) => setNewProduct({ ...newProduct, surfaceTerrain: value })}
+                        />
+
+                        {/* ✅ CHAMP 6 : Matériel disponible (multiselect) */}
+                        <ProductFieldSelector
+                            label="Matériel disponible"
+                            fieldName="materielJardinage"
+                            productType="jardinage_paysagisme"
+                            value={newProduct.materielJardinage || []}
+                            onSelect={(values) => setNewProduct({ ...newProduct, materielJardinage: values })}
                             multiSelect
                         />
 
+                        <View style={styles.fieldRow}>
+                            {/* ✅ CHAMP 7 : Mode de tarification */}
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Mode tarification"
+                                    fieldName="modeTarification"
+                                    productType="jardinage_paysagisme"
+                                    value={newProduct.modeTarification || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, modeTarification: value })}
+                                />
+                            </View>
+
+                            {/* ✅ CHAMP 8 : Niveau d'expérience */}
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Niveau expérience"
+                                    fieldName="niveauExperience"
+                                    productType="jardinage_paysagisme"
+                                    value={newProduct.niveauExperience || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, niveauExperience: value })}
+                                />
+                            </View>
+                        </View>
+
+                        {/* ✅ CHAMP 9 : Prestations incluses (multiselect) */}
+                        <ProductFieldSelector
+                            label="Prestations incluses"
+                            fieldName="prestationsIncluses"
+                            productType="jardinage_paysagisme"
+                            value={newProduct.prestationsIncluses || []}
+                            onSelect={(values) => setNewProduct({ ...newProduct, prestationsIncluses: values })}
+                            multiSelect
+                        />
+
+                        {/* ✅ CHAMP 10 : Zones d'intervention (intelligent - africanLocations.ts) */}
+                        <ProductFieldSelector
+                            label="Zones d'intervention *"
+                            fieldName="zones_intervention"
+                            productType="jardinage_paysagisme"
+                            value={newProduct.zonesIntervention || []}
+                            onSelect={(values) => setNewProduct({ ...newProduct, zonesIntervention: values })}
+                            multiSelect
+                            required
+                        />
+
+                        {/* 💡 HINT : Photos avant/après */}
                         <View style={styles.hintBox}>
                             <Text style={styles.hintText}>
-                                💡 Montrez vos réalisations avec des photos avant/après.
+                                📸 Astuce : Ajoutez 4-8 photos de vos réalisations (avant/après, jardins tropicaux, palmiers élagués, potagers africains).
+                            </Text>
+                        </View>
+
+                        {/* ✅ BONUS : Photos réalisations (4-8 photos recommandées) */}
+                        <View style={styles.hintBox}>
+                            <Text style={styles.hintEmoji}>🌴</Text>
+                            <Text style={styles.hintTitle}>Services populaires en Afrique :</Text>
+                            <Text style={styles.hintText}>
+                                • Élagage palmiers (royaux, cocotiers, dattiers){'\n'}
+                                • Entretien arbres fruitiers (manguiers, avocatiers, papayers){'\n'}
+                                • Création potagers africains (gombo, ndolé, manioc){'\n'}
+                                • Arrosage automatique (saison sèche){'\n'}
+                                • Espaces verts entreprises/hôtels
                             </Text>
                         </View>
                     </>
@@ -7548,51 +12399,1369 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                     </>
                 );
 
-            case 'plomberie':
+            case 'plombier':
                 return (
                     <>
+                        {/* Section 1: Type de service */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="wrench" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>Service de Plomberie</Text>
+                        </View>
+
                         <ProductFieldSelector
-                            label="Type de service"
+                            label="Type de prestation *"
                             fieldName="types"
-                            productType="plomberie"
+                            productType="plombier"
                             value={newProduct.typePlomberie || ''}
                             onSelect={(value) => setNewProduct({ ...newProduct, typePlomberie: value })}
                             required
                         />
 
+                        <MultiSelectModalitySelector
+                            label="Spécialités *"
+                            values={newProduct.specialitesPlomberie || []}
+                            productType="plombier"
+                            fieldName="services"
+                            onSelect={(values) => setNewProduct({ ...newProduct, specialitesPlomberie: values })}
+                            placeholder="Ex: Réparation fuite, Débouchage, Installation..."
+                            maxSelections={10}
+                        />
+
+                        {/* Section 2: Équipements et Disponibilité */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="tool" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>Équipements & Disponibilité</Text>
+                        </View>
+
+                        <MultiSelectModalitySelector
+                            label="Équipements concernés"
+                            values={newProduct.equipementsPlomberie || []}
+                            productType="plombier"
+                            fieldName="equipements"
+                            onSelect={(values) => setNewProduct({ ...newProduct, equipementsPlomberie: values })}
+                            placeholder="Ex: Robinetterie, WC, Chauffe-eau..."
+                            maxSelections={8}
+                        />
+
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <ProductFieldSelector
-                                    label="Service d'urgence"
-                                    fieldName="urgences"
-                                    productType="plomberie"
-                                    value={newProduct.urgencePlomberie || ''}
-                                    onSelect={(value) => setNewProduct({ ...newProduct, urgencePlomberie: value })}
+                                    label="Disponibilité"
+                                    fieldName="disponibilites"
+                                    productType="plombier"
+                                    value={newProduct.disponibilitePlomberie || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, disponibilitePlomberie: value })}
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <ProductFieldSelector
-                                    label="Garantie"
+                                    label="Garantie travaux"
                                     fieldName="garanties"
-                                    productType="plomberie"
+                                    productType="plombier"
                                     value={newProduct.garantiePlomberie || ''}
                                     onSelect={(value) => setNewProduct({ ...newProduct, garantiePlomberie: value })}
                                 />
                             </View>
                         </View>
 
-                        <ProductFieldSelector
-                            label="Matériaux"
-                            fieldName="materiaux"
-                            productType="plomberie"
-                            value={newProduct.materiauxPlomberie || []}
-                            onSelect={(values) => setNewProduct({ ...newProduct, materiauxPlomberie: values })}
-                            multiSelect
+                        <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <TouchableOpacity
+                                    style={styles.checkboxContainer}
+                                    onPress={() => setNewProduct({ ...newProduct, urgence24h: !newProduct.urgence24h })}
+                                >
+                                    <View style={[styles.checkbox, newProduct.urgence24h && styles.checkboxChecked]}>
+                                        {newProduct.urgence24h && <SafeIcon name="check" size={14} color="#FFFFFF" />}
+                                    </View>
+                                    <Text style={styles.checkboxLabel}>🚨 Dépannage d'urgence 24h/24</Text>
+                                </TouchableOpacity>
+                            </View>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <TouchableOpacity
+                                    style={styles.checkboxContainer}
+                                    onPress={() => setNewProduct({ ...newProduct, devisGratuit: !newProduct.devisGratuit })}
+                                >
+                                    <View style={[styles.checkbox, newProduct.devisGratuit && styles.checkboxChecked]}>
+                                        {newProduct.devisGratuit && <SafeIcon name="check" size={14} color="#FFFFFF" />}
+                                    </View>
+                                    <Text style={styles.checkboxLabel}>📋 Devis gratuit</Text>
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+
+                        {/* Section 3: Localisation intelligente - Zone d'intervention */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>📍 Zone d'Intervention</Text>
+                        </View>
+
+                        <View style={styles.hintBox}>
+                            <SafeIcon name="info" size={16} color={modernColors.info} />
+                            <Text style={styles.hintText}>
+                                🌍 <Text style={styles.hintBold}>Système intelligent :</Text> Sélectionnez vos zones d'intervention. Les villes de votre pays s'affichent en priorité !
+                            </Text>
+                        </View>
+
+                        <MultiSelectModalitySelector
+                            label="Zones d'intervention *"
+                            values={newProduct.zonesInterventionPlombier || []}
+                            productType="plombier"
+                            fieldName="zones_intervention"
+                            onSelect={(values) => setNewProduct({ ...newProduct, zonesInterventionPlombier: values })}
+                            placeholder="Ex: Douala, Yaoundé, Tout le Cameroun..."
+                            maxSelections={15}
                         />
 
                         <View style={styles.hintBox}>
                             <Text style={styles.hintText}>
-                                💡 Indiquez si vous intervenez en urgence 24h/24.
+                                💡 Précisez vos spécialités et votre disponibilité pour attirer plus de clients !
+                            </Text>
+                        </View>
+                    </>
+                );
+
+            case 'plomberie_sanitaire':
+                return (
+                    <>
+                        {/* Section 1: Identité du Produit */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="droplet" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>Matériel Plomberie & Sanitaire</Text>
+                        </View>
+
+                        <ProductFieldSelector
+                            label="Catégorie de produit *"
+                            fieldName="categories"
+                            productType="plomberie_sanitaire"
+                            value={newProduct.categorieProduitPlomberie || ''}
+                            onSelect={(value) => setNewProduct({ ...newProduct, categorieProduitPlomberie: value })}
+                            required
+                        />
+
+                        <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Marque"
+                                    fieldName="marques"
+                                    productType="plomberie_sanitaire"
+                                    value={newProduct.marquePlomberieSanitaire || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, marquePlomberieSanitaire: value })}
+                                />
+                            </View>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="État *"
+                                    fieldName="etats"
+                                    productType="plomberie_sanitaire"
+                                    value={newProduct.etatPlomberieSanitaire || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, etatPlomberieSanitaire: value })}
+                                    required
+                                />
+                            </View>
+                        </View>
+
+                        {/* Section 2: Caractéristiques */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="settings" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>Caractéristiques</Text>
+                        </View>
+
+                        <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Matériau"
+                                    fieldName="materiaux"
+                                    productType="plomberie_sanitaire"
+                                    value={newProduct.materiauPlomberieSanitaire || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, materiauPlomberieSanitaire: value })}
+                                />
+                            </View>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Finition"
+                                    fieldName="finitions"
+                                    productType="plomberie_sanitaire"
+                                    value={newProduct.finitionPlomberieSanitaire || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, finitionPlomberieSanitaire: value })}
+                                />
+                            </View>
+                        </View>
+
+                        {/* Section 3: Services */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="truck" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>Services & Garanties</Text>
+                        </View>
+
+                        <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Livraison"
+                                    fieldName="livraisons"
+                                    productType="plomberie_sanitaire"
+                                    value={newProduct.livraisonPlomberieSanitaire || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, livraisonPlomberieSanitaire: value })}
+                                />
+                            </View>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Installation"
+                                    fieldName="installations"
+                                    productType="plomberie_sanitaire"
+                                    value={newProduct.installationPlomberieSanitaire || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, installationPlomberieSanitaire: value })}
+                                />
+                            </View>
+                        </View>
+
+                        <ProductFieldSelector
+                            label="Garantie"
+                            fieldName="garanties"
+                            productType="plomberie_sanitaire"
+                            value={newProduct.garantiePlomberieSanitaire || ''}
+                            onSelect={(value) => setNewProduct({ ...newProduct, garantiePlomberieSanitaire: value })}
+                        />
+
+                        {/* Section 4: Localisation intelligente - Ville du magasin */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>📍 Localisation du Magasin</Text>
+                        </View>
+
+                        <View style={styles.hintBox}>
+                            <SafeIcon name="info" size={16} color={modernColors.info} />
+                            <Text style={styles.hintText}>
+                                🏪 <Text style={styles.hintBold}>Système intelligent :</Text> Indiquez où se trouve votre magasin. Les villes de votre pays s'affichent en priorité !
+                            </Text>
+                        </View>
+
+                        <ProductFieldSelector
+                            label="Ville du magasin *"
+                            fieldName="villes"
+                            productType="plomberie_sanitaire"
+                            value={newProduct.villeMagasinPlomberie || ''}
+                            onSelect={(value) => setNewProduct({ ...newProduct, villeMagasinPlomberie: value })}
+                            required
+                        />
+
+                        <ProductFieldSelector
+                            label="Quartier"
+                            fieldName="quartiers"
+                            productType="plomberie_sanitaire"
+                            value={newProduct.quartierMagasinPlomberie || ''}
+                            onSelect={(value) => setNewProduct({ ...newProduct, quartierMagasinPlomberie: value })}
+                        />
+
+                        <View style={styles.hintBox}>
+                            <Text style={styles.hintText}>
+                                💡 Précisez la marque, l'état et les services (livraison, installation) pour rassurer vos acheteurs !
+                            </Text>
+                        </View>
+                    </>
+                );
+
+            case 'electricien':
+                return (
+                    <>
+                        {/* Section 1: Type de service */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="zap" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>Service d'Électricité</Text>
+                        </View>
+
+                        <ProductFieldSelector
+                            label="Type de prestation *"
+                            fieldName="types"
+                            productType="electricien"
+                            value={newProduct.typeElectricien || ''}
+                            onSelect={(value) => setNewProduct({ ...newProduct, typeElectricien: value })}
+                            required
+                        />
+
+                        <MultiSelectModalitySelector
+                            label="Spécialités *"
+                            values={newProduct.specialitesElectricien || []}
+                            productType="electricien"
+                            fieldName="services"
+                            onSelect={(values) => setNewProduct({ ...newProduct, specialitesElectricien: values })}
+                            placeholder="Ex: Installation tableau, Câblage, Éclairage..."
+                            maxSelections={10}
+                        />
+
+                        {/* Section 2: Équipements et Disponibilité */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="tool" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>Équipements & Disponibilité</Text>
+                        </View>
+
+                        <MultiSelectModalitySelector
+                            label="Équipements concernés"
+                            values={newProduct.equipementsElectricien || []}
+                            productType="electricien"
+                            fieldName="equipements"
+                            onSelect={(values) => setNewProduct({ ...newProduct, equipementsElectricien: values })}
+                            placeholder="Ex: Tableau électrique, Prises, Éclairage..."
+                            maxSelections={8}
+                        />
+
+                        <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Disponibilité"
+                                    fieldName="disponibilites"
+                                    productType="electricien"
+                                    value={newProduct.disponibiliteElectricien || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, disponibiliteElectricien: value })}
+                                />
+                            </View>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Garantie travaux"
+                                    fieldName="garanties"
+                                    productType="electricien"
+                                    value={newProduct.garantieElectricien || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, garantieElectricien: value })}
+                                />
+                            </View>
+                        </View>
+
+                        <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <TouchableOpacity
+                                    style={styles.checkboxContainer}
+                                    onPress={() => setNewProduct({ ...newProduct, urgence24hElec: !newProduct.urgence24hElec })}
+                                >
+                                    <View style={[styles.checkbox, newProduct.urgence24hElec && styles.checkboxChecked]}>
+                                        {newProduct.urgence24hElec && <SafeIcon name="check" size={14} color="#FFFFFF" />}
+                                    </View>
+                                    <Text style={styles.checkboxLabel}>🚨 Dépannage d'urgence 24h/24</Text>
+                                </TouchableOpacity>
+                            </View>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <TouchableOpacity
+                                    style={styles.checkboxContainer}
+                                    onPress={() => setNewProduct({ ...newProduct, devisGratuitElec: !newProduct.devisGratuitElec })}
+                                >
+                                    <View style={[styles.checkbox, newProduct.devisGratuitElec && styles.checkboxChecked]}>
+                                        {newProduct.devisGratuitElec && <SafeIcon name="check" size={14} color="#FFFFFF" />}
+                                    </View>
+                                    <Text style={styles.checkboxLabel}>📋 Devis gratuit</Text>
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+
+                        {/* Section 3: Certifications */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="award" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>Certifications & Qualifications</Text>
+                        </View>
+
+                        <MultiSelectModalitySelector
+                            label="Certifications"
+                            values={newProduct.certificationsElectricien || []}
+                            productType="electricien"
+                            fieldName="certifications"
+                            onSelect={(values) => setNewProduct({ ...newProduct, certificationsElectricien: values })}
+                            placeholder="Ex: Électricien qualifié, Habilitation..."
+                            maxSelections={5}
+                        />
+
+                        {/* Section 4: Localisation intelligente - Zone d'intervention */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>📍 Zone d'Intervention</Text>
+                        </View>
+
+                        <View style={styles.hintBox}>
+                            <SafeIcon name="info" size={16} color={modernColors.info} />
+                            <Text style={styles.hintText}>
+                                🌍 <Text style={styles.hintBold}>Système intelligent :</Text> Sélectionnez vos zones d'intervention. Les villes de votre pays s'affichent en priorité !
+                            </Text>
+                        </View>
+
+                        <MultiSelectModalitySelector
+                            label="Zones d'intervention *"
+                            values={newProduct.zonesInterventionElectricien || []}
+                            productType="electricien"
+                            fieldName="zones_intervention"
+                            onSelect={(values) => setNewProduct({ ...newProduct, zonesInterventionElectricien: values })}
+                            placeholder="Ex: Douala, Yaoundé, Tout le Cameroun..."
+                            maxSelections={15}
+                        />
+
+                        <View style={styles.hintBox}>
+                            <Text style={styles.hintText}>
+                                💡 Précisez vos spécialités et certifications pour rassurer vos clients !
+                            </Text>
+                        </View>
+                    </>
+                );
+
+            case 'electricien_auto':
+                return (
+                    <>
+                        {/* Section 1: Type de service */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="zap" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>Électricité Automobile</Text>
+                        </View>
+
+                        <ProductFieldSelector
+                            label="Type de prestation *"
+                            fieldName="types"
+                            productType="electricien_auto"
+                            value={newProduct.typeElectricienAuto || ''}
+                            onSelect={(value) => setNewProduct({ ...newProduct, typeElectricienAuto: value })}
+                            required
+                        />
+
+                        <MultiSelectModalitySelector
+                            label="Spécialités *"
+                            values={newProduct.specialitesElectricienAuto || []}
+                            productType="electricien_auto"
+                            fieldName="services"
+                            onSelect={(values) => setNewProduct({ ...newProduct, specialitesElectricienAuto: values })}
+                            placeholder="Ex: Diagnostic OBD, Réparation alternateur, Installation GPS..."
+                            maxSelections={10}
+                        />
+
+                        {/* Section 2: Véhicules et Équipements */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="car" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>Véhicules & Équipements</Text>
+                        </View>
+
+                        <MultiSelectModalitySelector
+                            label="Véhicules pris en charge *"
+                            values={newProduct.vehiculesElectricienAuto || []}
+                            productType="electricien_auto"
+                            fieldName="vehicules"
+                            onSelect={(values) => setNewProduct({ ...newProduct, vehiculesElectricienAuto: values })}
+                            placeholder="Ex: Voitures légères, Motos, 4x4..."
+                            maxSelections={5}
+                        />
+
+                        <MultiSelectModalitySelector
+                            label="Équipements concernés"
+                            values={newProduct.equipementsElectricienAuto || []}
+                            productType="electricien_auto"
+                            fieldName="equipements"
+                            onSelect={(values) => setNewProduct({ ...newProduct, equipementsElectricienAuto: values })}
+                            placeholder="Ex: Batterie, Alternateur, Phares, Autoradio..."
+                            maxSelections={10}
+                        />
+
+                        <MultiSelectModalitySelector
+                            label="Marques spécialisées"
+                            values={newProduct.marquesSpecialeesElectricienAuto || []}
+                            productType="electricien_auto"
+                            fieldName="marques_specialisees"
+                            onSelect={(values) => setNewProduct({ ...newProduct, marquesSpecialeesElectricienAuto: values })}
+                            placeholder="Ex: Toyota, Mercedes, BMW, Toutes marques..."
+                            maxSelections={8}
+                        />
+
+                        {/* Section 3: Équipements de diagnostic */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="activity" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>Équipements de Diagnostic</Text>
+                        </View>
+
+                        <MultiSelectModalitySelector
+                            label="Outils de diagnostic"
+                            values={newProduct.equipementsDiagnosticAuto || []}
+                            productType="electricien_auto"
+                            fieldName="equipements_diagnostic"
+                            onSelect={(values) => setNewProduct({ ...newProduct, equipementsDiagnosticAuto: values })}
+                            placeholder="Ex: Valise OBD, Multimètre, Scanner..."
+                            maxSelections={6}
+                        />
+
+                        {/* Section 4: Disponibilité et Garantie */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="clock" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>Disponibilité & Garanties</Text>
+                        </View>
+
+                        <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Disponibilité"
+                                    fieldName="disponibilites"
+                                    productType="electricien_auto"
+                                    value={newProduct.disponibiliteElectricienAuto || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, disponibiliteElectricienAuto: value })}
+                                />
+                            </View>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Garantie travaux"
+                                    fieldName="garanties"
+                                    productType="electricien_auto"
+                                    value={newProduct.garantieElectricienAuto || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, garantieElectricienAuto: value })}
+                                />
+                            </View>
+                        </View>
+
+                        <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <TouchableOpacity
+                                    style={styles.checkboxContainer}
+                                    onPress={() => setNewProduct({ ...newProduct, urgence24hElecAuto: !newProduct.urgence24hElecAuto })}
+                                >
+                                    <View style={[styles.checkbox, newProduct.urgence24hElecAuto && styles.checkboxChecked]}>
+                                        {newProduct.urgence24hElecAuto && <SafeIcon name="check" size={14} color="#FFFFFF" />}
+                                    </View>
+                                    <Text style={styles.checkboxLabel}>🚨 Dépannage d'urgence 24h/24</Text>
+                                </TouchableOpacity>
+                            </View>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <TouchableOpacity
+                                    style={styles.checkboxContainer}
+                                    onPress={() => setNewProduct({ ...newProduct, deplacementDomicile: !newProduct.deplacementDomicile })}
+                                >
+                                    <View style={[styles.checkbox, newProduct.deplacementDomicile && styles.checkboxChecked]}>
+                                        {newProduct.deplacementDomicile && <SafeIcon name="check" size={14} color="#FFFFFF" />}
+                                    </View>
+                                    <Text style={styles.checkboxLabel}>🚗 Déplacement à domicile</Text>
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+
+                        {/* Section 5: Localisation intelligente - Zone d'intervention */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>📍 Zone d'Intervention</Text>
+                        </View>
+
+                        <View style={styles.hintBox}>
+                            <SafeIcon name="info" size={16} color={modernColors.info} />
+                            <Text style={styles.hintText}>
+                                🌍 <Text style={styles.hintBold}>Système intelligent :</Text> Sélectionnez vos zones d'intervention. Les villes de votre pays s'affichent en priorité !
+                            </Text>
+                        </View>
+
+                        <MultiSelectModalitySelector
+                            label="Zones d'intervention *"
+                            values={newProduct.zonesInterventionElectricienAuto || []}
+                            productType="electricien_auto"
+                            fieldName="zones_intervention"
+                            onSelect={(values) => setNewProduct({ ...newProduct, zonesInterventionElectricienAuto: values })}
+                            placeholder="Ex: Douala, Yaoundé, Tout le Cameroun..."
+                            maxSelections={15}
+                        />
+
+                        <View style={styles.hintBox}>
+                            <SafeIcon name="tool" size={16} color="#F59E0B" />
+                            <Text style={styles.hintText}>
+                                🔧 <Text style={styles.hintBold}>Conseil :</Text> Précisez vos équipements de diagnostic (valise OBD, scanner) pour rassurer vos clients !
+                            </Text>
+                        </View>
+                    </>
+                );
+
+            case 'mecanicien_moto':
+                return (
+                    <>
+                        {/* Section 1: Informations du Garage Moto */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="zap" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>Garage Spécialisé Moto/Tricycle</Text>
+                        </View>
+
+                        {/* Nom du garage moto */}
+                        <View style={styles.fieldContainer}>
+                            <Text style={styles.fieldLabel}>Nom du garage moto <Text style={styles.required}>*</Text></Text>
+                            <NativeInput
+                                placeholder="Ex: Garage Moto Express, Méca Bike Pro..."
+                                value={newProduct.nomGarageMoto || ''}
+                                onChangeText={(text) => setNewProduct({ ...newProduct, nomGarageMoto: text })}
+                                style={styles.fieldInput}
+                            />
+                        </View>
+
+                        {/* Services spécialisés motos */}
+                        <ProductFieldSelector
+                            label="Services spécialisés motos"
+                            productType="mecanicien_moto"
+                            fieldName="types_service_moto"
+                            selectedValues={newProduct.typeServiceMoto || []}
+                            onSelect={(values) => setNewProduct({ ...newProduct, typeServiceMoto: values })}
+                            required
+                            maxSelections={8}
+                        />
+
+                        {/* Spécialités du garage moto */}
+                        <ProductFieldSelector
+                            label="Spécialités du garage moto"
+                            productType="mecanicien_moto"
+                            fieldName="specialites_moto"
+                            selectedValues={newProduct.specialitesMoto || []}
+                            onSelect={(values) => setNewProduct({ ...newProduct, specialitesMoto: values })}
+                            required
+                            maxSelections={5}
+                        />
+
+                        {/* Section 2: Marques & Types de Motos */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="award" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>Marques & Types de Motos</Text>
+                        </View>
+
+                        {/* Marques de motos traitées */}
+                        <ProductFieldSelector
+                            label="Marques de motos traitées"
+                            productType="mecanicien_moto"
+                            fieldName="marques_motos"
+                            selectedValues={newProduct.marquesMotos || []}
+                            onSelect={(values) => setNewProduct({ ...newProduct, marquesMotos: values })}
+                            required
+                            maxSelections={8}
+                        />
+
+                        {/* Types de motos/tricycles */}
+                        <ProductFieldSelector
+                            label="Types de motos/tricycles traités"
+                            productType="mecanicien_moto"
+                            fieldName="types_motos"
+                            selectedValues={newProduct.typesMotos || []}
+                            onSelect={(values) => setNewProduct({ ...newProduct, typesMotos: values })}
+                            required
+                            maxSelections={6}
+                        />
+
+                        {/* Cylindrées spécialisées */}
+                        <ProductFieldSelector
+                            label="Cylindrées spécialisées"
+                            productType="mecanicien_moto"
+                            fieldName="cylindrees_motos"
+                            selectedValues={newProduct.cylindreesMotos || []}
+                            onSelect={(values) => setNewProduct({ ...newProduct, cylindreesMotos: values })}
+                            maxSelections={8}
+                        />
+
+                        {/* Section 3: Certifications & Équipements */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="shield" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>Certifications & Équipements</Text>
+                        </View>
+
+                        {/* Certifications spécialisées motos */}
+                        <ProductFieldSelector
+                            label="Certifications spécialisées motos"
+                            productType="mecanicien_moto"
+                            fieldName="certifications_moto"
+                            selectedValues={newProduct.certificationsMoto || []}
+                            onSelect={(values) => setNewProduct({ ...newProduct, certificationsMoto: values })}
+                            maxSelections={6}
+                        />
+
+                        {/* Équipements spécialisés garage moto */}
+                        <ProductFieldSelector
+                            label="Équipements spécialisés garage moto"
+                            productType="mecanicien_moto"
+                            fieldName="equipements_moto"
+                            selectedValues={newProduct.equipementsMoto || []}
+                            onSelect={(values) => setNewProduct({ ...newProduct, equipementsMoto: values })}
+                            maxSelections={8}
+                        />
+
+                        {/* Pièces détachées spécialisées */}
+                        <ProductFieldSelector
+                            label="Pièces détachées spécialisées"
+                            productType="mecanicien_moto"
+                            fieldName="pieces_detachees_moto"
+                            selectedValues={newProduct.piecesDetacheesMoto || []}
+                            onSelect={(values) => setNewProduct({ ...newProduct, piecesDetacheesMoto: values })}
+                            maxSelections={10}
+                        />
+
+                        {/* Section 4: Services & Disponibilité */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="clock" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>Services & Disponibilité</Text>
+                        </View>
+
+                        {/* Services complémentaires spécialisés */}
+                        <ProductFieldSelector
+                            label="Services complémentaires spécialisés"
+                            productType="mecanicien_moto"
+                            fieldName="services_complementaires_moto"
+                            selectedValues={newProduct.servicesComplementairesMoto || []}
+                            onSelect={(values) => setNewProduct({ ...newProduct, servicesComplementairesMoto: values })}
+                            maxSelections={8}
+                        />
+
+                        {/* Horaires spécialisés */}
+                        <SelectModalitySelector
+                            label="Horaires spécialisés"
+                            productType="mecanicien_moto"
+                            fieldName="horaires_moto"
+                            selectedValue={newProduct.horairesMoto || ''}
+                            onSelect={(value) => setNewProduct({ ...newProduct, horairesMoto: value })}
+                            required
+                        />
+
+                        {/* Délais d'intervention spécialisés */}
+                        <SelectModalitySelector
+                            label="Délais d'intervention spécialisés"
+                            productType="mecanicien_moto"
+                            fieldName="delais_moto"
+                            selectedValue={newProduct.delaisMoto || ''}
+                            onSelect={(value) => setNewProduct({ ...newProduct, delaisMoto: value })}
+                            required
+                        />
+
+                        {/* Prestations d'urgence spécialisées */}
+                        <SelectModalitySelector
+                            label="Prestations d'urgence spécialisées"
+                            productType="mecanicien_moto"
+                            fieldName="urgence_moto"
+                            selectedValue={newProduct.urgenceMoto || ''}
+                            onSelect={(value) => setNewProduct({ ...newProduct, urgenceMoto: value })}
+                            required
+                        />
+
+                        {/* Section 5: Localisation intelligente - Zone d'intervention */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>📍 Zone d'Intervention</Text>
+                        </View>
+
+                        <View style={styles.hintBox}>
+                            <SafeIcon name="info" size={16} color={modernColors.info} />
+                            <Text style={styles.hintText}>
+                                🌍 <Text style={styles.hintBold}>Système intelligent :</Text> Sélectionnez vos zones d'intervention. Les villes de votre pays s'affichent en priorité !
+                            </Text>
+                        </View>
+
+                        {/* Zone d'intervention MULTIPLE spécialisée avec système intelligent */}
+                        <MultiSelectModalitySelector
+                            label="Zones d'intervention *"
+                            values={newProduct.zonesInterventionMoto || []}
+                            productType="mecanicien_moto"
+                            fieldName="zone_intervention_moto"
+                            onSelect={(values) => setNewProduct({ ...newProduct, zonesInterventionMoto: values })}
+                            placeholder="Ex: Douala, Yaoundé, Tout le Cameroun..."
+                            maxSelections={15}
+                        />
+
+                        {/* Langues parlées spécialisées */}
+                        <ProductFieldSelector
+                            label="Langues parlées spécialisées"
+                            productType="mecanicien_moto"
+                            fieldName="langues_moto"
+                            selectedValues={newProduct.languesMoto || []}
+                            onSelect={(values) => setNewProduct({ ...newProduct, languesMoto: values })}
+                            maxSelections={5}
+                        />
+
+                        {/* Modes de paiement spécialisés */}
+                        <ProductFieldSelector
+                            label="Modes de paiement spécialisés"
+                            productType="mecanicien_moto"
+                            fieldName="modes_paiement_moto"
+                            selectedValues={newProduct.modesPaiementMoto || []}
+                            onSelect={(values) => setNewProduct({ ...newProduct, modesPaiementMoto: values })}
+                            maxSelections={6}
+                        />
+
+                        {/* Section 6: Tarifs & Options */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="dollar-sign" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>Tarifs & Options</Text>
+                        </View>
+
+                        {/* Tarif horaire spécialisé */}
+                        <View style={styles.fieldContainer}>
+                            <Text style={styles.fieldLabel}>Tarif horaire spécialisé (optionnel)</Text>
+                            <NativeInput
+                                placeholder="Ex: 15 000 FCFA/heure"
+                                value={newProduct.tarifHoraireMoto || ''}
+                                onChangeText={(text) => setNewProduct({ ...newProduct, tarifHoraireMoto: text })}
+                                style={styles.fieldInput}
+                            />
+                        </View>
+
+                        {/* Options spécialisées */}
+                        <View style={styles.fieldContainer}>
+                            <Text style={styles.fieldLabel}>Options spécialisées</Text>
+                            <View style={styles.checkboxContainer}>
+                                <Checkbox
+                                    value={newProduct.devisGratuitMoto || false}
+                                    onValueChange={(value) => setNewProduct({ ...newProduct, devisGratuitMoto: value })}
+                                    color={modernColors.primary}
+                                />
+                                <Text style={styles.checkboxLabel}>Devis gratuit spécialisé</Text>
+                            </View>
+                            <View style={styles.checkboxContainer}>
+                                <Checkbox
+                                    value={newProduct.garantieReparationsMoto || false}
+                                    onValueChange={(value) => setNewProduct({ ...newProduct, garantieReparationsMoto: value })}
+                                    color={modernColors.primary}
+                                />
+                                <Text style={styles.checkboxLabel}>Garantie sur réparations spécialisées</Text>
+                            </View>
+                            <View style={styles.checkboxContainer}>
+                                <Checkbox
+                                    value={newProduct.motoCourtoisie || false}
+                                    onValueChange={(value) => setNewProduct({ ...newProduct, motoCourtoisie: value })}
+                                    color={modernColors.primary}
+                                />
+                                <Text style={styles.checkboxLabel}>Moto de courtoisie</Text>
+                            </View>
+                            <View style={styles.checkboxContainer}>
+                                <Checkbox
+                                    value={newProduct.enlevementMoto || false}
+                                    onValueChange={(value) => setNewProduct({ ...newProduct, enlevementMoto: value })}
+                                    color={modernColors.primary}
+                                />
+                                <Text style={styles.checkboxLabel}>Enlèvement moto en panne</Text>
+                            </View>
+                        </View>
+
+                        {/* Conseil spécialisé */}
+                        <View style={styles.hintBox}>
+                            <SafeIcon name="zap" size={16} color="#F59E0B" />
+                            <Text style={styles.hintText}>
+                                🏍️ <Text style={styles.hintBold}>Conseil spécialisé :</Text> Précisez vos équipements spécialisés motos (pont élévateur moto, valise diagnostic moto) pour rassurer vos clients !
+                            </Text>
+                        </View>
+                    </>
+                );
+
+            case 'macon':
+                return (
+                    <>
+                        {/* Section 1: Type de travaux */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="home" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>Travaux de Maçonnerie</Text>
+                        </View>
+
+                        <ProductFieldSelector
+                            label="Type de prestation *"
+                            fieldName="types"
+                            productType="macon"
+                            value={newProduct.typeMacon || ''}
+                            onSelect={(value) => setNewProduct({ ...newProduct, typeMacon: value })}
+                            required
+                        />
+
+                        <MultiSelectModalitySelector
+                            label="Spécialités *"
+                            values={newProduct.specialitesMacon || []}
+                            productType="macon"
+                            fieldName="services"
+                            onSelect={(values) => setNewProduct({ ...newProduct, specialitesMacon: values })}
+                            placeholder="Ex: Fondations, Dalle béton, Mur porteur..."
+                            maxSelections={10}
+                        />
+
+                        {/* Section 2: Matériaux et Bâtiments */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="layers" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>Matériaux & Types de Bâtiments</Text>
+                        </View>
+
+                        <MultiSelectModalitySelector
+                            label="Matériaux utilisés"
+                            values={newProduct.materiauxMacon || []}
+                            productType="macon"
+                            fieldName="materiaux"
+                            onSelect={(values) => setNewProduct({ ...newProduct, materiauxMacon: values })}
+                            placeholder="Ex: Béton armé, Parpaing, Brique..."
+                            maxSelections={6}
+                        />
+
+                        <MultiSelectModalitySelector
+                            label="Types de bâtiments"
+                            values={newProduct.typesBatimentMacon || []}
+                            productType="macon"
+                            fieldName="types_batiment"
+                            onSelect={(values) => setNewProduct({ ...newProduct, typesBatimentMacon: values })}
+                            placeholder="Ex: Maison individuelle, Immeuble, Villa..."
+                            maxSelections={5}
+                        />
+
+                        {/* Section 3: Équipements */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="tool" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>Équipements Professionnels</Text>
+                        </View>
+
+                        <MultiSelectModalitySelector
+                            label="Équipements disponibles"
+                            values={newProduct.equipementsMacon || []}
+                            productType="macon"
+                            fieldName="equipements"
+                            onSelect={(values) => setNewProduct({ ...newProduct, equipementsMacon: values })}
+                            placeholder="Ex: Bétonnière, Échafaudage, Niveau laser..."
+                            maxSelections={6}
+                        />
+
+                        {/* Section 4: Disponibilité et Garanties */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="clock" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>Disponibilité & Garanties</Text>
+                        </View>
+
+                        <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Disponibilité"
+                                    fieldName="disponibilites"
+                                    productType="macon"
+                                    value={newProduct.disponibiliteMacon || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, disponibiliteMacon: value })}
+                                />
+                            </View>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Garantie travaux *"
+                                    fieldName="garanties"
+                                    productType="macon"
+                                    value={newProduct.garantieMacon || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, garantieMacon: value })}
+                                    required
+                                />
+                            </View>
+                        </View>
+
+                        <MultiSelectModalitySelector
+                            label="Certifications"
+                            values={newProduct.certificationsMacon || []}
+                            productType="macon"
+                            fieldName="certifications"
+                            onSelect={(values) => setNewProduct({ ...newProduct, certificationsMacon: values })}
+                            placeholder="Ex: Assurance décennale, Qualibat..."
+                            maxSelections={4}
+                        />
+
+                        <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <TouchableOpacity
+                                    style={styles.checkboxContainer}
+                                    onPress={() => setNewProduct({ ...newProduct, assuranceDecennale: !newProduct.assuranceDecennale })}
+                                >
+                                    <View style={[styles.checkbox, newProduct.assuranceDecennale && styles.checkboxChecked]}>
+                                        {newProduct.assuranceDecennale && <SafeIcon name="check" size={14} color="#FFFFFF" />}
+                                    </View>
+                                    <Text style={styles.checkboxLabel}>🛡️ Assurance décennale</Text>
+                                </TouchableOpacity>
+                            </View>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <TouchableOpacity
+                                    style={styles.checkboxContainer}
+                                    onPress={() => setNewProduct({ ...newProduct, devisGratuitMacon: !newProduct.devisGratuitMacon })}
+                                >
+                                    <View style={[styles.checkbox, newProduct.devisGratuitMacon && styles.checkboxChecked]}>
+                                        {newProduct.devisGratuitMacon && <SafeIcon name="check" size={14} color="#FFFFFF" />}
+                                    </View>
+                                    <Text style={styles.checkboxLabel}>📋 Devis gratuit</Text>
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+
+                        {/* Section 5: Localisation intelligente - Zone d'intervention */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>📍 Zone d'Intervention</Text>
+                        </View>
+
+                        <View style={styles.hintBox}>
+                            <SafeIcon name="info" size={16} color={modernColors.info} />
+                            <Text style={styles.hintText}>
+                                🌍 <Text style={styles.hintBold}>Système intelligent :</Text> Sélectionnez vos zones d'intervention. Les villes de votre pays s'affichent en priorité !
+                            </Text>
+                        </View>
+
+                        <MultiSelectModalitySelector
+                            label="Zones d'intervention *"
+                            values={newProduct.zonesInterventionMacon || []}
+                            productType="macon"
+                            fieldName="zones_intervention"
+                            onSelect={(values) => setNewProduct({ ...newProduct, zonesInterventionMacon: values })}
+                            placeholder="Ex: Douala, Yaoundé, Tout le Cameroun..."
+                            maxSelections={15}
+                        />
+
+                        <View style={styles.hintBox}>
+                            <SafeIcon name="shield" size={16} color="#059669" />
+                            <Text style={styles.hintText}>
+                                🛡️ <Text style={styles.hintBold}>Important :</Text> L'assurance décennale est un gage de confiance pour vos clients !
+                            </Text>
+                        </View>
+                    </>
+                );
+
+            case 'carreleur':
+                return (
+                    <>
+                        {/* Section 1: Type de prestation */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="grid" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>Services de Carrelage</Text>
+                        </View>
+
+                        <ProductFieldSelector
+                            label="Type de prestation *"
+                            fieldName="types"
+                            productType="carreleur"
+                            value={newProduct.typeCarreleur || ''}
+                            onSelect={(value) => setNewProduct({ ...newProduct, typeCarreleur: value })}
+                            required
+                        />
+
+                        <MultiSelectModalitySelector
+                            label="Services proposés *"
+                            values={newProduct.servicesCarreleur || []}
+                            productType="carreleur"
+                            fieldName="services"
+                            onSelect={(values) => setNewProduct({ ...newProduct, servicesCarreleur: values })}
+                            placeholder="Ex: Carrelage sol intérieur, Faïence cuisine..."
+                            maxSelections={8}
+                        />
+
+                        {/* Section 2: Spécialités */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="layers" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>Spécialités & Techniques</Text>
+                        </View>
+
+                        <MultiSelectModalitySelector
+                            label="Surfaces d'application *"
+                            values={newProduct.surfacesCarreleur || []}
+                            productType="carreleur"
+                            fieldName="surfaces"
+                            onSelect={(values) => setNewProduct({ ...newProduct, surfacesCarreleur: values })}
+                            placeholder="Ex: Sol intérieur, Mur salle de bain, Terrasse..."
+                            maxSelections={6}
+                        />
+
+                        <MultiSelectModalitySelector
+                            label="Types de carrelage posés *"
+                            values={newProduct.typesCarrelageCarreleur || []}
+                            productType="carreleur"
+                            fieldName="types_carrelage"
+                            onSelect={(values) => setNewProduct({ ...newProduct, typesCarrelageCarreleur: values })}
+                            placeholder="Ex: Céramique, Grès cérame, Marbre..."
+                            maxSelections={6}
+                        />
+
+                        <MultiSelectModalitySelector
+                            label="Formats posés"
+                            values={newProduct.formatsCarreleur || []}
+                            productType="carreleur"
+                            fieldName="formats"
+                            onSelect={(values) => setNewProduct({ ...newProduct, formatsCarreleur: values })}
+                            placeholder="Ex: Standard, Grand format..."
+                            maxSelections={4}
+                        />
+
+                        <MultiSelectModalitySelector
+                            label="Techniques de pose"
+                            values={newProduct.techniquesCarreleur || []}
+                            productType="carreleur"
+                            fieldName="techniques"
+                            onSelect={(values) => setNewProduct({ ...newProduct, techniquesCarreleur: values })}
+                            placeholder="Ex: Pose droite, Diagonale, Chevron..."
+                            maxSelections={5}
+                        />
+
+                        <MultiSelectModalitySelector
+                            label="Finitions"
+                            values={newProduct.finitionsCarreleur || []}
+                            productType="carreleur"
+                            fieldName="finitions"
+                            onSelect={(values) => setNewProduct({ ...newProduct, finitionsCarreleur: values })}
+                            placeholder="Ex: Joint blanc, Joint époxy..."
+                            maxSelections={5}
+                        />
+
+                        {/* Section 3: Équipement & Expérience */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="tool" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>Équipement & Expérience</Text>
+                        </View>
+
+                        <MultiSelectModalitySelector
+                            label="Équipements et outils"
+                            values={newProduct.equipementsCarreleur || []}
+                            productType="carreleur"
+                            fieldName="equipements"
+                            onSelect={(values) => setNewProduct({ ...newProduct, equipementsCarreleur: values })}
+                            placeholder="Ex: Carrelette électrique, Niveau laser..."
+                            maxSelections={6}
+                        />
+
+                        <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Expérience *"
+                                    fieldName="experience"
+                                    productType="carreleur"
+                                    value={newProduct.experienceCarreleur || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, experienceCarreleur: value })}
+                                    required
+                                />
+                            </View>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Disponibilité *"
+                                    fieldName="disponibilites"
+                                    productType="carreleur"
+                                    value={newProduct.disponibilitesCarreleur || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, disponibilitesCarreleur: value })}
+                                    required
+                                />
+                            </View>
+                        </View>
+
+                        {/* Section 4: Certifications & Garanties */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="award" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>Certifications & Garanties</Text>
+                        </View>
+
+                        <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Garantie *"
+                                    fieldName="garanties"
+                                    productType="carreleur"
+                                    value={newProduct.garantiesCarreleur || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, garantiesCarreleur: value })}
+                                    required
+                                />
+                            </View>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Tarification *"
+                                    fieldName="tarification"
+                                    productType="carreleur"
+                                    value={newProduct.tarificationCarreleur || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, tarificationCarreleur: value })}
+                                    required
+                                />
+                            </View>
+                        </View>
+
+                        <MultiSelectModalitySelector
+                            label="Certifications"
+                            values={newProduct.certificationsCarreleur || []}
+                            productType="carreleur"
+                            fieldName="certifications"
+                            onSelect={(values) => setNewProduct({ ...newProduct, certificationsCarreleur: values })}
+                            placeholder="Ex: Carreleur qualifié, CAP Carreleur..."
+                            maxSelections={4}
+                        />
+
+                        <MultiSelectModalitySelector
+                            label="Services additionnels"
+                            values={newProduct.servicesAdditionnelsCarreleur || []}
+                            productType="carreleur"
+                            fieldName="services_additionnels"
+                            onSelect={(values) => setNewProduct({ ...newProduct, servicesAdditionnelsCarreleur: values })}
+                            placeholder="Ex: Devis gratuit, Fourniture carrelage..."
+                            maxSelections={6}
+                        />
+
+                        {/* Section 5: Localisation intelligente - Zone d'intervention */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>📍 Zone d'Intervention</Text>
+                        </View>
+
+                        <View style={styles.hintBox}>
+                            <SafeIcon name="info" size={16} color={modernColors.info} />
+                            <Text style={styles.hintText}>
+                                🌍 <Text style={styles.hintBold}>Système intelligent :</Text> Sélectionnez vos zones d'intervention. Les villes de votre pays s'affichent en priorité !
+                            </Text>
+                        </View>
+
+                        <MultiSelectModalitySelector
+                            label="Zones d'intervention *"
+                            values={newProduct.zonesInterventionCarreleur || []}
+                            productType="carreleur"
+                            fieldName="zones_intervention"
+                            onSelect={(values) => setNewProduct({ ...newProduct, zonesInterventionCarreleur: values })}
+                            placeholder="Ex: Douala, Yaoundé, Tout le Cameroun..."
+                            maxSelections={15}
+                        />
+
+                        <View style={styles.hintBox}>
+                            <SafeIcon name="award" size={16} color="#0891B2" />
+                            <Text style={styles.hintText}>
+                                🎯 <Text style={styles.hintBold}>Conseil :</Text> Précisez vos techniques de pose et certifications pour attirer plus de clients !
+                            </Text>
+                        </View>
+                    </>
+                );
+
+            case 'ingenieur_archi':
+                return (
+                    <>
+                        {/* Section 1: Type de prestation */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="compass" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>Services d'Ingénierie & Architecture</Text>
+                        </View>
+
+                        <ProductFieldSelector
+                            label="Type de prestation *"
+                            fieldName="types"
+                            productType="ingenieur_archi"
+                            value={newProduct.typeIngenieurArchi || ''}
+                            onSelect={(value) => setNewProduct({ ...newProduct, typeIngenieurArchi: value })}
+                            required
+                        />
+
+                        <MultiSelectModalitySelector
+                            label="Services proposés *"
+                            values={newProduct.servicesIngenieurArchi || []}
+                            productType="ingenieur_archi"
+                            fieldName="services"
+                            onSelect={(values) => setNewProduct({ ...newProduct, servicesIngenieurArchi: values })}
+                            placeholder="Ex: Plans architecturaux, Permis construire, Calcul structure..."
+                            maxSelections={12}
+                        />
+
+                        {/* Section 2: Projets et Domaines */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="briefcase" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>Projets & Domaines de Compétence</Text>
+                        </View>
+
+                        <MultiSelectModalitySelector
+                            label="Types de projets *"
+                            values={newProduct.typesProjetArchi || []}
+                            productType="ingenieur_archi"
+                            fieldName="types_projet"
+                            onSelect={(values) => setNewProduct({ ...newProduct, typesProjetArchi: values })}
+                            placeholder="Ex: Maison individuelle, Immeuble, Villa..."
+                            maxSelections={8}
+                        />
+
+                        <MultiSelectModalitySelector
+                            label="Domaines de compétence"
+                            values={newProduct.domainesCompetenceArchi || []}
+                            productType="ingenieur_archi"
+                            fieldName="domaines"
+                            onSelect={(values) => setNewProduct({ ...newProduct, domainesCompetenceArchi: values })}
+                            placeholder="Ex: Génie civil, Architecture, Géotechnique..."
+                            maxSelections={6}
+                        />
+
+                        {/* Section 3: Outils et Livrables */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="monitor" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>Outils & Livrables</Text>
+                        </View>
+
+                        <MultiSelectModalitySelector
+                            label="Logiciels utilisés"
+                            values={newProduct.logicielsArchi || []}
+                            productType="ingenieur_archi"
+                            fieldName="logiciels"
+                            onSelect={(values) => setNewProduct({ ...newProduct, logicielsArchi: values })}
+                            placeholder="Ex: AutoCAD, Revit, SketchUp, ArchiCAD..."
+                            maxSelections={8}
+                        />
+
+                        <MultiSelectModalitySelector
+                            label="Livrables"
+                            values={newProduct.livrablesArchi || []}
+                            productType="ingenieur_archi"
+                            fieldName="livrables"
+                            onSelect={(values) => setNewProduct({ ...newProduct, livrablesArchi: values })}
+                            placeholder="Ex: Plans 2D/3D, Maquette, Note de calcul..."
+                            maxSelections={8}
+                        />
+
+                        {/* Section 4: Tarification */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="dollar-sign" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>Tarification</Text>
+                        </View>
+
+                        <ProductFieldSelector
+                            label="Mode de tarification"
+                            fieldName="tarification"
+                            productType="ingenieur_archi"
+                            value={newProduct.tarificationArchi || ''}
+                            onSelect={(value) => setNewProduct({ ...newProduct, tarificationArchi: value })}
+                        />
+
+                        {/* Section 5: Certifications */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="award" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>Certifications & Assurances</Text>
+                        </View>
+
+                        <MultiSelectModalitySelector
+                            label="Certifications & Assurances *"
+                            values={newProduct.certificationsArchi || []}
+                            productType="ingenieur_archi"
+                            fieldName="certifications"
+                            onSelect={(values) => setNewProduct({ ...newProduct, certificationsArchi: values })}
+                            placeholder="Ex: Ordre des architectes, RC Pro, Décennale..."
+                            maxSelections={5}
+                        />
+
+                        <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <TouchableOpacity
+                                    style={styles.checkboxContainer}
+                                    onPress={() => setNewProduct({ ...newProduct, assuranceRCPro: !newProduct.assuranceRCPro })}
+                                >
+                                    <View style={[styles.checkbox, newProduct.assuranceRCPro && styles.checkboxChecked]}>
+                                        {newProduct.assuranceRCPro && <SafeIcon name="check" size={14} color="#FFFFFF" />}
+                                    </View>
+                                    <Text style={styles.checkboxLabel}>🛡️ Assurance RC Pro</Text>
+                                </TouchableOpacity>
+                            </View>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <TouchableOpacity
+                                    style={styles.checkboxContainer}
+                                    onPress={() => setNewProduct({ ...newProduct, assuranceDecennaleArchi: !newProduct.assuranceDecennaleArchi })}
+                                >
+                                    <View style={[styles.checkbox, newProduct.assuranceDecennaleArchi && styles.checkboxChecked]}>
+                                        {newProduct.assuranceDecennaleArchi && <SafeIcon name="check" size={14} color="#FFFFFF" />}
+                                    </View>
+                                    <Text style={styles.checkboxLabel}>🛡️ Assurance décennale</Text>
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+
+                        {/* Section 6: Localisation intelligente - Zone d'intervention */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>📍 Zone d'Intervention</Text>
+                        </View>
+
+                        <View style={styles.hintBox}>
+                            <SafeIcon name="info" size={16} color={modernColors.info} />
+                            <Text style={styles.hintText}>
+                                🌍 <Text style={styles.hintBold}>Système intelligent :</Text> Sélectionnez vos zones d'intervention. Les villes de votre pays s'affichent en priorité !
+                            </Text>
+                        </View>
+
+                        <MultiSelectModalitySelector
+                            label="Zones d'intervention *"
+                            values={newProduct.zonesInterventionArchi || []}
+                            productType="ingenieur_archi"
+                            fieldName="zones_intervention"
+                            onSelect={(values) => setNewProduct({ ...newProduct, zonesInterventionArchi: values })}
+                            placeholder="Ex: Douala, Yaoundé, Tout le Cameroun..."
+                            maxSelections={15}
+                        />
+
+                        <View style={styles.hintBox}>
+                            <SafeIcon name="award" size={16} color="#0891B2" />
+                            <Text style={styles.hintText}>
+                                📐 <Text style={styles.hintBold}>Conseil :</Text> Mentionnez vos logiciels (AutoCAD, Revit) et certifications (Ordre, Assurance) pour rassurer vos clients !
                             </Text>
                         </View>
                     </>
@@ -7601,65 +13770,198 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
             case 'electricite':
                 return (
                     <>
-                        <ProductFieldSelector
-                            label="Type de service"
-                            fieldName="types"
+                        {/* Section 1: Identité du Produit */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="package" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>Identité du Produit</Text>
+                        </View>
+
+                        <SelectModalitySelector
+                            label="Nom du produit"
+                            value={newProduct.nomProduitElectrique || newProduct.name || ''}
                             productType="electricite"
-                            value={newProduct.typeElectricite || ''}
-                            onSelect={(value) => setNewProduct({ ...newProduct, typeElectricite: value })}
+                            fieldName="noms_produits"
+                            onSelect={(value) => setNewProduct({
+                                ...newProduct,
+                                nomProduitElectrique: value,
+                                name: value // Synchronisation
+                            })}
                             required
+                            placeholder="Ex: Ampoule LED E27, Câble 2.5mm², Prise USB..."
                         />
 
                         <View style={styles.fieldRow}>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Puissance (watts)</Text>
-                                <NativeInput
-                                    placeholder="Ex: 1500"
-                                    value={newProduct.puissanceElectricite || ''}
-                                    onChangeText={(text) => setNewProduct({ ...newProduct, puissanceElectricite: text })}
-                                    style={styles.fieldInput}
-                                    keyboardType="numeric"
+                            <View style={[{ flex: 1 }]}>
+                                <SelectModalitySelector
+                                    label="Catégorie"
+                                    value={newProduct.categorieElectrique || ''}
+                                    productType="electricite"
+                                    fieldName="categories"
+                                    onSelect={(value) => setNewProduct({ ...newProduct, categorieElectrique: value })}
+                                    required
+                                    placeholder="Ex: Éclairage, Câblage..."
                                 />
                             </View>
-                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
-                                    label="Garantie"
-                                    fieldName="garanties"
+                            <View style={[{ flex: 1 }]}>
+                                <SelectModalitySelector
+                                    label="Type d'éclairage"
+                                    value={newProduct.typeElectricite || ''}
                                     productType="electricite"
-                                    value={newProduct.garantieElectricite || ''}
-                                    onSelect={(value) => setNewProduct({ ...newProduct, garantieElectricite: value })}
+                                    fieldName="types_eclairage"
+                                    onSelect={(value) => setNewProduct({ ...newProduct, typeElectricite: value })}
+                                    placeholder="Si applicable"
                                 />
                             </View>
                         </View>
 
-                        <ProductFieldSelector
-                            label="Certifications"
-                            fieldName="certifications"
+                        {/* Section 2: Caractéristiques Techniques */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="zap" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>Caractéristiques Techniques</Text>
+                        </View>
+
+                        <View style={styles.fieldRow}>
+                            <View style={[{ flex: 1 }]}>
+                                <SelectModalitySelector
+                                    label="Marque"
+                                    value={newProduct.marqueElectricite || ''}
+                                    productType="electricite"
+                                    fieldName="marques"
+                                    onSelect={(value) => setNewProduct({ ...newProduct, marqueElectricite: value })}
+                                    placeholder="Ex: Legrand, Philips..."
+                                />
+                            </View>
+                            <View style={[{ flex: 1 }]}>
+                                <SelectModalitySelector
+                                    label="Tension"
+                                    value={newProduct.tensionElectrique || ''}
+                                    productType="electricite"
+                                    fieldName="tensions"
+                                    onSelect={(value) => setNewProduct({ ...newProduct, tensionElectrique: value })}
+                                    placeholder="Ex: 220V AC"
+                                />
+                            </View>
+                        </View>
+
+                        <View style={styles.fieldRow}>
+                            <View style={[{ flex: 1 }]}>
+                                <SelectModalitySelector
+                                    label="Puissance"
+                                    value={newProduct.puissanceElectrique || ''}
+                                    productType="electricite"
+                                    fieldName="puissances"
+                                    onSelect={(value) => setNewProduct({ ...newProduct, puissanceElectrique: value })}
+                                    placeholder="Ex: 10W, 60W..."
+                                />
+                            </View>
+                            <View style={[{ flex: 1 }]}>
+                                <SelectModalitySelector
+                                    label="Culot (ampoules)"
+                                    value={newProduct.culotAmpoule || ''}
+                                    productType="electricite"
+                                    fieldName="culots_ampoules"
+                                    onSelect={(value) => setNewProduct({ ...newProduct, culotAmpoule: value })}
+                                    placeholder="Ex: E27, GU10..."
+                                />
+                            </View>
+                        </View>
+
+                        <SelectModalitySelector
+                            label="Couleur de lumière (éclairage)"
+                            value={newProduct.couleurLumiere || ''}
                             productType="electricite"
-                            value={newProduct.certificationsElectricite || []}
-                            onSelect={(values) => setNewProduct({ ...newProduct, certificationsElectricite: values })}
-                            multiSelect
+                            fieldName="couleurs_lumiere"
+                            onSelect={(value) => setNewProduct({ ...newProduct, couleurLumiere: value })}
+                            placeholder="Si applicable"
+                        />
+
+                        {/* Section 3: Qualité & Garantie */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="shield" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>Qualité & Garantie</Text>
+                        </View>
+
+                        <MultiSelectModalitySelector
+                            label="Normes & Certifications"
+                            values={newProduct.normesElectrique || []}
+                            productType="electricite"
+                            fieldName="normes"
+                            onSelect={(values) => setNewProduct({ ...newProduct, normesElectrique: values })}
+                            placeholder="Ex: CE, NF, IP65..."
+                            maxSelections={10}
+                        />
+
+                        <View style={styles.fieldRow}>
+                            <View style={[{ flex: 1 }]}>
+                                <SelectModalitySelector
+                                    label="Garantie"
+                                    value={newProduct.garantieElectrique || ''}
+                                    productType="electricite"
+                                    fieldName="garanties"
+                                    onSelect={(value) => setNewProduct({ ...newProduct, garantieElectrique: value })}
+                                    placeholder="Ex: 2 ans"
+                                />
+                            </View>
+                            <View style={[{ flex: 1 }]}>
+                                <SelectModalitySelector
+                                    label="État"
+                                    value={newProduct.etatElectrique || ''}
+                                    productType="electricite"
+                                    fieldName="etats"
+                                    onSelect={(value) => setNewProduct({ ...newProduct, etatElectrique: value })}
+                                    placeholder="Ex: Neuf en boîte"
+                                />
+                            </View>
+                        </View>
+
+                        {/* Section 4: Usage */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="home" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>Usage & Application</Text>
+                        </View>
+
+                        <SelectModalitySelector
+                            label="Type d'utilisation"
+                            value={newProduct.utilisationElectrique || ''}
+                            productType="electricite"
+                            fieldName="utilisations"
+                            onSelect={(value) => setNewProduct({ ...newProduct, utilisationElectrique: value })}
+                            placeholder="Ex: Résidentiel, Commercial..."
                         />
 
                         <View style={styles.hintBox}>
+                            <SafeIcon name="info" size={14} color={modernColors.primary} />
                             <Text style={styles.hintText}>
-                                💡 Mentionnez vos certifications et agréments électriques.
+                                💡 Remplissez un maximum de détails pour faciliter la recherche des acheteurs.
                             </Text>
                         </View>
                     </>
                 );
 
+            // 🪵 MENUISERIE & ÉBÉNISTERIE - ✅ FORMULAIRE ENRICHI CONTEXTE AFRIQUE
             case 'menuiserie':
                 return (
                     <>
+                        {/* ========== SECTION 1: TYPE DE SERVICE ========== */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="briefcase" size={18} color="#F97316" />
+                            <Text style={styles.sectionTitle}>Type de service menuiserie</Text>
+                        </View>
+
                         <ProductFieldSelector
-                            label="Type de produit/service"
-                            fieldName="types"
+                            label="Service menuiserie"
+                            fieldName="services"
                             productType="menuiserie"
-                            value={newProduct.typeMenuiserie || ''}
-                            onSelect={(value) => setNewProduct({ ...newProduct, typeMenuiserie: value })}
+                            value={newProduct.serviceMenuiserie || ''}
+                            onSelect={(value) => setNewProduct({ ...newProduct, serviceMenuiserie: value })}
                             required
                         />
+
+                        {/* ========== SECTION 2: MATÉRIAUX & FINITIONS ========== */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="box" size={18} color="#F97316" />
+                            <Text style={styles.sectionTitle}>Matériaux & Finitions</Text>
+                        </View>
 
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
@@ -7703,9 +14005,318 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             </View>
                         </View>
 
+                        {/* ========== SECTION 3: EXPÉRIENCE & QUALIFICATIONS ========== */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="award" size={18} color="#F97316" />
+                            <Text style={styles.sectionTitle}>Expérience & Qualifications</Text>
+                        </View>
+
+                        <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Niveau d'expérience"
+                                    fieldName="niveaux_experience"
+                                    productType="menuiserie"
+                                    value={newProduct.experienceMenuisier || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, experienceMenuisier: value })}
+                                />
+                            </View>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Certification/Diplôme"
+                                    fieldName="certifications"
+                                    productType="menuiserie"
+                                    value={newProduct.certificationMenuisier || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, certificationMenuisier: value })}
+                                />
+                            </View>
+                        </View>
+
+                        {/* ========== SECTION 4: ATELIER & ÉQUIPEMENT ========== */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="tool" size={18} color="#F97316" />
+                            <Text style={styles.sectionTitle}>Atelier & Équipement</Text>
+                        </View>
+
+                        <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Type d'atelier/Fabricant"
+                                    fieldName="marques_ateliers"
+                                    productType="menuiserie"
+                                    value={newProduct.atelierMenuiserie || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, atelierMenuiserie: value })}
+                                />
+                            </View>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Équipement atelier"
+                                    fieldName="outils_disponibles"
+                                    productType="menuiserie"
+                                    value={newProduct.equipementAtelier || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, equipementAtelier: value })}
+                                />
+                            </View>
+                        </View>
+
+                        {/* ========== SECTION 5: DÉLAIS & GARANTIE ========== */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="clock" size={18} color="#F97316" />
+                            <Text style={styles.sectionTitle}>Délais & Garantie</Text>
+                        </View>
+
+                        <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Délai de fabrication"
+                                    fieldName="delais"
+                                    productType="menuiserie"
+                                    value={newProduct.delaiMenuiserie || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, delaiMenuiserie: value })}
+                                />
+                            </View>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Garantie"
+                                    fieldName="garanties"
+                                    productType="menuiserie"
+                                    value={newProduct.garantieMenuiserie || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, garantieMenuiserie: value })}
+                                />
+                            </View>
+                        </View>
+
+                        {/* ========== SECTION 6: PAIEMENT & ZONE ========== */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="credit-card" size={18} color="#F97316" />
+                            <Text style={styles.sectionTitle}>Paiement & Zone d'intervention</Text>
+                        </View>
+
+                        <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Mode de paiement"
+                                    fieldName="modes_paiement"
+                                    productType="menuiserie"
+                                    value={newProduct.paiementMenuiserie || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, paiementMenuiserie: value })}
+                                />
+                            </View>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Zone d'intervention"
+                                    fieldName="zones_intervention"
+                                    productType="menuiserie"
+                                    value={newProduct.zoneInterventionMenuiserie || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, zoneInterventionMenuiserie: value })}
+                                />
+                            </View>
+                        </View>
+
                         <View style={styles.hintBox}>
                             <Text style={styles.hintText}>
-                                💡 Ajoutez des photos de vos réalisations pour montrer votre savoir-faire.
+                                💡 Ajoutez des photos de vos réalisations pour montrer votre savoir-faire (meubles, portes, charpentes...).
+                            </Text>
+                        </View>
+
+                        <View style={styles.hintBox}>
+                            <Text style={styles.hintText}>
+                                🌍 Spécifiez le type de bois africain local (Iroko, Sapelli, Moabi...) pour plus de visibilité !
+                            </Text>
+                        </View>
+                    </>
+                );
+
+            // ❄️ RÉPARATEUR CLIMATISEUR - ✅ FORMULAIRE CONTEXTE AFRIQUE
+            case 'reparateur_climatiseur':
+                return (
+                    <>
+                        {/* ========== SECTION 1: TYPE DE SERVICE ========== */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="tool" size={18} color="#0EA5E9" />
+                            <Text style={styles.sectionTitle}>Type de service climatisation</Text>
+                        </View>
+
+                        <ProductFieldSelector
+                            label="Service climatisation"
+                            fieldName="services"
+                            productType="reparateur_climatiseur"
+                            value={newProduct.serviceClimatisation || ''}
+                            onSelect={(value) => setNewProduct({ ...newProduct, serviceClimatisation: value })}
+                            required
+                        />
+
+                        {/* ========== SECTION 2: MARQUE & TYPE CLIMATISEUR ========== */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="cpu" size={18} color="#0EA5E9" />
+                            <Text style={styles.sectionTitle}>Marque & Type de climatiseur</Text>
+                        </View>
+
+                        <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Marque spécialisée"
+                                    fieldName="marques_climatiseurs"
+                                    productType="reparateur_climatiseur"
+                                    value={newProduct.marqueClimatiseur || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, marqueClimatiseur: value })}
+                                />
+                            </View>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Type de climatiseur"
+                                    fieldName="types_climatiseurs"
+                                    productType="reparateur_climatiseur"
+                                    value={newProduct.typeClimatiseur || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, typeClimatiseur: value })}
+                                />
+                            </View>
+                        </View>
+
+                        <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Puissance traitée (BTU)"
+                                    fieldName="puissances_btu"
+                                    productType="reparateur_climatiseur"
+                                    value={newProduct.puissanceBTU || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, puissanceBTU: value })}
+                                />
+                            </View>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Type de panne traitée"
+                                    fieldName="types_pannes"
+                                    productType="reparateur_climatiseur"
+                                    value={newProduct.typePanneClim || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, typePanneClim: value })}
+                                />
+                            </View>
+                        </View>
+
+                        {/* ========== SECTION 3: CERTIFICATION & EXPÉRIENCE ========== */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="award" size={18} color="#0EA5E9" />
+                            <Text style={styles.sectionTitle}>Certifications & Équipement</Text>
+                        </View>
+
+                        <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Certification frigoriste"
+                                    fieldName="certifications"
+                                    productType="reparateur_climatiseur"
+                                    value={newProduct.certificationFrigoriste || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, certificationFrigoriste: value })}
+                                />
+                            </View>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Équipement professionnel"
+                                    fieldName="equipements_technicien"
+                                    productType="reparateur_climatiseur"
+                                    value={newProduct.equipementTechnicien || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, equipementTechnicien: value })}
+                                />
+                            </View>
+                        </View>
+
+                        {/* ========== SECTION 4: DISPONIBILITÉ & URGENCE ========== */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="clock" size={18} color="#0EA5E9" />
+                            <Text style={styles.sectionTitle}>Disponibilité & Urgence</Text>
+                        </View>
+
+                        <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Disponibilité/Urgence"
+                                    fieldName="disponibilites"
+                                    productType="reparateur_climatiseur"
+                                    value={newProduct.disponibiliteClim || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, disponibiliteClim: value })}
+                                />
+                            </View>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Type de clientèle"
+                                    fieldName="types_clients"
+                                    productType="reparateur_climatiseur"
+                                    value={newProduct.clienteleClim || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, clienteleClim: value })}
+                                />
+                            </View>
+                        </View>
+
+                        {/* ========== SECTION 5: TARIF & GARANTIE ========== */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="dollar-sign" size={18} color="#0EA5E9" />
+                            <Text style={styles.sectionTitle}>Tarification & Garantie</Text>
+                        </View>
+
+                        <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Mode de tarification"
+                                    fieldName="modes_tarification"
+                                    productType="reparateur_climatiseur"
+                                    value={newProduct.tarificationClim || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, tarificationClim: value })}
+                                />
+                            </View>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Garantie travaux"
+                                    fieldName="garanties"
+                                    productType="reparateur_climatiseur"
+                                    value={newProduct.garantieClim || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, garantieClim: value })}
+                                />
+                            </View>
+                        </View>
+
+                        {/* ========== SECTION 6: PAIEMENT & ZONE ========== */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="credit-card" size={18} color="#0EA5E9" />
+                            <Text style={styles.sectionTitle}>Paiement & Zone d'intervention</Text>
+                        </View>
+
+                        <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Mode de paiement"
+                                    fieldName="modes_paiement"
+                                    productType="reparateur_climatiseur"
+                                    value={newProduct.paiementClim || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, paiementClim: value })}
+                                />
+                            </View>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Zone d'intervention"
+                                    fieldName="zones_intervention"
+                                    productType="reparateur_climatiseur"
+                                    value={newProduct.zoneInterventionClim || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, zoneInterventionClim: value })}
+                                />
+                            </View>
+                        </View>
+
+                        <View style={styles.hintBox}>
+                            <Text style={styles.hintText}>
+                                ❄️ Ajoutez des photos de vos réalisations (installations, réparations...) pour montrer votre professionnalisme.
+                            </Text>
+                        </View>
+
+                        <View style={styles.hintBox}>
+                            <Text style={styles.hintText}>
+                                🚨 En climat chaud, proposez l'urgence 24h/24 pour attirer plus de clients !
+                            </Text>
+                        </View>
+
+                        <View style={styles.hintBox}>
+                            <Text style={styles.hintText}>
+                                🇨🇳 Spécialisez-vous sur les marques populaires (Midea, Gree, Haier, LG) pour plus de visibilité.
                             </Text>
                         </View>
                     </>
@@ -7796,33 +14407,33 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Taille écran</Text>
-                                <NativeInput
-                                    placeholder="Ex: 6.1 pouces"
+                                <ProductFieldSelector
+                                    label="Taille écran"
+                                    fieldName="taillesEcran"
+                                    productType="telephone"
                                     value={newProduct.tailleEcran || ''}
-                                    onChangeText={(text) => setNewProduct({ ...newProduct, tailleEcran: text })}
-                                    style={styles.fieldInput}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, tailleEcran: value })}
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Type écran</Text>
-                                <NativeInput
-                                    placeholder="Ex: OLED, AMOLED"
+                                <ProductFieldSelector
+                                    label="Type écran"
+                                    fieldName="typesEcran"
+                                    productType="telephone"
                                     value={newProduct.typeEcran || ''}
-                                    onChangeText={(text) => setNewProduct({ ...newProduct, typeEcran: text })}
-                                    style={styles.fieldInput}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, typeEcran: value })}
                                 />
                             </View>
                         </View>
 
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Caméra principale</Text>
-                                <NativeInput
-                                    placeholder="Ex: 48MP Triple"
+                                <ProductFieldSelector
+                                    label="Caméra principale"
+                                    fieldName="cameraPrincipale"
+                                    productType="telephone"
                                     value={newProduct.numeroCameraPrincipale || ''}
-                                    onChangeText={(text) => setNewProduct({ ...newProduct, numeroCameraPrincipale: text })}
-                                    style={styles.fieldInput}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, numeroCameraPrincipale: value })}
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
@@ -7838,21 +14449,22 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Batterie (mAh)</Text>
-                                <NativeInput
-                                    placeholder="Ex: 4000 mAh"
+                                <ProductFieldSelector
+                                    label="Batterie"
+                                    fieldName="batterie"
+                                    productType="telephone"
                                     value={newProduct.batterie || ''}
-                                    onChangeText={(text) => setNewProduct({ ...newProduct, batterie: text })}
-                                    style={styles.fieldInput}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, batterie: value })}
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Santé batterie</Text>
+                                <Text style={styles.fieldLabel}>Santé batterie (%)</Text>
                                 <NativeInput
-                                    placeholder="Ex: 95%"
+                                    placeholder="Ex: 95"
                                     value={newProduct.batterieSante || ''}
                                     onChangeText={(text) => setNewProduct({ ...newProduct, batterieSante: text })}
                                     style={styles.fieldInput}
+                                    keyboardType="numeric"
                                 />
                             </View>
                         </View>
@@ -7970,12 +14582,12 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Garantie restante</Text>
-                                <NativeInput
-                                    placeholder="Ex: 6 mois"
+                                <ProductFieldSelector
+                                    label="Garantie"
+                                    fieldName="garanties"
+                                    productType="telephone"
                                     value={newProduct.garantieTelephone || ''}
-                                    onChangeText={(text) => setNewProduct({ ...newProduct, garantieTelephone: text })}
-                                    style={styles.fieldInput}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, garantieTelephone: value })}
                                 />
                             </View>
                         </View>
@@ -8726,10 +15338,42 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
             case 'image_son':
                 return (
                     <>
+                        {/* Section 1: Identité du Produit */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="package" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>Identité du Produit</Text>
+                        </View>
+
+                        {/* Nom du produit - CRITIQUE */}
+                        <ProductFieldSelector
+                            label="Nom du produit"
+                            fieldName="noms_produits"
+                            productType="image_son"
+                            value={newProduct.nomProduitImageSon || newProduct.nom || ''}
+                            onSelect={(value) => setNewProduct({
+                                ...newProduct,
+                                nomProduitImageSon: value,
+                                nom: value  // ✅ SYNCHRONISATION CRITIQUE
+                            })}
+                            required
+                            placeholder="Ex: TV Samsung QLED 55 pouces, Barre de son Sony..."
+                        />
+
+                        {/* Catégorie et Type sur la même ligne */}
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <ProductFieldSelector
-                                    label="Type d'appareil"
+                                    label="Catégorie"
+                                    fieldName="categories"
+                                    productType="image_son"
+                                    value={newProduct.categorieImageSon || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, categorieImageSon: value })}
+                                    required
+                                />
+                            </View>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Type spécifique"
                                     fieldName="types"
                                     productType="image_son"
                                     value={newProduct.typeImageSon || ''}
@@ -8737,6 +15381,10 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                     required
                                 />
                             </View>
+                        </View>
+
+                        {/* Marque et Modèle/Gamme */}
+                        <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <ProductFieldSelector
                                     label="Marque"
@@ -8744,11 +15392,37 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                     productType="image_son"
                                     value={newProduct.marqueImageSon || ''}
                                     onSelect={(value) => setNewProduct({ ...newProduct, marqueImageSon: value })}
+                                    required
+                                />
+                            </View>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Gamme"
+                                    fieldName="modeles"
+                                    productType="image_son"
+                                    value={newProduct.modeleImageSon || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, modeleImageSon: value })}
                                 />
                             </View>
                         </View>
 
+                        {/* Section 2: Caractéristiques Techniques */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="sliders" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>Caractéristiques Techniques</Text>
+                        </View>
+
+                        {/* Technologie d'écran et Résolution */}
                         <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Technologie écran"
+                                    fieldName="technologies_ecran"
+                                    productType="image_son"
+                                    value={newProduct.technologieEcran || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, technologieEcran: value })}
+                                />
+                            </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <ProductFieldSelector
                                     label="Résolution"
@@ -8758,30 +15432,123 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                     onSelect={(value) => setNewProduct({ ...newProduct, resolution: value })}
                                 />
                             </View>
+                        </View>
+
+                        {/* Taille écran et Année de sortie */}
+                        <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Taille écran (pouces)</Text>
-                                <NativeInput
-                                    placeholder="Ex: 55"
+                                <ProductFieldSelector
+                                    label="Taille écran"
+                                    fieldName="taillesEcran"
+                                    productType="image_son"
                                     value={newProduct.diagonaleEcran || ''}
-                                    onChangeText={(text) => setNewProduct({ ...newProduct, diagonaleEcran: text })}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, diagonaleEcran: value })}
+                                />
+                            </View>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <Text style={styles.fieldLabel}>Année de sortie</Text>
+                                <NativeInput
+                                    placeholder="Ex: 2024"
+                                    value={newProduct.anneeSortie || ''}
+                                    onChangeText={(text) => setNewProduct({ ...newProduct, anneeSortie: text })}
                                     style={styles.fieldInput}
                                     keyboardType="numeric"
                                 />
                             </View>
                         </View>
 
-                        <ProductFieldSelector
-                            label="État"
-                            fieldName="etats"
+                        {/* Puissance audio et Nb enceintes (pour audio) */}
+                        <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <Text style={styles.fieldLabel}>Puissance audio (W)</Text>
+                                <NativeInput
+                                    placeholder="Ex: 300W"
+                                    value={newProduct.puissanceAudio || ''}
+                                    onChangeText={(text) => setNewProduct({ ...newProduct, puissanceAudio: text })}
+                                    style={styles.fieldInput}
+                                />
+                            </View>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <Text style={styles.fieldLabel}>Configuration audio</Text>
+                                <NativeInput
+                                    placeholder="Ex: 5.1, 7.1, 2.1"
+                                    value={newProduct.nbEnceintes || ''}
+                                    onChangeText={(text) => setNewProduct({ ...newProduct, nbEnceintes: text })}
+                                    style={styles.fieldInput}
+                                />
+                            </View>
+                        </View>
+
+                        {/* Section 3: Connectivité & Fonctionnalités */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="wifi" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>Connectivité & Fonctionnalités</Text>
+                        </View>
+
+                        {/* Connectivités (MultiSelect) */}
+                        <MultiSelectModalitySelector
+                            label="Connectivités"
+                            values={newProduct.connectivitesImageSon || []}
                             productType="image_son"
-                            value={newProduct.etatImageSon || ''}
-                            onSelect={(value) => setNewProduct({ ...newProduct, etatImageSon: value })}
-                            required
+                            fieldName="connectivites"
+                            onSelect={(values) => setNewProduct({ ...newProduct, connectivitesImageSon: values })}
+                            placeholder="Ex: HDMI, WiFi, Bluetooth..."
                         />
 
+                        {/* Fonctionnalités (MultiSelect) */}
+                        <MultiSelectModalitySelector
+                            label="Fonctionnalités"
+                            values={newProduct.fonctionnalitesImageSon || []}
+                            productType="image_son"
+                            fieldName="fonctionnalites"
+                            onSelect={(values) => setNewProduct({ ...newProduct, fonctionnalitesImageSon: values })}
+                            placeholder="Ex: Smart TV, HDR, Dolby Atmos..."
+                        />
+
+                        {/* Section 4: État & Garantie */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="shield" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>État & Garantie</Text>
+                        </View>
+
+                        {/* État et Garantie */}
+                        <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="État"
+                                    fieldName="etats"
+                                    productType="image_son"
+                                    value={newProduct.etatImageSon || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, etatImageSon: value })}
+                                    required
+                                />
+                            </View>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Garantie"
+                                    fieldName="garanties"
+                                    productType="image_son"
+                                    value={newProduct.garantieImageSon || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, garantieImageSon: value })}
+                                />
+                            </View>
+                        </View>
+
+                        {/* Accessoires inclus (MultiSelect) */}
+                        <MultiSelectModalitySelector
+                            label="Accessoires inclus"
+                            values={newProduct.accessoiresImageSon || []}
+                            productType="image_son"
+                            fieldName="accessoires_inclus"
+                            onSelect={(values) => setNewProduct({ ...newProduct, accessoiresImageSon: values })}
+                            placeholder="Ex: Télécommande, Câble HDMI, Support mural..."
+                        />
+
+                        {/* Message d'aide contextuel */}
                         <View style={styles.hintBox}>
+                            <SafeIcon name="info" size={14} color={modernColors.primary} />
                             <Text style={styles.hintText}>
-                                📺 Pour les TV, précisez la taille et la résolution
+                                💡 Pour une TV: précisez la taille, résolution, technologie (OLED/QLED) et Smart TV. Pour audio: puissance et configuration (2.1, 5.1...)
                             </Text>
                         </View>
                     </>
@@ -8790,59 +15557,230 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
             case 'pieces_auto':
                 return (
                     <>
+                        {/* ✅ SECTION 1 : IDENTITÉ DE LA PIÈCE */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="package" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>Identité de la pièce</Text>
+                        </View>
+
+                        {/* Nom de la pièce - ✅ CRITIQUE: SelectModalitySelector */}
+                        <View style={styles.fieldContainer}>
+                            <SelectModalitySelector
+                                label="Nom de la pièce"
+                                value={newProduct.nomProduitPieceAuto || newProduct.name || ''}
+                                productType="pieces_auto"
+                                fieldName="noms_produits"
+                                onSelect={(value) => setNewProduct({
+                                    ...newProduct,
+                                    nomProduitPieceAuto: value,
+                                    name: value // ✅ SYNCHRONISATION CRITIQUE
+                                })}
+                                required
+                                placeholder="Ex: Filtre à huile, Plaquettes de frein avant..."
+                            />
+                        </View>
+
+                        {/* Catégorie et Type */}
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
-                                    label="Type de pièce"
-                                    fieldName="types"
+                                <SelectModalitySelector
+                                    label="Catégorie"
+                                    value={newProduct.categoriePieceAuto || ''}
                                     productType="pieces_auto"
-                                    value={newProduct.typePieceAuto || ''}
-                                    onSelect={(value) => setNewProduct({ ...newProduct, typePieceAuto: value })}
+                                    fieldName="categories"
+                                    onSelect={(value) => setNewProduct({ ...newProduct, categoriePieceAuto: value })}
                                     required
+                                    placeholder="Ex: Moteur & Mécanique"
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
-                                    label="Marque"
-                                    fieldName="marques"
+                                <SelectModalitySelector
+                                    label="Type de pièce"
+                                    value={newProduct.typePieceAuto || ''}
                                     productType="pieces_auto"
-                                    value={newProduct.marquePieceAuto || ''}
-                                    onSelect={(value) => setNewProduct({ ...newProduct, marquePieceAuto: value })}
+                                    fieldName="types"
+                                    onSelect={(value) => setNewProduct({ ...newProduct, typePieceAuto: value })}
+                                    required
+                                    placeholder="Ex: Filtre (huile, air)"
                                 />
                             </View>
                         </View>
 
+                        {/* ✅ SECTION 2 : MARQUES & COMPATIBILITÉ */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="check-circle" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>Marques & Compatibilité</Text>
+                        </View>
+
+                        {/* Marque pièce et Marque véhicule */}
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <ProductFieldSelector
-                                    label="État"
-                                    fieldName="etats"
+                                <SelectModalitySelector
+                                    label="Marque de la pièce"
+                                    value={newProduct.marquePieceAuto || ''}
                                     productType="pieces_auto"
-                                    value={newProduct.etatPieceAuto || ''}
-                                    onSelect={(value) => setNewProduct({ ...newProduct, etatPieceAuto: value })}
+                                    fieldName="marques_pieces"
+                                    onSelect={(value) => setNewProduct({ ...newProduct, marquePieceAuto: value })}
                                     required
+                                    placeholder="Ex: Bosch, Valeo"
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Référence</Text>
+                                <SelectModalitySelector
+                                    label="Marque véhicule"
+                                    value={newProduct.marqueVehiculeCompatible || ''}
+                                    productType="pieces_auto"
+                                    fieldName="marques_vehicules"
+                                    onSelect={(value) => setNewProduct({ ...newProduct, marqueVehiculeCompatible: value })}
+                                    placeholder="Ex: Toyota, Mercedes"
+                                />
+                            </View>
+                        </View>
+
+                        {/* Modèle et Niveau de compatibilité */}
+                        <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <SelectModalitySelector
+                                    label="Modèle véhicule (si spécifique)"
+                                    value={newProduct.modeleVehicule || ''}
+                                    productType="pieces_auto"
+                                    fieldName="modeles_populaires"
+                                    onSelect={(value) => setNewProduct({ ...newProduct, modeleVehicule: value })}
+                                    placeholder="Ex: Toyota Corolla"
+                                />
+                            </View>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <SelectModalitySelector
+                                    label="Niveau de compatibilité"
+                                    value={newProduct.niveauCompatibilite || ''}
+                                    productType="pieces_auto"
+                                    fieldName="compatibilites"
+                                    onSelect={(value) => setNewProduct({ ...newProduct, niveauCompatibilite: value })}
+                                    placeholder="Ex: Universel"
+                                />
+                            </View>
+                        </View>
+
+                        {/* Référence et Compatibilité détaillée */}
+                        <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <Text style={styles.fieldLabel}>Référence constructeur</Text>
                                 <NativeInput
-                                    placeholder="Ex: REF-12345"
+                                    placeholder="Ex: OEM-12345, REF-ABC"
                                     value={newProduct.referenceAuto || ''}
                                     onChangeText={(text) => setNewProduct({ ...newProduct, referenceAuto: text })}
                                     style={styles.fieldInput}
                                 />
                             </View>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <Text style={styles.fieldLabel}>Année(s) compatible(s)</Text>
+                                <NativeInput
+                                    placeholder="Ex: 2015-2020"
+                                    value={newProduct.anneesCompatibles || ''}
+                                    onChangeText={(text) => setNewProduct({ ...newProduct, anneesCompatibles: text })}
+                                    style={styles.fieldInput}
+                                />
+                            </View>
                         </View>
 
+                        {/* Compatibilité détaillée (multi-lignes) */}
                         <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Compatibilité</Text>
+                            <Text style={styles.fieldLabel}>Compatibilité détaillée (optionnel)</Text>
                             <NativeInput
-                                placeholder="Ex: Toyota Camry 2015-2020"
-                                value={newProduct.compatibilite || ''}
-                                onChangeText={(text) => setNewProduct({ ...newProduct, compatibilite: text })}
+                                placeholder="Ex: Compatible Toyota Camry 2015-2020, Corolla 2017-2021"
+                                value={newProduct.compatibiliteDetaillee || ''}
+                                onChangeText={(text) => setNewProduct({ ...newProduct, compatibiliteDetaillee: text })}
                                 style={styles.fieldInput}
                                 multiline
+                                numberOfLines={3}
                             />
+                        </View>
+
+                        {/* ✅ SECTION 3 : CARACTÉRISTIQUES TECHNIQUES */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="settings" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>Caractéristiques techniques</Text>
+                        </View>
+
+                        {/* Matériau et Origine */}
+                        <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <SelectModalitySelector
+                                    label="Matériau"
+                                    value={newProduct.materiauPiece || ''}
+                                    productType="pieces_auto"
+                                    fieldName="materiaux"
+                                    onSelect={(value) => setNewProduct({ ...newProduct, materiauPiece: value })}
+                                    placeholder="Ex: Acier, Aluminium"
+                                />
+                            </View>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <SelectModalitySelector
+                                    label="Origine fabrication"
+                                    value={newProduct.originePiece || ''}
+                                    productType="pieces_auto"
+                                    fieldName="origines"
+                                    onSelect={(value) => setNewProduct({ ...newProduct, originePiece: value })}
+                                    placeholder="Ex: Origine Europe"
+                                />
+                            </View>
+                        </View>
+
+                        {/* ✅ SECTION 4 : QUALITÉ & GARANTIE */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="shield" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>Qualité & Garantie</Text>
+                        </View>
+
+                        {/* État et Garantie */}
+                        <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <SelectModalitySelector
+                                    label="État"
+                                    value={newProduct.etatPieceAuto || ''}
+                                    productType="pieces_auto"
+                                    fieldName="etats"
+                                    onSelect={(value) => setNewProduct({ ...newProduct, etatPieceAuto: value })}
+                                    required
+                                    placeholder="Ex: Neuf scellé"
+                                />
+                            </View>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <SelectModalitySelector
+                                    label="Garantie"
+                                    value={newProduct.garantiePiece || ''}
+                                    productType="pieces_auto"
+                                    fieldName="garanties"
+                                    onSelect={(value) => setNewProduct({ ...newProduct, garantiePiece: value })}
+                                    placeholder="Ex: Garantie 1 an"
+                                />
+                            </View>
+                        </View>
+
+                        {/* ✅ SECTION 5 : INFORMATIONS VENDEUR */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="user" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>Informations vendeur</Text>
+                        </View>
+
+                        {/* Type de fournisseur */}
+                        <View style={styles.fieldContainer}>
+                            <SelectModalitySelector
+                                label="Type de fournisseur"
+                                value={newProduct.typeFournisseur || ''}
+                                productType="pieces_auto"
+                                fieldName="fournisseurs_types"
+                                onSelect={(value) => setNewProduct({ ...newProduct, typeFournisseur: value })}
+                                placeholder="Ex: Magasin pièces détachées auto"
+                            />
+                        </View>
+
+                        {/* Message d'aide */}
+                        <View style={styles.hintBox}>
+                            <SafeIcon name="info" size={14} color={modernColors.primary} />
+                            <Text style={styles.hintText}>
+                                💡 Conseil : Remplissez le maximum d'informations (référence, compatibilité) pour faciliter la recherche par les acheteurs. Les pièces avec photos multiples se vendent 3x plus vite !
+                            </Text>
                         </View>
                     </>
                 );
@@ -8884,11 +15822,13 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <ProductFieldSelector
-                                    label="Application"
+                                    label="Application(s)"
                                     fieldName="applications"
                                     productType="pieces_industrielles"
                                     value={newProduct.applicationIndustrielle || ''}
                                     onSelect={(value) => setNewProduct({ ...newProduct, applicationIndustrielle: value })}
+                                    multiSelect={true}
+                                    maxSelections={10}
                                 />
                             </View>
                         </View>
@@ -8902,17 +15842,55 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 style={styles.fieldInput}
                             />
                         </View>
+
+                        <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="État"
+                                    fieldName="etats"
+                                    productType="pieces_industrielles"
+                                    value={newProduct.etatPieceIndustrielle || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, etatPieceIndustrielle: value })}
+                                />
+                            </View>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Garantie"
+                                    fieldName="garanties"
+                                    productType="pieces_industrielles"
+                                    value={newProduct.garantiePieceIndustrielle || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, garantiePieceIndustrielle: value })}
+                                />
+                            </View>
+                        </View>
+
+                        <View style={styles.fieldContainer}>
+                            <ProductFieldSelector
+                                label="Norme / Certification (optionnel)"
+                                fieldName="normes"
+                                productType="pieces_industrielles"
+                                value={newProduct.normePieceIndustrielle || ''}
+                                onSelect={(value) => setNewProduct({ ...newProduct, normePieceIndustrielle: value })}
+                            />
+                        </View>
                     </>
                 );
 
             case 'jouets_enfants':
                 return (
                     <>
+                        {/* Titre de section : Informations principales */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="gift" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>Informations principales</Text>
+                        </View>
+
+                        {/* Type de jouet et Âge */}
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <ProductFieldSelector
                                     label="Type de jouet"
-                                    fieldName="types"
+                                    fieldName="types_jouets"
                                     productType="jouets_enfants"
                                     value={newProduct.typeJouet || ''}
                                     onSelect={(value) => setNewProduct({ ...newProduct, typeJouet: value })}
@@ -8920,17 +15898,18 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Âge recommandé (années)</Text>
-                                <NativeInput
-                                    placeholder="Ex: 5"
-                                    value={newProduct.ageJouet || ''}
-                                    onChangeText={(text) => setNewProduct({ ...newProduct, ageJouet: text })}
-                                    style={styles.fieldInput}
-                                    keyboardType="numeric"
+                                <ProductFieldSelector
+                                    label="Âge recommandé"
+                                    fieldName="ages_recommandes"
+                                    productType="jouets_enfants"
+                                    value={newProduct.ageRecommande || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, ageRecommande: value })}
+                                    required
                                 />
                             </View>
                         </View>
 
+                        {/* Marque et Genre */}
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <ProductFieldSelector
@@ -8943,13 +15922,195 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <ProductFieldSelector
-                                    label="Matériau"
+                                    label="Genre"
+                                    fieldName="genre"
+                                    productType="jouets_enfants"
+                                    value={newProduct.genreJouet || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, genreJouet: value })}
+                                />
+                            </View>
+                        </View>
+
+                        {/* État et Emballage */}
+                        <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="État du produit"
+                                    fieldName="etat"
+                                    productType="jouets_enfants"
+                                    value={newProduct.etatJouet || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, etatJouet: value })}
+                                    required
+                                />
+                            </View>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Emballage"
+                                    fieldName="emballage"
+                                    productType="jouets_enfants"
+                                    value={newProduct.emballageJouet || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, emballageJouet: value })}
+                                />
+                            </View>
+                        </View>
+
+                        {/* Titre de section : Caractéristiques */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="star" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>Caractéristiques</Text>
+                        </View>
+
+                        {/* Matériau et Couleurs principales */}
+                        <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Matériau principal"
                                     fieldName="materiaux"
                                     productType="jouets_enfants"
                                     value={newProduct.materiauJouet || ''}
                                     onSelect={(value) => setNewProduct({ ...newProduct, materiauJouet: value })}
                                 />
                             </View>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Couleurs principales"
+                                    fieldName="couleurs"
+                                    productType="jouets_enfants"
+                                    value={newProduct.couleursJouet || []}
+                                    onSelect={(values) => setNewProduct({ ...newProduct, couleursJouet: values })}
+                                    multiSelect={true}
+                                    maxSelections={3}
+                                />
+                            </View>
+                        </View>
+
+                        {/* Alimentation et Lieu d'utilisation */}
+                        <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Alimentation/Énergie"
+                                    fieldName="alimentation"
+                                    productType="jouets_enfants"
+                                    value={newProduct.alimentationJouet || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, alimentationJouet: value })}
+                                />
+                            </View>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Lieu d'utilisation"
+                                    fieldName="lieu_utilisation"
+                                    productType="jouets_enfants"
+                                    value={newProduct.lieuUtilisation || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, lieuUtilisation: value })}
+                                />
+                            </View>
+                        </View>
+
+                        {/* Fonctionnalités - Multi-select */}
+                        <View style={styles.fieldContainer}>
+                            <ProductFieldSelector
+                                label="Fonctionnalités"
+                                fieldName="fonctionnalites"
+                                productType="jouets_enfants"
+                                value={newProduct.fonctionnalitesJouet || []}
+                                onSelect={(values) => setNewProduct({ ...newProduct, fonctionnalitesJouet: values })}
+                                multiSelect={true}
+                                maxSelections={5}
+                            />
+                        </View>
+
+                        {/* Titre de section : Éducatif & Sécurité */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="shield" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>Éducatif & Sécurité</Text>
+                        </View>
+
+                        {/* Catégories éducatives - Multi-select */}
+                        <View style={styles.fieldContainer}>
+                            <ProductFieldSelector
+                                label="Catégories éducatives"
+                                fieldName="categories_educatives"
+                                productType="jouets_enfants"
+                                value={newProduct.categoriesEducatives || []}
+                                onSelect={(values) => setNewProduct({ ...newProduct, categoriesEducatives: values })}
+                                multiSelect={true}
+                                maxSelections={4}
+                            />
+                        </View>
+
+                        {/* Normes de sécurité - Multi-select */}
+                        <View style={styles.fieldContainer}>
+                            <ProductFieldSelector
+                                label="Normes de sécurité"
+                                fieldName="normes_securite"
+                                productType="jouets_enfants"
+                                value={newProduct.normesSecurite || []}
+                                onSelect={(values) => setNewProduct({ ...newProduct, normesSecurite: values })}
+                                multiSelect={true}
+                                maxSelections={5}
+                            />
+                        </View>
+
+                        {/* Titre de section : Jeux de société (si applicable) */}
+                        {(newProduct.typeJouet === 'Jeu de société' || newProduct.typeJouet === 'Jeu de cartes' || newProduct.typeJouet === 'Puzzle') && (
+                            <>
+                                <View style={styles.sectionHeader}>
+                                    <SafeIcon name="users" size={20} color={modernColors.primary} />
+                                    <Text style={styles.sectionTitle}>Informations jeu</Text>
+                                </View>
+
+                                {/* Nombre de joueurs et Durée */}
+                                <View style={styles.fieldRow}>
+                                    <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                        <ProductFieldSelector
+                                            label="Nombre de joueurs"
+                                            fieldName="nombre_joueurs"
+                                            productType="jouets_enfants"
+                                            value={newProduct.nombreJoueurs || ''}
+                                            onSelect={(value) => setNewProduct({ ...newProduct, nombreJoueurs: value })}
+                                        />
+                                    </View>
+                                    <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                        <ProductFieldSelector
+                                            label="Durée de jeu"
+                                            fieldName="duree_jeu"
+                                            productType="jouets_enfants"
+                                            value={newProduct.dureeJeu || ''}
+                                            onSelect={(value) => setNewProduct({ ...newProduct, dureeJeu: value })}
+                                        />
+                                    </View>
+                                </View>
+                            </>
+                        )}
+
+                        {/* Titre de section : Informations complémentaires */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="info" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>Informations complémentaires</Text>
+                        </View>
+
+                        {/* Accessoires inclus - Multi-select */}
+                        <View style={styles.fieldContainer}>
+                            <ProductFieldSelector
+                                label="Accessoires inclus"
+                                fieldName="accessoires_inclus"
+                                productType="jouets_enfants"
+                                value={newProduct.accessoiresInclus || []}
+                                onSelect={(values) => setNewProduct({ ...newProduct, accessoiresInclus: values })}
+                                multiSelect={true}
+                                maxSelections={6}
+                            />
+                        </View>
+
+                        {/* Garantie */}
+                        <View style={styles.fieldContainer}>
+                            <ProductFieldSelector
+                                label="Garantie"
+                                fieldName="garantie"
+                                productType="jouets_enfants"
+                                value={newProduct.garantieJouet || ''}
+                                onSelect={(value) => setNewProduct({ ...newProduct, garantieJouet: value })}
+                            />
                         </View>
                     </>
                 );
@@ -8957,7 +16118,38 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
             case 'ustensiles_cuisine':
                 return (
                     <>
+                        {/* ========== SECTION 1: IDENTIFICATION DU PRODUIT ========== */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="coffee" size={20} color="#FF5722" />
+                            <Text style={styles.sectionTitle}>Identification du produit</Text>
+                        </View>
+
+                        {/* Nom du produit */}
+                        <View style={styles.fieldContainer}>
+                            <ProductFieldSelector
+                                label="Nom du produit"
+                                fieldName="noms_produits"
+                                productType="ustensiles_cuisine"
+                                value={newProduct.nomProduitUstensile || ''}
+                                onSelect={(value) => setNewProduct({ ...newProduct, nomProduitUstensile: value })}
+                                required
+                            />
+                            <Text style={styles.fieldHint}>
+                                💡 100+ ustensiles : Mortier et pilon, Canari, Batterie de cuisine, Casseroles, Poêles, Mixeur...
+                            </Text>
+                        </View>
+
+                        {/* Catégorie + Type */}
                         <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Catégorie"
+                                    fieldName="categories"
+                                    productType="ustensiles_cuisine"
+                                    value={newProduct.categorieUstensile || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, categorieUstensile: value })}
+                                />
+                            </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <ProductFieldSelector
                                     label="Type d'ustensile"
@@ -8968,6 +16160,16 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                     required
                                 />
                             </View>
+                        </View>
+
+                        {/* ========== SECTION 2: CARACTÉRISTIQUES TECHNIQUES ========== */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="settings" size={20} color="#FF5722" />
+                            <Text style={styles.sectionTitle}>Caractéristiques techniques</Text>
+                        </View>
+
+                        {/* Matériau + Capacité */}
+                        <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <ProductFieldSelector
                                     label="Matériau"
@@ -8975,10 +16177,21 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                     productType="ustensiles_cuisine"
                                     value={newProduct.materiauUstensile || ''}
                                     onSelect={(value) => setNewProduct({ ...newProduct, materiauUstensile: value })}
+                                    required
+                                />
+                            </View>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Capacité / Taille"
+                                    fieldName="capacites"
+                                    productType="ustensiles_cuisine"
+                                    value={newProduct.capaciteUstensile || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, capaciteUstensile: value })}
                                 />
                             </View>
                         </View>
 
+                        {/* Marque + État */}
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
                                 <ProductFieldSelector
@@ -8990,14 +16203,272 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 />
                             </View>
                             <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                <Text style={styles.fieldLabel}>Capacité</Text>
+                                <ProductFieldSelector
+                                    label="État"
+                                    fieldName="etats"
+                                    productType="ustensiles_cuisine"
+                                    value={newProduct.etatUstensile || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, etatUstensile: value })}
+                                    required
+                                />
+                            </View>
+                        </View>
+
+                        {/* Nombre de pièces + Usage */}
+                        <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Nombre de pièces"
+                                    fieldName="pieces_dans_set"
+                                    productType="ustensiles_cuisine"
+                                    value={newProduct.piecesDansSet || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, piecesDansSet: value })}
+                                />
+                            </View>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Usage"
+                                    fieldName="usages"
+                                    productType="ustensiles_cuisine"
+                                    value={newProduct.usageUstensile || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, usageUstensile: value })}
+                                />
+                            </View>
+                        </View>
+
+                        {/* Compatibilités (multi-select) */}
+                        <View style={styles.fieldContainer}>
+                            <MultiSelectModalitySelector
+                                label="Compatibilités (feux de cuisson)"
+                                fieldName="compatibilites"
+                                productType="ustensiles_cuisine"
+                                selectedValues={newProduct.compatibiliteUstensile || []}
+                                onSelectionChange={(values) => setNewProduct({ ...newProduct, compatibiliteUstensile: values })}
+                            />
+                            <Text style={styles.fieldHint}>
+                                💡 Ex: Tous feux, Gaz, Induction, Four, Micro-ondes, Lave-vaisselle...
+                            </Text>
+                        </View>
+
+                        {/* Message d'encouragement contextualisé */}
+                        <View style={styles.encouragementBox}>
+                            <Text style={styles.encouragementIcon}>🍴</Text>
+                            <Text style={styles.encouragementText}>
+                                {newProduct.categorieUstensile?.includes('traditionnel')
+                                    ? '🌍 Excellent ! Les ustensiles traditionnels africains (mortier, canari, calebasse) sont très recherchés pour la cuisine authentique !'
+                                    : newProduct.categorieUstensile?.includes('Batteries')
+                                        ? '🍳 Super ! Les batteries de cuisine complètes sont très prisées par les ménages et nouveaux mariés !'
+                                        : newProduct.usageUstensile?.includes('Professionnel')
+                                            ? '👨‍🍳 Parfait ! Les ustensiles professionnels sont essentiels pour les restaurants et maquis !'
+                                            : '✨ Ajoutez des photos claires pour montrer la qualité de vos ustensiles !'}
+                            </Text>
+                        </View>
+                    </>
+                );
+
+            case 'demenagement':
+                return (
+                    <>
+                        {/* ========== SECTION 1: TYPE DE DÉMÉNAGEMENT ========== */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="truck" size={20} color="#F97316" />
+                            <Text style={styles.sectionTitle}>Type de déménagement</Text>
+                        </View>
+
+                        <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Type de déménagement"
+                                    fieldName="types"
+                                    productType="demenagement"
+                                    value={newProduct.typeDemenagement || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, typeDemenagement: value })}
+                                    required
+                                />
+                            </View>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Volume à déménager"
+                                    fieldName="volumes"
+                                    productType="demenagement"
+                                    value={newProduct.volumeDemenagement || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, volumeDemenagement: value })}
+                                    required
+                                />
+                            </View>
+                        </View>
+
+                        {/* ========== SECTION 2: TRAJET & DISTANCE ========== */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="map-pin" size={20} color="#F97316" />
+                            <Text style={styles.sectionTitle}>Trajet et distance</Text>
+                        </View>
+
+                        <View style={styles.fieldContainer}>
+                            <ProductFieldSelector
+                                label="Trajet populaire (optionnel)"
+                                fieldName="trajets_populaires"
+                                productType="demenagement"
+                                value={newProduct.trajetDemenagement || ''}
+                                onSelect={(value) => setNewProduct({ ...newProduct, trajetDemenagement: value })}
+                            />
+                        </View>
+
+                        <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Ville de départ"
+                                    fieldName="villes_cameroun"
+                                    productType="demenagement"
+                                    value={newProduct.villeDepartDemenagement || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, villeDepartDemenagement: value })}
+                                    required
+                                />
+                            </View>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Ville d'arrivée"
+                                    fieldName="villes_cameroun"
+                                    productType="demenagement"
+                                    value={newProduct.villeArriveeDemenagement || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, villeArriveeDemenagement: value })}
+                                    required
+                                />
+                            </View>
+                        </View>
+
+                        <View style={styles.fieldContainer}>
+                            <ProductFieldSelector
+                                label="Distance approximative"
+                                fieldName="distances"
+                                productType="demenagement"
+                                value={newProduct.distanceDemenagement || ''}
+                                onSelect={(value) => setNewProduct({ ...newProduct, distanceDemenagement: value })}
+                                required
+                            />
+                        </View>
+
+                        {/* ========== SECTION 3: VÉHICULE & ÉQUIPE ========== */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="users" size={20} color="#F97316" />
+                            <Text style={styles.sectionTitle}>Véhicule et équipe</Text>
+                        </View>
+
+                        <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Type de véhicule"
+                                    fieldName="vehicules"
+                                    productType="demenagement"
+                                    value={newProduct.typeVehiculeDemenagement || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, typeVehiculeDemenagement: value })}
+                                    required
+                                />
+                            </View>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Nombre de déménageurs"
+                                    fieldName="nb_demenageurs"
+                                    productType="demenagement"
+                                    value={newProduct.nbDemenageurs || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, nbDemenageurs: value })}
+                                    required
+                                />
+                            </View>
+                        </View>
+
+                        <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Durée estimée"
+                                    fieldName="durees"
+                                    productType="demenagement"
+                                    value={newProduct.dureeDemenagement || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, dureeDemenagement: value })}
+                                />
+                            </View>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Compagnie de déménagement"
+                                    fieldName="compagnies_demenagement"
+                                    productType="demenagement"
+                                    value={newProduct.compagnieDemenagement || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, compagnieDemenagement: value })}
+                                />
+                            </View>
+                        </View>
+
+                        {/* ========== SECTION 4: SERVICES INCLUS ========== */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="package" size={20} color="#F97316" />
+                            <Text style={styles.sectionTitle}>Services inclus</Text>
+                        </View>
+
+                        <View style={styles.fieldContainer}>
+                            <ProductFieldSelector
+                                label="Services proposés"
+                                fieldName="services"
+                                productType="demenagement"
+                                value={newProduct.servicesDemenagement || []}
+                                onSelect={(values) => setNewProduct({ ...newProduct, servicesDemenagement: values })}
+                                multiSelect={true}
+                                maxSelections={8}
+                            />
+                        </View>
+
+                        <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Type d'assurance"
+                                    fieldName="types_assurance"
+                                    productType="demenagement"
+                                    value={newProduct.typeAssuranceDemenagement || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, typeAssuranceDemenagement: value })}
+                                />
+                            </View>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Accessibilité"
+                                    fieldName="etages"
+                                    productType="demenagement"
+                                    value={newProduct.accessibiliteDemenagement || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, accessibiliteDemenagement: value })}
+                                />
+                            </View>
+                        </View>
+
+                        {/* ========== SECTION 5: DISPONIBILITÉ ========== */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="calendar" size={20} color="#F97316" />
+                            <Text style={styles.sectionTitle}>Disponibilité</Text>
+                        </View>
+
+                        <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <ProductFieldSelector
+                                    label="Disponibilité"
+                                    fieldName="disponibilites"
+                                    productType="demenagement"
+                                    value={newProduct.disponibiliteDemenagement || ''}
+                                    onSelect={(value) => setNewProduct({ ...newProduct, disponibiliteDemenagement: value })}
+                                />
+                            </View>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <Text style={styles.fieldLabel}>Date souhaitée</Text>
                                 <NativeInput
-                                    placeholder="Ex: 2L, 5L"
-                                    value={newProduct.capaciteUstensile || ''}
-                                    onChangeText={(text) => setNewProduct({ ...newProduct, capaciteUstensile: text })}
+                                    placeholder="JJ/MM/AAAA"
+                                    value={newProduct.dateDebut || ''}
+                                    onChangeText={(text) => setNewProduct({ ...newProduct, dateDebut: text })}
                                     style={styles.fieldInput}
                                 />
                             </View>
+                        </View>
+
+                        <View style={styles.hintBox}>
+                            <SafeIcon name="info" size={16} color="#F97316" />
+                            <Text style={styles.hintText}>
+                                🚚 Précisez le volume, la distance et les services pour un devis adapté !
+                            </Text>
                         </View>
                     </>
                 );
@@ -9378,13 +16849,13 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                                     {/* Section Médias */}
                                     <View style={styles.mediaSectionContainer}>
-                                        <Text style={styles.sectionTitle}>📸 Images du produit</Text>
+                                        <Text style={styles.sectionTitle}>📸 Images principales du produit</Text>
 
                                         {/* Message descriptif incitatif */}
                                         <View style={styles.mediaHintContainer}>
                                             <SafeIcon name="info" size={16} color={modernColors.info} />
                                             <Text style={styles.mediaHintText}>
-                                                💡 Ajoutez des photos de qualité pour attirer plus de clients ! Montrez votre produit sous tous les angles.
+                                                💡 <Text style={styles.boldText}>Images principales</Text> : Photos générales du produit (différentes des images spécifiques aux variantes). Montrez votre produit sous tous les angles.
                                             </Text>
                                         </View>
 
@@ -9942,7 +17413,7 @@ const styles = StyleSheet.create({
         marginHorizontal: 12,
     },
     fieldContainer: {
-        marginBottom: 16,
+        marginBottom: 12, // ✅ Réduit de 16 à 12 pour meilleure compacité
     },
     fieldRow: {
         flexDirection: 'row',
@@ -10840,6 +18311,27 @@ const styles = StyleSheet.create({
     dayButtonTextActive: {
         color: '#FFFFFF',
     },
+    // ✅ NOUVEAU: Style pour bouton "Sélectionner tous les jours"
+    selectAllButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+        padding: 12,
+        backgroundColor: '#F9FAFB',
+        borderWidth: 1,
+        borderColor: modernColors.border,
+        borderRadius: 8,
+        marginTop: 8,
+        marginBottom: 12,
+    },
+    selectAllText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: modernColors.textSecondary,
+    },
+    selectAllTextActive: {
+        color: modernColors.primary,
+    },
     // ✅ AMÉLIORATION: Grille de devises (toutes sur la même ligne)
     deviseGridContainer: {
         flexDirection: 'row',
@@ -10850,7 +18342,8 @@ const styles = StyleSheet.create({
     },
     deviseButtonGrid: {
         flex: 1, // ✅ Chaque devise prend espace égal
-        paddingHorizontal: 10, // ✅ Réduit de 12 à 10
+        minWidth: 60, // ✅ NOUVEAU: Largeur minimale pour éviter le texte coupé
+        paddingHorizontal: 14, // ✅ Augmenté pour plus d'espace
         paddingVertical: 10, // ✅ Augmenté pour meilleure cible tactile
         borderRadius: 10, // ✅ Plus arrondi pour modernité
         backgroundColor: '#F3F4F6',
@@ -10946,6 +18439,10 @@ const styles = StyleSheet.create({
         lineHeight: 16,
         fontWeight: '500',
     },
+    boldText: {
+        fontWeight: '700',
+        color: '#1E40AF',
+    },
 
     // Styles Immobilier
     sectionHeader: {
@@ -10990,6 +18487,19 @@ const styles = StyleSheet.create({
         color: modernColors.primary,
         fontWeight: '600',
     },
+    toggleHint: {
+        fontSize: 11,
+        color: modernColors.textSecondary,
+        marginTop: 4,
+        marginLeft: 32,
+        fontStyle: 'italic',
+    },
+    fieldHint: {
+        fontSize: 11,
+        color: modernColors.textSecondary,
+        marginTop: 4,
+        fontStyle: 'italic',
+    },
     equipementsScrollContainer: {
         flexDirection: 'row',
         flexWrap: 'wrap',
@@ -11020,4 +18530,13 @@ const styles = StyleSheet.create({
 });
 
 export default ProductManagerMobile;
+
+
+
+
+
+
+
+
+
 

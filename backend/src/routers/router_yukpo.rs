@@ -32,6 +32,7 @@ use crate::{
     services::creer_service,
     state::AppState,
     middlewares::{request_size_limit, hide_headers, rate_limit, monitoring, audit_log, jwt::jwt_auth, check_tokens::check_tokens, service_interaction::track_service_interaction},
+    routers::router_modalities,
 };
 use crate::models::input_model::MultiModalInput;
 use axum::response::IntoResponse;
@@ -180,6 +181,16 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route("/api/publicites/track-click", post(publicite_controller::track_publicite_click))
         .route("/api/publicites/track-view", post(publicite_controller::track_publicite_view));
     
+    // Routes pour product_modalities (modalités réutilisables)
+    let modality_routes = Router::new()
+        .route("/api/modalities/custom", get(router_modalities::get_custom_modalities))
+        .route("/api/modalities/custom", post(router_modalities::create_custom_modality)
+            .layer(axum::middleware::from_fn_with_state(state.clone(), jwt_auth)))
+        .route("/api/modalities/usage", post(router_modalities::increment_modality_usage))
+        .route("/api/modalities/popular", get(router_modalities::get_popular_modalities))
+        .route("/api/modalities/{id}", delete(router_modalities::delete_modality)
+            .layer(axum::middleware::from_fn_with_state(state.clone(), jwt_auth)));
+    
     // Combinaison des routes
     public_routes
         .merge(protected_routes)
@@ -190,6 +201,7 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .merge(service_team_routes_merged)
         .merge(image_search_routes_merged)
         .merge(publicite_routes_inline)
+        .merge(modality_routes)
         .with_state(state)
 }
 
@@ -214,11 +226,12 @@ async fn handle_direct_search(
     
     log_info(&format!("[DIRECT_SEARCH] Contenu: texte={}, images={}", has_text, has_images));
     
-    // ✅ NOUVELLE LOGIQUE: Si image présente (avec ou sans texte), utiliser analyse IA
+    // ✅ NOUVELLE LOGIQUE: Si image présente (avec ou sans texte), utiliser recherche HYBRIDE
     if has_images {
+        use crate::services::hybrid_image_search_service::HybridImageSearchService;
         use crate::services::intelligent_image_analysis_service::IntelligentImageAnalysisService;
         
-        log_info("[DIRECT_SEARCH] 🖼️ Image détectée - Analyse IA activée");
+        log_info("[DIRECT_SEARCH] 🖼️ Image détectée - Recherche HYBRIDE activée");
         
         let images = input.base64_image.as_ref().unwrap();
         let first_image = &images[0];
@@ -266,175 +279,152 @@ async fn handle_direct_search(
                     return Ok(Json(response));
                 }
                 
-                // 2️⃣ Analyser l'image avec IA multi-modèles
-                log_info("[DIRECT_SEARCH] Analyse IA de l'image...");
+                // 2️⃣ Recherche HYBRIDE: Analyse + Matching + Stockage
+                log_info("[DIRECT_SEARCH] ⚡ Lancement recherche hybride multi-critères...");
                 
-                let analysis_result = IntelligentImageAnalysisService::analyze_image_multimodel(
+                // Extraire GPS si disponible
+                let (gps_lat, gps_lng) = if let Some(gps_str) = input.gps_mobile.as_deref() {
+                    let coords: Vec<&str> = gps_str.split(',').collect();
+                    if coords.len() == 2 {
+                        (
+                            coords[0].trim().parse::<f64>().ok(),
+                            coords[1].trim().parse::<f64>().ok()
+                        )
+                    } else {
+                        (None, None)
+                    }
+                } else {
+                    (None, None)
+                };
+                
+                let hybrid_service = HybridImageSearchService::new(_state.pg.clone());
+                
+                let analysis_result = hybrid_service.search_by_image(
                     &_state.ia,
                     &image_base64,
+                    user.id,
                     None,  // Catégorie auto-détectée
-                    true   // Mode recherche
+                    gps_lat,
+                    gps_lng,
+                    Some(50),  // Rayon 50km
+                    20   // Max 20 résultats
                 ).await;
                 
                 match analysis_result {
-                    Ok((analysis, ai_cost)) => {
+                    Ok((hybrid_results, analysis, ai_cost)) => {
+                        let results_count = hybrid_results.len();
+                        
                         log_info(&format!(
-                            "[DIRECT_SEARCH] ✅ Analyse IA réussie: '{}' (confiance: {}, tokens: {})",
+                            "[DIRECT_SEARCH] ✅ Recherche hybride réussie: {} résultats trouvés",
+                            results_count
+                        ));
+                        log_info(&format!(
+                            "[DIRECT_SEARCH] 📊 Analyse: '{}' (confiance: {:.2}, tokens: {})",
                             &analysis.description.chars().take(50).collect::<String>(),
                             analysis.confiance,
                             ai_cost.total_tokens
                         ));
+                        log_info(&format!(
+                            "[DIRECT_SEARCH] 🎯 Queries générées:\n  - Exact: '{}'\n  - Broad: '{}'\n  - Semantic: '{}'",
+                            &analysis.search_query_exact.chars().take(40).collect::<String>(),
+                            &analysis.search_query_broad.chars().take(60).collect::<String>(),
+                            &analysis.search_query_semantic.chars().take(80).collect::<String>()
+                        ));
                         
-                        // 3️⃣ Rechercher avec l'analyse IA + GPS
-                        let gps_zone = input.gps_mobile.as_deref();
-                        let search_radius_km = Some(50);
+                        // 3️⃣ FACTURATION CONDITIONNELLE (seulement si résultats trouvés)
+                        let mut billing_info = serde_json::json!({
+                            "charged": false,
+                            "amount": 0,
+                            "currency": user_devise,
+                            "ai_cost_usd": ai_cost.cost_usd,
+                            "ai_tokens": ai_cost.total_tokens,
+                            "results_found": results_count
+                        });
                         
-                        // Extraire lat/lng si GPS disponible
-                        let (gps_lat, gps_lng) = if let Some(gps_str) = gps_zone {
-                            let coords: Vec<&str> = gps_str.split(',').collect();
-                            if coords.len() == 2 {
-                                (
-                                    coords[0].trim().parse::<f64>().ok(),
-                                    coords[1].trim().parse::<f64>().ok()
-                                )
-                            } else {
-                                (None, None)
+                        if results_count > 0 {
+                            let user_cost = IntelligentImageAnalysisService::calculate_user_cost(
+                                &ai_cost,
+                                &user_devise
+                            );
+                            
+                            // Débiter le solde
+                            let debit_result = sqlx::query(
+                                "UPDATE users SET credits = credits - $1 WHERE id = $2 AND credits >= $1 RETURNING credits"
+                            )
+                            .bind(user_cost)
+                            .bind(user.id)
+                            .fetch_optional(&_state.pg)
+                            .await;
+                            
+                            match debit_result {
+                                Ok(Some(updated_row)) => {
+                                    let new_balance: i64 = updated_row.try_get("credits").unwrap_or(0);
+                                    billing_info["charged"] = json!(true);
+                                    billing_info["amount"] = json!(user_cost);
+                                    billing_info["new_balance"] = json!(new_balance);
+                                    billing_info["message"] = json!(format!(
+                                        "{} résultats trouvés - {} {} débités",
+                                        results_count, user_cost, user_devise
+                                    ));
+                                    
+                                    log_info(&format!(
+                                        "[DIRECT_SEARCH] 💰 User {} facturé {} {} ({} résultats)",
+                                        user.id, user_cost, user_devise, results_count
+                                    ));
+                                },
+                                Ok(None) => {
+                                    billing_info["error"] = json!("Solde insuffisant");
+                                },
+                                Err(e) => {
+                                    log_error(&format!("[DIRECT_SEARCH] Erreur débit: {}", e));
+                                    billing_info["error"] = json!(format!("Erreur: {}", e));
+                                }
                             }
                         } else {
-                            (None, None)
-                        };
-                        
-                        // Utiliser sqlx::query() pour compatibilité offline
-                        let search_results = sqlx::query(
-                            r#"SELECT * FROM search_images_by_ai_analysis(
-                                $1::TEXT,
-                                $2::TEXT[],
-                                $3::TEXT,
-                                $4::TEXT,
-                                $5::TEXT,
-                                $6::FLOAT,
-                                $7::FLOAT,
-                                $8::INTEGER,
-                                $9::INTEGER
-                            )"#
-                        )
-                        .bind(&analysis.search_query)
-                        .bind(&analysis.tags)
-                        .bind(analysis.category_detected.as_str())
-                        .bind(analysis.marque.as_deref())
-                        .bind(analysis.couleurs.first().map(|s| s.as_str()))
-                        .bind(gps_lat)
-                        .bind(gps_lng)
-                        .bind(search_radius_km.unwrap_or(50) as i32)
-                        .bind(20i32)
-                        .fetch_all(&_state.pg)
-                        .await;
-                        
-                        match search_results {
-                            Ok(rows) => {
-                                use sqlx::Row;
-                                
-                                let results_count = rows.len();
-                                log_info(&format!("[DIRECT_SEARCH] Trouvé {} résultats", results_count));
-                                
-                                // 4️⃣ FACTURATION CONDITIONNELLE
-                                let mut billing_info = serde_json::json!({
-                                    "charged": false,
-                                    "amount": 0,
-                                    "currency": user_devise,
-                                    "ai_cost_usd": ai_cost.cost_usd,
-                                    "ai_tokens": ai_cost.total_tokens,
-                                    "results_found": results_count
-                                });
-                                
-                                // Facturer UNIQUEMENT si résultats trouvés
-                                if results_count > 0 {
-                                    let user_cost = IntelligentImageAnalysisService::calculate_user_cost(
-                                        &ai_cost,
-                                        &user_devise
-                                    );
-                                    
-                                    // Débiter le solde (sqlx::query pour offline)
-                                    let debit_result = sqlx::query(
-                                        "UPDATE users SET credits = credits - $1 WHERE id = $2 AND credits >= $1 RETURNING credits"
-                                    )
-                                    .bind(user_cost)
-                                    .bind(user.id)
-                                    .fetch_optional(&_state.pg)
-                                    .await;
-                                    
-                                    match debit_result {
-                                        Ok(Some(updated_row)) => {
-                                            let new_balance: i64 = updated_row.try_get("credits").unwrap_or(0);
-                                            billing_info["charged"] = json!(true);
-                                            billing_info["amount"] = json!(user_cost);
-                                            billing_info["new_balance"] = json!(new_balance);
-                                            billing_info["message"] = json!(format!(
-                                                "{} résultats trouvés - {} {} débités",
-                                                results_count, user_cost, user_devise
-                                            ));
-                                            
-                                            log_info(&format!(
-                                                "[DIRECT_SEARCH] User {} facturé {} {} ({} résultats)",
-                                                user.id, user_cost, user_devise, results_count
-                                            ));
-                                        },
-                                        Ok(None) => {
-                                            // Solde insuffisant au moment du débit
-                                            billing_info["error"] = json!("Solde insuffisant au moment du débit");
-                                        },
-                                        Err(e) => {
-                                            log_error(&format!("[DIRECT_SEARCH] Erreur débit: {}", e));
-                                            billing_info["error"] = json!(format!("Erreur débit: {}", e));
-                                        }
-                                    }
-                                } else {
-                                    billing_info["message"] = json!("Aucun résultat - Recherche gratuite");
-                                    log_info(&format!("[DIRECT_SEARCH] User {} NON facturé (0 résultat)", user.id));
-                                }
-                                
-                                // 5️⃣ Construire la réponse (extraire manuellement les champs)
-                                let results_json: Vec<Value> = rows.iter().map(|row| {
-                                    json!({
-                                        "service_id": row.try_get::<i32, _>("service_id").ok(),
-                                        "data": row.try_get::<Value, _>("service_data").ok(),
-                                        "product_name": row.try_get::<String, _>("product_name").ok(),
-                                        "match_score": row.try_get::<f64, _>("match_score").ok(),
-                                        "distance_km": row.try_get::<Option<f64>, _>("distance_km").ok().flatten(),
-                                        "media_path": row.try_get::<String, _>("media_path").ok(),
-                                        "ai_description": row.try_get::<Option<String>, _>("ai_description").ok().flatten(),
-                                    })
-                                }).collect();
-                                
-                                let response = serde_json::json!({
-                                    "status": "success",
-                                    "intention": "recherche_besoin",
-                                    "resultats": results_json,
-                                    "tokens_consumed": ai_cost.total_tokens,
-                                    "message": format!("Recherche par image: {} résultats", results_count),
-                                    "search_method": "image_ai",
-                                    "image_analysis": {
-                                        "description": analysis.description,
-                                        "tags": analysis.tags,
-                                        "category": analysis.category_detected,
-                                        "marque": analysis.marque,
-                                        "couleurs": analysis.couleurs,
-                                        "confiance": analysis.confiance,
-                                        "search_query": analysis.search_query,
-                                        "model_used": ai_cost.model_used
-                                    },
-                                    "billing": billing_info,
-                                    "gps_filtered": gps_zone.is_some(),
-                                    "search_radius_km": search_radius_km
-                                });
-                                
-                                return Ok(Json(response));
-                            },
-                            Err(e) => {
-                                log_error(&format!("[DIRECT_SEARCH] Erreur recherche SQL: {}", e));
-                                // Continuer vers recherche textuelle en fallback
-                            }
+                            billing_info["message"] = json!("Aucun résultat - Recherche gratuite");
+                            log_info(&format!("[DIRECT_SEARCH] 🆓 User {} NON facturé (0 résultat)", user.id));
                         }
+                        
+                        // 4️⃣ Construire la réponse avec résultats hybrides
+                        let results_json: Vec<Value> = hybrid_results.iter().map(|result| {
+                            json!({
+                                "service_id": result.service_id,
+                                "data": result.service_data,
+                                "product_description": result.product_description,
+                                "product_tags": result.product_tags,
+                                "product_marque": result.product_marque,
+                                "match_score": result.match_score,
+                                "distance_km": result.distance_km,
+                                "media_id": result.media_id,
+                                "analysis_id": result.analysis_id,
+                            })
+                        }).collect();
+                        
+                        let response = serde_json::json!({
+                            "status": "success",
+                            "intention": "recherche_besoin",
+                            "resultats": results_json,
+                            "tokens_consumed": ai_cost.total_tokens,
+                            "message": format!("Recherche hybride par image: {} résultats", results_count),
+                            "search_method": "hybrid_image_ai",
+                            "image_analysis": {
+                                "description": analysis.description,
+                                "tags": analysis.tags,
+                                "category": analysis.category_detected,
+                                "marque": analysis.marque,
+                                "couleurs": analysis.couleurs,
+                                "confiance": analysis.confiance,
+                                "search_query_exact": analysis.search_query_exact,
+                                "search_query_broad": analysis.search_query_broad,
+                                "search_query_semantic": analysis.search_query_semantic,
+                                "model_used": ai_cost.model_used
+                            },
+                            "billing": billing_info,
+                            "gps_filtered": gps_lat.is_some() && gps_lng.is_some(),
+                            "search_radius_km": 50
+                        });
+                        
+                        return Ok(Json(response));
                     },
                     Err(e) => {
                         log_error(&format!("[DIRECT_SEARCH] Erreur analyse IA: {:?}", e));

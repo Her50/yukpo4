@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
+    FlatList,
     Linking,
     RefreshControl,
     ScrollView,
@@ -17,11 +18,13 @@ import BusSeatSelector from '../components/BusSeatSelector';
 import CategoryFilters from '../components/CategoryFilters';
 import ChatModalMobile from '../components/ChatModalMobile';
 import ProductCard from '../components/ProductCard';
+import ProductCardErrorBoundary from '../components/ProductCardErrorBoundary';
+import ProductCardSkeleton from '../components/ProductCardSkeleton';
 import SafeIcon from '../components/SafeIcon';
 import SearchBar from '../components/SearchBar';
 import ServiceGalleryModal from '../components/ServiceGalleryModal';
 import UltraModernServiceCard from '../components/UltraModernServiceCard';
-import { getCategoryConfig, getCategoryStyle, getCategoryTerminology } from '../config/categoryConfig';
+import { categorySupportsVariants, getCategoryConfig, getCategoryStyle, getCategoryTerminology } from '../config/categoryConfig';
 import { useAuth } from '../contexts/AuthContext';
 import { useLocation } from '../contexts/LocationContext';
 import { useNotifications } from '../hooks/useNotifications';
@@ -40,6 +43,12 @@ import {
     saveFilterToHistory,
     SmartFilterSuggestion
 } from '../utils/smartFilterSuggestions';
+// ✅ OPTIMISATION 6: Analytics tracking
+import {
+    trackProductContact,
+    trackProductView,
+    trackSearch
+} from '../utils/analytics';
 
 // Types
 interface SearchResult {
@@ -158,6 +167,11 @@ const ResultatBesoinScreen: React.FC = () => {
             setSmartSuggestions(suggestions);
 
             console.log(`💡 [ResultatBesoinScreen] ${suggestions.length} suggestions intelligentes générées`);
+
+            // ✅ OPTIMISATION 6: Track la recherche si query présente
+            if (routeParams.searchQuery) {
+                trackSearch(routeParams.searchQuery, dominantCategory, products.length);
+            }
         }
     }, [products, dominantCategory, location, routeParams.budget]);
 
@@ -249,7 +263,8 @@ const ResultatBesoinScreen: React.FC = () => {
     };
 
     // Fonction pour extraire le prix d'un service
-    const getServicePrice = (service: Service): number | null => {
+    // ✅ NOUVEAU: Récupérer le prix avec gestion intelligente des variantes par catégorie
+    const getServicePrice = (service: Service, mode: 'min' | 'max' | 'first' = 'first'): number | null => {
         // Chercher dans les produits
         const produitsField = service.data?.produits;
         if (produitsField) {
@@ -261,10 +276,36 @@ const ResultatBesoinScreen: React.FC = () => {
             }
 
             if (produits.length > 0) {
-                // Retourner le prix du premier produit
                 const firstProduct = produits[0];
+                const productType = firstProduct.type;
+
+                // ✅ NOUVEAU: Vérifier si la catégorie de produit supporte les variantes
+                const supportsVariants = productType && categorySupportsVariants(productType);
+
+                // ✅ Gestion intelligente des variantes (uniquement pour les catégories supportées)
+                if (supportsVariants && firstProduct.variants && Array.isArray(firstProduct.variants) && firstProduct.variants.length > 0) {
+                    const variantPrices = firstProduct.variants
+                        .map(v => parseFloat(v.prix))
+                        .filter(p => !isNaN(p) && p > 0);
+
+                    if (variantPrices.length > 0) {
+                        if (mode === 'min') {
+                            return Math.min(...variantPrices);
+                        } else if (mode === 'max') {
+                            return Math.max(...variantPrices);
+                        } else {
+                            // Par défaut, retourner le prix minimum
+                            return Math.min(...variantPrices);
+                        }
+                    }
+                }
+
+                // Sinon, prix classique du produit
                 if (firstProduct.price) {
                     return parseFloat(firstProduct.price);
+                }
+                if (firstProduct.prix) {
+                    return parseFloat(firstProduct.prix);
                 }
             }
         }
@@ -282,15 +323,40 @@ const ResultatBesoinScreen: React.FC = () => {
         return null;
     };
 
-    // Fonction pour filtrer les produits selon les filtres de catégorie
-    const filterProducts = (productsList: any[]): any[] => {
-        let filtered = [...productsList];
+    // ✅ OPTIMISATION 1: Mémoriser les produits filtrés avec useMemo
+    const filteredProductsMemo = useMemo(() => {
+        let filtered = [...products];
 
         // Appliquer les filtres de catégorie spécifiques
         if (Object.keys(categoryFilters).length > 0) {
             filtered = filtered.filter(product => {
                 // ✅ FILTRES SPÉCIAUX POUR CLINIQUES/HÔPITAUX
                 if (product.type === 'hopital_clinique') {
+                    // Filtre "Ouvert maintenant" (même logique que pharmacies)
+                    if (categoryFilters.ouvertMaintenant === true) {
+                        const now = new Date();
+                        const currentDay = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'][now.getDay()];
+                        const currentHour = now.getHours();
+                        const currentMinutes = now.getMinutes();
+                        const currentTimeInMinutes = currentHour * 60 + currentMinutes;
+
+                        // Vérifier si ouvert aujourd'hui
+                        const isOpenToday = product.joursOuverture?.includes(currentDay);
+                        if (!isOpenToday && !product.urgencesDisponible) return false; // Sauf si urgences 24h/24
+
+                        // Vérifier les horaires (si pas urgences 24h/24)
+                        if (!product.urgencesDisponible && product.heuresOuverture && product.heuresFermeture) {
+                            const [openHour, openMin] = product.heuresOuverture.split(':').map(Number);
+                            const [closeHour, closeMin] = product.heuresFermeture.split(':').map(Number);
+                            const openTimeInMinutes = openHour * 60 + openMin;
+                            const closeTimeInMinutes = closeHour * 60 + closeMin;
+
+                            if (currentTimeInMinutes < openTimeInMinutes || currentTimeInMinutes > closeTimeInMinutes) {
+                                return false;
+                            }
+                        }
+                    }
+
                     // Filtre par prestations médicales (multiselect)
                     if (categoryFilters.prestationsMedicales && Array.isArray(categoryFilters.prestationsMedicales) && categoryFilters.prestationsMedicales.length > 0) {
                         const hasPrestations = categoryFilters.prestationsMedicales.some((prestationRecherchee: string) =>
@@ -497,6 +563,33 @@ const ResultatBesoinScreen: React.FC = () => {
                         if (categoryFilters.capacitePersonnes_min !== undefined && capacite < categoryFilters.capacitePersonnes_min) return false;
                         if (categoryFilters.capacitePersonnes_max !== undefined && capacite > categoryFilters.capacitePersonnes_max) return false;
                     }
+
+                    // ✅ NOUVEAU: Filtre Ville
+                    if (categoryFilters.ville) {
+                        const villeProduct = product.ville?.toLowerCase() || product.localisation?.toLowerCase() || '';
+                        const villeFilter = categoryFilters.ville.toLowerCase();
+                        if (!villeProduct.includes(villeFilter) && villeFilter !== villeProduct) return false;
+                    }
+
+                    // ✅ NOUVEAU: Filtre Quartier
+                    if (categoryFilters.quartier) {
+                        const quartierProduct = product.quartier?.toLowerCase() || product.localisation?.toLowerCase() || '';
+                        const quartierFilter = categoryFilters.quartier.toLowerCase();
+                        if (!quartierProduct.includes(quartierFilter)) return false;
+                    }
+
+                    // ✅ NOUVEAU: Filtre Accès routier
+                    if (categoryFilters.acces_route) {
+                        if (product.acces_route !== categoryFilters.acces_route) return false;
+                    }
+
+                    // ✅ NOUVEAU: Filtre Proximités (multiselect)
+                    if (categoryFilters.proximites && Array.isArray(categoryFilters.proximites) && categoryFilters.proximites.length > 0) {
+                        const hasProximites = categoryFilters.proximites.some((proxRecherche: string) =>
+                            product.proximites?.includes(proxRecherche)
+                        );
+                        if (!hasProximites) return false;
+                    }
                 }
 
                 // ✅ FILTRES SPÉCIAUX POUR AUTOMOBILE
@@ -652,9 +745,11 @@ const ResultatBesoinScreen: React.FC = () => {
                 }
 
                 // ✅ FILTRES SPÉCIAUX POUR ALIMENTATION
-                if (product.type === 'aliments' || product.type === 'agroalimentaire') {
+                if (product.type === 'agroalimentaire' || product.type === 'aliments') { // ✅ FALLBACK: Support des 2 noms
+                    // Filtres de base
                     if (categoryFilters.categorieAliment && product.categorieAliment !== categoryFilters.categorieAliment) return false;
                     if (categoryFilters.typeAliment && product.typeAliment !== categoryFilters.typeAliment) return false;
+                    if (categoryFilters.marqueAliment && product.marqueAliment !== categoryFilters.marqueAliment) return false; // ✅ NOUVEAU
                     if (categoryFilters.origine && product.origine !== categoryFilters.origine) return false;
                     if (categoryFilters.conditionnement && product.conditionnement !== categoryFilters.conditionnement) return false;
                     if (categoryFilters.conservation && product.conservation !== categoryFilters.conservation) return false;
@@ -683,6 +778,54 @@ const ResultatBesoinScreen: React.FC = () => {
                             return false;
                         }
                     }
+
+                    // ✅ NOUVEAU: Multiselect: allergènes (exclusion si le filtre est activé)
+                    if (categoryFilters.allergenesArray && Array.isArray(categoryFilters.allergenesArray) && categoryFilters.allergenesArray.length > 0) {
+                        // Exclure les produits contenant les allergènes sélectionnés
+                        const productAllergenes = product.allergenesArray || (product.allergenes ? product.allergenes.split(',').map(a => a.trim()) : []);
+                        const hasAllergene = categoryFilters.allergenesArray.some((allergen: string) =>
+                            productAllergenes.some((pa: string) => pa.toLowerCase().includes(allergen.toLowerCase()))
+                        );
+                        if (hasAllergene) return false; // Exclure si contient un allergène filtré
+                    }
+                }
+
+                // ✅ FILTRES SPÉCIAUX POUR MÉCANICIEN / GARAGE
+                if (product.type === 'mecanicien') {
+                    // Multiselect filters
+                    if (categoryFilters.typeServiceMecanique && Array.isArray(categoryFilters.typeServiceMecanique) && categoryFilters.typeServiceMecanique.length > 0) {
+                        if (!product.typeServiceMecanique || !categoryFilters.typeServiceMecanique.some((service: string) => product.typeServiceMecanique?.includes(service))) {
+                            return false;
+                        }
+                    }
+                    if (categoryFilters.specialitesGarage && Array.isArray(categoryFilters.specialitesGarage) && categoryFilters.specialitesGarage.length > 0) {
+                        if (!product.specialitesGarage || !categoryFilters.specialitesGarage.some((spec: string) => product.specialitesGarage?.includes(spec))) {
+                            return false;
+                        }
+                    }
+                    if (categoryFilters.marquesVehicules && Array.isArray(categoryFilters.marquesVehicules) && categoryFilters.marquesVehicules.length > 0) {
+                        if (!product.marquesVehicules || !categoryFilters.marquesVehicules.some((marque: string) => product.marquesVehicules?.includes(marque))) {
+                            return false;
+                        }
+                    }
+                    if (categoryFilters.certificationsMeca && Array.isArray(categoryFilters.certificationsMeca) && categoryFilters.certificationsMeca.length > 0) {
+                        if (!product.certificationsMeca || !categoryFilters.certificationsMeca.some((cert: string) => product.certificationsMeca?.includes(cert))) {
+                            return false;
+                        }
+                    }
+
+                    // Select filters
+                    if (categoryFilters.delaisIntervention && product.delaisIntervention !== categoryFilters.delaisIntervention) {
+                        return false;
+                    }
+                    if (categoryFilters.urgenceMeca && product.urgenceMeca !== categoryFilters.urgenceMeca) {
+                        return false;
+                    }
+
+                    // Toggle filters
+                    if (categoryFilters.devisGratuit !== undefined && product.devisGratuit !== categoryFilters.devisGratuit) return false;
+                    if (categoryFilters.garantieReparations !== undefined && product.garantieReparations !== categoryFilters.garantieReparations) return false;
+                    if (categoryFilters.vehiculeCourtoisie !== undefined && product.vehiculeCourtoisie !== categoryFilters.vehiculeCourtoisie) return false;
                 }
 
                 // ✅ FILTRES SPÉCIAUX POUR SMARTPHONE (TELEPHONE)
@@ -697,29 +840,52 @@ const ResultatBesoinScreen: React.FC = () => {
                         return false;
                     }
 
-                    // Stockage (multiselect)
-                    if (categoryFilters.stockage && Array.isArray(categoryFilters.stockage) && categoryFilters.stockage.length > 0) {
-                        if (!categoryFilters.stockage.includes(product.stockage)) {
-                            return false;
-                        }
+                    // Stockage (select)
+                    if (categoryFilters.stockage && product.stockage !== categoryFilters.stockage) {
+                        return false;
                     }
 
-                    // RAM (multiselect)
-                    if (categoryFilters.ram && Array.isArray(categoryFilters.ram) && categoryFilters.ram.length > 0) {
-                        if (!categoryFilters.ram.includes(product.ram)) {
-                            return false;
-                        }
+                    // RAM (select)
+                    if (categoryFilters.ram && product.ram !== categoryFilters.ram) {
+                        return false;
                     }
 
-                    // Couleur (multiselect)
-                    if (categoryFilters.couleurTelephone && Array.isArray(categoryFilters.couleurTelephone) && categoryFilters.couleurTelephone.length > 0) {
-                        if (!categoryFilters.couleurTelephone.includes(product.couleurTelephone)) {
-                            return false;
-                        }
+                    // Couleur (select)
+                    if (categoryFilters.couleurTelephone && product.couleurTelephone !== categoryFilters.couleurTelephone) {
+                        return false;
                     }
 
                     // Opérateur
                     if (categoryFilters.operateur && product.operateur !== categoryFilters.operateur) {
+                        return false;
+                    }
+
+                    // Taille écran
+                    if (categoryFilters.tailleEcran && product.tailleEcran !== categoryFilters.tailleEcran) {
+                        return false;
+                    }
+
+                    // Appareil photo (cameraPrincipale)
+                    if (categoryFilters.cameraPrincipale && product.numeroCameraPrincipale) {
+                        const productMP = parseInt(product.numeroCameraPrincipale.replace('MP', '')) || 0;
+                        const filterMP = parseInt(categoryFilters.cameraPrincipale.replace('MP et plus', '').replace('MP', '')) || 0;
+                        if (productMP < filterMP) {
+                            return false;
+                        }
+                    }
+
+                    // Capacité batterie
+                    if (categoryFilters.batterie && product.batterie && product.batterie !== categoryFilters.batterie) {
+                        return false;
+                    }
+
+                    // Charge rapide
+                    if (categoryFilters.chargeRapide && product.chargeRapide && product.chargeRapide !== categoryFilters.chargeRapide) {
+                        return false;
+                    }
+
+                    // Sécurité biométrique
+                    if (categoryFilters.securiteBiometrique && product.securiteTelephone && product.securiteTelephone !== categoryFilters.securiteBiometrique) {
                         return false;
                     }
 
@@ -741,6 +907,10 @@ const ResultatBesoinScreen: React.FC = () => {
                     }
 
                     if (categoryFilters.ecranOriginal === true && !product.ecranOriginal) {
+                        return false;
+                    }
+
+                    if (categoryFilters.imei === true && !product.imei) {
                         return false;
                     }
 
@@ -811,6 +981,11 @@ const ResultatBesoinScreen: React.FC = () => {
                         return false;
                     }
 
+                    // Taille écran
+                    if (categoryFilters.tailleEcranOrdinateur && product.tailleEcranOrdinateur !== categoryFilters.tailleEcranOrdinateur) {
+                        return false;
+                    }
+
                     // Toggles
                     if (categoryFilters.typeSSD === true && !product.typeSSD) {
                         return false;
@@ -821,6 +996,14 @@ const ResultatBesoinScreen: React.FC = () => {
                     }
 
                     if (categoryFilters.webcam === true && !product.webcam) {
+                        return false;
+                    }
+
+                    if (categoryFilters.portUSBC === true && !product.portUSBC) {
+                        return false;
+                    }
+
+                    if (categoryFilters.bluetooth === true && !product.bluetooth) {
                         return false;
                     }
 
@@ -910,6 +1093,53 @@ const ResultatBesoinScreen: React.FC = () => {
                     }
                 }
 
+                // ✅ FILTRES SPÉCIAUX POUR SOUTIEN SCOLAIRE / RÉPÉTITEUR
+                if (product.type === 'soutien_scolaire_repetiteur') {
+                    // Select filters
+                    if (categoryFilters.typeSoutien && product.typeSoutien !== categoryFilters.typeSoutien) {
+                        return false;
+                    }
+                    if (categoryFilters.formatSoutien && product.formatSoutien !== categoryFilters.formatSoutien) {
+                        return false;
+                    }
+                    if (categoryFilters.dureeSeance && product.dureeSeance !== categoryFilters.dureeSeance) {
+                        return false;
+                    }
+                    if (categoryFilters.modaliteDeplacement && product.modaliteDeplacement !== categoryFilters.modaliteDeplacement) {
+                        return false;
+                    }
+                    if (categoryFilters.modeTarification && product.modeTarification !== categoryFilters.modeTarification) {
+                        return false;
+                    }
+                    if (categoryFilters.niveauExperience && product.niveauExperience !== categoryFilters.niveauExperience) {
+                        return false;
+                    }
+
+                    // ✅ Filtre matières enseignées (multiselect)
+                    if (categoryFilters.matieresEnseignees && Array.isArray(categoryFilters.matieresEnseignees) && categoryFilters.matieresEnseignees.length > 0) {
+                        const hasMatieres = categoryFilters.matieresEnseignees.some((matiereRecherchee: string) =>
+                            product.matieresEnseignees?.includes(matiereRecherchee)
+                        );
+                        if (!hasMatieres) return false;
+                    }
+
+                    // ✅ Filtre niveaux scolaires (multiselect)
+                    if (categoryFilters.niveauxScolaires && Array.isArray(categoryFilters.niveauxScolaires) && categoryFilters.niveauxScolaires.length > 0) {
+                        const hasNiveaux = categoryFilters.niveauxScolaires.some((niveauRecherche: string) =>
+                            product.niveauxScolaires?.includes(niveauRecherche)
+                        );
+                        if (!hasNiveaux) return false;
+                    }
+
+                    // ✅ Filtre disponibilité (multiselect)
+                    if (categoryFilters.disponibilite && Array.isArray(categoryFilters.disponibilite) && categoryFilters.disponibilite.length > 0) {
+                        const hasDisponibilite = categoryFilters.disponibilite.some((dispoRecherche: string) =>
+                            product.disponibilite?.includes(dispoRecherche) || product.disponibilites?.includes(dispoRecherche)
+                        );
+                        if (!hasDisponibilite) return false;
+                    }
+                }
+
                 // ✅ FILTRES SPÉCIAUX POUR FORMATION
                 if (product.type === 'formation_education') {
                     // Select filters
@@ -926,6 +1156,90 @@ const ResultatBesoinScreen: React.FC = () => {
                         return false;
                     }
                     if (categoryFilters.langueEnseignement && product.langueEnseignement !== categoryFilters.langueEnseignement) {
+                        return false;
+                    }
+
+                    // ✅ NOUVEAU: Filtre matières enseignées (multiselect)
+                    if (categoryFilters.matieresEnseignees && Array.isArray(categoryFilters.matieresEnseignees) && categoryFilters.matieresEnseignees.length > 0) {
+                        const hasMatieres = categoryFilters.matieresEnseignees.some((matiereRecherchee: string) =>
+                            product.matieresEnseignees?.includes(matiereRecherchee)
+                        );
+                        if (!hasMatieres) return false;
+                    }
+
+                    // ✅ NOUVEAU: Filtre niveaux scolaires (multiselect)
+                    if (categoryFilters.niveauxScolaires && Array.isArray(categoryFilters.niveauxScolaires) && categoryFilters.niveauxScolaires.length > 0) {
+                        const hasNiveaux = categoryFilters.niveauxScolaires.some((niveauRecherche: string) =>
+                            product.niveauxScolaires?.includes(niveauRecherche)
+                        );
+                        if (!hasNiveaux) return false;
+                    }
+
+                    // ✅ NOUVEAU: Filtre niveau de compétence
+                    if (categoryFilters.niveauCompetence && product.niveauCompetence !== categoryFilters.niveauCompetence) {
+                        return false;
+                    }
+
+                    // ✅ NOUVEAU: Filtre format de formation (multiselect)
+                    if (categoryFilters.formatFormation && Array.isArray(categoryFilters.formatFormation) && categoryFilters.formatFormation.length > 0) {
+                        const hasFormat = categoryFilters.formatFormation.some((formatRecherche: string) =>
+                            product.formatFormation?.includes(formatRecherche)
+                        );
+                        if (!hasFormat) return false;
+                    }
+
+                    // ✅ NOUVEAU: Filtre rythme de formation
+                    if (categoryFilters.rythmeFormation && product.rythmeFormation !== categoryFilters.rythmeFormation) {
+                        return false;
+                    }
+
+                    // ✅ NOUVEAU: Filtre horaires de formation (multiselect)
+                    if (categoryFilters.horairesFormation && Array.isArray(categoryFilters.horairesFormation) && categoryFilters.horairesFormation.length > 0) {
+                        const hasHoraires = categoryFilters.horairesFormation.some((horaireRecherche: string) =>
+                            product.horairesFormation?.includes(horaireRecherche) || product.rythmes?.includes(horaireRecherche)
+                        );
+                        if (!hasHoraires) return false;
+                    }
+
+                    // ✅ NOUVEAU: Filtre langues d'enseignement (multiselect)
+                    if (categoryFilters.languesEnseignement && Array.isArray(categoryFilters.languesEnseignement) && categoryFilters.languesEnseignement.length > 0) {
+                        const hasLangues = categoryFilters.languesEnseignement.some((langueRecherchee: string) =>
+                            product.languesEnseignement?.includes(langueRecherchee)
+                        );
+                        if (!hasLangues) return false;
+                    }
+
+                    // ✅ NOUVEAU: Filtre public cible (multiselect)
+                    if (categoryFilters.publicCible && Array.isArray(categoryFilters.publicCible) && categoryFilters.publicCible.length > 0) {
+                        const hasPublic = categoryFilters.publicCible.some((publicRecherche: string) =>
+                            product.publicCible?.includes(publicRecherche)
+                        );
+                        if (!hasPublic) return false;
+                    }
+
+                    // ✅ NOUVEAU: Filtre certification obtenue
+                    if (categoryFilters.certificationObtenue && product.certificationObtenue !== categoryFilters.certificationObtenue) {
+                        return false;
+                    }
+
+                    // ✅ NOUVEAU: Filtre anciens sujets disponibles (multiselect)
+                    if (categoryFilters.anciensSujetsDisponibles && Array.isArray(categoryFilters.anciensSujetsDisponibles) && categoryFilters.anciensSujetsDisponibles.length > 0) {
+                        const hasAnciensSujets = categoryFilters.anciensSujetsDisponibles.some((sujetRecherche: string) =>
+                            product.anciensSujetsDisponibles?.includes(sujetRecherche)
+                        );
+                        if (!hasAnciensSujets) return false;
+                    }
+
+                    // ✅ NOUVEAU: Filtre types de documents concours (multiselect)
+                    if (categoryFilters.typesDocumentsConcours && Array.isArray(categoryFilters.typesDocumentsConcours) && categoryFilters.typesDocumentsConcours.length > 0) {
+                        const hasDocuments = categoryFilters.typesDocumentsConcours.some((documentRecherche: string) =>
+                            product.typesDocumentsConcours?.includes(documentRecherche)
+                        );
+                        if (!hasDocuments) return false;
+                    }
+
+                    // ✅ NOUVEAU: Filtre années de concours disponibles
+                    if (categoryFilters.anneesConcoursDisponibles && product.anneesConcoursDisponibles !== categoryFilters.anneesConcoursDisponibles) {
                         return false;
                     }
 
@@ -956,7 +1270,10 @@ const ResultatBesoinScreen: React.FC = () => {
                 // ✅ FILTRES SPÉCIAUX POUR EMPLOI
                 if (product.type === 'emploi') {
                     // Select filters
-                    if (categoryFilters.domaineActivite && product.domaineActivite !== categoryFilters.domaineActivite) {
+                    if (categoryFilters.secteurActivite && product.secteurActivite !== categoryFilters.secteurActivite) {
+                        return false;
+                    }
+                    if (categoryFilters.metierPoste && product.metierPoste !== categoryFilters.metierPoste) {
                         return false;
                     }
                     if (categoryFilters.typeContrat && product.typeContrat !== categoryFilters.typeContrat) {
@@ -974,13 +1291,27 @@ const ResultatBesoinScreen: React.FC = () => {
                     if (categoryFilters.lieuTravail && product.lieuTravail !== categoryFilters.lieuTravail) {
                         return false;
                     }
+                    if (categoryFilters.secteurEntreprise && product.secteurEntreprise !== categoryFilters.secteurEntreprise) {
+                        return false;
+                    }
+                    if (categoryFilters.datePublication && product.datePublication !== categoryFilters.datePublication) {
+                        return false;
+                    }
 
-                    // Multiselect filters (langues)
+                    // Multiselect filters
                     if (categoryFilters.languesRequises && Array.isArray(categoryFilters.languesRequises) && categoryFilters.languesRequises.length > 0) {
                         const hasAllLangues = categoryFilters.languesRequises.every(langue =>
                             product.languesRequises && product.languesRequises.includes(langue)
                         );
                         if (!hasAllLangues) {
+                            return false;
+                        }
+                    }
+                    if (categoryFilters.avantagesSociaux && Array.isArray(categoryFilters.avantagesSociaux) && categoryFilters.avantagesSociaux.length > 0) {
+                        const hasAllAvantages = categoryFilters.avantagesSociaux.every(avantage =>
+                            product.avantagesSociaux && product.avantagesSociaux.includes(avantage)
+                        );
+                        if (!hasAllAvantages) {
                             return false;
                         }
                     }
@@ -1042,13 +1373,128 @@ const ResultatBesoinScreen: React.FC = () => {
                     }
                 }
 
-                // ✅ FILTRES SPÉCIAUX POUR RESTAURATION
+                // ✅ FILTRES SPÉCIAUX POUR IMMOBILIER TERRAIN
+                if (product.type === 'immobilier_terrain') {
+                    // Filtre statut immobilier
+                    if (categoryFilters.statutImmobilier) {
+                        if (product.statutImmobilier !== categoryFilters.statutImmobilier) return false;
+                    }
+
+                    // Filtre type de terrain
+                    if (categoryFilters.typeTerrain) {
+                        if (product.typeTerrain !== categoryFilters.typeTerrain) return false;
+                    }
+
+                    // Filtre viabilisation
+                    if (categoryFilters.viabilisation) {
+                        if (product.viabilisation !== categoryFilters.viabilisation) return false;
+                    }
+
+                    // Filtre topographie
+                    if (categoryFilters.topographie) {
+                        if (product.topographie !== categoryFilters.topographie) return false;
+                    }
+
+                    // Filtre accès terrain
+                    if (categoryFilters.accesTerrain) {
+                        if (product.accesTerrain !== categoryFilters.accesTerrain) return false;
+                    }
+
+                    // Filtre superficie (range)
+                    if (categoryFilters.superficie_min !== undefined || categoryFilters.superficie_max !== undefined) {
+                        const superficie = parseFloat(product.superficie || '0');
+                        if (categoryFilters.superficie_min !== undefined && superficie < categoryFilters.superficie_min) return false;
+                        if (categoryFilters.superficie_max !== undefined && superficie > categoryFilters.superficie_max) return false;
+                    }
+
+                    // Filtre zonage
+                    if (categoryFilters.zonage) {
+                        if (product.zonage !== categoryFilters.zonage) return false;
+                    }
+
+                    // Filtre forme terrain
+                    if (categoryFilters.formeTerrain) {
+                        if (product.formeTerrain !== categoryFilters.formeTerrain) return false;
+                    }
+
+                    // Filtre végétation
+                    if (categoryFilters.vegetation) {
+                        if (product.vegetation !== categoryFilters.vegetation) return false;
+                    }
+
+                    // Filtre usage actuel
+                    if (categoryFilters.usageActuel) {
+                        if (product.usageActuel !== categoryFilters.usageActuel) return false;
+                    }
+
+                    // Filtre réseaux (multiselect)
+                    if (categoryFilters.reseauxTerrain && Array.isArray(categoryFilters.reseauxTerrain) && categoryFilters.reseauxTerrain.length > 0) {
+                        const hasAllReseaux = categoryFilters.reseauxTerrain.every((reseau: string) =>
+                            product.reseauxTerrain?.includes(reseau)
+                        );
+                        if (!hasAllReseaux) return false;
+                    }
+
+                    // Filtre nature du sol
+                    if (categoryFilters.natureSol) {
+                        if (product.natureSol !== categoryFilters.natureSol) return false;
+                    }
+
+                    // Filtres toggles
+                    if (categoryFilters.titreFoncier === true && !product.titreFoncier) return false;
+                    if (categoryFilters.bornage === true && !product.bornage) return false;
+                    if (categoryFilters.constructibilite === true && !product.constructibilite) return false;
+                    if (categoryFilters.cloture === true && !product.cloture) return false;
+
+                    // ✅ NOUVEAU: Filtre Ville
+                    if (categoryFilters.ville) {
+                        const villeProduct = product.ville?.toLowerCase() || product.localisation?.toLowerCase() || '';
+                        const villeFilter = categoryFilters.ville.toLowerCase();
+                        if (!villeProduct.includes(villeFilter) && villeFilter !== villeProduct) return false;
+                    }
+                }
+
+                // ✅ FILTRES SPÉCIAUX POUR PRESTATION DE SERVICE
+                if (product.type === 'prestation_service') {
+                    // Select filters
+                    if (categoryFilters.categoriePrestation && product.categoriePrestation !== categoryFilters.categoriePrestation) {
+                        return false;
+                    }
+                    if (categoryFilters.typePrestation && product.typePrestation !== categoryFilters.typePrestation) {
+                        return false;
+                    }
+                    if (categoryFilters.zoneIntervention && product.zoneIntervention !== categoryFilters.zoneIntervention) {
+                        return false;
+                    }
+                    if (categoryFilters.niveauExperience && product.niveauExperience !== categoryFilters.niveauExperience) {
+                        return false;
+                    }
+                    if (categoryFilters.disponibilitePrestation && product.disponibilitePrestation !== categoryFilters.disponibilitePrestation) {
+                        return false;
+                    }
+
+                    // Toggle filters
+                    if (categoryFilters.certification === true && !product.certification) {
+                        return false;
+                    }
+                    if (categoryFilters.urgencesAcceptees === true && !product.urgencesAcceptees) {
+                        return false;
+                    }
+                    if (categoryFilters.service24h === true && !product.service24h) {
+                        return false;
+                    }
+                }
+
+                // ✅ FILTRES SPÉCIAUX POUR RESTAURATION ULTRA-ENRICHIS
                 if (product.type === 'restauration') {
                     // Select filters
                     if (categoryFilters.typeRestaurant && product.typeRestaurant !== categoryFilters.typeRestaurant) {
                         return false;
                     }
                     if (categoryFilters.gammePrix && product.gammePrix !== categoryFilters.gammePrix) {
+                        return false;
+                    }
+                    if (categoryFilters.capaciteRestaurant && product.capaciteRestaurant !== categoryFilters.capaciteRestaurant) {
                         return false;
                     }
 
@@ -1074,8 +1520,61 @@ const ResultatBesoinScreen: React.FC = () => {
                             return false;
                         }
                     }
+                    if (categoryFilters.horairesRestaurant && Array.isArray(categoryFilters.horairesRestaurant) && categoryFilters.horairesRestaurant.length > 0) {
+                        const hasAllHoraires = categoryFilters.horairesRestaurant.every(horaire =>
+                            product.horairesRestaurant && product.horairesRestaurant.includes(horaire)
+                        );
+                        if (!hasAllHoraires) {
+                            return false;
+                        }
+                    }
+                    if (categoryFilters.ambianceRestau && Array.isArray(categoryFilters.ambianceRestau) && categoryFilters.ambianceRestau.length > 0) {
+                        const hasAllAmbiance = categoryFilters.ambianceRestau.every(ambiance =>
+                            product.ambianceRestau && product.ambianceRestau.includes(ambiance)
+                        );
+                        if (!hasAllAmbiance) {
+                            return false;
+                        }
+                    }
+                    if (categoryFilters.certificationsRestau && Array.isArray(categoryFilters.certificationsRestau) && categoryFilters.certificationsRestau.length > 0) {
+                        const hasAllCertifications = categoryFilters.certificationsRestau.every(cert =>
+                            product.certificationsRestau && product.certificationsRestau.includes(cert)
+                        );
+                        if (!hasAllCertifications) {
+                            return false;
+                        }
+                    }
+                    if (categoryFilters.promotionsRestau && Array.isArray(categoryFilters.promotionsRestau) && categoryFilters.promotionsRestau.length > 0) {
+                        const hasAllPromotions = categoryFilters.promotionsRestau.every(promo =>
+                            product.promotionsRestau && product.promotionsRestau.includes(promo)
+                        );
+                        if (!hasAllPromotions) {
+                            return false;
+                        }
+                    }
 
-                    // Toggle filters
+                    // ✅ NOUVEAU: Filtres pour plats populaires (recherche dans tous les champs de plats)
+                    if (categoryFilters.platsPopulaires && Array.isArray(categoryFilters.platsPopulaires) && categoryFilters.platsPopulaires.length > 0) {
+                        const allPlats = [
+                            ...(product.platsCamerounais || []),
+                            ...(product.platsIvoiriens || []),
+                            ...(product.platsSenegalais || []),
+                            ...(product.platsMaliens || []),
+                            ...(product.platsGabonais || []),
+                            ...(product.platsCongolais || []),
+                            ...(product.platsBurkinabe || []),
+                            ...(product.platsAutresPays || []),
+                            ...(product.platsInternationaux || [])
+                        ];
+                        const hasAllPlats = categoryFilters.platsPopulaires.every(plat =>
+                            allPlats.includes(plat)
+                        );
+                        if (!hasAllPlats) {
+                            return false;
+                        }
+                    }
+
+                    // Toggle filters (obsolètes mais conservés pour compatibilité)
                     if (categoryFilters.livraison === true && !product.livraison) {
                         return false;
                     }
@@ -1089,7 +1588,25 @@ const ResultatBesoinScreen: React.FC = () => {
                         return false;
                     }
 
-                    // Range filters (capacité)
+                    // ✅ NOUVEAU: Toggle "Ouvert maintenant" (basé sur horairesRestaurant)
+                    if (categoryFilters.ouvertMaintenant === true) {
+                        const now = new Date();
+                        const currentHour = now.getHours();
+                        const isOpenNow = product.horairesRestaurant && product.horairesRestaurant.some(horaire => {
+                            if (horaire.includes('24h/24')) return true;
+                            if (horaire.includes('Service continu')) return true;
+                            if (horaire.includes('Nocturne') && (currentHour >= 18 || currentHour <= 6)) return true;
+                            if (horaire.includes('Déjeuner') && currentHour >= 11 && currentHour <= 15) return true;
+                            if (horaire.includes('Dîner') && currentHour >= 18 && currentHour <= 23) return true;
+                            if (horaire.includes('Petit-déjeuner') && currentHour >= 6 && currentHour <= 10) return true;
+                            return false;
+                        });
+                        if (!isOpenNow) {
+                            return false;
+                        }
+                    }
+
+                    // Range filters (capacité) - obsolète mais conservé
                     if (categoryFilters.capaciteRestaurant_min !== undefined || categoryFilters.capaciteRestaurant_max !== undefined) {
                         const capacite = product.capaciteRestaurant ? parseInt(product.capaciteRestaurant) : 0;
                         if (categoryFilters.capaciteRestaurant_min !== undefined && capacite < categoryFilters.capaciteRestaurant_min) {
@@ -1116,16 +1633,32 @@ const ResultatBesoinScreen: React.FC = () => {
                     if (categoryFilters.etatInstrument && product.etatInstrument !== categoryFilters.etatInstrument) {
                         return false;
                     }
-                    if (categoryFilters.typeAmplification && product.typeAmplification !== categoryFilters.typeAmplification) {
+                    if (categoryFilters.niveauInstrument && product.niveauInstrument !== categoryFilters.niveauInstrument) {
+                        return false;
+                    }
+                    if (categoryFilters.utilisationInstrument && product.utilisationInstrument !== categoryFilters.utilisationInstrument) {
+                        return false;
+                    }
+                    if (categoryFilters.genreMusical && product.genreMusical !== categoryFilters.genreMusical) {
                         return false;
                     }
                     if (categoryFilters.nombreCordes && product.nombreCordes !== categoryFilters.nombreCordes) {
                         return false;
                     }
+                    if (categoryFilters.tailleInstrument && product.tailleInstrument !== categoryFilters.tailleInstrument) {
+                        return false;
+                    }
+                    if (categoryFilters.garantieInstrument && product.garantieInstrument !== categoryFilters.garantieInstrument) {
+                        return false;
+                    }
+                    if (categoryFilters.origineInstrument && product.origineInstrument !== categoryFilters.origineInstrument) {
+                        return false;
+                    }
 
                     // Multiselect filters
                     if (categoryFilters.materiauInstrument && Array.isArray(categoryFilters.materiauInstrument) && categoryFilters.materiauInstrument.length > 0) {
-                        if (!categoryFilters.materiauInstrument.includes(product.materiauInstrument)) {
+                        const materiauProduct = product.materiauInstrument;
+                        if (!materiauProduct || !categoryFilters.materiauInstrument.some(mat => materiauProduct === mat || materiauProduct.includes(mat))) {
                             return false;
                         }
                     }
@@ -1135,9 +1668,6 @@ const ResultatBesoinScreen: React.FC = () => {
                         return false;
                     }
                     if (categoryFilters.revisionRecente === true && !product.revisionRecente) {
-                        return false;
-                    }
-                    if (categoryFilters.garantieInstrument === true && !product.garantieInstrument) {
                         return false;
                     }
 
@@ -1169,6 +1699,15 @@ const ResultatBesoinScreen: React.FC = () => {
                         return false;
                     }
                     if (categoryFilters.coupeVetement && product.coupeVetement !== categoryFilters.coupeVetement) {
+                        return false;
+                    }
+                    if (categoryFilters.motifVetement && product.motifVetement !== categoryFilters.motifVetement) {
+                        return false;
+                    }
+                    if (categoryFilters.occasionVetement && product.occasionVetement !== categoryFilters.occasionVetement) {
+                        return false;
+                    }
+                    if (categoryFilters.origineVetement && product.origineVetement !== categoryFilters.origineVetement) {
                         return false;
                     }
 
@@ -1263,6 +1802,18 @@ const ResultatBesoinScreen: React.FC = () => {
                         return false;
                     }
                     if (categoryFilters.langue && product.langue !== categoryFilters.langue) {
+                        return false;
+                    }
+                    if (categoryFilters.typeCalculatrice && product.typeCalculatrice !== categoryFilters.typeCalculatrice) {
+                        return false;
+                    }
+                    if (categoryFilters.programmesMenesres && product.programmesMenesres !== categoryFilters.programmesMenesres) {
+                        return false;
+                    }
+                    if (categoryFilters.formatsCahiers && product.formatsCahiers !== categoryFilters.formatsCahiers) {
+                        return false;
+                    }
+                    if (categoryFilters.couleursFournitures && product.couleursFournitures !== categoryFilters.couleursFournitures) {
                         return false;
                     }
                 }
@@ -1362,12 +1913,42 @@ const ResultatBesoinScreen: React.FC = () => {
                     }
                 }
 
-                // ✅ FILTRES SPÉCIAUX POUR DEMENAGEMENT
+                // ✅ FILTRES SPÉCIAUX POUR DEMENAGEMENT - ENRICHIS
                 if (product.type === 'demenagement') {
                     if (categoryFilters.typeDemenagement && product.typeDemenagement !== categoryFilters.typeDemenagement) {
                         return false;
                     }
+                    if (categoryFilters.volumeDemenagement && product.volumeDemenagement !== categoryFilters.volumeDemenagement) {
+                        return false;
+                    }
                     if (categoryFilters.typeVehiculeDemenagement && product.typeVehiculeDemenagement !== categoryFilters.typeVehiculeDemenagement) {
+                        return false;
+                    }
+                    if (categoryFilters.distanceDemenagement && product.distanceDemenagement !== categoryFilters.distanceDemenagement) {
+                        return false;
+                    }
+                    if (categoryFilters.villeDepartDemenagement && product.villeDepartDemenagement !== categoryFilters.villeDepartDemenagement) {
+                        return false;
+                    }
+                    if (categoryFilters.villeArriveeDemenagement && product.villeArriveeDemenagement !== categoryFilters.villeArriveeDemenagement) {
+                        return false;
+                    }
+                    if (categoryFilters.trajetDemenagement && product.trajetDemenagement !== categoryFilters.trajetDemenagement) {
+                        return false;
+                    }
+                    if (categoryFilters.compagnieDemenagement && product.compagnieDemenagement !== categoryFilters.compagnieDemenagement) {
+                        return false;
+                    }
+                    if (categoryFilters.dureeDemenagement && product.dureeDemenagement !== categoryFilters.dureeDemenagement) {
+                        return false;
+                    }
+                    if (categoryFilters.disponibiliteDemenagement && product.disponibiliteDemenagement !== categoryFilters.disponibiliteDemenagement) {
+                        return false;
+                    }
+                    if (categoryFilters.typeAssuranceDemenagement && product.typeAssuranceDemenagement !== categoryFilters.typeAssuranceDemenagement) {
+                        return false;
+                    }
+                    if (categoryFilters.nbDemenageurs && product.nbDemenageurs !== categoryFilters.nbDemenageurs) {
                         return false;
                     }
                     if (categoryFilters.servicesDemenagement && Array.isArray(categoryFilters.servicesDemenagement) && categoryFilters.servicesDemenagement.length > 0) {
@@ -1380,19 +1961,431 @@ const ResultatBesoinScreen: React.FC = () => {
                     }
                 }
 
-                // ✅ FILTRES SPÉCIAUX POUR PLOMBERIE
-                if (product.type === 'plomberie') {
+                // ✅ FILTRES SPÉCIAUX POUR CRÈCHE & GARDERIE
+                if (product.type === 'creche_garderie' || product.type === 'creche' || product.type === 'garderie') {
+                    // Type d'établissement (multiselect)
+                    if (categoryFilters.typeEtablissement && Array.isArray(categoryFilters.typeEtablissement) && categoryFilters.typeEtablissement.length > 0) {
+                        const hasType = categoryFilters.typeEtablissement.some((typeRecherche: string) =>
+                            product.typeEtablissement?.includes(typeRecherche)
+                        );
+                        if (!hasType) return false;
+                    }
+
+                    // Tranches d'âge (multiselect)
+                    if (categoryFilters.tranchesAge && Array.isArray(categoryFilters.tranchesAge) && categoryFilters.tranchesAge.length > 0) {
+                        const hasTranche = categoryFilters.tranchesAge.some((trancheRecherchee: string) =>
+                            product.tranchesAge?.includes(trancheRecherchee)
+                        );
+                        if (!hasTranche) return false;
+                    }
+
+                    // Horaires de garde (multiselect)
+                    if (categoryFilters.horairesGarde && Array.isArray(categoryFilters.horairesGarde) && categoryFilters.horairesGarde.length > 0) {
+                        const hasHoraire = categoryFilters.horairesGarde.some((horaireRecherche: string) =>
+                            product.horairesGarde?.includes(horaireRecherche)
+                        );
+                        if (!hasHoraire) return false;
+                    }
+
+                    // Jours de fonctionnement
+                    if (categoryFilters.joursFonctionnement && product.joursFonctionnement !== categoryFilters.joursFonctionnement) {
+                        return false;
+                    }
+
+                    // Capacité d'accueil
+                    if (categoryFilters.capaciteAccueil && product.capaciteAccueil !== categoryFilters.capaciteAccueil) {
+                        return false;
+                    }
+
+                    // Services proposés (multiselect)
+                    if (categoryFilters.servicesProproses && Array.isArray(categoryFilters.servicesProproses) && categoryFilters.servicesProproses.length > 0) {
+                        const hasServices = categoryFilters.servicesProproses.some((serviceRecherche: string) =>
+                            product.servicesProproses?.includes(serviceRecherche)
+                        );
+                        if (!hasServices) return false;
+                    }
+
+                    // Langues parlées (multiselect)
+                    if (categoryFilters.languesParlees && Array.isArray(categoryFilters.languesParlees) && categoryFilters.languesParlees.length > 0) {
+                        const hasLangue = categoryFilters.languesParlees.some((langueRecherchee: string) =>
+                            product.languesParlees?.includes(langueRecherchee)
+                        );
+                        if (!hasLangue) return false;
+                    }
+
+                    // Certifications & Agréments (multiselect)
+                    if (categoryFilters.certificationsAgrements && Array.isArray(categoryFilters.certificationsAgrements) && categoryFilters.certificationsAgrements.length > 0) {
+                        const hasCert = categoryFilters.certificationsAgrements.some((certRecherche: string) =>
+                            product.certificationsAgrements?.includes(certRecherche)
+                        );
+                        if (!hasCert) return false;
+                    }
+
+                    // Gamme de prix
+                    if (categoryFilters.gammePrix && product.gammePrix !== categoryFilters.gammePrix) {
+                        return false;
+                    }
+
+                    // Prix mensuel (range)
+                    if (categoryFilters.prixMensuel_min !== undefined || categoryFilters.prixMensuel_max !== undefined) {
+                        const prix = product.prix ? parseFloat(product.prix) : 0;
+                        if (categoryFilters.prixMensuel_min !== undefined && prix < categoryFilters.prixMensuel_min) return false;
+                        if (categoryFilters.prixMensuel_max !== undefined && prix > categoryFilters.prixMensuel_max) return false;
+                    }
+
+                    // Places disponibles immédiatement (toggle)
+                    if (categoryFilters.placesDisponibles === true && !product.placesDisponibles) {
+                        return false;
+                    }
+                }
+
+                // ✅ FILTRES SPÉCIAUX POUR PLOMBERIE (SERVICE)
+                if (product.type === 'plomberie' || product.type === 'plombier') {
+                    // Filtre type de prestation
                     if (categoryFilters.typePrestation && product.typePrestation !== categoryFilters.typePrestation) {
                         return false;
                     }
-                    if (categoryFilters.urgence === true && !product.urgence) {
+
+                    // Filtre urgence
+                    if (categoryFilters.urgence === true && !product.urgence && !product.urgence24h) {
                         return false;
                     }
+
+                    // Filtre spécialités (multiselect)
                     if (categoryFilters.specialitesPlomberie && Array.isArray(categoryFilters.specialitesPlomberie) && categoryFilters.specialitesPlomberie.length > 0) {
                         if (!Array.isArray(product.specialitesPlomberie)) {
                             return false;
                         }
                         if (!categoryFilters.specialitesPlomberie.some(spec => product.specialitesPlomberie.includes(spec))) {
+                            return false;
+                        }
+                    }
+
+                    // ✅ Filtre équipements (multiselect)
+                    if (categoryFilters.equipementsPlomberie && Array.isArray(categoryFilters.equipementsPlomberie) && categoryFilters.equipementsPlomberie.length > 0) {
+                        if (!Array.isArray(product.equipementsPlomberie)) {
+                            return false;
+                        }
+                        if (!categoryFilters.equipementsPlomberie.some(equip => product.equipementsPlomberie.includes(equip))) {
+                            return false;
+                        }
+                    }
+
+                    // ✅ Filtre disponibilité
+                    if (categoryFilters.disponibilitePlomberie) {
+                        const disponibilite = product.disponibilitePrestation || product.disponibilite;
+                        if (disponibilite !== categoryFilters.disponibilitePlomberie) {
+                            return false;
+                        }
+                    }
+
+                    // ✅ Filtre garantie travaux
+                    if (categoryFilters.garantieTravaux) {
+                        const garantie = product.garantieTravaux || product.garantie;
+                        if (garantie !== categoryFilters.garantieTravaux) {
+                            return false;
+                        }
+                    }
+
+                    // ✅ NOUVEAU: Filtre certifications (multiselect)
+                    if (categoryFilters.certificationsPlombier && Array.isArray(categoryFilters.certificationsPlombier) && categoryFilters.certificationsPlombier.length > 0) {
+                        const certif = product.certificationsPlombier || product.certifications || product.certification;
+                        if (!Array.isArray(certif)) {
+                            return false;
+                        }
+                        if (!categoryFilters.certificationsPlombier.some(cert => certif.includes(cert))) {
+                            return false;
+                        }
+                    }
+
+                    // ✅ NOUVEAU: Filtre expérience
+                    if (categoryFilters.experiencePlombier) {
+                        const experience = product.experiencePlombier || product.experience || product.anciennete;
+                        if (experience !== categoryFilters.experiencePlombier) {
+                            return false;
+                        }
+                    }
+
+                    // ✅ Filtre devis gratuit (toggle)
+                    if (categoryFilters.devisGratuit === true && !product.devisGratuit) {
+                        return false;
+                    }
+
+                    // ✅ NOUVEAU: Filtre plombier certifié (toggle)
+                    if (categoryFilters.certifie === true && !product.certifie && !product.certifications) {
+                        return false;
+                    }
+                }
+
+                // ✅ FILTRES SPÉCIAUX POUR CARRELEUR (SERVICE)
+                if (product.type === 'carreleur' || product.type === 'prestation_carrelage') {
+                    // Select filters
+                    if (categoryFilters.typePrestation && product.types && !product.types.includes(categoryFilters.typePrestation)) {
+                        return false;
+                    }
+
+                    if (categoryFilters.tarification && product.tarification && product.tarification !== categoryFilters.tarification) {
+                        return false;
+                    }
+
+                    if (categoryFilters.experience && product.experience && product.experience !== categoryFilters.experience) {
+                        return false;
+                    }
+
+                    if (categoryFilters.garantie && product.garanties && !product.garanties.includes(categoryFilters.garantie)) {
+                        return false;
+                    }
+
+                    // Multiselect filters
+                    if (categoryFilters.typesCarrelage && Array.isArray(categoryFilters.typesCarrelage) && categoryFilters.typesCarrelage.length > 0) {
+                        if (!product.types_carrelage || !categoryFilters.typesCarrelage.some((type: string) => product.types_carrelage?.includes(type))) {
+                            return false;
+                        }
+                    }
+
+                    if (categoryFilters.surfaces && Array.isArray(categoryFilters.surfaces) && categoryFilters.surfaces.length > 0) {
+                        if (!product.surfaces || !categoryFilters.surfaces.some((surface: string) => product.surfaces?.includes(surface))) {
+                            return false;
+                        }
+                    }
+                }
+
+                // ✅ FILTRES SPÉCIAUX POUR ÉLECTRICIEN (SERVICE)
+                if (product.type === 'electricien') {
+                    // Filtre type de prestation
+                    if (categoryFilters.typePrestation && product.typeElectricien !== categoryFilters.typePrestation) {
+                        return false;
+                    }
+
+                    // Filtre spécialités (multiselect)
+                    if (categoryFilters.specialitesElectricien && Array.isArray(categoryFilters.specialitesElectricien) && categoryFilters.specialitesElectricien.length > 0) {
+                        if (!Array.isArray(product.specialitesElectricien)) {
+                            return false;
+                        }
+                        if (!categoryFilters.specialitesElectricien.some(spec => product.specialitesElectricien.includes(spec))) {
+                            return false;
+                        }
+                    }
+
+                    // Filtre équipements concernés (multiselect)
+                    if (categoryFilters.equipementsElectricien && Array.isArray(categoryFilters.equipementsElectricien) && categoryFilters.equipementsElectricien.length > 0) {
+                        if (!Array.isArray(product.equipementsElectricien)) {
+                            return false;
+                        }
+                        if (!categoryFilters.equipementsElectricien.some(equip => product.equipementsElectricien.includes(equip))) {
+                            return false;
+                        }
+                    }
+
+                    // Filtre disponibilité
+                    if (categoryFilters.disponibiliteElectricien && product.disponibiliteElectricien !== categoryFilters.disponibiliteElectricien) {
+                        return false;
+                    }
+
+                    // Filtre garantie travaux
+                    if (categoryFilters.garantieTravaux && product.garantieElectricien !== categoryFilters.garantieTravaux) {
+                        return false;
+                    }
+
+                    // Filtre certifications (multiselect)
+                    if (categoryFilters.certifications && Array.isArray(categoryFilters.certifications) && categoryFilters.certifications.length > 0) {
+                        if (!Array.isArray(product.certificationsElectricien)) {
+                            return false;
+                        }
+                        if (!categoryFilters.certifications.some(cert => product.certificationsElectricien.includes(cert))) {
+                            return false;
+                        }
+                    }
+
+                    // Filtres toggles
+                    if (categoryFilters.urgence === true && !product.urgence24hElec) {
+                        return false;
+                    }
+
+                    if (categoryFilters.devisGratuit === true && !product.devisGratuitElec) {
+                        return false;
+                    }
+                }
+
+                // ✅ FILTRES SPÉCIAUX POUR RÉPARATEUR CLIMATISEUR (SERVICE)
+                if (product.type === 'reparateur_climatiseur') {
+                    // Filtre type de service climatisation
+                    if (categoryFilters.serviceClimatisation && product.serviceClimatisation !== categoryFilters.serviceClimatisation) {
+                        return false;
+                    }
+
+                    // Filtre marque climatiseur
+                    if (categoryFilters.marqueClimatiseur && product.marqueClimatiseur !== categoryFilters.marqueClimatiseur) {
+                        return false;
+                    }
+
+                    // Filtre type climatiseur (multiselect)
+                    if (categoryFilters.typeClimatiseur && Array.isArray(categoryFilters.typeClimatiseur) && categoryFilters.typeClimatiseur.length > 0) {
+                        if (!categoryFilters.typeClimatiseur.includes(product.typeClimatiseur)) {
+                            return false;
+                        }
+                    }
+
+                    // Filtre puissance BTU
+                    if (categoryFilters.puissanceBtu && product.puissanceBtu !== categoryFilters.puissanceBtu) {
+                        return false;
+                    }
+
+                    // Filtre disponibilité
+                    if (categoryFilters.disponibiliteClim && product.disponibiliteClim !== categoryFilters.disponibiliteClim) {
+                        return false;
+                    }
+
+                    // Filtre certification
+                    if (categoryFilters.certificationClim && product.certificationClim !== categoryFilters.certificationClim) {
+                        return false;
+                    }
+
+                    // Filtre garantie
+                    if (categoryFilters.garantieClim && product.garantieClim !== categoryFilters.garantieClim) {
+                        return false;
+                    }
+
+                    // Filtre type de clientèle (multiselect)
+                    if (categoryFilters.typeClientele && Array.isArray(categoryFilters.typeClientele) && categoryFilters.typeClientele.length > 0) {
+                        if (!categoryFilters.typeClientele.includes(product.typeClientele)) {
+                            return false;
+                        }
+                    }
+
+                    // Filtre mode de paiement (multiselect)
+                    if (categoryFilters.modePaiementClim && Array.isArray(categoryFilters.modePaiementClim) && categoryFilters.modePaiementClim.length > 0) {
+                        if (!Array.isArray(product.modePaiementClim)) {
+                            return false;
+                        }
+                        if (!categoryFilters.modePaiementClim.some(mode => product.modePaiementClim.includes(mode))) {
+                            return false;
+                        }
+                    }
+
+                    // Filtres toggles
+                    if (categoryFilters.urgence24h === true && !product.urgence24h) {
+                        return false;
+                    }
+
+                    if (categoryFilters.devisGratuitClim === true && !product.devisGratuitClim) {
+                        return false;
+                    }
+
+                    if (categoryFilters.interventionDomicile === true && !product.interventionDomicile) {
+                        return false;
+                    }
+                }
+
+                // ✅ FILTRES SPÉCIAUX POUR MAÇON (SERVICE)
+                if (product.type === 'macon') {
+                    // Filtre type de prestation
+                    if (categoryFilters.typePrestation && product.typeMacon !== categoryFilters.typePrestation) {
+                        return false;
+                    }
+
+                    // Filtre spécialités (multiselect)
+                    if (categoryFilters.specialitesMacon && Array.isArray(categoryFilters.specialitesMacon) && categoryFilters.specialitesMacon.length > 0) {
+                        if (!Array.isArray(product.specialitesMacon)) {
+                            return false;
+                        }
+                        if (!categoryFilters.specialitesMacon.some(spec => product.specialitesMacon.includes(spec))) {
+                            return false;
+                        }
+                    }
+
+                    // Filtre types de bâtiments (multiselect)
+                    if (categoryFilters.typesBatiment && Array.isArray(categoryFilters.typesBatiment) && categoryFilters.typesBatiment.length > 0) {
+                        if (!Array.isArray(product.typesBatimentMacon)) {
+                            return false;
+                        }
+                        if (!categoryFilters.typesBatiment.some(type => product.typesBatimentMacon.includes(type))) {
+                            return false;
+                        }
+                    }
+
+                    // Filtre disponibilité
+                    if (categoryFilters.disponibiliteMacon && product.disponibiliteMacon !== categoryFilters.disponibiliteMacon) {
+                        return false;
+                    }
+
+                    // Filtre garantie travaux
+                    if (categoryFilters.garantie && product.garantieMacon !== categoryFilters.garantie) {
+                        return false;
+                    }
+
+                    // Filtres toggles
+                    if (categoryFilters.assuranceDecennale === true && !product.assuranceDecennale) {
+                        return false;
+                    }
+
+                    if (categoryFilters.devisGratuit === true && !product.devisGratuitMacon) {
+                        return false;
+                    }
+                }
+
+                // ✅ FILTRES SPÉCIAUX POUR PLOMBERIE & SANITAIRE (PRODUITS - VENTE MATÉRIEL)
+                if (product.type === 'plomberie_sanitaire') {
+                    // Filtre catégorie de produit
+                    if (categoryFilters.categorieProduit) {
+                        const categorieProduit = product.categorieProduit || product.categorieProduitPlomberie;
+                        if (categorieProduit !== categoryFilters.categorieProduit) {
+                            return false;
+                        }
+                    }
+
+                    // Filtre marque
+                    if (categoryFilters.marque) {
+                        const marque = product.marquePlomberie || product.marquePlomberieSanitaire;
+                        if (marque !== categoryFilters.marque) {
+                            return false;
+                        }
+                    }
+
+                    // Filtre matériau (multiselect)
+                    if (categoryFilters.materiau && Array.isArray(categoryFilters.materiau) && categoryFilters.materiau.length > 0) {
+                        const materiau = product.materiauPlomberie || product.materiauPlomberieSanitaire;
+                        if (!categoryFilters.materiau.includes(materiau)) {
+                            return false;
+                        }
+                    }
+
+                    // Filtre finition
+                    if (categoryFilters.finition) {
+                        const finition = product.finitionPlomberie || product.finitionPlomberieSanitaire;
+                        if (finition !== categoryFilters.finition) {
+                            return false;
+                        }
+                    }
+
+                    // Filtre état
+                    if (categoryFilters.etat) {
+                        const etat = product.etatPlomberie || product.etatPlomberieSanitaire;
+                        if (etat !== categoryFilters.etat) {
+                            return false;
+                        }
+                    }
+
+                    // Filtre garantie
+                    if (categoryFilters.garantie) {
+                        const garantie = product.garantiePlomberie || product.garantiePlomberieSanitaire;
+                        if (garantie !== categoryFilters.garantie) {
+                            return false;
+                        }
+                    }
+
+                    // Filtre livraison
+                    if (categoryFilters.livraison) {
+                        const livraison = product.livraisonPlomberie || product.livraisonPlomberieSanitaire;
+                        if (livraison !== categoryFilters.livraison) {
+                            return false;
+                        }
+                    }
+
+                    // Filtre installation
+                    if (categoryFilters.installation) {
+                        const installation = product.installationPlomberie || product.installationPlomberieSanitaire;
+                        if (installation !== categoryFilters.installation) {
                             return false;
                         }
                     }
@@ -1419,19 +2412,35 @@ const ResultatBesoinScreen: React.FC = () => {
                     }
                 }
 
-                // ✅ FILTRES SPÉCIAUX POUR ASSURANCE
+                // ✅ FILTRES SPÉCIAUX POUR ASSURANCE (MIS À JOUR)
                 if (product.type === 'assurance') {
-                    if (categoryFilters.typeAssurance && product.typeAssurance !== categoryFilters.typeAssurance) {
+                    // Type VIE / NON VIE
+                    if (categoryFilters.typeAssuranceVie && product.typeAssuranceVie !== categoryFilters.typeAssuranceVie) {
                         return false;
                     }
+                    // Produit d'assurance
+                    if (categoryFilters.produitAssurance && product.produitAssurance !== categoryFilters.produitAssurance) {
+                        return false;
+                    }
+                    // Compagnie
                     if (categoryFilters.compagnieAssurance && product.compagnieAssurance !== categoryFilters.compagnieAssurance) {
                         return false;
                     }
-                    if (categoryFilters.typeCouverture && product.typeCouverture !== categoryFilters.typeCouverture) {
-                        return false;
-                    }
+                    // Durée
                     if (categoryFilters.dureeContrat && product.dureeContrat !== categoryFilters.dureeContrat) {
                         return false;
+                    }
+                    // Mode de paiement
+                    if (categoryFilters.modePaiementAssurance && product.modePaiementAssurance !== categoryFilters.modePaiementAssurance) {
+                        return false;
+                    }
+                    // Couvertures (multi-select: au moins une en commun)
+                    if (categoryFilters.couverturesArray && Array.isArray(categoryFilters.couverturesArray) && categoryFilters.couverturesArray.length > 0) {
+                        const productCouvertures = product.couverturesArray || [];
+                        const hasCommonCouverture = categoryFilters.couverturesArray.some(couv =>
+                            productCouvertures.some(pc => pc.toLowerCase().includes(couv.toLowerCase()))
+                        );
+                        if (!hasCommonCouverture) return false;
                     }
                 }
 
@@ -1445,16 +2454,90 @@ const ResultatBesoinScreen: React.FC = () => {
                     }
                 }
 
-                // ✅ FILTRES SPÉCIAUX POUR IMAGE_SON
+                // ✅ FILTRES SPÉCIAUX POUR IMAGE_SON (14 filtres complets)
                 if (product.type === 'image_son') {
+                    // Filtre 1: Catégorie
+                    if (categoryFilters.categorieImageSon && product.categorieImageSon !== categoryFilters.categorieImageSon) {
+                        return false;
+                    }
+                    // Filtre 2: Type
                     if (categoryFilters.typeImageSon && product.typeImageSon !== categoryFilters.typeImageSon) {
                         return false;
                     }
+                    // Filtre 3: Marque
                     if (categoryFilters.marqueImageSon && product.marqueImageSon !== categoryFilters.marqueImageSon) {
                         return false;
                     }
+                    // Filtre 4: Technologie écran
+                    if (categoryFilters.technologieEcran && product.technologieEcran !== categoryFilters.technologieEcran) {
+                        return false;
+                    }
+                    // Filtre 5: Résolution
+                    if (categoryFilters.resolution && product.resolution !== categoryFilters.resolution) {
+                        return false;
+                    }
+                    // Filtre 6: Diagonale écran (range)
+                    if (categoryFilters.diagonaleEcran) {
+                        const diagonale = parseFloat(product.diagonaleEcran);
+                        const filterDiagonale = parseFloat(categoryFilters.diagonaleEcran);
+                        if (!isNaN(diagonale) && !isNaN(filterDiagonale) && diagonale < filterDiagonale) {
+                            return false;
+                        }
+                    }
+                    // Filtre 7: Gamme/Modèle
+                    if (categoryFilters.modeleImageSon && product.modeleImageSon !== categoryFilters.modeleImageSon) {
+                        return false;
+                    }
+                    // Filtre 8: État
                     if (categoryFilters.etatImageSon && product.etatImageSon !== categoryFilters.etatImageSon) {
                         return false;
+                    }
+                    // Filtre 9: Garantie
+                    if (categoryFilters.garantieImageSon && product.garantieImageSon !== categoryFilters.garantieImageSon) {
+                        return false;
+                    }
+                    // Filtre 10: Connectivités (multiselect)
+                    if (categoryFilters.connectivitesImageSon && Array.isArray(categoryFilters.connectivitesImageSon) && categoryFilters.connectivitesImageSon.length > 0) {
+                        const hasAllConnectivites = categoryFilters.connectivitesImageSon.every(conn =>
+                            product.connectivitesImageSon && product.connectivitesImageSon.includes(conn)
+                        );
+                        if (!hasAllConnectivites) {
+                            return false;
+                        }
+                    }
+                    // Filtre 11: Fonctionnalités (multiselect)
+                    if (categoryFilters.fonctionnalitesImageSon && Array.isArray(categoryFilters.fonctionnalitesImageSon) && categoryFilters.fonctionnalitesImageSon.length > 0) {
+                        const hasAllFonctionnalites = categoryFilters.fonctionnalitesImageSon.every(fonc =>
+                            product.fonctionnalitesImageSon && product.fonctionnalitesImageSon.includes(fonc)
+                        );
+                        if (!hasAllFonctionnalites) {
+                            return false;
+                        }
+                    }
+                    // Filtre 12: Puissance audio (range)
+                    if (categoryFilters.puissanceAudio) {
+                        const puissance = parseFloat(product.puissanceAudio);
+                        const filterPuissance = parseFloat(categoryFilters.puissanceAudio);
+                        if (!isNaN(puissance) && !isNaN(filterPuissance) && puissance < filterPuissance) {
+                            return false;
+                        }
+                    }
+                    // Filtre 13: Année de sortie (range)
+                    if (categoryFilters.anneeSortie) {
+                        const annee = parseInt(product.anneeSortie);
+                        const filterAnnee = parseInt(categoryFilters.anneeSortie);
+                        if (!isNaN(annee) && !isNaN(filterAnnee) && annee < filterAnnee) {
+                            return false;
+                        }
+                    }
+                    // Filtre 14: Accessoires inclus (multiselect)
+                    if (categoryFilters.accessoiresImageSon && Array.isArray(categoryFilters.accessoiresImageSon) && categoryFilters.accessoiresImageSon.length > 0) {
+                        const hasAllAccessoires = categoryFilters.accessoiresImageSon.every(acc =>
+                            product.accessoiresImageSon && product.accessoiresImageSon.includes(acc)
+                        );
+                        if (!hasAllAccessoires) {
+                            return false;
+                        }
                     }
                 }
 
@@ -1468,6 +2551,42 @@ const ResultatBesoinScreen: React.FC = () => {
                     }
                     if (categoryFilters.niveauSport && product.niveauSport !== categoryFilters.niveauSport) {
                         return false;
+                    }
+                }
+
+                // ✅ FILTRES SPÉCIAUX POUR SPORT_FITNESS
+                if (product.type === 'sport_fitness') {
+                    if (categoryFilters.typeSport && product.typeSport !== categoryFilters.typeSport) {
+                        return false;
+                    }
+                    if (categoryFilters.niveauSport && product.niveauSport !== categoryFilters.niveauSport) {
+                        return false;
+                    }
+                    if (categoryFilters.dureeSport && product.dureeSport !== categoryFilters.dureeSport) {
+                        return false;
+                    }
+                    if (categoryFilters.serviceSport && product.serviceSport !== categoryFilters.serviceSport) {
+                        return false;
+                    }
+                    if (categoryFilters.objectifSport && product.objectifSport !== categoryFilters.objectifSport) {
+                        return false;
+                    }
+                    if (categoryFilters.horairesSport && product.horairesSport !== categoryFilters.horairesSport) {
+                        return false;
+                    }
+                    // Jours (multiselect - au moins un jour en commun)
+                    if (categoryFilters.joursSport && categoryFilters.joursSport.length > 0 && product.joursSport) {
+                        const hasCommonDay = categoryFilters.joursSport.some((jour: string) =>
+                            product.joursSport.includes(jour)
+                        );
+                        if (!hasCommonDay) return false;
+                    }
+                    // Équipements (multiselect - au moins un équipement en commun)
+                    if (categoryFilters.equipementsSport && categoryFilters.equipementsSport.length > 0 && product.equipementsSport) {
+                        const hasCommonEquipment = categoryFilters.equipementsSport.some((equip: string) =>
+                            product.equipementsSport.includes(equip)
+                        );
+                        if (!hasCommonEquipment) return false;
                     }
                 }
 
@@ -1500,15 +2619,34 @@ const ResultatBesoinScreen: React.FC = () => {
                     }
                 }
 
-                // ✅ FILTRES SPÉCIAUX POUR DECORATION
+                // ✅ FILTRES SPÉCIAUX POUR DECORATION - COMPLET
                 if (product.type === 'decoration') {
-                    if (categoryFilters.typeDecoration && product.typeDecoration !== categoryFilters.typeDecoration) {
+                    if (categoryFilters.categorieDecoration && product.categorieDecoration !== categoryFilters.categorieDecoration) {
                         return false;
                     }
                     if (categoryFilters.styleDecoration && product.styleDecoration !== categoryFilters.styleDecoration) {
                         return false;
                     }
                     if (categoryFilters.pieceDecoration && product.pieceDecoration !== categoryFilters.pieceDecoration) {
+                        return false;
+                    }
+                    if (categoryFilters.matiereDecoration && product.matiereDecoration !== categoryFilters.matiereDecoration) {
+                        return false;
+                    }
+                    if (categoryFilters.couleurDecoration && product.couleurDecoration !== categoryFilters.couleurDecoration) {
+                        return false;
+                    }
+                    if (categoryFilters.tailleDecoration && product.tailleDecoration !== categoryFilters.tailleDecoration) {
+                        return false;
+                    }
+                    if (categoryFilters.etatDecoration && product.etatDecoration !== categoryFilters.etatDecoration) {
+                        return false;
+                    }
+                    if (categoryFilters.marqueDecoration && product.marqueDecoration !== categoryFilters.marqueDecoration) {
+                        return false;
+                    }
+                    // Legacy pour compatibilité
+                    if (categoryFilters.typeDecoration && product.typeDecoration !== categoryFilters.typeDecoration) {
                         return false;
                     }
                 }
@@ -1518,27 +2656,204 @@ const ResultatBesoinScreen: React.FC = () => {
                     if (categoryFilters.typeJouet && product.typeJouet !== categoryFilters.typeJouet) {
                         return false;
                     }
-                    if (categoryFilters.ageJouet && product.ageJouet !== categoryFilters.ageJouet) {
+                    if (categoryFilters.ageRecommande && product.ageRecommande !== categoryFilters.ageRecommande) {
+                        return false;
+                    }
+                    if (categoryFilters.marqueJouet && product.marqueJouet !== categoryFilters.marqueJouet) {
                         return false;
                     }
                     if (categoryFilters.etatJouet && product.etatJouet !== categoryFilters.etatJouet) {
                         return false;
                     }
-                    if (categoryFilters.normeSecurite === true && !product.normeSecurite) {
+                    if (categoryFilters.genreJouet && product.genreJouet !== categoryFilters.genreJouet) {
+                        return false;
+                    }
+                    if (categoryFilters.materiauJouet && product.materiauJouet !== categoryFilters.materiauJouet) {
+                        return false;
+                    }
+                    if (categoryFilters.normesSecurite && Array.isArray(categoryFilters.normesSecurite) && categoryFilters.normesSecurite.length > 0) {
+                        const productNormes = Array.isArray(product.normesSecurite) ? product.normesSecurite : [];
+                        const hasCommonNorme = categoryFilters.normesSecurite.some((norme: string) => productNormes.includes(norme));
+                        if (!hasCommonNorme) {
+                            return false;
+                        }
+                    }
+                    if (categoryFilters.categoriesEducatives && Array.isArray(categoryFilters.categoriesEducatives) && categoryFilters.categoriesEducatives.length > 0) {
+                        const productCategories = Array.isArray(product.categoriesEducatives) ? product.categoriesEducatives : [];
+                        const hasCommonCategorie = categoryFilters.categoriesEducatives.some((cat: string) => productCategories.includes(cat));
+                        if (!hasCommonCategorie) {
+                            return false;
+                        }
+                    }
+                    if (categoryFilters.alimentationJouet && product.alimentationJouet !== categoryFilters.alimentationJouet) {
+                        return false;
+                    }
+                    if (categoryFilters.lieuUtilisation && product.lieuUtilisation !== categoryFilters.lieuUtilisation) {
                         return false;
                     }
                 }
 
                 // ✅ FILTRES SPÉCIAUX POUR USTENSILES_CUISINE
                 if (product.type === 'ustensiles_cuisine') {
+                    if (categoryFilters.categorieUstensile && product.categorieUstensile !== categoryFilters.categorieUstensile) {
+                        return false;
+                    }
                     if (categoryFilters.typeUstensile && product.typeUstensile !== categoryFilters.typeUstensile) {
+                        return false;
+                    }
+                    if (categoryFilters.materiauUstensile && product.materiauUstensile !== categoryFilters.materiauUstensile) {
+                        return false;
+                    }
+                    if (categoryFilters.marqueUstensile && product.marqueUstensile !== categoryFilters.marqueUstensile) {
+                        return false;
+                    }
+                    if (categoryFilters.etatUstensile && product.etatUstensile !== categoryFilters.etatUstensile) {
+                        return false;
+                    }
+                    if (categoryFilters.usageUstensile && product.usageUstensile !== categoryFilters.usageUstensile) {
+                        return false;
+                    }
+                    if (categoryFilters.piecesDansSet && product.piecesDansSet !== categoryFilters.piecesDansSet) {
+                        return false;
+                    }
+                    if (categoryFilters.capaciteUstensile && product.capaciteUstensile !== categoryFilters.capaciteUstensile) {
                         return false;
                     }
                 }
 
-                // ✅ FILTRES SPÉCIAUX POUR QUINCAILLERIE
+                // ✅ FILTRES SPÉCIAUX POUR QUINCAILLERIE - COMPLET
                 if (product.type === 'quincaillerie') {
+                    // Catégorie de quincaillerie
                     if (categoryFilters.categorieQuincaillerie && product.categorieQuincaillerie !== categoryFilters.categorieQuincaillerie) {
+                        return false;
+                    }
+
+                    // Type de produit
+                    if (categoryFilters.typeQuincaillerie && product.typeQuincaillerie !== categoryFilters.typeQuincaillerie) {
+                        return false;
+                    }
+
+                    // Marque
+                    if (categoryFilters.marqueQuincaillerie && product.marqueQuincaillerie !== categoryFilters.marqueQuincaillerie) {
+                        return false;
+                    }
+
+                    // Matériau
+                    if (categoryFilters.materiauQuincaillerie && product.materiauQuincaillerie !== categoryFilters.materiauQuincaillerie) {
+                        return false;
+                    }
+
+                    // Dimension
+                    if (categoryFilters.dimensionQuincaillerie && product.dimensionQuincaillerie !== categoryFilters.dimensionQuincaillerie) {
+                        return false;
+                    }
+
+                    // Finition
+                    if (categoryFilters.finitionQuincaillerie && product.finitionQuincaillerie !== categoryFilters.finitionQuincaillerie) {
+                        return false;
+                    }
+
+                    // Usage
+                    if (categoryFilters.usageQuincaillerie && product.usageQuincaillerie !== categoryFilters.usageQuincaillerie) {
+                        return false;
+                    }
+
+                    // État
+                    if (categoryFilters.etatQuincaillerie && product.etatQuincaillerie !== categoryFilters.etatQuincaillerie) {
+                        return false;
+                    }
+
+                    // Garantie
+                    if (categoryFilters.garantieQuincaillerie && product.garantieQuincaillerie !== categoryFilters.garantieQuincaillerie) {
+                        return false;
+                    }
+
+                    // Norme
+                    if (categoryFilters.normeQuincaillerie && product.normeQuincaillerie !== categoryFilters.normeQuincaillerie) {
+                        return false;
+                    }
+
+                    // Unité de vente
+                    if (categoryFilters.uniteVente && product.uniteVente !== categoryFilters.uniteVente) {
+                        return false;
+                    }
+
+                    // Type de fournisseur
+                    if (categoryFilters.typeFournisseurQuincaillerie && product.typeFournisseurQuincaillerie !== categoryFilters.typeFournisseurQuincaillerie) {
+                        return false;
+                    }
+
+                    // Ville
+                    if (categoryFilters.ville) {
+                        const villeProduct = product.ville?.toLowerCase() || product.localisation?.toLowerCase() || '';
+                        const villeFilter = categoryFilters.ville.toLowerCase();
+                        if (!villeProduct.includes(villeFilter) && villeFilter !== villeProduct) return false;
+                    }
+
+                    // Quartier
+                    if (categoryFilters.quartier) {
+                        const quartierProduct = product.quartier?.toLowerCase() || product.localisation?.toLowerCase() || '';
+                        const quartierFilter = categoryFilters.quartier.toLowerCase();
+                        if (!quartierProduct.includes(quartierFilter)) return false;
+                    }
+
+                    // Toggles
+                    if (categoryFilters.enStock === true && (!product.stockDisponible || product.stockDisponible <= 0)) return false;
+                    if (categoryFilters.livraisonDisponible === true && !product.livraisonDisponible) return false;
+                }
+
+                // ✅ FILTRES SPÉCIAUX POUR ÉLECTRICITÉ & ÉCLAIRAGE
+                if (product.type === 'electricite') {
+                    // Filtre catégorie électrique
+                    if (categoryFilters.categorieElectrique && product.categorieElectrique !== categoryFilters.categorieElectrique) {
+                        return false;
+                    }
+
+                    // Filtre type d'éclairage
+                    if (categoryFilters.typeElectricite && product.typeElectricite !== categoryFilters.typeElectricite) {
+                        return false;
+                    }
+
+                    // Filtre marque
+                    if (categoryFilters.marqueElectricite && product.marqueElectricite !== categoryFilters.marqueElectricite) {
+                        return false;
+                    }
+
+                    // Filtre tension
+                    if (categoryFilters.tensionElectrique && product.tensionElectrique !== categoryFilters.tensionElectrique) {
+                        return false;
+                    }
+
+                    // Filtre puissance
+                    if (categoryFilters.puissanceElectrique && product.puissanceElectrique !== categoryFilters.puissanceElectrique) {
+                        return false;
+                    }
+
+                    // Filtre culot ampoule
+                    if (categoryFilters.culotAmpoule && product.culotAmpoule !== categoryFilters.culotAmpoule) {
+                        return false;
+                    }
+
+                    // Filtre couleur lumière
+                    if (categoryFilters.couleurLumiere && product.couleurLumiere !== categoryFilters.couleurLumiere) {
+                        return false;
+                    }
+
+                    // Filtre normes (multiselect)
+                    if (categoryFilters.normesElectrique && Array.isArray(categoryFilters.normesElectrique) && categoryFilters.normesElectrique.length > 0) {
+                        const hasNormes = categoryFilters.normesElectrique.some((normeRecherchee: string) =>
+                            product.normesElectrique?.includes(normeRecherchee)
+                        );
+                        if (!hasNormes) return false;
+                    }
+
+                    // Filtre état
+                    if (categoryFilters.etatElectrique && product.etatElectrique !== categoryFilters.etatElectrique) {
+                        return false;
+                    }
+
+                    // Filtre type d'utilisation
+                    if (categoryFilters.utilisationElectrique && product.utilisationElectrique !== categoryFilters.utilisationElectrique) {
                         return false;
                     }
                 }
@@ -1553,9 +2868,58 @@ const ResultatBesoinScreen: React.FC = () => {
                     }
                 }
 
-                // ✅ FILTRES SPÉCIAUX POUR PIECES_AUTO
+                // ✅ FILTRES SPÉCIAUX POUR PIECES_AUTO - TOUS LES FILTRES
                 if (product.type === 'pieces_auto') {
+                    // Type de pièce
                     if (categoryFilters.typePieceAuto && product.typePieceAuto !== categoryFilters.typePieceAuto) {
+                        return false;
+                    }
+                    // Catégorie principale
+                    if (categoryFilters.categoriePieceAuto && product.categoriePieceAuto !== categoryFilters.categoriePieceAuto) {
+                        return false;
+                    }
+                    // Marque de la pièce
+                    if (categoryFilters.marquePieceAuto && product.marquePieceAuto !== categoryFilters.marquePieceAuto) {
+                        return false;
+                    }
+                    // Marque véhicule compatible
+                    if (categoryFilters.marqueVehiculeCompatible && product.marqueVehiculeCompatible !== categoryFilters.marqueVehiculeCompatible) {
+                        return false;
+                    }
+                    // Modèle véhicule
+                    if (categoryFilters.modeleVehicule && product.modeleVehicule !== categoryFilters.modeleVehicule) {
+                        return false;
+                    }
+                    // État
+                    if (categoryFilters.etatPieceAuto && product.etatPieceAuto !== categoryFilters.etatPieceAuto) {
+                        return false;
+                    }
+                    // Origine
+                    if (categoryFilters.originePiece && product.originePiece !== categoryFilters.originePiece) {
+                        return false;
+                    }
+                    // Garantie
+                    if (categoryFilters.garantiePiece && product.garantiePiece !== categoryFilters.garantiePiece) {
+                        return false;
+                    }
+                    // Compatibilité
+                    if (categoryFilters.niveauCompatibilite && product.niveauCompatibilite !== categoryFilters.niveauCompatibilite) {
+                        return false;
+                    }
+                    // Matériau
+                    if (categoryFilters.materiauPiece && product.materiauPiece !== categoryFilters.materiauPiece) {
+                        return false;
+                    }
+                    // Type fournisseur
+                    if (categoryFilters.typeFournisseur && product.typeFournisseur !== categoryFilters.typeFournisseur) {
+                        return false;
+                    }
+                    // Avec référence (toggle)
+                    if (categoryFilters.avecReference === true && product.avecReference !== true) {
+                        return false;
+                    }
+                    // Livraison disponible (toggle)
+                    if (categoryFilters.livraisonDisponible === true && product.livraisonDisponible !== true) {
                         return false;
                     }
                 }
@@ -1565,18 +2929,167 @@ const ResultatBesoinScreen: React.FC = () => {
                     if (categoryFilters.typePieceIndustrielle && product.typePieceIndustrielle !== categoryFilters.typePieceIndustrielle) {
                         return false;
                     }
+                    if (categoryFilters.marquePieceIndustrielle && product.marquePieceIndustrielle !== categoryFilters.marquePieceIndustrielle) {
+                        return false;
+                    }
+                    if (categoryFilters.applicationIndustrielle) {
+                        // Gérer les applications en multiselect
+                        const productApps = Array.isArray(product.applicationIndustrielle)
+                            ? product.applicationIndustrielle
+                            : typeof product.applicationIndustrielle === 'string'
+                                ? (product.applicationIndustrielle.includes(',')
+                                    ? product.applicationIndustrielle.split(',').map(a => a.trim())
+                                    : [product.applicationIndustrielle])
+                                : [];
+
+                        if (!productApps.includes(categoryFilters.applicationIndustrielle)) {
+                            return false;
+                        }
+                    }
+                    if (categoryFilters.materielPiece && product.materielPiece !== categoryFilters.materielPiece) {
+                        return false;
+                    }
+                    if (categoryFilters.etatPieceIndustrielle && product.etatPieceIndustrielle !== categoryFilters.etatPieceIndustrielle) {
+                        return false;
+                    }
+                    if (categoryFilters.garantiePieceIndustrielle && product.garantiePieceIndustrielle !== categoryFilters.garantiePieceIndustrielle) {
+                        return false;
+                    }
                 }
 
-                // ✅ FILTRES SPÉCIAUX POUR ELECTRONIQUE
+                // ✅ FILTRES SPÉCIAUX POUR ELECTRONIQUE (PRODUITS)
                 if (product.type === 'electronique') {
                     if (categoryFilters.typeElectronique && product.typeElectronique !== categoryFilters.typeElectronique) {
                         return false;
                     }
                 }
 
-                // ✅ FILTRES SPÉCIAUX POUR MENUISERIE
-                if (product.type === 'menuiserie') {
-                    if (categoryFilters.typeMenuiserie && product.typeMenuiserie !== categoryFilters.typeMenuiserie) {
+                // ✅ FILTRES SPÉCIAUX POUR RÉPARATEUR ÉLECTRONIQUE (TV, RADIO, AUDIO, VIDÉO)
+                if (product.type === 'reparateur_electronique') {
+                    // Filtre par type de service électronique (multiselect)
+                    if (categoryFilters.serviceElectronique && Array.isArray(categoryFilters.serviceElectronique) && categoryFilters.serviceElectronique.length > 0) {
+                        const hasService = categoryFilters.serviceElectronique.some((serviceRecherche: string) => {
+                            const servicesProduct = product.typesServiceElectronique || [];
+                            return servicesProduct.some((service: string) => service.includes(serviceRecherche) || serviceRecherche.includes(service));
+                        });
+                        if (!hasService) return false;
+                    }
+
+                    // Filtre par marque TV (multiselect)
+                    if (categoryFilters.marqueTv && Array.isArray(categoryFilters.marqueTv) && categoryFilters.marqueTv.length > 0) {
+                        const hasMarque = categoryFilters.marqueTv.some((marqueRecherchee: string) => {
+                            const marquesProduct = product.marquesTv || [];
+                            return marquesProduct.some((marque: string) => marque === marqueRecherchee || marqueRecherchee === 'Toutes marques TV');
+                        });
+                        if (!hasMarque) return false;
+                    }
+
+                    // Filtre par type d'appareil électronique (multiselect)
+                    if (categoryFilters.typeAppareilElectronique && Array.isArray(categoryFilters.typeAppareilElectronique) && categoryFilters.typeAppareilElectronique.length > 0) {
+                        const hasAppareil = categoryFilters.typeAppareilElectronique.some((appareilRecherche: string) => {
+                            const appareilsProduct = product.typesAppareilsElectroniques || [];
+                            return appareilsProduct.some((appareil: string) => appareil.includes(appareilRecherche) || appareilRecherche.includes(appareil));
+                        });
+                        if (!hasAppareil) return false;
+                    }
+
+                    // Filtre par type de panne (multiselect)
+                    if (categoryFilters.typePanneElectronique && Array.isArray(categoryFilters.typePanneElectronique) && categoryFilters.typePanneElectronique.length > 0) {
+                        const hasPanne = categoryFilters.typePanneElectronique.some((panneRecherchee: string) => {
+                            const pannesProduct = product.typesPannesElectronique || [];
+                            return pannesProduct.some((panne: string) => panne.includes(panneRecherchee) || panneRecherchee.includes(panne));
+                        });
+                        if (!hasPanne) return false;
+                    }
+
+                    // Filtre par taille écran TV (select)
+                    if (categoryFilters.tailleEcranTv && product.taillesEcranTv !== categoryFilters.tailleEcranTv) {
+                        return false;
+                    }
+
+                    // Filtre par disponibilité (select)
+                    if (categoryFilters.disponibiliteElectronique && product.disponibilitesElectronique !== categoryFilters.disponibiliteElectronique) {
+                        return false;
+                    }
+
+                    // Filtre par garantie (select)
+                    if (categoryFilters.garantieElectronique && product.garantiesElectronique !== categoryFilters.garantieElectronique) {
+                        return false;
+                    }
+                }
+
+                // ✅ FILTRES SPÉCIAUX POUR MENUISERIE & ÉBÉNISTERIE
+                if (product.type === 'menuiserie' || product.type === 'ebenisterie' || product.type === 'menuiserie_bois') {
+                    // Filtre par type de service (multiselect)
+                    if (categoryFilters.serviceMenuiserie && Array.isArray(categoryFilters.serviceMenuiserie) && categoryFilters.serviceMenuiserie.length > 0) {
+                        const hasService = categoryFilters.serviceMenuiserie.some((serviceRecherche: string) => {
+                            const servicesProduct = product.services || [];
+                            return servicesProduct.some((service: string) => service === serviceRecherche);
+                        });
+                        if (!hasService) return false;
+                    }
+
+                    // Filtre par type de bois (multiselect)
+                    if (categoryFilters.typeBois && Array.isArray(categoryFilters.typeBois) && categoryFilters.typeBois.length > 0) {
+                        const hasBois = categoryFilters.typeBois.some((boisRecherche: string) => {
+                            const boisProduct = product.bois || product.typeBois || [];
+                            return boisProduct === boisRecherche || (Array.isArray(boisProduct) && boisProduct.includes(boisRecherche));
+                        });
+                        if (!hasBois) return false;
+                    }
+
+                    // Filtre par finitions (multiselect)
+                    if (categoryFilters.finitionsMenuiserie && Array.isArray(categoryFilters.finitionsMenuiserie) && categoryFilters.finitionsMenuiserie.length > 0) {
+                        const hasFinition = categoryFilters.finitionsMenuiserie.some((finitionRecherche: string) =>
+                            product.finitions && product.finitions.includes(finitionRecherche)
+                        );
+                        if (!hasFinition) return false;
+                    }
+
+                    // Filtre par style
+                    if (categoryFilters.styleMenuiserie && product.styles !== categoryFilters.styleMenuiserie && product.style !== categoryFilters.styleMenuiserie) {
+                        return false;
+                    }
+
+                    // Filtre par expérience
+                    if (categoryFilters.experienceMenuisier && product.niveaux_experience !== categoryFilters.experienceMenuisier && product.experience !== categoryFilters.experienceMenuisier) {
+                        return false;
+                    }
+
+                    // Filtre par certification (multiselect)
+                    if (categoryFilters.certificationMenuisier && Array.isArray(categoryFilters.certificationMenuisier) && categoryFilters.certificationMenuisier.length > 0) {
+                        const hasCertification = categoryFilters.certificationMenuisier.some((certRecherche: string) =>
+                            product.certifications && product.certifications.includes(certRecherche)
+                        );
+                        if (!hasCertification) return false;
+                    }
+
+                    // Filtre par délai
+                    if (categoryFilters.delaiMenuiserie && product.delais !== categoryFilters.delaiMenuiserie && product.delais !== categoryFilters.delaiMenuiserie) {
+                        return false;
+                    }
+
+                    // Filtre par atelier
+                    if (categoryFilters.atelierMenuiserie && product.marques_ateliers !== categoryFilters.atelierMenuiserie) {
+                        return false;
+                    }
+
+                    // Filtre par garantie
+                    if (categoryFilters.garantieMenuiserie) {
+                        const hasGarantie = product.garanties && product.garanties.includes(categoryFilters.garantieMenuiserie);
+                        if (!hasGarantie) return false;
+                    }
+
+                    // Filtre par mode de paiement (multiselect)
+                    if (categoryFilters.paiementMenuiserie && Array.isArray(categoryFilters.paiementMenuiserie) && categoryFilters.paiementMenuiserie.length > 0) {
+                        const hasPaymentMode = categoryFilters.paiementMenuiserie.some((paymentRecherche: string) =>
+                            product.modes_paiement && product.modes_paiement.includes(paymentRecherche)
+                        );
+                        if (!hasPaymentMode) return false;
+                    }
+
+                    // Filtre par équipement atelier
+                    if (categoryFilters.equipementAtelier && product.outils_disponibles !== categoryFilters.equipementAtelier) {
                         return false;
                     }
                 }
@@ -1588,16 +3101,166 @@ const ResultatBesoinScreen: React.FC = () => {
                     }
                 }
 
-                // ✅ FILTRES SPÉCIAUX POUR SECURITE_SURVEILLANCE
+                // ✅ FILTRES SPÉCIAUX POUR SECURITE_SURVEILLANCE - COMPLET (22 filtres)
                 if (product.type === 'securite_surveillance') {
-                    if (categoryFilters.typeSecurite && product.typeSecurite !== categoryFilters.typeSecurite) {
+                    // Filtre 1: Type de service (multiselect)
+                    if (categoryFilters.typeServiceSecurite && Array.isArray(categoryFilters.typeServiceSecurite) && categoryFilters.typeServiceSecurite.length > 0) {
+                        const hasService = categoryFilters.typeServiceSecurite.some((serviceRecherche: string) =>
+                            product.typeServiceSecurite === serviceRecherche
+                        );
+                        if (!hasService) return false;
+                    }
+
+                    // Filtre 2: Type de client (multiselect)
+                    if (categoryFilters.typeClientSecurite && Array.isArray(categoryFilters.typeClientSecurite) && categoryFilters.typeClientSecurite.length > 0) {
+                        const hasClient = categoryFilters.typeClientSecurite.some((clientRecherche: string) =>
+                            product.typeClientSecurite === clientRecherche
+                        );
+                        if (!hasClient) return false;
+                    }
+
+                    // Filtre 3: Disponibilité (select)
+                    if (categoryFilters.disponibiliteSecurite && product.disponibiliteSecurite !== categoryFilters.disponibiliteSecurite) {
+                        return false;
+                    }
+
+                    // Filtre 4: Type de caméra (multiselect)
+                    if (categoryFilters.typeCameraSecurite && Array.isArray(categoryFilters.typeCameraSecurite) && categoryFilters.typeCameraSecurite.length > 0) {
+                        const hasCamera = categoryFilters.typeCameraSecurite.some((cameraRecherche: string) =>
+                            product.typeCameraSecurite === cameraRecherche
+                        );
+                        if (!hasCamera) return false;
+                    }
+
+                    // Filtre 5: Résolution caméra (select)
+                    if (categoryFilters.resolutionCamera && product.resolutionCamera !== categoryFilters.resolutionCamera) {
+                        return false;
+                    }
+
+                    // Filtre 6: Stockage vidéo (select)
+                    if (categoryFilters.stockageVideo && product.stockageVideo !== categoryFilters.stockageVideo) {
+                        return false;
+                    }
+
+                    // Filtre 7: Type alarme (multiselect)
+                    if (categoryFilters.typeAlarme && Array.isArray(categoryFilters.typeAlarme) && categoryFilters.typeAlarme.length > 0) {
+                        const hasAlarme = categoryFilters.typeAlarme.some((alarmeRecherche: string) =>
+                            product.typeAlarme === alarmeRecherche
+                        );
+                        if (!hasAlarme) return false;
+                    }
+
+                    // Filtre 8: Contrôle d'accès (multiselect)
+                    if (categoryFilters.controleAcces && Array.isArray(categoryFilters.controleAcces) && categoryFilters.controleAcces.length > 0) {
+                        const hasControle = categoryFilters.controleAcces.some((controleRecherche: string) =>
+                            product.controleAcces === controleRecherche
+                        );
+                        if (!hasControle) return false;
+                    }
+
+                    // Filtre 9: Nombre d'agents (select)
+                    if (categoryFilters.nombreAgents && product.nombreAgents !== categoryFilters.nombreAgents) {
+                        return false;
+                    }
+
+                    // Filtre 10: Armement agents (select)
+                    if (categoryFilters.armementAgents && product.armementAgents !== categoryFilters.armementAgents) {
+                        return false;
+                    }
+
+                    // Filtre 11: Certifications (multiselect)
+                    if (categoryFilters.certificationsSecurite && Array.isArray(categoryFilters.certificationsSecurite) && categoryFilters.certificationsSecurite.length > 0) {
+                        const hasCertification = categoryFilters.certificationsSecurite.some((certifRecherche: string) =>
+                            product.certificationsSecurite === certifRecherche
+                        );
+                        if (!hasCertification) return false;
+                    }
+
+                    // Filtre 12: Durée du contrat (select)
+                    if (categoryFilters.dureeContratSecurite && product.dureeContratSecurite !== categoryFilters.dureeContratSecurite) {
+                        return false;
+                    }
+
+                    // Filtre 13: Intervention rapide (toggle)
+                    if (categoryFilters.interventionRapide === true && !product.interventionRapide) {
+                        return false;
+                    }
+
+                    // Filtre 14: Service 24h/24 - 7j/7 (toggle)
+                    if (categoryFilters.service24h7j === true && !product.service24h7j) {
+                        return false;
+                    }
+
+                    // Filtre 15: Télésurveillance (toggle)
+                    if (categoryFilters.telesurveillance === true && !product.telesurveillance) {
+                        return false;
+                    }
+
+                    // Filtre 16: Installation incluse (toggle)
+                    if (categoryFilters.installationIncluse === true && !product.installationIncluse) {
+                        return false;
+                    }
+
+                    // Filtre 17: Maintenance incluse (toggle)
+                    if (categoryFilters.maintenanceIncluse === true && !product.maintenanceIncluse) {
+                        return false;
+                    }
+
+                    // Filtre 18: Devis gratuit (toggle)
+                    if (categoryFilters.devisGratuit === true && !product.devisGratuit) {
+                        return false;
+                    }
+
+                    // Filtre 19: Garantie équipement (select)
+                    if (categoryFilters.garantieEquipement && product.garantieEquipement !== categoryFilters.garantieEquipement) {
+                        return false;
+                    }
+
+                    // Filtre 20: Marques équipements (multiselect)
+                    if (categoryFilters.marquesEquipements && Array.isArray(categoryFilters.marquesEquipements) && categoryFilters.marquesEquipements.length > 0) {
+                        const hasMarque = categoryFilters.marquesEquipements.some((marqueRecherche: string) =>
+                            product.marquesEquipements === marqueRecherche
+                        );
+                        if (!hasMarque) return false;
+                    }
+
+                    // Filtre 21: Alimentation électrique (multiselect)
+                    if (categoryFilters.alimentationElectrique && Array.isArray(categoryFilters.alimentationElectrique) && categoryFilters.alimentationElectrique.length > 0) {
+                        const hasAlimentation = categoryFilters.alimentationElectrique.some((alimRecherche: string) =>
+                            product.alimentationElectrique === alimRecherche
+                        );
+                        if (!hasAlimentation) return false;
+                    }
+
+                    // Filtre 22: Application mobile (toggle)
+                    if (categoryFilters.applicationMobile === true && !product.applicationMobile) {
                         return false;
                     }
                 }
 
                 // ✅ FILTRES SPÉCIAUX POUR ANIMAUX_VETERINAIRE
                 if (product.type === 'animaux_veterinaire') {
+                    // Filtre 1: Type d'animal
                     if (categoryFilters.typeAnimal && product.typeAnimal !== categoryFilters.typeAnimal) {
+                        return false;
+                    }
+
+                    // ✅ NOUVEAU Filtre 2: Services vétérinaires (multiselect)
+                    if (categoryFilters.servicesVeterinaire && Array.isArray(categoryFilters.servicesVeterinaire) && categoryFilters.servicesVeterinaire.length > 0) {
+                        const productServices = product.servicesVeterinaire || (product.services ? product.services.split(',').map(s => s.trim()) : []);
+                        const hasService = categoryFilters.servicesVeterinaire.some((service: string) =>
+                            productServices.some((ps: string) => ps.toLowerCase().includes(service.toLowerCase()))
+                        );
+                        if (!hasService) return false;
+                    }
+
+                    // ✅ NOUVEAU Filtre 3: Race de l'animal
+                    if (categoryFilters.raceAnimal && product.raceAnimal !== categoryFilters.raceAnimal) {
+                        return false;
+                    }
+
+                    // ✅ NOUVEAU Filtre 4: Âge de l'animal
+                    if (categoryFilters.ageAnimal && product.ageAnimal !== categoryFilters.ageAnimal) {
                         return false;
                     }
                 }
@@ -1615,13 +3278,54 @@ const ResultatBesoinScreen: React.FC = () => {
                     }
                 }
 
-                // ✅ FILTRES SPÉCIAUX POUR BIEN_ETRE
-                if (product.type === 'bien_etre') {
+                // ✅ FILTRES SPÉCIAUX POUR BIEN_ETRE_SPA
+                if (product.type === 'bien_etre_spa' || product.type === 'bien_etre' || product.type === 'bien-etre') {
+                    // Type de soin
                     if (categoryFilters.typeBienEtre && product.typeBienEtre !== categoryFilters.typeBienEtre) {
                         return false;
                     }
-                    if (categoryFilters.dureeSoins && product.dureeSoins !== categoryFilters.dureeSoins) {
+                    // Durée du soin
+                    if (categoryFilters.dureeBienEtre && product.dureeBienEtre !== categoryFilters.dureeBienEtre) {
                         return false;
+                    }
+                    // Services & équipements (multiselect)
+                    if (categoryFilters.servicesBienEtre && Array.isArray(categoryFilters.servicesBienEtre) && categoryFilters.servicesBienEtre.length > 0) {
+                        const hasServices = categoryFilters.servicesBienEtre.some((service: string) =>
+                            product.servicesBienEtre?.includes(service)
+                        );
+                        if (!hasServices) return false;
+                    }
+                    // Type de clientèle (multiselect)
+                    if (categoryFilters.clienteleBienEtre && Array.isArray(categoryFilters.clienteleBienEtre) && categoryFilters.clienteleBienEtre.length > 0) {
+                        const hasClientele = categoryFilters.clienteleBienEtre.some((client: string) =>
+                            product.clienteleBienEtre?.includes(client)
+                        );
+                        if (!hasClientele) return false;
+                    }
+                    // Fourchette tarifaire
+                    if (categoryFilters.tarifsParCategorie && product.tarifsParCategorie !== categoryFilters.tarifsParCategorie) {
+                        return false;
+                    }
+                    // Formules & forfaits (multiselect)
+                    if (categoryFilters.formulesSpa && Array.isArray(categoryFilters.formulesSpa) && categoryFilters.formulesSpa.length > 0) {
+                        const hasFormule = categoryFilters.formulesSpa.some((formule: string) =>
+                            product.formulesSpa?.includes(formule)
+                        );
+                        if (!hasFormule) return false;
+                    }
+                    // Spécialités (multiselect)
+                    if (categoryFilters.specialitesBienEtre && Array.isArray(categoryFilters.specialitesBienEtre) && categoryFilters.specialitesBienEtre.length > 0) {
+                        const hasSpecialite = categoryFilters.specialitesBienEtre.some((specialite: string) =>
+                            product.specialitesBienEtre?.includes(specialite)
+                        );
+                        if (!hasSpecialite) return false;
+                    }
+                    // Horaires
+                    if (categoryFilters.horairesSpa && Array.isArray(categoryFilters.horairesSpa) && categoryFilters.horairesSpa.length > 0) {
+                        const hasHoraire = categoryFilters.horairesSpa.some((horaire: string) =>
+                            product.horairesSpa?.includes(horaire)
+                        );
+                        if (!hasHoraire) return false;
                     }
                 }
 
@@ -1688,16 +3392,372 @@ const ResultatBesoinScreen: React.FC = () => {
                     }
                 }
 
-                // ✅ FILTRES SPÉCIAUX POUR BIEN_ETRE
-                if (product.type === 'bien_etre' || product.type === 'bien-etre') {
-                    if (categoryFilters.typeBienEtre && product.typeBienEtre !== categoryFilters.typeBienEtre) {
-                        return false;
+                // ✅ FILTRES SPÉCIAUX POUR RÉPARATEUR TÉLÉPHONE/TABLETTE
+                if (product.type === 'reparateur_telephone_tablette' || product.type === 'reparateur_telephone' || product.type === 'reparation_telephone') {
+                    // Filtre type de réparation (multiselect)
+                    if (categoryFilters.typeReparation && Array.isArray(categoryFilters.typeReparation) && categoryFilters.typeReparation.length > 0) {
+                        let productTypesReparation = [];
+                        if (Array.isArray(product.typeReparation)) {
+                            productTypesReparation = product.typeReparation;
+                        } else if (typeof product.typeReparation === 'string') {
+                            try {
+                                productTypesReparation = JSON.parse(product.typeReparation);
+                            } catch {
+                                productTypesReparation = [product.typeReparation];
+                            }
+                        }
+
+                        const hasTypeReparation = categoryFilters.typeReparation.some((typeRecherche: string) =>
+                            productTypesReparation.some((type: string) => type.includes(typeRecherche) || typeRecherche.includes(type))
+                        );
+                        if (!hasTypeReparation) return false;
                     }
-                    if (categoryFilters.dureeSoins && product.dureeSoins !== categoryFilters.dureeSoins) {
-                        return false;
+
+                    // Filtre marques supportées (multiselect)
+                    if (categoryFilters.marquesSuppoortees && Array.isArray(categoryFilters.marquesSuppoortees) && categoryFilters.marquesSuppoortees.length > 0) {
+                        let productMarques = [];
+                        if (Array.isArray(product.marquesSuppoortees)) {
+                            productMarques = product.marquesSuppoortees;
+                        } else if (typeof product.marquesSuppoortees === 'string') {
+                            try {
+                                productMarques = JSON.parse(product.marquesSuppoortees);
+                            } catch {
+                                productMarques = [product.marquesSuppoortees];
+                            }
+                        }
+
+                        const hasMarque = categoryFilters.marquesSuppoortees.some((marqueRecherche: string) =>
+                            productMarques.some((marque: string) => marque.includes(marqueRecherche) || marqueRecherche.includes(marque))
+                        );
+                        if (!hasMarque) return false;
                     }
-                    if (categoryFilters.packageDispo === true && !product.packageDispo) {
-                        return false;
+
+                    // Filtre délai de réparation
+                    if (categoryFilters.delaisReparation && product.delaisReparation) {
+                        if (!product.delaisReparation.includes(categoryFilters.delaisReparation)) return false;
+                    }
+
+                    // Filtre garantie réparation
+                    if (categoryFilters.garantieReparation && product.garantieReparation) {
+                        if (!product.garantieReparation.includes(categoryFilters.garantieReparation)) return false;
+                    }
+
+                    // Filtre qualité des pièces
+                    if (categoryFilters.qualitePieces && product.qualitePieces) {
+                        if (!product.qualitePieces.includes(categoryFilters.qualitePieces)) return false;
+                    }
+
+                    // Filtre type d'intervention (multiselect)
+                    if (categoryFilters.typeIntervention && Array.isArray(categoryFilters.typeIntervention) && categoryFilters.typeIntervention.length > 0) {
+                        let productTypesIntervention = [];
+                        if (Array.isArray(product.typeIntervention)) {
+                            productTypesIntervention = product.typeIntervention;
+                        } else if (typeof product.typeIntervention === 'string') {
+                            try {
+                                productTypesIntervention = JSON.parse(product.typeIntervention);
+                            } catch {
+                                productTypesIntervention = [product.typeIntervention];
+                            }
+                        }
+
+                        const hasTypeIntervention = categoryFilters.typeIntervention.some((typeRecherche: string) =>
+                            productTypesIntervention.some((type: string) => type.includes(typeRecherche) || typeRecherche.includes(type))
+                        );
+                        if (!hasTypeIntervention) return false;
+                    }
+
+                    // Filtre certifications (multiselect)
+                    if (categoryFilters.certifications && Array.isArray(categoryFilters.certifications) && categoryFilters.certifications.length > 0) {
+                        let productCertifications = [];
+                        if (Array.isArray(product.certifications)) {
+                            productCertifications = product.certifications;
+                        } else if (typeof product.certifications === 'string') {
+                            try {
+                                productCertifications = JSON.parse(product.certifications);
+                            } catch {
+                                productCertifications = [product.certifications];
+                            }
+                        }
+
+                        const hasCertification = categoryFilters.certifications.some((certifRecherche: string) =>
+                            productCertifications.some((certif: string) => certif.includes(certifRecherche) || certifRecherche.includes(certif))
+                        );
+                        if (!hasCertification) return false;
+                    }
+
+                    // Filtre services additionnels (multiselect)
+                    if (categoryFilters.servicesAdditionnels && Array.isArray(categoryFilters.servicesAdditionnels) && categoryFilters.servicesAdditionnels.length > 0) {
+                        let productServices = [];
+                        if (Array.isArray(product.servicesAdditionnels)) {
+                            productServices = product.servicesAdditionnels;
+                        } else if (typeof product.servicesAdditionnels === 'string') {
+                            try {
+                                productServices = JSON.parse(product.servicesAdditionnels);
+                            } catch {
+                                productServices = [product.servicesAdditionnels];
+                            }
+                        }
+
+                        const hasService = categoryFilters.servicesAdditionnels.some((serviceRecherche: string) =>
+                            productServices.some((service: string) => service.includes(serviceRecherche) || serviceRecherche.includes(service))
+                        );
+                        if (!hasService) return false;
+                    }
+
+                    // Filtre états appareils acceptés (multiselect)
+                    if (categoryFilters.etatAppareilAccepte && Array.isArray(categoryFilters.etatAppareilAccepte) && categoryFilters.etatAppareilAccepte.length > 0) {
+                        let productEtats = [];
+                        if (Array.isArray(product.etatAppareilAccepte)) {
+                            productEtats = product.etatAppareilAccepte;
+                        } else if (typeof product.etatAppareilAccepte === 'string') {
+                            try {
+                                productEtats = JSON.parse(product.etatAppareilAccepte);
+                            } catch {
+                                productEtats = [product.etatAppareilAccepte];
+                            }
+                        }
+
+                        const hasEtat = categoryFilters.etatAppareilAccepte.some((etatRecherche: string) =>
+                            productEtats.some((etat: string) => etat.includes(etatRecherche) || etatRecherche.includes(etat))
+                        );
+                        if (!hasEtat) return false;
+                    }
+
+                    // Filtres toggles
+                    if (categoryFilters.specialisteIPhone === true) {
+                        const hasSpecIPhone = product.certifications?.some((c: string) =>
+                            c.includes('iPhone') || c.includes('Apple') || c.includes('ACMT')
+                        );
+                        if (!hasSpecIPhone) return false;
+                    }
+
+                    if (categoryFilters.serviceADomicile === true) {
+                        const hasServiceDomicile = product.typeIntervention?.some((t: string) =>
+                            t.includes('domicile') || t.includes('Domicile')
+                        );
+                        if (!hasServiceDomicile) return false;
+                    }
+
+                    if (categoryFilters.microSoudure === true) {
+                        const hasMicroSoudure = product.typeReparation?.some((t: string) =>
+                            t.includes('soudure') || t.includes('Micro-soudure')
+                        ) || product.certifications?.some((c: string) =>
+                            c.includes('soudure') || c.includes('micro-soudure')
+                        );
+                        if (!hasMicroSoudure) return false;
+                    }
+
+                    if (categoryFilters.piecesOriginales === true) {
+                        if (!product.qualitePieces?.includes('originales') && !product.qualitePieces?.includes('Originales')) {
+                            return false;
+                        }
+                    }
+                }
+
+                // ✅ FILTRES SPÉCIAUX POUR RÉPARATEUR INFORMATIQUE (Ordinateurs, Imprimantes)
+                if (product.type === 'reparateur_informatique' || product.type === 'reparateur_ordinateur' || product.type === 'reparation_informatique') {
+                    // Filtre types de réparation (multiselect)
+                    if (categoryFilters.typesReparationInfo && Array.isArray(categoryFilters.typesReparationInfo) && categoryFilters.typesReparationInfo.length > 0) {
+                        let productTypesReparation = [];
+                        if (Array.isArray(product.typesReparationInfo)) {
+                            productTypesReparation = product.typesReparationInfo;
+                        } else if (typeof product.typesReparationInfo === 'string') {
+                            try {
+                                productTypesReparation = JSON.parse(product.typesReparationInfo);
+                            } catch {
+                                productTypesReparation = [product.typesReparationInfo];
+                            }
+                        }
+
+                        const hasTypeReparation = categoryFilters.typesReparationInfo.some((typeRecherche: string) =>
+                            productTypesReparation.some((type: string) => type.includes(typeRecherche) || typeRecherche.includes(type))
+                        );
+                        if (!hasTypeReparation) return false;
+                    }
+
+                    // Filtre marques ordinateurs supportées (multiselect)
+                    if (categoryFilters.marquesOrdinateursReparees && Array.isArray(categoryFilters.marquesOrdinateursReparees) && categoryFilters.marquesOrdinateursReparees.length > 0) {
+                        let productMarquesOrdinateurs = [];
+                        if (Array.isArray(product.marquesOrdinateursReparees)) {
+                            productMarquesOrdinateurs = product.marquesOrdinateursReparees;
+                        } else if (typeof product.marquesOrdinateursReparees === 'string') {
+                            try {
+                                productMarquesOrdinateurs = JSON.parse(product.marquesOrdinateursReparees);
+                            } catch {
+                                productMarquesOrdinateurs = [product.marquesOrdinateursReparees];
+                            }
+                        }
+
+                        const hasMarqueOrdinateur = categoryFilters.marquesOrdinateursReparees.some((marqueRecherche: string) =>
+                            productMarquesOrdinateurs.some((marque: string) => marque.includes(marqueRecherche) || marqueRecherche.includes(marque))
+                        );
+                        if (!hasMarqueOrdinateur) return false;
+                    }
+
+                    // Filtre marques imprimantes supportées (multiselect)
+                    if (categoryFilters.marquesImprimantesReparees && Array.isArray(categoryFilters.marquesImprimantesReparees) && categoryFilters.marquesImprimantesReparees.length > 0) {
+                        let productMarquesImprimantes = [];
+                        if (Array.isArray(product.marquesImprimantesReparees)) {
+                            productMarquesImprimantes = product.marquesImprimantesReparees;
+                        } else if (typeof product.marquesImprimantesReparees === 'string') {
+                            try {
+                                productMarquesImprimantes = JSON.parse(product.marquesImprimantesReparees);
+                            } catch {
+                                productMarquesImprimantes = [product.marquesImprimantesReparees];
+                            }
+                        }
+
+                        const hasMarqueImprimante = categoryFilters.marquesImprimantesReparees.some((marqueRecherche: string) =>
+                            productMarquesImprimantes.some((marque: string) => marque.includes(marqueRecherche) || marqueRecherche.includes(marque))
+                        );
+                        if (!hasMarqueImprimante) return false;
+                    }
+
+                    // Filtre types de pannes (multiselect)
+                    if (categoryFilters.typesPannesReparees && Array.isArray(categoryFilters.typesPannesReparees) && categoryFilters.typesPannesReparees.length > 0) {
+                        let productTypesPannes = [];
+                        if (Array.isArray(product.typesPannesReparees)) {
+                            productTypesPannes = product.typesPannesReparees;
+                        } else if (typeof product.typesPannesReparees === 'string') {
+                            try {
+                                productTypesPannes = JSON.parse(product.typesPannesReparees);
+                            } catch {
+                                productTypesPannes = [product.typesPannesReparees];
+                            }
+                        }
+
+                        const hasTypePanne = categoryFilters.typesPannesReparees.some((panneRecherche: string) =>
+                            productTypesPannes.some((panne: string) => panne.includes(panneRecherche) || panneRecherche.includes(panne))
+                        );
+                        if (!hasTypePanne) return false;
+                    }
+
+                    // Filtre délai de réparation
+                    if (categoryFilters.delaiReparationInfo && product.delaiReparationInfo) {
+                        if (!product.delaiReparationInfo.includes(categoryFilters.delaiReparationInfo)) return false;
+                    }
+
+                    // Filtre garantie réparation
+                    if (categoryFilters.garantieReparation && product.garantieReparation) {
+                        if (!product.garantieReparation.includes(categoryFilters.garantieReparation)) return false;
+                    }
+
+                    // Filtre certifications (multiselect)
+                    if (categoryFilters.certificationsInfo && Array.isArray(categoryFilters.certificationsInfo) && categoryFilters.certificationsInfo.length > 0) {
+                        let productCertifications = [];
+                        if (Array.isArray(product.certificationsInfo)) {
+                            productCertifications = product.certificationsInfo;
+                        } else if (typeof product.certificationsInfo === 'string') {
+                            try {
+                                productCertifications = JSON.parse(product.certificationsInfo);
+                            } catch {
+                                productCertifications = [product.certificationsInfo];
+                            }
+                        }
+
+                        const hasCertification = categoryFilters.certificationsInfo.some((certifRecherche: string) =>
+                            productCertifications.some((certif: string) => certif.includes(certifRecherche) || certifRecherche.includes(certif))
+                        );
+                        if (!hasCertification) return false;
+                    }
+
+                    // Filtre services additionnels (multiselect)
+                    if (categoryFilters.servicesAdditionnelsInfo && Array.isArray(categoryFilters.servicesAdditionnelsInfo) && categoryFilters.servicesAdditionnelsInfo.length > 0) {
+                        let productServices = [];
+                        if (Array.isArray(product.servicesAdditionnelsInfo)) {
+                            productServices = product.servicesAdditionnelsInfo;
+                        } else if (typeof product.servicesAdditionnelsInfo === 'string') {
+                            try {
+                                productServices = JSON.parse(product.servicesAdditionnelsInfo);
+                            } catch {
+                                productServices = [product.servicesAdditionnelsInfo];
+                            }
+                        }
+
+                        const hasService = categoryFilters.servicesAdditionnelsInfo.some((serviceRecherche: string) =>
+                            productServices.some((service: string) => service.includes(serviceRecherche) || serviceRecherche.includes(service))
+                        );
+                        if (!hasService) return false;
+                    }
+
+                    // Filtre équipements atelier (multiselect)
+                    if (categoryFilters.equipementsAtelierInfo && Array.isArray(categoryFilters.equipementsAtelierInfo) && categoryFilters.equipementsAtelierInfo.length > 0) {
+                        let productEquipements = [];
+                        if (Array.isArray(product.equipementsAtelierInfo)) {
+                            productEquipements = product.equipementsAtelierInfo;
+                        } else if (typeof product.equipementsAtelierInfo === 'string') {
+                            try {
+                                productEquipements = JSON.parse(product.equipementsAtelierInfo);
+                            } catch {
+                                productEquipements = [product.equipementsAtelierInfo];
+                            }
+                        }
+
+                        const hasEquipement = categoryFilters.equipementsAtelierInfo.some((equipRecherche: string) =>
+                            productEquipements.some((equip: string) => equip.includes(equipRecherche) || equipRecherche.includes(equip))
+                        );
+                        if (!hasEquipement) return false;
+                    }
+
+                    // Filtre type d'intervention (multiselect)
+                    if (categoryFilters.typeIntervention && Array.isArray(categoryFilters.typeIntervention) && categoryFilters.typeIntervention.length > 0) {
+                        let productTypesIntervention = [];
+                        if (Array.isArray(product.typeIntervention)) {
+                            productTypesIntervention = product.typeIntervention;
+                        } else if (typeof product.typeIntervention === 'string') {
+                            try {
+                                productTypesIntervention = JSON.parse(product.typeIntervention);
+                            } catch {
+                                productTypesIntervention = [product.typeIntervention];
+                            }
+                        }
+
+                        const hasTypeIntervention = categoryFilters.typeIntervention.some((typeRecherche: string) =>
+                            productTypesIntervention.some((type: string) => type.includes(typeRecherche) || typeRecherche.includes(type))
+                        );
+                        if (!hasTypeIntervention) return false;
+                    }
+
+                    // Filtres toggles
+                    if (categoryFilters.specialisteApple === true) {
+                        const hasSpecApple = product.certificationsInfo?.some((c: string) =>
+                            c.includes('Apple') || c.includes('ACMT') || c.includes('MacBook') || c.includes('Mac')
+                        ) || product.marquesOrdinateursReparees?.some((m: string) =>
+                            m.includes('Apple') || m.includes('MacBook') || m.includes('iMac')
+                        );
+                        if (!hasSpecApple) return false;
+                    }
+
+                    if (categoryFilters.interventionDomicile === true) {
+                        const hasInterventionDomicile = product.typeIntervention?.some((t: string) =>
+                            t.includes('domicile') || t.includes('Domicile') || t.includes('À domicile')
+                        ) || product.interventionDomicile === true;
+                        if (!hasInterventionDomicile) return false;
+                    }
+
+                    if (categoryFilters.supportDistance === true) {
+                        const hasSupportDistance = product.typeIntervention?.some((t: string) =>
+                            t.includes('distance') || t.includes('Distance') || t.includes('À distance')
+                        ) || product.supportDistance === true;
+                        if (!hasSupportDistance) return false;
+                    }
+
+                    if (categoryFilters.microSoudure === true) {
+                        const hasMicroSoudure = product.typesReparationInfo?.some((t: string) =>
+                            t.includes('soudure') || t.includes('Micro-soudure') || t.includes('micro-soudure')
+                        ) || product.certificationsInfo?.some((c: string) =>
+                            c.includes('soudure') || c.includes('micro-soudure')
+                        ) || product.microSoudure === true;
+                        if (!hasMicroSoudure) return false;
+                    }
+
+                    if (categoryFilters.recuperationDonnees === true) {
+                        const hasRecuperationDonnees = product.typesReparationInfo?.some((t: string) =>
+                            t.includes('Récupération') || t.includes('données') || t.includes('récupération données')
+                        ) || product.certificationsInfo?.some((c: string) =>
+                            c.includes('Récupération données') || c.includes('récupération')
+                        ) || product.recuperationDonnees === true;
+                        if (!hasRecuperationDonnees) return false;
                     }
                 }
 
@@ -1749,6 +3809,72 @@ const ResultatBesoinScreen: React.FC = () => {
                     }
                 }
 
+                // ✅ FILTRES SPÉCIAUX POUR COIFFURE & BEAUTÉ
+                if (product.type === 'coiffure_beaute') {
+                    // Filtre type de coiffure/service
+                    if (categoryFilters.typeCoiffure && product.typeCoiffure !== categoryFilters.typeCoiffure) {
+                        return false;
+                    }
+                    // Filtre longueur (mèches)
+                    if (categoryFilters.longueurMech && product.longueurMech !== categoryFilters.longueurMech) {
+                        return false;
+                    }
+                    // Filtre texture
+                    if (categoryFilters.textureMech && product.textureMech !== categoryFilters.textureMech) {
+                        return false;
+                    }
+                    // Filtre type de cheveux
+                    if (categoryFilters.typeCheveux && product.typeCheveux !== categoryFilters.typeCheveux) {
+                        return false;
+                    }
+                    // Filtre origine
+                    if (categoryFilters.origineMech && product.origineMech !== categoryFilters.origineMech) {
+                        return false;
+                    }
+                    // Filtre marque
+                    if (categoryFilters.marqueCoiffure && product.marqueCoiffure !== categoryFilters.marqueCoiffure) {
+                        return false;
+                    }
+                    // Filtre couleur
+                    if (categoryFilters.couleurMech && product.couleurMech !== categoryFilters.couleurMech) {
+                        return false;
+                    }
+                    // Filtre type de pose
+                    if (categoryFilters.typePose && product.typePose !== categoryFilters.typePose) {
+                        return false;
+                    }
+                    // Filtre durée de vie
+                    if (categoryFilters.dureeVie && product.dureeVie !== categoryFilters.dureeVie) {
+                        return false;
+                    }
+                    // Filtre type de salon
+                    if (categoryFilters.typeSalon && product.typeSalon !== categoryFilters.typeSalon) {
+                        return false;
+                    }
+                    // Filtre services proposés (multiselect)
+                    if (categoryFilters.servicesProposed && Array.isArray(categoryFilters.servicesProposed) && categoryFilters.servicesProposed.length > 0) {
+                        const hasService = categoryFilters.servicesProposed.some((service: string) =>
+                            product.servicesProposed?.includes(service)
+                        );
+                        if (!hasService) return false;
+                    }
+                    // Filtre spécialités (multiselect)
+                    if (categoryFilters.specialites && Array.isArray(categoryFilters.specialites) && categoryFilters.specialites.length > 0) {
+                        const hasSpecialite = categoryFilters.specialites.some((spec: string) =>
+                            product.specialites?.includes(spec)
+                        );
+                        if (!hasSpecialite) return false;
+                    }
+                    // Filtre coiffure à domicile
+                    if (categoryFilters.coiffureADomicile === true && !product.coiffureADomicile) {
+                        return false;
+                    }
+                    // Filtre urgence disponible
+                    if (categoryFilters.urgenceDisponible === true && !product.urgenceDisponible) {
+                        return false;
+                    }
+                }
+
                 // ✅ FILTRES GÉNÉRIQUES
                 for (const [key, value] of Object.entries(categoryFilters)) {
                     if (value === null || value === undefined || value === '') continue;
@@ -1757,7 +3883,8 @@ const ResultatBesoinScreen: React.FC = () => {
                     const specialFilters = [
                         // Santé
                         'prestationsMedicales', 'jourDisponibilite', 'momentDisponibilite', 'banqueSang',
-                        'urgencesDisponible', 'rdvEnLigne', 'typeEtablissement', 'ouvertMaintenant',
+                        'urgencesDisponible', 'rdvEnLigne', 'typeEtablissement', 'ouvertMaintenant', 'consultationsSpecialisees',
+                        'joursOuverture', 'servicesAnnexes', 'equipementsHopital',
                         'deGarde', 'jourGarde', 'typePharmacie', 'services',
                         'examensLaboratoire', 'typeLaboratoire', 'prelevementDomicile', 'resultatRapide',
                         // Immobilier (incluant location courte durée)
@@ -1766,7 +3893,10 @@ const ResultatBesoinScreen: React.FC = () => {
                         'disponibleImmediatement', 'titreFoncier',
                         'prixParNuit', 'dureeMinimum', 'dureeMaximum', 'nettoyageInclus', 'lingeInclus',
                         'capacitePersonnes', 'capacitePersonnes_min', 'capacitePersonnes_max',
-                        'calendrierDispo', 'reservationInstantanee',
+                        'calendrierDispo', 'reservationInstantanee', 'ville', 'quartier', 'acces_route', 'proximites',
+                        // Immobilier Terrain
+                        'typeTerrain', 'viabilisation', 'zonage', 'topographie', 'accesTerrain', 'formeTerrain',
+                        'vegetation', 'usageActuel', 'reseauxTerrain', 'natureSol', 'bornage', 'constructibilite', 'cloture',
                         // Automobile
                         'typeVehicule', 'typeCarrosserie', 'marqueAutomobile', 'modeleAutomobile', 'etatVehicule',
                         'annee', 'kilometrage', 'couleurAutomobile', 'typeCarburant', 'transmission',
@@ -1831,6 +3961,9 @@ const ResultatBesoinScreen: React.FC = () => {
                         'typeVoyage', 'destinationVoyage', 'dureeVoyage', 'servicesVoyage', 'hebergementVoyage',
                         // Demenagement
                         'typeDemenagement', 'volumeDemenagement', 'servicesDemenagement', 'typeVehiculeDemenagement',
+                        'distanceDemenagement', 'villeDepartDemenagement', 'villeArriveeDemenagement', 'trajetDemenagement',
+                        'compagnieDemenagement', 'dureeDemenagement', 'disponibiliteDemenagement', 'typeAssuranceDemenagement',
+                        'nbDemenageurs', 'accessibiliteDemenagement',
                         // Plomberie
                         'typePrestation', 'urgence', 'specialitesPlomberie', 'garantieTravaux',
                         // Nettoyage
@@ -1838,39 +3971,57 @@ const ResultatBesoinScreen: React.FC = () => {
                         // Assurance
                         'typeAssurance', 'compagnieAssurance', 'typeCouverture', 'dureeContrat', 'franchiseAssurance',
                         // Electricite
-                        'typeElectrique', 'marqueElectrique', 'caracteristiques',
+                        'categorieElectrique', 'typeElectricite', 'marqueElectricite', 'tensionElectrique',
+                        'puissanceElectrique', 'culotAmpoule', 'couleurLumiere', 'normesElectrique',
+                        'etatElectrique', 'utilisationElectrique', 'garantieElectrique',
                         // Image & Son
-                        'typeImageSon', 'marqueImageSon', 'etatImageSon', 'diagonaleEcran', 'resolution', 'garantieImageSon',
+                        'categorieImageSon', 'typeImageSon', 'marqueImageSon', 'technologieEcran', 'resolution',
+                        'diagonaleEcran', 'modeleImageSon', 'etatImageSon', 'garantieImageSon', 'connectivitesImageSon',
+                        'fonctionnalitesImageSon', 'puissanceAudio', 'anneeSortie', 'accessoiresImageSon',
                         // Sport & Loisirs
-                        'typeSport', 'categorieSport', 'niveauSport',
+                        'typeSport', 'categorieSport', 'niveauSport', 'dureeSport', 'serviceSport',
+                        'objectifSport', 'horairesSport', 'joursSport', 'equipementsSport',
                         // Bricolage
                         'typeBricolage', 'categorieBricolage', 'marqueBricolage', 'etatBricolage',
                         'puissanceBricolage', 'garantieBricolage',
                         // Enfants & Bebes
                         'categorieEnfant', 'ageRecommande', 'etatEnfant', 'securiteNorme',
                         // Decoration
-                        'typeDecoration', 'styleDecoration', 'pieceDecoration', 'materiauDecoration',
-                        'couleurDecoration', 'dimensionsDecoration',
+                        'categorieDecoration', 'styleDecoration', 'pieceDecoration', 'matiereDecoration',
+                        'couleurDecoration', 'tailleDecoration', 'etatDecoration', 'marqueDecoration',
+                        'dimensionsDecoration', // Legacy
+                        'typeDecoration', 'materiauDecoration',
                         // Jouets Enfants
                         'typeJouet', 'ageJouet', 'etatJouet', 'normeSecurite', 'ageRecommande', 'marqueJouet',
                         // Ustensiles Cuisine
                         'typeUstensile', 'materiauUstensile', 'marqueUstensile', 'capaciteUstensile',
                         // Quincaillerie
                         'categorieQuincaillerie', 'marqueQuincaillerie', 'referenceQuincaillerie', 'unite', 'stockDisponible',
-                        // Cosmetique & Parfum
-                        'typeCosmetique', 'marqueCosmetique', 'volumeCosmetique', 'uniteCosmetique',
-                        // Pieces Auto
-                        'typePieceAuto', 'marquePieceAuto', 'referencePieceAuto', 'compatibilitePieceAuto',
+                        // Cosmetique & Parfum (ancien format)
+                        'typeCosmetique', 'marqueCosmetique', 'volumeCosmetique', 'uniteCosmetique', 'genreCosmetique',
+                        'concentrationCosmetique', 'typePeau', 'typeCheveuxCosmetique', 'teinteCosmetique', 'finitionCosmetique',
+                        'origineCosmetique', 'ingredientsCosmetique', 'certificationsCosmetique',
+                        // Cosmetique & Parfum (nouveau format - synchro modalités)
+                        'types', 'marques', 'genres', 'concentrations', 'types_peau', 'types_cheveux', 'teintes',
+                        'finitions', 'origines', 'certifications', 'ingredients_principaux', 'unites',
+                        // Pieces Auto (tous les champs)
+                        'typePieceAuto', 'categoriePieceAuto', 'marquePieceAuto', 'marqueVehiculeCompatible', 'modeleVehicule',
+                        'etatPieceAuto', 'originePiece', 'garantiePiece', 'niveauCompatibilite', 'materiauPiece',
+                        'typeFournisseur', 'referencePieceAuto', 'compatibilitePieceAuto', 'avecReference', 'livraisonDisponible',
                         // Pieces Industrielles
                         'typePieceIndustrielle', 'marquePieceIndustrielle', 'referencePieceIndustrielle',
                         // Electronique
                         'typeElectronique', 'marqueElectronique', 'etatElectronique',
-                        // Menuiserie
-                        'typeMenuiserie', 'typeBois', 'finitionMenuiserie', 'styleMenuiserie', 'dimensionsMenuiserie', 'delaiMenuiserie',
+                        // Menuiserie & Ébénisterie
+                        'serviceMenuiserie', 'typeBois', 'finitionsMenuiserie', 'styleMenuiserie', 'experienceMenuisier', 'certificationMenuisier', 'delaiMenuiserie', 'atelierMenuiserie', 'garantieMenuiserie', 'paiementMenuiserie', 'equipementAtelier',
                         // Agriculture
                         'typeAgricole', 'culture', 'saisonAgricole', 'uniteVente', 'certificationsAgricole', 'localisationAgricole',
-                        // Securite & Surveillance
-                        'typeSecurite', 'zoneSecurite', 'dureeSecurite', 'equipementsSecurite', 'tarifSecurite',
+                        // Securite & Surveillance (22 filtres complets)
+                        'typeServiceSecurite', 'typeClientSecurite', 'disponibiliteSecurite', 'typeCameraSecurite',
+                        'resolutionCamera', 'stockageVideo', 'typeAlarme', 'controleAcces', 'nombreAgents',
+                        'armementAgents', 'certificationsSecurite', 'dureeContratSecurite', 'interventionRapide',
+                        'service24h7j', 'telesurveillance', 'installationIncluse', 'maintenanceIncluse', 'devisGratuit',
+                        'garantieEquipement', 'marquesEquipements', 'alimentationElectrique', 'applicationMobile',
                         // Animaux & Veterinaire
                         'typeAnimal', 'raceAnimal', 'servicesVeterinaire', 'tarifVeterinaire',
                         // Agroalimentaire (en plus de aliments)
@@ -1886,7 +4037,7 @@ const ResultatBesoinScreen: React.FC = () => {
                         // Entreprise & Industrie
                         'typeEntreprise', 'secteurActivite', 'certification', 'etatMateriel',
                         // Bien-etre
-                        'typeBienEtre', 'dureeSoins', 'tarifsSpeciaux', 'packageDispo',
+                        'typeBienEtre', 'dureeBienEtre', 'servicesBienEtre', 'clienteleBienEtre', 'tarifsParCategorie', 'formulesSpa', 'specialitesBienEtre', 'horairesSpa',
                         // Prestation Service
                         'categoriePrestation', 'typePrestation', 'dureePrestation', 'zoneIntervention',
                         'experienceAnnees', 'certifie', 'deplacement', 'disponibilitePrestation',
@@ -1991,6 +4142,26 @@ const ResultatBesoinScreen: React.FC = () => {
         });
 
         return filtered;
+    }, [products, categoryFilters, priceFilter, sortBy]); // ✅ Dépendances optimisées
+
+    // ✅ Fonction wrapper pour compatibilité avec l'ancien code
+    const filterProducts = (productsList: any[]): any[] => {
+        // Si la liste fournie est différente de products, filtrer normalement
+        if (productsList !== products) {
+            let filtered = [...productsList];
+            // Appliquer les mêmes filtres (code simplifié pour compatibilité)
+            if (Object.keys(categoryFilters).length > 0) {
+                filtered = filtered.filter(product => {
+                    for (const [key, value] of Object.entries(categoryFilters)) {
+                        if (product[key] && product[key] !== value) return false;
+                    }
+                    return true;
+                });
+            }
+            return filtered;
+        }
+        // Sinon utiliser le memo
+        return filteredProductsMemo;
     };
 
     // Fonction pour filtrer et trier les services
@@ -2010,17 +4181,19 @@ const ResultatBesoinScreen: React.FC = () => {
             });
         }
 
-        // Appliquer le tri
+        // ✅ NOUVEAU: Tri intelligent avec gestion des variantes
         filteredServices.sort((a, b) => {
             switch (sortBy) {
                 case 'price_asc': {
-                    const priceA = getServicePrice(a) || Infinity;
-                    const priceB = getServicePrice(b) || Infinity;
+                    // Tri ascendant: utiliser le prix MIN de chaque produit (variantes incluses)
+                    const priceA = getServicePrice(a, 'min') || Infinity;
+                    const priceB = getServicePrice(b, 'min') || Infinity;
                     return priceA - priceB;
                 }
                 case 'price_desc': {
-                    const priceA = getServicePrice(a) || 0;
-                    const priceB = getServicePrice(b) || 0;
+                    // Tri descendant: utiliser le prix MAX de chaque produit (variantes incluses)
+                    const priceA = getServicePrice(a, 'max') || 0;
+                    const priceB = getServicePrice(b, 'max') || 0;
                     return priceB - priceA;
                 }
                 case 'distance': {
@@ -2433,6 +4606,12 @@ const ResultatBesoinScreen: React.FC = () => {
                 setSelectedService(foundService);
                 setSelectedPrestataire(prestataire);
                 setShowChatModal(true);
+
+                // ✅ OPTIMISATION 6: Track le contact
+                const product = products.find(p => p._service?.id === foundService.id);
+                if (product) {
+                    trackProductContact(product.id || foundService.id, dominantCategory, 'message', prestataireId);
+                }
             }
         } else if (type === 'call') {
             // Ouvrir les options de contact (WhatsApp, téléphone)
@@ -2451,6 +4630,12 @@ const ResultatBesoinScreen: React.FC = () => {
                                 const canOpen = await Linking.canOpenURL(whatsappUrl);
                                 if (canOpen) {
                                     await Linking.openURL(whatsappUrl);
+
+                                    // ✅ OPTIMISATION 6: Track le contact WhatsApp
+                                    const product = products.find(p => p._service?.id === foundService?.id);
+                                    if (product) {
+                                        trackProductContact(product.id || foundService.id, dominantCategory, 'whatsapp', prestataireId);
+                                    }
 
                                     // Créer une notification pour le prestataire
                                     if (foundService) {
@@ -2834,21 +5019,44 @@ const ResultatBesoinScreen: React.FC = () => {
         const service = product._service;
         const prestataire = product._prestataire || prestataires.get(service.user_id) || null;
 
+        // ✅ NOUVEAU: Préparer la localisation utilisateur pour ProductCard
+        const userLocationForCard = location ? {
+            latitude: location.coords.latitude,
+            longitude: location.coords.longitude
+        } : null;
+
         return (
             <ProductCard
                 product={product}
                 service={service}
                 prestataire={prestataire}
-                onPress={() => {
+                userLocation={userLocationForCard} // ✅ NOUVEAU: Passer la localisation
+                onPress={async () => {
                     setSelectedProduct(product);
                     setSelectedService(service);
                     setSelectedPrestataire(prestataire);
+
+                    // ✅ OPTIMISATION 6: Track la visualisation du produit
+                    await trackProductView(
+                        product.id || product.nom,
+                        product.type || dominantCategory,
+                        dominantCategory,
+                        prestataire?.id || service.user_id
+                    );
                 }}
-                onChatPress={() => {
+                onChatPress={async () => {
                     setSelectedProduct(product);
                     setSelectedService(service);
                     setSelectedPrestataire(prestataire);
                     setShowChatModal(true);
+
+                    // ✅ OPTIMISATION 6: Track le contact via chat
+                    await trackProductContact(
+                        product.id || product.nom,
+                        dominantCategory,
+                        'message',
+                        prestataire?.id || service.user_id
+                    );
                 }}
                 onGalleryPress={() => {
                     setSelectedProduct(product);
@@ -3022,15 +5230,17 @@ const ResultatBesoinScreen: React.FC = () => {
                     </View>
                 </View>
             ) : !prestatairesLoaded ? (
-                <View style={styles.loadingCard}>
-                    <View style={[styles.cardContent, styles.loadingContent]}>
-                        <ActivityIndicator size="large" color={theme.colors.primary} />
-                        <Text style={styles.loadingTitle}>Chargement des informations prestataire</Text>
-                        <Text style={styles.loadingSubtitle}>
-                            Récupération des données GPS et des informations des prestataires...
-                        </Text>
+                <ScrollView style={styles.skeletonContainer}>
+                    {/* ✅ OPTIMISATION 8: Skeleton Loaders pendant chargement */}
+                    <ProductCardSkeleton />
+                    <ProductCardSkeleton />
+                    <ProductCardSkeleton />
+                    <ProductCardSkeleton />
+                    <View style={styles.skeletonInfo}>
+                        <ActivityIndicator size="small" color={theme.colors.primary} />
+                        <Text style={styles.skeletonInfoText}>Chargement des prestataires...</Text>
                     </View>
-                </View>
+                </ScrollView>
             ) : (
                 <>
                     {/* 🎨 Section de filtres moderne */}
@@ -3185,27 +5395,31 @@ const ResultatBesoinScreen: React.FC = () => {
                         filterHistory={filterHistory}
                     />
 
-                    {/* ✅ CORRECTION: Afficher TOUS les résultats (services ET produits) */}
-                    <View style={styles.servicesContainer}>
-                        {(() => {
-                            // Combiner les services et les produits
-                            const filteredProducts = filterProducts(products);
-                            const filteredServices = filterAndSortServices(services);
+                    {/* ✅ OPTIMISATION 2: FlatList avec lazy loading pour performance */}
+                    {(() => {
+                        // Combiner les services et les produits
+                        const filteredProducts = filterProducts(products);
+                        const filteredServices = filterAndSortServices(services);
 
-                            // ✅ Afficher d'abord les services complets, puis les produits individuels
-                            const allResults = [
-                                ...filteredServices.map(service => ({ type: 'service', data: service })),
-                                ...filteredProducts.map(product => ({ type: 'product', data: product }))
-                            ];
+                        // ✅ Afficher d'abord les services complets, puis les produits individuels
+                        const allResults = [
+                            ...filteredServices.map(service => ({ type: 'service', data: service })),
+                            ...filteredProducts.map(product => ({ type: 'product', data: product }))
+                        ];
 
-                            return allResults.length > 0 ? (
-                                allResults.map((result, index) => {
-                                    if (result.type === 'service') {
-                                        // Afficher le service complet
-                                        const service = result.data as Service;
+                        return allResults.length > 0 ? (
+                            <FlatList
+                                data={allResults}
+                                keyExtractor={(item, index) =>
+                                    item.type === 'service'
+                                        ? `service-${item.data.id}-${index}`
+                                        : `product-${normalizeProduct(item.data).id}-${index}`
+                                }
+                                renderItem={({ item }) => {
+                                    if (item.type === 'service') {
+                                        const service = item.data as Service;
                                         return (
                                             <UltraModernServiceCard
-                                                key={`service-${index}-${service.id}`}
                                                 service={service}
                                                 onContactPress={() => handleContactPress(service)}
                                                 onCallPress={() => handleCallPress(service)}
@@ -3218,55 +5432,90 @@ const ResultatBesoinScreen: React.FC = () => {
                                             />
                                         );
                                     } else {
-                                        // Afficher le produit individuel
-                                        const product = normalizeProduct(result.data);
+                                        const product = normalizeProduct(item.data);
                                         return (
-                                            <ProductCardComponent key={`product-${index}-${product.nom}`} product={product} />
+                                            <ProductCardErrorBoundary
+                                                productId={product.id}
+                                                onError={(error) => {
+                                                    console.error(`ProductCard Error for ${product.id}:`, error);
+                                                }}
+                                            >
+                                                <ProductCardComponent product={product} />
+                                            </ProductCardErrorBoundary>
                                         );
                                     }
-                                })
-                            ) : (
-                                <View style={styles.emptyState}>
-                                    <SafeIcon name="package" size={48} color="#D1D5DB" />
-                                    <Text style={styles.emptyStateText}>Aucun résultat trouvé</Text>
-                                    <Text style={styles.emptyStateSubtext}>
-                                        {Object.keys(categoryFilters).length > 0
-                                            ? 'Essayez de modifier vos filtres'
-                                            : 'Essayez de modifier votre recherche'}
-                                    </Text>
-                                </View>
-                            );
-                        })()}
-                    </View>
-
-                    {/* Footer informatif */}
-                    <View style={styles.footerContainer}>
-                        <View style={styles.footerCard}>
-                            <View style={styles.cardContent}>
-                                <Text style={styles.footerTitle}>Comment procéder ?</Text>
-                                <View style={styles.stepsContainer}>
-                                    <View style={styles.stepItem}>
-                                        <View style={styles.stepNumber}>
-                                            <Text style={styles.stepNumberText}>1</Text>
-                                        </View>
-                                        <Text style={styles.stepText}>Choisissez le service qui vous convient</Text>
+                                }}
+                                // ✅ Optimisations performance
+                                windowSize={5}
+                                maxToRenderPerBatch={10}
+                                initialNumToRender={5}
+                                removeClippedSubviews={true}
+                                updateCellsBatchingPeriod={50}
+                                // ✅ Pull to refresh
+                                refreshControl={
+                                    <RefreshControl
+                                        refreshing={refreshing}
+                                        onRefresh={onRefresh}
+                                        colors={[categoryStyle.primaryColor]}
+                                        tintColor={categoryStyle.primaryColor}
+                                    />
+                                }
+                                // ✅ État vide
+                                ListEmptyComponent={
+                                    <View style={styles.emptyState}>
+                                        <SafeIcon name="package" size={48} color="#D1D5DB" />
+                                        <Text style={styles.emptyStateText}>Aucun résultat trouvé</Text>
+                                        <Text style={styles.emptyStateSubtext}>
+                                            {Object.keys(categoryFilters).length > 0
+                                                ? 'Essayez de modifier vos filtres'
+                                                : 'Essayez de modifier votre recherche'}
+                                        </Text>
                                     </View>
-                                    <View style={styles.stepItem}>
-                                        <View style={styles.stepNumber}>
-                                            <Text style={styles.stepNumberText}>2</Text>
+                                }
+                                // ✅ Footer
+                                ListFooterComponent={
+                                    <View style={styles.footerContainer}>
+                                        <View style={styles.footerCard}>
+                                            <View style={styles.cardContent}>
+                                                <Text style={styles.footerTitle}>Comment procéder ?</Text>
+                                                <View style={styles.stepsContainer}>
+                                                    <View style={styles.stepItem}>
+                                                        <View style={styles.stepNumber}>
+                                                            <Text style={styles.stepNumberText}>1</Text>
+                                                        </View>
+                                                        <Text style={styles.stepText}>Choisissez le service qui vous convient</Text>
+                                                    </View>
+                                                    <View style={styles.stepItem}>
+                                                        <View style={styles.stepNumber}>
+                                                            <Text style={styles.stepNumberText}>2</Text>
+                                                        </View>
+                                                        <Text style={styles.stepText}>Contactez le prestataire via le bouton</Text>
+                                                    </View>
+                                                    <View style={styles.stepItem}>
+                                                        <View style={styles.stepNumber}>
+                                                            <Text style={styles.stepNumberText}>3</Text>
+                                                        </View>
+                                                        <Text style={styles.stepText}>Échangez et finalisez votre projet</Text>
+                                                    </View>
+                                                </View>
+                                            </View>
                                         </View>
-                                        <Text style={styles.stepText}>Contactez le prestataire via le bouton</Text>
                                     </View>
-                                    <View style={styles.stepItem}>
-                                        <View style={styles.stepNumber}>
-                                            <Text style={styles.stepNumberText}>3</Text>
-                                        </View>
-                                        <Text style={styles.stepText}>Échangez et finalisez votre projet</Text>
-                                    </View>
-                                </View>
+                                }
+                                contentContainerStyle={styles.flatListContent}
+                            />
+                        ) : (
+                            <View style={styles.emptyState}>
+                                <SafeIcon name="package" size={48} color="#D1D5DB" />
+                                <Text style={styles.emptyStateText}>Aucun résultat trouvé</Text>
+                                <Text style={styles.emptyStateSubtext}>
+                                    {Object.keys(categoryFilters).length > 0
+                                        ? 'Essayez de modifier vos filtres'
+                                        : 'Essayez de modifier votre recherche'}
+                                </Text>
                             </View>
-                        </View>
-                    </View>
+                        );
+                    })()}
                 </>
             )}
 
@@ -3699,6 +5948,22 @@ const styles = StyleSheet.create({
     emptyButton: {
         marginTop: 8,
     },
+    // ✅ OPTIMISATION 8: Styles pour Skeleton Loader
+    skeletonContainer: {
+        flex: 1,
+        backgroundColor: '#F9FAFB',
+    },
+    skeletonInfo: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 20,
+        gap: 10,
+    },
+    skeletonInfoText: {
+        fontSize: 14,
+        color: '#6B7280',
+    },
     loadingCard: {
         margin: 16,
     },
@@ -3719,6 +5984,10 @@ const styles = StyleSheet.create({
     },
     servicesContainer: {
         padding: 16,
+    },
+    // ✅ OPTIMISATION 2: Style FlatList
+    flatListContent: {
+        flexGrow: 1,
     },
     serviceCard: {
         marginBottom: 16,

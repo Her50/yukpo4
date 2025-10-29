@@ -6,7 +6,7 @@ import { useAuth } from '../contexts/AuthContext';
 import useFavorites from '../hooks/useFavorites';
 import useOnlineStatus from '../hooks/useOnlineStatus';
 import useServiceMedia from '../hooks/useServiceMedia';
-import useServiceStats from '../hooks/useServiceStats';
+import { useServiceStats } from '../hooks/useServiceStats';
 import useWebSocket from '../hooks/useWebSocket';
 import { theme } from '../theme/theme';
 import { normalizeServiceProducts } from '../utils/productNormalizer';
@@ -154,7 +154,7 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
         service.created_at
     );
     const { isFavorited, toggleFavorite } = useFavorites(user?.id);
-    const { stats: serviceStats } = useServiceStats(service.id);
+    const { stats: serviceStats } = useServiceStats(parseInt(service.id), service.created_at || new Date().toISOString());
 
     // Gérer la connexion WebSocket pour les mises à jour en temps réel
     const { isConnected: wsIsConnected, sendUserStatus } = useWebSocket(user?.id, {
@@ -335,7 +335,7 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
                 {(() => {
                     // ✅ CORRECTION: Normaliser les produits pour extraire toutes les valeurs
                     const normalizedProducts = normalizeServiceProducts(service.data?.produits);
-                    
+
                     if (normalizedProducts.length > 0) {
                         return (
                             <View style={styles.productPricingContainer}>
@@ -388,7 +388,7 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
                 {/* Galerie média avec médias réels */}
                 {(() => {
                     // Utiliser les médias réels de l'API si disponibles, sinon fallback sur les données du service
-                    const displayImages = serviceMedia.loading ? [] :
+                    const displayImagesRaw = serviceMedia.loading ? [] :
                         (serviceMedia.error ?
                             (getServiceFieldValue(service.data?.images_realisations) !== 'Non spécifié' ?
                                 (Array.isArray(getServiceFieldValue(service.data?.images_realisations)) ?
@@ -396,13 +396,17 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
                                     [getServiceFieldValue(service.data?.images_realisations)]) : []) :
                             serviceMedia.images);
 
-                    const displayVideos = serviceMedia.loading ? [] :
+                    const displayImages: string[] = Array.isArray(displayImagesRaw) ? displayImagesRaw : [];
+
+                    const displayVideosRaw = serviceMedia.loading ? [] :
                         (serviceMedia.error ?
                             (getServiceFieldValue(service.data?.videos) !== 'Non spécifié' ?
                                 (Array.isArray(getServiceFieldValue(service.data?.videos)) ?
                                     getServiceFieldValue(service.data?.videos) :
                                     [getServiceFieldValue(service.data?.videos)]) : []) :
                             serviceMedia.videos);
+
+                    const displayVideos: string[] = Array.isArray(displayVideosRaw) ? displayVideosRaw : [];
 
                     const hasMedia = displayImages.length > 0 || displayVideos.length > 0;
 
@@ -466,6 +470,44 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
                         </View>
                     );
                 })()}
+
+                {/* Actions de management (propriétaire uniquement) */}
+                {user && user.id === service.user_id && (
+                    <View style={styles.managementContainer}>
+                        <Text style={styles.managementTitle}>🛠️ Gestion du service</Text>
+                        <View style={styles.managementActions}>
+                            <TouchableOpacity
+                                style={styles.managementButton}
+                                onPress={() => {
+                                    navigation.navigate('ProductManagement' as never, { serviceId: service.id } as never);
+                                }}
+                            >
+                                <Text style={styles.managementIcon}>📦</Text>
+                                <Text style={styles.managementButtonText}>Produits</Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                style={styles.managementButton}
+                                onPress={() => {
+                                    navigation.navigate('MemberManagement' as never, { serviceId: service.id } as never);
+                                }}
+                            >
+                                <Text style={styles.managementIcon}>👥</Text>
+                                <Text style={styles.managementButtonText}>Membres</Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                style={styles.managementButton}
+                                onPress={() => {
+                                    navigation.navigate('AdCreation' as never, { serviceId: service.id } as never);
+                                }}
+                            >
+                                <Text style={styles.managementIcon}>📢</Text>
+                                <Text style={styles.managementButtonText}>Publicité</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                )}
 
                 {/* Actions */}
                 {showActions && (
@@ -915,6 +957,49 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: 'bold',
         color: 'white',
+    },
+    managementContainer: {
+        marginBottom: 12,
+        paddingVertical: 12,
+        paddingHorizontal: 12,
+        backgroundColor: '#FFF8E1',
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: '#FFD54F',
+    },
+    managementTitle: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: '#F57C00',
+        marginBottom: 8,
+    },
+    managementActions: {
+        flexDirection: 'row',
+        justifyContent: 'space-around',
+        gap: 8,
+    },
+    managementButton: {
+        flex: 1,
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: 'white',
+        paddingVertical: 8,
+        paddingHorizontal: 6,
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: '#FFD54F',
+        minHeight: 60,
+    },
+    managementIcon: {
+        fontSize: 20,
+        marginBottom: 4,
+    },
+    managementButtonText: {
+        fontSize: 11,
+        color: '#F57C00',
+        fontWeight: '500',
+        textAlign: 'center',
     },
 });
 

@@ -18,6 +18,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useLanguageSafe } from '../contexts/LanguageContext';
 import { apiGet, apiPost } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
+import ChatModalMobile from './ChatModalMobile';
 import ProductCard from './ProductCard';
 import SafeIcon from './SafeIcon';
 
@@ -55,6 +56,9 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
     const [isPaused, setIsPaused] = useState(false);
     const [sessionId] = useState(() => `session_${Date.now()}_${userId || 'guest'}`);
     const [scrollDelay, setScrollDelay] = useState(5000);
+    const [showChatModal, setShowChatModal] = useState(false);
+    const [selectedService, setSelectedService] = useState<any>(null);
+    const [selectedPrestataire, setSelectedPrestataire] = useState<any>(null);
 
     // Charger le contenu mixte
     useEffect(() => {
@@ -98,19 +102,19 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
     const loadOrganicProducts = async () => {
         try {
             console.log('[MixedContentCarousel] Chargement des produits organiques...');
-            
+
             // Essayer d'abord l'API récente
             let response = await apiGet('/api/services/recent?limit=20&include_products=true');
-            
+
             // Si ça ne marche pas, essayer l'API standard
             if (!response.success || !response.data || !Array.isArray(response.data)) {
                 console.log('[MixedContentCarousel] API recent échouée, essai API standard...');
                 response = await apiGet('/api/services?limit=20');
             }
-            
+
             if (response.success && response.data && Array.isArray(response.data)) {
                 const organicContent: ContentItem[] = [];
-                
+
                 response.data.forEach((service: any) => {
                     if (service.data?.produits && Array.isArray(service.data.produits)) {
                         service.data.produits.forEach((product: any) => {
@@ -139,7 +143,7 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
                         });
                     }
                 });
-                
+
                 console.log(`[MixedContentCarousel] ${organicContent.length} produits organiques chargés`);
                 setContent(organicContent);
             } else {
@@ -344,8 +348,14 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
                         {/* Contenu de la carte */}
                         <ProductCard
                             product={item.data}
-                            isPaid={item.is_paid}
-                            showBadge={false} // On affiche notre propre badge
+                            service={item.data.service || { id: item.data.serviceId || item.data.service_id, data: {} }}
+                            prestataire={item.data.prestataire}
+                            onPress={() => handleCardClick(item, index)}
+                            onChatPress={() => {
+                                setSelectedService(item.data.service || { id: item.data.serviceId || item.data.service_id, data: {} });
+                                setSelectedPrestataire(item.data.prestataire || null);
+                                setShowChatModal(true);
+                            }}
                         />
                     </TouchableOpacity>
                 ))}
@@ -383,6 +393,19 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
                     <SafeIcon name="play" size={16} color="#FFFFFF" />
                 </TouchableOpacity>
             )}
+
+            {/* Chat Modal avec WebSocket */}
+            <ChatModalMobile
+                visible={showChatModal}
+                service={selectedService}
+                prestataireInfo={selectedPrestataire}
+                user={user}
+                onClose={() => {
+                    setShowChatModal(false);
+                    setSelectedService(null);
+                    setSelectedPrestataire(null);
+                }}
+            />
         </View>
     );
 };

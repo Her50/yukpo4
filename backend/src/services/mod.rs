@@ -51,6 +51,7 @@ pub mod native_search_service;
 pub mod image_search_service;
 pub mod audio_transcription_service;
 pub mod intelligent_image_analysis_service;
+pub mod hybrid_image_search_service; // ✅ NOUVEAU: Recherche hybride intelligente
 pub mod scheduling_search_service;
 pub mod geocoding_service;
 pub mod intelligent_service_manager;

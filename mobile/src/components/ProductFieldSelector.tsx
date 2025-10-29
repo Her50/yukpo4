@@ -42,7 +42,8 @@ const ProductFieldSelector: React.FC<ProductFieldSelectorProps> = ({
         'certification', 'certifications',
         'garantie', 'garanties', 'warranty', 'warranties',
         'style', 'styles',
-        'materiau', 'materiaux', 'material', 'materials'
+        'materiau', 'materiaux', 'material', 'materials',
+        'application', 'applications' // ✅ NOUVEAU: Applications industrielles multi-select
     ];
 
     // ✅ Détection automatique si le champ doit être multi-select
@@ -111,6 +112,12 @@ const ProductFieldSelector: React.FC<ProductFieldSelectorProps> = ({
 };
 
 export default ProductFieldSelector;
+
+
+
+
+
+
 
 
 

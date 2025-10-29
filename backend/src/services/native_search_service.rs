@@ -298,6 +298,7 @@ SELECT DISTINCT
                         ELSE 0.0
                     END +
                     -- Bonus pour correspondances dans les produits (champs spécifiques)
+                    -- ✅ AMÉLIORATION FORMATION: Bonus pondéré spécifique pour les champs de formation
                     (
                         SELECT COALESCE(SUM(
                             CASE 
@@ -307,6 +308,22 @@ SELECT DISTINCT
                                 WHEN product->>'marque' ILIKE '%' || $1 || '%' THEN 3.0
                                 WHEN product->>'modele' ILIKE '%' || $1 || '%' THEN 3.0
                                 WHEN product->>'titre' ILIKE '%' || $1 || '%' THEN 3.0
+                                -- 🎓 FORMATION & ÉDUCATION: Boost spécifique pour typeFormation (+20%)
+                                WHEN product->>'typeFormation' ILIKE '%' || $1 || '%' THEN 6.0
+                                -- 📚 Boost pour matières enseignées (+15%)
+                                WHEN product->>'matieresEnseignees' ILIKE '%' || $1 || '%' THEN 5.5
+                                WHEN product->>'matieres_enseignees' ILIKE '%' || $1 || '%' THEN 5.5
+                                -- 📖 Boost pour niveaux scolaires (+15%)
+                                WHEN product->>'niveauxScolaires' ILIKE '%' || $1 || '%' THEN 5.5
+                                WHEN product->>'niveaux_scolaires' ILIKE '%' || $1 || '%' THEN 5.5
+                                -- 🎯 Boost pour concours cibles (+15%)
+                                WHEN product->>'concoursCibles' ILIKE '%' || $1 || '%' THEN 5.5
+                                WHEN product->>'concours_cibles' ILIKE '%' || $1 || '%' THEN 5.5
+                                -- 💻 Boost pour format de formation
+                                WHEN product->>'formatFormation' ILIKE '%' || $1 || '%' THEN 4.5
+                                WHEN product->>'formats' ILIKE '%' || $1 || '%' THEN 4.5
+                                -- 📖 Boost pour anciens sujets
+                                WHEN product->>'anciensSujetsDisponibles' ILIKE '%' || $1 || '%' THEN 4.5
                                 WHEN product->>'quartier' ILIKE '%' || $1 || '%' THEN 2.5
                                 WHEN product->>'ville' ILIKE '%' || $1 || '%' THEN 2.5
                                 ELSE 0.0

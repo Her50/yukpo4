@@ -1,11 +1,11 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
+    ActivityIndicator,
     Dimensions,
     StyleSheet,
     Text,
     TouchableOpacity,
     View,
-    ActivityIndicator,
 } from 'react-native';
 import MapView, { Circle, Marker, Polygon, PROVIDER_GOOGLE } from 'react-native-maps';
 import { modernColors } from '../theme/modernTheme';
@@ -236,31 +236,21 @@ const InteractiveMapView: React.FC<InteractiveMapViewProps> = ({
                 {renderZoneOverlay()}
             </MapView>
 
-            {/* Contrôles de carte */}
+            {/* ✅ REFONTE: Contrôles de carte simplifiés et clairs */}
             <View style={styles.mapControls}>
-                {/* Indicateur de mode */}
+                {/* Indicateur de mode - AMÉLIORÉ */}
                 <View style={styles.modeIndicator}>
-                    <SafeIcon name="map-pin" size={12} color={modernColors.error} />
-                    <Text style={styles.modeText}>Mode: {zoneType}</Text>
+                    <SafeIcon
+                        name={zoneType === 'point' ? "map-pin" : "square"}
+                        size={14}
+                        color={modernColors.primary}
+                    />
+                    <Text style={styles.modeText}>
+                        {zoneType === 'point' ? 'Point précis' : `Zone (${localPolygonPoints.length} pts)`}
+                    </Text>
                 </View>
 
-                {/* Barre d'outils */}
-                <View style={styles.toolbar}>
-                    <TouchableOpacity style={styles.toolButton}>
-                        <SafeIcon name="hand" size={16} color={modernColors.textSecondary} />
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.toolButton}>
-                        <SafeIcon name="edit" size={16} color={modernColors.textSecondary} />
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.toolButton}>
-                        <SafeIcon name="layers" size={16} color={modernColors.textSecondary} />
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.toolButton}>
-                        <SafeIcon name="maximize" size={16} color={modernColors.textSecondary} />
-                    </TouchableOpacity>
-                </View>
-
-                {/* Contrôles de zoom */}
+                {/* ✅ Contrôles de zoom avec labels */}
                 <View style={styles.zoomControls}>
                     <TouchableOpacity
                         style={styles.zoomButton}
@@ -272,8 +262,12 @@ const InteractiveMapView: React.FC<InteractiveMapViewProps> = ({
                             });
                         }}
                     >
-                        <SafeIcon name="plus" size={16} color={modernColors.textSecondary} />
+                        <SafeIcon name="plus" size={18} color={modernColors.text} />
+                        <Text style={styles.zoomLabel}>Zoom +</Text>
                     </TouchableOpacity>
+
+                    <View style={styles.zoomDivider} />
+
                     <TouchableOpacity
                         style={styles.zoomButton}
                         onPress={() => {
@@ -284,11 +278,12 @@ const InteractiveMapView: React.FC<InteractiveMapViewProps> = ({
                             });
                         }}
                     >
-                        <SafeIcon name="minus" size={16} color={modernColors.textSecondary} />
+                        <SafeIcon name="minus" size={18} color={modernColors.text} />
+                        <Text style={styles.zoomLabel}>Zoom -</Text>
                     </TouchableOpacity>
                 </View>
 
-                {/* Bouton centrer sur position */}
+                {/* Bouton centrer sur position - AMÉLIORÉ */}
                 {selectedLocation && (
                     <TouchableOpacity
                         style={styles.centerButton}
@@ -301,7 +296,8 @@ const InteractiveMapView: React.FC<InteractiveMapViewProps> = ({
                             });
                         }}
                     >
-                        <SafeIcon name="target" size={16} color={modernColors.primary} />
+                        <SafeIcon name="target" size={16} color="#FFFFFF" />
+                        <Text style={styles.centerButtonText}>Centrer</Text>
                     </TouchableOpacity>
                 )}
             </View>
@@ -392,51 +388,58 @@ const styles = StyleSheet.create({
         color: modernColors.text,
         fontWeight: '500',
     },
-    toolbar: {
-        flexDirection: 'row',
-        backgroundColor: 'rgba(255, 255, 255, 0.95)',
-        borderRadius: 4,
-        gap: 4,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-        elevation: 2,
-    },
-    toolButton: {
-        width: 32,
-        height: 32,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
+    // ✅ NOUVEAU: Contrôles de zoom améliorés avec labels
     zoomControls: {
-        backgroundColor: 'rgba(255, 255, 255, 0.95)',
-        borderRadius: 4,
-        gap: 4,
+        backgroundColor: 'rgba(255, 255, 255, 0.98)',
+        borderRadius: 10,
+        paddingVertical: 4,
+        paddingHorizontal: 8,
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-        elevation: 2,
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.15,
+        shadowRadius: 5,
+        elevation: 4,
     },
     zoomButton: {
-        width: 32,
-        height: 32,
-        justifyContent: 'center',
+        flexDirection: 'row',
         alignItems: 'center',
+        justifyContent: 'center',
+        gap: 6,
+        paddingVertical: 8,
+        paddingHorizontal: 10,
+        minWidth: 90, // ✅ Largeur minimale pour le texte
     },
+    zoomLabel: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: modernColors.text,
+        letterSpacing: 0.3,
+    },
+    zoomDivider: {
+        height: 1,
+        backgroundColor: '#E5E7EB',
+        marginVertical: 2,
+    },
+    // ✅ NOUVEAU: Bouton centrer amélioré avec label
     centerButton: {
-        width: 32,
-        height: 32,
-        backgroundColor: 'rgba(255, 255, 255, 0.95)',
-        borderRadius: 16,
-        justifyContent: 'center',
+        flexDirection: 'row',
         alignItems: 'center',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
+        gap: 6,
+        paddingVertical: 8,
+        paddingHorizontal: 12,
+        backgroundColor: modernColors.primary,
+        borderRadius: 10,
+        shadowColor: modernColors.primary,
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.3,
         shadowRadius: 4,
-        elevation: 2,
+        elevation: 4,
+    },
+    centerButtonText: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: '#FFFFFF',
+        letterSpacing: 0.3,
     },
     legend: {
         position: 'absolute',

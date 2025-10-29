@@ -104,6 +104,25 @@ const PaymentMethodSelector: React.FC<PaymentMethodSelectorProps> = ({ onPayment
                 Sélectionnez votre moyen de paiement préféré pour faciliter les transactions
             </Text>
 
+            {/* ✅ Numéro de contribuable (PREMIER CHAMP - optionnel) */}
+            <View style={styles.taxIdSection}>
+                <View style={styles.taxIdHeader}>
+                    <SafeIcon name="file-text" size={18} color={modernColors.textSecondary} />
+                    <Text style={styles.taxIdTitle}>Numéro de contribuable (optionnel)</Text>
+                </View>
+                <NativeInput
+                    placeholder="Ex: M012345678901C"
+                    value={taxId}
+                    onChangeText={setTaxId}
+                    autoCapitalize="characters"
+                    style={styles.input}
+                    editable={!readonly}
+                />
+                <Text style={styles.taxIdHint}>
+                    Pour les entreprises: ajoutez votre numéro de contribuable pour vos factures
+                </Text>
+            </View>
+
             {/* Sélection du type de paiement */}
             <View style={styles.paymentTypes}>
                 <TouchableOpacity
@@ -319,27 +338,6 @@ const PaymentMethodSelector: React.FC<PaymentMethodSelectorProps> = ({ onPayment
                     <SafeIcon name="shield" size={18} color={modernColors.success} />
                     <Text style={styles.securityText}>
                         🔒 Vos informations de paiement sont sécurisées et cryptées
-                    </Text>
-                </View>
-            )}
-
-            {/* Numéro de contribuable (optionnel) */}
-            {selectedType && (
-                <View style={styles.taxIdSection}>
-                    <View style={styles.taxIdHeader}>
-                        <SafeIcon name="file-text" size={18} color={modernColors.textSecondary} />
-                        <Text style={styles.taxIdTitle}>Numéro de contribuable (optionnel)</Text>
-                    </View>
-                    <NativeInput
-                        placeholder="Ex: M012345678901C"
-                        value={taxId}
-                        onChangeText={setTaxId}
-                        autoCapitalize="characters"
-                        style={styles.input}
-                        editable={!readonly}
-                    />
-                    <Text style={styles.taxIdHint}>
-                        Pour les entreprises: ajoutez votre numéro de contribuable pour vos factures
                     </Text>
                 </View>
             )}

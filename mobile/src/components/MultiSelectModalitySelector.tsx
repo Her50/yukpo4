@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Alert, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { getFieldOptions } from '../data/productModalities';
+import { getFieldOptions, getModalitiesWithUserContext } from '../data/productModalities';
+import useUserCountry from '../hooks/useUserCountry';
 import { modalityService } from '../services/modalityService';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
@@ -31,16 +32,41 @@ const MultiSelectModalitySelector: React.FC<MultiSelectModalitySelectorProps> = 
     const [showModal, setShowModal] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
 
+    // ✅ NOUVEAU: Détecter le pays de l'utilisateur pour adapter les lieux
+    const { countryCode } = useUserCountry();
+
     // Charger les options (statiques + personnalisées)
     useEffect(() => {
         loadOptions();
-    }, [productType, fieldName]);
+    }, [productType, fieldName, countryCode]); // Recharger si le pays change
 
     const loadOptions = async () => {
         setLoading(true);
         try {
-            // Options statiques de base
-            const staticOptions = getFieldOptions(productType, fieldName);
+            // ✅ NOUVEAU: Détecter si le champ nécessite adaptation au contexte utilisateur
+            const isContextualField = 
+                // Champs géographiques
+                fieldName.toLowerCase().includes('ville') ||
+                fieldName.toLowerCase().includes('quartier') ||
+                fieldName.toLowerCase().includes('zone') ||
+                fieldName.toLowerCase().includes('localisation') ||
+                // Champs éducatifs
+                fieldName.toLowerCase().includes('matiere') ||
+                (fieldName.toLowerCase().includes('niveau') && fieldName.toLowerCase().includes('scolaire')) ||
+                // Champs préparation concours
+                fieldName.toLowerCase().includes('concours');
+
+            // Options statiques de base (adaptées au contexte si nécessaire)
+            let staticOptions: string[];
+            if (isContextualField) {
+                // Utiliser les modalités contextualisées selon le pays de l'utilisateur
+                const contextualizedModalities = getModalitiesWithUserContext(productType, countryCode);
+                staticOptions = contextualizedModalities[fieldName] || getFieldOptions(productType, fieldName);
+                console.log(`[MultiSelectModalitySelector] ✅ Modalités adaptées au pays ${countryCode}:`, staticOptions.length);
+            } else {
+                // Utiliser les modalités standard
+                staticOptions = getFieldOptions(productType, fieldName);
+            }
 
             // Options personnalisées depuis le serveur
             const customOptions = await modalityService.getModalitiesForField(productType, fieldName);
@@ -444,16 +470,19 @@ const styles = StyleSheet.create({
     selectedItem: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: modernColors.primary,
-        borderRadius: 16,
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        marginRight: 8,
+        backgroundColor: 'transparent', // ✅ CORRIGÉ: Fond transparent au lieu de bleu
+        borderWidth: 1, // ✅ NOUVEAU: Bordure fine
+        borderColor: modernColors.border, // ✅ NOUVEAU: Couleur de bordure subtile
+        borderRadius: 6, // ✅ CORRIGÉ: Moins arrondi pour moins d'espace
+        paddingHorizontal: 8, // ✅ CORRIGÉ: Padding réduit de 12 à 8
+        paddingVertical: 4, // ✅ CORRIGÉ: Padding réduit de 6 à 4
+        marginRight: 6, // ✅ CORRIGÉ: Marge réduite de 8 à 6
     },
     selectedItemText: {
-        fontSize: 12,
-        color: 'white',
-        marginRight: 6,
+        fontSize: 13, // ✅ CORRIGÉ: Taille augmentée de 12 à 13 pour lisibilité
+        color: modernColors.text, // ✅ CORRIGÉ: Texte foncé au lieu de blanc
+        marginRight: 4, // ✅ CORRIGÉ: Marge réduite de 6 à 4
+        fontWeight: '500', // ✅ NOUVEAU: Poids medium pour meilleure lisibilité
     },
     removeButton: {
         padding: 2,

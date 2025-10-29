@@ -132,6 +132,7 @@ const ServiceGalleryModal: React.FC<ServiceGalleryModalProps> = ({
             'aliments': '🍕 Alimentation',
             'livres_fournitures': '📚 Livres & Fournitures',
             'quincaillerie': '🔧 Quincaillerie',
+            'bien_etre_spa': '🧘 Bien-être & Spa',
             'prestation_service': '💼 Prestations de Service',
             'autre': '📦 Autres Produits'
         };

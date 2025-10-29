@@ -606,6 +606,49 @@ export const apiDelete = async <T>(endpoint: string): Promise<ApiResponse<T>> =>
   });
 };
 
+// ===== DIAGNOSTICS RÉSEAU =====
+export const networkDiagnostics = {
+  // Test de connectivité au backend
+  checkConnectivity: async () => {
+    const startTime = Date.now();
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/test/ping`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const responseTime = Date.now() - startTime;
+
+      if (response.ok) {
+        return {
+          isOnline: true,
+          apiReachable: true,
+          responseTime,
+          error: null,
+        };
+      } else {
+        return {
+          isOnline: true,
+          apiReachable: false,
+          responseTime,
+          error: `Erreur HTTP ${response.status}`,
+        };
+      }
+    } catch (error: any) {
+      const responseTime = Date.now() - startTime;
+      return {
+        isOnline: false,
+        apiReachable: false,
+        responseTime,
+        error: error.message || 'Impossible de se connecter au serveur',
+      };
+    }
+  },
+};
+
 // Export pour compatibilité avec les anciens imports
 export const serviceService = servicesApi;
 
@@ -618,6 +661,7 @@ export default {
   notificationsApi,
   aiService,
   serviceService,
+  networkDiagnostics,
 };
 
 

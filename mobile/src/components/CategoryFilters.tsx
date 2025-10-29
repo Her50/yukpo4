@@ -1,5 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import React, { useEffect, useState } from 'react';
 import {
+    Animated,
+    Dimensions,
     Modal,
     ScrollView,
     StyleSheet,
@@ -7,13 +10,12 @@ import {
     Text,
     TextInput,
     TouchableOpacity,
-    View,
-    Animated,
-    Dimensions,
+    View
 } from 'react-native';
 import { CategoryFilter, getCategoryFilters, getCategoryStyle, getCategoryTerminology } from '../config/categoryConfig';
-import SafeIcon from './SafeIcon';
+import { trackFilterSuggestion } from '../utils/analytics'; // ✅ OPTIMISATION 6
 import { SmartFilterSuggestion } from '../utils/smartFilterSuggestions';
+import SafeIcon from './SafeIcon';
 
 const { width } = Dimensions.get('window');
 
@@ -44,7 +46,31 @@ const CategoryFilters: React.FC<CategoryFiltersProps> = ({
     const [showSuggestions, setShowSuggestions] = useState(true);
     const [showHistory, setShowHistory] = useState(false);
     const [fadeAnim] = useState(new Animated.Value(0));
-    
+
+    // ✅ OPTIMISATION 4: Charger les filtres depuis le cache au montage
+    useEffect(() => {
+        const loadCachedFilters = async () => {
+            try {
+                const cacheKey = `filters_cache_${category}`;
+                const cached = await AsyncStorage.getItem(cacheKey);
+
+                if (cached) {
+                    const cachedFilters = JSON.parse(cached);
+                    console.log(`[CategoryFilters] Cache trouvé pour ${category}:`, Object.keys(cachedFilters));
+
+                    // Fusionner avec initialFilters (initialFilters prioritaire)
+                    setFilters({ ...cachedFilters, ...initialFilters });
+                }
+            } catch (error) {
+                console.error('[CategoryFilters] Erreur chargement cache:', error);
+            }
+        };
+
+        if (visible && category) {
+            loadCachedFilters();
+        }
+    }, [category, visible]);
+
     // Animation d'entrée
     useEffect(() => {
         if (visible) {
@@ -58,7 +84,16 @@ const CategoryFilters: React.FC<CategoryFiltersProps> = ({
         }
     }, [visible]);
 
-    const handleApply = () => {
+    const handleApply = async () => {
+        // ✅ OPTIMISATION 4: Sauvegarder les filtres dans le cache
+        try {
+            const cacheKey = `filters_cache_${category}`;
+            await AsyncStorage.setItem(cacheKey, JSON.stringify(filters));
+            console.log(`[CategoryFilters] Filtres sauvegardés en cache pour ${category}`);
+        } catch (error) {
+            console.error('[CategoryFilters] Erreur sauvegarde cache:', error);
+        }
+
         onApply(filters);
         onClose();
     };
@@ -70,16 +105,19 @@ const CategoryFilters: React.FC<CategoryFiltersProps> = ({
     // ✅ NOUVEAU: Appliquer une suggestion intelligente
     const applySuggestion = (suggestion: SmartFilterSuggestion) => {
         const newFilters = { ...filters };
-        
+
         if (suggestion.type === 'range') {
             newFilters[`${suggestion.id}_min`] = suggestion.min;
             newFilters[`${suggestion.id}_max`] = suggestion.max;
         } else {
             newFilters[suggestion.id] = suggestion.options?.[0]?.value || null;
         }
-        
+
         setFilters(newFilters);
         console.log(`💡 Suggestion appliquée: ${suggestion.label}`);
+
+        // ✅ OPTIMISATION 6: Track l'application de la suggestion
+        trackFilterSuggestion(category, suggestion.id, suggestion.label);
     };
 
     // ✅ NOUVEAU: Appliquer un filtre de l'historique
@@ -280,7 +318,7 @@ const CategoryFilters: React.FC<CategoryFiltersProps> = ({
     // ✅ NOUVEAU: Formater le temps écoulé
     const formatTimeAgo = (timestamp: number): string => {
         const seconds = Math.floor((Date.now() - timestamp) / 1000);
-        
+
         if (seconds < 60) return 'Il y a quelques secondes';
         if (seconds < 3600) return `Il y a ${Math.floor(seconds / 60)} min`;
         if (seconds < 86400) return `Il y a ${Math.floor(seconds / 3600)}h`;
@@ -330,7 +368,7 @@ const CategoryFilters: React.FC<CategoryFiltersProps> = ({
                                     color="#6B7280"
                                 />
                             </TouchableOpacity>
-                            
+
                             {showSuggestions && (
                                 <Animated.View style={{ opacity: fadeAnim }}>
                                     <ScrollView
@@ -396,13 +434,13 @@ const CategoryFilters: React.FC<CategoryFiltersProps> = ({
                                     color="#6B7280"
                                 />
                             </TouchableOpacity>
-                            
+
                             {showHistory && (
                                 <View style={styles.historyList}>
                                     {filterHistory.slice(0, 3).map((item, index) => {
                                         const filterCount = Object.keys(item.filters).length;
                                         const timeAgo = formatTimeAgo(item.timestamp);
-                                        
+
                                         return (
                                             <TouchableOpacity
                                                 key={index}

@@ -50,17 +50,27 @@ export const MULTI_SELECT_FIELDS: ProductTypeMultiSelectConfig = {
         }
     ],
 
-    // IMMOBILIER - Types de chauffage et équipements multiples
+    // IMMOBILIER - ✅ REFONTE COMPLÈTE (4 champs multiselect)
     immobilier_batiment: [
         {
-            fieldName: 'chauffage',
-            maxSelections: 3,
-            description: 'Types de chauffage disponibles'
+            fieldName: 'equipements',
+            maxSelections: 15,
+            description: 'Équipements inclus (eau courante 24h, groupe électrogène, climatisation, etc.)'
         },
         {
-            fieldName: 'equipements',
+            fieldName: 'proximites',
             maxSelections: 10,
-            description: 'Équipements inclus (climatisation, piscine, etc.)'
+            description: 'Commodités à proximité (école, hôpital, marché, transport, etc.)'
+        },
+        {
+            fieldName: 'conditions_location',
+            maxSelections: 8,
+            description: 'Conditions de location (caution, avance, garant, etc.)'
+        },
+        {
+            fieldName: 'orientations',
+            maxSelections: 4,
+            description: 'Orientations du bien (Nord, Sud, Est, Ouest)'
         }
     ],
 
@@ -87,17 +97,27 @@ export const MULTI_SELECT_FIELDS: ProductTypeMultiSelectConfig = {
         }
     ],
 
-    // IMAGE & SON - Résolutions et connectivités multiples
+    // IMAGE & SON - ✅ REFONTE COMPLÈTE (4 champs multiselect)
     image_son: [
+        {
+            fieldName: 'connectivites',
+            maxSelections: 10,
+            description: 'Connectivités disponibles (HDMI, USB, WiFi, Bluetooth, etc.)'
+        },
+        {
+            fieldName: 'fonctionnalites',
+            maxSelections: 12,
+            description: 'Fonctionnalités (Smart TV, HDR, Dolby Atmos, etc.)'
+        },
+        {
+            fieldName: 'accessoires_inclus',
+            maxSelections: 10,
+            description: 'Accessoires fournis avec le produit'
+        },
         {
             fieldName: 'resolutions',
             maxSelections: 4,
             description: 'Résolutions supportées (HD, 4K, 8K, etc.)'
-        },
-        {
-            fieldName: 'connectivites',
-            maxSelections: 8,
-            description: 'Connectivités disponibles (HDMI, USB, Bluetooth, etc.)'
         }
     ],
 

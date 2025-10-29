@@ -295,6 +295,23 @@ const translations: { [lang: string]: { [key: string]: string } } = {
         'language.arabic': 'العربية',
         'language.russian': 'Русский',
 
+        // Électricien
+        'electrician.prestation_type': 'Type de prestation',
+        'electrician.specialties': 'Spécialités',
+        'electrician.equipment': 'Équipements concernés',
+        'electrician.availability': 'Disponibilité',
+        'electrician.guarantee': 'Garantie travaux',
+        'electrician.certifications': 'Certifications',
+        'electrician.emergency_24h': 'Urgence 24h/24',
+        'electrician.free_quote': 'Devis gratuit',
+        'electrician.work_zone': 'Zones d\'intervention',
+        'electrician.types.installation': 'Installation',
+        'electrician.types.repair': 'Réparation',
+        'electrician.types.emergency': 'Dépannage',
+        'electrician.types.standards': 'Mise aux normes',
+        'electrician.types.diagnostic': 'Diagnostic',
+        'electrician.types.renovation': 'Rénovation',
+
         // Publicité
         'publicite.create': 'Créer une publicité',
         'publicite.title': 'Titre de la publicité',
@@ -448,6 +465,23 @@ const translations: { [lang: string]: { [key: string]: string } } = {
         'stats.balance': 'Balance',
         'stats.budget': 'Budget',
         'stats.total': 'Total',
+
+        // Electrician
+        'electrician.prestation_type': 'Service type',
+        'electrician.specialties': 'Specialties',
+        'electrician.equipment': 'Equipment concerned',
+        'electrician.availability': 'Availability',
+        'electrician.guarantee': 'Work guarantee',
+        'electrician.certifications': 'Certifications',
+        'electrician.emergency_24h': 'Emergency 24/7',
+        'electrician.free_quote': 'Free quote',
+        'electrician.work_zone': 'Coverage area',
+        'electrician.types.installation': 'Installation',
+        'electrician.types.repair': 'Repair',
+        'electrician.types.emergency': 'Emergency',
+        'electrician.types.standards': 'Standards compliance',
+        'electrician.types.diagnostic': 'Diagnostic',
+        'electrician.types.renovation': 'Renovation',
 
         // Languages
         'language.title': 'Language',

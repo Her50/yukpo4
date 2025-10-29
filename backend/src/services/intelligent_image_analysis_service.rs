@@ -18,6 +18,10 @@ pub struct ImageAnalysis {
     pub caracteristiques_cles: HashMap<String, String>,
     pub confiance: f32,
     pub search_query: String,
+    // ✅ NOUVEAU: 3 variantes de recherche pour matching optimal
+    pub search_query_exact: String,
+    pub search_query_broad: String,
+    pub search_query_semantic: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -35,9 +39,37 @@ impl IntelligentImageAnalysisService {
     /// Construire le prompt d'analyse adapté à la catégorie de produit
     fn build_analysis_prompt(category: Option<&str>, is_search_mode: bool) -> String {
         let mode_instruction = if is_search_mode {
-            "L'utilisateur CHERCHE ce produit. Extrais les caractéristiques pour MATCHER avec des produits similaires en base."
+            r#"L'utilisateur CHERCHE ce produit. 
+            
+OBJECTIF: Extraire le MAXIMUM de détails pour un matching ULTRA-PRÉCIS.
+
+ANALYSE CRITIQUE REQUISE:
+1. Identifie TOUS les détails visibles (marque, modèle, référence, série)
+2. Extrais le TEXTE visible (étiquettes, prix, codes, numéros)
+3. Décris l'ÉTAT apparent (neuf, bon état, usagé, vintage)
+4. Note les DÉFAUTS ou particularités visibles
+5. Identifie le CONTEXTE (environnement, échelle, usage)
+
+GÉNÈRE 3 VARIANTES DE RECHERCHE:
+- search_query_exact: Mots-clés ULTRA-PRÉCIS (marque + modèle + couleur + caractéristique unique)
+- search_query_broad: Recherche LARGE avec synonymes et variantes (ex: "baskets" → "chaussures sport running sneakers")
+- search_query_semantic: Description NATURELLE complète pour matching sémantique (phrase descriptive détaillée)"#
         } else {
-            "Le prestataire CATALOGUE ce produit. Extrais les caractéristiques pour une recherche future optimale."
+            r#"Le prestataire CATALOGUE ce produit pour vente/location.
+
+OBJECTIF: Créer une fiche produit COMPLÈTE et OPTIMISÉE pour recherche future.
+
+EXTRACTION COMPLÈTE REQUISE:
+1. Description MARKETING détaillée et attractive
+2. TOUS les mots-clés pertinents (synonymes inclus)
+3. Caractéristiques TECHNIQUES visibles
+4. Points de VENTE uniques (USP)
+5. Termes de recherche POPULAIRES pour ce type de produit
+
+GÉNÈRE 3 VARIANTES:
+- search_query_exact: Termes précis du produit
+- search_query_broad: Tous les synonymes et variantes possibles
+- search_query_semantic: Description complète vendeuse"#
         };
 
         let category_instruction = match category {
@@ -125,8 +157,16 @@ FORMAT DE SORTIE (JSON STRICT - PAS DE MARKDOWN):
         "champ2": "valeur2"
     }},
     "confiance": 0.95,
-    "search_query": "requête de recherche optimisée avec mots-clés pertinents"
+    "search_query": "requête principale héritée (rétrocompatibilité)",
+    "search_query_exact": "marque modele couleur caracteristique-unique",
+    "search_query_broad": "type-produit synonyme1 synonyme2 variante1 variante2 marque modele couleur",
+    "search_query_semantic": "Description naturelle complète et détaillée du produit avec contexte pour matching sémantique intelligent"
 }}
+
+CRITÈRES DE QUALITÉ:
+- search_query_exact: 3-5 mots ultra-précis, unique au produit
+- search_query_broad: 8-15 mots incluant TOUS les synonymes pertinents
+- search_query_semantic: Phrase complète de 15-30 mots, naturelle et descriptive
 
 IMPORTANT: Retourne UNIQUEMENT le JSON, sans texte explicatif avant ou après."#,
             mode_instruction,
@@ -527,6 +567,47 @@ IMPORTANT: Retourne UNIQUEMENT le JSON, sans texte explicatif avant ou après."#
             .unwrap_or(&description)
             .to_string();
 
+        // ✅ NOUVEAU: Extraire les 3 variantes de recherche avec fallbacks intelligents
+        let search_query_exact = parsed["search_query_exact"]
+            .as_str()
+            .map(|s| s.to_string())
+            .unwrap_or_else(|| {
+                // Fallback: construire exact à partir de marque + couleur + tags principaux
+                let mut parts = Vec::new();
+                if let Some(ref m) = marque {
+                    parts.push(m.clone());
+                }
+                if let Some(first_color) = couleurs.first() {
+                    parts.push(first_color.clone());
+                }
+                if let Some(first_tag) = tags.first() {
+                    parts.push(first_tag.clone());
+                }
+                parts.join(" ")
+            });
+
+        let search_query_broad = parsed["search_query_broad"]
+            .as_str()
+            .map(|s| s.to_string())
+            .unwrap_or_else(|| {
+                // Fallback: combiner tags + marque + couleurs
+                let mut parts = Vec::new();
+                parts.extend(tags.iter().take(5).cloned());
+                if let Some(ref m) = marque {
+                    parts.push(m.clone());
+                }
+                parts.extend(couleurs.iter().take(2).cloned());
+                parts.join(" ")
+            });
+
+        let search_query_semantic = parsed["search_query_semantic"]
+            .as_str()
+            .map(|s| s.to_string())
+            .unwrap_or_else(|| {
+                // Fallback: utiliser la description complète
+                description.clone()
+            });
+
         Ok(ImageAnalysis {
             description,
             tags,
@@ -536,6 +617,9 @@ IMPORTANT: Retourne UNIQUEMENT le JSON, sans texte explicatif avant ou après."#
             caracteristiques_cles,
             confiance,
             search_query,
+            search_query_exact,
+            search_query_broad,
+            search_query_semantic,
         })
     }
 

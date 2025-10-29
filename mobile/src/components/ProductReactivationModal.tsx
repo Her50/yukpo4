@@ -184,16 +184,16 @@ const ProductReactivationModal: React.FC<ProductReactivationModalProps> = ({
                     .filter(r => !r.success && !r.data?.success)
                     .map(r => r.error || r.data?.error || 'Erreur inconnue')
                     .join('\n');
-                
+
                 Alert.alert(
-                    '❌ Erreur de réactivation', 
+                    '❌ Erreur de réactivation',
                     `Certains produits n'ont pas pu être réactivés :\n\n${errorMessages}`
                 );
             }
         } catch (error) {
             console.error('[ProductReactivation] Erreur réactivation:', error);
             Alert.alert(
-                '❌ Erreur', 
+                '❌ Erreur',
                 `Erreur lors de la réactivation des produits :\n\n${error.message || error}`
             );
         } finally {
@@ -213,6 +213,7 @@ const ProductReactivationModal: React.FC<ProductReactivationModalProps> = ({
             'aliments': '🍕',
             'livres_fournitures': '📚',
             'quincaillerie': '🔧',
+            'bien_etre_spa': '🧘',
             'prestation_service': '💼',
             'autre': '📦'
         };
