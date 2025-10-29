@@ -13,7 +13,7 @@ use crate::middlewares::jwt::AuthenticatedUser;
 // STRUCTURES DE DONNÉES
 // ===========================
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, sqlx::FromRow)]
 pub struct ProductModality {
     pub id: i32,
     pub product_type: String,
@@ -86,15 +86,14 @@ pub async fn get_custom_modalities(
     // Exécuter la requête
     let modalities: Vec<ProductModality> = match (params.product_type, params.field_name) {
         (Some(pt), Some(fn_)) => {
-            sqlx::query_as!(
-                ProductModality,
+            sqlx::query_as::<_, ProductModality>(
                 r#"SELECT id, product_type, field_name, modality, added_by, added_at, usage_count, is_system 
                    FROM product_modalities 
                    WHERE product_type = $1 AND field_name = $2
-                   ORDER BY usage_count DESC, modality ASC"#,
-                pt,
-                fn_
+                   ORDER BY usage_count DESC, modality ASC"#
             )
+            .bind(pt)
+            .bind(fn_)
             .fetch_all(&state.pg)
             .await
             .map_err(|e| {
@@ -103,14 +102,13 @@ pub async fn get_custom_modalities(
             })?
         }
         (Some(pt), None) => {
-            sqlx::query_as!(
-                ProductModality,
+            sqlx::query_as::<_, ProductModality>(
                 r#"SELECT id, product_type, field_name, modality, added_by, added_at, usage_count, is_system 
                    FROM product_modalities 
                    WHERE product_type = $1
-                   ORDER BY usage_count DESC, modality ASC"#,
-                pt
+                   ORDER BY usage_count DESC, modality ASC"#
             )
+            .bind(pt)
             .fetch_all(&state.pg)
             .await
             .map_err(|e| {
@@ -119,14 +117,13 @@ pub async fn get_custom_modalities(
             })?
         }
         (None, Some(fn_)) => {
-            sqlx::query_as!(
-                ProductModality,
+            sqlx::query_as::<_, ProductModality>(
                 r#"SELECT id, product_type, field_name, modality, added_by, added_at, usage_count, is_system 
                    FROM product_modalities 
                    WHERE field_name = $1
-                   ORDER BY usage_count DESC, modality ASC"#,
-                fn_
+                   ORDER BY usage_count DESC, modality ASC"#
             )
+            .bind(fn_)
             .fetch_all(&state.pg)
             .await
             .map_err(|e| {
@@ -135,8 +132,7 @@ pub async fn get_custom_modalities(
             })?
         }
         (None, None) => {
-            sqlx::query_as!(
-                ProductModality,
+            sqlx::query_as::<_, ProductModality>(
                 r#"SELECT id, product_type, field_name, modality, added_by, added_at, usage_count, is_system 
                    FROM product_modalities 
                    ORDER BY usage_count DESC, modality ASC"#
@@ -195,13 +191,13 @@ pub async fn create_custom_modality(
     let modality = payload.modality.trim();
 
     // Vérifier si la modalité existe déjà
-    let existing = sqlx::query!(
+    let existing = sqlx::query(
         "SELECT id FROM product_modalities 
-         WHERE product_type = $1 AND field_name = $2 AND modality = $3",
-        product_type,
-        field_name,
-        modality
+         WHERE product_type = $1 AND field_name = $2 AND modality = $3"
     )
+    .bind(&product_type)
+    .bind(&field_name)
+    .bind(&modality)
     .fetch_optional(&state.pg)
     .await
     .map_err(|e| {
@@ -218,16 +214,15 @@ pub async fn create_custom_modality(
     }
 
     // Insérer la nouvelle modalité
-    let new_modality = sqlx::query_as!(
-        ProductModality,
+    let new_modality = sqlx::query_as::<_, ProductModality>(
         r#"INSERT INTO product_modalities (product_type, field_name, modality, added_by, is_system)
            VALUES ($1, $2, $3, $4, false)
-           RETURNING id, product_type, field_name, modality, added_by, added_at, usage_count, is_system"#,
-        product_type,
-        field_name,
-        modality,
-        user.id
+           RETURNING id, product_type, field_name, modality, added_by, added_at, usage_count, is_system"#
     )
+    .bind(&product_type)
+    .bind(&field_name)
+    .bind(&modality)
+    .bind(user.id)
     .fetch_one(&state.pg)
     .await
     .map_err(|e| {
@@ -257,14 +252,14 @@ pub async fn increment_modality_usage(
     let field_name = payload.field_name.trim().to_lowercase();
     let modality = payload.modality.trim();
 
-    sqlx::query!(
+    sqlx::query(
         "UPDATE product_modalities 
          SET usage_count = usage_count + 1, updated_at = NOW()
-         WHERE product_type = $1 AND field_name = $2 AND modality = $3",
-        product_type,
-        field_name,
-        modality
+         WHERE product_type = $1 AND field_name = $2 AND modality = $3"
     )
+    .bind(&product_type)
+    .bind(&field_name)
+    .bind(&modality)
     .execute(&state.pg)
     .await
     .map_err(|e| {
@@ -289,17 +284,16 @@ pub async fn get_popular_modalities(
 
     let modalities = match (params.product_type, params.field_name) {
         (Some(pt), Some(fn_)) => {
-            sqlx::query_as!(
-                ProductModality,
+            sqlx::query_as::<_, ProductModality>(
                 r#"SELECT id, product_type, field_name, modality, added_by, added_at, usage_count, is_system 
                    FROM product_modalities 
                    WHERE product_type = $1 AND field_name = $2
                    ORDER BY usage_count DESC
-                   LIMIT $3"#,
-                pt,
-                fn_,
-                limit as i64
+                   LIMIT $3"#
             )
+            .bind(pt)
+            .bind(fn_)
+            .bind(limit as i64)
             .fetch_all(&state.pg)
             .await
             .map_err(|e| {
@@ -331,10 +325,10 @@ pub async fn delete_modality(
     Path(id): Path<i32>,
 ) -> Result<Json<ApiResponse<()>>, StatusCode> {
     // Vérifier si la modalité existe et n'est pas système
-    let modality = sqlx::query!(
-        "SELECT is_system, added_by FROM product_modalities WHERE id = $1",
-        id
+    let modality = sqlx::query(
+        "SELECT is_system, added_by FROM product_modalities WHERE id = $1"
     )
+    .bind(id)
     .fetch_optional(&state.pg)
     .await
     .map_err(|e| {
@@ -351,7 +345,11 @@ pub async fn delete_modality(
             }));
         }
         Some(m) => {
-            if m.is_system {
+            use sqlx::Row;
+            let is_system: bool = m.try_get("is_system").unwrap_or(false);
+            let added_by: Option<i32> = m.try_get("added_by").ok();
+            
+            if is_system {
                 return Ok(Json(ApiResponse {
                     success: false,
                     data: None,
@@ -360,7 +358,7 @@ pub async fn delete_modality(
             }
 
             // Vérifier que l'utilisateur est le créateur ou admin
-            if m.added_by != Some(user.id) {
+            if added_by != Some(user.id) {
                 // TODO: Vérifier si l'utilisateur est admin
                 return Ok(Json(ApiResponse {
                     success: false,
@@ -372,7 +370,8 @@ pub async fn delete_modality(
     }
 
     // Supprimer la modalité
-    sqlx::query!("DELETE FROM product_modalities WHERE id = $1", id)
+    sqlx::query("DELETE FROM product_modalities WHERE id = $1")
+        .bind(id)
         .execute(&state.pg)
         .await
         .map_err(|e| {

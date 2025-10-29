@@ -1,7 +1,6 @@
 use axum::{
-    extract::{Extension, State, Json, Query, Path},
-    routing::{get, post},
-    Router, http::StatusCode,
+    extract::{Extension, State, Json, Query},
+    http::StatusCode,
 };
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
@@ -14,7 +13,7 @@ use crate::{
 
 // ✅ Structures pour vehicle_models
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, sqlx::FromRow)]
 pub struct VehicleModel {
     pub id: i32,
     pub brand: String,
@@ -56,18 +55,17 @@ pub async fn get_vehicle_models(
     
     let models = if let Some(brand) = params.brand {
         // Filtrer par marque
-        sqlx::query_as!(
-            VehicleModel,
+        sqlx::query_as::<_, VehicleModel>(
             r#"
             SELECT id, brand, model, year_min, year_max, category, fuel_type, usage_count
             FROM vehicle_models
             WHERE brand = $1
             ORDER BY usage_count DESC, model ASC
             LIMIT $2
-            "#,
-            brand,
-            limit as i64
+            "#
         )
+        .bind(brand)
+        .bind(limit as i64)
         .fetch_all(&state.pg)
         .await
         .map_err(|e| {
@@ -76,18 +74,17 @@ pub async fn get_vehicle_models(
         })?
     } else if let Some(category) = params.category {
         // Filtrer par catégorie
-        sqlx::query_as!(
-            VehicleModel,
+        sqlx::query_as::<_, VehicleModel>(
             r#"
             SELECT id, brand, model, year_min, year_max, category, fuel_type, usage_count
             FROM vehicle_models
             WHERE category = $1
             ORDER BY usage_count DESC, brand ASC, model ASC
             LIMIT $2
-            "#,
-            category,
-            limit as i64
+            "#
         )
+        .bind(category)
+        .bind(limit as i64)
         .fetch_all(&state.pg)
         .await
         .map_err(|e| {
@@ -96,16 +93,15 @@ pub async fn get_vehicle_models(
         })?
     } else {
         // Tous les modèles
-        sqlx::query_as!(
-            VehicleModel,
+        sqlx::query_as::<_, VehicleModel>(
             r#"
             SELECT id, brand, model, year_min, year_max, category, fuel_type, usage_count
             FROM vehicle_models
             ORDER BY usage_count DESC, brand ASC, model ASC
             LIMIT $1
-            "#,
-            limit as i64
+            "#
         )
+        .bind(limit as i64)
         .fetch_all(&state.pg)
         .await
         .map_err(|e| {
@@ -126,8 +122,7 @@ pub async fn create_vehicle_model(
 ) -> AppResult<Json<VehicleModel>> {
     info!("Création modèle véhicule: {} {}", payload.brand, payload.model);
 
-    let model = sqlx::query_as!(
-        VehicleModel,
+    let model = sqlx::query_as::<_, VehicleModel>(
         r#"
         INSERT INTO vehicle_models (brand, model, category, fuel_type, added_by, usage_count)
         VALUES ($1, $2, $3, $4, $5, 1)
@@ -135,13 +130,13 @@ pub async fn create_vehicle_model(
         SET usage_count = vehicle_models.usage_count + 1,
             updated_at = NOW()
         RETURNING id, brand, model, year_min, year_max, category, fuel_type, usage_count
-        "#,
-        payload.brand,
-        payload.model,
-        payload.category,
-        payload.fuel_type,
-        user.id
+        "#
     )
+    .bind(&payload.brand)
+    .bind(&payload.model)
+    .bind(&payload.category)
+    .bind(&payload.fuel_type)
+    .bind(user.id)
     .fetch_one(&state.pg)
     .await
     .map_err(|e| {
@@ -158,16 +153,16 @@ pub async fn increment_model_usage(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<IncrementUsagePayload>,
 ) -> AppResult<StatusCode> {
-    sqlx::query!(
+    sqlx::query(
         r#"
         UPDATE vehicle_models
         SET usage_count = usage_count + 1,
             updated_at = NOW()
         WHERE brand = $1 AND model = $2
-        "#,
-        payload.brand,
-        payload.model
+        "#
     )
+    .bind(&payload.brand)
+    .bind(&payload.model)
     .execute(&state.pg)
     .await
     .map_err(|e| {
@@ -185,16 +180,15 @@ pub async fn get_popular_models(
 ) -> AppResult<Json<Vec<VehicleModel>>> {
     let limit = params.limit.unwrap_or(20);
     
-    let models = sqlx::query_as!(
-        VehicleModel,
+    let models = sqlx::query_as::<_, VehicleModel>(
         r#"
         SELECT id, brand, model, year_min, year_max, category, fuel_type, usage_count
         FROM vehicle_models
         ORDER BY usage_count DESC
         LIMIT $1
-        "#,
-        limit as i64
+        "#
     )
+    .bind(limit as i64)
     .fetch_all(&state.pg)
     .await
     .map_err(|e| {
