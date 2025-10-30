@@ -586,13 +586,14 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         }
       }
 
-      // ✅ NOUVEAU: Charger les catégories de produits suggérées (matching local basé sur keywords)
-      if (initialValues.titre_service || initialValues.description || initialValues.category) {
+      // ✅ NOUVEAU: Charger les catégories de produits suggérées (matching local basé sur keywords + données IA)
+      if (initialValues.titre_service || initialValues.description || initialValues.category || suggestion?.data) {
         try {
           const suggestions = getSuggestedProductCategories(
             initialValues.titre_service,
             initialValues.description,
-            initialValues.category
+            initialValues.category,
+            suggestion?.data
           );
           if (suggestions.length > 0) {
             console.log('[FormulaireYukpoIntelligentScreen] ✅ Catégories suggérées (matching local):', suggestions.length);
@@ -724,9 +725,18 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
   // Gérer les changements de champs
   const handleFieldChange = (fieldName: string, value: any) => {
+    // Convertir automatiquement les prix en nombres
+    let processedValue = value;
+    if (fieldName === 'prix' && typeof value === 'string' && value.trim() !== '') {
+      const numericValue = parseFloat(value);
+      if (!isNaN(numericValue)) {
+        processedValue = numericValue;
+      }
+    }
+
     setValeursFormulaire(prev => ({
       ...prev,
-      [fieldName]: value
+      [fieldName]: processedValue
     }));
   };
 
@@ -1087,7 +1097,13 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
             const cleaned: any = {};
             Object.keys(product).forEach(key => {
               if (product[key] !== undefined && product[key] !== null && product[key] !== '') {
-                cleaned[key] = product[key];
+                // Convertir les prix en nombres
+                if (key === 'prix' && typeof product[key] === 'string') {
+                  const numericValue = parseFloat(product[key]);
+                  cleaned[key] = isNaN(numericValue) ? product[key] : numericValue;
+                } else {
+                  cleaned[key] = product[key];
+                }
               }
             });
             return cleaned;
@@ -1346,8 +1362,16 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                   const cleanedProducts = products.map(product => {
                     const cleaned: any = {};
                     Object.keys(product).forEach(key => {
-                      if (product[key] !== undefined && product[key] !== null && product[key] !== '') {
-                        cleaned[key] = product[key];
+                      const value = (product as any)[key];
+                      if (value !== undefined && value !== null && value !== '') {
+                        // ✅ Convertir les champs numériques connus en nombres
+                        const numericKeys = ['prix', 'prixParNuit', 'prixParPlace', 'prixHoraire', 'prixJournalier', 'prixMinimum'];
+                        if (numericKeys.includes(key)) {
+                          const num = typeof value === 'number' ? value : parseFloat(String(value));
+                          cleaned[key] = isNaN(num) ? value : num;
+                        } else {
+                          cleaned[key] = value;
+                        }
                       }
                     });
                     return cleaned;

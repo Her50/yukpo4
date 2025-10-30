@@ -1,5 +1,5 @@
 // Service pour gérer les modalités personnalisées avec persistance serveur
-import { apiCall } from './api';
+import { apiGet, apiPost } from './api';
 
 export interface CustomModality {
     id: string;
@@ -26,7 +26,7 @@ class ModalityService {
         try {
             console.log('[ModalityService] Chargement des modalités personnalisées...');
 
-            const response = await apiCall<CustomModality[]>('/api/modalities/custom');
+            const response = await apiGet<CustomModality[]>('/api/modalities/custom');
 
             if (response.success && response.data) {
                 // Organiser les modalités par clé (productType + fieldName)
@@ -72,14 +72,11 @@ class ModalityService {
         try {
             console.log('[ModalityService] Ajout modalité:', { productType, fieldName, modality });
 
-            const response = await apiCall<CustomModality>('/api/modalities/custom', {
-                method: 'POST',
-                body: JSON.stringify({
-                    productType,
-                    fieldName,
-                    modality,
-                    addedBy: userId || 'anonymous'
-                })
+            const response = await apiPost<CustomModality>('/api/modalities/custom', {
+                productType,
+                fieldName,
+                modality,
+                addedBy: userId || 'anonymous'
             });
 
             if (response.success && response.data) {
@@ -93,25 +90,34 @@ class ModalityService {
                 console.log('[ModalityService] ✅ Modalité ajoutée avec succès');
                 return true;
             } else {
-                console.error('[ModalityService] ❌ Erreur ajout modalité:', response.error);
-                return false;
+                // ✅ Fallback hors-ligne: ajouter localement pour ne pas bloquer l'UX
+                console.warn('[ModalityService] ⚠️ Backend indisponible, ajout local de la modalité');
+                const key = `${productType}:${fieldName}`;
+                if (!this.customModalities.has(key)) {
+                    this.customModalities.set(key, []);
+                }
+                this.customModalities.get(key)!.push(modality);
+                return true;
             }
         } catch (error) {
-            console.error('[ModalityService] ❌ Erreur ajout modalité:', error);
-            return false;
+            // ✅ Fallback hors-ligne: ajouter localement pour ne pas bloquer l'UX
+            console.warn('[ModalityService] ⚠️ Erreur réseau, ajout local de la modalité');
+            const key = `${productType}:${fieldName}`;
+            if (!this.customModalities.has(key)) {
+                this.customModalities.set(key, []);
+            }
+            this.customModalities.get(key)!.push(modality);
+            return true;
         }
     }
 
     // ✅ Incrémenter le compteur d'utilisation d'une modalité
     async incrementUsage(productType: string, fieldName: string, modality: string): Promise<void> {
         try {
-            await apiCall(`/api/modalities/usage`, {
-                method: 'POST',
-                body: JSON.stringify({
-                    productType,
-                    fieldName,
-                    modality
-                })
+            await apiPost(`/api/modalities/usage`, {
+                productType,
+                fieldName,
+                modality
             });
         } catch (error) {
             console.error('[ModalityService] Erreur incrément usage:', error);
@@ -122,7 +128,7 @@ class ModalityService {
     // ✅ Obtenir les modalités les plus utilisées
     async getPopularModalities(productType: string, fieldName: string, limit: number = 10): Promise<string[]> {
         try {
-            const response = await apiCall<CustomModality[]>(`/api/modalities/popular?productType=${productType}&fieldName=${fieldName}&limit=${limit}`);
+            const response = await apiGet<CustomModality[]>(`/api/modalities/popular?productType=${productType}&fieldName=${fieldName}&limit=${limit}`);
 
             if (response.success && response.data) {
                 return response.data.map(m => m.modality);

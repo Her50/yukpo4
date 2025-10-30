@@ -27,6 +27,8 @@ const AssuranceProduitSelector: React.FC<AssuranceProduitSelectorProps> = ({
     disabled = false
 }) => {
     const [modalVisible, setModalVisible] = useState(false);
+    const [addModalVisible, setAddModalVisible] = useState(false);
+    const [newProduitName, setNewProduitName] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
     const [options, setOptions] = useState<string[]>([]);
     const [loading, setLoading] = useState(false);
@@ -72,43 +74,9 @@ const AssuranceProduitSelector: React.FC<AssuranceProduitSelectorProps> = ({
 
     const handleSelect = (option: string) => {
         if (option.includes('🆕 Autre')) {
-            // Ajouter un nouveau produit
-            Alert.prompt(
-                'Nouveau produit d\'assurance',
-                `Entrez le nom du produit d'assurance ${typeAssurance} :`,
-                [
-                    { text: 'Annuler', style: 'cancel' },
-                    {
-                        text: 'Ajouter',
-                        onPress: async (text) => {
-                            if (text && text.trim()) {
-                                const newProduit = text.trim();
-                                const fieldName = typeAssurance === 'VIE' ? 'produits_vie' : 'produits_non_vie';
-
-                                const success = await modalityService.addCustomModality(
-                                    'assurance',
-                                    fieldName,
-                                    newProduit
-                                );
-
-                                if (success) {
-                                    await loadOptions();
-                                    onSelect(newProduit);
-                                    setModalVisible(false);
-                                    Alert.alert(
-                                        '✅ Produit ajouté',
-                                        `"${newProduit}" a été ajouté à la liste des produits ${typeAssurance}`,
-                                        [{ text: 'OK' }]
-                                    );
-                                } else {
-                                    Alert.alert('❌ Erreur', 'Impossible d\'ajouter le produit', [{ text: 'OK' }]);
-                                }
-                            }
-                        }
-                    }
-                ],
-                'plain-text'
-            );
+            // Ouvrir modale d'ajout (compatible Android)
+            setNewProduitName('');
+            setAddModalVisible(true);
         } else {
             onSelect(option);
             setModalVisible(false);
@@ -116,6 +84,37 @@ const AssuranceProduitSelector: React.FC<AssuranceProduitSelectorProps> = ({
             // Incrémenter le compteur d'usage
             const fieldName = typeAssurance === 'VIE' ? 'produits_vie' : 'produits_non_vie';
             modalityService.incrementUsage('assurance', fieldName, option);
+        }
+    };
+
+    const handleAddNewProduit = async () => {
+        if (!newProduitName.trim()) {
+            Alert.alert('Erreur', 'Veuillez entrer un nom de produit', [{ text: 'OK' }]);
+            return;
+        }
+
+        const newProduit = newProduitName.trim();
+        const fieldName = typeAssurance === 'VIE' ? 'produits_vie' : 'produits_non_vie';
+
+        const success = await modalityService.addCustomModality(
+            'assurance',
+            fieldName,
+            newProduit
+        );
+
+        if (success) {
+            await loadOptions();
+            onSelect(newProduit);
+            setAddModalVisible(false);
+            setModalVisible(false);
+            setNewProduitName('');
+            Alert.alert(
+                '✅ Produit ajouté',
+                `"${newProduit}" a été ajouté à la liste des produits ${typeAssurance}`,
+                [{ text: 'OK' }]
+            );
+        } else {
+            Alert.alert('❌ Erreur', 'Impossible d\'ajouter le produit', [{ text: 'OK' }]);
         }
     };
 
@@ -217,6 +216,47 @@ const AssuranceProduitSelector: React.FC<AssuranceProduitSelectorProps> = ({
                                 </View>
                             )}
                         </ScrollView>
+                    </View>
+                </View>
+            </Modal>
+
+            {/* Modal d'ajout de nouveau produit (compatible Android) */}
+            <Modal visible={addModalVisible} animationType="fade" transparent>
+                <View style={styles.modalOverlay}>
+                    <View style={styles.addModalContent}>
+                        <View style={styles.addModalHeader}>
+                            <Text style={styles.addModalTitle}>
+                                Nouveau produit d'assurance {typeAssurance}
+                            </Text>
+                        </View>
+
+                        <Text style={styles.addModalLabel}>Nom du produit:</Text>
+                        <TextInput
+                            style={styles.addModalInput}
+                            placeholder={`Ex: ${typeAssurance === 'VIE' ? 'Épargne retraite' : 'Assurance habitation'}`}
+                            value={newProduitName}
+                            onChangeText={setNewProduitName}
+                            placeholderTextColor={modernColors.textSecondary}
+                            autoFocus
+                        />
+
+                        <View style={styles.addModalButtons}>
+                            <TouchableOpacity
+                                style={[styles.addModalButton, styles.addModalButtonCancel]}
+                                onPress={() => {
+                                    setAddModalVisible(false);
+                                    setNewProduitName('');
+                                }}
+                            >
+                                <Text style={styles.addModalButtonTextCancel}>Annuler</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[styles.addModalButton, styles.addModalButtonConfirm]}
+                                onPress={handleAddNewProduit}
+                            >
+                                <Text style={styles.addModalButtonTextConfirm}>Ajouter</Text>
+                            </TouchableOpacity>
+                        </View>
                     </View>
                 </View>
             </Modal>
@@ -386,6 +426,68 @@ const styles = StyleSheet.create({
     emptyText: {
         fontSize: 14,
         color: modernColors.textSecondary,
+    },
+    addModalContent: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 16,
+        padding: 20,
+        marginHorizontal: 30,
+        maxWidth: 400,
+        alignSelf: 'center',
+    },
+    addModalHeader: {
+        marginBottom: 16,
+    },
+    addModalTitle: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: modernColors.text,
+        textAlign: 'center',
+    },
+    addModalLabel: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: modernColors.text,
+        marginBottom: 8,
+    },
+    addModalInput: {
+        backgroundColor: '#F9FAFB',
+        borderWidth: 1,
+        borderColor: modernColors.border,
+        borderRadius: 10,
+        paddingHorizontal: 14,
+        paddingVertical: 12,
+        fontSize: 14,
+        color: modernColors.text,
+        marginBottom: 20,
+    },
+    addModalButtons: {
+        flexDirection: 'row',
+        gap: 12,
+    },
+    addModalButton: {
+        flex: 1,
+        paddingVertical: 12,
+        borderRadius: 10,
+        alignItems: 'center',
+    },
+    addModalButtonCancel: {
+        backgroundColor: '#F3F4F6',
+        borderWidth: 1,
+        borderColor: modernColors.border,
+    },
+    addModalButtonConfirm: {
+        backgroundColor: modernColors.primary,
+    },
+    addModalButtonTextCancel: {
+        fontSize: 15,
+        fontWeight: '600',
+        color: modernColors.text,
+    },
+    addModalButtonTextConfirm: {
+        fontSize: 15,
+        fontWeight: '600',
+        color: '#FFFFFF',
     },
 });
 

@@ -44,7 +44,7 @@ const MultiSelectModalitySelector: React.FC<MultiSelectModalitySelectorProps> = 
         setLoading(true);
         try {
             // ✅ NOUVEAU: Détecter si le champ nécessite adaptation au contexte utilisateur
-            const isContextualField = 
+            const isContextualField =
                 // Champs géographiques
                 fieldName.toLowerCase().includes('ville') ||
                 fieldName.toLowerCase().includes('quartier') ||
@@ -73,6 +73,11 @@ const MultiSelectModalitySelector: React.FC<MultiSelectModalitySelectorProps> = 
 
             // Combiner les options (statiques + personnalisées, sans doublons)
             const combinedOptions = [...new Set([...staticOptions, ...customOptions])];
+
+            // ✅ Ajouter une option sentinelle pour l'ajout manuel
+            if (!combinedOptions.some(opt => opt.includes('🆕 Autre'))) {
+                combinedOptions.push('🆕 Autre (ajouter)');
+            }
 
             setAllOptions(combinedOptions);
         } catch (error) {
@@ -371,6 +376,19 @@ const MultiSelectModalitySelector: React.FC<MultiSelectModalitySelectorProps> = 
                                         </TouchableOpacity>
                                     );
                                 })
+                            )}
+
+                            {/* ✅ Bouton d'ajout toujours disponible */}
+                            {!searchQuery.trim() && (
+                                <TouchableOpacity
+                                    style={styles.addCustomButton}
+                                    onPress={() => toggleSelection('🆕 Autre (ajouter)')}
+                                >
+                                    <SafeIcon name="plus-circle" size={20} color={modernColors.primary} />
+                                    <Text style={styles.addCustomButtonText}>
+                                        Ajouter une nouvelle modalité
+                                    </Text>
+                                </TouchableOpacity>
                             )}
                         </ScrollView>
 

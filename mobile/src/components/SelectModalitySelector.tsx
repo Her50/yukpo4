@@ -30,6 +30,9 @@ const SelectModalitySelector: React.FC<SelectModalitySelectorProps> = ({
     const [showModal, setShowModal] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [userZone, setUserZone] = useState<string>('CM'); // Zone par défaut: Cameroun
+    // ✅ État pour modale d'ajout (remplace Alert.prompt non supporté Android)
+    const [showAddModal, setShowAddModal] = useState(false);
+    const [newModalityText, setNewModalityText] = useState('');
 
     // Charger la zone utilisateur au montage
     useEffect(() => {
@@ -84,64 +87,8 @@ const SelectModalitySelector: React.FC<SelectModalitySelectorProps> = ({
 
     const handleSelect = async (option: string) => {
         if (option.includes('🆕 Autre')) {
-            // Proposer d'ajouter une nouvelle modalité
-            Alert.prompt(
-                `Nouveau ${label.toLowerCase()}`,
-                `Entrez le ${label.toLowerCase()} :`,
-                [
-                    {
-                        text: 'Annuler',
-                        style: 'cancel'
-                    },
-                    {
-                        text: 'Ajouter',
-                        onPress: async (text) => {
-                            if (text && text.trim()) {
-                                const newModality = text.trim();
-
-                                // Vérifier si la modalité existe déjà
-                                if (allOptions.some(opt => opt.toLowerCase() === newModality.toLowerCase() && !opt.includes('🆕'))) {
-                                    Alert.alert(
-                                        '⚠️ Modalité existante',
-                                        `"${newModality}" existe déjà dans la liste.`,
-                                        [{ text: 'OK' }]
-                                    );
-                                    return;
-                                }
-
-                                // Ajouter la nouvelle modalité au serveur
-                                const success = await modalityService.addCustomModality(
-                                    productType,
-                                    fieldName,
-                                    newModality
-                                );
-
-                                if (success) {
-                                    // Recharger les options pour inclure la nouvelle modalité
-                                    await loadOptions();
-
-                                    // Sélectionner la nouvelle modalité
-                                    onSelect(newModality);
-                                    setShowModal(false);
-
-                                    Alert.alert(
-                                        '✅ Modalité ajoutée',
-                                        `"${newModality}" a été ajouté et sera visible pour tous les utilisateurs !`,
-                                        [{ text: 'OK' }]
-                                    );
-                                } else {
-                                    Alert.alert(
-                                        '❌ Erreur',
-                                        'Impossible d\'ajouter la modalité. Veuillez réessayer.',
-                                        [{ text: 'OK' }]
-                                    );
-                                }
-                            }
-                        }
-                    }
-                ],
-                'plain-text'
-            );
+            // Ouvrir modale d'ajout compatible Android/iOS
+            setShowAddModal(true);
         } else {
             // Sélectionner l'option
             onSelect(option);
@@ -202,65 +149,7 @@ const SelectModalitySelector: React.FC<SelectModalitySelectorProps> = ({
                 {/* ✅ NOUVEAU: Bouton visible pour ajouter une nouvelle modalité */}
                 <TouchableOpacity
                     style={styles.addModalityButton}
-                    onPress={() => {
-                        Alert.prompt(
-                            `➕ Ajouter un nouveau ${label.toLowerCase()}`,
-                            `Entrez le ${label.toLowerCase()} que vous souhaitez ajouter :`,
-                            [
-                                {
-                                    text: 'Annuler',
-                                    style: 'cancel'
-                                },
-                                {
-                                    text: 'Ajouter',
-                                    onPress: async (text) => {
-                                        if (text && text.trim()) {
-                                            const newModality = text.trim();
-
-                                            // Vérifier si la modalité existe déjà
-                                            if (allOptions.some(opt => opt.toLowerCase() === newModality.toLowerCase() && !opt.includes('🆕'))) {
-                                                Alert.alert(
-                                                    '⚠️ Modalité existante',
-                                                    `"${newModality}" existe déjà dans la liste.`,
-                                                    [{ text: 'OK' }]
-                                                );
-                                                return;
-                                            }
-
-                                            // Ajouter la nouvelle modalité au serveur
-                                            const success = await modalityService.addCustomModality(
-                                                productType,
-                                                fieldName,
-                                                newModality
-                                            );
-
-                                            if (success) {
-                                                // Recharger les options pour inclure la nouvelle modalité
-                                                await loadOptions();
-
-                                                // Sélectionner la nouvelle modalité
-                                                onSelect(newModality);
-                                                setShowModal(false);
-
-                                                Alert.alert(
-                                                    '✅ Modalité ajoutée',
-                                                    `"${newModality}" a été ajouté et sera visible pour tous les utilisateurs !`,
-                                                    [{ text: 'OK' }]
-                                                );
-                                            } else {
-                                                Alert.alert(
-                                                    '❌ Erreur',
-                                                    'Impossible d\'ajouter la modalité. Veuillez réessayer.',
-                                                    [{ text: 'OK' }]
-                                                );
-                                            }
-                                        }
-                                    }
-                                }
-                            ],
-                            'plain-text'
-                        );
-                    }}
+                    onPress={() => setShowAddModal(true)}
                 >
                     <SafeIcon name="plus-circle" size={20} color={modernColors.primary} />
                 </TouchableOpacity>
@@ -356,6 +245,69 @@ const SelectModalitySelector: React.FC<SelectModalitySelectorProps> = ({
                             <Text style={styles.footerText}>
                                 {filteredOptions.length} option{filteredOptions.length > 1 ? 's' : ''} disponible{filteredOptions.length > 1 ? 's' : ''}
                             </Text>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
+
+            {/* ✅ Modale d'ajout de modalité (Android/iOS) */}
+            <Modal
+                visible={showAddModal}
+                animationType="fade"
+                transparent={true}
+                onRequestClose={() => setShowAddModal(false)}
+            >
+                <View style={styles.addModalOverlay}>
+                    <View style={styles.addModalCard}>
+                        <Text style={styles.addModalTitle}>➕ Ajouter un nouveau {label.toLowerCase()}</Text>
+                        <TextInput
+                            style={styles.addModalInput}
+                            placeholder={`Entrez le ${label.toLowerCase()}`}
+                            value={newModalityText}
+                            onChangeText={setNewModalityText}
+                            placeholderTextColor={modernColors.textSecondary}
+                            autoFocus
+                        />
+                        <View style={styles.addModalActions}>
+                            <TouchableOpacity
+                                style={[styles.addModalButton, { backgroundColor: '#F3F4F6' }]}
+                                onPress={() => { setShowAddModal(false); setNewModalityText(''); }}
+                            >
+                                <Text style={[styles.addModalButtonText, { color: modernColors.textSecondary }]}>Annuler</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[styles.addModalButton, { backgroundColor: modernColors.primary }]}
+                                onPress={async () => {
+                                    const text = newModalityText.trim();
+                                    if (!text) return;
+
+                                    const newModality = text;
+
+                                    if (allOptions.some(opt => opt.toLowerCase() === newModality.toLowerCase() && !opt.includes('🆕'))) {
+                                        Alert.alert('⚠️ Modalité existante', `"${newModality}" existe déjà dans la liste.`, [{ text: 'OK' }]);
+                                        return;
+                                    }
+
+                                    const success = await modalityService.addCustomModality(
+                                        productType,
+                                        fieldName,
+                                        newModality
+                                    );
+
+                                    if (success) {
+                                        await loadOptions();
+                                        onSelect(newModality);
+                                        setShowModal(false);
+                                        setShowAddModal(false);
+                                        setNewModalityText('');
+                                        Alert.alert('✅ Modalité ajoutée', `"${newModality}" a été ajouté avec succès.`, [{ text: 'OK' }]);
+                                    } else {
+                                        Alert.alert('❌ Erreur', 'Impossible d\'ajouter la modalité. Veuillez réessayer.', [{ text: 'OK' }]);
+                                    }
+                                }}
+                            >
+                                <Text style={[styles.addModalButtonText, { color: '#FFFFFF' }]}>Ajouter</Text>
+                            </TouchableOpacity>
                         </View>
                     </View>
                 </View>
@@ -520,6 +472,53 @@ const styles = StyleSheet.create({
     footerText: {
         fontSize: 13,
         color: modernColors.textSecondary,
+    },
+    // ✅ Styles modale d'ajout
+    addModalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.4)',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 24,
+    },
+    addModalCard: {
+        width: '100%',
+        backgroundColor: '#FFFFFF',
+        borderRadius: 16,
+        padding: 16,
+        borderWidth: 1,
+        borderColor: modernColors.border,
+    },
+    addModalTitle: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: modernColors.text,
+        marginBottom: 12,
+    },
+    addModalInput: {
+        borderWidth: 1,
+        borderColor: modernColors.border,
+        borderRadius: 10,
+        paddingHorizontal: 12,
+        paddingVertical: 10,
+        fontSize: 15,
+        color: modernColors.text,
+        marginBottom: 12,
+        backgroundColor: '#FAFAFA',
+    },
+    addModalActions: {
+        flexDirection: 'row',
+        justifyContent: 'flex-end',
+        gap: 8,
+    },
+    addModalButton: {
+        paddingHorizontal: 14,
+        paddingVertical: 10,
+        borderRadius: 10,
+    },
+    addModalButtonText: {
+        fontSize: 14,
+        fontWeight: '600',
     },
 });
 

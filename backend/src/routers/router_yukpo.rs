@@ -27,6 +27,7 @@ use crate::{
         vehicle_model_routes::vehicle_model_routes,
         appliance_model_routes::appliance_model_routes,
         phone_model_routes::phone_model_routes,
+        places_routes::autocomplete_places,
     },
     core::types::{AppResult, AppError},
     services::creer_service,
@@ -60,6 +61,7 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
     let public_routes = Router::new()
         .route("/api/test/ping", get(handle_ping))
         .route("/api/geocoding/reverse", post(handle_reverse_geocode))
+        .route("/api/places/autocomplete", get(autocomplete_places))
         // Route pour servir les fichiers média
         .route("/api/media/{*file_path}", get(serve_media_file))
         .layer(axum::middleware::from_fn(monitoring::monitoring))
