@@ -7554,7 +7554,29 @@ export const getDemenagementModalities = (codePaysUtilisateur: string = 'CM'): M
       '🆕 Autre (ajouter)'
     ],
 
-    // Garanties et assurances
+    // Nombre de déménageurs
+    nb_demenageurs: [
+      '1 déménageur',
+      '2 déménageurs',
+      '3 déménageurs',
+      '4-5 déménageurs',
+      '6+ déménageurs (grande équipe)',
+      'Équipe variable selon besoin',
+      '🆕 Autre (ajouter)'
+    ],
+
+    // Types d'assurance (alias de garanties)
+    assurances: [
+      'Assurance tous risques (valeur complète)',
+      'Assurance de base (responsabilité civile)',
+      'Assurance objets de valeur renforcée',
+      'Garantie casse/dommages',
+      'Garantie vol/détérioration',
+      'Sans assurance (déménagement à vos risques)',
+      '🆕 Autre (ajouter)'
+    ],
+
+    // Garanties et assurances (alias pour compatibilité)
     garanties: [
       'Assurance tous risques (valeur complète)',
       'Assurance de base (responsabilité civile)',
@@ -7562,6 +7584,20 @@ export const getDemenagementModalities = (codePaysUtilisateur: string = 'CM'): M
       'Garantie casse/dommages',
       'Garantie vol/détérioration',
       'Sans assurance (déménagement à vos risques)',
+      '🆕 Autre (ajouter)'
+    ],
+
+    // Accessibilité / Étages
+    accessibilites: [
+      'Rez-de-chaussée',
+      '1er étage sans ascenseur',
+      '2ème étage sans ascenseur',
+      '3ème étage et + sans ascenseur',
+      'Avec ascenseur',
+      'Villa/Maison (étages)',
+      'Sous-sol',
+      'Accès difficile (escaliers étroits)',
+      'Accès facile (parking proche)',
       '🆕 Autre (ajouter)'
     ],
 
@@ -13876,6 +13912,39 @@ export const NETTOYAGE_MODALITIES: ModalityCategory = {
   surfaces: [
     'Moins de 50m²', '50-100m²', '100-200m²', '200-500m²',
     'Plus de 500m²', '🆕 Autre (ajouter)'
+  ],
+
+  // ✅ Nouveaux champs version refonte 2025
+  mode_tarification: [
+    'À l\'heure', 'Au forfait', 'Au m²', 'À la journée',
+    'À la semaine', 'Au mois', 'À négocier',
+    '🆕 Autre (ajouter)'
+  ],
+  type_clientele: [
+    'Particuliers', 'Entreprises', 'Collectivités', 'Commerces',
+    'Bureaux', 'Copropriétés', 'Hôtels/Restaurants',
+    '🆕 Autre (ajouter)'
+  ],
+  quartiers: [
+    'Akwa', 'Bonanjo', 'Bonapriso', 'Bali', 'Bonabéri', 'Deido', 'Kotto',
+    'Makepe', 'New Bell', 'Ndogpassi', 'Bépanda', 'Logbaba', 'PK8', 'PK10',
+    'Bastos', 'Mvan', 'Essos', 'Ngousso', 'Emana', 'Ekounou', 'Tsinga',
+    'Odza', 'Kondengui', 'Nkol-Eton', 'Nlongkak', 'Elig-Essono',
+    'Cocody', 'Plateau', 'Marcory', 'Adjamé', 'Yopougon', 'Abobo',
+    'Almadies', 'Plateau', 'Mermoz', 'Sacré-Coeur', 'Ouakam',
+    '🆕 Autre (ajouter)'
+  ],
+  disponibilite: [
+    '7j/7', 'En semaine (Lun-Ven)', 'Week-end uniquement',
+    'Sur rendez-vous', 'Urgences acceptées', 'Du lundi au samedi',
+    'Horaires flexibles',
+    '🆕 Autre (ajouter)'
+  ],
+  equipements: [
+    'Produits écologiques', 'Matériel professionnel', 'Aspirateur',
+    'Nettoyeur vapeur', 'Balai', 'Serpillière', 'Produits désinfectants',
+    'Outils jardinage', 'Aucun équipement (client fournit)',
+    '🆕 Autre (ajouter)'
   ],
   produits: [
     'Produits bio/écologiques', 'Produits professionnels', 'Produits standards',

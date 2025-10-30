@@ -93,3 +93,22 @@ pub async fn mark_all_notifications_as_read(
     }
 }
 
+/// Supprimer une notification
+pub async fn delete_notification(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+    Path(notification_id): Path<i32>,
+) -> Result<Json<Value>, StatusCode> {
+    match notification_service::delete_notification(&state.pg, notification_id, user.id).await {
+        Ok(true) => Ok(Json(json!({
+            "success": true,
+            "message": "Notification supprimée"
+        }))),
+        Ok(false) => Err(StatusCode::NOT_FOUND),
+        Err(e) => {
+            log::error!("[NotificationController] Erreur suppression notification: {}", e);
+            Err(StatusCode::INTERNAL_SERVER_ERROR)
+        }
+    }
+}
+

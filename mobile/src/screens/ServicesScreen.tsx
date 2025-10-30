@@ -81,6 +81,7 @@ const ServicesScreen: React.FC = () => {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [sortBy, setSortBy] = useState<'date' | 'views' | 'interactions' | 'score'>('date');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [showStats, setShowStats] = useState(false); // ✅ NOUVEAU: Masquer/afficher les stats
 
   useEffect(() => {
     loadServices();
@@ -208,10 +209,39 @@ const ServicesScreen: React.FC = () => {
   };
 
   const handleEditService = (service: Service) => {
-    navigation.navigate('FormulaireYukpoIntelligent' as never, {
-      serviceId: service.id,
-      editMode: true
-    } as never);
+    try {
+      // ✅ CORRECTION: Validation et passage complet des données
+      if (!service || !service.id) {
+        console.error('[ServicesScreen] Service invalide pour édition:', service);
+        Alert.alert('Erreur', 'Impossible d\'éditer ce service (données manquantes)');
+        return;
+      }
+
+      console.log('[ServicesScreen] ✏️ Ouverture édition service:', {
+        id: service.id,
+        title: service.title,
+        hasData: !!service.data,
+        dataKeys: service.data ? Object.keys(service.data) : []
+      });
+
+      // ✅ IMPORTANT: Passer toutes les données du service pour le mode édition
+      navigation.navigate('FormulaireYukpoIntelligent' as never, {
+        mode: 'edit',
+        serviceId: service.id,
+        serviceData: service.data || {},
+        suggestion: {
+          data: service.data || {},
+          intention: 'modification_service',
+          confidence: 1.0
+        },
+        type: 'modification_service',
+        editMode: true,
+        fromServicesScreen: true
+      } as never);
+    } catch (error) {
+      console.error('[ServicesScreen] ❌ Erreur navigation édition:', error);
+      Alert.alert('Erreur', 'Impossible d\'ouvrir l\'édition du service');
+    }
   };
 
   const handleDeleteService = async (service: Service) => {
@@ -271,6 +301,50 @@ const ServicesScreen: React.FC = () => {
     } catch (error) {
       console.error('Erreur modification statut:', error);
       Alert.alert('Erreur', 'Impossible de modifier le statut du service');
+    }
+  };
+
+  const handleViewProducts = (service: Service) => {
+    try {
+      // ✅ Navigation vers les produits du service
+      navigation.navigate('MesProduits' as never, { serviceId: service.id } as never);
+    } catch (error) {
+      console.error('Erreur navigation produits:', error);
+      Alert.alert('Erreur', 'Impossible d\'accéder aux produits');
+    }
+  };
+
+  const handleViewService = (service: Service) => {
+    try {
+      // ✅ CORRECTION: Validation des données avant navigation
+      if (!service || !service.id) {
+        console.error('[ServicesScreen] Service invalide:', service);
+        Alert.alert('Erreur', 'Impossible d\'afficher ce service (données manquantes)');
+        return;
+      }
+
+      console.log('[ServicesScreen] 👁️ Ouverture visualisation service:', {
+        id: service.id,
+        title: service.title,
+        hasData: !!service.data
+      });
+
+      // Navigation vers la visualisation du service
+      navigation.navigate('FormulaireYukpoIntelligent' as never, {
+        mode: 'view',
+        serviceId: service.id,
+        serviceData: service.data || {},
+        suggestion: {
+          data: service.data || {},
+          intention: 'visualisation_service',
+          confidence: 1.0
+        },
+        readonly: true,
+        fromServicesScreen: true
+      } as never);
+    } catch (error) {
+      console.error('[ServicesScreen] ❌ Erreur navigation visualisation:', error);
+      Alert.alert('Erreur', 'Impossible d\'ouvrir la visualisation du service');
     }
   };
 
@@ -419,16 +493,45 @@ const ServicesScreen: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      {/* Header avec statistiques */}
+      {/* Header moderne avec boutons d'action en haut à droite */}
       <LinearGradient
         colors={[modernColors.primary, modernColors.primaryDark]}
         style={styles.header}
       >
         <View style={styles.headerContent}>
-          <Text style={styles.headerTitle}>🛍️ Mes Services</Text>
-          <Text style={styles.headerSubtitle}>
-            Gérez et suivez vos services
-          </Text>
+          <View style={styles.headerLeft}>
+            <SafeIcon name="briefcase" size={28} color="#fff" />
+            <View>
+              <Text style={styles.headerTitle}>Mes Services</Text>
+              <Text style={styles.headerSubtitle}>
+                Gérez et suivez vos services
+              </Text>
+            </View>
+          </View>
+
+          {/* Boutons miniaturisés en haut à droite */}
+          <View style={styles.headerActions}>
+            <TouchableOpacity
+              style={styles.miniButton}
+              onPress={() => setShowStats(!showStats)}
+            >
+              <SafeIcon name="bar-chart" size={18} color="#fff" />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.miniButton}
+              onPress={() => navigation.navigate('Profile' as never)}
+            >
+              <SafeIcon name="crown" size={18} color="#FFD700" />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.miniButton}
+              onPress={() => navigation.navigate('CreatePublicite' as never)}
+            >
+              <SafeIcon name="megaphone" size={18} color="#fff" />
+            </TouchableOpacity>
+          </View>
         </View>
       </LinearGradient>
 
@@ -439,31 +542,28 @@ const ServicesScreen: React.FC = () => {
         }
         showsVerticalScrollIndicator={false}
       >
-        {/* Statistiques */}
-        <View style={styles.statsContainer}>
-          <Text style={styles.sectionTitle}>📊 Statistiques</Text>
-          <View style={styles.statsGrid}>
-            {renderStatsCard('Total Services', stats.totalServices, '📦', '#3498db')}
-            {renderStatsCard('Vues Total', stats.totalViews, '👁️', '#e74c3c')}
-            {renderStatsCard('Interactions', stats.totalInteractions, '💬', '#f39c12')}
-            {renderStatsCard('Score Moyen', stats.avgScore, '⭐', '#2ecc71')}
+        {/* Statistiques - Affichage conditionnel */}
+        {showStats && (
+          <View style={styles.statsContainer}>
+            <View style={styles.statsTitleRow}>
+              <Text style={styles.sectionTitle}>📊 Statistiques</Text>
+              <TouchableOpacity onPress={() => setShowStats(false)}>
+                <SafeIcon name="x" size={20} color={modernColors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+            <View style={styles.statsGrid}>
+              {renderStatsCard('Total Services', stats.totalServices, '📦', '#3498db')}
+              {renderStatsCard('Vues Total', stats.totalViews, '👁️', '#e74c3c')}
+              {renderStatsCard('Interactions', stats.totalInteractions, '💬', '#f39c12')}
+              {renderStatsCard('Score Moyen', stats.avgScore, '⭐', '#2ecc71')}
+            </View>
           </View>
-        </View>
+        )}
 
         {/* Filtres et contrôles */}
         <View style={styles.controlsContainer}>
           {renderCategoryFilter()}
           {renderSortControls()}
-        </View>
-
-        {/* Actions rapides */}
-        <View style={styles.actionsContainer}>
-          <NativeButton
-            title="➕ Créer un service"
-            onPress={handleCreateService}
-            variant="primary"
-            style={styles.createButton}
-          />
         </View>
 
         {/* Liste des services */}
@@ -499,44 +599,17 @@ const ServicesScreen: React.FC = () => {
                   service={service}
                   viewMode={viewMode}
                   onEdit={() => handleEditService(service)}
+                  onView={() => handleViewService(service)}
                   onDelete={() => handleDeleteService(service)}
                   onShare={() => handleShareService(service)}
                   onToggleStatus={() => handleToggleStatus(service)}
+                  onViewProducts={() => handleViewProducts(service)}
                 />
               ))}
             </View>
           )}
         </View>
       </ScrollView>
-
-      {/* Footer avec boutons d'action améliorés */}
-      <View style={styles.footer}>
-        <View style={styles.footerButtons}>
-          <TouchableOpacity
-            style={styles.footerButton}
-            onPress={() => {
-              // Navigation vers la page membre premium
-              navigation.navigate('Profile' as never);
-            }}
-          >
-            <SafeIcon name="crown" size={24} color="#FFD700" />
-            <Text style={styles.footerButtonText}>👑 Membre Premium</Text>
-            <Text style={styles.footerButtonSubtext}>Accès exclusif</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.footerButton, styles.footerButtonPrimary]}
-            onPress={() => {
-              // Navigation vers la création de publicité
-              navigation.navigate('CreatePublicite' as never);
-            }}
-          >
-            <SafeIcon name="megaphone" size={24} color="#FFFFFF" />
-            <Text style={[styles.footerButtonText, styles.footerButtonTextPrimary]}>📢 Créer Publicité</Text>
-            <Text style={[styles.footerButtonSubtext, styles.footerButtonSubtextPrimary]}>Boostez vos ventes</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
     </View>
   );
 };
@@ -563,17 +636,39 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   headerContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
   },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+  },
   headerTitle: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: 'bold',
     color: 'white',
-    marginBottom: 5,
   },
   headerSubtitle: {
-    fontSize: 14,
+    fontSize: 12,
     color: 'rgba(255, 255, 255, 0.8)',
+    marginTop: 2,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  miniButton: {
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderRadius: 8,
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
   },
   content: {
     flex: 1,
@@ -581,6 +676,17 @@ const styles = StyleSheet.create({
   },
   statsContainer: {
     marginBottom: 20,
+    backgroundColor: modernColors.surface,
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: modernColors.border,
+  },
+  statsTitleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
   },
   sectionTitle: {
     fontSize: 18,
@@ -714,60 +820,6 @@ const styles = StyleSheet.create({
   },
   listContainer: {
     gap: 10,
-  },
-  // Styles du footer
-  footer: {
-    backgroundColor: modernColors.background,
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderTopWidth: 1,
-    borderTopColor: modernColors.border,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  footerButtons: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  footerButton: {
-    flex: 1,
-    backgroundColor: modernColors.surface,
-    borderRadius: 12,
-    padding: 16,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: modernColors.border,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  footerButtonPrimary: {
-    backgroundColor: modernColors.primary,
-    borderColor: modernColors.primary,
-  },
-  footerButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: modernColors.text,
-    marginTop: 8,
-    textAlign: 'center',
-  },
-  footerButtonTextPrimary: {
-    color: '#FFFFFF',
-  },
-  footerButtonSubtext: {
-    fontSize: 12,
-    color: modernColors.textSecondary,
-    marginTop: 4,
-    textAlign: 'center',
-  },
-  footerButtonSubtextPrimary: {
-    color: 'rgba(255, 255, 255, 0.8)',
   },
 });
 

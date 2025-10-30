@@ -1,7 +1,7 @@
 // Routes pour les notifications
 use std::sync::Arc;
 use axum::{
-    routing::{get, patch},
+    routing::{get, patch, delete},
     Router,
 };
 use crate::{
@@ -23,6 +23,9 @@ pub fn notification_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         
         // Tout marquer comme lu
         .route("/api/notifications/user/{user_id}/mark-all-read", patch(notification_controller::mark_all_notifications_as_read))
+        
+        // Supprimer une notification
+        .route("/api/notifications/{notification_id}", delete(notification_controller::delete_notification))
         
         // Appliquer l'authentification à toutes les routes
         .layer(axum::middleware::from_fn_with_state(state.clone(), jwt_auth))

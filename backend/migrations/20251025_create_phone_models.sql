@@ -47,3 +47,4 @@ COMMENT ON COLUMN phone_models.model IS 'Modèle du smartphone (iPhone 14 Pro, G
 
 
 
+

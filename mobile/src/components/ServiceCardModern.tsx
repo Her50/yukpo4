@@ -121,7 +121,7 @@ const ServiceCardModern: React.FC<ServiceCardModernProps> = ({
                 )}
                 {/* Nombre de produits - Cliquable comme statistique */}
                 {service.data?.produits?.valeur && Array.isArray(service.data.produits.valeur) && service.data.produits.valeur.length > 0 && (
-                    <TouchableOpacity 
+                    <TouchableOpacity
                         style={styles.productsStatRow}
                         onPress={() => onViewProducts && onViewProducts(service)}
                         activeOpacity={0.6}
@@ -156,49 +156,47 @@ const ServiceCardModern: React.FC<ServiceCardModernProps> = ({
                 </TouchableOpacity>
             )}
 
-            {/* Actions - Design comme le frontend */}
+            {/* Actions - Design amélioré avec labels */}
             <View style={styles.actionsContainer}>
                 <View style={styles.actionsRow}>
                     {/* Modifier */}
                     <TouchableOpacity
-                        style={styles.actionIcon}
+                        style={[styles.actionButton, styles.actionEdit]}
                         onPress={() => onEdit(service)}
+                        activeOpacity={0.7}
                     >
-                        <SafeIcon name="edit" size={20} color="#6B7280" />
+                        <SafeIcon name="edit" size={18} color="#6B7280" />
+                        <Text style={styles.actionLabel}>Modifier</Text>
                     </TouchableOpacity>
 
                     {/* Voir */}
                     <TouchableOpacity
-                        style={styles.actionIcon}
+                        style={[styles.actionButton, styles.actionView]}
                         onPress={() => onView(service)}
+                        activeOpacity={0.7}
                     >
-                        <SafeIcon name="eye" size={20} color="#6B7280" />
+                        <SafeIcon name="eye" size={18} color="#6B7280" />
+                        <Text style={styles.actionLabel}>Voir</Text>
                     </TouchableOpacity>
 
                     {/* Partager */}
                     <TouchableOpacity
-                        style={styles.actionIcon}
+                        style={[styles.actionButton, styles.actionShare]}
                         onPress={() => onShare(service)}
+                        activeOpacity={0.7}
                     >
-                        <SafeIcon name="share" size={20} color="#3B82F6" />
+                        <SafeIcon name="share" size={18} color="#3B82F6" />
+                        <Text style={[styles.actionLabel, { color: '#3B82F6' }]}>Partager</Text>
                     </TouchableOpacity>
-
-                    {/* Promotion */}
-                    {onPromotion && (
-                        <TouchableOpacity
-                            style={styles.actionIcon}
-                            onPress={() => onPromotion(service)}
-                        >
-                            <Text style={styles.promotionIcon}>🎉</Text>
-                        </TouchableOpacity>
-                    )}
 
                     {/* Supprimer */}
                     <TouchableOpacity
-                        style={styles.actionIcon}
+                        style={[styles.actionButton, styles.actionDelete]}
                         onPress={handleDelete}
+                        activeOpacity={0.7}
                     >
-                        <SafeIcon name="trash-2" size={20} color="#EF4444" />
+                        <SafeIcon name="trash-2" size={18} color="#EF4444" />
+                        <Text style={[styles.actionLabel, { color: '#EF4444' }]}>Supprimer</Text>
                     </TouchableOpacity>
                 </View>
             </View>
@@ -325,18 +323,41 @@ const styles = StyleSheet.create({
     },
     actionsRow: {
         flexDirection: 'row',
-        justifyContent: 'flex-start',
+        justifyContent: 'space-between',
         alignItems: 'center',
-        gap: 8,
+        gap: 6,
+        flexWrap: 'wrap',
     },
-    actionIcon: {
-        padding: 8,
-        borderRadius: 6,
+    actionButton: {
+        flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'center',
+        paddingHorizontal: 10,
+        paddingVertical: 8,
+        borderRadius: 8,
+        backgroundColor: '#F9FAFB',
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        gap: 4,
+        minWidth: 85,
     },
-    promotionIcon: {
-        fontSize: 18,
+    actionEdit: {
+        backgroundColor: '#F3F4F6',
+    },
+    actionView: {
+        backgroundColor: '#EEF2FF',
+    },
+    actionShare: {
+        backgroundColor: '#EFF6FF',
+        borderColor: '#BFDBFE',
+    },
+    actionDelete: {
+        backgroundColor: '#FEF2F2',
+        borderColor: '#FECACA',
+    },
+    actionLabel: {
+        fontSize: 11,
+        fontWeight: '600',
+        color: '#6B7280',
     },
 });
 

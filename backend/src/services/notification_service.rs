@@ -159,6 +159,23 @@ pub async fn mark_all_as_read(
     Ok(result.rows_affected())
 }
 
+/// Supprimer une notification spécifique
+pub async fn delete_notification(
+    pool: &PgPool,
+    notification_id: i32,
+    user_id: i32,
+) -> Result<bool, sqlx::Error> {
+    let result = sqlx::query(
+        "DELETE FROM notifications WHERE id = $1 AND user_id = $2"
+    )
+    .bind(notification_id)
+    .bind(user_id)
+    .execute(pool)
+    .await?;
+    
+    Ok(result.rows_affected() > 0)
+}
+
 /// Supprimer les anciennes notifications (nettoyage)
 pub async fn cleanup_old_notifications(
     pool: &PgPool,

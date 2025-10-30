@@ -3902,6 +3902,7 @@ const ResultatBesoinScreen: React.FC = () => {
                         'annee', 'kilometrage', 'couleurAutomobile', 'typeCarburant', 'transmission',
                         'nbPortes', 'nbPlaces', 'puissance', 'cylindree', 'equipementsAuto',
                         'premiereMain', 'historiqueEntretien', 'contreTechnique', 'garantie', 'papiers',
+                        'villeVehicule', 'quartierVehicule', 'localisationVehicule',
                         // Mobilier
                         'typeMobilier', 'categorieMobilier', 'styleMobilier', 'materiauMobilier', 'couleurMobilier',
                         'etatMobilier', 'nombrePlaces_min', 'nombrePlaces_max', 'livraison', 'demontable', 'montageRequis',
@@ -3952,8 +3953,8 @@ const ResultatBesoinScreen: React.FC = () => {
                         'categorieLivre', 'niveau', 'matiereScolaire', 'auteur', 'editeur', 'isbn',
                         'anneeEdition', 'etatLivre', 'langue',
                         // Covoiturage
-                        'pointDepart', 'pointArrivee', 'dateTrajet', 'heureTrajet', 'nbPlacesDisponibles',
-                        'nbPlacesDisponibles_min', 'nbPlacesDisponibles_max', 'vehiculeInfo', 'preferencesTrajet', 'prixParPlace',
+                        'villeDepart', 'villeArrivee', 'pointDepart', 'pointArrivee', 'dateTrajet', 'heureTrajet', 'nbPlacesDisponibles',
+                        'nbPlacesDisponibles_min', 'nbPlacesDisponibles_max', 'vehiculeInfo', 'preferencesTrajet', 'prixParPlace', 'typeVehiculeCovoiturage', 'frequenceTrajet',
                         // Evenementiel
                         'typeEvenement', 'capaciteEvenement', 'servicesEvenement', 'dureeEvenement',
                         'equipementsEvenement', 'tarifEvenement', 'localisationEvenement',
@@ -3965,12 +3966,17 @@ const ResultatBesoinScreen: React.FC = () => {
                         'compagnieDemenagement', 'dureeDemenagement', 'disponibiliteDemenagement', 'typeAssuranceDemenagement',
                         'nbDemenageurs', 'accessibiliteDemenagement',
                         // Plomberie
-                        'typePrestation', 'urgence', 'specialitesPlomberie', 'garantieTravaux',
+                        'typePrestation', 'typePlomberie', 'urgence', 'urgence24h', 'specialitesPlomberie', 'equipementsPlomberie',
+                        'disponibilitePlomberie', 'garantiePlomberie', 'garantieTravaux', 'devisGratuit', 'zonesInterventionPlombier',
                         // Nettoyage
                         'typeNettoyage', 'frequenceNettoyage', 'servicesNettoyage', 'produitsBio',
                         // Assurance
                         'typeAssurance', 'compagnieAssurance', 'typeCouverture', 'dureeContrat', 'franchiseAssurance',
-                        // Electricite
+                        // Électricien (service)
+                        'typeElectricien', 'specialitesElectricien', 'equipementsElectricien', 'disponibiliteElectricien',
+                        'garantieElectricien', 'urgence24hElec', 'devisGratuitElec', 'certificationsElectricien', 'zonesInterventionElectricien',
+                        'zonesInterventionElectricienAuto',
+                        // Electricite (produit)
                         'categorieElectrique', 'typeElectricite', 'marqueElectricite', 'tensionElectrique',
                         'puissanceElectrique', 'culotAmpoule', 'couleurLumiere', 'normesElectrique',
                         'etatElectrique', 'utilisationElectrique', 'garantieElectrique',
@@ -4013,7 +4019,18 @@ const ResultatBesoinScreen: React.FC = () => {
                         // Electronique
                         'typeElectronique', 'marqueElectronique', 'etatElectronique',
                         // Menuiserie & Ébénisterie
-                        'serviceMenuiserie', 'typeBois', 'finitionsMenuiserie', 'styleMenuiserie', 'experienceMenuisier', 'certificationMenuisier', 'delaiMenuiserie', 'atelierMenuiserie', 'garantieMenuiserie', 'paiementMenuiserie', 'equipementAtelier',
+                        'serviceMenuiserie', 'typeBois', 'finitionsMenuiserie', 'styleMenuiserie', 'experienceMenuisier', 'certificationMenuisier', 'delaiMenuiserie', 'atelierMenuiserie', 'garantieMenuiserie', 'paiementMenuiserie', 'equipementAtelier', 'zonesInterventionMenuisier',
+                        // Maçonnerie
+                        'typeMacon', 'specialitesMacon', 'materiauxMacon', 'equipementsMacon', 'zonesInterventionMacon',
+                        // Carreleur
+                        'typeCarreleur', 'specialitesCarreleur', 'materiauxCarreleur', 'zonesInterventionCarreleur',
+                        // Peintre
+                        'typePeinture', 'specialitesPeintre', 'surfacesPeintre', 'zonesInterventionPeintre',
+                        // Staffeur
+                        'zonesInterventionStaffeur',
+                        // Réparateurs divers
+                        'zonesInterventionClimatiseur', 'zonesInterventionFrigoriste', 'zonesInterventionElectromenager', 'zonesInterventionElectronique',
+                        'zonesInterventionMoto',
                         // Agriculture
                         'typeAgricole', 'culture', 'saisonAgricole', 'uniteVente', 'certificationsAgricole', 'localisationAgricole',
                         // Securite & Surveillance (22 filtres complets)
@@ -4065,6 +4082,13 @@ const ResultatBesoinScreen: React.FC = () => {
                         'dureeTrajet', 'escales', 'bagage', 'repas', 'wifi', 'prixEnfant',
                         'prixBebe', 'remboursable', 'modifiable', 'assuranceVoyage', 'numeroBillet',
                         'codeReservation',
+                        // Transport Intra-Urbain
+                        'villeService', 'quartierService', 'categorieService', 'disponibilite', 'tarifBase',
+                        'optionsConfort', 'modePaiement', 'etatVehicule', 'languesChauffeur',
+                        // Mécanicien & Garage
+                        'nomGarage', 'typeServiceMecanique', 'specialitesGarage', 'marquesVehicules', 'typesVehiculesMeca',
+                        'certificationsMeca', 'horairesGarage', 'delaisIntervention', 'urgenceMeca', 'zonesInterventionMeca',
+                        'equipementsGarage', 'servicesComplementaires', 'modesPaiement', 'devisGratuit', 'garantieReparations',
                         // Emploi
                         'posteOffre', 'typeContrat', 'domaineActivite', 'niveauExperience',
                         'salaireMin', 'salaireMax', 'salaireMin_min', 'salaireMax_max', 'deviseOffre',
@@ -4082,7 +4106,7 @@ const ResultatBesoinScreen: React.FC = () => {
                         'nbChambresHotel_max', 'typesChambre', 'prixParNuit', 'prixParNuit_min',
                         'prixParNuit_max', 'deviseHotel', 'equipementsHotel', 'servicesHotel',
                         'petitDejeuner', 'restaurantHotel', 'bar', 'piscine', 'spa', 'parking',
-                        'wifi', 'salleReunion', 'adresseHotel', 'villeHotel', 'gpsHotel', 'noteHotel'
+                        'wifi', 'salleReunion', 'adresseHotel', 'villeHotel', 'zoneHotel', 'gpsHotel', 'noteHotel', 'nomEtablissementHotel', 'pensionHotel', 'politiquesHotel', 'languesHotel'
                     ];
 
                     if (specialFilters.includes(key)) {

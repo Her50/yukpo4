@@ -220,17 +220,17 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
                     </TouchableOpacity>
 
                     <View style={styles.headerContent}>
-                        <SafeIcon name="map-pin" size={18} color="#FFFFFF" />
+                        <SafeIcon name="map-pin" size={16} color="#FFFFFF" />
                         <Text
-                            style={[styles.headerTitle, { flex: 1, marginHorizontal: 8 }]}
+                            style={[styles.headerTitle, { flex: 1, marginHorizontal: 6 }]}
                             numberOfLines={1}
                             ellipsizeMode="middle"
                         >
                             {title}
                         </Text>
                         <View style={styles.headerIcons}>
-                            <SafeIcon name="smartphone" size={14} color="#FFFFFF" />
-                            <SafeIcon name="map" size={14} color="#FFFFFF" />
+                            <SafeIcon name="smartphone" size={12} color="#FFFFFF" />
+                            <SafeIcon name="map" size={12} color="#FFFFFF" />
                         </View>
                     </View>
 
@@ -244,25 +244,26 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
                 <View style={styles.topControlBar}>
                     {/* Mode de sélection - HORIZONTAL ET INTUITIF */}
                     <View style={[styles.topControlSection, { flex: 1.2 }]}>
-                        <Text style={[styles.topControlLabel, { fontSize: 11, fontWeight: '600' }]} numberOfLines={1} ellipsizeMode="tail">MODE DE SÉLECTION</Text>
+                        <Text style={[styles.topControlLabel, { fontSize: 9, fontWeight: '700' }]} numberOfLines={1} ellipsizeMode="tail">MODE</Text>
                         <View style={styles.horizontalModeButtons}>
                             <TouchableOpacity
                                 style={[
                                     styles.horizontalModeButton,
+                                    styles.pointModeButton,
                                     zoneType === 'point' && styles.horizontalModeButtonActive
                                 ]}
                                 onPress={() => setZoneType('point')}
                             >
                                 <SafeIcon
                                     name="map-pin"
-                                    size={16}
+                                    size={14}
                                     color={zoneType === 'point' ? '#FFFFFF' : modernColors.primary}
                                 />
                                 <Text numberOfLines={1} ellipsizeMode="tail" style={[
                                     styles.horizontalModeButtonText,
                                     zoneType === 'point' && styles.horizontalModeButtonTextActive
                                 ]}>
-                                    Point précis
+                                    Point
                                 </Text>
                             </TouchableOpacity>
 
@@ -270,13 +271,14 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
                                 <TouchableOpacity
                                     style={[
                                         styles.horizontalModeButton,
+                                        styles.zoneModeButton,
                                         zoneType === 'polygon' && styles.horizontalModeButtonActive
                                     ]}
                                     onPress={() => setZoneType('polygon')}
                                 >
                                     <SafeIcon
                                         name="square"
-                                        size={16}
+                                        size={14}
                                         color={zoneType === 'polygon' ? '#FFFFFF' : modernColors.primary}
                                     />
                                     <Text numberOfLines={1} ellipsizeMode="tail" style={[
@@ -293,13 +295,13 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
                     {/* Recherche d'adresse - ULTRA CLAIRE */}
                     <View style={[styles.topControlSection, { flex: 2 }]}>
                         <View style={styles.controlHeader}>
-                            <SafeIcon name="search" size={12} color={modernColors.success} />
-                            <Text style={[styles.topControlLabel, { fontSize: 11, fontWeight: '600' }]} numberOfLines={1} ellipsizeMode="tail">RECHERCHE</Text>
+                            <SafeIcon name="search" size={10} color={modernColors.success} />
+                            <Text style={[styles.topControlLabel, { fontSize: 9, fontWeight: '700' }]} numberOfLines={1} ellipsizeMode="tail">RECHERCHE</Text>
                         </View>
                         <View style={styles.topSearchContainer}>
                             <TextInput
-                                style={[styles.topSearchInput, { fontSize: 13, paddingHorizontal: 8, paddingVertical: 6 }]}
-                                placeholder="Entrez une adresse..."
+                                style={[styles.topSearchInput, { fontSize: 11, paddingHorizontal: 8, paddingVertical: 6 }]}
+                                placeholder="Entrez..."
                                 value={searchQuery}
                                 onChangeText={setSearchQuery}
                                 placeholderTextColor="#9CA3AF"
@@ -307,18 +309,18 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
                                 onSubmitEditing={handleSearch}
                             />
                             <TouchableOpacity
-                                style={[styles.topSearchButton, { padding: 6 }]}
+                                style={styles.topSearchButton}
                                 onPress={handleSearch}
                                 disabled={loading}
                             >
-                                <SafeIcon name="search" size={16} color="#FFFFFF" />
+                                <SafeIcon name="search" size={14} color="#FFFFFF" />
                             </TouchableOpacity>
                         </View>
                     </View>
 
                     {/* ✅ NOUVEAU: Coordonnées sélectionnées - AFFICHAGE EN HAUT */}
                     <View style={[styles.topControlSection, { flex: 1.3 }]}>
-                        <Text style={[styles.topControlLabel, { fontSize: 11, fontWeight: '600' }]} numberOfLines={1} ellipsizeMode="tail">COORDONNÉES GPS</Text>
+                        <Text style={[styles.topControlLabel, { fontSize: 9, fontWeight: '700' }]} numberOfLines={1} ellipsizeMode="tail">COORDONNÉES</Text>
                         {selectedLocation ? (
                             <View style={styles.coordsDisplayContainer}>
                                 <View style={styles.coordsRow}>
@@ -339,7 +341,7 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
 
                     {/* Ma position GPS - SIMPLIFIÉ ET CLAIR */}
                     <View style={[styles.topControlSection, { flex: 0.7 }]}>
-                        <Text style={[styles.topControlLabel, { fontSize: 11, fontWeight: '600' }]} numberOfLines={1} ellipsizeMode="tail">POSITION</Text>
+                        <Text style={[styles.topControlLabel, { fontSize: 9, fontWeight: '700' }]} numberOfLines={1} ellipsizeMode="tail">MA POSITION</Text>
                         <TouchableOpacity
                             style={styles.topGPSButton}
                             onPress={handleGetCurrentLocation}
@@ -350,8 +352,8 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
                                 size={14}
                                 color="#FFFFFF"
                             />
-                            <Text style={[styles.topGPSButtonText, { fontSize: 11, fontWeight: '600' }]} numberOfLines={1}>
-                                {loading ? 'Chargement...' : 'Me localiser'}
+                            <Text style={[styles.topGPSButtonText, { fontSize: 10, fontWeight: '700' }]} numberOfLines={1}>
+                                {loading ? '...' : 'Ma position'}
                             </Text>
                         </TouchableOpacity>
                     </View>
@@ -452,10 +454,10 @@ const styles = StyleSheet.create({
         marginLeft: 12,
     },
     headerTitle: {
-        fontSize: 16,
+        fontSize: 13,
         fontWeight: '600',
         color: '#FFFFFF',
-        marginLeft: 8,
+        marginLeft: 6,
         flex: 1,
         textAlign: 'center',
     },
@@ -491,16 +493,16 @@ const styles = StyleSheet.create({
     topControlBar: {
         flexDirection: 'row',
         backgroundColor: '#FFFFFF',
-        paddingHorizontal: 20,
-        paddingVertical: 16,
+        paddingHorizontal: 12,
+        paddingVertical: 10,
         borderBottomWidth: 1,
         borderBottomColor: '#D1D5DB',
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 3 },
-        shadowOpacity: 0.08,
-        shadowRadius: 4,
-        elevation: 3,
-        gap: 16,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.06,
+        shadowRadius: 3,
+        elevation: 2,
+        gap: 10,
     },
     topControlSection: {
         flex: 1,
@@ -509,14 +511,14 @@ const styles = StyleSheet.create({
     controlHeader: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 6,
-        marginBottom: 8,
+        gap: 4,
+        marginBottom: 4,
     },
     topControlLabel: {
-        fontSize: 11,
+        fontSize: 9,
         fontWeight: '800',
         color: '#1F2937',
-        letterSpacing: 0.3,
+        letterSpacing: 0.2,
         textTransform: 'uppercase',
         includeFontPadding: false,
         textAlignVertical: 'center',
@@ -535,19 +537,25 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        paddingVertical: 8,
-        paddingHorizontal: 10,
+        paddingVertical: 6,
+        paddingHorizontal: 8,
         borderRadius: 8,
         borderWidth: 2,
         borderColor: '#E5E7EB',
         backgroundColor: '#FFFFFF',
-        gap: 6,
-        minHeight: 40,
+        gap: 4,
+        minHeight: 36,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.05,
         shadowRadius: 2,
         elevation: 1,
+    },
+    pointModeButton: {
+        borderRadius: 20, // ✅ Forme arrondie (circulaire) pour "Point"
+    },
+    zoneModeButton: {
+        borderRadius: 4, // ✅ Forme plus carrée pour "Zone"
     },
     horizontalModeButtonActive: {
         backgroundColor: modernColors.primary,
@@ -556,8 +564,8 @@ const styles = StyleSheet.create({
         elevation: 3,
     },
     horizontalModeButtonText: {
-        fontSize: 12,
-        fontWeight: '600',
+        fontSize: 10,
+        fontWeight: '700',
         color: modernColors.primary,
         letterSpacing: 0.1,
         textAlign: 'center',
@@ -605,16 +613,16 @@ const styles = StyleSheet.create({
     topSearchContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 8,
+        gap: 6,
     },
     topSearchInput: {
         flex: 1,
-        height: 46,
-        borderWidth: 2.5,
+        height: 36,
+        borderWidth: 2,
         borderColor: '#D1D5DB',
-        borderRadius: 12,
-        paddingHorizontal: 14,
-        fontSize: 15,
+        borderRadius: 8,
+        paddingHorizontal: 10,
+        fontSize: 11,
         backgroundColor: '#FFFFFF',
         color: '#111827',
         fontWeight: '600',
@@ -625,28 +633,28 @@ const styles = StyleSheet.create({
         elevation: 1,
     },
     topSearchButton: {
-        width: 46,
-        height: 46,
-        borderRadius: 12,
+        width: 36,
+        height: 36,
+        borderRadius: 8,
         backgroundColor: modernColors.primary,
         justifyContent: 'center',
         alignItems: 'center',
         shadowColor: modernColors.primary,
-        shadowOffset: { width: 0, height: 3 },
-        shadowOpacity: 0.3,
-        shadowRadius: 4,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 3,
         elevation: 3,
     },
     topGPSButton: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        paddingVertical: 10,
-        paddingHorizontal: 12,
+        paddingVertical: 6,
+        paddingHorizontal: 8,
         borderRadius: 10,
         backgroundColor: modernColors.success, // ✅ Vert pour "Me localiser"
-        gap: 6,
-        minHeight: 48,
+        gap: 4,
+        minHeight: 36,
         shadowColor: modernColors.success,
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.25,
@@ -659,9 +667,9 @@ const styles = StyleSheet.create({
         borderWidth: 1.5,
         borderColor: '#D1D5DB',
         borderRadius: 8,
-        paddingVertical: 8,
-        paddingHorizontal: 10,
-        minHeight: 48,
+        paddingVertical: 6,
+        paddingHorizontal: 8,
+        minHeight: 36,
         justifyContent: 'center',
     },
     coordsRow: {

@@ -19,6 +19,7 @@ import { useLanguageSafe } from '../contexts/LanguageContext';
 import { apiGet } from '../services/api';
 import userBehaviorService from '../services/userBehaviorService';
 import { genererSuggestionsService, rechercherServices } from '../services/yukpoclient';
+import { debugNotifications, cleanupGhostNotifications, printNotificationReport } from '../utils/debugNotifications';
 
 const { Alert, Dimensions, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View, KeyboardAvoidingView, Platform } = ReactNative;
 
@@ -78,6 +79,20 @@ const HomeScreen: React.FC = () => {
                     const response = await apiGet<{ count: number }>(`/api/notifications/user/${user.id}/unread-count`);
                     if (response.data && typeof response.data.count === 'number') {
                         setUnreadNotificationsCount(response.data.count);
+                        
+                        // ✅ DÉBOGAGE: Si count > 0, vérifier qu'il y a vraiment des notifications
+                        if (__DEV__ && response.data.count > 0) {
+                            console.log('[HomeScreen] 🔔 Notifications non lues détectées:', response.data.count);
+                            // Vérification asynchrone en arrière-plan
+                            debugNotifications(String(user.id)).then(info => {
+                                if (info.mismatch) {
+                                    console.warn('[HomeScreen] ⚠️ INCOHÉRENCE détectée dans les notifications !');
+                                    console.warn('[HomeScreen] Count:', info.unreadCount, 'Réelles:', info.actualNotifications.filter((n: any) => !n.isRead && !n.is_read).length);
+                                }
+                            }).catch(err => {
+                                console.error('[HomeScreen] Erreur débogage notifications:', err);
+                            });
+                        }
                     }
                 } catch (error) {
                     console.error('[HomeScreen] Erreur chargement nombre de notifications:', error);
@@ -107,6 +122,43 @@ const HomeScreen: React.FC = () => {
             clearInterval(interval);
         };
     }, [user?.id, showNotificationModal]);
+    
+    // ✅ NOUVEAU: Fonction pour déboguer et nettoyer les notifications fantômes
+    const handleDebugNotifications = async () => {
+        if (!user?.id) return;
+        
+        try {
+            console.log('[HomeScreen] 🔍 Démarrage du débogage des notifications...');
+            await printNotificationReport(String(user.id));
+            
+            Alert.alert(
+                '🔍 Débogage des notifications',
+                'Voulez-vous nettoyer les notifications fantômes ?\n\nCela va marquer toutes les notifications comme lues et réinitialiser le compteur.',
+                [
+                    {
+                        text: 'Annuler',
+                        style: 'cancel'
+                    },
+                    {
+                        text: 'Nettoyer',
+                        onPress: async () => {
+                            try {
+                                const cleaned = await cleanupGhostNotifications(String(user.id));
+                                setUnreadNotificationsCount(0);
+                                Alert.alert('✅ Succès', `${cleaned} notification(s) nettoyée(s)`);
+                            } catch (error) {
+                                console.error('[HomeScreen] Erreur nettoyage:', error);
+                                Alert.alert('❌ Erreur', 'Impossible de nettoyer les notifications');
+                            }
+                        }
+                    }
+                ]
+            );
+        } catch (error) {
+            console.error('[HomeScreen] Erreur débogage:', error);
+            Alert.alert('❌ Erreur', 'Impossible de déboguer les notifications');
+        }
+    };
 
     // Charger le comportement utilisateur au démarrage
     React.useEffect(() => {
@@ -488,6 +540,8 @@ const HomeScreen: React.FC = () => {
                             <TouchableOpacity
                                 style={styles.headerButtonCompact}
                                 onPress={() => setShowNotificationModal(true)}
+                                onLongPress={handleDebugNotifications}
+                                delayLongPress={1000}
                             >
                                 <Text style={styles.headerButtonIconCompact}>🔔</Text>
                                 {unreadNotificationsCount > 0 && (
