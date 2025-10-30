@@ -48,11 +48,16 @@ import NativeTimePicker from './NativeTimePicker';
 import OptionsPrimesManager, { OptionPrime } from './OptionsPrimesManager';
 import ProductVariantManager, { ProductVariant } from './ProductVariantManager';
 import SelectModalitySelector from './SelectModalitySelector';
+import VehicleModelSelector from './VehicleModelSelector';
 
 const { width } = Dimensions.get('window');
 
 // ✅ Fonction de normalisation sans accents pour la recherche
-const normalizeText = (text: string): string => {
+const normalizeText = (text: string | undefined | null): string => {
+    // ✅ CORRECTION: Gérer les valeurs undefined/null pour éviter les crashes
+    if (!text || typeof text !== 'string') {
+        return '';
+    }
     return text
         .toLowerCase()
         .normalize('NFD') // Décompose les caractères accentués
@@ -1349,6 +1354,14 @@ interface Product {
     zonesInterventionCarreleur?: string[]; // ✅ Zones d'intervention MULTIPLES (système intelligent)
 }
 
+interface SuggestedCategory {
+    value: string;
+    label: string;
+    icon: string;
+    confidence: number;
+    reason?: string;
+}
+
 interface ProductManagerMobileProps {
     products: Product[];
     onProductsChange: (products: Product[]) => void;
@@ -1357,10 +1370,11 @@ interface ProductManagerMobileProps {
     descriptionService?: string; // Description depuis bloc info générale
     categoryService?: string; // ✅ NOUVEAU: Catégorie du service pour détection auto du type produit
     onDuplicate?: (product: Product) => void; // ✅ AJOUT: Callback pour la duplication
+    suggestedCategories?: SuggestedCategory[]; // ✅ NOUVEAU: Catégories suggérées par matching local (max 3)
 }
 
 // Configuration des types de produits avec noms adaptés
-const PRODUCT_TYPES = [
+export const PRODUCT_TYPES = [
     { value: 'agroalimentaire', label: 'Alimentation & Produits Alimentaires', icon: '🍽️', color: '#10B981', description: 'Alimentation complète : produits frais (fruits, légumes, viandes, poissons) et produits secs/transformés (riz, pâtes, conserves, boissons)', keywords: ['riz', 'pâtes', 'macaroni', 'spaghetti', 'farine', 'huile', 'arachide', 'palme', 'tournesol', 'olive', 'sucre', 'sel', 'épices', 'poivre', 'curry', 'curcuma', 'gingembre', 'piment', 'sauce', 'ketchup', 'mayonnaise', 'moutarde', 'maggi', 'jumbo', 'bouillon', 'cube', 'conserve', 'sardine', 'thon', 'maquereau', 'haricot', 'pois', 'maïs', 'boisson', 'eau', 'jus', 'soda', 'cola', 'sprite', 'fanta', 'café', 'nescafé', 'thé', 'lipton', 'lait', 'nido', 'peak', 'chocolat', 'cacao', 'biscuit', 'chips', 'snack', 'bonbon', 'confiserie', 'céréale', 'avoine', 'blé', 'mil', 'sorgho', 'manioc', 'couscous', 'semoule', 'légume', 'sec', 'lentille', 'fève', 'pois chiche', 'condiment', 'vinaigre', 'miel', 'confiture', 'beurre', 'cacahuète', 'noix', 'cajou', 'amande', 'produit', 'alimentaire', 'agro', 'transformation', 'conserverie', 'biscuiterie', 'huilerie', 'meunerie', 'rizerie', 'sucrerie', 'chocolaterie', 'confiserie', 'fruit', 'légume', 'viande', 'poisson', 'bœuf', 'poulet', 'porc', 'mouton', 'chèvre', 'tomate', 'oignon', 'pomme', 'banane', 'orange', 'mangue', 'avocat', 'ananas', 'carotte', 'chou', 'salade', 'frais', 'marché', 'alimentaire', 'épicerie', 'supermarché', 'nourriture', 'aliment', 'consommation', 'nutrition'] },
     { value: 'assurance', label: 'Assurance et Protection', icon: '🛡️', color: '#14B8A6', description: 'Assurance auto, santé, habitation, vie, protection sociale', keywords: ['assurance', 'protection', 'garantie', 'prime', 'contrat', 'couverture', 'police', 'assureur', 'sinistre', 'indemnisation', 'franchise', 'souscription', 'mutuelle', 'prévoyance', 'responsabilité civile', 'tous risques'] },
     { value: 'automobile', label: 'Automobiles et Véhicules', icon: '🚗', color: '#EF4444', description: 'Voitures, motos, camions, véhicules utilitaires', keywords: ['voiture', 'auto', 'véhicule', 'automobile', 'moto', 'scooter', 'camion', '4x4', 'SUV', 'berline', 'coupé', 'cabriolet', 'Toyota', 'Honda', 'Mercedes', 'Peugeot', 'Renault', 'Nissan', 'occasion', 'neuf', 'kilométrage', 'essence', 'diesel', 'hybride', 'électrique', 'automatique', 'manuelle'] },
@@ -1804,7 +1818,8 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
     titreService,
     descriptionService,
     categoryService,
-    onDuplicate
+    onDuplicate,
+    suggestedCategories = [] // ✅ NOUVEAU: Catégories suggérées par l'IA
 }) => {
     const [showAddModal, setShowAddModal] = useState(false);
     const [selectedType, setSelectedType] = useState<ProductType | null>(null);
@@ -1816,6 +1831,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
     const [selectedGPSLocation, setSelectedGPSLocation] = useState<{ lat: number; lng: number } | null>(null);
     const [showDuplicationModal, setShowDuplicationModal] = useState(false);
     const [productToDuplicate, setProductToDuplicate] = useState<Product | null>(null);
+    const [hasShownSuggestions, setHasShownSuggestions] = useState(false); // Pour afficher les suggestions une seule fois
 
     const [newProduct, setNewProduct] = useState<Partial<Product>>({
         type: 'autre',
@@ -1856,6 +1872,16 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
             setCurrentStep('form'); // ✅ CORRECTION: Ouvrir automatiquement le formulaire
         }
     }, [categoryService, products.length]);
+
+    // ✅ CORRECTION CRITIQUE: Auto-génération du titre pour covoiturage (déplacé hors du switch)
+    React.useEffect(() => {
+        if (selectedType === 'covoiturage' && newProduct.villeDepart && newProduct.villeArrivee) {
+            const titre = `${newProduct.villeDepart} → ${newProduct.villeArrivee}`;
+            if (newProduct.nom !== titre) {
+                setNewProduct(prev => ({ ...prev, nom: titre }));
+            }
+        }
+    }, [selectedType, newProduct.villeDepart, newProduct.villeArrivee]);
 
     const devises = ['XAF', 'EUR', 'USD']; // ✅ Devises principales : FCFA, Euro, Dollar
 
@@ -4442,13 +4468,29 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         {/* GPS */}
                         <View style={styles.fieldContainer}>
-                            <Text style={styles.fieldLabel}>Coordonnées GPS</Text>
-                            <NativeInput
-                                placeholder="Ex: 4.0511,-9.7679"
-                                value={newProduct.gpsImmobilier || ''}
-                                onChangeText={(text) => setNewProduct({ ...newProduct, gpsImmobilier: text })}
-                                style={styles.fieldInput}
-                            />
+                            <Text style={styles.fieldLabel}>📍 Localisation GPS</Text>
+                            <TouchableOpacity
+                                style={styles.gpsButton}
+                                onPress={() => setShowGPSModal(true)}
+                            >
+                                <SafeIcon name="map-pin" size={20} color={modernColors.primary} />
+                                <Text style={styles.gpsButtonText}>
+                                    {newProduct.gpsImmobilier ? 'Modifier la localisation' : 'Ajouter la localisation GPS'}
+                                </Text>
+                            </TouchableOpacity>
+                            {newProduct.gpsImmobilier && (
+                                <View style={styles.gpsInfoCard}>
+                                    <SafeIcon name="check-circle" size={14} color={modernColors.success} />
+                                    <Text style={styles.gpsInfoText}>
+                                        Position enregistrée : {newProduct.gpsImmobilier}
+                                    </Text>
+                                </View>
+                            )}
+                            <View style={styles.hintBox}>
+                                <Text style={styles.hintText}>
+                                    💡 La localisation GPS aide les locataires à trouver facilement le bien
+                                </Text>
+                            </View>
                         </View>
 
                         {/* Titre de section : Hôte */}
@@ -6291,9 +6333,42 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             <Text style={styles.sectionTitle}>Chambres & Tarifs</Text>
                         </View>
 
+                        {/* ✅ NOUVEAU: Devise globale pour toutes les variantes */}
+                        <View style={styles.fieldContainer}>
+                            <Text style={styles.fieldLabel}>💱 Devise globale <Text style={styles.required}>*</Text></Text>
+                            <Text style={styles.fieldHint}>Cette devise s'appliquera à tous les prix des variantes ci-dessous</Text>
+                            <View style={styles.deviseGridContainer}>
+                                {devises.map((devise) => (
+                                    <TouchableOpacity
+                                        key={devise}
+                                        style={[
+                                            styles.deviseButtonGrid,
+                                            (newProduct.devise || 'XAF') === devise && styles.deviseButtonActive
+                                        ]}
+                                        onPress={() => setNewProduct({ ...newProduct, devise })}
+                                    >
+                                        <Text style={[
+                                            styles.deviseButtonText,
+                                            (newProduct.devise || 'XAF') === devise && styles.deviseButtonTextActive
+                                        ]}>
+                                            {devise}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        </View>
+
                         <HotelVariantManager
                             variants={newProduct.variantesChambres || []}
-                            onChange={(variantesChambres) => setNewProduct({ ...newProduct, variantesChambres })}
+                            onChange={(variantesChambres) => {
+                                // ✅ Appliquer la devise globale à toutes les variantes
+                                const variantsWithGlobalDevise = variantesChambres.map(v => ({
+                                    ...v,
+                                    devise: newProduct.devise || 'XAF'
+                                }));
+                                setNewProduct({ ...newProduct, variantesChambres: variantsWithGlobalDevise });
+                            }}
+                            globalDevise={newProduct.devise || 'XAF'}
                         />
 
                         {/* Section 4: Équipements & Services */}
@@ -6381,16 +6456,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                 );
 
             case 'covoiturage':
-                // ✅ Auto-génération du titre du trajet
-                React.useEffect(() => {
-                    if (newProduct.villeDepart && newProduct.villeArrivee) {
-                        const titre = `${newProduct.villeDepart} → ${newProduct.villeArrivee}`;
-                        if (newProduct.name !== titre) {
-                            setNewProduct(prev => ({ ...prev, name: titre }));
-                        }
-                    }
-                }, [newProduct.villeDepart, newProduct.villeArrivee]);
-
+                // ✅ CORRECTION: Le useEffect a été déplacé au niveau du composant (ligne ~1863)
                 return (
                     <>
                         {/* Section 1: Itinéraire */}
@@ -6692,6 +6758,31 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             <Text style={styles.sectionTitle}>Variantes Taille/Couleur (optionnel)</Text>
                         </View>
 
+                        {/* ✅ NOUVEAU: Devise globale pour toutes les variantes */}
+                        <View style={styles.fieldContainer}>
+                            <Text style={styles.fieldLabel}>💱 Devise globale <Text style={styles.required}>*</Text></Text>
+                            <Text style={styles.fieldHint}>Cette devise s'appliquera à tous les prix des variantes ci-dessous</Text>
+                            <View style={styles.deviseGridContainer}>
+                                {devises.map((devise) => (
+                                    <TouchableOpacity
+                                        key={devise}
+                                        style={[
+                                            styles.deviseButtonGrid,
+                                            (newProduct.devise || 'XAF') === devise && styles.deviseButtonActive
+                                        ]}
+                                        onPress={() => setNewProduct({ ...newProduct, devise })}
+                                    >
+                                        <Text style={[
+                                            styles.deviseButtonText,
+                                            (newProduct.devise || 'XAF') === devise && styles.deviseButtonTextActive
+                                        ]}>
+                                            {devise}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        </View>
+
                         <View style={styles.hintBox}>
                             <SafeIcon name="info" size={14} color={modernColors.primary} />
                             <Text style={styles.hintText}>
@@ -6701,7 +6792,16 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         <ProductVariantManager
                             variants={newProduct.variantesVetements || []}
-                            onChange={(variants) => setNewProduct({ ...newProduct, variantesVetements: variants })}
+                            onChange={(variants) => {
+                                // ✅ Appliquer la devise globale à toutes les variantes
+                                const variantsWithGlobalDevise = variants.map(v => ({
+                                    ...v,
+                                    devise: newProduct.devise || 'XAF'
+                                }));
+                                setNewProduct({ ...newProduct, variantesVetements: variantsWithGlobalDevise });
+                            }}
+                            globalDevise={newProduct.devise || 'XAF'}
+                            productType="vetement"
                             variantLabel="variante"
                             variantPlaceholder="Ex: Taille M - Blanc, Taille L - Noir, XL - Wax multicolore"
                             maxVariants={15}
@@ -7443,9 +7543,42 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             <Text style={styles.sectionTitle}>Pointures & Couleurs (Variantes)</Text>
                         </View>
 
+                        {/* ✅ NOUVEAU: Devise globale pour toutes les variantes */}
+                        <View style={styles.fieldContainer}>
+                            <Text style={styles.fieldLabel}>💱 Devise globale <Text style={styles.required}>*</Text></Text>
+                            <Text style={styles.fieldHint}>Cette devise s'appliquera à tous les prix des variantes ci-dessous</Text>
+                            <View style={styles.deviseGridContainer}>
+                                {devises.map((devise) => (
+                                    <TouchableOpacity
+                                        key={devise}
+                                        style={[
+                                            styles.deviseButtonGrid,
+                                            (newProduct.devise || 'XAF') === devise && styles.deviseButtonActive
+                                        ]}
+                                        onPress={() => setNewProduct({ ...newProduct, devise })}
+                                    >
+                                        <Text style={[
+                                            styles.deviseButtonText,
+                                            (newProduct.devise || 'XAF') === devise && styles.deviseButtonTextActive
+                                        ]}>
+                                            {devise}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        </View>
+
                         <ChaussureVariantManager
                             variants={newProduct.variantesChaussures || []}
-                            onChange={(variantesChaussures) => setNewProduct({ ...newProduct, variantesChaussures })}
+                            onChange={(variantesChaussures) => {
+                                // ✅ Appliquer la devise globale à toutes les variantes
+                                const variantsWithGlobalDevise = variantesChaussures.map(v => ({
+                                    ...v,
+                                    devise: newProduct.devise || 'XAF'
+                                }));
+                                setNewProduct({ ...newProduct, variantesChaussures: variantsWithGlobalDevise });
+                            }}
+                            globalDevise={newProduct.devise || 'XAF'}
                         />
 
                         <View style={styles.hintBox}>
@@ -8141,24 +8274,55 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             <Text style={styles.sectionTitle}>Variantes de Conditionnement</Text>
                         </View>
 
+                        {/* ✅ NOUVEAU: Devise globale pour toutes les variantes */}
+                        <View style={styles.fieldContainer}>
+                            <Text style={styles.fieldLabel}>💱 Devise globale <Text style={styles.required}>*</Text></Text>
+                            <Text style={styles.fieldHint}>Cette devise s'appliquera à tous les prix des variantes ci-dessous</Text>
+                            <View style={styles.deviseGridContainer}>
+                                {['XAF', 'FCFA', 'EUR', 'USD'].map((devise) => (
+                                    <TouchableOpacity
+                                        key={devise}
+                                        style={[
+                                            styles.deviseButtonGrid,
+                                            (newProduct.devise || 'XAF') === devise && styles.deviseButtonActive
+                                        ]}
+                                        onPress={() => setNewProduct({ ...newProduct, devise })}
+                                    >
+                                        <Text style={[
+                                            styles.deviseButtonText,
+                                            (newProduct.devise || 'XAF') === devise && styles.deviseButtonTextActive
+                                        ]}>
+                                            {devise}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        </View>
+
                         {/* ✅ NOUVEAU: Gestionnaire de variantes */}
                         <ProductVariantManager
                             variants={newProduct.variants || []}
                             onChange={(variants) => {
-                                setNewProduct({ ...newProduct, variants });
+                                // ✅ Appliquer la devise globale à toutes les variantes
+                                const variantsWithGlobalDevise = variants.map(v => ({
+                                    ...v,
+                                    devise: newProduct.devise || 'XAF'
+                                }));
+                                setNewProduct({ ...newProduct, variants: variantsWithGlobalDevise });
                                 // ✅ Auto-calcul du prix min/max pour affichage
                                 if (variants.length > 0) {
                                     const prices = variants.map(v => parseFloat(v.prix) || 0).filter(p => p > 0);
                                     if (prices.length > 0) {
                                         setNewProduct(prev => ({
                                             ...prev,
-                                            variants,
+                                            variants: variantsWithGlobalDevise,
                                             prix: Math.min(...prices), // Prix le plus bas
                                             prixMax: Math.max(...prices) // Prix le plus haut
                                         }));
                                     }
                                 }
                             }}
+                            globalDevise={newProduct.devise || 'XAF'}
                             productType="agroalimentaire"
                         />
 
@@ -10592,6 +10756,31 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             <Text style={styles.sectionTitle}>Variantes du bijou (optionnel)</Text>
                         </View>
 
+                        {/* ✅ NOUVEAU: Devise globale pour toutes les variantes */}
+                        <View style={styles.fieldContainer}>
+                            <Text style={styles.fieldLabel}>💱 Devise globale <Text style={styles.required}>*</Text></Text>
+                            <Text style={styles.fieldHint}>Cette devise s'appliquera à tous les prix des variantes ci-dessous</Text>
+                            <View style={styles.deviseGridContainer}>
+                                {['XAF', 'FCFA', 'EUR', 'USD'].map((devise) => (
+                                    <TouchableOpacity
+                                        key={devise}
+                                        style={[
+                                            styles.deviseButtonGrid,
+                                            (newProduct.devise || 'XAF') === devise && styles.deviseButtonActive
+                                        ]}
+                                        onPress={() => setNewProduct({ ...newProduct, devise })}
+                                    >
+                                        <Text style={[
+                                            styles.deviseButtonText,
+                                            (newProduct.devise || 'XAF') === devise && styles.deviseButtonTextActive
+                                        ]}>
+                                            {devise}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        </View>
+
                         <View style={styles.hintBox}>
                             <Text style={styles.hintText}>
                                 💡 <Text style={styles.hintBold}>Variantes :</Text> Si vous proposez ce bijou en plusieurs finitions (or jaune/blanc/rose), couleurs de pierres, ou tailles, ajoutez des photos de chaque variante pour rassurer vos clients.
@@ -10600,7 +10789,15 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                         <ProductVariantManager
                             variants={newProduct.bijouxVariants || []}
-                            onChange={(variants) => setNewProduct({ ...newProduct, bijouxVariants: variants })}
+                            onChange={(variants) => {
+                                // ✅ Appliquer la devise globale à toutes les variantes
+                                const variantsWithGlobalDevise = variants.map(v => ({
+                                    ...v,
+                                    devise: newProduct.devise || 'XAF'
+                                }));
+                                setNewProduct({ ...newProduct, bijouxVariants: variantsWithGlobalDevise });
+                            }}
+                            globalDevise={newProduct.devise || 'XAF'}
                             variantLabel="variante"
                             variantPlaceholder="Ex: Or blanc 18k, Or rose 18k, Argent 925"
                             maxVariants={6}
@@ -16568,8 +16765,28 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                     <TouchableOpacity
                         style={styles.addButton}
                         onPress={() => {
-                            setCurrentStep('type');
-                            setShowAddModal(true);
+                            // ✅ NOUVEAU: Si un produit existe déjà, ouvrir directement le formulaire avec sa catégorie
+                            if (products.length > 0 && products[0].type) {
+                                const firstProductType = products[0].type;
+                                setSelectedType(firstProductType);
+                                setCurrentStep('form');
+                                // Réinitialiser le formulaire pour un nouveau produit
+                                setNewProduct({
+                                    type: firstProductType,
+                                    nom: '',
+                                    prix: '',
+                                    devise: products[0].devise || 'XAF', // Utiliser la même devise que le premier produit
+                                    description: '',
+                                    images: [],
+                                    videos: []
+                                });
+                                setEditingProductId(null);
+                                setShowAddModal(true);
+                            } else {
+                                // Aucun produit existant : afficher la sélection de catégorie
+                                setCurrentStep('type');
+                                setShowAddModal(true);
+                            }
                         }}
                     >
                         <LinearGradient
@@ -16648,28 +16865,143 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
 
                                     <View style={styles.dropdownContainer}>
                                         {(() => {
+                                            // ✅ NOUVEAU: Détecter la catégorie du premier produit existant
+                                            const firstProductType = products.length > 0 && products[0].type ? products[0].type : null;
+
+                                            // ✅ NOUVEAU: Si un produit existe déjà, filtrer pour ne garder que sa catégorie
+                                            if (firstProductType) {
+                                                return (
+                                                    <View style={styles.singleCategoryInfo}>
+                                                        <View style={styles.infoCard}>
+                                                            <SafeIcon name="info" size={20} color={modernColors.primary} />
+                                                            <View style={styles.infoContent}>
+                                                                <Text style={styles.infoTitle}>
+                                                                    Catégorie verrouillée pour ce service
+                                                                </Text>
+                                                                <Text style={styles.infoText}>
+                                                                    Tous les produits de ce service doivent être de la même catégorie :{' '}
+                                                                    <Text style={styles.infoHighlight}>
+                                                                        {PRODUCT_TYPES.find(t => t.value === firstProductType)?.icon} {PRODUCT_TYPES.find(t => t.value === firstProductType)?.label}
+                                                                    </Text>
+                                                                </Text>
+                                                                <Text style={styles.infoSubtext}>
+                                                                    Pour créer un produit d'une autre catégorie, vous devez créer un nouveau service.
+                                                                </Text>
+                                                            </View>
+                                                        </View>
+                                                        <TouchableOpacity
+                                                            style={styles.lockedCategoryButton}
+                                                            onPress={() => setSelectedType(firstProductType as ProductType)}
+                                                        >
+                                                            <SafeIcon
+                                                                name="check-circle"
+                                                                size={20}
+                                                                color="#FFFFFF"
+                                                            />
+                                                            <Text style={styles.lockedCategoryButtonText}>
+                                                                Continuer avec cette catégorie
+                                                            </Text>
+                                                        </TouchableOpacity>
+                                                    </View>
+                                                );
+                                            }
+
+                                            // ✅ NOUVEAU: Séparer catégories suggérées par IA et autres
+                                            const suggestedTypeValues = suggestedCategories.map(sc => sc.value);
+
                                             // Filtrer les catégories selon la recherche
-                                            let filteredTypes = PRODUCT_TYPES.filter(type => {
+                                            let allFilteredTypes = PRODUCT_TYPES.filter(type => {
                                                 if (searchQuery.length === 0) return true;
                                                 // ✅ Recherche sans sensibilité aux accents
                                                 const normalizedQuery = normalizeText(searchQuery);
-                                                return normalizeText(type.label).includes(normalizedQuery) ||
-                                                    normalizeText(type.description).includes(normalizedQuery) ||
-                                                    ('keywords' in type && type.keywords.some((kw: string) => normalizeText(kw).includes(normalizedQuery)));
+                                                // ✅ CORRECTION: Vérifier que les propriétés existent avant de normaliser
+                                                const labelMatch = type.label && normalizeText(type.label).includes(normalizedQuery);
+                                                const descMatch = type.description && normalizeText(type.description).includes(normalizedQuery);
+                                                const keywordsMatch = 'keywords' in type && Array.isArray(type.keywords) &&
+                                                    type.keywords.some((kw: string) => kw && normalizeText(kw).includes(normalizedQuery));
+                                                return labelMatch || descMatch || keywordsMatch;
+                                            });
+
+                                            // Séparer catégories suggérées et autres
+                                            const suggestedTypes: typeof PRODUCT_TYPES = [];
+                                            const otherTypes: typeof PRODUCT_TYPES = [];
+
+                                            allFilteredTypes.forEach(type => {
+                                                if (suggestedTypeValues.includes(type.value)) {
+                                                    suggestedTypes.push(type);
+                                                } else {
+                                                    otherTypes.push(type);
+                                                }
+                                            });
+
+                                            // Trier les catégories suggérées par confidence (plus pertinent en premier)
+                                            suggestedTypes.sort((a, b) => {
+                                                const aConfidence = suggestedCategories.find(sc => sc.value === a.value)?.confidence || 0;
+                                                const bConfidence = suggestedCategories.find(sc => sc.value === b.value)?.confidence || 0;
+                                                return bConfidence - aConfidence;
                                             });
 
                                             // ✅ Si aucune catégorie ne correspond et qu'il y a une recherche, proposer "Prestation de service" par défaut
-                                            const hasNoResults = filteredTypes.length === 0 && searchQuery.length > 0;
+                                            const hasNoResults = allFilteredTypes.length === 0 && searchQuery.length > 0;
                                             if (hasNoResults) {
                                                 const prestationService = PRODUCT_TYPES.find(t => t.value === 'prestation_service');
                                                 if (prestationService) {
-                                                    filteredTypes = [prestationService];
+                                                    allFilteredTypes = [prestationService];
+                                                    if (!suggestedTypeValues.includes('prestation_service')) {
+                                                        otherTypes.push(prestationService);
+                                                    } else {
+                                                        suggestedTypes.push(prestationService);
+                                                    }
                                                 }
                                             }
 
+                                            const renderTypeItem = (type: typeof PRODUCT_TYPES[0], isSuggested: boolean = false) => {
+                                                const suggestion = suggestedCategories.find(sc => sc.value === type.value);
+                                                return (
+                                                    <TouchableOpacity
+                                                        key={type.value}
+                                                        style={[
+                                                            styles.dropdownItem,
+                                                            selectedType === type.value && styles.dropdownItemActive,
+                                                            isSuggested && styles.dropdownItemSuggested
+                                                        ]}
+                                                        onPress={() => handleSelectType(type.value as ProductType)}
+                                                    >
+                                                        <View style={styles.dropdownItemLeft}>
+                                                            <Text style={styles.dropdownIcon}>{type.icon}</Text>
+                                                            <View style={{ flex: 1 }}>
+                                                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                                                    <Text style={[
+                                                                        styles.dropdownLabel,
+                                                                        selectedType === type.value && styles.dropdownLabelActive
+                                                                    ]}>{type.label}</Text>
+                                                                    {isSuggested && suggestion && (
+                                                                        <View style={styles.suggestionBadge}>
+                                                                            <SafeIcon name="sparkles" size={12} color={modernColors.primary} />
+                                                                            <Text style={styles.suggestionBadgeText}>
+                                                                                {Math.round(suggestion.confidence * 100)}% pertinent
+                                                                            </Text>
+                                                                        </View>
+                                                                    )}
+                                                                </View>
+                                                                <Text style={styles.dropdownDescription}>{type.description}</Text>
+                                                                {isSuggested && suggestion?.reason && (
+                                                                    <Text style={styles.suggestionReason}>
+                                                                        💡 {suggestion.reason}
+                                                                    </Text>
+                                                                )}
+                                                            </View>
+                                                        </View>
+                                                        {selectedType === type.value && (
+                                                            <SafeIcon name="check" size={20} color={modernColors.primary} />
+                                                        )}
+                                                    </TouchableOpacity>
+                                                );
+                                            };
+
                                             return (
                                                 <>
-                                                    {hasNoResults && filteredTypes.length > 0 && (
+                                                    {hasNoResults && allFilteredTypes.length > 0 && (
                                                         <View style={styles.noResultsHint}>
                                                             <SafeIcon name="info" size={16} color={modernColors.primary} />
                                                             <Text style={styles.noResultsText}>
@@ -16677,30 +17009,39 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                                             </Text>
                                                         </View>
                                                     )}
-                                                    {filteredTypes.map((type) => (
-                                                        <TouchableOpacity
-                                                            key={type.value}
-                                                            style={[
-                                                                styles.dropdownItem,
-                                                                selectedType === type.value && styles.dropdownItemActive
-                                                            ]}
-                                                            onPress={() => handleSelectType(type.value as ProductType)}
-                                                        >
-                                                            <View style={styles.dropdownItemLeft}>
-                                                                <Text style={styles.dropdownIcon}>{type.icon}</Text>
-                                                                <View style={{ flex: 1 }}>
-                                                                    <Text style={[
-                                                                        styles.dropdownLabel,
-                                                                        selectedType === type.value && styles.dropdownLabelActive
-                                                                    ]}>{type.label}</Text>
-                                                                    <Text style={styles.dropdownDescription}>{type.description}</Text>
-                                                                </View>
+
+                                                    {/* ✅ NOUVEAU: Section Catégories suggérées par IA */}
+                                                    {suggestedTypes.length > 0 && searchQuery.length === 0 && (
+                                                        <>
+                                                            <View style={styles.suggestionsHeader}>
+                                                                <SafeIcon name="sparkles" size={16} color={modernColors.primary} />
+                                                                <Text style={styles.suggestionsHeaderText}>
+                                                                    Catégories suggérées intelligemment ({suggestedTypes.length})
+                                                                </Text>
                                                             </View>
-                                                            {selectedType === type.value && (
-                                                                <SafeIcon name="check" size={20} color={modernColors.primary} />
+                                                            {suggestedTypes.map((type) => renderTypeItem(type, true))}
+
+                                                            {otherTypes.length > 0 && (
+                                                                <View style={styles.suggestionsHeader}>
+                                                                    <SafeIcon name="list" size={16} color={modernColors.textSecondary} />
+                                                                    <Text style={[styles.suggestionsHeaderText, { color: modernColors.textSecondary }]}>
+                                                                        Toutes les catégories ({otherTypes.length})
+                                                                    </Text>
+                                                                </View>
                                                             )}
-                                                        </TouchableOpacity>
-                                                    ))}
+                                                        </>
+                                                    )}
+
+                                                    {/* Autres catégories */}
+                                                    {searchQuery.length > 0 ? (
+                                                        // Mode recherche : afficher tous les résultats filtrés
+                                                        allFilteredTypes.map((type) => renderTypeItem(type, suggestedTypeValues.includes(type.value)))
+                                                    ) : (
+                                                        // Mode normal : afficher seulement les autres si pas de suggestions ou après les suggestions
+                                                        suggestedTypes.length > 0
+                                                            ? otherTypes.map((type) => renderTypeItem(type, false))
+                                                            : allFilteredTypes.map((type) => renderTypeItem(type, false))
+                                                    )}
                                                 </>
                                             );
                                         })()}
@@ -16709,301 +17050,331 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             )}
 
                             {/* Étape 2: Formulaire */}
-                            {currentStep === 'form' && selectedType && (
-                                <View style={styles.stepContainer}>
-                                    {/* Badge de type sélectionné */}
-                                    <View style={styles.selectedTypeBadge}>
-                                        <Text style={styles.selectedTypeText}>
-                                            {getProductTypeInfo(selectedType).icon} {getProductTypeInfo(selectedType).label}
-                                        </Text>
-                                        <TouchableOpacity
-                                            onPress={() => setCurrentStep('type')}
-                                            style={styles.changeTypeButton}
-                                        >
-                                            <Text style={styles.changeTypeText}>Changer</Text>
-                                        </TouchableOpacity>
-                                    </View>
+                            {currentStep === 'form' && selectedType && (() => {
+                                // ✅ Catégories avec variabilités organisées où les champs généraux ne sont plus pertinents
+                                const categoriesWithOrganizedVariants = ['vetement', 'chaussure', 'hotellerie', 'agroalimentaire', 'bijoux'];
+                                const hasOrganizedVariants = categoriesWithOrganizedVariants.includes(selectedType);
 
-                                    {/* Bouton télécharger modèle Excel */}
-                                    <TouchableOpacity
-                                        style={styles.templateButton}
-                                        onPress={() => downloadExcelTemplate(selectedType)}
-                                    >
-                                        <SafeIcon name="download" size={18} color={modernColors.primary} />
-                                        <Text style={styles.templateButtonText}>
-                                            Télécharger le modèle Excel
-                                        </Text>
-                                    </TouchableOpacity>
-
-                                    {/* Bouton importer Excel */}
-                                    <TouchableOpacity
-                                        style={styles.importExcelButton}
-                                        onPress={handleImportExcel}
-                                    >
-                                        <SafeIcon name="file-text" size={18} color={modernColors.success} />
-                                        <Text style={styles.importExcelText}>
-                                            Importer depuis Excel/CSV
-                                        </Text>
-                                    </TouchableOpacity>
-
-                                    <View style={styles.dividerWithText}>
-                                        <View style={styles.dividerLine} />
-                                        <Text style={styles.dividerText}>ou remplir manuellement</Text>
-                                        <View style={styles.dividerLine} />
-                                    </View>
-
-                                    {/* Champs communs - Toujours visibles, pré-remplis pour Prestation de Service */}
-                                    <View style={styles.fieldContainer}>
-                                        <Text style={styles.fieldLabel}>
-                                            {getProductNameLabel(selectedType)} <Text style={styles.required}>*</Text>
-                                            {selectedType === 'prestation_service' && (
-                                                <Text style={styles.autoFilledHint}> (pré-rempli automatiquement)</Text>
+                                return (
+                                    <View style={styles.stepContainer}>
+                                        {/* Badge de type sélectionné */}
+                                        <View style={styles.selectedTypeBadge}>
+                                            <Text style={styles.selectedTypeText}>
+                                                {getProductTypeInfo(selectedType).icon} {getProductTypeInfo(selectedType).label}
+                                            </Text>
+                                            {/* ✅ NOUVEAU: Masquer le bouton "Changer" si des produits existent déjà */}
+                                            {products.length === 0 && (
+                                                <TouchableOpacity
+                                                    onPress={() => setCurrentStep('type')}
+                                                    style={styles.changeTypeButton}
+                                                >
+                                                    <Text style={styles.changeTypeText}>Changer</Text>
+                                                </TouchableOpacity>
                                             )}
-                                        </Text>
-                                        {selectedType && (
-                                            <Text style={styles.categoryReminder}>
-                                                📦 Catégorie : {PRODUCT_TYPES.find(t => t.value === selectedType)?.label}
-                                            </Text>
-                                        )}
-
-                                        {/* Autocomplete intelligent pour structures de santé */}
-                                        {(selectedType === 'hopital_clinique' || selectedType === 'laboratoire' || selectedType === 'pharmacie') ? (
-                                            <AutocompleteStructure
-                                                type={selectedType}
-                                                value={newProduct.nom || ''}
-                                                onChangeText={(text) => setNewProduct({ ...newProduct, nom: text })}
-                                                placeholder={getProductNamePlaceholder(selectedType)}
-                                                required
-                                            />
-                                        ) : (
-                                            <NativeInput
-                                                placeholder={getProductNamePlaceholder(selectedType)}
-                                                value={newProduct.nom || ''}
-                                                onChangeText={(text) => setNewProduct({ ...newProduct, nom: text })}
-                                                style={styles.fieldInput}
-                                            />
-                                        )}
-                                    </View>
-
-                                    <View style={styles.fieldContainer}>
-                                        <Text style={styles.fieldLabel}>
-                                            Description
-                                            {selectedType === 'prestation_service' && (
-                                                <Text style={styles.autoFilledHint}> (pré-remplie automatiquement)</Text>
+                                            {products.length > 0 && (
+                                                <View style={styles.lockedBadge}>
+                                                    <SafeIcon name="lock" size={14} color={modernColors.textSecondary} />
+                                                    <Text style={styles.lockedBadgeText}>Verrouillé</Text>
+                                                </View>
                                             )}
-                                        </Text>
-                                        <NativeInput
-                                            placeholder="Décrivez ce produit..."
-                                            value={newProduct.description || ''}
-                                            onChangeText={(text) => setNewProduct({ ...newProduct, description: text })}
-                                            multiline
-                                            style={[styles.fieldInput, styles.textareaInput]}
-                                        />
-                                    </View>
-
-                                    {/* Prix et devise - MASQUÉ pour pharmacie et hopital_clinique */}
-                                    {selectedType !== 'pharmacie' && selectedType !== 'hopital_clinique' && (
-                                        <View style={styles.fieldRow}>
-                                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                                <Text style={styles.fieldLabel}>
-                                                    {selectedType === 'assurance' ? 'Prime (à partir de)' :
-                                                        selectedType === 'prestation_service' ? 'À partir de' : 'Prix'}
-                                                    {selectedType !== 'prestation_service' && selectedType !== 'assurance' && <Text style={styles.required}>*</Text>}
-                                                </Text>
-                                                <NativeInput
-                                                    placeholder={selectedType === 'prestation_service' || selectedType === 'assurance' ? 'Prix (optionnel)' : '0'}
-                                                    value={newProduct.prix || ''}
-                                                    onChangeText={(text) => setNewProduct({ ...newProduct, prix: text })}
-                                                    style={styles.fieldInput}
-                                                    keyboardType="numeric"
-                                                />
-                                            </View>
-
-                                            <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                                <Text style={styles.fieldLabel}>Devise</Text>
-                                                <View style={styles.deviseGridContainer}>
-                                                    {devises.map((devise) => (
-                                                        <TouchableOpacity
-                                                            key={devise}
-                                                            style={[
-                                                                styles.deviseButtonGrid,
-                                                                newProduct.devise === devise && styles.deviseButtonActive
-                                                            ]}
-                                                            onPress={() => setNewProduct({ ...newProduct, devise })}
-                                                        >
-                                                            <Text style={[
-                                                                styles.deviseButtonText,
-                                                                newProduct.devise === devise && styles.deviseButtonTextActive
-                                                            ]}>
-                                                                {devise}
-                                                            </Text>
-                                                        </TouchableOpacity>
-                                                    ))}
-                                                </View>
-                                            </View>
-                                        </View>
-                                    )}
-
-                                    {/* Champs spécifiques */}
-                                    {renderSpecificFields()}
-
-                                    {/* Section Médias */}
-                                    <View style={styles.mediaSectionContainer}>
-                                        <Text style={styles.sectionTitle}>📸 Images principales du produit</Text>
-
-                                        {/* Message descriptif incitatif */}
-                                        <View style={styles.mediaHintContainer}>
-                                            <SafeIcon name="info" size={16} color={modernColors.info} />
-                                            <Text style={styles.mediaHintText}>
-                                                💡 <Text style={styles.boldText}>Images principales</Text> : Photos générales du produit (différentes des images spécifiques aux variantes). Montrez votre produit sous tous les angles.
-                                            </Text>
                                         </View>
 
+                                        {/* Bouton télécharger modèle Excel */}
                                         <TouchableOpacity
-                                            style={styles.mediaButton}
-                                            onPress={handlePickImages}
+                                            style={styles.templateButton}
+                                            onPress={() => downloadExcelTemplate(selectedType)}
                                         >
-                                            <SafeIcon name="image" size={20} color={modernColors.primary} />
-                                            <Text style={styles.mediaButtonText}>
-                                                📷 Ajouter des images
+                                            <SafeIcon name="download" size={18} color={modernColors.primary} />
+                                            <Text style={styles.templateButtonText}>
+                                                Télécharger le modèle Excel
                                             </Text>
                                         </TouchableOpacity>
 
-                                        {newProduct.images && newProduct.images.length > 0 && (
-                                            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.mediaPreviewScroll}>
-                                                {newProduct.images.map((image, index) => (
-                                                    <View key={index} style={styles.mediaPreviewItem}>
-                                                        <Image source={{ uri: image }} style={styles.mediaPreviewImage} />
-                                                        <TouchableOpacity
-                                                            style={styles.removeMediaButton}
-                                                            onPress={() => removeImage(index)}
-                                                        >
-                                                            <SafeIcon name="x" size={16} color="#FFFFFF" />
-                                                        </TouchableOpacity>
-                                                    </View>
-                                                ))}
-                                            </ScrollView>
-                                        )}
-
-                                        <Text style={[styles.sectionTitle, { marginTop: 20 }]}>🎥 Vidéos du produit</Text>
-
-                                        {/* Message descriptif incitatif pour vidéos */}
-                                        <View style={styles.mediaHintContainer}>
-                                            <SafeIcon name="info" size={16} color={modernColors.info} />
-                                            <Text style={styles.mediaHintText}>
-                                                🎬 Les vidéos augmentent de 80% les chances de vente ! Montrez votre produit en action ou en démonstration.
+                                        {/* Bouton importer Excel */}
+                                        <TouchableOpacity
+                                            style={styles.importExcelButton}
+                                            onPress={handleImportExcel}
+                                        >
+                                            <SafeIcon name="file-text" size={18} color={modernColors.success} />
+                                            <Text style={styles.importExcelText}>
+                                                Importer depuis Excel/CSV
                                             </Text>
+                                        </TouchableOpacity>
+
+                                        <View style={styles.dividerWithText}>
+                                            <View style={styles.dividerLine} />
+                                            <Text style={styles.dividerText}>ou remplir manuellement</Text>
+                                            <View style={styles.dividerLine} />
                                         </View>
 
-                                        <TouchableOpacity
-                                            style={styles.mediaButton}
-                                            onPress={handlePickVideos}
-                                        >
-                                            <SafeIcon name="video" size={20} color={modernColors.success} />
-                                            <Text style={styles.mediaButtonText}>
-                                                🎥 Ajouter des vidéos
-                                            </Text>
-                                        </TouchableOpacity>
-
-                                        {newProduct.videos && newProduct.videos.length > 0 && (
-                                            <View style={styles.videosList}>
-                                                {newProduct.videos.map((video, index) => (
-                                                    <View key={index} style={styles.videoItem}>
-                                                        <SafeIcon name="video" size={20} color={modernColors.success} />
-                                                        <Text style={styles.videoText}>Vidéo {index + 1}</Text>
-                                                        <TouchableOpacity
-                                                            style={styles.removeVideoButton}
-                                                            onPress={() => removeVideo(index)}
-                                                        >
-                                                            <SafeIcon name="trash-2" size={16} color={modernColors.error} />
-                                                        </TouchableOpacity>
-                                                    </View>
-                                                ))}
-                                            </View>
-                                        )}
-                                    </View>
-
-                                    {/* Section Promotion - APRÈS les médias */}
-                                    <View style={styles.promotionSectionContainer}>
-                                        <Text style={styles.sectionTitle}>🎁 Promotion (optionnel)</Text>
-
-                                        <TouchableOpacity
-                                            style={styles.checkboxContainer}
-                                            onPress={() => setNewProduct({ ...newProduct, promotionActive: !newProduct.promotionActive })}
-                                        >
-                                            <View style={[
-                                                styles.checkbox,
-                                                newProduct.promotionActive && styles.checkboxChecked
-                                            ]}>
-                                                {newProduct.promotionActive && (
-                                                    <SafeIcon name="check" size={16} color="#FFFFFF" />
-                                                )}
-                                            </View>
-                                            <Text style={styles.checkboxLabel}>Activer une promotion pour ce produit</Text>
-                                        </TouchableOpacity>
-
-                                        {newProduct.promotionActive && (
-                                            <View style={styles.promotionFields}>
+                                        {/* ✅ CORRECTION: Masquer les champs généraux (nom, description, prix) pour les catégories organisées en rubriques avec variabilités */}
+                                        {/* Champs communs - Masqués pour catégories avec variabilités organisées */}
+                                        {!hasOrganizedVariants && (
+                                            <>
                                                 <View style={styles.fieldContainer}>
-                                                    <Text style={styles.fieldLabel}>🏷️ Type de promotion</Text>
-                                                    <View style={styles.pickerButtons}>
-                                                        {(['reduction', 'offre', 'bon_plan', 'flash'] as const).map((type) => (
-                                                            <TouchableOpacity
-                                                                key={type}
-                                                                style={[
-                                                                    styles.pickerButton,
-                                                                    newProduct.promotionType === type && styles.pickerButtonActive
-                                                                ]}
-                                                                onPress={() => setNewProduct({ ...newProduct, promotionType: type })}
-                                                            >
-                                                                <Text style={[
-                                                                    styles.pickerButtonText,
-                                                                    newProduct.promotionType === type && styles.pickerButtonTextActive
-                                                                ]}>
-                                                                    {type === 'reduction' ? 'Réduction' :
-                                                                        type === 'offre' ? 'Offre' :
-                                                                            type === 'bon_plan' ? 'Bon plan' : 'Flash'}
-                                                                </Text>
-                                                            </TouchableOpacity>
-                                                        ))}
-                                                    </View>
+                                                    <Text style={styles.fieldLabel}>
+                                                        {getProductNameLabel(selectedType)} <Text style={styles.required}>*</Text>
+                                                        {selectedType === 'prestation_service' && (
+                                                            <Text style={styles.autoFilledHint}> (pré-rempli automatiquement)</Text>
+                                                        )}
+                                                    </Text>
+                                                    {selectedType && (
+                                                        <Text style={styles.categoryReminder}>
+                                                            📦 Catégorie : {PRODUCT_TYPES.find(t => t.value === selectedType)?.label}
+                                                        </Text>
+                                                    )}
+
+                                                    {/* Autocomplete intelligent pour structures de santé */}
+                                                    {(selectedType === 'hopital_clinique' || selectedType === 'laboratoire' || selectedType === 'pharmacie') ? (
+                                                        <AutocompleteStructure
+                                                            type={selectedType}
+                                                            value={newProduct.nom || ''}
+                                                            onChangeText={(text) => setNewProduct({ ...newProduct, nom: text })}
+                                                            placeholder={getProductNamePlaceholder(selectedType)}
+                                                            required
+                                                        />
+                                                    ) : (
+                                                        <NativeInput
+                                                            placeholder={getProductNamePlaceholder(selectedType)}
+                                                            value={newProduct.nom || ''}
+                                                            onChangeText={(text) => setNewProduct({ ...newProduct, nom: text })}
+                                                            style={styles.fieldInput}
+                                                        />
+                                                    )}
                                                 </View>
 
                                                 <View style={styles.fieldContainer}>
-                                                    <Text style={styles.fieldLabel}>💰 Valeur</Text>
+                                                    <Text style={styles.fieldLabel}>
+                                                        Description
+                                                        {selectedType === 'prestation_service' && (
+                                                            <Text style={styles.autoFilledHint}> (pré-remplie automatiquement)</Text>
+                                                        )}
+                                                    </Text>
                                                     <NativeInput
-                                                        placeholder="Ex: -20%, 1+1 gratuit"
-                                                        value={newProduct.promotionValeur || ''}
-                                                        onChangeText={(text) => setNewProduct({ ...newProduct, promotionValeur: text })}
-                                                        style={styles.fieldInput}
-                                                    />
-                                                </View>
-
-                                                <View style={styles.fieldContainer}>
-                                                    <Text style={styles.fieldLabel}>📝 Description</Text>
-                                                    <NativeInput
-                                                        placeholder="Décrivez l'offre..."
-                                                        value={newProduct.promotionDescription || ''}
-                                                        onChangeText={(text) => setNewProduct({ ...newProduct, promotionDescription: text })}
+                                                        placeholder="Décrivez ce produit..."
+                                                        value={newProduct.description || ''}
+                                                        onChangeText={(text) => setNewProduct({ ...newProduct, description: text })}
                                                         multiline
                                                         style={[styles.fieldInput, styles.textareaInput]}
                                                     />
                                                 </View>
 
-                                                <View style={styles.fieldContainer}>
-                                                    <Text style={styles.fieldLabel}>📅 Date de fin</Text>
-                                                    <NativeInput
-                                                        placeholder="JJ/MM/AAAA"
-                                                        value={newProduct.promotionDateFin || ''}
-                                                        onChangeText={(text) => setNewProduct({ ...newProduct, promotionDateFin: text })}
-                                                        style={styles.fieldInput}
-                                                    />
-                                                </View>
+                                                {/* Prix et devise - MASQUÉ pour pharmacie, hopital_clinique, et catégories avec variabilités */}
+                                                {selectedType !== 'pharmacie' && selectedType !== 'hopital_clinique' && (
+                                                    <View style={styles.fieldRow}>
+                                                        <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                                            <Text style={styles.fieldLabel}>
+                                                                {selectedType === 'assurance' ? 'Prime (à partir de)' :
+                                                                    selectedType === 'prestation_service' ? 'À partir de' : 'Prix'}
+                                                                {selectedType !== 'prestation_service' && selectedType !== 'assurance' && <Text style={styles.required}>*</Text>}
+                                                            </Text>
+                                                            <NativeInput
+                                                                placeholder={selectedType === 'prestation_service' || selectedType === 'assurance' ? 'Prix (optionnel)' : '0'}
+                                                                value={newProduct.prix || ''}
+                                                                onChangeText={(text) => setNewProduct({ ...newProduct, prix: text })}
+                                                                style={styles.fieldInput}
+                                                                keyboardType="numeric"
+                                                            />
+                                                        </View>
+
+                                                        <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                                            <Text style={styles.fieldLabel}>Devise</Text>
+                                                            <View style={styles.deviseGridContainer}>
+                                                                {devises.map((devise) => (
+                                                                    <TouchableOpacity
+                                                                        key={devise}
+                                                                        style={[
+                                                                            styles.deviseButtonGrid,
+                                                                            newProduct.devise === devise && styles.deviseButtonActive
+                                                                        ]}
+                                                                        onPress={() => setNewProduct({ ...newProduct, devise })}
+                                                                    >
+                                                                        <Text style={[
+                                                                            styles.deviseButtonText,
+                                                                            newProduct.devise === devise && styles.deviseButtonTextActive
+                                                                        ]}>
+                                                                            {devise}
+                                                                        </Text>
+                                                                    </TouchableOpacity>
+                                                                ))}
+                                                            </View>
+                                                        </View>
+                                                    </View>
+                                                )}
+                                            </>
+                                        )}
+
+                                        {/* ✅ NOUVEAU: Message informatif pour catégories avec variabilités organisées */}
+                                        {hasOrganizedVariants && (
+                                            <View style={styles.hintBox}>
+                                                <SafeIcon name="info" size={16} color={modernColors.primary} />
+                                                <Text style={styles.hintText}>
+                                                    💡 <Text style={styles.hintBold}>Note :</Text> Les informations de base (nom, description, prix) seront renseignées dans les sections organisées ci-dessous.
+                                                </Text>
                                             </View>
                                         )}
+
+                                        {/* Champs spécifiques */}
+                                        {renderSpecificFields()}
+
+                                        {/* Section Médias */}
+                                        <View style={styles.mediaSectionContainer}>
+                                            <Text style={styles.sectionTitle}>📸 Images principales du produit</Text>
+
+                                            {/* Message descriptif incitatif */}
+                                            <View style={styles.mediaHintContainer}>
+                                                <SafeIcon name="info" size={16} color={modernColors.info} />
+                                                <Text style={styles.mediaHintText}>
+                                                    💡 <Text style={styles.boldText}>Images principales</Text> : Photos générales du produit (différentes des images spécifiques aux variantes). Montrez votre produit sous tous les angles.
+                                                </Text>
+                                            </View>
+
+                                            <TouchableOpacity
+                                                style={styles.mediaButton}
+                                                onPress={handlePickImages}
+                                            >
+                                                <SafeIcon name="image" size={20} color={modernColors.primary} />
+                                                <Text style={styles.mediaButtonText}>
+                                                    📷 Ajouter des images
+                                                </Text>
+                                            </TouchableOpacity>
+
+                                            {newProduct.images && newProduct.images.length > 0 && (
+                                                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.mediaPreviewScroll}>
+                                                    {newProduct.images.map((image, index) => (
+                                                        <View key={index} style={styles.mediaPreviewItem}>
+                                                            <Image source={{ uri: image }} style={styles.mediaPreviewImage} />
+                                                            <TouchableOpacity
+                                                                style={styles.removeMediaButton}
+                                                                onPress={() => removeImage(index)}
+                                                            >
+                                                                <SafeIcon name="x" size={16} color="#FFFFFF" />
+                                                            </TouchableOpacity>
+                                                        </View>
+                                                    ))}
+                                                </ScrollView>
+                                            )}
+
+                                            <Text style={[styles.sectionTitle, { marginTop: 20 }]}>🎥 Vidéos du produit</Text>
+
+                                            {/* Message descriptif incitatif pour vidéos */}
+                                            <View style={styles.mediaHintContainer}>
+                                                <SafeIcon name="info" size={16} color={modernColors.info} />
+                                                <Text style={styles.mediaHintText}>
+                                                    🎬 Les vidéos augmentent de 80% les chances de vente ! Montrez votre produit en action ou en démonstration.
+                                                </Text>
+                                            </View>
+
+                                            <TouchableOpacity
+                                                style={styles.mediaButton}
+                                                onPress={handlePickVideos}
+                                            >
+                                                <SafeIcon name="video" size={20} color={modernColors.success} />
+                                                <Text style={styles.mediaButtonText}>
+                                                    🎥 Ajouter des vidéos
+                                                </Text>
+                                            </TouchableOpacity>
+
+                                            {newProduct.videos && newProduct.videos.length > 0 && (
+                                                <View style={styles.videosList}>
+                                                    {newProduct.videos.map((video, index) => (
+                                                        <View key={index} style={styles.videoItem}>
+                                                            <SafeIcon name="video" size={20} color={modernColors.success} />
+                                                            <Text style={styles.videoText}>Vidéo {index + 1}</Text>
+                                                            <TouchableOpacity
+                                                                style={styles.removeVideoButton}
+                                                                onPress={() => removeVideo(index)}
+                                                            >
+                                                                <SafeIcon name="trash-2" size={16} color={modernColors.error} />
+                                                            </TouchableOpacity>
+                                                        </View>
+                                                    ))}
+                                                </View>
+                                            )}
+                                        </View>
+
+                                        {/* Section Promotion - APRÈS les médias */}
+                                        <View style={styles.promotionSectionContainer}>
+                                            <Text style={styles.sectionTitle}>🎁 Promotion (optionnel)</Text>
+
+                                            <TouchableOpacity
+                                                style={styles.checkboxContainer}
+                                                onPress={() => setNewProduct({ ...newProduct, promotionActive: !newProduct.promotionActive })}
+                                            >
+                                                <View style={[
+                                                    styles.checkbox,
+                                                    newProduct.promotionActive && styles.checkboxChecked
+                                                ]}>
+                                                    {newProduct.promotionActive && (
+                                                        <SafeIcon name="check" size={16} color="#FFFFFF" />
+                                                    )}
+                                                </View>
+                                                <Text style={styles.checkboxLabel}>Activer une promotion pour ce produit</Text>
+                                            </TouchableOpacity>
+
+                                            {newProduct.promotionActive && (
+                                                <View style={styles.promotionFields}>
+                                                    <View style={styles.fieldContainer}>
+                                                        <Text style={styles.fieldLabel}>🏷️ Type de promotion</Text>
+                                                        <View style={styles.pickerButtons}>
+                                                            {(['reduction', 'offre', 'bon_plan', 'flash'] as const).map((type) => (
+                                                                <TouchableOpacity
+                                                                    key={type}
+                                                                    style={[
+                                                                        styles.pickerButton,
+                                                                        newProduct.promotionType === type && styles.pickerButtonActive
+                                                                    ]}
+                                                                    onPress={() => setNewProduct({ ...newProduct, promotionType: type })}
+                                                                >
+                                                                    <Text style={[
+                                                                        styles.pickerButtonText,
+                                                                        newProduct.promotionType === type && styles.pickerButtonTextActive
+                                                                    ]}>
+                                                                        {type === 'reduction' ? 'Réduction' :
+                                                                            type === 'offre' ? 'Offre' :
+                                                                                type === 'bon_plan' ? 'Bon plan' : 'Flash'}
+                                                                    </Text>
+                                                                </TouchableOpacity>
+                                                            ))}
+                                                        </View>
+                                                    </View>
+
+                                                    <View style={styles.fieldContainer}>
+                                                        <Text style={styles.fieldLabel}>💰 Valeur</Text>
+                                                        <NativeInput
+                                                            placeholder="Ex: -20%, 1+1 gratuit"
+                                                            value={newProduct.promotionValeur || ''}
+                                                            onChangeText={(text) => setNewProduct({ ...newProduct, promotionValeur: text })}
+                                                            style={styles.fieldInput}
+                                                        />
+                                                    </View>
+
+                                                    <View style={styles.fieldContainer}>
+                                                        <Text style={styles.fieldLabel}>📝 Description</Text>
+                                                        <NativeInput
+                                                            placeholder="Décrivez l'offre..."
+                                                            value={newProduct.promotionDescription || ''}
+                                                            onChangeText={(text) => setNewProduct({ ...newProduct, promotionDescription: text })}
+                                                            multiline
+                                                            style={[styles.fieldInput, styles.textareaInput]}
+                                                        />
+                                                    </View>
+
+                                                    <View style={styles.fieldContainer}>
+                                                        <Text style={styles.fieldLabel}>📅 Date de fin</Text>
+                                                        <NativeInput
+                                                            placeholder="JJ/MM/AAAA"
+                                                            value={newProduct.promotionDateFin || ''}
+                                                            onChangeText={(text) => setNewProduct({ ...newProduct, promotionDateFin: text })}
+                                                            style={styles.fieldInput}
+                                                        />
+                                                    </View>
+                                                </View>
+                                            )}
+                                        </View>
                                     </View>
-                                </View>
-                            )}
+                                );
+                            })()}
                         </ScrollView>
 
                         {/* Footer avec boutons */}
@@ -17028,43 +17399,45 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
             </Modal>
 
             {/* Modal de sélection de place pour tickets de voyage */}
-            {showSeatSelector && (
-                <BusSeatSelector
-                    visible={showSeatSelector}
-                    onClose={() => setShowSeatSelector(false)}
-                    onSelectSeat={(seat) => {
-                        // Gérer le siège sélectionné (peut être un seul ou un tableau)
-                        const seatNumber = Array.isArray(seat) ? seat.map(s => s.number).join(', ') : seat.number;
-                        setNewProduct({ ...newProduct, numeroPlace: String(seatNumber) });
-                        setShowSeatSelector(false);
-                    }}
-                    busConfiguration={{
-                        rows: 10,
-                        seatsPerRow: 4,
-                        aislePosition: 2
-                    }}
-                    seatMap={
-                        // Génération d'un plan de bus standard (40 places)
-                        Array.from({ length: 40 }, (_, i) => ({
-                            id: `seat-${i + 1}`,
-                            number: i + 1,
-                            row: Math.floor(i / 4) + 1,
-                            col: (i % 4) + 1,
-                            status: 'available' as const,
-                            type: i === 0 ? 'driver' as const : 'standard' as const
-                        }))
-                    }
-                    product={{
-                        ...newProduct,
-                        depart: newProduct.depart || 'Départ',
-                        destination: newProduct.destination || 'Destination',
-                        dateDepart: newProduct.dateDepart || new Date().toLocaleDateString('fr-FR'),
-                        heureDepart: newProduct.heureDepart || '00:00',
-                        prix: newProduct.prix || '0'
-                    }}
-                    multipleMode={false}
-                />
-            )}
+            {
+                showSeatSelector && (
+                    <BusSeatSelector
+                        visible={showSeatSelector}
+                        onClose={() => setShowSeatSelector(false)}
+                        onSelectSeat={(seat) => {
+                            // Gérer le siège sélectionné (peut être un seul ou un tableau)
+                            const seatNumber = Array.isArray(seat) ? seat.map(s => s.number).join(', ') : seat.number;
+                            setNewProduct({ ...newProduct, numeroPlace: String(seatNumber) });
+                            setShowSeatSelector(false);
+                        }}
+                        busConfiguration={{
+                            rows: 10,
+                            seatsPerRow: 4,
+                            aislePosition: 2
+                        }}
+                        seatMap={
+                            // Génération d'un plan de bus standard (40 places)
+                            Array.from({ length: 40 }, (_, i) => ({
+                                id: `seat-${i + 1}`,
+                                number: i + 1,
+                                row: Math.floor(i / 4) + 1,
+                                col: (i % 4) + 1,
+                                status: 'available' as const,
+                                type: i === 0 ? 'driver' as const : 'standard' as const
+                            }))
+                        }
+                        product={{
+                            ...newProduct,
+                            depart: newProduct.depart || 'Départ',
+                            destination: newProduct.destination || 'Destination',
+                            dateDepart: newProduct.dateDepart || new Date().toLocaleDateString('fr-FR'),
+                            heureDepart: newProduct.heureDepart || '00:00',
+                            prix: newProduct.prix || '0'
+                        }}
+                        multipleMode={false}
+                    />
+                )
+            }
 
             {/* Modal GPS pour immobilier et hôtellerie */}
             <ModernGPSModal
@@ -17078,7 +17451,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         setSelectedGPSLocation({ lat, lng });
 
                         // ✅ Déterminer quel champ GPS mettre à jour selon le type
-                        if (selectedType === 'immobilier_batiment' || selectedType === 'immobilier_terrain') {
+                        if (selectedType === 'immobilier_batiment' || selectedType === 'immobilier_terrain' || selectedType === 'immobilier_location_courte') {
                             setNewProduct({ ...newProduct, gpsImmobilier: coordinatesString });
                         } else if (selectedType === 'hotellerie') {
                             setNewProduct({ ...newProduct, gpsHotel: coordinatesString });
@@ -17101,7 +17474,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                 product={productToDuplicate}
                 onDuplicate={handleConfirmDuplication}
             />
-        </View>
+        </View >
     );
 };
 
@@ -17312,6 +17685,47 @@ const styles = StyleSheet.create({
     },
     dropdownItemActive: {
         backgroundColor: '#EFF6FF',
+    },
+    dropdownItemSuggested: {
+        backgroundColor: '#F0F9FF',
+        borderLeftWidth: 3,
+        borderLeftColor: modernColors.primary,
+    },
+    suggestionsHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        backgroundColor: '#F8FAFC',
+        borderBottomWidth: 1,
+        borderBottomColor: modernColors.border,
+        marginTop: 8,
+    },
+    suggestionsHeaderText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: modernColors.primary,
+    },
+    suggestionBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        backgroundColor: '#EEF2FF',
+        borderRadius: 8,
+    },
+    suggestionBadgeText: {
+        fontSize: 11,
+        fontWeight: '600',
+        color: modernColors.primary,
+    },
+    suggestionReason: {
+        fontSize: 12,
+        color: modernColors.textSecondary,
+        marginTop: 4,
+        fontStyle: 'italic',
     },
     dropdownItemLeft: {
         flexDirection: 'row',
@@ -18526,6 +18940,82 @@ const styles = StyleSheet.create({
     equipementChipTextActive: {
         color: modernColors.primary,
         fontWeight: '600',
+    },
+    // ✅ NOUVEAU: Styles pour affichage catégorie verrouillée
+    singleCategoryInfo: {
+        width: '100%',
+        gap: 16,
+    },
+    infoCard: {
+        flexDirection: 'row',
+        backgroundColor: '#EFF6FF',
+        borderWidth: 2,
+        borderColor: modernColors.primary,
+        borderRadius: 12,
+        padding: 16,
+        gap: 12,
+    },
+    infoContent: {
+        flex: 1,
+        gap: 6,
+    },
+    infoTitle: {
+        fontSize: 15,
+        fontWeight: '700',
+        color: '#1F2937',
+        marginBottom: 4,
+    },
+    infoText: {
+        fontSize: 14,
+        color: '#4B5563',
+        lineHeight: 20,
+    },
+    infoHighlight: {
+        fontWeight: '700',
+        color: modernColors.primary,
+    },
+    infoSubtext: {
+        fontSize: 12,
+        color: '#6B7280',
+        marginTop: 4,
+        fontStyle: 'italic',
+    },
+    lockedCategoryButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: modernColors.primary,
+        paddingVertical: 14,
+        paddingHorizontal: 20,
+        borderRadius: 12,
+        gap: 8,
+        shadowColor: modernColors.primary,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 6,
+        elevation: 4,
+    },
+    lockedCategoryButtonText: {
+        color: '#FFFFFF',
+        fontSize: 15,
+        fontWeight: '700',
+    },
+    // ✅ NOUVEAU: Styles pour badge verrouillé dans le formulaire
+    lockedBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        backgroundColor: '#F3F4F6',
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: '#D1D5DB',
+    },
+    lockedBadgeText: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: '#6B7280',
     },
 });
 

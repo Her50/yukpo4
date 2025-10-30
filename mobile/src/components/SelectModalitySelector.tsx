@@ -3,6 +3,7 @@ import { Alert, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity
 import { getFieldOptions } from '../data/productModalities';
 import { modalityService } from '../services/modalityService';
 import { modernColors } from '../theme/modernTheme';
+import { getUserZone, sortOptionsByZone } from '../utils/userZone';
 import SafeIcon from './SafeIcon';
 
 interface SelectModalitySelectorProps {
@@ -28,11 +29,19 @@ const SelectModalitySelector: React.FC<SelectModalitySelectorProps> = ({
     const [loading, setLoading] = useState(false);
     const [showModal, setShowModal] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
+    const [userZone, setUserZone] = useState<string>('CM'); // Zone par défaut: Cameroun
+
+    // Charger la zone utilisateur au montage
+    useEffect(() => {
+        getUserZone().then(zone => {
+            setUserZone(zone);
+        });
+    }, []);
 
     // Charger les options (statiques + personnalisées)
     useEffect(() => {
         loadOptions();
-    }, [productType, fieldName]);
+    }, [productType, fieldName, userZone]);
 
     const loadOptions = async () => {
         setLoading(true);
@@ -46,12 +55,14 @@ const SelectModalitySelector: React.FC<SelectModalitySelectorProps> = ({
             // Combiner les options (statiques + personnalisées, sans doublons)
             const combinedOptions = [...new Set([...staticOptions, ...customOptions])];
 
-            // ✅ TRI ALPHABÉTIQUE
-            const sortedOptions = combinedOptions.sort((a, b) => {
-                // Mettre "🆕 Autre" à la fin
+            // ✅ PRIORISATION GÉOGRAPHIQUE: Trier avec zone utilisateur en premier
+            let sortedOptions = sortOptionsByZone(combinedOptions, userZone);
+
+            // Mettre "🆕 Autre" à la fin même après tri géographique
+            sortedOptions = sortedOptions.sort((a, b) => {
                 if (a.includes('🆕')) return 1;
                 if (b.includes('🆕')) return -1;
-                return a.localeCompare(b, 'fr', { sensitivity: 'base' });
+                return 0; // Garder l'ordre géographique déjà trié
             });
 
             setAllOptions(sortedOptions);
@@ -59,10 +70,11 @@ const SelectModalitySelector: React.FC<SelectModalitySelectorProps> = ({
             console.error('[SelectModalitySelector] Erreur chargement options:', error);
             // En cas d'erreur, utiliser seulement les options statiques
             const staticOptions = getFieldOptions(productType, fieldName);
-            const sortedOptions = staticOptions.sort((a, b) => {
+            let sortedOptions = sortOptionsByZone(staticOptions, userZone);
+            sortedOptions = sortedOptions.sort((a, b) => {
                 if (a.includes('🆕')) return 1;
                 if (b.includes('🆕')) return -1;
-                return a.localeCompare(b, 'fr', { sensitivity: 'base' });
+                return 0;
             });
             setAllOptions(sortedOptions);
         } finally {
@@ -169,21 +181,90 @@ const SelectModalitySelector: React.FC<SelectModalitySelectorProps> = ({
                 {label} {required && <Text style={styles.required}>*</Text>}
             </Text>
 
-            <TouchableOpacity
-                style={[
-                    styles.selector,
-                    !value && styles.selectorPlaceholder
-                ]}
-                onPress={() => setShowModal(true)}
-            >
-                <Text style={[
-                    styles.selectorText,
-                    !value && styles.placeholderText
-                ]}>
-                    {value || placeholder}
-                </Text>
-                <SafeIcon name="chevron-down" size={20} color={modernColors.textSecondary} />
-            </TouchableOpacity>
+            <View style={styles.selectorRow}>
+                <TouchableOpacity
+                    style={[
+                        styles.selector,
+                        !value && styles.selectorPlaceholder,
+                        { flex: 1 }
+                    ]}
+                    onPress={() => setShowModal(true)}
+                >
+                    <Text style={[
+                        styles.selectorText,
+                        !value && styles.placeholderText
+                    ]}>
+                        {value || placeholder}
+                    </Text>
+                    <SafeIcon name="chevron-down" size={20} color={modernColors.textSecondary} />
+                </TouchableOpacity>
+
+                {/* ✅ NOUVEAU: Bouton visible pour ajouter une nouvelle modalité */}
+                <TouchableOpacity
+                    style={styles.addModalityButton}
+                    onPress={() => {
+                        Alert.prompt(
+                            `➕ Ajouter un nouveau ${label.toLowerCase()}`,
+                            `Entrez le ${label.toLowerCase()} que vous souhaitez ajouter :`,
+                            [
+                                {
+                                    text: 'Annuler',
+                                    style: 'cancel'
+                                },
+                                {
+                                    text: 'Ajouter',
+                                    onPress: async (text) => {
+                                        if (text && text.trim()) {
+                                            const newModality = text.trim();
+
+                                            // Vérifier si la modalité existe déjà
+                                            if (allOptions.some(opt => opt.toLowerCase() === newModality.toLowerCase() && !opt.includes('🆕'))) {
+                                                Alert.alert(
+                                                    '⚠️ Modalité existante',
+                                                    `"${newModality}" existe déjà dans la liste.`,
+                                                    [{ text: 'OK' }]
+                                                );
+                                                return;
+                                            }
+
+                                            // Ajouter la nouvelle modalité au serveur
+                                            const success = await modalityService.addCustomModality(
+                                                productType,
+                                                fieldName,
+                                                newModality
+                                            );
+
+                                            if (success) {
+                                                // Recharger les options pour inclure la nouvelle modalité
+                                                await loadOptions();
+
+                                                // Sélectionner la nouvelle modalité
+                                                onSelect(newModality);
+                                                setShowModal(false);
+
+                                                Alert.alert(
+                                                    '✅ Modalité ajoutée',
+                                                    `"${newModality}" a été ajouté et sera visible pour tous les utilisateurs !`,
+                                                    [{ text: 'OK' }]
+                                                );
+                                            } else {
+                                                Alert.alert(
+                                                    '❌ Erreur',
+                                                    'Impossible d\'ajouter la modalité. Veuillez réessayer.',
+                                                    [{ text: 'OK' }]
+                                                );
+                                            }
+                                        }
+                                    }
+                                }
+                            ],
+                            'plain-text'
+                        );
+                    }}
+                >
+                    <SafeIcon name="plus-circle" size={20} color={modernColors.primary} />
+                </TouchableOpacity>
+            </View>
 
             {value && (
                 <TouchableOpacity
@@ -297,6 +378,11 @@ const styles = StyleSheet.create({
         color: modernColors.error,
         fontSize: 16,
     },
+    selectorRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
     selector: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -307,6 +393,16 @@ const styles = StyleSheet.create({
         borderRadius: 12,
         paddingHorizontal: 16,
         paddingVertical: 14,
+    },
+    addModalityButton: {
+        width: 48,
+        height: 48,
+        borderRadius: 12,
+        backgroundColor: '#EEF2FF',
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 2,
+        borderColor: modernColors.primary,
     },
     selectorPlaceholder: {
         borderColor: modernColors.border,
@@ -395,7 +491,7 @@ const styles = StyleSheet.create({
         borderBottomColor: modernColors.border,
     },
     optionItemSelected: {
-        backgroundColor: modernColors.primaryLight,
+        backgroundColor: '#EEF2FF',
     },
     optionContent: {
         flexDirection: 'row',

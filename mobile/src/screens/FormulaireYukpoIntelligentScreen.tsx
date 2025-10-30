@@ -15,7 +15,6 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
-import NetworkDiagnostics from '../components/NetworkDiagnostics';
 import { apiGet, apiPost } from '../services/api';
 import { handleBusCreated } from '../utils/busReturnNotifier';
 // Code corrigé (remplace @ts-ignore)
@@ -30,6 +29,7 @@ import ProductManagerMobile from '../components/ProductManagerMobile';
 // ✅ AJOUT: Composants pour modalités personnalisées et sélection multiple
 import ProductDuplicationModal from '../components/ProductDuplicationModal';
 import ProductFieldSelector from '../components/ProductFieldSelector';
+import { getSuggestedProductCategories } from '../utils/suggestProductCategories';
 // Code corrigé (remplace @ts-ignore)
 import SafeIcon from '../components/SafeIcon';
 import { useAuth } from '../contexts/AuthContext';
@@ -82,7 +82,6 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
   const [valeursFormulaire, setValeursFormulaire] = useState<Record<string, any>>({});
   const [showGPSModal, setShowGPSModal] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: number } | null>(null);
-  const [showNetworkDiagnostics, setShowNetworkDiagnostics] = useState(false);
   const [showDuplicationModal, setShowDuplicationModal] = useState(false);
   const [productToDuplicate, setProductToDuplicate] = useState<any | null>(null);
   const [mediaFiles, setMediaFiles] = useState<MediaFiles>({
@@ -99,6 +98,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
   const [successData, setSuccessData] = useState<ServiceData | null>(null);
   const [products, setProducts] = useState<any[]>([]);
   const [paymentMethod, setPaymentMethod] = useState<any>(null); // ✅ NOUVEAU: Mode de paiement
+  const [suggestedProductCategories, setSuggestedProductCategories] = useState<any[]>([]); // ✅ NOUVEAU: Catégories suggérées (matching local)
 
   // États pour la navigation par blocs
   const [currentBlock, setCurrentBlock] = useState(0);
@@ -586,6 +586,23 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         }
       }
 
+      // ✅ NOUVEAU: Charger les catégories de produits suggérées (matching local basé sur keywords)
+      if (initialValues.titre_service || initialValues.description || initialValues.category) {
+        try {
+          const suggestions = getSuggestedProductCategories(
+            initialValues.titre_service,
+            initialValues.description,
+            initialValues.category
+          );
+          if (suggestions.length > 0) {
+            console.log('[FormulaireYukpoIntelligentScreen] ✅ Catégories suggérées (matching local):', suggestions.length);
+            setSuggestedProductCategories(suggestions); // Déjà limité à 3 par le matching local
+          }
+        } catch (error) {
+          console.warn('[FormulaireYukpoIntelligentScreen] Erreur chargement suggestions catégories:', error);
+        }
+      }
+
       console.log('[FormulaireYukpoIntelligentScreen] Valeurs initiales automatiques:', initialValues);
 
       setComposants(components);
@@ -731,6 +748,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
             titreService={valeursFormulaire.titre_service}
             descriptionService={valeursFormulaire.description}
             categoryService={valeursFormulaire.category}
+            suggestedCategories={suggestedProductCategories}
             onDuplicate={(product) => {
               setProductToDuplicate(product);
               setShowDuplicationModal(true);
@@ -1111,7 +1129,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         // ✅ NOUVEAU: Vérifier les demandes de retour pour les nouveaux tickets de voyage ajoutés
         if (products && products.length > 0) {
           const ticketsVoyage = products.filter(p => p.type === 'ticket_voyage');
-          
+
           for (const ticket of ticketsVoyage) {
             if (ticket.depart && ticket.destination && ticket.dateDepart && ticket.heureDepart) {
               try {
@@ -1389,12 +1407,63 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                   throw new Error('ID utilisateur invalide');
                 }
 
-                // ✅ VÉRIFICATION : S'assurer que les champs obligatoires sont présents
-                const champsObligatoires = ['titre_service', 'description', 'category'];
-                const champManquants = champsObligatoires.filter(champ => !finalServiceData[champ]);
+                // ✅ VÉRIFICATION : S'assurer que les champs obligatoires sont présents ET au bon format
+                const champsObligatoires = ['titre_service', 'category', 'is_tarissable'];
+                const champsObligatoiresOptionnels = ['description']; // Optionnel mais recommandé
+
+                // Fonction helper pour normaliser un champ en format objet structuré
+                const normaliserChamp = (champName: string, valeurParDefaut?: any) => {
+                  if (!finalServiceData[champName]) {
+                    if (valeurParDefaut !== undefined) {
+                      finalServiceData[champName] = {
+                        type_donnee: typeof valeurParDefaut === 'boolean' ? 'boolean' : typeof valeurParDefaut === 'number' ? 'number' : 'string',
+                        valeur: valeurParDefaut,
+                        origine_champs: 'formulaire'
+                      };
+                      console.log(`[FormulaireYukpoIntelligentScreen] ✅ ${champName} ajouté avec valeur par défaut:`, valeurParDefaut);
+                      return true;
+                    }
+                    return false;
+                  }
+
+                  // Vérifier que le champ est au format objet attendu
+                  const champ = finalServiceData[champName];
+                  if (typeof champ !== 'object' || !champ.valeur || !champ.type_donnee || !champ.origine_champs) {
+                    // Normaliser le champ s'il n'est pas au bon format
+                    const valeur = typeof champ === 'object' && champ.valeur !== undefined ? champ.valeur : champ;
+                    finalServiceData[champName] = {
+                      type_donnee: typeof valeur === 'boolean' ? 'boolean' : typeof valeur === 'number' ? 'number' : 'string',
+                      valeur: valeur,
+                      origine_champs: typeof champ === 'object' && champ.origine_champs ? champ.origine_champs : 'formulaire'
+                    };
+                    console.log(`[FormulaireYukpoIntelligentScreen] ✅ ${champName} normalisé au format structuré`);
+                  }
+                  return true;
+                };
+
+                // Normaliser tous les champs obligatoires
+                let champManquants: string[] = [];
+                for (const champ of champsObligatoires) {
+                  if (champ === 'is_tarissable') {
+                    // is_tarissable par défaut à false si absent
+                    if (!normaliserChamp(champ, false)) {
+                      champManquants.push(champ);
+                    }
+                  } else {
+                    if (!normaliserChamp(champ)) {
+                      champManquants.push(champ);
+                    }
+                  }
+                }
+
+                // Normaliser les champs optionnels aussi
+                for (const champ of champsObligatoiresOptionnels) {
+                  normaliserChamp(champ);
+                }
 
                 if (champManquants.length > 0) {
                   console.error('[FormulaireYukpoIntelligentScreen] ❌ Champs obligatoires manquants:', champManquants);
+                  console.error('[FormulaireYukpoIntelligentScreen] ❌ Données finales:', JSON.stringify(finalServiceData, null, 2));
                   Alert.alert(
                     'Erreur de validation',
                     `Les champs suivants sont manquants : ${champManquants.join(', ')}\n\nVeuillez réessayer.`,
@@ -1404,6 +1473,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                   setLoading(false);
                   return;
                 }
+
+                console.log('[FormulaireYukpoIntelligentScreen] ✅ Tous les champs obligatoires sont présents et normalisés');
 
                 // ✅ CORRECTION CRITIQUE : Ajouter tokens_ia_externe DANS data (pas à la racine)
                 // Le backend cherche tokens_ia_externe dans le champ data après déballage
@@ -1515,7 +1586,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                 // ✅ NOUVEAU: Vérifier les demandes de retour pour les tickets de voyage créés
                 if (products && products.length > 0) {
                   const ticketsVoyage = products.filter(p => p.type === 'ticket_voyage');
-                  
+
                   for (const ticket of ticketsVoyage) {
                     if (ticket.depart && ticket.destination && ticket.dateDepart && ticket.heureDepart) {
                       try {
@@ -1651,6 +1722,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       >
         <TouchableOpacity style={styles.backButton} onPress={handleGoBack}>
           <SafeIcon name="arrow-left" size={24} color="#FFFFFF" />
+          <Text style={styles.backButtonText}>Retour</Text>
         </TouchableOpacity>
         <View style={styles.headerCenter}>
           <Text style={styles.headerTitle}>
@@ -1663,14 +1735,6 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
               mode === 'edit' ? 'Modification en cours' :
                 'Propulsé par l\'IA Yukpo'}
           </Text>
-        </View>
-        <View style={styles.headerRight}>
-          <TouchableOpacity
-            style={styles.diagnosticButton}
-            onPress={() => setShowNetworkDiagnostics(true)}
-          >
-            <SafeIcon name="wifi" size={20} color="#FFFFFF" />
-          </TouchableOpacity>
         </View>
       </LinearGradient>
 
@@ -1980,14 +2044,6 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         allowZoneSelection={true}
       />
 
-      {/* Modal de diagnostic réseau */}
-      {showNetworkDiagnostics && (
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContainer}>
-            <NetworkDiagnostics onClose={() => setShowNetworkDiagnostics(false)} />
-          </View>
-        </View>
-      )}
 
       {/* ✅ Modal de duplication de produit */}
       <ProductDuplicationModal
@@ -2026,12 +2082,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  backButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+    marginLeft: 6,
   },
   headerCenter: {
     flex: 1,
@@ -2540,31 +2604,6 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   // Styles pour le bouton de diagnostic
-  diagnosticButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  // Styles pour le modal de diagnostic
-  modalOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 1000,
-  },
-  modalContainer: {
-    width: '90%',
-    maxWidth: 400,
-    maxHeight: '80%',
-  },
 });
 
 export default FormulaireYukpoIntelligentScreen;

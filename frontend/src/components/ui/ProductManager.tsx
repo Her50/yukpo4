@@ -10,7 +10,11 @@ import { Check, Download, Edit2, FileText, MapPin, Plus, Trash2, Upload, Video, 
 import React, { useRef, useState } from 'react';
 
 // ✅ Fonction de normalisation sans accents pour la recherche
-const normalizeText = (text: string): string => {
+const normalizeText = (text: string | undefined | null): string => {
+    // ✅ CORRECTION: Gérer les valeurs undefined/null pour éviter les crashes
+    if (!text || typeof text !== 'string') {
+        return '';
+    }
     return text
         .toLowerCase()
         .normalize('NFD') // Décompose les caractères accentués
@@ -669,9 +673,12 @@ const ProductManager: React.FC<ProductManagerProps> = ({
                                                 if (searchQuery.length === 0) return true;
                                                 // ✅ Recherche sans sensibilité aux accents
                                                 const normalizedQuery = normalizeText(searchQuery);
-                                                return normalizeText(type.label).includes(normalizedQuery) ||
-                                                    normalizeText(type.description).includes(normalizedQuery) ||
-                                                    ((type as any).keywords && (type as any).keywords.some((kw: string) => normalizeText(kw).includes(normalizedQuery)));
+                                                // ✅ CORRECTION: Vérifier que les propriétés existent avant de normaliser
+                                                const labelMatch = type.label && normalizeText(type.label).includes(normalizedQuery);
+                                                const descMatch = type.description && normalizeText(type.description).includes(normalizedQuery);
+                                                const keywordsMatch = (type as any).keywords && Array.isArray((type as any).keywords) &&
+                                                    (type as any).keywords.some((kw: string) => kw && normalizeText(kw).includes(normalizedQuery));
+                                                return labelMatch || descMatch || keywordsMatch;
                                             });
 
                                             // ✅ Si aucune catégorie ne correspond et qu'il y a une recherche, proposer "Prestation de service" par défaut

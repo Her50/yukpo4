@@ -1,6 +1,6 @@
 import * as ImagePicker from 'expo-image-picker';
 import React from 'react';
-import { Alert, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, FlatList, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { modernColors } from '../theme/modernTheme';
 import { NativeInput } from './NativeDesign';
 import SafeIcon from './SafeIcon';
@@ -21,12 +21,14 @@ export interface ChaussureVariant {
 interface ChaussureVariantManagerProps {
     variants: ChaussureVariant[];
     onChange: (variants: ChaussureVariant[]) => void;
+    globalDevise?: string;      // ✅ NOUVEAU: Devise globale qui s'applique à toutes les variantes
     readonly?: boolean;
 }
 
 const ChaussureVariantManager: React.FC<ChaussureVariantManagerProps> = ({
     variants,
     onChange,
+    globalDevise = 'XAF',  // ✅ NOUVEAU: Devise globale par défaut
     readonly = false
 }) => {
     const handleAddVariant = () => {
@@ -35,7 +37,7 @@ const ChaussureVariantManager: React.FC<ChaussureVariantManagerProps> = ({
             pointure: '',
             couleur: '',
             prix: '',
-            devise: 'XAF',
+            devise: globalDevise,  // ✅ Utiliser la devise globale
             stockDisponible: 0,
             images: []
         };
@@ -132,131 +134,139 @@ const ChaussureVariantManager: React.FC<ChaussureVariantManagerProps> = ({
                     </Text>
                 </View>
             ) : (
-                <ScrollView style={styles.variantsList} showsVerticalScrollIndicator={false}>
-                    {variants.map((variant, index) => (
-                        <View key={variant.id} style={styles.variantCard}>
-                            {/* Header */}
-                            <View style={styles.variantHeader}>
-                                <View style={styles.variantNumber}>
-                                    <Text style={styles.variantNumberText}>{index + 1}</Text>
+                <View style={styles.variantsContainer}>
+                    <FlatList
+                        data={variants}
+                        keyExtractor={(item) => item.id}
+                        renderItem={({ item: variant, index }) => (
+                            <View key={variant.id} style={styles.variantCard}>
+                                {/* Header */}
+                                <View style={styles.variantHeader}>
+                                    <View style={styles.variantNumber}>
+                                        <Text style={styles.variantNumberText}>{index + 1}</Text>
+                                    </View>
+                                    <Text style={styles.variantTitle}>
+                                        {variant.pointure && variant.couleur
+                                            ? `Pointure ${variant.pointure} - ${variant.couleur}`
+                                            : `Variante ${index + 1}`}
+                                    </Text>
+                                    {!readonly && (
+                                        <View style={styles.variantActions}>
+                                            <TouchableOpacity
+                                                style={styles.actionButtonSmall}
+                                                onPress={() => handleImagePicker(variant.id)}
+                                            >
+                                                <SafeIcon name="camera" size={14} color={modernColors.primary} />
+                                            </TouchableOpacity>
+                                            <TouchableOpacity
+                                                style={styles.actionButtonSmall}
+                                                onPress={() => handleDuplicateVariant(variant.id)}
+                                            >
+                                                <SafeIcon name="copy" size={14} color={modernColors.success} />
+                                            </TouchableOpacity>
+                                            <TouchableOpacity
+                                                style={styles.actionButtonSmall}
+                                                onPress={() => handleDeleteVariant(variant.id)}
+                                            >
+                                                <SafeIcon name="trash-2" size={14} color={modernColors.error} />
+                                            </TouchableOpacity>
+                                        </View>
+                                    )}
                                 </View>
-                                <Text style={styles.variantTitle}>
-                                    {variant.pointure && variant.couleur
-                                        ? `Pointure ${variant.pointure} - ${variant.couleur}`
-                                        : `Variante ${index + 1}`}
-                                </Text>
-                                {!readonly && (
-                                    <View style={styles.variantActions}>
-                                        <TouchableOpacity
-                                            style={styles.actionButtonSmall}
-                                            onPress={() => handleImagePicker(variant.id)}
-                                        >
-                                            <SafeIcon name="camera" size={14} color={modernColors.primary} />
-                                        </TouchableOpacity>
-                                        <TouchableOpacity
-                                            style={styles.actionButtonSmall}
-                                            onPress={() => handleDuplicateVariant(variant.id)}
-                                        >
-                                            <SafeIcon name="copy" size={14} color={modernColors.success} />
-                                        </TouchableOpacity>
-                                        <TouchableOpacity
-                                            style={styles.actionButtonSmall}
-                                            onPress={() => handleDeleteVariant(variant.id)}
-                                        >
-                                            <SafeIcon name="trash-2" size={14} color={modernColors.error} />
-                                        </TouchableOpacity>
+
+                                {/* Images de la variante */}
+                                {variant.images && variant.images.length > 0 && (
+                                    <View style={styles.imagesContainer}>
+                                        {variant.images.map((img, imgIdx) => (
+                                            <View key={imgIdx} style={styles.imageWrapper}>
+                                                <Image source={{ uri: img }} style={styles.variantImage} />
+                                                {!readonly && (
+                                                    <TouchableOpacity
+                                                        style={styles.removeImageButton}
+                                                        onPress={() => handleRemoveImage(variant.id, imgIdx)}
+                                                    >
+                                                        <SafeIcon name="x" size={12} color="#FFFFFF" />
+                                                    </TouchableOpacity>
+                                                )}
+                                            </View>
+                                        ))}
                                     </View>
                                 )}
-                            </View>
 
-                            {/* Images de la variante */}
-                            {variant.images && variant.images.length > 0 && (
-                                <View style={styles.imagesContainer}>
-                                    {variant.images.map((img, imgIdx) => (
-                                        <View key={imgIdx} style={styles.imageWrapper}>
-                                            <Image source={{ uri: img }} style={styles.variantImage} />
-                                            {!readonly && (
-                                                <TouchableOpacity
-                                                    style={styles.removeImageButton}
-                                                    onPress={() => handleRemoveImage(variant.id, imgIdx)}
-                                                >
-                                                    <SafeIcon name="x" size={12} color="#FFFFFF" />
-                                                </TouchableOpacity>
-                                            )}
+                                {/* Champs */}
+                                <View style={styles.variantFields}>
+                                    {/* Pointure + Couleur */}
+                                    <View style={styles.fieldRow}>
+                                        <View style={[{ flex: 1 }]}>
+                                            <SelectModalitySelector
+                                                label="Pointure"
+                                                value={variant.pointure}
+                                                productType="chaussure"
+                                                fieldName="pointures"
+                                                onSelect={(value) => handleUpdateVariant(variant.id, 'pointure', value)}
+                                                required
+                                                placeholder="Ex: 38"
+                                            />
                                         </View>
-                                    ))}
-                                </View>
-                            )}
-
-                            {/* Champs */}
-                            <View style={styles.variantFields}>
-                                {/* Pointure + Couleur */}
-                                <View style={styles.fieldRow}>
-                                    <View style={[{ flex: 1 }]}>
-                                        <SelectModalitySelector
-                                            label="Pointure"
-                                            value={variant.pointure}
-                                            productType="chaussure"
-                                            fieldName="pointures"
-                                            onSelect={(value) => handleUpdateVariant(variant.id, 'pointure', value)}
-                                            required
-                                            placeholder="Ex: 38"
-                                        />
+                                        <View style={[{ flex: 1 }]}>
+                                            <SelectModalitySelector
+                                                label="Couleur"
+                                                value={variant.couleur}
+                                                productType="chaussure"
+                                                fieldName="couleurs"
+                                                onSelect={(value) => handleUpdateVariant(variant.id, 'couleur', value)}
+                                                required
+                                                placeholder="Ex: Noir"
+                                            />
+                                        </View>
                                     </View>
-                                    <View style={[{ flex: 1 }]}>
-                                        <SelectModalitySelector
-                                            label="Couleur"
-                                            value={variant.couleur}
-                                            productType="chaussure"
-                                            fieldName="couleurs"
-                                            onSelect={(value) => handleUpdateVariant(variant.id, 'couleur', value)}
-                                            required
-                                            placeholder="Ex: Noir"
-                                        />
-                                    </View>
-                                </View>
 
-                                {/* Prix + Stock */}
-                                <View style={styles.fieldRow}>
-                                    <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                        <Text style={styles.fieldLabel}>Prix <Text style={styles.required}>*</Text></Text>
+                                    {/* Prix + Stock */}
+                                    <View style={styles.fieldRow}>
+                                        <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                            <Text style={styles.fieldLabel}>Prix <Text style={styles.required}>*</Text></Text>
+                                            <NativeInput
+                                                placeholder="Ex: 25000"
+                                                value={variant.prix}
+                                                onChangeText={(text) => handleUpdateVariant(variant.id, 'prix', text)}
+                                                style={styles.fieldInput}
+                                                keyboardType="numeric"
+                                                editable={!readonly}
+                                            />
+                                        </View>
+                                        <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                            <Text style={styles.fieldLabel}>Stock</Text>
+                                            <NativeInput
+                                                placeholder="Ex: 10"
+                                                value={variant.stockDisponible?.toString() || ''}
+                                                onChangeText={(text) => handleUpdateVariant(variant.id, 'stockDisponible', parseInt(text) || 0)}
+                                                style={styles.fieldInput}
+                                                keyboardType="numeric"
+                                                editable={!readonly}
+                                            />
+                                        </View>
+                                    </View>
+
+                                    {/* Référence optionnelle */}
+                                    <View style={[styles.fieldContainer, { marginBottom: 8 }]}>
+                                        <Text style={styles.fieldLabel}>Référence (opt.)</Text>
                                         <NativeInput
-                                            placeholder="Ex: 25000"
-                                            value={variant.prix}
-                                            onChangeText={(text) => handleUpdateVariant(variant.id, 'prix', text)}
+                                            placeholder="Ex: NIKE-AIR-38-BLK"
+                                            value={variant.reference || ''}
+                                            onChangeText={(text) => handleUpdateVariant(variant.id, 'reference', text)}
                                             style={styles.fieldInput}
-                                            keyboardType="numeric"
                                             editable={!readonly}
                                         />
                                     </View>
-                                    <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                        <Text style={styles.fieldLabel}>Stock</Text>
-                                        <NativeInput
-                                            placeholder="Ex: 10"
-                                            value={variant.stockDisponible?.toString() || ''}
-                                            onChangeText={(text) => handleUpdateVariant(variant.id, 'stockDisponible', parseInt(text) || 0)}
-                                            style={styles.fieldInput}
-                                            keyboardType="numeric"
-                                            editable={!readonly}
-                                        />
-                                    </View>
-                                </View>
-
-                                {/* Référence optionnelle */}
-                                <View style={[styles.fieldContainer, { marginBottom: 8 }]}>
-                                    <Text style={styles.fieldLabel}>Référence (opt.)</Text>
-                                    <NativeInput
-                                        placeholder="Ex: NIKE-AIR-38-BLK"
-                                        value={variant.reference || ''}
-                                        onChangeText={(text) => handleUpdateVariant(variant.id, 'reference', text)}
-                                        style={styles.fieldInput}
-                                        editable={!readonly}
-                                    />
                                 </View>
                             </View>
-                        </View>
-                    ))}
-                </ScrollView>
+                        )}
+                        style={styles.variantsList}
+                        showsVerticalScrollIndicator={true}
+                        nestedScrollEnabled={true}
+                        contentContainerStyle={{ paddingBottom: 20 }}
+                    />
+                </View>
             )}
 
             {/* Résumé */}
@@ -266,7 +276,7 @@ const ChaussureVariantManager: React.FC<ChaussureVariantManagerProps> = ({
                     <Text style={styles.summaryText}>
                         {variants.length} variante{variants.length > 1 ? 's' : ''} •
                         Prix de {Math.min(...variants.filter(v => v.prix).map(v => parseFloat(v.prix) || Infinity)).toLocaleString()}
-                        à {Math.max(...variants.map(v => parseFloat(v.prix) || 0)).toLocaleString()} FCFA
+                        à {Math.max(...variants.map(v => parseFloat(v.prix) || 0)).toLocaleString()} {globalDevise}
                     </Text>
                 </View>
             )}
@@ -330,8 +340,12 @@ const styles = StyleSheet.create({
         marginTop: 4,
         textAlign: 'center',
     },
+    variantsContainer: {
+        maxHeight: 600,  // ✅ AMÉLIORATION: Augmenté pour voir plus de variabilités
+        marginBottom: 8,
+    },
     variantsList: {
-        maxHeight: 500,
+        maxHeight: 600,
     },
     variantCard: {
         backgroundColor: modernColors.surface,

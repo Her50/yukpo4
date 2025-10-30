@@ -1,6 +1,6 @@
 import * as ImagePicker from 'expo-image-picker';
 import React, { useState } from 'react';
-import { Alert, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, FlatList, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { modernColors } from '../theme/modernTheme';
 import MultiSelectModalitySelector from './MultiSelectModalitySelector';
 import { NativeInput } from './NativeDesign';
@@ -23,12 +23,14 @@ export interface HotelVariant {
 interface HotelVariantManagerProps {
     variants: HotelVariant[];
     onChange: (variants: HotelVariant[]) => void;
+    globalDevise?: string;      // ✅ NOUVEAU: Devise globale qui s'applique à toutes les variantes
     readonly?: boolean;
 }
 
 const HotelVariantManager: React.FC<HotelVariantManagerProps> = ({
     variants,
     onChange,
+    globalDevise = 'XAF',  // ✅ NOUVEAU: Devise globale par défaut
     readonly = false
 }) => {
     const [editingVariantId, setEditingVariantId] = useState<string | null>(null);
@@ -40,7 +42,7 @@ const HotelVariantManager: React.FC<HotelVariantManagerProps> = ({
             typeChambre: '',
             capacite: '',
             prix: '',
-            devise: 'XAF',
+            devise: globalDevise,  // ✅ Utiliser la devise globale
             equipements: [],
             nbChambresDisponibles: 0
         };
@@ -57,7 +59,7 @@ const HotelVariantManager: React.FC<HotelVariantManagerProps> = ({
                 typeChambre: '',
                 capacite: '',
                 prix: '',
-                devise: 'XAF',
+                devise: globalDevise,  // ✅ Utiliser la devise globale
                 equipements: [],
                 nbChambresDisponibles: 0
             });
@@ -134,8 +136,8 @@ const HotelVariantManager: React.FC<HotelVariantManagerProps> = ({
         const max = Math.max(...prices);
 
         return min === max
-            ? `${min.toLocaleString()} XAF/nuit`
-            : `${min.toLocaleString()} - ${max.toLocaleString()} XAF/nuit`;
+            ? `${min.toLocaleString()} ${globalDevise}/nuit`
+            : `${min.toLocaleString()} - ${max.toLocaleString()} ${globalDevise}/nuit`;
     };
 
     return (
@@ -183,133 +185,141 @@ const HotelVariantManager: React.FC<HotelVariantManagerProps> = ({
             </View>
 
             {/* Liste des variantes */}
-            <ScrollView style={styles.variantsList} nestedScrollEnabled>
-                {variants.map((variant, index) => (
-                    <View key={variant.id} style={styles.variantCard}>
-                        {/* En-tête de la variante */}
-                        <View style={styles.variantHeader}>
-                            <Text style={styles.variantNumber}>Chambre #{index + 1}</Text>
-                            {!readonly && (
-                                <View style={styles.variantActions}>
-                                    <TouchableOpacity
-                                        onPress={() => handlePickImage(variant.id)}
-                                        style={styles.actionButton}
-                                    >
-                                        <SafeIcon name="camera" size={16} color={modernColors.primary} />
-                                    </TouchableOpacity>
-                                    <TouchableOpacity
-                                        onPress={() => handleDuplicateVariant(variant.id)}
-                                        style={styles.actionButton}
-                                    >
-                                        <SafeIcon name="copy" size={16} color={modernColors.primary} />
-                                    </TouchableOpacity>
-                                    <TouchableOpacity
-                                        onPress={() => handleDeleteVariant(variant.id)}
-                                        style={styles.actionButton}
-                                    >
-                                        <SafeIcon name="trash-2" size={16} color="#DC2626" />
-                                    </TouchableOpacity>
+            <View style={styles.variantsContainer}>
+                <FlatList
+                    data={variants}
+                    keyExtractor={(item) => item.id}
+                    renderItem={({ item: variant, index }) => (
+                        <View key={variant.id} style={styles.variantCard}>
+                            {/* En-tête de la variante */}
+                            <View style={styles.variantHeader}>
+                                <Text style={styles.variantNumber}>Chambre #{index + 1}</Text>
+                                {!readonly && (
+                                    <View style={styles.variantActions}>
+                                        <TouchableOpacity
+                                            onPress={() => handlePickImage(variant.id)}
+                                            style={styles.actionButton}
+                                        >
+                                            <SafeIcon name="camera" size={16} color={modernColors.primary} />
+                                        </TouchableOpacity>
+                                        <TouchableOpacity
+                                            onPress={() => handleDuplicateVariant(variant.id)}
+                                            style={styles.actionButton}
+                                        >
+                                            <SafeIcon name="copy" size={16} color={modernColors.primary} />
+                                        </TouchableOpacity>
+                                        <TouchableOpacity
+                                            onPress={() => handleDeleteVariant(variant.id)}
+                                            style={styles.actionButton}
+                                        >
+                                            <SafeIcon name="trash-2" size={16} color="#DC2626" />
+                                        </TouchableOpacity>
+                                    </View>
+                                )}
+                            </View>
+
+                            {/* Image de la chambre */}
+                            {variant.image && (
+                                <View style={styles.imageContainer}>
+                                    <Image source={{ uri: variant.image }} style={styles.variantImage} />
+                                </View>
+                            )}
+
+                            {/* Type de chambre */}
+                            <SelectModalitySelector
+                                label="Type de chambre"
+                                value={variant.typeChambre}
+                                productType="hotellerie"
+                                fieldName="chambres"
+                                onSelect={(value) => handleUpdateVariant(variant.id, 'typeChambre', value)}
+                                required
+                                placeholder="Ex: Chambre Double, Suite..."
+                            />
+
+                            {/* Capacité et Superficie */}
+                            <View style={styles.row}>
+                                <View style={[styles.field, { flex: 1 }]}>
+                                    <SelectModalitySelector
+                                        label="Capacité"
+                                        value={variant.capacite}
+                                        productType="hotellerie"
+                                        fieldName="capacites"
+                                        onSelect={(value) => handleUpdateVariant(variant.id, 'capacite', value)}
+                                        required
+                                        placeholder="Ex: 2 personnes"
+                                    />
+                                </View>
+                                <View style={[styles.field, { flex: 1 }]}>
+                                    <Text style={styles.label}>Superficie (m²)</Text>
+                                    <NativeInput
+                                        placeholder="Ex: 25"
+                                        value={variant.superficie || ''}
+                                        onChangeText={(text) => handleUpdateVariant(variant.id, 'superficie', text)}
+                                        keyboardType="numeric"
+                                        style={styles.input}
+                                    />
+                                </View>
+                            </View>
+
+                            {/* Prix par nuit */}
+                            <View style={styles.row}>
+                                <View style={[styles.field, { flex: 2 }]}>
+                                    <Text style={styles.label}>Prix/nuit <Text style={styles.required}>*</Text></Text>
+                                    <NativeInput
+                                        placeholder="Ex: 45000"
+                                        value={variant.prix}
+                                        onChangeText={(text) => handleUpdateVariant(variant.id, 'prix', text)}
+                                        keyboardType="numeric"
+                                        style={styles.input}
+                                    />
+                                </View>
+                                <View style={[styles.field, { flex: 1 }]}>
+                                    <Text style={styles.label}>Disponibles</Text>
+                                    <NativeInput
+                                        placeholder="Ex: 5"
+                                        value={variant.nbChambresDisponibles?.toString() || ''}
+                                        onChangeText={(text) => handleUpdateVariant(variant.id, 'nbChambresDisponibles', parseInt(text) || 0)}
+                                        keyboardType="numeric"
+                                        style={styles.input}
+                                    />
+                                </View>
+                            </View>
+
+                            {/* Équipements spécifiques */}
+                            <MultiSelectModalitySelector
+                                label="Équipements de cette chambre"
+                                values={variant.equipements || []}
+                                productType="hotellerie"
+                                fieldName="equipements"
+                                onSelect={(values) => handleUpdateVariant(variant.id, 'equipements', values)}
+                                placeholder="Ex: Balcon, Baignoire, Vue mer..."
+                                maxSelections={15}
+                            />
+
+                            {/* Validation */}
+                            {!variant.typeChambre || !variant.capacite || !variant.prix ? (
+                                <View style={styles.warningBox}>
+                                    <SafeIcon name="alert-circle" size={14} color="#DC2626" />
+                                    <Text style={styles.warningText}>
+                                        ⚠️ Complétez les champs obligatoires
+                                    </Text>
+                                </View>
+                            ) : (
+                                <View style={styles.validBox}>
+                                    <SafeIcon name="check-circle" size={14} color="#10B981" />
+                                    <Text style={styles.validText}>
+                                        ✓ {variant.typeChambre} - {variant.capacite} - {variant.prix} XAF/nuit
+                                    </Text>
                                 </View>
                             )}
                         </View>
-
-                        {/* Image de la chambre */}
-                        {variant.image && (
-                            <View style={styles.imageContainer}>
-                                <Image source={{ uri: variant.image }} style={styles.variantImage} />
-                            </View>
-                        )}
-
-                        {/* Type de chambre */}
-                        <SelectModalitySelector
-                            label="Type de chambre"
-                            value={variant.typeChambre}
-                            productType="hotellerie"
-                            fieldName="chambres"
-                            onSelect={(value) => handleUpdateVariant(variant.id, 'typeChambre', value)}
-                            required
-                            placeholder="Ex: Chambre Double, Suite..."
-                        />
-
-                        {/* Capacité et Superficie */}
-                        <View style={styles.row}>
-                            <View style={[styles.field, { flex: 1 }]}>
-                                <SelectModalitySelector
-                                    label="Capacité"
-                                    value={variant.capacite}
-                                    productType="hotellerie"
-                                    fieldName="capacites"
-                                    onSelect={(value) => handleUpdateVariant(variant.id, 'capacite', value)}
-                                    required
-                                    placeholder="Ex: 2 personnes"
-                                />
-                            </View>
-                            <View style={[styles.field, { flex: 1 }]}>
-                                <Text style={styles.label}>Superficie (m²)</Text>
-                                <NativeInput
-                                    placeholder="Ex: 25"
-                                    value={variant.superficie || ''}
-                                    onChangeText={(text) => handleUpdateVariant(variant.id, 'superficie', text)}
-                                    keyboardType="numeric"
-                                    style={styles.input}
-                                />
-                            </View>
-                        </View>
-
-                        {/* Prix par nuit */}
-                        <View style={styles.row}>
-                            <View style={[styles.field, { flex: 2 }]}>
-                                <Text style={styles.label}>Prix/nuit <Text style={styles.required}>*</Text></Text>
-                                <NativeInput
-                                    placeholder="Ex: 45000"
-                                    value={variant.prix}
-                                    onChangeText={(text) => handleUpdateVariant(variant.id, 'prix', text)}
-                                    keyboardType="numeric"
-                                    style={styles.input}
-                                />
-                            </View>
-                            <View style={[styles.field, { flex: 1 }]}>
-                                <Text style={styles.label}>Disponibles</Text>
-                                <NativeInput
-                                    placeholder="Ex: 5"
-                                    value={variant.nbChambresDisponibles?.toString() || ''}
-                                    onChangeText={(text) => handleUpdateVariant(variant.id, 'nbChambresDisponibles', parseInt(text) || 0)}
-                                    keyboardType="numeric"
-                                    style={styles.input}
-                                />
-                            </View>
-                        </View>
-
-                        {/* Équipements spécifiques */}
-                        <MultiSelectModalitySelector
-                            label="Équipements de cette chambre"
-                            values={variant.equipements || []}
-                            productType="hotellerie"
-                            fieldName="equipements"
-                            onSelect={(values) => handleUpdateVariant(variant.id, 'equipements', values)}
-                            placeholder="Ex: Balcon, Baignoire, Vue mer..."
-                            maxSelections={15}
-                        />
-
-                        {/* Validation */}
-                        {!variant.typeChambre || !variant.capacite || !variant.prix ? (
-                            <View style={styles.warningBox}>
-                                <SafeIcon name="alert-circle" size={14} color="#DC2626" />
-                                <Text style={styles.warningText}>
-                                    ⚠️ Complétez les champs obligatoires
-                                </Text>
-                            </View>
-                        ) : (
-                            <View style={styles.validBox}>
-                                <SafeIcon name="check-circle" size={14} color="#10B981" />
-                                <Text style={styles.validText}>
-                                    ✓ {variant.typeChambre} - {variant.capacite} - {variant.prix} XAF/nuit
-                                </Text>
-                            </View>
-                        )}
-                    </View>
-                ))}
-            </ScrollView>
+                    )}
+                    style={styles.variantsList}
+                    showsVerticalScrollIndicator={true}
+                    nestedScrollEnabled={true}
+                    contentContainerStyle={{ paddingBottom: 20 }}
+                />
+            </View>
 
             {/* Message si pas de variantes */}
             {variants.length === 0 && (
@@ -413,8 +423,12 @@ const styles = StyleSheet.create({
         fontSize: 13,
         color: '#1E40AF',
     },
+    variantsContainer: {
+        maxHeight: 700,  // ✅ AMÉLIORATION: Augmenté encore plus pour hôtellerie (plus de champs)
+        marginBottom: 8,
+    },
     variantsList: {
-        maxHeight: 600,
+        maxHeight: 700,
     },
     variantCard: {
         backgroundColor: '#FFF',

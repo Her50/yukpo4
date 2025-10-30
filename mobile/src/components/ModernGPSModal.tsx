@@ -221,7 +221,9 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
 
                     <View style={styles.headerContent}>
                         <SafeIcon name="map-pin" size={18} color="#FFFFFF" />
-                        <Text style={styles.headerTitle}>{title}</Text>
+                        <Text style={styles.headerTitle} numberOfLines={1} ellipsizeMode="tail">
+                            {title}
+                        </Text>
                         <View style={styles.headerIcons}>
                             <SafeIcon name="smartphone" size={14} color="#FFFFFF" />
                             <SafeIcon name="map" size={14} color="#FFFFFF" />
@@ -236,46 +238,46 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
 
                 {/* ✅ REFONTE COMPLÈTE: Barre de contrôles ultra-intuitive et compacte */}
                 <View style={styles.topControlBar}>
-                    {/* Mode de sélection - ULTRA SIMPLE */}
-                    <View style={[styles.topControlSection, { flex: 0.8 }]}>
-                        <Text style={styles.topControlLabel}>MODE</Text>
-                        <View style={styles.topModeButtons}>
+                    {/* Mode de sélection - HORIZONTAL ET INTUITIF */}
+                    <View style={[styles.topControlSection, { flex: 1.2 }]}>
+                        <Text style={styles.topControlLabel}>MODE DE SÉLECTION</Text>
+                        <View style={styles.horizontalModeButtons}>
                             <TouchableOpacity
                                 style={[
-                                    styles.topModeButton,
-                                    zoneType === 'point' && styles.topModeButtonActive
+                                    styles.horizontalModeButton,
+                                    zoneType === 'point' && styles.horizontalModeButtonActive
                                 ]}
                                 onPress={() => setZoneType('point')}
                             >
                                 <SafeIcon
                                     name="map-pin"
-                                    size={22}
+                                    size={18}
                                     color={zoneType === 'point' ? '#FFFFFF' : modernColors.primary}
                                 />
                                 <Text style={[
-                                    styles.topModeButtonText,
-                                    zoneType === 'point' && styles.topModeButtonTextActive
+                                    styles.horizontalModeButtonText,
+                                    zoneType === 'point' && styles.horizontalModeButtonTextActive
                                 ]}>
-                                    Point
+                                    Point précis
                                 </Text>
                             </TouchableOpacity>
 
                             {allowZoneSelection && (
                                 <TouchableOpacity
                                     style={[
-                                        styles.topModeButton,
-                                        zoneType === 'polygon' && styles.topModeButtonActive
+                                        styles.horizontalModeButton,
+                                        zoneType === 'polygon' && styles.horizontalModeButtonActive
                                     ]}
                                     onPress={() => setZoneType('polygon')}
                                 >
                                     <SafeIcon
                                         name="square"
-                                        size={22}
+                                        size={18}
                                         color={zoneType === 'polygon' ? '#FFFFFF' : modernColors.primary}
                                     />
                                     <Text style={[
-                                        styles.topModeButtonText,
-                                        zoneType === 'polygon' && styles.topModeButtonTextActive
+                                        styles.horizontalModeButtonText,
+                                        zoneType === 'polygon' && styles.horizontalModeButtonTextActive
                                     ]}>
                                         Zone
                                     </Text>
@@ -452,6 +454,8 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         color: '#FFFFFF',
         marginLeft: 8,
+        flex: 1,
+        textAlign: 'center',
     },
     headerIcons: {
         flexDirection: 'row',
@@ -516,6 +520,46 @@ const styles = StyleSheet.create({
     topModeButtons: {
         flexDirection: 'row',
         gap: 8,
+    },
+    horizontalModeButtons: {
+        flexDirection: 'row',
+        gap: 8,
+    },
+    horizontalModeButton: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 8,
+        paddingHorizontal: 10,
+        borderRadius: 8,
+        borderWidth: 2,
+        borderColor: '#E5E7EB',
+        backgroundColor: '#FFFFFF',
+        gap: 6,
+        minHeight: 40,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 2,
+        elevation: 1,
+    },
+    horizontalModeButtonActive: {
+        backgroundColor: modernColors.primary,
+        borderColor: modernColors.primary,
+        shadowOpacity: 0.2,
+        elevation: 3,
+    },
+    horizontalModeButtonText: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: modernColors.primary,
+        letterSpacing: 0.1,
+        textAlign: 'center',
+    },
+    horizontalModeButtonTextActive: {
+        color: '#FFFFFF',
+        fontWeight: '700',
     },
     topModeButton: {
         flex: 1,

@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View, Image } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import React, { useState } from 'react';
+import { Alert, FlatList, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { modernColors } from '../theme/modernTheme';
 import { NativeInput } from './NativeDesign';
 import SafeIcon from './SafeIcon';
@@ -23,6 +23,7 @@ interface ProductVariantManagerProps {
     variants: ProductVariant[];
     onChange: (variants: ProductVariant[]) => void;
     productType: string;           // Pour récupérer les bonnes modalités
+    globalDevise?: string;      // ✅ NOUVEAU: Devise globale qui s'applique à toutes les variantes
     readonly?: boolean;
 }
 
@@ -30,6 +31,7 @@ const ProductVariantManager: React.FC<ProductVariantManagerProps> = ({
     variants,
     onChange,
     productType,
+    globalDevise = 'XAF',  // ✅ NOUVEAU: Devise globale par défaut
     readonly = false
 }) => {
     const [editingVariantId, setEditingVariantId] = useState<string | null>(null);
@@ -42,7 +44,7 @@ const ProductVariantManager: React.FC<ProductVariantManagerProps> = ({
             unite: '',
             conditionnement: '',
             prix: '',
-            devise: 'XAF',
+            devise: globalDevise,  // ✅ Utiliser la devise globale
             stockDisponible: 0
         };
         onChange([...variants, newVariant]);
@@ -59,7 +61,7 @@ const ProductVariantManager: React.FC<ProductVariantManagerProps> = ({
                 unite: '',
                 conditionnement: '',
                 prix: '',
-                devise: 'XAF',
+                devise: globalDevise,  // ✅ Utiliser la devise globale
                 stockDisponible: 0
             });
         }
@@ -180,139 +182,143 @@ const ProductVariantManager: React.FC<ProductVariantManagerProps> = ({
                     </Text>
                 </View>
             ) : (
-                <ScrollView style={styles.variantsList} showsVerticalScrollIndicator={false}>
-                    {variants.map((variant, index) => (
-                        <View key={variant.id} style={styles.variantCard}>
-                            {/* Header de la variante */}
-                            <View style={styles.variantHeader}>
-                                <View style={styles.variantNumber}>
-                                    <Text style={styles.variantNumberText}>{index + 1}</Text>
-                                </View>
-                                <Text style={styles.variantTitle}>
-                                    {variant.quantite && variant.unite
-                                        ? `${variant.quantite}${variant.unite}`
-                                        : `Variante ${index + 1}`}
-                                </Text>
-                                {!readonly && (
-                                    <View style={styles.variantActions}>
-                                        <TouchableOpacity
-                                            style={styles.actionButtonSmall}
-                                            onPress={() => handleImagePicker(variant.id)}
-                                        >
-                                            <SafeIcon name="camera" size={14} color={modernColors.primary} />
-                                        </TouchableOpacity>
-                                        <TouchableOpacity
-                                            style={styles.actionButtonSmall}
-                                            onPress={() => handleDuplicateVariant(variant.id)}
-                                        >
-                                            <SafeIcon name="copy" size={14} color={modernColors.success} />
-                                        </TouchableOpacity>
-                                        <TouchableOpacity
-                                            style={styles.actionButtonSmall}
-                                            onPress={() => handleDeleteVariant(variant.id)}
-                                        >
-                                            <SafeIcon name="trash-2" size={14} color={modernColors.error} />
-                                        </TouchableOpacity>
+                <View style={styles.variantsContainer}>
+                    <FlatList
+                        data={variants}
+                        keyExtractor={(item) => item.id}
+                        renderItem={({ item: variant, index }) => (
+                            <View key={variant.id} style={styles.variantCard}>
+                                {/* Header de la variante */}
+                                <View style={styles.variantHeader}>
+                                    <View style={styles.variantNumber}>
+                                        <Text style={styles.variantNumberText}>{index + 1}</Text>
                                     </View>
-                                )}
-                            </View>
-
-                            {/* ✅ NOUVEAU: Image de la variante */}
-                            {variant.image && (
-                                <View style={styles.variantImageContainer}>
-                                    <Image source={{ uri: variant.image }} style={styles.variantImage} />
+                                    <Text style={styles.variantTitle}>
+                                        {variant.quantite && variant.unite
+                                            ? `${variant.quantite}${variant.unite}`
+                                            : `Variante ${index + 1}`}
+                                    </Text>
                                     {!readonly && (
-                                        <TouchableOpacity
-                                            style={styles.removeImageButton}
-                                            onPress={() => handleRemoveImage(variant.id)}
-                                        >
-                                            <SafeIcon name="x" size={12} color="#FFFFFF" />
-                                        </TouchableOpacity>
+                                        <View style={styles.variantActions}>
+                                            <TouchableOpacity
+                                                style={styles.actionButtonSmall}
+                                                onPress={() => handleImagePicker(variant.id)}
+                                            >
+                                                <SafeIcon name="camera" size={14} color={modernColors.primary} />
+                                            </TouchableOpacity>
+                                            <TouchableOpacity
+                                                style={styles.actionButtonSmall}
+                                                onPress={() => handleDuplicateVariant(variant.id)}
+                                            >
+                                                <SafeIcon name="copy" size={14} color={modernColors.success} />
+                                            </TouchableOpacity>
+                                            <TouchableOpacity
+                                                style={styles.actionButtonSmall}
+                                                onPress={() => handleDeleteVariant(variant.id)}
+                                            >
+                                                <SafeIcon name="trash-2" size={14} color={modernColors.error} />
+                                            </TouchableOpacity>
+                                        </View>
                                     )}
                                 </View>
-                            )}
 
-                            {/* Champs de la variante */}
-                            <View style={styles.variantFields}>
-                                {/* Ligne 1: Quantité + Unité */}
-                                <View style={styles.fieldRow}>
-                                    <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                        <Text style={styles.fieldLabel}>Quantité <Text style={styles.required}>*</Text></Text>
-                                        <NativeInput
-                                            placeholder="Ex: 1"
-                                            value={variant.quantite}
-                                            onChangeText={(text) => handleUpdateVariant(variant.id, 'quantite', text)}
-                                            style={styles.fieldInput}
-                                            keyboardType="numeric"
-                                            editable={!readonly}
-                                        />
+                                {/* ✅ NOUVEAU: Image de la variante */}
+                                {variant.image && (
+                                    <View style={styles.variantImageContainer}>
+                                        <Image source={{ uri: variant.image }} style={styles.variantImage} />
+                                        {!readonly && (
+                                            <TouchableOpacity
+                                                style={styles.removeImageButton}
+                                                onPress={() => handleRemoveImage(variant.id)}
+                                            >
+                                                <SafeIcon name="x" size={12} color="#FFFFFF" />
+                                            </TouchableOpacity>
+                                        )}
                                     </View>
-                                    <View style={[{ flex: 1 }]}>
-                                        <SelectModalitySelector
-                                            label="Unité"
-                                            value={variant.unite}
-                                            productType={productType}
-                                            fieldName="unites"
-                                            onSelect={(value) => handleUpdateVariant(variant.id, 'unite', value)}
-                                            required
-                                            placeholder="kg, L..."
-                                        />
-                                    </View>
-                                </View>
+                                )}
 
-                                {/* Ligne 2: Conditionnement + Prix */}
-                                <View style={styles.fieldRow}>
-                                    <View style={[{ flex: 1.2 }]}>
-                                        <SelectModalitySelector
-                                            label="Conditionnement"
-                                            value={variant.conditionnement}
-                                            productType={productType}
-                                            fieldName="conditionnements"
-                                            onSelect={(value) => handleUpdateVariant(variant.id, 'conditionnement', value)}
-                                            placeholder="Sachet, Boîte..."
-                                        />
+                                {/* Champs de la variante */}
+                                <View style={styles.variantFields}>
+                                    {/* Ligne 1: Quantité + Unité */}
+                                    <View style={styles.fieldRow}>
+                                        <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                            <Text style={styles.fieldLabel}>Quantité <Text style={styles.required}>*</Text></Text>
+                                            <NativeInput
+                                                placeholder="Ex: 1"
+                                                value={variant.quantite}
+                                                onChangeText={(text) => handleUpdateVariant(variant.id, 'quantite', text)}
+                                                style={styles.fieldInput}
+                                                keyboardType="numeric"
+                                            />
+                                        </View>
+                                        <View style={[{ flex: 1 }]}>
+                                            <SelectModalitySelector
+                                                label="Unité"
+                                                value={variant.unite}
+                                                productType={productType}
+                                                fieldName="unites"
+                                                onSelect={(value) => handleUpdateVariant(variant.id, 'unite', value)}
+                                                required
+                                                placeholder="kg, L..."
+                                            />
+                                        </View>
                                     </View>
-                                    <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                        <Text style={styles.fieldLabel}>Prix <Text style={styles.required}>*</Text></Text>
-                                        <NativeInput
-                                            placeholder="0"
-                                            value={variant.prix}
-                                            onChangeText={(text) => handleUpdateVariant(variant.id, 'prix', text)}
-                                            style={styles.fieldInput}
-                                            keyboardType="numeric"
-                                            editable={!readonly}
-                                        />
-                                    </View>
-                                </View>
 
-                                {/* Ligne 3: Stock disponible */}
-                                <View style={styles.fieldRow}>
-                                    <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                        <Text style={styles.fieldLabel}>Stock disponible</Text>
-                                        <NativeInput
-                                            placeholder="0"
-                                            value={variant.stockDisponible?.toString() || ''}
-                                            onChangeText={(text) => handleUpdateVariant(variant.id, 'stockDisponible', parseInt(text) || 0)}
-                                            style={styles.fieldInput}
-                                            keyboardType="numeric"
-                                            editable={!readonly}
-                                        />
+                                    {/* Ligne 2: Conditionnement + Prix */}
+                                    <View style={styles.fieldRow}>
+                                        <View style={[{ flex: 1.2 }]}>
+                                            <SelectModalitySelector
+                                                label="Conditionnement"
+                                                value={variant.conditionnement}
+                                                productType={productType}
+                                                fieldName="conditionnements"
+                                                onSelect={(value) => handleUpdateVariant(variant.id, 'conditionnement', value)}
+                                                placeholder="Sachet, Boîte..."
+                                            />
+                                        </View>
+                                        <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                            <Text style={styles.fieldLabel}>Prix <Text style={styles.required}>*</Text></Text>
+                                            <NativeInput
+                                                placeholder="0"
+                                                value={variant.prix}
+                                                onChangeText={(text) => handleUpdateVariant(variant.id, 'prix', text)}
+                                                style={styles.fieldInput}
+                                                keyboardType="numeric"
+                                            />
+                                        </View>
                                     </View>
-                                    <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                        <Text style={styles.fieldLabel}>Référence (opt.)</Text>
-                                        <NativeInput
-                                            placeholder="SKU-001"
-                                            value={variant.reference || ''}
-                                            onChangeText={(text) => handleUpdateVariant(variant.id, 'reference', text)}
-                                            style={styles.fieldInput}
-                                            editable={!readonly}
-                                        />
+
+                                    {/* Ligne 3: Stock disponible */}
+                                    <View style={styles.fieldRow}>
+                                        <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                            <Text style={styles.fieldLabel}>Stock disponible</Text>
+                                            <NativeInput
+                                                placeholder="0"
+                                                value={variant.stockDisponible?.toString() || ''}
+                                                onChangeText={(text) => handleUpdateVariant(variant.id, 'stockDisponible', parseInt(text) || 0)}
+                                                style={styles.fieldInput}
+                                                keyboardType="numeric"
+                                            />
+                                        </View>
+                                        <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                            <Text style={styles.fieldLabel}>Référence (opt.)</Text>
+                                            <NativeInput
+                                                placeholder="SKU-001"
+                                                value={variant.reference || ''}
+                                                onChangeText={(text) => handleUpdateVariant(variant.id, 'reference', text)}
+                                                style={styles.fieldInput}
+                                            />
+                                        </View>
                                     </View>
                                 </View>
                             </View>
-                        </View>
-                    ))}
-                </ScrollView>
+                        )}
+                        style={styles.variantsList}
+                        showsVerticalScrollIndicator={true}
+                        nestedScrollEnabled={true}
+                        contentContainerStyle={{ paddingBottom: 20 }}
+                    />
+                </View>
             )}
 
             {/* Résumé des variantes */}
@@ -320,8 +326,8 @@ const ProductVariantManager: React.FC<ProductVariantManagerProps> = ({
                 <View style={styles.summary}>
                     <SafeIcon name="info" size={16} color={modernColors.primary} />
                     <Text style={styles.summaryText}>
-                        {variants.length} variante{variants.length > 1 ? 's' : ''} • 
-                        Prix de {Math.min(...variants.filter(v => v.prix).map(v => parseFloat(v.prix) || 0))} à {Math.max(...variants.map(v => parseFloat(v.prix) || 0))} XAF
+                        {variants.length} variante{variants.length > 1 ? 's' : ''} •
+                        Prix de {Math.min(...variants.filter(v => v.prix).map(v => parseFloat(v.prix) || 0)).toLocaleString()} à {Math.max(...variants.map(v => parseFloat(v.prix) || 0)).toLocaleString()} {globalDevise}
                     </Text>
                 </View>
             )}
@@ -402,8 +408,12 @@ const styles = StyleSheet.create({
         marginTop: 4,
         textAlign: 'center',
     },
+    variantsContainer: {
+        maxHeight: 600,  // ✅ AMÉLIORATION: Augmenté pour voir plus de variabilités
+        marginBottom: 8,
+    },
     variantsList: {
-        maxHeight: 400,
+        maxHeight: 600,
     },
     variantCard: {
         backgroundColor: modernColors.surface,
