@@ -684,6 +684,18 @@ const ResultatBesoinScreen: React.FC = () => {
                     if (categoryFilters.contreTechnique === true && !product.contreTechnique) return false;
                     if (categoryFilters.garantie === true && !product.garantie) return false;
                     if (categoryFilters.papiers === true && !product.papiers) return false;
+
+                    // ✅ NOUVEAU: Filtres de localisation (alignement LocationSelector)
+                    if (categoryFilters.villeVehicule) {
+                        const villeProduct = product.villeVehicule?.toLowerCase() || '';
+                        const villeFilter = categoryFilters.villeVehicule.toLowerCase();
+                        if (!villeProduct.includes(villeFilter) && villeFilter !== villeProduct) return false;
+                    }
+                    if (categoryFilters.quartierVehicule) {
+                        const quartierProduct = product.quartierVehicule?.toLowerCase() || '';
+                        const quartierFilter = categoryFilters.quartierVehicule.toLowerCase();
+                        if (!quartierProduct.includes(quartierFilter) && quartierFilter !== quartierProduct) return false;
+                    }
                 }
 
                 // ✅ FILTRES SPÉCIAUX POUR MOBILIER
@@ -1090,6 +1102,13 @@ const ResultatBesoinScreen: React.FC = () => {
                         if (categoryFilters.prixParNuit_max !== undefined && prix > categoryFilters.prixParNuit_max) {
                             return false;
                         }
+                    }
+
+                    // ✅ NOUVEAU: Filtre localisation (alignement LocationSelector)
+                    if (categoryFilters.villeHotel) {
+                        const villeProduct = product.villeHotel?.toLowerCase() || '';
+                        const villeFilter = categoryFilters.villeHotel.toLowerCase();
+                        if (!villeProduct.includes(villeFilter) && villeFilter !== villeProduct) return false;
                     }
                 }
 
@@ -5279,11 +5298,11 @@ const ResultatBesoinScreen: React.FC = () => {
                                     </Text>
                                     <Text style={styles.modernHeaderSubtitle} numberOfLines={1}>
                                         {(() => {
+                                            // ✅ CORRECTION: Compter UNIQUEMENT les produits (pas les services)
                                             const filteredProducts = filterProducts(products);
-                                            const filteredServices = filterAndSortServices(services);
-                                            const total = filteredProducts.length + filteredServices.length;
-                                            const originalTotal = products.length + services.length;
-                                            return `${total} résultat${total > 1 ? 's' : ''}${total !== originalTotal ? ` sur ${originalTotal}` : ''}`;
+                                            const total = filteredProducts.length;
+                                            const originalTotal = products.length;
+                                            return `${total} produit${total > 1 ? 's' : ''}${total !== originalTotal ? ` sur ${originalTotal}` : ''}`;
                                         })()}
                                     </Text>
                                 </View>
@@ -5421,53 +5440,25 @@ const ResultatBesoinScreen: React.FC = () => {
 
                     {/* ✅ OPTIMISATION 2: FlatList avec lazy loading pour performance */}
                     {(() => {
-                        // Combiner les services et les produits
+                        // ✅ CORRECTION: Afficher UNIQUEMENT les produits (pas les services)
                         const filteredProducts = filterProducts(products);
-                        const filteredServices = filterAndSortServices(services);
 
-                        // ✅ Afficher d'abord les services complets, puis les produits individuels
-                        const allResults = [
-                            ...filteredServices.map(service => ({ type: 'service', data: service })),
-                            ...filteredProducts.map(product => ({ type: 'product', data: product }))
-                        ];
-
-                        return allResults.length > 0 ? (
+                        return filteredProducts.length > 0 ? (
                             <FlatList
-                                data={allResults}
-                                keyExtractor={(item, index) =>
-                                    item.type === 'service'
-                                        ? `service-${item.data.id}-${index}`
-                                        : `product-${normalizeProduct(item.data).id}-${index}`
-                                }
+                                data={filteredProducts}
+                                keyExtractor={(item, index) => `product-${normalizeProduct(item).id}-${index}`}
                                 renderItem={({ item }) => {
-                                    if (item.type === 'service') {
-                                        const service = item.data as Service;
-                                        return (
-                                            <UltraModernServiceCard
-                                                service={service}
-                                                onContactPress={() => handleContactPress(service)}
-                                                onCallPress={() => handleCallPress(service)}
-                                                onViewGallery={() => {
-                                                    setSelectedService(service);
-                                                    setShowGalleryModal(true);
-                                                }}
-                                                categoryStyle={categoryStyle}
-                                                terminology={terminology}
-                                            />
-                                        );
-                                    } else {
-                                        const product = normalizeProduct(item.data);
-                                        return (
-                                            <ProductCardErrorBoundary
-                                                productId={product.id}
-                                                onError={(error) => {
-                                                    console.error(`ProductCard Error for ${product.id}:`, error);
-                                                }}
-                                            >
-                                                <ProductCardComponent product={product} />
-                                            </ProductCardErrorBoundary>
-                                        );
-                                    }
+                                    const product = normalizeProduct(item);
+                                    return (
+                                        <ProductCardErrorBoundary
+                                            productId={product.id}
+                                            onError={(error) => {
+                                                console.error(`ProductCard Error for ${product.id}:`, error);
+                                            }}
+                                        >
+                                            <ProductCardComponent product={product} />
+                                        </ProductCardErrorBoundary>
+                                    );
                                 }}
                                 // ✅ Optimisations performance
                                 windowSize={5}
