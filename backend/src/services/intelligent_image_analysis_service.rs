@@ -202,9 +202,15 @@ IMPORTANT: Retourne UNIQUEMENT le JSON, sans texte explicatif avant ou après."#
                 {
                     "type": "image_url",
                     "image_url": {
-                        "url": if image_base64.starts_with("data:") {
+                        "url": if image_base64.starts_with("http://") || image_base64.starts_with("https://") {
+                            // ✅ URL directe (Cloudinary, etc.) - OpenAI les accepte
+                            log_info(&format!("[ImageAnalysis] URL d'image détectée: {}", &image_base64[..image_base64.len().min(60)]));
+                            image_base64.to_string()
+                        } else if image_base64.starts_with("data:") {
+                            // Data URI complet
                             image_base64.to_string()
                         } else {
+                            // Base64 pur - préfixer
                             format!("data:image/jpeg;base64,{}", image_base64)
                         }
                     }

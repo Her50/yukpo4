@@ -123,44 +123,17 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = ({
         });
 
         if (!result.canceled && result.assets.length > 0) {
-            setIsUploading(true);
-            setUploadProgress('Upload des images...');
+            // ✅ CORRECTION: Garder les images en base64 au lieu de les uploader vers Cloudinary
+            // Le backend gérera l'upload lors de la création du service
+            const newImages = result.assets
+                .filter(asset => asset.base64)
+                .map(asset => `data:image/jpeg;base64,${asset.base64}`);
 
-            try {
-                // Préparer les fichiers pour l'upload
-                const filesToUpload = result.assets
-                    .filter(asset => asset.base64)
-                    .map(asset => ({
-                        uri: `data:image/jpeg;base64,${asset.base64}`,
-                        name: asset.fileName || `image_${Date.now()}.jpg`
-                    }));
-
-                // Upload vers le cloud
-                const uploadResults = await uploadMultipleToCloud(
-                    filesToUpload,
-                    'image',
-                    (completed, total) => {
-                        setUploadProgress(`Upload ${completed}/${total} images...`);
-                    }
-                );
-
-                // Récupérer les URLs des images uploadées
-                const uploadedUrls = uploadResults
-                    .filter(result => result.success && result.url)
-                    .map(result => result.url!);
-
-                if (uploadedUrls.length > 0) {
-                    setImages([...images, ...uploadedUrls]);
-                    console.log('[ChatInputMobile] Images uploadées:', uploadedUrls.length);
-                } else {
-                    Alert.alert('Erreur', 'Impossible d\'uploader les images');
-                }
-            } catch (error) {
-                console.error('Erreur upload images:', error);
-                Alert.alert('Erreur', 'Échec de l\'upload des images');
-            } finally {
-                setIsUploading(false);
-                setUploadProgress('');
+            if (newImages.length > 0) {
+                setImages([...images, ...newImages]);
+                console.log('[ChatInputMobile] Images ajoutées en base64:', newImages.length);
+            } else {
+                Alert.alert('Erreur', 'Impossible de charger les images');
             }
         }
     };

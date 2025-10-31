@@ -231,10 +231,16 @@ async fn handle_direct_search(
         let images = input.base64_image.as_ref().unwrap();
         let first_image = &images[0];
         
-        // Extraire le base64 pur
-        let image_base64 = if first_image.contains("base64,") {
+        // ✅ Préparation image : Accepte URL, data URI ou base64 pur
+        let image_base64 = if first_image.starts_with("http://") || first_image.starts_with("https://") {
+            // URL directe (ex: Cloudinary)
+            log_info(&format!("[DIRECT_SEARCH] URL d'image détectée: {}", &first_image[..first_image.len().min(60)]));
+            first_image.clone()
+        } else if first_image.contains("base64,") {
+            // Data URI - extraire le base64 pur
             first_image.split("base64,").nth(1).unwrap_or(first_image).to_string()
         } else {
+            // Base64 pur
             first_image.clone()
         };
         
