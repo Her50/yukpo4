@@ -68,31 +68,37 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
     const loadMixedContent = async () => {
         try {
             setLoading(true);
+            console.log('[MixedContentCarousel] 🎬 Démarrage chargement contenu mixte...');
 
             // Construire les paramètres
             const params = new URLSearchParams();
             if (userBehavior.length > 0) {
                 params.append('categories', userBehavior.join(','));
+                console.log('[MixedContentCarousel] Catégories comportement:', userBehavior);
             }
             if (userId) {
                 params.append('user_id', userId);
             }
             params.append('session_id', sessionId);
 
+            console.log('[MixedContentCarousel] 🔗 Appel API:', `/api/content/mixed?${params.toString()}`);
             const response = await apiGet(`/api/content/mixed?${params.toString()}`);
+            console.log('[MixedContentCarousel] 📦 Réponse API:', { success: response.success, hasData: !!response.data, dataLength: response.data?.length });
 
             if (response.success && response.data && Array.isArray(response.data) && response.data.length > 0) {
+                console.log(`[MixedContentCarousel] ✅ ${response.data.length} éléments de contenu mixte chargés`);
                 setContent(response.data);
             } else {
                 // ✅ FALLBACK: Charger les produits organiques si pas de contenu mixte
-                console.log('[MixedContentCarousel] Pas de contenu mixte, chargement des produits organiques...');
+                console.log('[MixedContentCarousel] ⚠️ Pas de contenu mixte, chargement des produits organiques...');
                 await loadOrganicProducts();
             }
 
             setLoading(false);
         } catch (error) {
-            console.error('[MixedContentCarousel] Erreur chargement:', error);
+            console.error('[MixedContentCarousel] ❌ Erreur chargement:', error);
             // ✅ FALLBACK: En cas d'erreur, charger les produits organiques
+            console.log('[MixedContentCarousel] 🔄 Basculement vers produits organiques (fallback)...');
             await loadOrganicProducts();
             setLoading(false);
         }

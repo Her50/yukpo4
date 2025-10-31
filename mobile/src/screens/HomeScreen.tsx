@@ -29,6 +29,7 @@ const HomeScreen: React.FC = () => {
     const navigation = ReactNavigation.useNavigation();
     const { user, refreshUser } = useAuth(); // ✅ Ajout de refreshUser
     const { language, setLanguage, t } = useLanguageSafe(); // ✅ SAFE: Context de langue avec traduction (ne crash jamais)
+    const scrollViewRef = React.useRef<ScrollView>(null); // ✅ NOUVEAU: Référence pour scroll automatique
 
     // Debug pour vérifier les données utilisateur
     React.useEffect(() => {
@@ -173,6 +174,20 @@ const HomeScreen: React.FC = () => {
         };
         loadUserBehavior();
     }, []);
+
+    // ✅ NOUVEAU: Scroll automatique vers le carousel au démarrage de l'app
+    React.useEffect(() => {
+        // Attendre que le layout soit stabilisé, puis scroller vers le carousel
+        const timer = setTimeout(() => {
+            scrollViewRef.current?.scrollTo({
+                y: 100, // Scroll léger pour rendre le carousel visible
+                animated: true,
+            });
+            console.log('[HomeScreen] 🎯 Scroll automatique vers le carousel au démarrage');
+        }, 1500); // 1.5 secondes pour laisser le temps au contenu de charger
+
+        return () => clearTimeout(timer);
+    }, []); // Se déclenche une seule fois au mount du composant
 
     // ✅ CORRECTION: Détection GPS sécurisée avec timeout
     React.useEffect(() => {
@@ -595,12 +610,19 @@ const HomeScreen: React.FC = () => {
 
                 {/* ✅ ZONE DE CONTENU SCROLLABLE - Contenu mixte intelligent */}
                 <ScrollView
+                    ref={scrollViewRef}
                     style={styles.scrollContainer}
                     contentContainerStyle={styles.scrollContent}
                     showsVerticalScrollIndicator={false}
                     keyboardShouldPersistTaps="handled"
                 >
                     <View>
+                        {/* ✅ TITRE SECTION CAROUSEL */}
+                        <View style={styles.carouselHeader}>
+                            <Text style={styles.carouselTitle}>🎯 Découvrir pour vous</Text>
+                            <Text style={styles.carouselSubtitle}>Produits et services recommandés</Text>
+                        </View>
+
                         {/* ✅ NOUVEAU: Carousel mixte (publicités + produits organiques) */}
                         <MixedContentCarousel
                             userId={user?.id}
@@ -1346,6 +1368,24 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontWeight: '600',
         color: '#374151',
+    },
+    // ✅ NOUVEAU: Styles pour le header du carousel
+    carouselHeader: {
+        paddingHorizontal: 20,
+        paddingTop: 8,
+        paddingBottom: 12,
+        backgroundColor: 'transparent',
+    },
+    carouselTitle: {
+        fontSize: 20,
+        fontWeight: '700',
+        color: '#1F2937',
+        marginBottom: 4,
+    },
+    carouselSubtitle: {
+        fontSize: 13,
+        color: '#6B7280',
+        fontWeight: '500',
     },
 });
 

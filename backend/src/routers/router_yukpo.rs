@@ -174,6 +174,7 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
     
     // ✅ NOUVEAU: Routes pour système de publicité (intégrées directement)
     use crate::controllers::publicite_controller;
+    use crate::controllers::mixed_content_controller;
     let publicite_routes_inline = Router::new()
         .route("/api/publicites/create", post(publicite_controller::create_publicite))
         .route("/api/publicites/{id}/update", post(publicite_controller::update_publicite))
@@ -181,7 +182,9 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route("/api/publicites/actives", get(publicite_controller::get_active_publicites))
         .route("/api/publicites/dashboard", get(publicite_controller::get_publicite_dashboard))
         .route("/api/publicites/track-click", post(publicite_controller::track_publicite_click))
-        .route("/api/publicites/track-view", post(publicite_controller::track_publicite_view));
+        .route("/api/publicites/track-view", post(publicite_controller::track_publicite_view))
+        // ✅ NOUVEAU: Route pour contenu mixte (publicités + produits organiques)
+        .route("/api/content/mixed", get(mixed_content_controller::get_mixed_content));
     
     // Routes pour product_modalities (modalités réutilisables)
     let modality_routes = router_modalities::modality_routes(state.clone());
