@@ -136,32 +136,21 @@ const SelectModalitySelector: React.FC<SelectModalitySelectorProps> = ({
                 {label} {required && <Text style={styles.required}>*</Text>}
             </Text>
 
-            <View style={styles.selectorRow}>
-                <TouchableOpacity
-                    style={[
-                        styles.selector,
-                        !value && styles.selectorPlaceholder,
-                        { flex: 1 }
-                    ]}
-                    onPress={() => setShowModal(true)}
-                >
-                    <Text style={[
-                        styles.selectorText,
-                        !value && styles.placeholderText
-                    ]}>
-                        {value || placeholder}
-                    </Text>
-                    <SafeIcon name="chevron-down" size={20} color={modernColors.textSecondary} />
-                </TouchableOpacity>
-
-                {/* ✅ NOUVEAU: Bouton visible pour ajouter une nouvelle modalité */}
-                <TouchableOpacity
-                    style={styles.addModalityButton}
-                    onPress={() => setShowAddModal(true)}
-                >
-                    <SafeIcon name="plus-circle" size={20} color={modernColors.primary} />
-                </TouchableOpacity>
-            </View>
+            <TouchableOpacity
+                style={[
+                    styles.selector,
+                    !value && styles.selectorPlaceholder
+                ]}
+                onPress={() => setShowModal(true)}
+            >
+                <Text style={[
+                    styles.selectorText,
+                    !value && styles.placeholderText
+                ]}>
+                    {value || placeholder}
+                </Text>
+                <SafeIcon name="chevron-down" size={20} color={modernColors.textSecondary} />
+            </TouchableOpacity>
 
             {value && (
                 <TouchableOpacity
@@ -366,11 +355,6 @@ const styles = StyleSheet.create({
         color: modernColors.error,
         fontSize: 16,
     },
-    selectorRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-    },
     selector: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -381,16 +365,6 @@ const styles = StyleSheet.create({
         borderRadius: 12,
         paddingHorizontal: 16,
         paddingVertical: 14,
-    },
-    addModalityButton: {
-        width: 48,
-        height: 48,
-        borderRadius: 12,
-        backgroundColor: '#EEF2FF',
-        alignItems: 'center',
-        justifyContent: 'center',
-        borderWidth: 2,
-        borderColor: modernColors.primary,
     },
     selectorPlaceholder: {
         borderColor: modernColors.border,

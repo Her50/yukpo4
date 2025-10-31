@@ -1,7 +1,7 @@
 // @ts-nocheck
 import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     Alert,
     Dimensions,
@@ -1437,13 +1437,13 @@ interface ProductManagerMobileProps {
 // Configuration des types de produits avec noms adaptés
 export const PRODUCT_TYPES = [
     { value: 'agroalimentaire', label: 'Alimentation & Produits Alimentaires', icon: '🍽️', color: '#10B981', description: 'Alimentation complète : produits frais (fruits, légumes, viandes, poissons) et produits secs/transformés (riz, pâtes, conserves, boissons)', keywords: ['riz', 'pâtes', 'macaroni', 'spaghetti', 'farine', 'huile', 'arachide', 'palme', 'tournesol', 'olive', 'sucre', 'sel', 'épices', 'poivre', 'curry', 'curcuma', 'gingembre', 'piment', 'sauce', 'ketchup', 'mayonnaise', 'moutarde', 'maggi', 'jumbo', 'bouillon', 'cube', 'conserve', 'sardine', 'thon', 'maquereau', 'haricot', 'pois', 'maïs', 'boisson', 'eau', 'jus', 'soda', 'cola', 'sprite', 'fanta', 'café', 'nescafé', 'thé', 'lipton', 'lait', 'nido', 'peak', 'chocolat', 'cacao', 'biscuit', 'chips', 'snack', 'bonbon', 'confiserie', 'céréale', 'avoine', 'blé', 'mil', 'sorgho', 'manioc', 'couscous', 'semoule', 'légume', 'sec', 'lentille', 'fève', 'pois chiche', 'condiment', 'vinaigre', 'miel', 'confiture', 'beurre', 'cacahuète', 'noix', 'cajou', 'amande', 'produit', 'alimentaire', 'agro', 'transformation', 'conserverie', 'biscuiterie', 'huilerie', 'meunerie', 'rizerie', 'sucrerie', 'chocolaterie', 'confiserie', 'fruit', 'légume', 'viande', 'poisson', 'bœuf', 'poulet', 'porc', 'mouton', 'chèvre', 'tomate', 'oignon', 'pomme', 'banane', 'orange', 'mangue', 'avocat', 'ananas', 'carotte', 'chou', 'salade', 'frais', 'marché', 'alimentaire', 'épicerie', 'supermarché', 'nourriture', 'aliment', 'consommation', 'nutrition'] },
-    { value: 'assurance', label: 'Assurance et Protection', icon: '🛡️', color: '#14B8A6', description: 'Assurance auto, santé, habitation, vie, protection sociale', keywords: ['assurance', 'protection', 'garantie', 'prime', 'contrat', 'couverture', 'police', 'assureur', 'sinistre', 'indemnisation', 'franchise', 'souscription', 'mutuelle', 'prévoyance', 'responsabilité civile', 'tous risques'] },
-    { value: 'automobile', label: 'Automobiles et Véhicules', icon: '🚗', color: '#EF4444', description: 'Voitures, motos, camions, véhicules utilitaires', keywords: ['voiture', 'auto', 'véhicule', 'automobile', 'moto', 'scooter', 'camion', '4x4', 'SUV', 'berline', 'coupé', 'cabriolet', 'Toyota', 'Honda', 'Mercedes', 'Peugeot', 'Renault', 'Nissan', 'occasion', 'neuf', 'kilométrage', 'essence', 'diesel', 'hybride', 'électrique', 'automatique', 'manuelle'] },
-    { value: 'chaussure', label: 'Chaussures et Accessoires', icon: '👟', color: '#6366F1', description: 'Chaussures, baskets, sandales, bottes', keywords: ['chaussure', 'soulier', 'basket', 'sneaker', 'sandale', 'tong', 'botte', 'bottine', 'escarpin', 'talon', 'mocassin', 'ballerine', 'pointure', 'semelle', 'cuir', 'sport', 'ville', 'Nike', 'Adidas', 'Puma'] },
-    { value: 'covoiturage', label: 'Covoiturage et Trajets', icon: '🚙', color: '#F59E0B', description: 'Trajets partagés, carpooling, transport collectif', keywords: ['covoiturage', 'trajet', 'partage', 'carpooling', 'transport partagé', 'passager', 'conducteur', 'départ', 'arrivée', 'itinéraire', 'route', 'place disponible', 'voyage partagé', 'économique', 'écologique'] },
+    { value: 'assurance', label: 'Assurance et Protection', icon: '🛡️', color: '#14B8A6', description: 'Assurance auto, santé, habitation, vie, protection sociale', keywords: ['assurance', 'protection', 'garantie', 'prime', 'contrat', 'couverture', 'police', 'assureur', 'sinistre', 'indemnisation', 'franchise', 'souscription', 'mutuelle', 'prévoyance', 'responsabilité civile', 'tous risques', 'assurance vie', 'assurance auto', 'assurance habitation', 'assurance santé', 'assurance maladie', 'hospitalisation', 'accident', 'décès', 'invalidité', 'capital', 'rente', 'bénéficiaire', 'AXA', 'ACTIVA', 'ALLIANZ', 'SUNU', 'NSIA', 'mensuel', 'annuel', 'renouvellement', 'résiliation', 'clause', 'exclusion', 'risque', 'dommage', 'cotisation', 'assurance voyage', 'rapatriement'] },
+    { value: 'automobile', label: 'Automobiles et Véhicules', icon: '🚗', color: '#EF4444', description: 'Voitures, motos, camions, véhicules utilitaires', keywords: ['voiture', 'auto', 'véhicule', 'automobile', 'moto', 'scooter', 'camion', '4x4', 'SUV', 'berline', 'coupé', 'cabriolet', 'Toyota', 'Honda', 'Mercedes', 'Peugeot', 'Renault', 'Nissan', 'occasion', 'neuf', 'kilométrage', 'essence', 'diesel', 'hybride', 'électrique', 'automatique', 'manuelle', 'pickup', 'break', 'monospace', 'citadine', 'BMW', 'Audi', 'Volkswagen', 'Ford', 'Hyundai', 'Kia', 'Mazda', 'Mitsubishi', 'Lexus', 'Land Rover', 'Jeep', 'climatisation', 'GPS', 'cuir', 'jante', 'airbag', 'ABS', 'première main', 'papiers en règle', 'contrôle technique', 'carnet d\'entretien', 'révision', 'km', 'transmission', 'carburant', 'cylindrée', 'puissance'] },
+    { value: 'chaussure', label: 'Chaussures et Accessoires', icon: '👟', color: '#6366F1', description: 'Chaussures, baskets, sandales, bottes', keywords: ['chaussure', 'soulier', 'basket', 'sneaker', 'sandale', 'tong', 'botte', 'bottine', 'escarpin', 'talon', 'mocassin', 'ballerine', 'pointure', 'semelle', 'cuir', 'sport', 'ville', 'Nike', 'Adidas', 'Puma', 'Reebok', 'New Balance', 'Converse', 'Vans', 'Jordan', 'Air Max', 'running', 'football', 'tennis', 'toile', 'daim', 'synthétique', 'homme', 'femme', 'enfant', 'neuf', 'occasion', 'pointure 38', 'pointure 39', 'pointure 40', 'pointure 41', 'pointure 42', 'pointure 43', 'pointure 44', 'chaussures de mariage', 'chaussures de soirée', 'casual', 'élégant', 'confortable', 'lacet', 'scratch'] },
+    { value: 'covoiturage', label: 'Covoiturage et Trajets', icon: '🚙', color: '#F59E0B', description: 'Trajets partagés, carpooling, transport collectif', keywords: ['covoiturage', 'trajet', 'partage', 'carpooling', 'transport partagé', 'passager', 'conducteur', 'départ', 'arrivée', 'itinéraire', 'route', 'place disponible', 'voyage partagé', 'économique', 'écologique', 'voiture', 'auto', 'véhicule', 'trajets quotidiens', 'navette', 'domicile-travail', 'ville à ville', 'interurbain', 'économie carburant', 'convivial', 'rencontre', 'frais partagés', 'co-voiturage', 'BlaBlaCar', 'partage frais', 'trajet régulier', 'ponctuel', 'aller-retour'] },
     { value: 'decoration', label: 'Décoration Intérieure', icon: '🖼️', color: '#E91E63', description: 'Tableaux, luminaires, tapis, accessoires déco', keywords: ['décoration', 'déco', 'tableau', 'toile', 'peinture', 'affiche', 'cadre', 'luminaire', 'lampe', 'lustre', 'applique', 'tapis', 'carpette', 'coussin', 'rideau', 'vase', 'sculpture', 'miroir', 'horloge', 'bougie', 'moderne', 'classique', 'vintage', 'contemporain'] },
     { value: 'electricite', label: 'Électricité et Éclairage', icon: '⚡', color: '#FFC107', description: 'Câbles, prises, interrupteurs, lampes, disjoncteurs', keywords: ['électricité', 'électrique', 'câble', 'fil', 'interrupteur', 'prise', 'disjoncteur', 'tableau électrique', 'lampe', 'ampoule', 'LED', 'néon', 'spot', 'variateur', 'minuterie', 'détecteur', 'multiprise', 'rallonge', '220V', 'installation électrique'] },
-    { value: 'electromenager', label: 'Électroménager Domestique', icon: '🔌', color: '#14B8A6', description: 'Frigos, fours, machines à laver, micro-ondes', keywords: ['électroménager', 'frigo', 'réfrigérateur', 'congélateur', 'four', 'cuisinière', 'micro-ondes', 'lave-linge', 'machine à laver', 'lave-vaisselle', 'aspirateur', 'climatiseur', 'ventilateur', 'Samsung', 'LG', 'Bosch', 'Whirlpool'] },
+    { value: 'electromenager', label: 'Électroménager Domestique', icon: '🔌', color: '#14B8A6', description: 'Frigos, fours, machines à laver, micro-ondes', keywords: ['électroménager', 'frigo', 'réfrigérateur', 'congélateur', 'four', 'cuisinière', 'micro-ondes', 'lave-linge', 'machine à laver', 'lave-vaisselle', 'aspirateur', 'climatiseur', 'ventilateur', 'Samsung', 'LG', 'Bosch', 'Whirlpool', 'appareil', 'domestique', 'ménager', 'cuisine', 'gros électroménager', 'petit électroménager', 'neuf', 'occasion', 'garantie', 'économie énergie', 'A++', 'inverter', 'no frost', 'inox', 'mixeur', 'blender', 'robot', 'cafetière', 'bouilloire', 'grille-pain', 'fer à repasser', 'sèche-linge', 'Hisense', 'Midea', 'Haier'] },
     { value: 'hopital_clinique', label: 'Établissements de Santé', icon: '🏥', color: '#DC2626', description: 'Hôpitaux, cliniques, centres médicaux, spécialités', keywords: ['hôpital', 'clinique', 'centre médical', 'centre de santé', 'médecin', 'docteur', 'consultation', 'urgence', 'soins', 'chirurgie', 'imagerie', 'radio', 'scanner', 'IRM', 'maternité', 'pédiatrie', 'cardiologie', 'dentiste', 'rendez-vous'] },
     { value: 'laboratoire', label: 'Laboratoires & Imagerie médicale', icon: '🔬', color: '#7C3AED', description: 'Laboratoires d\'analyses, centres d\'imagerie, scanner, IRM, échographie', keywords: ['laboratoire', 'labo', 'analyse', 'examen', 'biologie', 'prise de sang', 'NFS', 'glycémie', 'sérologie', 'VIH', 'hépatite', 'paludisme', 'parasitologie', 'bactériologie', 'ECBU', 'hormonologie', 'bilan', 'résultat', 'prélèvement', 'biochimie', 'hématologie', 'PCR', 'imagerie', 'radiographie', 'radio', 'scanner', 'IRM', 'échographie', 'écho', 'doppler', 'mammographie', 'panoramique', 'scintigraphie', 'PET scan', 'fibroscopie', 'endoscopie'] },
     { value: 'hotellerie', label: 'Hôtellerie et Hébergement', icon: '🏨', color: '#EC4899', description: 'Hôtels, chambres d\'hôtes, auberges, gîtes, réservations', keywords: ['hôtel', 'hébergement', 'chambre', 'chambre d\'hôtes', 'auberge', 'gîte', 'motel', 'palace', 'réservation', 'booking', 'nuitée', 'séjour', 'étoile', 'luxe', 'petit-déjeuner', 'Wi-Fi', 'piscine', 'restaurant', 'spa', 'climatisation'] },
@@ -1993,6 +1993,46 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
     }, [categoryService, products.length]);
 
     const devises = ['XAF', 'EUR', 'USD']; // ✅ Devises principales : FCFA, Euro, Dollar
+
+    // ✅ NOUVEAU: Auto-générer le plan de bus pour ticket_voyage quand la configuration change
+    useEffect(() => {
+        if (selectedType === 'ticket_voyage' && newProduct.busConfiguration) {
+            const busConfig = newProduct.busConfiguration;
+            const firstRowPassengerSeats = busConfig.firstRowSeats || 2;
+            const totalSeats = firstRowPassengerSeats + (busConfig.rows - 1) * busConfig.seatsPerRow;
+
+            // Générer le plan seulement si vide ou si la config a changé
+            if (!newProduct.seatMap || newProduct.seatMap.length === 0 || 
+                newProduct.seatMap.length !== totalSeats) {
+                const seatMap = [];
+                let seatNumber = 1;
+
+                for (let row = 1; row <= busConfig.rows; row++) {
+                    const seatsInRow = row === 1 ? firstRowPassengerSeats : busConfig.seatsPerRow;
+
+                    for (let col = 1; col <= seatsInRow; col++) {
+                        const isDriver = row === 1 && col === 1;
+                        seatMap.push({
+                            id: `${row}-${col}`,
+                            number: isDriver ? 0 : seatNumber++,
+                            row,
+                            col,
+                            status: isDriver ? 'occupied' : (busConfig.allSeatsAvailable ? 'available' : 'available'),
+                            type: isDriver ? 'driver' : 'standard',
+                            label: isDriver ? '🚗 Chauffeur' : undefined
+                        });
+                    }
+                }
+
+                console.log('[TicketVoyage] Plan de bus généré automatiquement:', seatMap.length, 'sièges');
+                setNewProduct(prev => ({
+                    ...prev,
+                    seatMap: seatMap,
+                    totalSeats: totalSeats - 1
+                }));
+            }
+        }
+    }, [selectedType, newProduct.busConfiguration?.rows, newProduct.busConfiguration?.seatsPerRow, newProduct.busConfiguration?.firstRowSeats]);
 
     // ✅ Fonction pour obtenir le label adapté selon la catégorie
     const getProductNameLabel = (type: ProductType | null): string => {
@@ -3652,6 +3692,16 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
             const villeArrivee = newProduct.villeArrivee || 'Arrivée';
             const generatedName = `${villeDepart} - ${villeArrivee}`;
             newProduct.nom = generatedName;
+        }
+
+        if (selectedType === 'ticket_voyage') {
+            // ✅ Générer nom automatique : "[DEPART] - [DESTINATION] ([COMPAGNIE])"
+            const depart = newProduct.depart || 'Départ';
+            const destination = newProduct.destination || 'Destination';
+            const compagnie = newProduct.compagnieTransport ? ` (${newProduct.compagnieTransport})` : '';
+            const generatedName = `${depart} - ${destination}${compagnie}`;
+            newProduct.nom = generatedName.trim();
+            console.log('[ProductManagerMobile] Auto-remplissage nom ticket_voyage:', generatedName);
         }
 
         if (selectedType === 'demenagement') {
@@ -6700,6 +6750,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                 );
 
             case 'ticket_voyage':
+                // ✅ Configuration par défaut du bus
                 const busConfig = newProduct.busConfiguration || {
                     rows: 12,
                     seatsPerRow: 4,
@@ -6712,31 +6763,13 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                 const firstRowPassengerSeats = busConfig.firstRowSeats || 2;
                 const totalSeats = firstRowPassengerSeats + (busConfig.rows - 1) * busConfig.seatsPerRow;
 
-                // Générer le plan de sièges si pas déjà fait
-                if (!newProduct.seatMap || newProduct.seatMap.length === 0) {
-                    const seatMap = [];
-                    let seatNumber = 1;
-
-                    for (let row = 1; row <= busConfig.rows; row++) {
-                        const seatsInRow = row === 1 ? firstRowPassengerSeats : busConfig.seatsPerRow;
-
-                        for (let col = 1; col <= seatsInRow; col++) {
-                            const isDriver = row === 1 && col === 1;
-                            seatMap.push({
-                                id: `${row}-${col}`,
-                                number: isDriver ? 0 : seatNumber++, // Chauffeur = 0
-                                row,
-                                col,
-                                status: isDriver ? 'occupied' : (busConfig.allSeatsAvailable ? 'available' : 'available'),
-                                type: isDriver ? 'driver' : 'standard',
-                                label: isDriver ? '🚗 Chauffeur' : undefined
-                            });
-                        }
-                    }
-                    if (newProduct.nom) { // Only update if product exists
-                        newProduct.seatMap = seatMap;
-                        newProduct.totalSeats = totalSeats - 1; // Moins le chauffeur
-                    }
+                // ✅ Le plan de bus est maintenant généré automatiquement par le useEffect
+                // Initialiser la configuration si elle n'existe pas encore
+                if (!newProduct.busConfiguration) {
+                    setNewProduct(prev => ({
+                        ...prev,
+                        busConfiguration: busConfig
+                    }));
                 }
 
                 return (
@@ -6914,8 +6947,25 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 </Text>
                             </View>
 
-                            {/* Aperçu du plan de bus */}
-                            {newProduct.seatMap && newProduct.seatMap.length > 0 && (
+                            {/* Bouton pour regénérer le plan */}
+                            <TouchableOpacity
+                                style={styles.regeneratePlanButton}
+                                onPress={() => {
+                                    // Forcer la régénération en réinitialisant seatMap
+                                    setNewProduct(prev => ({
+                                        ...prev,
+                                        seatMap: []
+                                    }));
+                                }}
+                            >
+                                <SafeIcon name="refresh-cw" size={16} color={modernColors.primary} />
+                                <Text style={styles.regeneratePlanText}>
+                                    Régénérer le plan de bus
+                                </Text>
+                            </TouchableOpacity>
+
+                            {/* Aperçu du plan de bus - ✅ TOUJOURS AFFICHER */}
+                            {newProduct.seatMap && newProduct.seatMap.length > 0 ? (
                                 <View style={styles.busPreviewContainer}>
                                     <Text style={styles.busPreviewTitle}>📋 Aperçu du Plan</Text>
                                     <View style={styles.busLayout}>
@@ -6959,14 +7009,69 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                         </ScrollView>
                                     </View>
                                 </View>
+                            ) : (
+                                <View style={styles.busLoadingContainer}>
+                                    <SafeIcon name="loader" size={24} color={modernColors.primary} />
+                                    <Text style={styles.busLoadingText}>
+                                        Génération du plan de bus en cours...
+                                    </Text>
+                                    <Text style={styles.busLoadingHint}>
+                                        Le plan s'affichera automatiquement dans quelques instants
+                                    </Text>
+                                </View>
                             )}
+                        </View>
+
+                        {/* Section : Tarifs */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="dollar-sign" size={20} color={modernColors.primary} />
+                            <Text style={styles.sectionTitle}>Tarifs et Devise</Text>
+                        </View>
+
+                        {/* Devise pour tous les prix */}
+                        <View style={styles.fieldContainer}>
+                            <Text style={styles.fieldLabel}>💱 Devise <Text style={styles.required}>*</Text></Text>
+                            <Text style={styles.fieldHint}>Devise appliquée à tous les tarifs ci-dessous</Text>
+                            <View style={styles.deviseGridContainer}>
+                                {['XAF', 'EUR', 'USD'].map((devise) => (
+                                    <TouchableOpacity
+                                        key={devise}
+                                        style={[
+                                            styles.deviseButtonGrid,
+                                            (newProduct.devise || 'XAF') === devise && styles.deviseButtonActive
+                                        ]}
+                                        onPress={() => setNewProduct({ ...newProduct, devise })}
+                                    >
+                                        <Text style={[
+                                            styles.deviseButtonText,
+                                            (newProduct.devise || 'XAF') === devise && styles.deviseButtonTextActive
+                                        ]}>
+                                            {devise}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        </View>
+
+                        {/* Prix aller simple - TOUJOURS VISIBLE */}
+                        <View style={styles.fieldContainer}>
+                            <Text style={styles.fieldLabel}>Prix aller simple <Text style={styles.required}>*</Text></Text>
+                            <NativeInput
+                                placeholder="Ex: 5000"
+                                value={newProduct.prixAllerSimple || newProduct.prix || ''}
+                                onChangeText={(text) => {
+                                    setNewProduct({ ...newProduct, prixAllerSimple: text, prix: text });
+                                }}
+                                style={styles.fieldInput}
+                                keyboardType="numeric"
+                            />
                         </View>
 
                         {/* Option Aller-Retour */}
                         <View style={styles.returnTripSection}>
                             <View style={styles.sectionHeaderWithIcon}>
                                 <SafeIcon name="repeat" size={20} color={modernColors.primary} />
-                                <Text style={styles.sectionTitleMedium}>Type de Trajet</Text>
+                                <Text style={styles.sectionTitleMedium}>Proposer un tarif aller-retour ?</Text>
                             </View>
 
                             <View style={styles.tripTypeOptions}>
@@ -6975,18 +7080,18 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                         styles.tripTypeButton,
                                         !newProduct.proposeAllerRetour && styles.tripTypeButtonActive
                                     ]}
-                                    onPress={() => setNewProduct({ ...newProduct, proposeAllerRetour: false })}
+                                    onPress={() => setNewProduct({ ...newProduct, proposeAllerRetour: false, prixAllerRetour: '' })}
                                 >
                                     <SafeIcon
-                                        name="arrow-right"
+                                        name="x-circle"
                                         size={20}
-                                        color={!newProduct.proposeAllerRetour ? '#FFFFFF' : modernColors.primary}
+                                        color={!newProduct.proposeAllerRetour ? '#FFFFFF' : modernColors.textSecondary}
                                     />
                                     <Text style={[
                                         styles.tripTypeButtonText,
                                         !newProduct.proposeAllerRetour && styles.tripTypeButtonTextActive
                                     ]}>
-                                        Aller simple uniquement
+                                        Non
                                     </Text>
                                 </TouchableOpacity>
 
@@ -6998,7 +7103,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                     onPress={() => setNewProduct({ ...newProduct, proposeAllerRetour: true })}
                                 >
                                     <SafeIcon
-                                        name="refresh-cw"
+                                        name="check-circle"
                                         size={20}
                                         color={newProduct.proposeAllerRetour ? '#FFFFFF' : modernColors.primary}
                                     />
@@ -7006,44 +7111,30 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                         styles.tripTypeButtonText,
                                         newProduct.proposeAllerRetour && styles.tripTypeButtonTextActive
                                     ]}>
-                                        Proposer aller-retour
+                                        Oui, proposer aller-retour
                                     </Text>
                                 </TouchableOpacity>
                             </View>
 
                             {newProduct.proposeAllerRetour && (
                                 <View style={styles.returnPricingContainer}>
-                                    <View style={styles.fieldRow}>
-                                        <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                            <Text style={styles.fieldLabel}>Prix aller simple <Text style={styles.required}>*</Text></Text>
-                                            <NativeInput
-                                                placeholder="5000"
-                                                value={newProduct.prixAllerSimple || newProduct.prix || ''}
-                                                onChangeText={(text) => {
-                                                    setNewProduct({ ...newProduct, prixAllerSimple: text, prix: text });
-                                                }}
-                                                style={styles.fieldInput}
-                                                keyboardType="numeric"
-                                            />
-                                        </View>
-                                        <View style={[styles.fieldContainer, { flex: 1 }]}>
-                                            <Text style={styles.fieldLabel}>Prix aller-retour <Text style={styles.required}>*</Text></Text>
-                                            <NativeInput
-                                                placeholder="9000"
-                                                value={newProduct.prixAllerRetour || ''}
-                                                onChangeText={(text) => setNewProduct({ ...newProduct, prixAllerRetour: text })}
-                                                style={styles.fieldInput}
-                                                keyboardType="numeric"
-                                            />
-                                        </View>
+                                    <View style={styles.fieldContainer}>
+                                        <Text style={styles.fieldLabel}>Prix aller-retour <Text style={styles.required}>*</Text></Text>
+                                        <NativeInput
+                                            placeholder="Ex: 9000"
+                                            value={newProduct.prixAllerRetour || ''}
+                                            onChangeText={(text) => setNewProduct({ ...newProduct, prixAllerRetour: text })}
+                                            style={styles.fieldInput}
+                                            keyboardType="numeric"
+                                        />
                                     </View>
 
                                     {newProduct.prixAllerSimple && newProduct.prixAllerRetour && (
                                         <View style={styles.savingsIndicator}>
                                             <SafeIcon name="trending-down" size={16} color={modernColors.success} />
                                             <Text style={styles.savingsText}>
-                                                Économie: {(parseInt(newProduct.prixAllerSimple) * 2 - parseInt(newProduct.prixAllerRetour)).toLocaleString()} FCFA
-                                                ({Math.round((1 - parseInt(newProduct.prixAllerRetour) / (parseInt(newProduct.prixAllerSimple) * 2)) * 100)}%)
+                                                Économie: {(parseInt(newProduct.prixAllerSimple) * 2 - parseInt(newProduct.prixAllerRetour)).toLocaleString()} {newProduct.devise || 'XAF'}
+                                                {' '}({Math.round((1 - parseInt(newProduct.prixAllerRetour) / (parseInt(newProduct.prixAllerSimple) * 2)) * 100)}%)
                                             </Text>
                                         </View>
                                     )}
@@ -21112,8 +21203,8 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                         <View style={styles.dividerLine} />
                                     </View>
 
-                                    {/* Champs communs - Masqués pour assurance, automobile, vetement, chaussure, decoration, electricite, electromenager, hopital_clinique, laboratoire, pharmacie, immobilier, livres_fournitures, mobilier, quincaillerie, carrelage, telephone, ordinateur, ustensiles_cuisine, electronique, soutien_scolaire_repetiteur, formation_education, evenementiel, sport_fitness, PRESTATIONS (nom auto-généré) */}
-                                    {selectedType !== 'assurance' && selectedType !== 'automobile' && selectedType !== 'vetement' && selectedType !== 'chaussure' && selectedType !== 'decoration' && selectedType !== 'electricite' && selectedType !== 'electromenager' && selectedType !== 'hopital_clinique' && selectedType !== 'laboratoire' && selectedType !== 'pharmacie' && selectedType !== 'immobilier_batiment' && selectedType !== 'immobilier_terrain' && selectedType !== 'immobilier_location_courte' && selectedType !== 'livres_fournitures' && selectedType !== 'mobilier' && selectedType !== 'quincaillerie' && selectedType !== 'carrelage' && selectedType !== 'telephone' && selectedType !== 'ordinateur' && selectedType !== 'ustensiles_cuisine' && selectedType !== 'electronique' && selectedType !== 'soutien_scolaire_repetiteur' && selectedType !== 'formation_education' && selectedType !== 'evenementiel' && selectedType !== 'sport_fitness' && selectedType !== 'plombier' && selectedType !== 'electricien' && selectedType !== 'menuisier' && selectedType !== 'carreleur' && selectedType !== 'macon' && selectedType !== 'forgerons' && selectedType !== 'menuisier_aluminium' && selectedType !== 'reparateur_electronique' && selectedType !== 'reparateur_electromenager' && selectedType !== 'reparateur_frigoriste' && selectedType !== 'peintre' && selectedType !== 'staffeur' && selectedType !== 'reparateur_climatiseur' && (
+                                    {/* Champs communs - Masqués pour assurance, automobile, vetement, chaussure, decoration, electricite, electromenager, hopital_clinique, laboratoire, pharmacie, immobilier, livres_fournitures, mobilier, quincaillerie, carrelage, telephone, ordinateur, ustensiles_cuisine, electronique, soutien_scolaire_repetiteur, formation_education, evenementiel, sport_fitness, ticket_voyage, covoiturage, PRESTATIONS (nom auto-généré) */}
+                                    {selectedType !== 'assurance' && selectedType !== 'automobile' && selectedType !== 'vetement' && selectedType !== 'chaussure' && selectedType !== 'decoration' && selectedType !== 'electricite' && selectedType !== 'electromenager' && selectedType !== 'hopital_clinique' && selectedType !== 'laboratoire' && selectedType !== 'pharmacie' && selectedType !== 'immobilier_batiment' && selectedType !== 'immobilier_terrain' && selectedType !== 'immobilier_location_courte' && selectedType !== 'livres_fournitures' && selectedType !== 'mobilier' && selectedType !== 'quincaillerie' && selectedType !== 'carrelage' && selectedType !== 'telephone' && selectedType !== 'ordinateur' && selectedType !== 'ustensiles_cuisine' && selectedType !== 'electronique' && selectedType !== 'soutien_scolaire_repetiteur' && selectedType !== 'formation_education' && selectedType !== 'evenementiel' && selectedType !== 'sport_fitness' && selectedType !== 'plombier' && selectedType !== 'electricien' && selectedType !== 'menuisier' && selectedType !== 'carreleur' && selectedType !== 'macon' && selectedType !== 'forgerons' && selectedType !== 'menuisier_aluminium' && selectedType !== 'reparateur_electronique' && selectedType !== 'reparateur_electromenager' && selectedType !== 'reparateur_frigoriste' && selectedType !== 'peintre' && selectedType !== 'staffeur' && selectedType !== 'reparateur_climatiseur' && selectedType !== 'ticket_voyage' && selectedType !== 'covoiturage' && (
                                         <View style={styles.fieldContainer}>
                                             <Text style={styles.fieldLabel}>
                                                 {getProductNameLabel(selectedType)} <Text style={styles.required}>*</Text>
@@ -21211,6 +21302,22 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                             </Text>
                                             <NativeInput
                                                 placeholder="Ex: Trajet confortable, départ ponctuel, arrêts possibles en route..."
+                                                value={newProduct.description || ''}
+                                                onChangeText={(text) => setNewProduct({ ...newProduct, description: text })}
+                                                multiline
+                                                style={[styles.fieldInput, styles.textareaInput]}
+                                            />
+                                        </View>
+                                    ) : selectedType === 'ticket_voyage' ? (
+                                        <View style={styles.fieldContainer}>
+                                            <Text style={styles.fieldLabel}>
+                                                Description <Text style={styles.required}>*</Text>
+                                            </Text>
+                                            <Text style={styles.fieldHint}>
+                                                💡 Décrivez le trajet, les services inclus, et toute information importante
+                                            </Text>
+                                            <NativeInput
+                                                placeholder="Ex: Trajet direct en bus VIP climatisé, sièges confortables, collation incluse..."
                                                 value={newProduct.description || ''}
                                                 onChangeText={(text) => setNewProduct({ ...newProduct, description: text })}
                                                 multiline
@@ -21528,7 +21635,8 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                             'electronique',        // ✅ Prix unique dans formulaire structuré (masqué ici, affiché dans section spécifique)
                                             'formation_education', // ✅ Prix dans formulaire structuré (prix formation)
                                             'evenementiel',        // ✅ Gamme tarifaire textuelle (pas de prix fixe)
-                                            'mecanicien'           // ✅ Tarif horaire optionnel dans formulaire structuré
+                                            'mecanicien',          // ✅ Tarif horaire optionnel dans formulaire structuré
+                                            'ticket_voyage'        // ✅ Prix aller simple et aller-retour spécifiques
                                         ];
 
                                         // ✅ PRESTATIONS: Prix indicatif optionnel (14 catégories)
@@ -22000,15 +22108,15 @@ const styles = StyleSheet.create({
         gap: 16,
     },
     sectionTitle: {
-        fontSize: 18,
+        fontSize: 16, // ✅ COMPACT : Réduit de 18 à 16
         fontWeight: '600',
         color: modernColors.text,
-        marginBottom: 8,
+        marginBottom: 6, // ✅ COMPACT : Réduit de 8 à 6
     },
     sectionSubtitle: {
-        fontSize: 14,
+        fontSize: 12, // ✅ COMPACT : Réduit de 14 à 12
         color: modernColors.textSecondary,
-        marginBottom: 16,
+        marginBottom: 12, // ✅ COMPACT : Réduit de 16 à 12
     },
     searchContainer: {
         flexDirection: 'row',
@@ -22161,24 +22269,24 @@ const styles = StyleSheet.create({
         marginHorizontal: 12,
     },
     fieldContainer: {
-        marginBottom: 12, // ✅ Réduit de 16 à 12 pour meilleure compacité
+        marginBottom: 10, // ✅ COMPACT : Réduit de 12 à 10 pour économiser l'espace
     },
     fieldRow: {
         flexDirection: 'row',
         gap: 12,
-        marginBottom: 16,
+        marginBottom: 12, // ✅ COMPACT : Réduit de 16 à 12
     },
     fieldLabel: {
         fontSize: 14,
         fontWeight: '600',
         color: modernColors.text,
-        marginBottom: 8,
+        marginBottom: 6, // ✅ COMPACT : Réduit de 8 à 6
     },
     required: {
         color: modernColors.error,
     },
     autoFilledHint: {
-        fontSize: 11,
+        fontSize: 10, // ✅ COMPACT : Réduit de 11 à 10 pour hints plus petits
         color: modernColors.success,
         fontStyle: 'italic',
         fontWeight: '400',
@@ -22302,15 +22410,15 @@ const styles = StyleSheet.create({
     hintBox: {
         backgroundColor: '#EFF6FF',
         borderRadius: 8,
-        padding: 12,
-        marginTop: 12,
+        padding: 8, // ✅ COMPACT : Réduit de 12 à 8
+        marginTop: 8, // ✅ COMPACT : Réduit de 12 à 8
         borderLeftWidth: 4,
         borderLeftColor: modernColors.primary,
     },
     hintText: {
-        fontSize: 12,
+        fontSize: 10, // ✅ COMPACT : Réduit de 12 à 10 pour description plus petite
         color: modernColors.text,
-        lineHeight: 16,
+        lineHeight: 14, // ✅ COMPACT : Réduit de 16 à 14
     },
     modalFooter: {
         flexDirection: 'row',
@@ -22547,7 +22655,7 @@ const styles = StyleSheet.create({
         textAlign: 'center',
     },
     emptyPrestationHint: {
-        fontSize: 11,
+        fontSize: 10, // ✅ COMPACT : Réduit de 11 à 10 pour hints plus petits
         color: modernColors.primary,
         fontStyle: 'italic',
     },
@@ -22640,6 +22748,46 @@ const styles = StyleSheet.create({
         fontWeight: '700',
         color: modernColors.primary,
         fontSize: 15,
+    },
+    regeneratePlanButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        padding: 10,
+        marginTop: 12,
+        backgroundColor: modernColors.surface,
+        borderWidth: 1,
+        borderColor: modernColors.primary,
+        borderRadius: 8,
+    },
+    regeneratePlanText: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: modernColors.primary,
+    },
+    busLoadingContainer: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 24,
+        marginTop: 16,
+        backgroundColor: '#F8FAFC',
+        borderRadius: 10,
+        borderWidth: 1,
+        borderStyle: 'dashed',
+        borderColor: modernColors.border,
+    },
+    busLoadingText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: modernColors.text,
+        marginTop: 12,
+    },
+    busLoadingHint: {
+        fontSize: 11,
+        color: modernColors.textSecondary,
+        marginTop: 4,
+        textAlign: 'center',
     },
     busPreviewContainer: {
         marginTop: 16,
@@ -23120,13 +23268,13 @@ const styles = StyleSheet.create({
     },
     // Styles manquants
     fieldHint: {
-        fontSize: 12,
+        fontSize: 10, // ✅ COMPACT : Réduit de 12 à 10 pour descriptions plus petites
         color: '#6B7280',
-        marginTop: 4,
+        marginTop: 3, // ✅ COMPACT : Réduit de 4 à 3
         fontStyle: 'italic',
     },
     hintBold: {
-        fontSize: 12,
+        fontSize: 10, // ✅ COMPACT : Réduit de 12 à 10
         fontWeight: '600',
         color: '#374151',
         marginTop: 4,
@@ -23196,15 +23344,15 @@ const styles = StyleSheet.create({
     sectionHeader: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 10,
-        marginTop: 20,
-        marginBottom: 12,
-        paddingBottom: 8,
+        gap: 8, // ✅ COMPACT : Réduit de 10 à 8
+        marginTop: 16, // ✅ COMPACT : Réduit de 20 à 16
+        marginBottom: 10, // ✅ COMPACT : Réduit de 12 à 10
+        paddingBottom: 6, // ✅ COMPACT : Réduit de 8 à 6
         borderBottomWidth: 2,
         borderBottomColor: modernColors.primary,
     },
     sectionTitle: {
-        fontSize: 16,
+        fontSize: 15, // ✅ COMPACT : Réduit de 16 à 15
         fontWeight: '700',
         color: modernColors.primary,
     },
@@ -23236,16 +23384,16 @@ const styles = StyleSheet.create({
         fontWeight: '600',
     },
     toggleHint: {
-        fontSize: 11,
+        fontSize: 10, // ✅ COMPACT : Réduit de 11 à 10 pour hints plus petits
         color: modernColors.textSecondary,
-        marginTop: 4,
+        marginTop: 3, // ✅ COMPACT : Réduit de 4 à 3
         marginLeft: 32,
         fontStyle: 'italic',
     },
     fieldHint: {
-        fontSize: 11,
+        fontSize: 10, // ✅ COMPACT : Réduit de 11 à 10 pour hints plus petits
         color: modernColors.textSecondary,
-        marginTop: 4,
+        marginTop: 3, // ✅ COMPACT : Réduit de 4 à 3
         fontStyle: 'italic',
     },
     equipementsScrollContainer: {
