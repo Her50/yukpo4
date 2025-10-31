@@ -153,10 +153,24 @@ pub async fn get_all_prestataire_products(
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
 
+    // Mapper vers une structure sérialisable
+    let products_json: Vec<serde_json::Value> = products
+        .iter()
+        .map(|p| {
+            serde_json::json!({
+                "id": p.id,
+                "nom": p.nom,
+                "type": p.r#type,
+                "is_active": p.is_active,
+                "service_id": p.service_id
+            })
+        })
+        .collect();
+
     Ok(Json(ApiResponse {
         success: true,
-        message: format!("{} produits récupérés", products.len()),
-        data: Some(serde_json::json!(products)),
+        message: format!("{} produits récupérés", products_json.len()),
+        data: Some(serde_json::json!(products_json)),
     }))
 }
 
