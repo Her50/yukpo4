@@ -122,6 +122,14 @@ const SelectModalitySelector: React.FC<SelectModalitySelectorProps> = ({
         return normalizedOption.includes(normalizedQuery);
     });
 
+    // ✅ AMÉLIORATION UX : Détecter si la recherche ne correspond à aucune option existante
+    const hasExactMatch = searchQuery.trim() && allOptions.some(opt =>
+        opt.toLowerCase() === searchQuery.toLowerCase().trim()
+    );
+    const shouldShowQuickAdd = searchQuery.trim().length >= 2 &&
+        filteredOptions.length === 0 &&
+        !hasExactMatch;
+
     return (
         <View style={styles.container}>
             <Text style={styles.label}>
@@ -205,38 +213,66 @@ const SelectModalitySelector: React.FC<SelectModalitySelectorProps> = ({
                         <ScrollView style={styles.optionsList}>
                             {loading ? (
                                 <Text style={styles.loadingText}>Chargement...</Text>
-                            ) : filteredOptions.length === 0 ? (
-                                <Text style={styles.emptyText}>
-                                    Aucun résultat pour "{searchQuery}"
-                                </Text>
                             ) : (
-                                filteredOptions.map((option, index) => (
-                                    <TouchableOpacity
-                                        key={index}
-                                        style={[
-                                            styles.optionItem,
-                                            value === option && styles.optionItemSelected
-                                        ]}
-                                        onPress={() => handleSelect(option)}
-                                    >
-                                        <View style={styles.optionContent}>
-                                            <Text style={[
-                                                styles.optionText,
-                                                value === option && styles.optionTextSelected,
-                                                option.includes('🆕') && styles.optionTextNew
-                                            ]}>
-                                                {option}
+                                <>
+                                    {/* ✅ AMÉLIORATION UX : Bouton d'ajout rapide si aucun résultat */}
+                                    {shouldShowQuickAdd && (
+                                        <View style={styles.quickAddContainer}>
+                                            <Text style={styles.quickAddInfo}>
+                                                Aucun résultat pour "{searchQuery}"
                                             </Text>
-                                            {value === option && (
-                                                <SafeIcon
-                                                    name="check"
-                                                    size={20}
-                                                    color={modernColors.primary}
-                                                />
-                                            )}
+                                            <TouchableOpacity
+                                                style={styles.quickAddButton}
+                                                onPress={() => {
+                                                    setNewModalityText(searchQuery.trim());
+                                                    setShowModal(false);
+                                                    setShowAddModal(true);
+                                                }}
+                                            >
+                                                <SafeIcon name="plus-circle" size={20} color="#FFF" />
+                                                <Text style={styles.quickAddButtonText}>
+                                                    Ajouter "{searchQuery.trim()}"
+                                                </Text>
+                                            </TouchableOpacity>
                                         </View>
-                                    </TouchableOpacity>
-                                ))
+                                    )}
+
+                                    {/* Message si recherche vide mais pas de résultats */}
+                                    {!shouldShowQuickAdd && filteredOptions.length === 0 && searchQuery.trim() && (
+                                        <Text style={styles.emptyText}>
+                                            Aucun résultat pour "{searchQuery}"
+                                        </Text>
+                                    )}
+
+                                    {/* Options filtrées */}
+                                    {filteredOptions.map((option, index) => (
+                                        <TouchableOpacity
+                                            key={index}
+                                            style={[
+                                                styles.optionItem,
+                                                value === option && styles.optionItemSelected
+                                            ]}
+                                            onPress={() => handleSelect(option)}
+                                        >
+                                            <View style={styles.optionContent}>
+                                                <Text style={[
+                                                    styles.optionText,
+                                                    value === option && styles.optionTextSelected,
+                                                    option.includes('🆕') && styles.optionTextNew
+                                                ]}>
+                                                    {option}
+                                                </Text>
+                                                {value === option && (
+                                                    <SafeIcon
+                                                        name="check"
+                                                        size={20}
+                                                        color={modernColors.primary}
+                                                    />
+                                                )}
+                                            </View>
+                                        </TouchableOpacity>
+                                    ))}
+                                </>
                             )}
                         </ScrollView>
 
@@ -519,6 +555,38 @@ const styles = StyleSheet.create({
     addModalButtonText: {
         fontSize: 14,
         fontWeight: '600',
+    },
+    // ✅ Styles pour le bouton d'ajout rapide
+    quickAddContainer: {
+        padding: 20,
+        alignItems: 'center',
+        gap: 12,
+    },
+    quickAddInfo: {
+        fontSize: 14,
+        color: modernColors.textSecondary,
+        textAlign: 'center',
+        marginBottom: 4,
+    },
+    quickAddButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: modernColors.primary,
+        paddingHorizontal: 20,
+        paddingVertical: 12,
+        borderRadius: 12,
+        gap: 8,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 3,
+    },
+    quickAddButtonText: {
+        fontSize: 15,
+        fontWeight: '600',
+        color: '#FFFFFF',
     },
 });
 

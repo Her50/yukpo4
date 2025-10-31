@@ -9,7 +9,7 @@ import { genererZonesIntervention } from '../data/productModalities';
 export interface CategoryFilter {
   id: string;
   label: string;
-  type: 'range' | 'select' | 'multiselect' | 'toggle' | 'date' | 'time';
+  type: 'range' | 'select' | 'multiselect' | 'toggle' | 'date' | 'time' | 'text';
   options?: { value: string; label: string }[];
   min?: number;
   max?: number;
@@ -166,23 +166,19 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
           { value: 'Meublé haut de gamme', label: 'Meublé haut de gamme' },
         ],
       },
-      // ✅ NOUVEAU: Filtre Ville (top 10 villes)
+      // ✅ Filtre Ville (saisie libre pour support international)
       {
         id: 'ville',
         label: 'Ville',
-        type: 'select',
-        options: [
-          { value: 'Douala', label: 'Douala' },
-          { value: 'Yaoundé', label: 'Yaoundé' },
-          { value: 'Garoua', label: 'Garoua' },
-          { value: 'Bafoussam', label: 'Bafoussam' },
-          { value: 'Bamenda', label: 'Bamenda' },
-          { value: 'Maroua', label: 'Maroua' },
-          { value: 'Ngaoundéré', label: 'Ngaoundéré' },
-          { value: 'Bertoua', label: 'Bertoua' },
-          { value: 'Kribi', label: 'Kribi' },
-          { value: 'Limbe', label: 'Limbe' },
-        ],
+        type: 'text',
+        placeholder: 'Ex: Douala, Yaoundé, Abidjan, Kinshasa...',
+      },
+      // ✅ NOUVEAU: Filtre Quartier (saisie libre)
+      {
+        id: 'quartier',
+        label: 'Quartier',
+        type: 'text',
+        placeholder: 'Ex: Akwa, Bonanjo, Bastos...',
       },
       // ✅ ENRICHI: Équipements (focus Cameroun)
       {
@@ -316,17 +312,8 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
       {
         id: 'ville',
         label: 'Destination',
-        type: 'select',
-        options: [
-          { value: 'Kribi', label: 'Kribi (Plage)' },
-          { value: 'Limbe', label: 'Limbe (Plage)' },
-          { value: 'Douala', label: 'Douala' },
-          { value: 'Yaoundé', label: 'Yaoundé' },
-          { value: 'Bafoussam', label: 'Bafoussam' },
-          { value: 'Dschang', label: 'Dschang' },
-          { value: 'Foumban', label: 'Foumban' },
-          { value: 'Buea', label: 'Buea (Mont Cameroun)' },
-        ],
+        type: 'text',
+        placeholder: 'Ex: Kribi, Limbe, Douala, Bafoussam...',
       },
       {
         id: 'typeImmobilier',
@@ -893,6 +880,19 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         id: 'bonEtat',
         label: 'Bon état uniquement',
         type: 'toggle',
+      },
+      // ✅ NOUVEAU: Filtres de localisation (alignement formulaire LocationSelector)
+      {
+        id: 'villeVehicule',
+        label: 'Ville du véhicule',
+        type: 'text',
+        placeholder: 'Ex: Douala, Abidjan, Kinshasa...',
+      },
+      {
+        id: 'quartierVehicule',
+        label: 'Quartier / Zone',
+        type: 'text',
+        placeholder: 'Ex: Akwa, Bonanjo, Plateau...',
       },
     ],
     style: {
@@ -1507,54 +1507,14 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
       {
         id: 'depart',
         label: 'Ville de départ',
-        type: 'select',
-        options: [
-          // Grandes villes
-          { value: 'douala', label: 'Douala (Littoral)' },
-          { value: 'yaounde', label: 'Yaoundé (Centre)' },
-          { value: 'garoua', label: 'Garoua (Nord)' },
-          { value: 'bafoussam', label: 'Bafoussam (Ouest)' },
-          { value: 'bamenda', label: 'Bamenda (Nord-Ouest)' },
-          { value: 'maroua', label: 'Maroua (Extrême-Nord)' },
-          { value: 'ngaoundere', label: 'Ngaoundéré (Adamaoua)' },
-          { value: 'bertoua', label: 'Bertoua (Est)' },
-          { value: 'ebolowa', label: 'Ebolowa (Sud)' },
-          { value: 'limbe', label: 'Limbe (Sud-Ouest)' },
-          { value: 'kribi', label: 'Kribi (Sud)' },
-          // Villes moyennes
-          { value: 'buea', label: 'Buea (Sud-Ouest)' },
-          { value: 'dschang', label: 'Dschang (Ouest)' },
-          { value: 'foumban', label: 'Foumban (Ouest)' },
-          { value: 'kumba', label: 'Kumba (Sud-Ouest)' },
-          { value: 'edea', label: 'Édéa (Littoral)' },
-          { value: 'autre', label: 'Autre ville' },
-        ],
+        type: 'text',
+        placeholder: 'Ex: Douala, Yaoundé, Garoua...',
       },
       {
         id: 'destination',
         label: 'Destination',
-        type: 'select',
-        options: [
-          // Grandes villes
-          { value: 'douala', label: 'Douala (Littoral)' },
-          { value: 'yaounde', label: 'Yaoundé (Centre)' },
-          { value: 'garoua', label: 'Garoua (Nord)' },
-          { value: 'bafoussam', label: 'Bafoussam (Ouest)' },
-          { value: 'bamenda', label: 'Bamenda (Nord-Ouest)' },
-          { value: 'maroua', label: 'Maroua (Extrême-Nord)' },
-          { value: 'ngaoundere', label: 'Ngaoundéré (Adamaoua)' },
-          { value: 'bertoua', label: 'Bertoua (Est)' },
-          { value: 'ebolowa', label: 'Ebolowa (Sud)' },
-          { value: 'limbe', label: 'Limbe (Sud-Ouest)' },
-          { value: 'kribi', label: 'Kribi (Sud)' },
-          // Villes moyennes
-          { value: 'buea', label: 'Buea (Sud-Ouest)' },
-          { value: 'dschang', label: 'Dschang (Ouest)' },
-          { value: 'foumban', label: 'Foumban (Ouest)' },
-          { value: 'kumba', label: 'Kumba (Sud-Ouest)' },
-          { value: 'edea', label: 'Édéa (Littoral)' },
-          { value: 'autre', label: 'Autre ville' },
-        ],
+        type: 'text',
+        placeholder: 'Ex: Yaoundé, Bafoussam, Ngaoundéré...',
       },
       {
         id: 'dateDepart',
@@ -5996,19 +5956,10 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
     },
     filters: [
       {
-        id: 'ville',
+        id: 'villeHotel',
         label: 'Ville',
-        type: 'select',
-        options: [
-          { value: 'Douala', label: 'Douala' },
-          { value: 'Yaoundé', label: 'Yaoundé' },
-          { value: 'Kribi', label: 'Kribi' },
-          { value: 'Limbe', label: 'Limbe' },
-          { value: 'Garoua', label: 'Garoua' },
-          { value: 'Bafoussam', label: 'Bafoussam' },
-          { value: 'Bamenda', label: 'Bamenda' },
-          { value: 'Buea', label: 'Buea' },
-        ],
+        type: 'text',
+        placeholder: 'Ex: Douala, Kribi, Limbe, Bafoussam...',
       },
       {
         id: 'typeHebergement',
@@ -15915,11 +15866,8 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
       {
         id: 'villeService',
         label: 'Ville du service',
-        type: 'select',
-        options: genererZonesIntervention('CM')
-          .filter(z => !z.includes('────') && !z.includes('Toute l\'Afrique') && !z.includes('International'))
-          .slice(0, 50)
-          .map(z => ({ value: z, label: z }))
+        type: 'text',
+        placeholder: 'Ex: Douala, Kinshasa, Abidjan...',
       },
       {
         id: 'typeVehiculeTransport',
@@ -16038,54 +15986,14 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
       {
         id: 'villeDepart',
         label: 'Ville de départ',
-        type: 'select',
-        options: [
-          // 🇨🇲 Villes principales Cameroun
-          { value: 'Douala', label: '🏙️ Douala' },
-          { value: 'Yaoundé', label: '🏙️ Yaoundé' },
-          { value: 'Garoua', label: '🏙️ Garoua' },
-          { value: 'Bafoussam', label: '🏙️ Bafoussam' },
-          { value: 'Bamenda', label: '🏙️ Bamenda' },
-          { value: 'Maroua', label: '🏙️ Maroua' },
-          { value: 'Ngaoundéré', label: '🏙️ Ngaoundéré' },
-          { value: 'Bertoua', label: 'Bertoua' },
-          { value: 'Ebolowa', label: 'Ebolowa' },
-          { value: 'Kribi', label: '🏖️ Kribi' },
-          { value: 'Kumba', label: 'Kumba' },
-          { value: 'Limbe', label: '🏖️ Limbe' },
-          { value: 'Nkongsamba', label: 'Nkongsamba' },
-          { value: 'Buea', label: 'Buea' },
-          { value: 'Édéa', label: 'Édéa' },
-          { value: 'Mbalmayo', label: 'Mbalmayo' },
-          { value: 'Dschang', label: 'Dschang' },
-          { value: 'Foumban', label: 'Foumban' },
-        ]
+        type: 'text',
+        placeholder: 'Ex: Douala, Yaoundé, Abidjan, Kinshasa...',
       },
       {
         id: 'villeArrivee',
         label: 'Ville d\'arrivée',
-        type: 'select',
-        options: [
-          // 🇨🇲 Villes principales Cameroun
-          { value: 'Douala', label: '🏙️ Douala' },
-          { value: 'Yaoundé', label: '🏙️ Yaoundé' },
-          { value: 'Garoua', label: '🏙️ Garoua' },
-          { value: 'Bafoussam', label: '🏙️ Bafoussam' },
-          { value: 'Bamenda', label: '🏙️ Bamenda' },
-          { value: 'Maroua', label: '🏙️ Maroua' },
-          { value: 'Ngaoundéré', label: '🏙️ Ngaoundéré' },
-          { value: 'Bertoua', label: 'Bertoua' },
-          { value: 'Ebolowa', label: 'Ebolowa' },
-          { value: 'Kribi', label: '🏖️ Kribi' },
-          { value: 'Kumba', label: 'Kumba' },
-          { value: 'Limbe', label: '🏖️ Limbe' },
-          { value: 'Nkongsamba', label: 'Nkongsamba' },
-          { value: 'Buea', label: 'Buea' },
-          { value: 'Édéa', label: 'Édéa' },
-          { value: 'Mbalmayo', label: 'Mbalmayo' },
-          { value: 'Dschang', label: 'Dschang' },
-          { value: 'Foumban', label: 'Foumban' },
-        ]
+        type: 'text',
+        placeholder: 'Ex: Yaoundé, Bafoussam, Dakar, Brazzaville...',
       },
       { id: 'dateTrajet', label: 'Date du trajet', type: 'date' },
       { id: 'nbPlacesDisponibles', label: 'Places disponibles', type: 'range', min: 1, max: 15, unit: 'places' },

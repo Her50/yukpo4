@@ -104,8 +104,8 @@ const MainStack = () => {
       })}
     >
       <Tab.Screen name="Home" component={HomeScreen} options={{ tabBarLabel: 'Accueil' }} />
-      <Tab.Screen name="Services" component={ServicesScreen} options={{ 
-        tabBarLabel: 'Boutique | Services',
+      <Tab.Screen name="Services" component={ServicesScreen} options={{
+        tabBarLabel: 'Services',
         title: 'Boutique | Services'
       }} />
       <Tab.Screen name="History" component={MesInteractionsScreen} options={{ tabBarLabel: 'Historique' }} />
@@ -127,18 +127,18 @@ const SecondaryStack = () => {
     <DeepLinkHandler>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         <Stack.Screen name="Main" component={MainStack} />
-      <Stack.Screen name="Contact" component={ContactScreen} />
-      <Stack.Screen name="Settings" component={EnhancedSettingsScreen} />
-      <Stack.Screen name="RechargeTokens" component={RechargeTokensScreen} />
-      <Stack.Screen name="FormulaireYukpoIntelligent" component={FormulaireYukpoIntelligentScreen} />
-      <Stack.Screen name="MesProduits" component={MesProduitsScreen} />
-      <Stack.Screen name="ProductDetail" component={ProductDetailScreen} />
-      <Stack.Screen name="ServiceDetailShared" component={ServiceDetailSharedScreen} />
-      <Stack.Screen name="ResultatBesoin" component={ResultatBesoinScreen} />
-      <Stack.Screen name="CreatePublicite" component={CreatePubliciteScreen} />
-      <Stack.Screen name="PubliciteDashboard" component={PubliciteDashboardScreen} />
-      <Stack.Screen name="SoldeDetail" component={SoldeDetailScreen} />
-      <Stack.Screen name="YukpoServicePlaceholder" component={YukpoServicePlaceholderScreen} />
+        <Stack.Screen name="Contact" component={ContactScreen} />
+        <Stack.Screen name="Settings" component={EnhancedSettingsScreen} />
+        <Stack.Screen name="RechargeTokens" component={RechargeTokensScreen} />
+        <Stack.Screen name="FormulaireYukpoIntelligent" component={FormulaireYukpoIntelligentScreen} />
+        <Stack.Screen name="MesProduits" component={MesProduitsScreen} />
+        <Stack.Screen name="ProductDetail" component={ProductDetailScreen} />
+        <Stack.Screen name="ServiceDetailShared" component={ServiceDetailSharedScreen} />
+        <Stack.Screen name="ResultatBesoin" component={ResultatBesoinScreen} />
+        <Stack.Screen name="CreatePublicite" component={CreatePubliciteScreen} />
+        <Stack.Screen name="PubliciteDashboard" component={PubliciteDashboardScreen} />
+        <Stack.Screen name="SoldeDetail" component={SoldeDetailScreen} />
+        <Stack.Screen name="YukpoServicePlaceholder" component={YukpoServicePlaceholderScreen} />
       </Stack.Navigator>
     </DeepLinkHandler>
   );

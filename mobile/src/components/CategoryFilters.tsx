@@ -331,7 +331,7 @@ const CategoryFilters: React.FC<CategoryFiltersProps> = ({
                             {filter.options?.map((option, idx) => {
                                 const isSelected = Array.isArray(filters[filter.id]) &&
                                     filters[filter.id].includes(option.value);
-                                
+
                                 // ✅ Détecter si c'est une option dynamique
                                 const baseFilter = categoryFilters.find(f => f.id === filter.id);
                                 const baseOptionsCount = baseFilter?.options?.length || 0;

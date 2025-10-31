@@ -31,6 +31,9 @@ const MultiSelectModalitySelector: React.FC<MultiSelectModalitySelectorProps> = 
     const [loading, setLoading] = useState(false);
     const [showModal, setShowModal] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
+    // ✅ État pour modale d'ajout (remplace Alert.prompt non supporté Android)
+    const [showAddModal, setShowAddModal] = useState(false);
+    const [newModalityText, setNewModalityText] = useState('');
 
     // ✅ NOUVEAU: Détecter le pays de l'utilisateur pour adapter les lieux
     const { countryCode } = useUserCountry();
@@ -91,64 +94,8 @@ const MultiSelectModalitySelector: React.FC<MultiSelectModalitySelectorProps> = 
 
     const toggleSelection = async (option: string) => {
         if (option.includes('🆕 Autre')) {
-            // Proposer d'ajouter une nouvelle modalité
-            Alert.prompt(
-                `Nouveau ${label.toLowerCase()}`,
-                `Entrez le ${label.toLowerCase()} :`,
-                [
-                    {
-                        text: 'Annuler',
-                        style: 'cancel'
-                    },
-                    {
-                        text: 'Ajouter',
-                        onPress: async (text) => {
-                            if (text && text.trim()) {
-                                const newModality = text.trim();
-
-                                // Vérifier si la modalité existe déjà
-                                if (allOptions.some(opt => opt.toLowerCase() === newModality.toLowerCase())) {
-                                    Alert.alert(
-                                        '⚠️ Modalité existante',
-                                        `"${newModality}" existe déjà dans la liste.`,
-                                        [{ text: 'OK' }]
-                                    );
-                                    return;
-                                }
-
-                                // Ajouter la nouvelle modalité au serveur
-                                const success = await modalityService.addCustomModality(
-                                    productType,
-                                    fieldName,
-                                    newModality
-                                );
-
-                                if (success) {
-                                    // Recharger les options pour inclure la nouvelle modalité
-                                    await loadOptions();
-
-                                    // Ajouter la nouvelle modalité à la sélection
-                                    const newValues = [...values, newModality];
-                                    onSelect(newValues);
-
-                                    Alert.alert(
-                                        '✅ Modalité ajoutée',
-                                        `"${newModality}" a été ajouté et sera visible pour tous les utilisateurs !`,
-                                        [{ text: 'OK' }]
-                                    );
-                                } else {
-                                    Alert.alert(
-                                        '❌ Erreur',
-                                        'Impossible d\'ajouter la modalité. Veuillez réessayer.',
-                                        [{ text: 'OK' }]
-                                    );
-                                }
-                            }
-                        }
-                    }
-                ],
-                'plain-text'
-            );
+            // ✅ Ouvrir la modale d'ajout (compatible Android/iOS)
+            setShowAddModal(true);
         } else {
             // Toggle la sélection
             const isSelected = values.includes(option);
@@ -211,6 +158,14 @@ const MultiSelectModalitySelector: React.FC<MultiSelectModalitySelectorProps> = 
         const normalizedOption = option.toLowerCase();
         return normalizedOption.includes(normalizedQuery);
     });
+
+    // ✅ AMÉLIORATION UX : Détecter si la recherche ne correspond à aucune option existante
+    const hasExactMatch = searchQuery.trim() && allOptions.some(opt =>
+        opt.toLowerCase() === searchQuery.toLowerCase().trim()
+    );
+    const shouldShowQuickAdd = searchQuery.trim().length >= 2 &&
+        filteredOptions.length === 0 &&
+        !hasExactMatch;
 
     return (
         <View style={styles.container}>
@@ -329,60 +284,77 @@ const MultiSelectModalitySelector: React.FC<MultiSelectModalitySelectorProps> = 
                         )}
 
                         <ScrollView style={styles.modalOptions} showsVerticalScrollIndicator={true}>
-                            {filteredOptions.length === 0 ? (
-                                <View style={styles.noResultsContainer}>
-                                    <SafeIcon name="search" size={40} color={modernColors.textSecondary} />
-                                    <Text style={styles.noResultsText}>
+                            {/* ✅ AMÉLIORATION UX : Bouton d'ajout rapide si aucun résultat */}
+                            {shouldShowQuickAdd && (
+                                <View style={styles.quickAddContainer}>
+                                    <Text style={styles.quickAddInfo}>
                                         Aucun résultat pour "{searchQuery}"
                                     </Text>
                                     <TouchableOpacity
-                                        style={styles.addCustomButton}
+                                        style={styles.quickAddButton}
                                         onPress={() => {
+                                            setNewModalityText(searchQuery.trim());
                                             setShowModal(false);
-                                            setSearchQuery('');
-                                            // Ajouter directement avec le texte recherché
-                                            toggleSelection('🆕 Autre (ajouter)');
+                                            setShowAddModal(true);
                                         }}
                                     >
-                                        <SafeIcon name="plus-circle" size={20} color={modernColors.primary} />
-                                        <Text style={styles.addCustomButtonText}>
-                                            Ajouter "{searchQuery}" comme nouvelle modalité
+                                        <SafeIcon name="plus-circle" size={20} color="#FFF" />
+                                        <Text style={styles.quickAddButtonText}>
+                                            Ajouter "{searchQuery.trim()}"
                                         </Text>
                                     </TouchableOpacity>
                                 </View>
-                            ) : (
-                                filteredOptions.map((option, index) => {
-                                    const isSelected = values.includes(option);
-                                    return (
-                                        <TouchableOpacity
-                                            key={index}
-                                            style={[
-                                                styles.optionItem,
-                                                isSelected && styles.optionItemSelected
-                                            ]}
-                                            onPress={() => toggleSelection(option)}
-                                        >
-                                            <View style={styles.optionContent}>
-                                                <Text style={[
-                                                    styles.optionText,
-                                                    isSelected && styles.optionTextSelected
-                                                ]}>
-                                                    {option}
-                                                </Text>
-                                                {isSelected && (
-                                                    <SafeIcon name="check" size={20} color={modernColors.primary} />
-                                                )}
-                                            </View>
-                                        </TouchableOpacity>
-                                    );
-                                })
                             )}
 
-                            {/* ✅ Bouton d'ajout toujours disponible */}
+                            {/* Message si recherche vide mais pas de résultats */}
+                            {!shouldShowQuickAdd && filteredOptions.length === 0 && searchQuery.trim() && (
+                                <View style={styles.noResultsContainer}>
+                                    <SafeIcon name="search" size={40} color={modernColors.textSecondary} />
+                                    <Text style={styles.noResultsText}>
+                                        Aucun résultat
+                                    </Text>
+                                </View>
+                            )}
+
+                            {/* Options filtrées */}
+                            {filteredOptions.length > 0 && (
+                                <>{
+                                    filteredOptions.map((option, index) => {
+                                        const isSelected = values.includes(option);
+                                        return (
+                                            <TouchableOpacity
+                                                key={index}
+                                                style={[
+                                                    styles.optionItem,
+                                                    isSelected && styles.optionItemSelected
+                                                ]}
+                                                onPress={() => toggleSelection(option)}
+                                            >
+                                                <View style={styles.optionContent}>
+                                                    <Text style={[
+                                                        styles.optionText,
+                                                        isSelected && styles.optionTextSelected
+                                                    ]}>
+                                                        {option}
+                                                    </Text>
+                                                    {isSelected && (
+                                                        <SafeIcon name="check" size={20} color={modernColors.primary} />
+                                                    )}
+                                                </View>
+                                            </TouchableOpacity>
+                                        );
+                                    })
+                                }</>
+                            )}
+
+                            {/* ✅ Bouton d'ajout toujours disponible (quand pas de recherche) */}
                             {!searchQuery.trim() && (
                                 <TouchableOpacity
                                     style={styles.addCustomButton}
-                                    onPress={() => toggleSelection('🆕 Autre (ajouter)')}
+                                    onPress={() => {
+                                        setNewModalityText('');
+                                        setShowAddModal(true);
+                                    }}
                                 >
                                     <SafeIcon name="plus-circle" size={20} color={modernColors.primary} />
                                     <Text style={styles.addCustomButtonText}>
@@ -403,6 +375,73 @@ const MultiSelectModalitySelector: React.FC<MultiSelectModalitySelectorProps> = 
                                 <Text style={styles.modalButtonText}>
                                     Terminé ({values.length} sélectionné{values.length > 1 ? 's' : ''})
                                 </Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
+
+            {/* ✅ Modale d'ajout de modalité (Android/iOS) */}
+            <Modal
+                visible={showAddModal}
+                animationType="fade"
+                transparent={true}
+                onRequestClose={() => setShowAddModal(false)}
+            >
+                <View style={styles.addModalOverlay}>
+                    <View style={styles.addModalCard}>
+                        <Text style={styles.addModalTitle}>➕ Ajouter un nouveau {label.toLowerCase()}</Text>
+                        <TextInput
+                            style={styles.addModalInput}
+                            placeholder={`Entrez le ${label.toLowerCase()}`}
+                            value={newModalityText}
+                            onChangeText={setNewModalityText}
+                            placeholderTextColor={modernColors.textSecondary}
+                            autoFocus
+                        />
+                        <View style={styles.addModalActions}>
+                            <TouchableOpacity
+                                style={[styles.addModalButton, { backgroundColor: '#F3F4F6' }]}
+                                onPress={() => { setShowAddModal(false); setNewModalityText(''); }}
+                            >
+                                <Text style={[styles.addModalButtonText, { color: modernColors.textSecondary }]}>Annuler</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[styles.addModalButton, { backgroundColor: modernColors.primary }]}
+                                onPress={async () => {
+                                    const text = newModalityText.trim();
+                                    if (!text) return;
+
+                                    const newModality = text;
+
+                                    if (allOptions.some(opt => opt.toLowerCase() === newModality.toLowerCase() && !opt.includes('🆕'))) {
+                                        Alert.alert('⚠️ Modalité existante', `"${newModality}" existe déjà dans la liste.`, [{ text: 'OK' }]);
+                                        return;
+                                    }
+
+                                    const success = await modalityService.addCustomModality(
+                                        productType,
+                                        fieldName,
+                                        newModality
+                                    );
+
+                                    if (success) {
+                                        await loadOptions();
+                                        const newValues = [...values, newModality];
+                                        onSelect(newValues);
+                                        setShowAddModal(false);
+                                        setNewModalityText('');
+                                        Alert.alert(
+                                            '✅ Modalité ajoutée',
+                                            `"${newModality}" a été ajouté et sélectionné !`,
+                                            [{ text: 'OK' }]
+                                        );
+                                    } else {
+                                        Alert.alert('❌ Erreur', 'Impossible d\'ajouter la modalité.', [{ text: 'OK' }]);
+                                    }
+                                }}
+                            >
+                                <Text style={[styles.addModalButtonText, { color: '#FFFFFF' }]}>Ajouter</Text>
                             </TouchableOpacity>
                         </View>
                     </View>
@@ -635,6 +674,85 @@ const styles = StyleSheet.create({
         color: modernColors.primary,
         fontWeight: '600',
         flex: 1,
+    },
+    // ✅ Styles pour le bouton d'ajout rapide
+    quickAddContainer: {
+        padding: 20,
+        alignItems: 'center',
+        gap: 12,
+    },
+    quickAddInfo: {
+        fontSize: 14,
+        color: modernColors.textSecondary,
+        textAlign: 'center',
+        marginBottom: 4,
+    },
+    quickAddButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: modernColors.primary,
+        paddingHorizontal: 20,
+        paddingVertical: 12,
+        borderRadius: 12,
+        gap: 8,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 3,
+    },
+    quickAddButtonText: {
+        fontSize: 15,
+        fontWeight: '600',
+        color: '#FFFFFF',
+    },
+    // ✅ Styles modale d'ajout
+    addModalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.4)',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 24,
+    },
+    addModalCard: {
+        width: '100%',
+        backgroundColor: '#FFFFFF',
+        borderRadius: 16,
+        padding: 16,
+        borderWidth: 1,
+        borderColor: modernColors.border,
+    },
+    addModalTitle: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: modernColors.text,
+        marginBottom: 12,
+    },
+    addModalInput: {
+        borderWidth: 1,
+        borderColor: modernColors.border,
+        borderRadius: 10,
+        paddingHorizontal: 12,
+        paddingVertical: 10,
+        fontSize: 15,
+        color: modernColors.text,
+        marginBottom: 12,
+        backgroundColor: '#FAFAFA',
+    },
+    addModalActions: {
+        flexDirection: 'row',
+        justifyContent: 'flex-end',
+        gap: 8,
+    },
+    addModalButton: {
+        paddingHorizontal: 14,
+        paddingVertical: 10,
+        borderRadius: 10,
+    },
+    addModalButtonText: {
+        fontSize: 14,
+        fontWeight: '600',
     },
 });
 
