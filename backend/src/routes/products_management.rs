@@ -1,5 +1,5 @@
 use axum::{
-    extract::{Path, State},
+    extract::{Path, State, Extension},
     http::StatusCode,
     response::Json,
 };
@@ -274,6 +274,7 @@ pub struct UpdateProductRequest {
     pub updated_product: serde_json::Value,
 }
 
+#[axum::debug_handler]
 pub async fn update_product(
     State(state): State<Arc<AppState>>,
     Extension(user): Extension<crate::middlewares::jwt::AuthenticatedUser>,

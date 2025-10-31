@@ -257,9 +257,10 @@ pub async fn creer_service(
                             // Limiter la taille des descriptions trop longues (max 5000 caractères)
                             if let Some(description) = produit_obj.get_mut("description") {
                                 if let Some(desc_str) = description.as_str() {
-                                    if desc_str.len() > 5000 {
+                                    let desc_len = desc_str.len();
+                                    if desc_len > 5000 {
                                         *description = serde_json::Value::String(desc_str.chars().take(5000).collect::<String>() + "...");
-                                        log::warn!("[creer_service] Description produit tronquée (trop longue: {} chars)", desc_str.len());
+                                        log::warn!("[creer_service] Description produit tronquée (trop longue: {} chars)", desc_len);
                                     }
                                 }
                             }
@@ -399,7 +400,7 @@ pub async fn creer_service(
                             image_index, product_index, is_main, &image_path[..image_path.len().min(50)]);
                         
                         // Décoder si c'est du base64, sinon utiliser l'URL directement
-                        let (file_path, image_bytes) = if image_path.starts_with("http") {
+                        let (file_path, _image_bytes) = if image_path.starts_with("http") {
                             // URL Cloudinary déjà uploadée
                             (image_path.to_string(), vec![])
                         } else {
@@ -417,17 +418,17 @@ pub async fn creer_service(
                         
                         // Générer signature si feature activée et si c'est du base64
                         #[cfg(feature = "image_search")]
-                        let (image_signature, image_hash, image_metadata) = if !image_bytes.is_empty() {
-                            match image_service.generate_image_signature(&image_bytes).await {
+                        let (image_signature, image_hash, image_metadata) = if !_image_bytes.is_empty() {
+                            match image_service.generate_image_signature(&_image_bytes).await {
                                 Ok(signature) => {
-                                    let metadata = image_service.extract_image_metadata(&image_bytes).await
+                                    let metadata = image_service.extract_image_metadata(&_image_bytes).await
                                         .unwrap_or_else(|_| crate::services::image_search_service::ImageMetadata {
                                             width: 0, height: 0, format: "jpeg".to_string(),
-                                            file_size: image_bytes.len(), dominant_colors: vec![],
+                                            file_size: _image_bytes.len(), dominant_colors: vec![],
                                             color_histogram: vec![], edge_density: 0.0,
                                             brightness: 0.0, contrast: 0.0,
                                         });
-                                    let hash = format!("{:x}", md5::compute(&image_bytes));
+                                    let hash = format!("{:x}", md5::compute(&_image_bytes));
                                     (serde_json::to_value(&signature).unwrap_or_default(), 
                                      hash, 
                                      serde_json::to_value(&metadata).unwrap_or_default())
