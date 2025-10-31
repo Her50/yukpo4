@@ -4,7 +4,6 @@ use axum::{
     response::Json,
 };
 use serde::{Deserialize, Serialize};
-use sqlx::PgPool;
 use std::sync::Arc;
 
 use crate::state::AppState;
@@ -37,17 +36,17 @@ pub async fn toggle_product_status(
         if payload.is_active { "actif" } else { "inactif" }
     );
 
-    // Mettre à jour le statut du produit
+    // Mettre à jour le statut du produit dans products_lifecycle
     let result = sqlx::query!(
         r#"
-        UPDATE products
+        UPDATE products_lifecycle
         SET is_active = $1,
             updated_at = NOW()
         WHERE id = $2
         RETURNING id
         "#,
         payload.is_active,
-        product_id
+        product_id.parse::<i32>().unwrap_or(0)
     )
     .fetch_optional(pool)
     .await
@@ -84,14 +83,14 @@ pub async fn delete_product(
     
     log::info!("🗑️ Suppression produit {}", product_id);
 
-    // Supprimer le produit
+    // Supprimer le produit de products_lifecycle
     let result = sqlx::query!(
         r#"
-        DELETE FROM products
+        DELETE FROM products_lifecycle
         WHERE id = $1
         RETURNING id
         "#,
-        product_id
+        product_id.parse::<i32>().unwrap_or(0)
     )
     .fetch_optional(pool)
     .await
@@ -135,18 +134,15 @@ pub async fn get_all_prestataire_products(
     let products = sqlx::query!(
         r#"
         SELECT 
-            p.id,
-            p.nom,
-            p.type,
-            p.prix,
-            p.devise,
-            p.description,
-            p.is_active,
-            s.id as service_id
-        FROM products p
-        JOIN services s ON p.service_id = s.id
+            pl.id,
+            pl.product_nom as nom,
+            pl.product_type as type,
+            pl.is_active,
+            pl.service_id
+        FROM products_lifecycle pl
+        JOIN services s ON pl.service_id = s.id
         WHERE s.user_id = $1
-        ORDER BY p.created_at DESC
+        ORDER BY pl.created_at DESC
         "#,
         1 // TODO: Remplacer par user_id du JWT
     )
