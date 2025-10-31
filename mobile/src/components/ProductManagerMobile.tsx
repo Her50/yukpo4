@@ -1,4 +1,5 @@
 // @ts-nocheck
+import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useState } from 'react';
 import {
@@ -37,6 +38,7 @@ import ModernGPSModal from './ModernGPSModal';
 import { SmartModalityInput } from './SmartModalityInput';
 // ✅ NOUVEAU: Composants pour modalités réutilisables
 import AssuranceProduitSelector from './AssuranceProduitSelector';
+import VehicleModelSelector from './VehicleModelSelector';
 // ✅ NOUVEAU: Configuration conditionnelle des champs prestations
 import { getEncouragementMessage, getFieldsConfig } from '../utils/prestationFieldsConfig';
 import ChaussureVariantManager, { ChaussureVariant } from './ChaussureVariantManager';
@@ -54,12 +56,20 @@ import SelectModalitySelector from './SelectModalitySelector';
 const { width } = Dimensions.get('window');
 
 // ✅ Fonction de normalisation sans accents pour la recherche
-const normalizeText = (text: string): string => {
-    return text
-        .toLowerCase()
-        .normalize('NFD') // Décompose les caractères accentués
-        .replace(/[\u0300-\u036f]/g, '') // Supprime les accents
-        .trim();
+const normalizeText = (text: any): string => {
+    // Sécurise contre undefined/null/number/boolean/objects
+    if (text === undefined || text === null) return '';
+    const value = typeof text === 'string' ? text : String(text);
+    try {
+        return value
+            .toLowerCase()
+            .normalize('NFD') // Décompose les caractères accentués
+            .replace(/[\u0300-\u036f]/g, '') // Supprime les accents
+            .trim();
+    } catch (_e) {
+        // En cas d'environnement ne supportant pas normalize ou autre edge-case
+        return value.toLowerCase().trim();
+    }
 };
 
 // ✅ NOUVEAU: Composant moderne pour les champs multi-sélection
@@ -1418,6 +1428,10 @@ interface ProductManagerMobileProps {
     descriptionService?: string; // Description depuis bloc info générale
     categoryService?: string; // ✅ NOUVEAU: Catégorie du service pour détection auto du type produit
     onDuplicate?: (product: Product) => void; // ✅ AJOUT: Callback pour la duplication
+    focusProductId?: string; // ✅ NOUVEAU: ID du produit à ouvrir/sélectionner automatiquement
+    duplicateProduct?: Product; // ✅ NOUVEAU: Produit à dupliquer automatiquement
+    serviceId?: number; // ✅ NOUVEAU: ID du service pour navigation vers formulaire d'édition
+    serviceData?: any; // ✅ NOUVEAU: Données du service pour préremplir le formulaire
 }
 
 // Configuration des types de produits avec noms adaptés
@@ -1867,8 +1881,13 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
     titreService,
     descriptionService,
     categoryService,
-    onDuplicate
+    onDuplicate,
+    focusProductId, // ✅ NOUVEAU
+    duplicateProduct, // ✅ NOUVEAU
+    serviceId, // ✅ NOUVEAU
+    serviceData // ✅ NOUVEAU
 }) => {
+    const navigation = useNavigation(); // ✅ NOUVEAU: Navigation pour modifier produit
     const [showAddModal, setShowAddModal] = useState(false);
     const [selectedType, setSelectedType] = useState<ProductType | null>(null);
     const [editingProductId, setEditingProductId] = useState<string | null>(null);
@@ -1889,6 +1908,59 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
         images: [],
         videos: []
     });
+
+    // ✅ NOUVEAU: Gérer l'ouverture automatique d'un produit spécifique
+    React.useEffect(() => {
+        if (focusProductId && products.length > 0) {
+            const productToFocus = products.find(p => p.id === focusProductId);
+            if (productToFocus) {
+                console.log('[ProductManagerMobile] 📝 Ouverture automatique du produit:', {
+                    id: focusProductId,
+                    nom: productToFocus.nom
+                });
+
+                // Ouvrir le modal d'édition avec ce produit
+                setEditingProductId(focusProductId);
+                setSelectedType(productToFocus.type as ProductType);
+                setNewProduct(productToFocus);
+                setCurrentStep('form');
+                setShowAddModal(true);
+            }
+        }
+    }, [focusProductId, products]);
+
+    // ✅ NOUVEAU: Gérer la duplication automatique d'un produit
+    React.useEffect(() => {
+        if (duplicateProduct) {
+            console.log('[ProductManagerMobile] 📋 Duplication automatique du produit:', {
+                nom: duplicateProduct.nom,
+                type: duplicateProduct.type
+            });
+
+            // Créer une copie du produit
+            const duplicatedProduct = {
+                ...duplicateProduct,
+                id: `duplicate_${Date.now()}`, // Nouvel ID temporaire
+                nom: duplicateProduct.nom // Le nom "(Copie)" est déjà ajouté par MesProduitsScreen
+            };
+
+            // Ajouter la copie à la liste
+            onProductsChange([...products, duplicatedProduct]);
+
+            // Ouvrir le modal d'édition avec le produit dupliqué
+            setEditingProductId(duplicatedProduct.id);
+            setSelectedType(duplicatedProduct.type as ProductType);
+            setNewProduct(duplicatedProduct);
+            setCurrentStep('form');
+            setShowAddModal(true);
+
+            Alert.alert(
+                '✅ Produit dupliqué',
+                `"${duplicatedProduct.nom}" a été ajouté.\n\nVous pouvez maintenant le modifier.`,
+                [{ text: 'OK' }]
+            );
+        }
+    }, [duplicateProduct]);
 
     // ✅ NOUVEAU: Configuration conditionnelle des champs prestations
     const [prestationFieldsConfig, setPrestationFieldsConfig] = useState(getFieldsConfig(''));
@@ -2067,36 +2139,17 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                 return;
             }
 
-            // ✅ CORRECTION: Limite réduite à 5 images max pour éviter erreur 413
-            const currentImagesCount = (newProduct.images || []).length;
-            if (currentImagesCount >= 5) {
-                Alert.alert(
-                    'Limite atteinte',
-                    '📸 Maximum 5 images par produit pour optimiser la vitesse d\'envoi.\n\n💡 Astuce : Choisissez les 5 meilleures photos de votre produit !',
-                    [{ text: 'OK' }]
-                );
-                return;
-            }
-
+            // ✅ NOUVEAU: Pas de limite sur le nombre d'images (stockage dans table media)
             const result = await ImagePicker.launchImageLibraryAsync({
                 mediaTypes: ImagePicker.MediaTypeOptions.Images,
                 allowsMultipleSelection: true,
-                quality: 0.3, // ✅ Qualité réduite à 30% pour éviter erreur 413
+                quality: 0.3, // ✅ Qualité réduite à 30% pour optimiser la vitesse
                 base64: false // ✅ Ne pas utiliser base64 de l'ImagePicker
             });
 
             if (!result.canceled && result.assets && result.assets.length > 0) {
-                // ✅ Limiter le nombre total d'images à 5
-                const remainingSlots = 5 - currentImagesCount;
-                const assetsToAdd = result.assets.slice(0, remainingSlots);
-
-                if (result.assets.length > remainingSlots) {
-                    Alert.alert(
-                        'Images limitées',
-                        `📸 Seulement ${remainingSlots} image(s) ajoutée(s).\n\nMaximum 5 images par produit pour optimiser l'envoi.`,
-                        [{ text: 'OK' }]
-                    );
-                }
+                // ✅ Accepter toutes les images sélectionnées
+                const assetsToAdd = result.assets;
 
                 // ✅ NOUVEAU : Compression AGRESSIVE et redimensionnement des images
                 const compressedImages = await Promise.all(
@@ -2136,9 +2189,10 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                 });
 
                 // Afficher message de succès avec info compression
+                const totalImages = (newProduct.images || []).length + validImages.length;
                 Alert.alert(
-                    'Images ajoutées',
-                    `${validImages.length} image(s) ajoutée(s) et compressées pour optimiser l'envoi.`,
+                    '✅ Images ajoutées',
+                    `${validImages.length} image(s) ajoutée(s) et compressées.\n\n📸 Total : ${totalImages} image(s) pour ce produit.\n\n💡 Les images sont stockées de manière optimisée.`,
                     [{ text: 'OK' }]
                 );
             }
@@ -2158,17 +2212,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                 return;
             }
 
-            // ✅ CORRECTION: Limite réduite à 2 vidéos max pour éviter erreur 413
-            const currentVideosCount = (newProduct.videos || []).length;
-            if (currentVideosCount >= 2) {
-                Alert.alert(
-                    'Limite atteinte',
-                    '🎥 Maximum 2 vidéos par produit pour optimiser l\'envoi.\n\n💡 Astuces :\n- Max 15 secondes par vidéo\n- Filmez en qualité moyenne\n- Privilégiez les vidéos essentielles',
-                    [{ text: 'OK' }]
-                );
-                return;
-            }
-
+            // ✅ NOUVEAU: Pas de limite sur le nombre de vidéos (stockage dans table media)
             const result = await ImagePicker.launchImageLibraryAsync({
                 mediaTypes: ImagePicker.MediaTypeOptions.Videos,
                 allowsMultipleSelection: false,
@@ -2207,10 +2251,10 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                         videos: [...(newProduct.videos || []), videoData]
                     });
 
-                    const remainingVideos = 2 - (newProduct.videos?.length || 0) - 1;
+                    const totalVideos = (newProduct.videos?.length || 0) + 1;
                     Alert.alert(
-                        'Vidéo ajoutée',
-                        `✅ Vidéo ajoutée${videoSizeMB > 0 ? ` (${videoSizeMB.toFixed(2)} MB)` : ''}\n\n📹 ${remainingVideos > 0 ? `Vous pouvez encore ajouter ${remainingVideos} vidéo.` : 'Limite atteinte : 2 vidéos max'}`,
+                        '✅ Vidéo ajoutée',
+                        `Vidéo ajoutée avec succès${videoSizeMB > 0 ? ` (${videoSizeMB.toFixed(2)} MB)` : ''}\n\n🎥 Total : ${totalVideos} vidéo(s) pour ce produit.\n\n💡 Recommandation : Max 15 secondes par vidéo pour une meilleure performance.`,
                         [{ text: 'OK' }]
                     );
                 } catch (err) {
@@ -3577,6 +3621,16 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
             }
         }
 
+        if (selectedType === 'agroalimentaire') {
+            // ✅ Générer nom automatique : "[CATÉGORIE] [TYPE] [MARQUE]" ou "[CATÉGORIE]"
+            const categorie = newProduct.categorieAliment || 'Produit alimentaire';
+            const type = newProduct.typeAliment ? ` ${newProduct.typeAliment}` : '';
+            const marque = newProduct.marqueAliment ? ` ${newProduct.marqueAliment}` : '';
+            const origine = !newProduct.marqueAliment && newProduct.origine ? ` ${newProduct.origine}` : '';
+
+            newProduct.nom = `${categorie}${type}${marque}${origine}`.trim();
+        }
+
         if (selectedType === 'cosmetique_parfum') {
             // ✅ Générer nom automatique : "[TYPE] [MARQUE] [VOLUME]" ou "[MARQUE] [TYPE]"
             const type = newProduct.typeCosmetique || 'Produit cosmétique';
@@ -4348,11 +4402,36 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
     };
 
     const handleEditProduct = (product: Product) => {
-        setNewProduct({ ...product });
-        setSelectedType(product.type);
-        setEditingProductId(product.id);
-        setCurrentStep('form');
-        setShowAddModal(true);
+        // ✅ NOUVEAU: Si on a serviceId, naviguer vers FormulaireYukpoIntelligentScreen
+        // Sinon, utiliser le modal interne (comportement existant pour création)
+        if (serviceId && !readonly) {
+            console.log('[ProductManagerMobile] 📝 Navigation vers formulaire d\'édition produit:', {
+                productId: product.id,
+                productName: product.nom,
+                serviceId
+            });
+
+            (navigation as any).navigate('FormulaireYukpoIntelligent', {
+                mode: 'edit',
+                serviceId: serviceId,
+                suggestion: {
+                    data: serviceData || {},
+                    intention: 'modification_produit',
+                    confidence: 0.9
+                },
+                focusBlock: 'products', // Focus sur le bloc produits
+                focusProductId: product.id, // ID du produit à modifier
+                editProductData: product, // ✅ Données complètes du produit à modifier
+                fromMesProduits: true
+            });
+        } else {
+            // Comportement existant : modal interne
+            setNewProduct({ ...product });
+            setSelectedType(product.type);
+            setEditingProductId(product.id);
+            setCurrentStep('form');
+            setShowAddModal(true);
+        }
     };
 
     const handleDeleteProduct = (id: string) => {
@@ -9289,17 +9368,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             <Text style={styles.sectionTitle}>Informations Produit</Text>
                         </View>
 
-                        {/* ✅ NOUVEAU: Nom du produit en liste à choix unique */}
-                        <SelectModalitySelector
-                            label="Nom du produit"
-                            value={newProduct.name || newProduct.nom || ''}
-                            productType="agroalimentaire"
-                            fieldName="noms_produits"
-                            onSelect={(value) => setNewProduct({ ...newProduct, name: value, nom: value })}
-                            required
-                            placeholder="Sélectionner ou ajouter un produit"
-                        />
-
+                        {/* Catégorie et Type */}
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1, marginBottom: 12 }]}>
                                 <SelectModalitySelector
@@ -9322,6 +9391,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             </View>
                         </View>
 
+                        {/* Marque et Origine */}
                         <View style={styles.fieldRow}>
                             <View style={[styles.fieldContainer, { flex: 1, marginBottom: 12 }]}>
                                 <SelectModalitySelector
@@ -9426,24 +9496,55 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             <Text style={styles.sectionTitle}>Variantes de Conditionnement</Text>
                         </View>
 
+                        {/* ✅ Devise globale pour toutes les variantes */}
+                        <View style={styles.fieldContainer}>
+                            <Text style={styles.fieldLabel}>💱 Devise globale <Text style={styles.required}>*</Text></Text>
+                            <Text style={styles.fieldHint}>Cette devise s'appliquera à tous les prix des variantes ci-dessous</Text>
+                            <View style={styles.deviseGridContainer}>
+                                {devises.map((devise) => (
+                                    <TouchableOpacity
+                                        key={devise}
+                                        style={[
+                                            styles.deviseButtonGrid,
+                                            newProduct.devise === devise && styles.deviseButtonActive
+                                        ]}
+                                        onPress={() => setNewProduct({ ...newProduct, devise })}
+                                    >
+                                        <Text style={[
+                                            styles.deviseButtonText,
+                                            newProduct.devise === devise && styles.deviseButtonTextActive
+                                        ]}>
+                                            {devise}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        </View>
+
                         {/* ✅ NOUVEAU: Gestionnaire de variantes */}
                         <ProductVariantManager
                             variants={newProduct.variants || []}
                             onChange={(variants) => {
-                                setNewProduct({ ...newProduct, variants });
+                                // ✅ Appliquer la devise globale à toutes les variantes
+                                const variantsWithGlobalDevise = variants.map(v => ({
+                                    ...v,
+                                    devise: newProduct.devise || 'XAF'
+                                }));
+                                setNewProduct({ ...newProduct, variants: variantsWithGlobalDevise });
                                 // ✅ Auto-calcul du prix min/max pour affichage
-                                if (variants.length > 0) {
-                                    const prices = variants.map(v => parseFloat(v.prix) || 0).filter(p => p > 0);
+                                if (variantsWithGlobalDevise.length > 0) {
+                                    const prices = variantsWithGlobalDevise.map(v => parseFloat(v.prix) || 0).filter(p => p > 0);
                                     if (prices.length > 0) {
                                         setNewProduct(prev => ({
                                             ...prev,
-                                            variants,
+                                            variants: variantsWithGlobalDevise,
                                             prix: Math.min(...prices), // Prix le plus bas
                                             prixMax: Math.max(...prices) // Prix le plus haut
                                         }));
                                     }
                                 }
                             }}
+                            globalDevise={newProduct.devise || 'XAF'}
                             productType="agroalimentaire"
                         />
 
@@ -20172,6 +20273,263 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             <SafeIcon name="info" size={16} color="#F97316" />
                             <Text style={styles.hintText}>
                                 🚚 Précisez le volume, la distance et les services pour un devis adapté !
+                            </Text>
+                        </View>
+                    </>
+                );
+
+            case 'image_son':
+                return (
+                    <>
+                        {/* ========== SECTION 1: IDENTIFICATION DU PRODUIT ========== */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="tv" size={20} color="#9C27B0" />
+                            <Text style={styles.sectionTitle}>📺 Identification du Produit</Text>
+                        </View>
+
+                        {/* Description obligatoire */}
+                        <View style={styles.fieldContainer}>
+                            <Text style={styles.fieldLabel}>Description <Text style={styles.required}>*</Text></Text>
+                            <Text style={styles.fieldHint}>
+                                Décrivez votre produit (caractéristiques, état, accessoires inclus...)
+                            </Text>
+                            <NativeInput
+                                placeholder="Ex: TV Samsung QLED 55 pouces, état neuf, avec support mural et télécommande..."
+                                value={newProduct.description || ''}
+                                onChangeText={(text) => setNewProduct({ ...newProduct, description: text })}
+                                multiline
+                                style={[styles.fieldInput, styles.textareaInput]}
+                            />
+                        </View>
+
+                        {/* Catégorie et Type */}
+                        <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <SelectModalitySelector
+                                    label="Catégorie"
+                                    value={newProduct.categorieImageSon || ''}
+                                    productType="image_son"
+                                    fieldName="categories"
+                                    onSelect={(value) => setNewProduct({ ...newProduct, categorieImageSon: value })}
+                                    required
+                                    placeholder="Ex: Télévision, Home Cinéma..."
+                                />
+                            </View>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <SelectModalitySelector
+                                    label="Type spécifique"
+                                    value={newProduct.typeImageSon || ''}
+                                    productType="image_son"
+                                    fieldName="types"
+                                    onSelect={(value) => setNewProduct({ ...newProduct, typeImageSon: value })}
+                                    placeholder="Ex: TV LED, TV OLED, Enceinte Bluetooth..."
+                                />
+                            </View>
+                        </View>
+
+                        {/* Marque et Gamme */}
+                        <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <SelectModalitySelector
+                                    label="Marque"
+                                    value={newProduct.marqueImageSon || ''}
+                                    productType="image_son"
+                                    fieldName="marques"
+                                    onSelect={(value) => setNewProduct({ ...newProduct, marqueImageSon: value })}
+                                    required
+                                    placeholder="Ex: Samsung, LG, Sony, Philips..."
+                                />
+                            </View>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <SelectModalitySelector
+                                    label="Gamme"
+                                    value={newProduct.modeleImageSon || ''}
+                                    productType="image_son"
+                                    fieldName="gammes"
+                                    onSelect={(value) => setNewProduct({ ...newProduct, modeleImageSon: value })}
+                                    placeholder="Ex: Entrée de gamme, Haut de gamme..."
+                                />
+                            </View>
+                        </View>
+
+                        {/* ========== SECTION 2: CARACTÉRISTIQUES ÉCRAN (pour TV/Projecteur) ========== */}
+                        {(newProduct.categorieImageSon?.toLowerCase().includes('télé') ||
+                            newProduct.categorieImageSon?.toLowerCase().includes('tv') ||
+                            newProduct.categorieImageSon?.toLowerCase().includes('projecteur')) && (
+                                <>
+                                    <View style={styles.sectionHeader}>
+                                        <SafeIcon name="monitor" size={20} color="#9C27B0" />
+                                        <Text style={styles.sectionTitle}>🖥️ Caractéristiques Écran</Text>
+                                    </View>
+
+                                    {/* Technologie et Diagonale */}
+                                    <View style={styles.fieldRow}>
+                                        <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                            <SelectModalitySelector
+                                                label="Technologie écran"
+                                                value={newProduct.technologieEcran || ''}
+                                                productType="image_son"
+                                                fieldName="technologies_ecran"
+                                                onSelect={(value) => setNewProduct({ ...newProduct, technologieEcran: value })}
+                                                placeholder="Ex: LED, OLED, QLED, NanoCell..."
+                                            />
+                                        </View>
+                                        <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                            <SelectModalitySelector
+                                                label="Taille écran"
+                                                value={newProduct.diagonaleEcran || ''}
+                                                productType="image_son"
+                                                fieldName="tailles_ecran"
+                                                onSelect={(value) => setNewProduct({ ...newProduct, diagonaleEcran: value })}
+                                                required
+                                                placeholder="Ex: 24 pouces, 32 pouces, 43 pouces, 55 pouces..."
+                                            />
+                                        </View>
+                                    </View>
+
+                                    {/* Résolution */}
+                                    <SelectModalitySelector
+                                        label="Résolution"
+                                        value={newProduct.resolution || ''}
+                                        productType="image_son"
+                                        fieldName="resolutions"
+                                        onSelect={(value) => setNewProduct({ ...newProduct, resolution: value })}
+                                        required
+                                        placeholder="Ex: HD (720p), Full HD (1080p), 4K, 8K..."
+                                    />
+                                </>
+                            )}
+
+                        {/* ========== SECTION 3: AUDIO (pour enceintes/home cinéma) ========== */}
+                        {(newProduct.categorieImageSon?.toLowerCase().includes('enceinte') ||
+                            newProduct.categorieImageSon?.toLowerCase().includes('barre de son') ||
+                            newProduct.categorieImageSon?.toLowerCase().includes('home') ||
+                            newProduct.categorieImageSon?.toLowerCase().includes('audio')) && (
+                                <>
+                                    <View style={styles.sectionHeader}>
+                                        <SafeIcon name="volume-2" size={20} color="#9C27B0" />
+                                        <Text style={styles.sectionTitle}>🔊 Caractéristiques Audio</Text>
+                                    </View>
+
+                                    {/* Puissance et Configuration */}
+                                    <View style={styles.fieldRow}>
+                                        <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                            <Text style={styles.fieldLabel}>Puissance audio (Watts)</Text>
+                                            <NativeInput
+                                                placeholder="Ex: 50W, 100W, 300W..."
+                                                value={newProduct.puissanceAudio || ''}
+                                                onChangeText={(text) => setNewProduct({ ...newProduct, puissanceAudio: text })}
+                                                style={styles.fieldInput}
+                                                keyboardType="numeric"
+                                            />
+                                        </View>
+                                        <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                            <SelectModalitySelector
+                                                label="Configuration enceintes"
+                                                value={newProduct.nbEnceintes || ''}
+                                                productType="image_son"
+                                                fieldName="configurations_enceintes"
+                                                onSelect={(value) => setNewProduct({ ...newProduct, nbEnceintes: value })}
+                                                placeholder="Ex: 2.0, 2.1, 5.1, 7.1..."
+                                            />
+                                        </View>
+                                    </View>
+                                </>
+                            )}
+
+                        {/* ========== SECTION 4: CONNECTIVITÉ & FONCTIONNALITÉS ========== */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="wifi" size={20} color="#9C27B0" />
+                            <Text style={styles.sectionTitle}>🔌 Connectivité & Fonctionnalités</Text>
+                        </View>
+
+                        {/* Connectivités (multi-select) */}
+                        <MultiSelectModalitySelector
+                            label="Connectivités"
+                            values={newProduct.connectivitesImageSon || []}
+                            productType="image_son"
+                            fieldName="connectivites"
+                            onSelect={(values) => setNewProduct({ ...newProduct, connectivitesImageSon: values })}
+                            placeholder="Ex: HDMI, USB, WiFi, Bluetooth..."
+                            maxSelections={10}
+                        />
+
+                        {/* Fonctionnalités (multi-select) */}
+                        <MultiSelectModalitySelector
+                            label="Fonctionnalités"
+                            values={newProduct.fonctionnalitesImageSon || []}
+                            productType="image_son"
+                            fieldName="fonctionnalites"
+                            onSelect={(values) => setNewProduct({ ...newProduct, fonctionnalitesImageSon: values })}
+                            placeholder="Ex: Smart TV, HDR, Dolby Atmos, Chromecast..."
+                            maxSelections={15}
+                        />
+
+                        {/* ========== SECTION 5: ÉTAT & GARANTIE ========== */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="shield" size={20} color="#9C27B0" />
+                            <Text style={styles.sectionTitle}>✅ État & Garantie</Text>
+                        </View>
+
+                        {/* État et Garantie */}
+                        <View style={styles.fieldRow}>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <SelectModalitySelector
+                                    label="État"
+                                    value={newProduct.etatImageSon || ''}
+                                    productType="image_son"
+                                    fieldName="etats"
+                                    onSelect={(value) => setNewProduct({ ...newProduct, etatImageSon: value })}
+                                    required
+                                    placeholder="Ex: Neuf scellé, Excellent état..."
+                                />
+                            </View>
+                            <View style={[styles.fieldContainer, { flex: 1 }]}>
+                                <SelectModalitySelector
+                                    label="Garantie"
+                                    value={newProduct.garantieImageSon || ''}
+                                    productType="image_son"
+                                    fieldName="garanties"
+                                    onSelect={(value) => setNewProduct({ ...newProduct, garantieImageSon: value })}
+                                    placeholder="Ex: Garantie constructeur 1 an, 2 ans..."
+                                />
+                            </View>
+                        </View>
+
+                        {/* Année de sortie */}
+                        <View style={styles.fieldContainer}>
+                            <Text style={styles.fieldLabel}>Année de sortie du modèle</Text>
+                            <NativeInput
+                                placeholder="Ex: 2024, 2023, 2022..."
+                                value={newProduct.anneeSortie || ''}
+                                onChangeText={(text) => setNewProduct({ ...newProduct, anneeSortie: text })}
+                                style={styles.fieldInput}
+                                keyboardType="numeric"
+                            />
+                        </View>
+
+                        {/* ========== SECTION 6: ACCESSOIRES ========== */}
+                        <View style={styles.sectionHeader}>
+                            <SafeIcon name="package" size={20} color="#9C27B0" />
+                            <Text style={styles.sectionTitle}>📦 Accessoires Inclus</Text>
+                        </View>
+
+                        {/* Accessoires (multi-select) */}
+                        <MultiSelectModalitySelector
+                            label="Accessoires inclus"
+                            values={newProduct.accessoiresImageSon || []}
+                            productType="image_son"
+                            fieldName="accessoires"
+                            onSelect={(values) => setNewProduct({ ...newProduct, accessoiresImageSon: values })}
+                            placeholder="Ex: Télécommande, Câbles HDMI, Support mural, Notice..."
+                            maxSelections={10}
+                        />
+
+                        {/* Message d'aide */}
+                        <View style={styles.hintBox}>
+                            <SafeIcon name="info" size={14} color="#9C27B0" />
+                            <Text style={styles.hintText}>
+                                💡 <Text style={styles.hintBold}>Conseil :</Text> Ajoutez des photos claires de l'appareil allumé, des ports de connexion, de la télécommande et de la boîte si disponible. Les produits avec photos de qualité se vendent 3x plus vite !
                             </Text>
                         </View>
                     </>

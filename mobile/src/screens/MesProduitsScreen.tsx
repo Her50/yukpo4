@@ -1,6 +1,5 @@
 // @ts-nocheck
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useCallback, useState } from 'react';
 import {
@@ -19,7 +18,7 @@ import { NativeButton, NativeCard } from '../components/NativeDesign';
 import SafeIcon from '../components/SafeIcon';
 import { useAuth } from '../contexts/AuthContext';
 import { apiDelete, apiGet, apiPatch } from '../services/api';
-import { modernColors, modernStyles } from '../theme/modernTheme';
+import { modernColors } from '../theme/modernTheme';
 
 const { width } = Dimensions.get('window');
 
@@ -64,7 +63,7 @@ const MesProduitsScreen: React.FC = () => {
 
                 // Extraire tous les produits de tous les services
                 const allProducts: Product[] = [];
-                
+
                 services.forEach((service: any) => {
                     const serviceId = service.id.toString();
                     const serviceTitre = service.data?.titre_service?.valeur || service.titre || 'Service sans titre';
@@ -113,7 +112,7 @@ const MesProduitsScreen: React.FC = () => {
     const handleToggleProduct = async (product: Product) => {
         try {
             const newStatus = !product.is_active;
-            
+
             // Si RÉACTIVATION (inactif → actif)
             if (newStatus) {
                 // 🚌 SPÉCIAL: Bloquer réactivation tickets de voyage expirés
@@ -122,7 +121,7 @@ const MesProduitsScreen: React.FC = () => {
                         const [day, month, year] = product.dateDepart.split('/');
                         const departureDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
                         const now = new Date();
-                        
+
                         if (departureDate < now) {
                             Alert.alert(
                                 '⚠️ Réactivation impossible',
@@ -136,18 +135,18 @@ const MesProduitsScreen: React.FC = () => {
                         // Continuer si erreur de parsing
                     }
                 }
-                
+
                 // Vérifier le solde et facturer 1000 FCFA
                 const activationCost = 1000;
                 const balanceResponse = await apiGet('/api/users/balance');
-                
+
                 if (!balanceResponse.success || !balanceResponse.data) {
                     Alert.alert('Erreur', 'Impossible de vérifier votre solde');
                     return;
                 }
-                
+
                 const currentBalance = balanceResponse.data.tokens_balance || 0;
-                
+
                 if (currentBalance < activationCost) {
                     Alert.alert(
                         '💰 Solde insuffisant',
@@ -155,7 +154,7 @@ const MesProduitsScreen: React.FC = () => {
                     );
                     return;
                 }
-                
+
                 Alert.alert(
                     '✅ Réactiver le produit',
                     `"${product.nom}"\n\n💰 Coût: ${activationCost.toLocaleString()} FCFA\nSolde après: ${(currentBalance - activationCost).toLocaleString()} FCFA`,
@@ -170,12 +169,12 @@ const MesProduitsScreen: React.FC = () => {
                                         amount: activationCost,
                                         reason: 'product_reactivation'
                                     });
-                                    
+
                                     if (!deductResponse.success) {
                                         Alert.alert('Erreur', 'Impossible de déduire le montant');
                                         return;
                                     }
-                                    
+
                                     // Toggle le produit
                                     const response = await apiPatch(`/api/products/${product.id}/toggle-status`, {
                                         is_active: newStatus
@@ -187,7 +186,7 @@ const MesProduitsScreen: React.FC = () => {
                                                 p.id === product.id ? { ...p, is_active: newStatus } : p
                                             )
                                         );
-                                        
+
                                         Alert.alert(
                                             '✅ Produit réactivé',
                                             `${activationCost.toLocaleString()} FCFA débités\nNouveau solde: ${(currentBalance - activationCost).toLocaleString()} FCFA`
@@ -224,7 +223,7 @@ const MesProduitsScreen: React.FC = () => {
                                                 p.id === product.id ? { ...p, is_active: newStatus } : p
                                             )
                                         );
-                                        
+
                                         Alert.alert('✅ Succès', 'Produit désactivé avec succès');
                                     } else {
                                         Alert.alert('Erreur', response.error || 'Impossible de désactiver');
@@ -256,7 +255,7 @@ const MesProduitsScreen: React.FC = () => {
                     onPress: async () => {
                         try {
                             const response = await apiDelete(`/api/products/${product.id}`);
-                            
+
                             if (response.success) {
                                 setProducts(prevProducts => prevProducts.filter(p => p.id !== product.id));
                                 Alert.alert('✅ Succès', 'Produit supprimé avec succès');
@@ -274,21 +273,46 @@ const MesProduitsScreen: React.FC = () => {
     };
 
     // Modifier un produit (naviguer vers le service parent en mode édition)
-    const handleEditProduct = (product: Product) => {
-        Alert.alert(
-            'Modifier le produit',
-            `Pour modifier "${product.nom}", vous serez redirigé vers le service "${product.serviceTitre}".\n\nVous pourrez y modifier tous les produits.`,
-            [
-                { text: 'Annuler', style: 'cancel' },
-                {
-                    text: 'Continuer',
-                    onPress: () => {
-                        navigation.navigate('MesServices' as never);
-                        // L'utilisateur devra ensuite cliquer sur "Modifier" dans le service
-                    }
-                }
-            ]
-        );
+    const handleEditProduct = async (product: Product) => {
+        try {
+            console.log('[MesProduitsScreen] 📝 Modification produit:', {
+                productId: product.id,
+                productName: product.nom,
+                serviceId: product.serviceId,
+                serviceName: product.serviceTitre
+            });
+
+            // Charger les données complètes du service
+            const serviceResponse = await apiGet(`/api/services/${product.serviceId}`);
+
+            if (!serviceResponse.success || !serviceResponse.data) {
+                Alert.alert('Erreur', 'Impossible de charger les données du service');
+                return;
+            }
+
+            const serviceData = serviceResponse.data;
+
+            // Navigation vers le formulaire avec focus sur le bloc produits
+            navigation.navigate('FormulaireYukpoIntelligent' as never, {
+                mode: 'edit',
+                serviceId: product.serviceId,
+                serviceData: serviceData.data || {},
+                suggestion: {
+                    data: serviceData.data || {},
+                    intention: 'modification_service',
+                    confidence: 1.0
+                },
+                type: 'modification_service',
+                editMode: true,
+                // ✅ NOUVEAU: Focus sur le bloc produits avec le produit spécifique
+                focusBlock: 'produits',
+                focusProductId: product.id,
+                fromMesProduits: true
+            } as never);
+        } catch (error) {
+            console.error('[MesProduitsScreen] Erreur navigation édition:', error);
+            Alert.alert('Erreur', 'Impossible d\'ouvrir la modification du produit');
+        }
     };
 
     // Partager un produit
@@ -297,7 +321,7 @@ const MesProduitsScreen: React.FC = () => {
             // Générer le lien deep link pour ouvrir l'app directement sur ce produit
             const deepLink = `yukpomnang://product/${product.id}?serviceId=${product.serviceId}`;
             const webLink = `https://yukpomnang.com/product/${product.id}`;
-            
+
             const shareMessage = `🛍️ ${product.nom}\n\n` +
                 `💰 Prix: ${typeof product.prix === 'string' ? product.prix : product.prix.toLocaleString()} ${product.devise || 'FCFA'}\n\n` +
                 `${product.description || ''}\n\n` +
@@ -310,7 +334,7 @@ const MesProduitsScreen: React.FC = () => {
                 title: `Découvrez: ${product.nom}`,
                 url: webLink, // URL pour partage sur réseaux sociaux
             });
-            
+
             if (result.action === Share.sharedAction) {
                 console.log('✅ Produit partagé:', product.nom, 'via', result.activityType || 'partage natif');
             } else if (result.action === Share.dismissedAction) {
@@ -325,90 +349,50 @@ const MesProduitsScreen: React.FC = () => {
     // Dupliquer un produit
     const handleDuplicateProduct = async (product: Product) => {
         try {
-            const duplicationCost = 1000; // 1000 FCFA comme pour réactivation
-            
-            // Vérifier le solde
-            const balanceResponse = await apiGet('/api/users/balance');
-            
-            if (!balanceResponse.success || !balanceResponse.data) {
-                Alert.alert('Erreur', 'Impossible de vérifier votre solde');
+            console.log('[MesProduitsScreen] 📋 Duplication produit:', {
+                productId: product.id,
+                productName: product.nom,
+                serviceId: product.serviceId
+            });
+
+            // Charger les données complètes du service
+            const serviceResponse = await apiGet(`/api/services/${product.serviceId}`);
+
+            if (!serviceResponse.success || !serviceResponse.data) {
+                Alert.alert('Erreur', 'Impossible de charger les données du service');
                 return;
             }
-            
-            const currentBalance = balanceResponse.data.tokens_balance || 0;
-            
-            if (currentBalance < duplicationCost) {
-                Alert.alert(
-                    '💰 Solde insuffisant',
-                    `Coût de duplication: ${duplicationCost.toLocaleString()} FCFA\nVotre solde: ${currentBalance.toLocaleString()} FCFA\n\nVeuillez recharger votre compte.`
-                );
-                return;
-            }
-            
-            Alert.alert(
-                '📋 Dupliquer le produit',
-                `"${product.nom}"\n\nLa copie sera ajoutée au service "${product.serviceTitre}"\n\n💰 Coût: ${duplicationCost.toLocaleString()} FCFA\nSolde après: ${(currentBalance - duplicationCost).toLocaleString()} FCFA`,
-                [
-                    { text: 'Annuler', style: 'cancel' },
-                    {
-                        text: 'Confirmer',
-                        onPress: async () => {
-                            try {
-                                // Déduire le coût
-                                const deductResponse = await apiPost('/api/users/deduct-balance', {
-                                    amount: duplicationCost,
-                                    reason: 'product_duplication'
-                                });
-                                
-                                if (!deductResponse.success) {
-                                    Alert.alert('Erreur', 'Impossible de déduire le montant');
-                                    return;
-                                }
-                                
-                                // Créer une copie du produit
-                                const duplicatedProduct = {
-                                    ...product,
-                                    id: `duplicate_${Date.now()}`,
-                                    nom: `${product.nom} (Copie)`,
-                                    images: [],
-                                    videos: [],
-                                    is_active: true, // Nouveau produit actif par défaut
-                                };
 
-                                // Appel API pour ajouter le produit dupliqué au service
-                                const response = await apiPatch(`/api/services/${product.serviceId}/add-product`, {
-                                    product: duplicatedProduct
-                                });
+            const serviceData = serviceResponse.data;
 
-                                if (response.success) {
-                                    Alert.alert(
-                                        '✅ Produit dupliqué',
-                                        `Coût: ${duplicationCost.toLocaleString()} FCFA\nNouveau solde: ${(currentBalance - duplicationCost).toLocaleString()} FCFA\n\nLe produit a été dupliqué avec succès.`,
-                                        [
-                                            {
-                                                text: 'Voir mes produits',
-                                                onPress: () => loadProducts(true)
-                                            }
-                                        ]
-                                    );
-                                } else {
-                                    // Si l'endpoint n'existe pas, proposer alternative
-                                    Alert.alert(
-                                        '⚠️ Fonctionnalité en développement',
-                                        'La duplication de produit nécessite de modifier le service parent.\n\nPour dupliquer ce produit:\n1. Allez dans "Boutique | Services"\n2. Modifiez le service\n3. Utilisez le bouton "Dupliquer" dans le bloc produits',
-                                        [{ text: 'Compris' }]
-                                    );
-                                }
-                            } catch (error: any) {
-                                console.error('[MesProduitsScreen] Erreur duplication:', error);
-                                Alert.alert('Erreur', error.message || 'Impossible de dupliquer le produit');
-                            }
-                        }
-                    }
-                ]
-            );
+            // Créer une copie du produit pour la duplication
+            const duplicatedProduct = {
+                ...product,
+                id: undefined, // Le nouveau produit aura un nouvel ID
+                nom: `${product.nom} (Copie)`,
+                is_active: true,
+            };
+
+            // Navigation vers le formulaire avec le produit dupliqué
+            navigation.navigate('FormulaireYukpoIntelligent' as never, {
+                mode: 'edit',
+                serviceId: product.serviceId,
+                serviceData: serviceData.data || {},
+                suggestion: {
+                    data: serviceData.data || {},
+                    intention: 'modification_service',
+                    confidence: 1.0
+                },
+                type: 'modification_service',
+                editMode: true,
+                // ✅ NOUVEAU: Focus sur le bloc produits avec duplication automatique
+                focusBlock: 'produits',
+                duplicateProduct: duplicatedProduct, // Produit à dupliquer
+                fromMesProduits: true
+            } as never);
         } catch (error) {
             console.error('[MesProduitsScreen] Erreur duplication:', error);
+            Alert.alert('Erreur', 'Impossible de dupliquer le produit');
         }
     };
 
@@ -431,6 +415,86 @@ const MesProduitsScreen: React.FC = () => {
                 }
             ]
         );
+    };
+
+    // ✅ NOUVEAU: Créer un nouveau produit (choisir un service puis ouvrir le formulaire)
+    const handleCreateNewProduct = async () => {
+        try {
+            // Charger tous les services du prestataire
+            const servicesResponse = await apiGet('/api/prestataire/services');
+
+            if (!servicesResponse.success || !servicesResponse.data || servicesResponse.data.length === 0) {
+                Alert.alert(
+                    'Aucun service',
+                    'Vous devez d\'abord créer un service avant de pouvoir ajouter des produits.\n\nVoulez-vous créer un service maintenant ?',
+                    [
+                        { text: 'Annuler', style: 'cancel' },
+                        {
+                            text: 'Créer un service',
+                            onPress: () => navigation.navigate('FormulaireYukpoIntelligent' as never)
+                        }
+                    ]
+                );
+                return;
+            }
+
+            const services = servicesResponse.data;
+
+            // Si un seul service, l'ouvrir directement
+            if (services.length === 1) {
+                const service = services[0];
+                const serviceData = service.data || {};
+
+                navigation.navigate('FormulaireYukpoIntelligent' as never, {
+                    mode: 'edit',
+                    serviceId: service.id,
+                    serviceData: serviceData,
+                    suggestion: {
+                        data: serviceData,
+                        intention: 'modification_service',
+                        confidence: 1.0
+                    },
+                    type: 'modification_service',
+                    editMode: true,
+                    focusBlock: 'products', // ✅ Ouvrir directement sur le bloc produits
+                    fromMesProduits: true
+                } as never);
+            } else {
+                // Plusieurs services : proposer de choisir
+                const serviceOptions = services.map((service: any) => ({
+                    text: service.data?.titre_service?.valeur || service.titre || `Service ${service.id}`,
+                    onPress: () => {
+                        const serviceData = service.data || {};
+                        navigation.navigate('FormulaireYukpoIntelligent' as never, {
+                            mode: 'edit',
+                            serviceId: service.id,
+                            serviceData: serviceData,
+                            suggestion: {
+                                data: serviceData,
+                                intention: 'modification_service',
+                                confidence: 1.0
+                            },
+                            type: 'modification_service',
+                            editMode: true,
+                            focusBlock: 'products', // ✅ Ouvrir directement sur le bloc produits
+                            fromMesProduits: true
+                        } as never);
+                    }
+                }));
+
+                Alert.alert(
+                    '📦 Choisir un service',
+                    'Dans quel service voulez-vous ajouter un nouveau produit ?',
+                    [
+                        ...serviceOptions.slice(0, 5), // Limiter à 5 services pour éviter un menu trop long
+                        { text: 'Annuler', style: 'cancel' }
+                    ]
+                );
+            }
+        } catch (error) {
+            console.error('[MesProduitsScreen] Erreur création produit:', error);
+            Alert.alert('Erreur', 'Impossible de charger vos services');
+        }
     };
 
     // Voir les statistiques d'un produit
@@ -529,8 +593,8 @@ const MesProduitsScreen: React.FC = () => {
                                 styles.filterChipText,
                                 filter === filterOption && styles.filterChipTextActive
                             ]}>
-                                {filterOption === 'tous' ? '📦 Tous' : 
-                                 filterOption === 'actif' ? '✅ Actifs' : '⏸️ Inactifs'}
+                                {filterOption === 'tous' ? '📦 Tous' :
+                                    filterOption === 'actif' ? '✅ Actifs' : '⏸️ Inactifs'}
                             </Text>
                         </TouchableOpacity>
                     ))}
@@ -570,13 +634,13 @@ const MesProduitsScreen: React.FC = () => {
                         <SafeIcon name="package" size={64} color="#D1D5DB" />
                         <Text style={styles.emptyTitle}>Aucun produit</Text>
                         <Text style={styles.emptySubtitle}>
-                            {filter !== 'tous' 
-                                ? `Aucun produit ${filter}` 
-                                : 'Créez un service avec des produits'}
+                            {filter !== 'tous'
+                                ? `Aucun produit ${filter}`
+                                : 'Ajoutez des produits à vos services'}
                         </Text>
                         <NativeButton
-                            title="➕ Créer un service"
-                            onPress={() => navigation.navigate('FormulaireYukpoIntelligent' as never)}
+                            title="➕ Créer un nouveau produit"
+                            onPress={handleCreateNewProduct}
                             variant="primary"
                             size="medium"
                             style={{ marginTop: 20 }}
@@ -611,7 +675,7 @@ const MesProduitsScreen: React.FC = () => {
                                             {product.serviceTitre}
                                         </Text>
                                     </View>
-                                    
+
                                     {product.type && (
                                         <View style={styles.productInfoRow}>
                                             <SafeIcon name="tag" size={14} color="#6366F1" />
@@ -657,10 +721,10 @@ const MesProduitsScreen: React.FC = () => {
                                             ]}
                                             onPress={() => handleToggleProduct(product)}
                                         >
-                                            <SafeIcon 
-                                                name={product.is_active ? 'pause-circle' : 'play-circle'} 
-                                                size={18} 
-                                                color="#FFFFFF" 
+                                            <SafeIcon
+                                                name={product.is_active ? 'pause-circle' : 'play-circle'}
+                                                size={18}
+                                                color="#FFFFFF"
                                             />
                                             <Text style={styles.actionButtonText}>
                                                 {product.is_active ? 'Désactiver' : 'Activer'}
@@ -725,12 +789,12 @@ const MesProduitsScreen: React.FC = () => {
                     </View>
                 )}
 
-                {/* Bouton créer nouveau service */}
+                {/* Bouton créer nouveau produit */}
                 {filteredProducts.length > 0 && (
                     <View style={styles.footerContainer}>
                         <NativeButton
-                            title="➕ Créer un nouveau service"
-                            onPress={() => navigation.navigate('FormulaireYukpoIntelligent' as never)}
+                            title="➕ Créer un nouveau produit"
+                            onPress={handleCreateNewProduct}
                             variant="outline"
                             size="large"
                             style={styles.createButton}

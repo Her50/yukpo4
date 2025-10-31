@@ -69,7 +69,12 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
   const mode = (route.params as any)?.mode || 'create'; // ✅ Par défaut 'create' au lieu de 'edit'
   const serviceId = (route.params as any)?.serviceId;
   const fromMesServices = (route.params as any)?.fromMesServices || false;
+  const fromMesProduits = (route.params as any)?.fromMesProduits || false; // ✅ NOUVEAU
   const readonlyParam = (route.params as any)?.readonly || false;
+  const focusBlock = (route.params as any)?.focusBlock; // ✅ NOUVEAU: Bloc à ouvrir ('produits', etc.)
+  const focusProductId = (route.params as any)?.focusProductId; // ✅ NOUVEAU: ID du produit à sélectionner
+  const duplicateProduct = (route.params as any)?.duplicateProduct; // ✅ NOUVEAU: Produit à dupliquer
+  const editProductData = (route.params as any)?.editProductData; // ✅ NOUVEAU: Données du produit à modifier
 
   // ✅ Déterminer si on est en mode lecture seule
   const isReadonly = mode === 'readonly' || mode === 'view' || readonlyParam;
@@ -522,6 +527,43 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     loadServiceData();
   }, [user?.id, mode, serviceId]);
 
+  // ✅ NOUVEAU: Gérer l'ouverture automatique du bloc produits
+  useEffect(() => {
+    // Cas 1: Édition d'un produit spécifique
+    if (editProductData && focusProductId && serviceId) {
+      console.log('[FormulaireYukpoIntelligentScreen] 📝 Mode édition produit spécifique:', {
+        productId: focusProductId,
+        productName: editProductData.nom,
+        serviceId
+      });
+
+      // Trouver le bloc produits et l'ouvrir
+      const productsBlockIndex = blocks.findIndex(block => block.id === 'products');
+      if (productsBlockIndex !== -1) {
+        setCurrentBlock(productsBlockIndex);
+        console.log('[FormulaireYukpoIntelligentScreen] ✅ Bloc produits ouvert automatiquement (édition)');
+      }
+
+      // Trouver le produit dans la liste et s'assurer qu'il est présent
+      const productIndex = products.findIndex(p => p.id === focusProductId);
+      if (productIndex === -1) {
+        // Le produit n'est pas encore dans la liste (chargement en cours), attendre
+        console.log('[FormulaireYukpoIntelligentScreen] ⏳ Produit pas encore chargé, attente...');
+      } else {
+        console.log('[FormulaireYukpoIntelligentScreen] ✅ Produit trouvé dans la liste:', products[productIndex].nom);
+      }
+    }
+    // Cas 2: Création d'un nouveau produit (focusBlock uniquement)
+    else if (focusBlock === 'products' && blocks.length > 0) {
+      console.log('[FormulaireYukpoIntelligentScreen] 📦 Ouverture automatique du bloc produits pour création');
+      const productsBlockIndex = blocks.findIndex(block => block.id === 'products');
+      if (productsBlockIndex !== -1) {
+        setCurrentBlock(productsBlockIndex);
+        console.log('[FormulaireYukpoIntelligentScreen] ✅ Bloc produits ouvert automatiquement (création)');
+      }
+    }
+  }, [editProductData, focusProductId, serviceId, products, blocks, focusBlock]);
+
   // Traiter les données IA au chargement (comme le frontend)
   useEffect(() => {
     console.log('[FormulaireYukpoIntelligentScreen] useEffect - Traitement des données IA au chargement');
@@ -636,6 +678,23 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       blockScrollViewRef.current.scrollTo({ x: scrollPosition, animated: true });
     }
   }, [currentBlock, blocks]);
+
+  // ✅ NOUVEAU : Scroll automatique vers le bloc produits si focusBlock === 'produits'
+  useEffect(() => {
+    if (focusBlock === 'produits' && blocks.length > 0 && activeStep === 2) {
+      // Trouver l'index du bloc produits
+      const productsBlockIndex = blocks.findIndex(block => block.id === 'products');
+
+      if (productsBlockIndex >= 0) {
+        console.log('[FormulaireYukpoIntelligentScreen] 📦 Navigation automatique vers le bloc produits, index:', productsBlockIndex);
+
+        // Attendre un peu que les blocs soient rendus
+        setTimeout(() => {
+          setCurrentBlock(productsBlockIndex);
+        }, 300);
+      }
+    }
+  }, [focusBlock, blocks, activeStep]);
 
   // Générer le formulaire à partir des données IA (comme le frontend)
   const genererFormulaire = async () => {
@@ -763,6 +822,10 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
               setProductToDuplicate(product);
               setShowDuplicationModal(true);
             }}
+            focusProductId={focusProductId}
+            duplicateProduct={duplicateProduct}
+            serviceId={serviceId} // ✅ NOUVEAU: Pour navigation vers édition
+            serviceData={suggestion?.data || valeursFormulaire} // ✅ NOUVEAU: Données service
           />
         </View>
       );

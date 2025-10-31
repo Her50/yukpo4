@@ -19,6 +19,7 @@ use crate::{
         service_controller::{get_services_for_prestataire, toggle_service_status, modifier_service, supprimer_service, get_service_by_id},
         intelligent_service_controller::{process_services_intelligently, get_services_pending_processing, reactivate_service_intelligent},
     },
+    routes::products_management::update_product,
     routes::{
         weather_routes::weather_routes,
         nearby_services_routes::nearby_services_routes,
@@ -128,6 +129,8 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route("/api/services/{service_id}/update", put(modifier_service))
         // Route pour supprimer un service
         .route("/api/services/{service_id}/delete", delete(supprimer_service))
+        // ✅ NOUVEAU: Route pour modifier un produit spécifique (avec historique)
+        .route("/api/products/{product_id}/update", patch(update_product))
         // Route pour r?cup?rer un service par ID (public)
         .route("/api/services/{service_id}", get(get_service_by_id))
         // Route pour récupérer les médias d'un service

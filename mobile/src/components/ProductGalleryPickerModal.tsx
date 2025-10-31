@@ -41,7 +41,7 @@ const ProductGalleryPickerModal: React.FC<ProductGalleryPickerModalProps> = ({
         }
     }, [visible, service]);
 
-    const loadMedia = () => {
+    const loadMedia = async () => {
         const mediaList: any[] = [];
 
         // Logo
@@ -64,48 +64,88 @@ const ProductGalleryPickerModal: React.FC<ProductGalleryPickerModalProps> = ({
             });
         }
 
-        // Produits
-        const produits = service.data?.produits || [];
-        if (Array.isArray(produits)) {
-            produits.forEach((product: any, idx: number) => {
-                // Images du produit
-                if (product.images && Array.isArray(product.images)) {
-                    product.images.forEach((img: string, imgIdx: number) => {
-                        mediaList.push({
-                            type: 'image',
-                            url: img,
-                            category: 'products',
-                            description: `${product.nom || 'Produit'} - Image ${imgIdx + 1}`,
-                            productName: product.nom
+        // ✅ NOUVEAU: Charger médias depuis API /api/media/product par produit
+        const produits = service.data?.produits?.valeur || service.data?.produits || [];
+        if (Array.isArray(produits) && service.id) {
+            for (let idx = 0; idx < produits.length; idx++) {
+                const product = produits[idx];
+                const productName = product.nom || `Produit ${idx + 1}`;
+
+                try {
+                    // Charger images depuis API
+                    const { apiGet } = await import('../services/api');
+                    const imagesResp = await apiGet(`/api/media/product/${service.id}/${idx}/images`);
+
+                    if (imagesResp.success && imagesResp.images && Array.isArray(imagesResp.images)) {
+                        imagesResp.images.forEach((img: string, imgIdx: number) => {
+                            mediaList.push({
+                                type: 'image',
+                                url: img,
+                                category: 'products',
+                                description: `${productName} - Image ${imgIdx + 1}`,
+                                productName: productName,
+                                productIndex: idx
+                            });
                         });
-                    });
+                    }
+
+                    // Charger vidéos depuis API
+                    const videosResp = await apiGet(`/api/media/product/${service.id}/${idx}/videos`);
+                    if (videosResp.success && videosResp.videos && Array.isArray(videosResp.videos)) {
+                        videosResp.videos.forEach((vid: string, vidIdx: number) => {
+                            mediaList.push({
+                                type: 'video',
+                                url: vid,
+                                category: 'products',
+                                description: `${productName} - Vidéo ${vidIdx + 1}`,
+                                productName: productName,
+                                productIndex: idx
+                            });
+                        });
+                    }
+                } catch (error) {
+                    console.log(`[ProductGalleryPickerModal] Fallback JSON pour produit ${idx}:`, error);
+                    // ✅ Fallback: Utiliser images/videos depuis JSON si API échoue
+                    if (product.images && Array.isArray(product.images)) {
+                        product.images.forEach((img: string, imgIdx: number) => {
+                            mediaList.push({
+                                type: 'image',
+                                url: img,
+                                category: 'products',
+                                description: `${productName} - Image ${imgIdx + 1}`,
+                                productName: productName,
+                                productIndex: idx
+                            });
+                        });
+                    }
+                    if (product.videos && Array.isArray(product.videos)) {
+                        product.videos.forEach((vid: string, vidIdx: number) => {
+                            mediaList.push({
+                                type: 'video',
+                                url: vid,
+                                category: 'products',
+                                description: `${productName} - Vidéo ${vidIdx + 1}`,
+                                productName: productName,
+                                productIndex: idx
+                            });
+                        });
+                    }
                 }
 
-                // Vidéos du produit
-                if (product.videos && Array.isArray(product.videos)) {
-                    product.videos.forEach((vid: string, vidIdx: number) => {
-                        mediaList.push({
-                            type: 'video',
-                            url: vid,
-                            category: 'products',
-                            description: `${product.nom || 'Produit'} - Vidéo ${vidIdx + 1}`,
-                            productName: product.nom
-                        });
-                    });
-                }
-
-                // Images de réalisations
+                // Images de réalisations (toujours depuis JSON)
                 if (product.imagesRealisations && Array.isArray(product.imagesRealisations)) {
                     product.imagesRealisations.forEach((img: string, imgIdx: number) => {
                         mediaList.push({
                             type: 'image',
                             url: img,
                             category: 'realisations',
-                            description: `Réalisation ${idx + 1} - Image ${imgIdx + 1}`
+                            description: `${productName} - Réalisation ${imgIdx + 1}`,
+                            productName: productName,
+                            productIndex: idx
                         });
                     });
                 }
-            });
+            }
         }
 
         setMedia(mediaList);

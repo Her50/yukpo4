@@ -276,17 +276,19 @@ pub struct UpdateProductRequest {
 
 pub async fn update_product(
     State(state): State<Arc<AppState>>,
+    Extension(user): Extension<crate::middlewares::jwt::AuthenticatedUser>,
     Path(product_id): Path<String>,
     Json(payload): Json<UpdateProductRequest>,
 ) -> Result<Json<ApiResponse>, StatusCode> {
     let pool = &state.pg;
+    let user_id = user.id;
     
-    log::info!("✏️ Modification produit {} dans service {}", product_id, payload.service_id);
+    log::info!("✏️ Modification produit {} dans service {} par user {}", product_id, payload.service_id, user_id);
 
-    // Récupérer le service
+    // Récupérer le service avec user_id pour vérification
     let service = sqlx::query!(
         r#"
-        SELECT data
+        SELECT data, user_id
         FROM services
         WHERE id = $1
         "#,
@@ -308,8 +310,39 @@ pub async fn update_product(
         }));
     }
 
+    let service_row = service.unwrap();
+    
+    // ✅ Vérifier que le service appartient à l'utilisateur
+    if service_row.user_id != user_id {
+        log::warn!("⚠️ Utilisateur {} n'est pas propriétaire du service {}", user_id, payload.service_id);
+        return Ok(Json(ApiResponse {
+            success: false,
+            message: "Non autorisé".to_string(),
+            data: None,
+        }));
+    }
+
     // Parser le JSON data
-    let mut service_data: serde_json::Value = service.unwrap().data;
+    let mut service_data: serde_json::Value = service_row.data;
+    
+    // ✅ Sauvegarder l'ancienne version du produit pour historique
+    let old_product: Option<serde_json::Value> = if let Some(produits) = service_data.get("produits") {
+        if let Some(valeur) = produits.get("valeur") {
+            if let Some(arr) = valeur.as_array() {
+                if payload.product_index >= 0 && (payload.product_index as usize) < arr.len() {
+                    Some(arr[payload.product_index as usize].clone())
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    } else {
+        None
+    };
     
     // Mettre à jour le produit dans produits.valeur[index]
     if let Some(produits) = service_data.get_mut("produits") {
@@ -347,6 +380,41 @@ pub async fn update_product(
         log::error!("❌ Erreur mise à jour service: {:?}", e);
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
+
+    // ✅ NOUVEAU: Enregistrer l'historique dans service_logs
+    if let Some(old_prod) = old_product {
+        let product_name = payload.updated_product.get("nom")
+            .and_then(|v| v.as_str())
+            .unwrap_or("Produit sans nom");
+        
+        let modification_details = serde_json::json!({
+            "action": "product_update",
+            "product_id": product_id,
+            "product_index": payload.product_index,
+            "product_name": product_name,
+            "old_version": old_prod,
+            "new_version": payload.updated_product
+        });
+        
+        sqlx::query!(
+            r#"
+            INSERT INTO service_logs (service_id, user_id, action, modification)
+            VALUES ($1, $2, $3, $4::jsonb)
+            "#,
+            payload.service_id.parse::<i32>().unwrap_or(0),
+            user_id,
+            "product_modified",
+            modification_details
+        )
+        .execute(pool)
+        .await
+        .map_err(|e| {
+            log::warn!("⚠️ Erreur enregistrement historique (non bloquant): {:?}", e);
+        })
+        .ok();
+        
+        log::info!("✅ Historique de modification enregistré pour produit {}", product_name);
+    }
 
     log::info!("✅ Produit {} modifié avec succès (GRATUIT)", product_id);
 
