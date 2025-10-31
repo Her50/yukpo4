@@ -57,29 +57,61 @@ const NotificationHistoryModal: React.FC<NotificationHistoryModalProps> = ({
       // ✅ Utilise la configuration centralisée
       const response = await apiGet(API_ENDPOINTS.NOTIFICATIONS.USER_NOTIFICATIONS(user?.id || ''));
 
-      console.log('[NotificationHistoryModal] Réponse API:', response);
+      console.log('[NotificationHistoryModal] 📦 Réponse API complète:', JSON.stringify(response, null, 2));
+      console.log('[NotificationHistoryModal] 🔍 Type de response.data:', typeof response.data);
+      console.log('[NotificationHistoryModal] 🔍 Array?:', Array.isArray(response.data));
+      console.log('[NotificationHistoryModal] 🔍 Longueur:', response.data?.length);
 
       if (response.data && Array.isArray(response.data)) {
+        console.log('[NotificationHistoryModal] ✅ Données valides, mapping en cours...');
+        
         // ✅ Mapper les données du backend vers le format attendu par le frontend
-        const mappedNotifications = response.data.map((notif: any) => ({
-          id: String(notif.id),
-          type: mapNotificationType(notif.type),
-          title: notif.title,
-          message: notif.message,
-          timestamp: notif.createdAt || notif.timestamp, // ✅ Support des deux formats
-          isRead: notif.isRead || notif.is_read || false,
-          category: mapNotificationCategory(notif.type),
-          actionUrl: notif.data?.actionUrl,
-          actionText: notif.data?.actionText
-        }));
+        const mappedNotifications = response.data.map((notif: any, index: number) => {
+          console.log(`[NotificationHistoryModal] 📝 Notif ${index}:`, {
+            id: notif.id,
+            type: notif.type,
+            title: notif.title,
+            message: notif.message?.substring(0, 50),
+            isRead: notif.isRead || notif.is_read,
+            createdAt: notif.createdAt
+          });
 
-        console.log('[NotificationHistoryModal] Notifications mappées:', mappedNotifications);
+          return {
+            id: String(notif.id),
+            type: mapNotificationType(notif.type),
+            title: notif.title || 'Sans titre',
+            message: notif.message || 'Sans message',
+            timestamp: notif.createdAt || notif.timestamp || new Date().toISOString(),
+            isRead: notif.isRead || notif.is_read || false,
+            category: mapNotificationCategory(notif.type),
+            actionUrl: notif.data?.actionUrl,
+            actionText: notif.data?.actionText
+          };
+        });
+
+        console.log('[NotificationHistoryModal] ✅ Notifications mappées:', mappedNotifications.length);
+        console.log('[NotificationHistoryModal] 📊 Détails:', {
+          total: mappedNotifications.length,
+          unread: mappedNotifications.filter(n => !n.isRead).length,
+          types: mappedNotifications.reduce((acc: any, n) => {
+            acc[n.type] = (acc[n.type] || 0) + 1;
+            return acc;
+          }, {})
+        });
+        
         setNotifications(mappedNotifications);
       } else {
+        console.warn('[NotificationHistoryModal] ⚠️ Format de réponse invalide');
+        console.log('[NotificationHistoryModal] Structure reçue:', {
+          hasData: !!response.data,
+          dataType: typeof response.data,
+          isArray: Array.isArray(response.data),
+          keys: response.data ? Object.keys(response.data) : []
+        });
         setNotifications([]);
       }
     } catch (error) {
-      console.error('[NotificationHistoryModal] Erreur chargement notifications:', error);
+      console.error('[NotificationHistoryModal] ❌ Erreur chargement notifications:', error);
       // En cas d'erreur API, afficher un tableau vide au lieu de données mockées
       setNotifications([]);
     } finally {
@@ -310,7 +342,16 @@ const NotificationHistoryModal: React.FC<NotificationHistoryModalProps> = ({
           ) : filteredNotifications.length === 0 ? (
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyIcon}>🔔</Text>
-              <Text style={styles.emptyText}>Aucune notification trouvée</Text>
+              <Text style={styles.emptyText}>
+                {notifications.length === 0 
+                  ? 'Aucune notification trouvée' 
+                  : `Aucune notification "${filterType}" trouvée`}
+              </Text>
+              {notifications.length > 0 && (
+                <Text style={styles.emptySubtext}>
+                  {notifications.length} notification(s) disponible(s) avec d'autres filtres
+                </Text>
+              )}
             </View>
           ) : (
             filteredNotifications.map((notification) => (
@@ -539,6 +580,14 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: theme.colors.textSecondary,
     marginTop: 16,
+    textAlign: 'center',
+  },
+  emptySubtext: {
+    fontSize: 14,
+    color: theme.colors.textSecondary,
+    marginTop: 8,
+    fontStyle: 'italic',
+    textAlign: 'center',
   },
   notificationCard: {
     backgroundColor: 'white',
