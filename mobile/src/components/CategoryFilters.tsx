@@ -115,15 +115,44 @@ const CategoryFilters: React.FC<CategoryFiltersProps> = ({
         if (suggestion.type === 'range') {
             newFilters[`${suggestion.id}_min`] = suggestion.min;
             newFilters[`${suggestion.id}_max`] = suggestion.max;
+            console.log(`💡 Suggestion appliquée (range): ${suggestion.label} - ${suggestion.min} à ${suggestion.max}`);
+        } else if (suggestion.type === 'select' || suggestion.type === 'multiselect') {
+            newFilters[suggestion.id] = suggestion.options?.[0]?.value || null;
+            console.log(`💡 Suggestion appliquée (select): ${suggestion.label} = ${suggestion.options?.[0]?.value}`);
         } else {
             newFilters[suggestion.id] = suggestion.options?.[0]?.value || null;
+            console.log(`💡 Suggestion appliquée: ${suggestion.label}`);
         }
 
         setFilters(newFilters);
-        console.log(`💡 Suggestion appliquée: ${suggestion.label}`);
+        
+        // ✅ FEEDBACK VISUEL: Faire défiler vers la section concernée
+        const sectionKey = getSectionKeyForFilter(suggestion.id);
+        if (sectionKey && !expandedSections[sectionKey]) {
+            setExpandedSections(prev => ({ ...prev, [sectionKey]: true }));
+        }
 
         // ✅ OPTIMISATION 6: Track l'application de la suggestion
         trackFilterSuggestion(category, suggestion.id, suggestion.label);
+        
+        // ✅ Masquer les suggestions après application
+        setShowSuggestions(false);
+    };
+
+    // ✅ Déterminer dans quelle section se trouve un filtre
+    const getSectionKeyForFilter = (filterId: string): string | null => {
+        if (filterId.includes('prix') || filterId.includes('date') || filterId.includes('disponibilit') || 
+            filterId.includes('stock') || filterId.includes('promotion')) {
+            return 'essentials';
+        }
+        if (filterId.includes('taille') || filterId.includes('poids') || filterId.includes('capacite') ||
+            filterId.includes('puissance') || filterId.includes('ram') || filterId.includes('stockage')) {
+            return 'specs';
+        }
+        if (filterId.includes('avec') || filterId.includes('sans')) {
+            return 'features';
+        }
+        return 'other';
     };
 
     // ✅ NOUVEAU: Appliquer un filtre de l'historique
@@ -467,6 +496,10 @@ const CategoryFilters: React.FC<CategoryFiltersProps> = ({
 
                             {showSuggestions && (
                                 <Animated.View style={{ opacity: fadeAnim }}>
+                                    {/* ✅ NOUVEAU: Indication pour l'utilisateur */}
+                                    <Text style={styles.suggestionHint}>
+                                        👆 Cliquez pour appliquer un filtre recommandé
+                                    </Text>
                                     <ScrollView
                                         horizontal
                                         showsHorizontalScrollIndicator={false}
@@ -480,6 +513,7 @@ const CategoryFilters: React.FC<CategoryFiltersProps> = ({
                                                     { borderColor: categoryStyle.primaryColor }
                                                 ]}
                                                 onPress={() => applySuggestion(suggestion)}
+                                                activeOpacity={0.7}
                                             >
                                                 <View style={styles.suggestionHeader}>
                                                     <View style={[
@@ -961,6 +995,13 @@ const styles = StyleSheet.create({
         borderBottomWidth: 1,
         borderBottomColor: '#E5E7EB',
         backgroundColor: '#F9FAFB',
+    },
+    suggestionHint: {
+        fontSize: 12,
+        color: '#6B7280',
+        fontStyle: 'italic',
+        marginBottom: 12,
+        textAlign: 'center',
     },
     historySection: {
         paddingHorizontal: 20,

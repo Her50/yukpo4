@@ -5778,19 +5778,43 @@ const styles = StyleSheet.create({
     header: {
         flexDirection: 'row',
         alignItems: 'center',
-        padding: 16,
-        backgroundColor: 'white',
+        justifyContent: 'space-between', // ✅ Pour bien espacer les éléments
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        backgroundColor: '#FFFFFF',
         borderBottomWidth: 1,
-        borderBottomColor: theme.colors.border,
+        borderBottomColor: '#E5E7EB',
+        shadowColor: '#000', // ✅ Ombre pour élévation
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 4,
+        elevation: 2,
     },
     backButton: {
         flexDirection: 'row',
         alignItems: 'center',
+        backgroundColor: '#F3F4F6', // ✅ Fond pour visibilité
+        paddingHorizontal: 16,
+        paddingVertical: 10,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        shadowColor: '#000', // ✅ Ombre pour relief
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.1,
+        shadowRadius: 2,
+        elevation: 2,
+        gap: 6, // ✅ Espacement entre icône et texte
+    },
+    backIcon: {
+        fontSize: 20, // ✅ Plus grand pour visibilité
+        fontWeight: 'bold',
+        color: '#374151',
     },
     backText: {
-        marginLeft: 8,
-        fontSize: 16,
-        color: theme.colors.primary,
+        fontSize: 15, // ✅ Légèrement réduit mais plus lisible
+        fontWeight: '600',
+        color: '#374151',
     },
     searchContainer: {
         padding: 16,
