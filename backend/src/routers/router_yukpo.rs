@@ -63,8 +63,6 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route("/api/test/ping", get(handle_ping))
         .route("/api/geocoding/reverse", post(handle_reverse_geocode))
         .route("/api/places/autocomplete", get(autocomplete_places))
-        // Route pour servir les fichiers média
-        .route("/api/media/{*file_path}", get(serve_media_file))
         .layer(axum::middleware::from_fn(monitoring::monitoring))
         .layer(axum::middleware::from_fn(audit_log::audit_log))
         .layer(axum::middleware::from_fn(rate_limit::rate_limit))
@@ -196,6 +194,10 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
     // Routes pour product_modalities (modalités réutilisables)
     let modality_routes = router_modalities::modality_routes(state.clone());
     
+    // ⚠️ Route générique wildcard - DOIT être mergée EN DERNIER pour éviter les conflits
+    let media_fallback_route = Router::new()
+        .route("/api/media/{*file_path}", get(serve_media_file));
+    
     // Combinaison des routes
     public_routes
         .merge(protected_routes)
@@ -207,6 +209,7 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .merge(image_search_routes_merged)
         .merge(publicite_routes_inline)
         .merge(modality_routes)
+        .merge(media_fallback_route) // ⚠️ Route wildcard en dernier
         .with_state(state)
 }
 
