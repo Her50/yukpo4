@@ -558,8 +558,9 @@ const MesProduitsScreen: React.FC = () => {
                     <TouchableOpacity
                         style={styles.backButton}
                         onPress={() => navigation.goBack()}
+                        activeOpacity={0.7}
                     >
-                        <SafeIcon name="arrow-left" size={24} color="#FFFFFF" />
+                        <SafeIcon name="arrow-left" size={28} color="#FFFFFF" />
                     </TouchableOpacity>
                     <View style={styles.headerTextContainer}>
                         <Text style={styles.headerTitle}>Mes Produits</Text>
@@ -814,24 +815,33 @@ const styles = StyleSheet.create({
     header: {
         paddingTop: Platform.OS === 'ios' ? 50 : 20,
         paddingBottom: 20,
-        paddingHorizontal: 20,
+        paddingHorizontal: 16, // ✅ Réduire légèrement pour mieux positionner les éléments
     },
     headerContent: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
+        paddingHorizontal: 4, // ✅ Améliorer le positionnement
     },
     backButton: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+        width: 48, // ✅ Augmenter la taille
+        height: 48,
+        borderRadius: 24,
+        backgroundColor: 'rgba(255, 255, 255, 0.35)', // ✅ Plus opaque pour meilleure visibilité
         alignItems: 'center',
         justifyContent: 'center',
+        shadowColor: '#000000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 3.84,
+        elevation: 5, // ✅ Ombre Android
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.3)', // ✅ Bordure subtile
     },
     headerTextContainer: {
         flex: 1,
-        marginLeft: 16,
+        marginLeft: 12, // ✅ Réduire l'espacement
+        marginRight: 12,
     },
     headerTitle: {
         fontSize: 24,
@@ -846,22 +856,39 @@ const styles = StyleSheet.create({
     headerStats: {
         flexDirection: 'row',
         gap: 12,
-    },
-    statBadge: {
-        backgroundColor: 'rgba(255, 255, 255, 0.2)',
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 12,
         alignItems: 'center',
     },
+    statBadge: {
+        backgroundColor: 'rgba(255, 255, 255, 0.4)', // ✅ Plus opaque pour meilleure visibilité
+        paddingHorizontal: 14, // ✅ Plus de padding
+        paddingVertical: 8,
+        borderRadius: 16,
+        alignItems: 'center',
+        shadowColor: '#000000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 3.84,
+        elevation: 5, // ✅ Ombre Android
+        borderWidth: 1.5,
+        borderColor: 'rgba(255, 255, 255, 0.5)', // ✅ Bordure plus visible
+        minWidth: 60, // ✅ Largeur minimale pour éviter la compression
+    },
     statNumber: {
-        fontSize: 18,
-        fontWeight: '700',
+        fontSize: 20, // ✅ Taille augmentée
+        fontWeight: '800', // ✅ Plus gras
         color: '#FFFFFF',
+        textShadowColor: 'rgba(0, 0, 0, 0.3)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 2,
     },
     statLabel: {
         fontSize: 11,
-        color: '#E0E7FF',
+        fontWeight: '600', // ✅ Plus gras
+        color: '#FFFFFF',
+        textShadowColor: 'rgba(0, 0, 0, 0.2)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 1,
+        marginTop: 1,
     },
     loadingContainer: {
         flex: 1,
