@@ -31,6 +31,7 @@ pub mod publicite_routes; // ✅ NOUVEAU: Routes pour système de publicité pay
 pub mod recommendation_routes; // ✅ NOUVEAU: Routes pour recommandations et tracking visibilité
 pub mod embedding_routes; // ✅ Routes pour embeddings
 pub mod places_routes; // ✅ NOUVEAU: Routes pour autocomplete de lieux (Google Maps API)
+pub mod products_management; // ✅ Routes pour gestion des produits
 
 // === Routes d'Optimisation IA ===
 // pub mod ia_routes_optimized; // Temporairement d?sactiv?

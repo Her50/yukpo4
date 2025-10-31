@@ -5,10 +5,9 @@ use crate::utils::embedding_client::AddEmbeddingPineconeRequest;
 use sqlx::{PgPool, Row};
 use log::info;
 use chrono::Utc;
+use base64::{Engine, engine::general_purpose::STANDARD};
 
 // ?? Imports pour la génération de signatures d'images (conditionnels)
-#[cfg(feature = "image_search")]
-use base64::{Engine, engine::general_purpose::STANDARD};
 #[cfg(feature = "image_search")]
 use md5;
 
