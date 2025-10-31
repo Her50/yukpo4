@@ -1,12 +1,10 @@
 // 📦 Contrôleur pour récupérer les médias par produit spécifique
 use axum::{
     extract::{Path, State},
-    http::StatusCode,
     response::IntoResponse,
     Json,
 };
-use serde::{Deserialize, Serialize};
-use serde_json::Value;
+use serde::Serialize;
 use sqlx::Row;
 use std::sync::Arc;
 
@@ -14,7 +12,7 @@ use crate::core::types::{AppError, AppResult};
 use crate::state::AppState;
 use crate::utils::log::{log_error, log_info};
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Clone)]
 pub struct ProductMediaItem {
     pub id: i32,
     pub service_id: i32,

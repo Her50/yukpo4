@@ -3,7 +3,6 @@
 
 use axum::{
     extract::{Query, State},
-    http::StatusCode,
     response::IntoResponse,
     Json,
 };
