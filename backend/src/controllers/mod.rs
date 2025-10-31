@@ -32,6 +32,7 @@ pub mod publicite_controller; // ✅ NOUVEAU: Contrôleur pour système de publi
 pub mod recommendation_controller; // ✅ NOUVEAU: Contrôleur pour recommandations et tracking visibilité
 pub mod scoring_controller; // ✅ Contrôleur pour scoring de services
 pub mod mixed_content_controller; // ✅ NOUVEAU: Contrôleur pour contenu mixte (publicités + organiques)
+pub mod media_product_controller; // ✅ NOUVEAU: Contrôleur pour médias par produit spécifique
 
 // pub use service_controller::update_token_debit;
 

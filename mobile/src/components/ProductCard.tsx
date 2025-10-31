@@ -36,11 +36,54 @@ const ProductCard: React.FC<ProductCardProps> = ({
 }) => {
     const [showAllImages, setShowAllImages] = useState(false);
     const [selectedVariantIndex, setSelectedVariantIndex] = useState(0); // ✅ NOUVEAU: State global pour variantes
+    const [mediaImages, setMediaImages] = useState<string[]>([]); // ✅ NOUVEAU: Images depuis table media
+    const [mediaVideos, setMediaVideos] = useState<string[]>([]); // ✅ NOUVEAU: Vidéos depuis table media
+    const [loadingMedia, setLoadingMedia] = useState(false);
+    const [useMediaAPI, setUseMediaAPI] = useState(false); // ✅ Flag pour savoir si on utilise l'API
 
     // Récupérer la configuration intelligente de la catégorie
     const categoryConfig = getCategoryConfig(product.type || 'default');
     const categoryStyle = getCategoryStyle(product.type || 'default');
     const terminology = getCategoryTerminology(product.type || 'default');
+
+    // ✅ NOUVEAU: Charger les médias depuis la table media si product_index disponible
+    React.useEffect(() => {
+        const loadMediaFromAPI = async () => {
+            // Vérifier si on a product_index (nécessaire pour API)
+            const productIndex = product._productIndex ?? product.productIndex;
+            if (productIndex === undefined || !service?.id) {
+                return; // Pas de product_index, utiliser JSON
+            }
+
+            try {
+                setLoadingMedia(true);
+                const { apiGet } = await import('../services/api');
+                
+                // Essayer de charger depuis l'API
+                const response = await apiGet(`/api/media/product/${service.id}/${productIndex}/images`);
+                
+                if (response.success && response.images && response.images.length > 0) {
+                    console.log(`[ProductCard] ✅ ${response.images.length} images chargées depuis API media`);
+                    setMediaImages(response.images);
+                    setUseMediaAPI(true);
+                }
+                
+                // Charger vidéos aussi
+                const videosResp = await apiGet(`/api/media/product/${service.id}/${productIndex}/videos`);
+                if (videosResp.success && videosResp.videos && videosResp.videos.length > 0) {
+                    console.log(`[ProductCard] ✅ ${videosResp.videos.length} vidéos chargées depuis API media`);
+                    setMediaVideos(videosResp.videos);
+                }
+            } catch (error) {
+                console.log('[ProductCard] Fallback vers product.images (JSON)', error);
+                setUseMediaAPI(false);
+            } finally {
+                setLoadingMedia(false);
+            }
+        };
+
+        loadMediaFromAPI();
+    }, [product._productIndex, product.productIndex, service?.id]);
 
     // ✅ NOUVEAU: Gestion intelligente des variantes pour l'image principale
     const hasVariants = product.variants && product.variants.length > 0;
@@ -57,9 +100,15 @@ const ProductCard: React.FC<ProductCardProps> = ({
     const currentVetementVariant = hasVetementVariants ? product.variantesVetements[selectedVariantIndex] : null;
     const vetementVariantImage = currentVetementVariant?.images?.[0];
 
-    // Extraire les images et vidéos (avec priorité à l'image de la variante)
-    const images = product.images || product.imagesRealisations || [];
-    const videos = product.videos || product.videosRealisations || [];
+    // ✅ AMÉLIORATION: Utiliser médias depuis API si disponibles, sinon fallback vers JSON
+    const images = useMediaAPI && mediaImages.length > 0 
+        ? mediaImages 
+        : (product.images || product.imagesRealisations || []);
+    
+    const videos = useMediaAPI && mediaVideos.length > 0 
+        ? mediaVideos 
+        : (product.videos || product.videosRealisations || []);
+    
     const mainImage = vetementVariantImage || chaussureVariantImage || variantImage || images[0] || null; // ✅ Priorité aux variantes vêtements, chaussures, puis variantes génériques
     const hasVideo = videos.length > 0;
 

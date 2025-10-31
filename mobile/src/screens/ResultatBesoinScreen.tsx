@@ -4415,7 +4415,7 @@ const ResultatBesoinScreen: React.FC = () => {
                     // ✅ CORRECTION: Gérer structure {valeur: [...]} ET array direct
                     const serviceProduits = service.data?.produits?.valeur || service.data?.produits || [];
                     if (Array.isArray(serviceProduits)) {
-                        serviceProduits.forEach((product: any) => {
+                        serviceProduits.forEach((product: any, productIndex: number) => {
                             // GPS prioritaire : produit > service gps_fixe > service gps
                             const productGPS = product.gps || product.gpsFixe;
                             const serviceGPSFixe = service.data?.gps_fixe?.valeur || service.data?.gps_fixe;
@@ -4444,6 +4444,7 @@ const ResultatBesoinScreen: React.FC = () => {
                                 _prestataire: prestataires.get(service.user_id),
                                 _gps: bestGPS,
                                 _gpsSource: productGPS ? 'product' : (serviceGPSFixe ? 'service_fixe' : 'service_realtime'),
+                                _productIndex: productIndex, // ✅ NOUVEAU: Passer l'index du produit pour API media
                                 distance: distance,
                                 score: finalScore, // ✅ Score ajusté avec bonus promo
                                 en_promotion: isPromo, // Passer le flag

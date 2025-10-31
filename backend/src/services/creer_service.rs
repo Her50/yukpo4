@@ -239,6 +239,39 @@ pub async fn creer_service(
     // Ajouter tokens de validation
     token_tracker.add_validation(2);
     
+    // ✅ NOUVEAU: Limiter la taille du JSON pour éviter l'erreur d'index PostgreSQL
+    // Supprimer les images base64 du champ produits avant insertion (elles sont déjà dans media)
+    if let Some(produits) = data_obj.get_mut("produits") {
+        if let Some(produits_obj) = produits.as_object_mut() {
+            if let Some(valeur) = produits_obj.get_mut("valeur") {
+                if let Some(produits_array) = valeur.as_array_mut() {
+                    for produit in produits_array.iter_mut() {
+                        if let Some(produit_obj) = produit.as_object_mut() {
+                            // Supprimer les champs volumineux (images base64, vidéos, etc.)
+                            produit_obj.remove("images_base64");
+                            produit_obj.remove("image_base64");
+                            produit_obj.remove("video_base64");
+                            produit_obj.remove("audio_base64");
+                            produit_obj.remove("doc_base64");
+                            produit_obj.remove("excel_base64");
+                            
+                            // Limiter la taille des descriptions trop longues (max 5000 caractères)
+                            if let Some(description) = produit_obj.get_mut("description") {
+                                if let Some(desc_str) = description.as_str() {
+                                    if desc_str.len() > 5000 {
+                                        *description = serde_json::Value::String(desc_str.chars().take(5000).collect::<String>() + "...");
+                                        log::warn!("[creer_service] Description produit tronquée (trop longue: {} chars)", desc_str.len());
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    log::info!("[creer_service] ✅ Nettoyage des données volumineuses dans produits (images base64 supprimées)");
+                }
+            }
+        }
+    }
+    
     log::info!("[creer_service] Token tracker après ajout validation: {:?}", token_tracker);
 
     // Enrichissement multimodal : remplacement des références par les vraies données (optimisé)
@@ -336,95 +369,235 @@ pub async fn creer_service(
     .execute(&mut *tx)
     .await;
 
-    // ?? NOUVEAU : Sauvegarder tous les types de fichiers dans la table media
+    // ✅ NOUVEAU : Sauvegarder tous les types de fichiers dans la table media
     let mut files_saved = 0;
     
-    // Images
-    if let Some(images) = data_processed.get("base64_image").and_then(|v| v.as_array()) {
-        let image_strings: Vec<String> = images
-            .iter()
-            .filter_map(|v| v.as_str().map(|s| s.to_string()))
-            .collect();
+    // ✅ AMÉLIORATION : Sauvegarder les images PAR PRODUIT (avec product_index)
+    // D'abord, extraire les produits du data_obj
+    if let Some(produits) = data_obj.get("produits").and_then(|v| v.as_array()) {
+        log::info!("[creer_service] 📦 Sauvegarde médias pour {} produits", produits.len());
         
-        if !image_strings.is_empty() {
-            log::info!("[creer_service] Sauvegarde de {} images pour le service {}", image_strings.len(), service_id);
+        #[cfg(feature = "image_search")]
+        let image_service = crate::services::image_search_service::ImageSearchService::new(pool.clone());
+        
+        for (product_index, produit) in produits.iter().enumerate() {
+            let product_id = produit.get("id")
+                .and_then(|v| v.as_str())
+                .unwrap_or(&format!("prod_{}", product_index))
+                .to_string();
             
-            // ?? NOUVEAU : Créer le service de recherche d'images pour générer les signatures
-            #[cfg(feature = "image_search")]
-            let image_service = crate::services::image_search_service::ImageSearchService::new(pool.clone());
+            log::info!("[creer_service] 📦 Produit {} (index {}): {}", 
+                product_id, product_index, 
+                produit.get("nom").and_then(|v| v.as_str()).unwrap_or("Sans nom"));
             
-            // Sauvegarder les images directement dans la transaction
-            for (i, _image_data) in image_strings.iter().enumerate() {
-                let file_path = format!("image_{}_{}.jpg", service_id, uuid::Uuid::new_v4());
-                
-                // ?? NOUVEAU : Décoder l'image base64 pour générer la signature
-                #[cfg(feature = "image_search")]
-                let image_bytes = match STANDARD.decode(_image_data.as_bytes()) {
-                    Ok(bytes) => bytes,
-                    Err(e) => {
-                        log::error!("[creer_service] Erreur décodage base64 image {}: {}", i, e);
-                        continue;
-                    }
-                };
-                
-                // ?? NOUVEAU : Générer la signature et les métadonnées de l'image
-                #[cfg(feature = "image_search")]
-                let (image_signature, image_hash, image_metadata) = {
-                    match image_service.generate_image_signature(&image_bytes).await {
-                        Ok(signature) => {
-                            let metadata = match image_service.extract_image_metadata(&image_bytes).await {
-                                Ok(meta) => meta,
+            // ✅ Images du produit spécifique
+            if let Some(product_images) = produit.get("images").and_then(|v| v.as_array()) {
+                for (image_index, img_url) in product_images.iter().enumerate() {
+                    if let Some(image_path) = img_url.as_str() {
+                        let is_main = image_index == 0; // Première image = principale
+                        
+                        log::info!("[creer_service] 🖼️ Image {} de produit {} (main: {}): {}", 
+                            image_index, product_index, is_main, &image_path[..image_path.len().min(50)]);
+                        
+                        // Décoder si c'est du base64, sinon utiliser l'URL directement
+                        let (file_path, image_bytes) = if image_path.starts_with("http") {
+                            // URL Cloudinary déjà uploadée
+                            (image_path.to_string(), vec![])
+                        } else {
+                            // Base64 à décoder
+                            let path = format!("image_{}_{}.jpg", service_id, uuid::Uuid::new_v4());
+                            let bytes = match STANDARD.decode(image_path.as_bytes()) {
+                                Ok(b) => b,
                                 Err(e) => {
-                                    log::warn!("[creer_service] Erreur métadonnées image {}: {}", i, e);
-                                    // Créer des métadonnées par défaut
-                                    crate::services::image_search_service::ImageMetadata {
-                                        width: 0,
-                                        height: 0,
-                                        format: "jpeg".to_string(),
-                                        file_size: image_bytes.len(),
-                                        dominant_colors: vec![],
-                                        color_histogram: vec![],
-                                        edge_density: 0.0,
-                                        brightness: 0.0,
-                                        contrast: 0.0,
-                                    }
+                                    log::error!("[creer_service] Erreur décodage image: {}", e);
+                                    continue;
                                 }
                             };
-                            let hash = format!("{:x}", md5::compute(&image_bytes));
-                            (serde_json::to_value(&signature).unwrap_or_default(), hash, serde_json::to_value(&metadata).unwrap_or_default())
-                        }
-                        Err(e) => {
-                            log::warn!("[creer_service] Erreur signature image {}: {}", i, e);
+                            (path, bytes)
+                        };
+                        
+                        // Générer signature si feature activée et si c'est du base64
+                        #[cfg(feature = "image_search")]
+                        let (image_signature, image_hash, image_metadata) = if !image_bytes.is_empty() {
+                            match image_service.generate_image_signature(&image_bytes).await {
+                                Ok(signature) => {
+                                    let metadata = image_service.extract_image_metadata(&image_bytes).await
+                                        .unwrap_or_else(|_| crate::services::image_search_service::ImageMetadata {
+                                            width: 0, height: 0, format: "jpeg".to_string(),
+                                            file_size: image_bytes.len(), dominant_colors: vec![],
+                                            color_histogram: vec![], edge_density: 0.0,
+                                            brightness: 0.0, contrast: 0.0,
+                                        });
+                                    let hash = format!("{:x}", md5::compute(&image_bytes));
+                                    (serde_json::to_value(&signature).unwrap_or_default(), 
+                                     hash, 
+                                     serde_json::to_value(&metadata).unwrap_or_default())
+                                },
+                                Err(e) => {
+                                    log::warn!("[creer_service] Erreur signature: {}", e);
+                                    (serde_json::Value::Null, String::new(), serde_json::Value::Null)
+                                }
+                            }
+                        } else {
                             (serde_json::Value::Null, String::new(), serde_json::Value::Null)
+                        };
+                        
+                        #[cfg(not(feature = "image_search"))]
+                        let (image_signature, image_hash, image_metadata) = (serde_json::Value::Null, String::new(), serde_json::Value::Null);
+                        
+                        // ✅ NOUVEAU : Insérer avec product_index, product_id, is_main_image, display_order
+                        if let Err(e) = sqlx::query(
+                            r#"
+                            INSERT INTO media (
+                                service_id, product_id, product_index, type, path, 
+                                is_main_image, display_order, uploaded_at, 
+                                image_signature, image_hash, image_metadata
+                            ) 
+                            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+                            "#
+                        )
+                        .bind(service_id)
+                        .bind(&product_id) // ✅ NOUVEAU
+                        .bind(product_index as i32) // ✅ NOUVEAU
+                        .bind("image")
+                        .bind(&file_path)
+                        .bind(is_main) // ✅ NOUVEAU
+                        .bind(image_index as i32) // ✅ NOUVEAU (display_order)
+                        .bind(Utc::now().naive_utc())
+                        .bind(image_signature)
+                        .bind(image_hash)
+                        .bind(image_metadata)
+                        .execute(&mut *tx)
+                        .await {
+                            log::error!("[creer_service] Erreur insertion media: {}", e);
+                            continue;
                         }
+                        
+                        files_saved += 1;
+                        log::info!("[creer_service] ✅ Image {}/{} du produit {} sauvegardée (main: {})", 
+                            image_index + 1, product_images.len(), product_index, is_main);
                     }
-                };
-                
-                #[cfg(not(feature = "image_search"))]
-                let (image_signature, image_hash, image_metadata) = (serde_json::Value::Null, String::new(), serde_json::Value::Null);
-                
-                // ?? NOUVEAU : Insérer avec signature et métadonnées
-                if let Err(e) = sqlx::query(
-                    r#"
-                    INSERT INTO media (service_id, type, path, uploaded_at, image_signature, image_hash, image_metadata) 
-                    VALUES ($1, $2, $3, $4, $5, $6, $7)
-                    "#
-                )
-                .bind(service_id)
-                .bind("image")
-                .bind(file_path)
-                .bind(Utc::now().naive_utc())
-                .bind(image_signature)
-                .bind(image_hash)
-                .bind(image_metadata)
-                .execute(&mut *tx)
-                .await {
-                    log::error!("[creer_service] Erreur insertion media image: {}", e);
-                    continue;
                 }
-                files_saved += 1;
-                log::info!("[creer_service] Image {} du service {} sauvegardée avec signature", i + 1, service_id);
             }
+            
+            // ✅ Vidéos du produit spécifique
+            if let Some(product_videos) = produit.get("videos").and_then(|v| v.as_array()) {
+                for (video_index, vid_url) in product_videos.iter().enumerate() {
+                    if let Some(video_path) = vid_url.as_str() {
+                        let file_path = if video_path.starts_with("http") {
+                            video_path.to_string()
+                        } else {
+                            format!("video_{}_{}.mp4", service_id, uuid::Uuid::new_v4())
+                        };
+                        
+                        if let Err(e) = sqlx::query(
+                            r#"
+                            INSERT INTO media (
+                                service_id, product_id, product_index, type, path, 
+                                is_main_image, display_order, uploaded_at
+                            ) 
+                            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                            "#
+                        )
+                        .bind(service_id)
+                        .bind(&product_id)
+                        .bind(product_index as i32)
+                        .bind("video")
+                        .bind(&file_path)
+                        .bind(video_index == 0) // Première vidéo = principale
+                        .bind(video_index as i32)
+                        .bind(Utc::now().naive_utc())
+                        .execute(&mut *tx)
+                        .await {
+                            log::error!("[creer_service] Erreur insertion media video: {}", e);
+                            continue;
+                        }
+                        
+                        files_saved += 1;
+                        log::info!("[creer_service] ✅ Vidéo {}/{} du produit {} sauvegardée", 
+                            video_index + 1, product_videos.len(), product_index);
+                    }
+                }
+            }
+        }
+    }
+    
+    // ✅ FALLBACK : Si pas de produits, sauvegarder les images globales du service
+    if let Some(images) = data_processed.get("base64_image").and_then(|v| v.as_array()) {
+        // Vérifier qu'on n'a pas déjà sauvegardé des images de produits
+        if files_saved == 0 {
+            let image_strings: Vec<String> = images
+                .iter()
+                .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                .collect();
+            
+            if !image_strings.is_empty() {
+                log::info!("[creer_service] 🖼️ Sauvegarde de {} images GLOBALES du service {}", image_strings.len(), service_id);
+                
+                #[cfg(feature = "image_search")]
+                let image_service = crate::services::image_search_service::ImageSearchService::new(pool.clone());
+                
+                for (i, _image_data) in image_strings.iter().enumerate() {
+                    let file_path = format!("image_{}_{}.jpg", service_id, uuid::Uuid::new_v4());
+                    
+                    #[cfg(feature = "image_search")]
+                    let image_bytes = match STANDARD.decode(_image_data.as_bytes()) {
+                        Ok(bytes) => bytes,
+                        Err(e) => {
+                            log::error!("[creer_service] Erreur décodage base64 image {}: {}", i, e);
+                            continue;
+                        }
+                    };
+                    
+                    #[cfg(feature = "image_search")]
+                    let (image_signature, image_hash, image_metadata) = {
+                        match image_service.generate_image_signature(&image_bytes).await {
+                            Ok(signature) => {
+                                let metadata = image_service.extract_image_metadata(&image_bytes).await
+                                    .unwrap_or_else(|_| crate::services::image_search_service::ImageMetadata {
+                                        width: 0, height: 0, format: "jpeg".to_string(),
+                                        file_size: image_bytes.len(), dominant_colors: vec![],
+                                        color_histogram: vec![], edge_density: 0.0,
+                                        brightness: 0.0, contrast: 0.0,
+                                    });
+                                let hash = format!("{:x}", md5::compute(&image_bytes));
+                                (serde_json::to_value(&signature).unwrap_or_default(), hash, serde_json::to_value(&metadata).unwrap_or_default())
+                            }
+                            Err(e) => {
+                                log::warn!("[creer_service] Erreur signature image {}: {}", i, e);
+                                (serde_json::Value::Null, String::new(), serde_json::Value::Null)
+                            }
+                        }
+                    };
+                    
+                    #[cfg(not(feature = "image_search"))]
+                    let (image_signature, image_hash, image_metadata) = (serde_json::Value::Null, String::new(), serde_json::Value::Null);
+                    
+                    // Insérer sans product_index (image globale du service)
+                    if let Err(e) = sqlx::query(
+                        r#"
+                        INSERT INTO media (service_id, type, path, uploaded_at, image_signature, image_hash, image_metadata) 
+                        VALUES ($1, $2, $3, $4, $5, $6, $7)
+                        "#
+                    )
+                    .bind(service_id)
+                    .bind("image")
+                    .bind(file_path)
+                    .bind(Utc::now().naive_utc())
+                    .bind(image_signature)
+                    .bind(image_hash)
+                    .bind(image_metadata)
+                    .execute(&mut *tx)
+                    .await {
+                        log::error!("[creer_service] Erreur insertion media image globale: {}", e);
+                        continue;
+                    }
+                    files_saved += 1;
+                    log::info!("[creer_service] Image globale {} du service {} sauvegardée", i + 1, service_id);
+                }
+            }
+        } else {
+            log::info!("[creer_service] ⏭️ Images déjà sauvegardées par produit, skip images globales");
         }
     }
     
