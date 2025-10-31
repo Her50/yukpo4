@@ -188,7 +188,7 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route("/api/media/product/{service_id}/{product_index}", get(media_product_controller::get_product_media))
         .route("/api/media/product/{service_id}/{product_index}/images", get(media_product_controller::get_product_images))
         .route("/api/media/product/{service_id}/{product_index}/videos", get(media_product_controller::get_product_videos))
-        .route("/api/media/{media_id}/set-main", post(media_product_controller::set_main_image));
+        .route("/api/media/set-main/{media_id}", post(media_product_controller::set_main_image));
         // ✅ Note: Route /api/content/mixed est définie dans recommendation_routes.rs
     
     // Routes pour product_modalities (modalités réutilisables)
