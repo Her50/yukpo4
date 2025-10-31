@@ -13,6 +13,7 @@ import {
     View
 } from 'react-native';
 import { CategoryFilter, getCategoryFilters, getCategoryStyle, getCategoryTerminology } from '../config/categoryConfig';
+import { modalityService } from '../services/modalityService'; // ✅ NOUVEAU: Service de modalités dynamiques
 import { trackFilterSuggestion } from '../utils/analytics'; // ✅ OPTIMISATION 6
 import { SmartFilterSuggestion } from '../utils/smartFilterSuggestions';
 import SafeIcon from './SafeIcon';
@@ -52,6 +53,69 @@ const CategoryFilters: React.FC<CategoryFiltersProps> = ({
         'features': false,
         'other': false
     });
+    const [enrichedFilters, setEnrichedFilters] = useState<CategoryFilter[]>(categoryFilters); // ✅ NOUVEAU: Filtres enrichis dynamiquement
+    const [loadingDynamicOptions, setLoadingDynamicOptions] = useState(false);
+
+    // ✅ NOUVEAU: Charger les modalités dynamiques et enrichir les filtres
+    useEffect(() => {
+        const loadDynamicFilters = async () => {
+            try {
+                setLoadingDynamicOptions(true);
+                console.log(`[CategoryFilters] 🔄 Chargement modalités dynamiques pour ${category}...`);
+
+                // Charger toutes les modalités personnalisées
+                await modalityService.loadCustomModalities();
+
+                // Enrichir chaque filtre avec les modalités dynamiques
+                const enriched: CategoryFilter[] = [];
+
+                for (const filter of categoryFilters) {
+                    if (filter.type === 'select' || filter.type === 'multiselect') {
+                        // Charger les modalités dynamiques pour ce champ
+                        const dynamicModalities = await modalityService.getModalitiesForField(
+                            category,
+                            filter.id
+                        );
+
+                        if (dynamicModalities.length > 0) {
+                            console.log(`[CategoryFilters] ✅ ${dynamicModalities.length} modalités dynamiques pour ${filter.id}`);
+
+                            // Combiner options statiques + dynamiques (sans doublons)
+                            const staticOptions = filter.options || [];
+                            const staticValues = new Set(staticOptions.map(o => o.value));
+
+                            const dynamicOptions = dynamicModalities
+                                .filter(m => !staticValues.has(m)) // Éviter doublons
+                                .map(m => ({ value: m, label: m }));
+
+                            enriched.push({
+                                ...filter,
+                                options: [...staticOptions, ...dynamicOptions] // Statiques en premier
+                            });
+                        } else {
+                            // Pas de modalités dynamiques, garder le filtre original
+                            enriched.push(filter);
+                        }
+                    } else {
+                        // Autres types de filtres (range, toggle, etc.) restent inchangés
+                        enriched.push(filter);
+                    }
+                }
+
+                setEnrichedFilters(enriched);
+                console.log(`[CategoryFilters] ✅ Filtres enrichis pour ${category}:`, enriched.length);
+            } catch (error) {
+                console.error('[CategoryFilters] ❌ Erreur chargement modalités dynamiques:', error);
+                setEnrichedFilters(categoryFilters); // Fallback vers filtres statiques
+            } finally {
+                setLoadingDynamicOptions(false);
+            }
+        };
+
+        if (visible && category) {
+            loadDynamicFilters();
+        }
+    }, [category, visible]);
 
     // ✅ OPTIMISATION 4: Charger les filtres depuis le cache au montage
     useEffect(() => {
@@ -125,7 +189,7 @@ const CategoryFilters: React.FC<CategoryFiltersProps> = ({
         }
 
         setFilters(newFilters);
-        
+
         // ✅ FEEDBACK VISUEL: Faire défiler vers la section concernée
         const sectionKey = getSectionKeyForFilter(suggestion.id);
         if (sectionKey && !expandedSections[sectionKey]) {
@@ -134,14 +198,14 @@ const CategoryFilters: React.FC<CategoryFiltersProps> = ({
 
         // ✅ OPTIMISATION 6: Track l'application de la suggestion
         trackFilterSuggestion(category, suggestion.id, suggestion.label);
-        
+
         // ✅ Masquer les suggestions après application
         setShowSuggestions(false);
     };
 
     // ✅ Déterminer dans quelle section se trouve un filtre
     const getSectionKeyForFilter = (filterId: string): string | null => {
-        if (filterId.includes('prix') || filterId.includes('date') || filterId.includes('disponibilit') || 
+        if (filterId.includes('prix') || filterId.includes('date') || filterId.includes('disponibilit') ||
             filterId.includes('stock') || filterId.includes('promotion')) {
             return 'essentials';
         }
@@ -211,35 +275,49 @@ const CategoryFilters: React.FC<CategoryFiltersProps> = ({
                         <Text style={styles.filterLabel}>{filter.label}</Text>
                         {/* ✅ NOUVEAU: Grille compacte 3 colonnes pour select */}
                         <View style={styles.selectGridContainer}>
-                            {filter.options?.map((option) => (
-                                <TouchableOpacity
-                                    key={option.value}
-                                    style={[
-                                        styles.selectGridOption,
-                                        filters[filter.id] === option.value && {
-                                            backgroundColor: categoryStyle.primaryColor,
-                                            borderColor: categoryStyle.primaryColor,
-                                        },
-                                    ]}
-                                    onPress={() => setFilters({
-                                        ...filters,
-                                        [filter.id]: filters[filter.id] === option.value ? null : option.value,
-                                    })}
-                                >
-                                    <Text
+                            {filter.options?.map((option, idx) => {
+                                // ✅ Détecter si c'est une option dynamique (ajoutée après les options statiques de base)
+                                const baseFilter = categoryFilters.find(f => f.id === filter.id);
+                                const baseOptionsCount = baseFilter?.options?.length || 0;
+                                const isDynamic = idx >= baseOptionsCount;
+
+                                return (
+                                    <TouchableOpacity
+                                        key={option.value}
                                         style={[
-                                            styles.selectGridText,
-                                            filters[filter.id] === option.value && styles.selectGridTextActive,
+                                            styles.selectGridOption,
+                                            filters[filter.id] === option.value && {
+                                                backgroundColor: categoryStyle.primaryColor,
+                                                borderColor: categoryStyle.primaryColor,
+                                            },
+                                            isDynamic && styles.dynamicOption, // ✅ Style pour options dynamiques
                                         ]}
-                                        numberOfLines={2}
+                                        onPress={() => setFilters({
+                                            ...filters,
+                                            [filter.id]: filters[filter.id] === option.value ? null : option.value,
+                                        })}
                                     >
-                                        {option.label}
-                                    </Text>
-                                    {filters[filter.id] === option.value && (
-                                        <SafeIcon name="check" size={12} color="#FFFFFF" style={styles.checkIconSelect} />
-                                    )}
-                                </TouchableOpacity>
-                            ))}
+                                        <Text
+                                            style={[
+                                                styles.selectGridText,
+                                                filters[filter.id] === option.value && styles.selectGridTextActive,
+                                            ]}
+                                            numberOfLines={2}
+                                        >
+                                            {option.label}
+                                        </Text>
+                                        {/* ✅ Badge "Nouveau" pour options dynamiques */}
+                                        {isDynamic && filters[filter.id] !== option.value && (
+                                            <View style={styles.newBadge}>
+                                                <Text style={styles.newBadgeText}>✨</Text>
+                                            </View>
+                                        )}
+                                        {filters[filter.id] === option.value && (
+                                            <SafeIcon name="check" size={12} color="#FFFFFF" style={styles.checkIconSelect} />
+                                        )}
+                                    </TouchableOpacity>
+                                );
+                            })}
                         </View>
                     </View>
                 );
@@ -250,9 +328,15 @@ const CategoryFilters: React.FC<CategoryFiltersProps> = ({
                         <Text style={styles.filterLabel}>{filter.label}</Text>
                         {/* ✅ NOUVEAU: Grille compacte 2 colonnes au lieu d'une liste */}
                         <View style={styles.multiselectGridContainer}>
-                            {filter.options?.map((option) => {
+                            {filter.options?.map((option, idx) => {
                                 const isSelected = Array.isArray(filters[filter.id]) &&
                                     filters[filter.id].includes(option.value);
+                                
+                                // ✅ Détecter si c'est une option dynamique
+                                const baseFilter = categoryFilters.find(f => f.id === filter.id);
+                                const baseOptionsCount = baseFilter?.options?.length || 0;
+                                const isDynamic = idx >= baseOptionsCount;
+
                                 return (
                                     <TouchableOpacity
                                         key={option.value}
@@ -263,6 +347,7 @@ const CategoryFilters: React.FC<CategoryFiltersProps> = ({
                                                 borderColor: categoryStyle.primaryColor,
                                                 borderWidth: 2,
                                             },
+                                            isDynamic && styles.dynamicOption, // ✅ Style pour options dynamiques
                                         ]}
                                         onPress={() => {
                                             const currentValues = filters[filter.id] || [];
@@ -288,6 +373,12 @@ const CategoryFilters: React.FC<CategoryFiltersProps> = ({
                                         >
                                             {option.label}
                                         </Text>
+                                        {/* ✅ Badge "Nouveau" pour options dynamiques */}
+                                        {isDynamic && !isSelected && (
+                                            <View style={styles.newBadge}>
+                                                <Text style={styles.newBadgeText}>✨</Text>
+                                            </View>
+                                        )}
                                     </TouchableOpacity>
                                 );
                             })}
@@ -381,16 +472,17 @@ const CategoryFilters: React.FC<CategoryFiltersProps> = ({
             other: []        // Autres filtres
         };
 
-        categoryFilters.forEach(filter => {
+        // ✅ UTILISER enrichedFilters au lieu de categoryFilters (options dynamiques)
+        enrichedFilters.forEach(filter => {
             // Filtres essentiels (prix, dates, etc.)
-            if (filter.id.includes('prix') || filter.id.includes('date') || filter.id.includes('disponibilit') || 
+            if (filter.id.includes('prix') || filter.id.includes('date') || filter.id.includes('disponibilit') ||
                 filter.id.includes('stock') || filter.id.includes('promotion')) {
                 sections.essentials.push(filter);
             }
             // Spécifications techniques (taille, poids, capacité, etc.)
             else if (filter.id.includes('taille') || filter.id.includes('poids') || filter.id.includes('capacite') ||
-                     filter.id.includes('puissance') || filter.id.includes('ram') || filter.id.includes('stockage') ||
-                     filter.id.includes('processeur') || filter.id.includes('cylindree') || filter.id.includes('annee')) {
+                filter.id.includes('puissance') || filter.id.includes('ram') || filter.id.includes('stockage') ||
+                filter.id.includes('processeur') || filter.id.includes('cylindree') || filter.id.includes('annee')) {
                 sections.specs.push(filter);
             }
             // Fonctionnalités optionnelles (toggle généralement)
@@ -466,6 +558,12 @@ const CategoryFilters: React.FC<CategoryFiltersProps> = ({
                             {activeFiltersCount > 0 && (
                                 <View style={[styles.filterBadge, { backgroundColor: categoryStyle.primaryColor }]}>
                                     <Text style={styles.filterBadgeText}>{activeFiltersCount}</Text>
+                                </View>
+                            )}
+                            {/* ✅ NOUVEAU: Indicateur de chargement des options dynamiques */}
+                            {loadingDynamicOptions && (
+                                <View style={styles.dynamicLoadingBadge}>
+                                    <Text style={styles.dynamicLoadingText}>⏳ Chargement...</Text>
                                 </View>
                             )}
                         </View>
@@ -613,10 +711,10 @@ const CategoryFilters: React.FC<CategoryFiltersProps> = ({
                                         activeOpacity={0.7}
                                     >
                                         <View style={styles.accordionTitleContainer}>
-                                            <SafeIcon 
-                                                name={getSectionIcon(sectionKey)} 
-                                                size={20} 
-                                                color={expandedSections[sectionKey] ? categoryStyle.primaryColor : '#6B7280'} 
+                                            <SafeIcon
+                                                name={getSectionIcon(sectionKey)}
+                                                size={20}
+                                                color={expandedSections[sectionKey] ? categoryStyle.primaryColor : '#6B7280'}
                                             />
                                             <Text style={[
                                                 styles.accordionTitle,
@@ -987,6 +1085,35 @@ const styles = StyleSheet.create({
         position: 'absolute',
         top: 4,
         right: 4,
+    },
+    // ✅ NOUVEAU: Styles pour options dynamiques
+    dynamicOption: {
+        borderColor: '#10B981', // Vert pour "nouveau"
+        borderWidth: 2,
+        backgroundColor: '#F0FDF4', // Fond vert très clair
+    },
+    newBadge: {
+        position: 'absolute',
+        top: 2,
+        left: 2,
+        backgroundColor: 'transparent',
+    },
+    newBadgeText: {
+        fontSize: 14,
+    },
+    // ✅ NOUVEAU: Badge de chargement dynamique
+    dynamicLoadingBadge: {
+        marginTop: 4,
+        paddingHorizontal: 8,
+        paddingVertical: 3,
+        backgroundColor: '#FEF3C7',
+        borderRadius: 10,
+        alignSelf: 'flex-start',
+    },
+    dynamicLoadingText: {
+        fontSize: 11,
+        color: '#92400E',
+        fontWeight: '600',
     },
     // ✅ NOUVEAUX STYLES: Suggestions & Historique
     suggestionsSection: {
