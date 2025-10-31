@@ -46,6 +46,12 @@ const CategoryFilters: React.FC<CategoryFiltersProps> = ({
     const [showSuggestions, setShowSuggestions] = useState(true);
     const [showHistory, setShowHistory] = useState(false);
     const [fadeAnim] = useState(new Animated.Value(0));
+    const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
+        'essentials': true, // Section essentielle toujours ouverte par défaut
+        'specs': false,
+        'features': false,
+        'other': false
+    });
 
     // ✅ OPTIMISATION 4: Charger les filtres depuis le cache au montage
     useEffect(() => {
@@ -174,12 +180,13 @@ const CategoryFilters: React.FC<CategoryFiltersProps> = ({
                 return (
                     <View key={filter.id} style={styles.filterContainer}>
                         <Text style={styles.filterLabel}>{filter.label}</Text>
-                        <View style={styles.selectContainer}>
+                        {/* ✅ NOUVEAU: Grille compacte 3 colonnes pour select */}
+                        <View style={styles.selectGridContainer}>
                             {filter.options?.map((option) => (
                                 <TouchableOpacity
                                     key={option.value}
                                     style={[
-                                        styles.selectOption,
+                                        styles.selectGridOption,
                                         filters[filter.id] === option.value && {
                                             backgroundColor: categoryStyle.primaryColor,
                                             borderColor: categoryStyle.primaryColor,
@@ -192,14 +199,15 @@ const CategoryFilters: React.FC<CategoryFiltersProps> = ({
                                 >
                                     <Text
                                         style={[
-                                            styles.selectOptionText,
-                                            filters[filter.id] === option.value && styles.selectOptionTextActive,
+                                            styles.selectGridText,
+                                            filters[filter.id] === option.value && styles.selectGridTextActive,
                                         ]}
+                                        numberOfLines={2}
                                     >
                                         {option.label}
                                     </Text>
                                     {filters[filter.id] === option.value && (
-                                        <SafeIcon name="check" size={14} color="#FFFFFF" />
+                                        <SafeIcon name="check" size={12} color="#FFFFFF" style={styles.checkIconSelect} />
                                     )}
                                 </TouchableOpacity>
                             ))}
@@ -211,7 +219,8 @@ const CategoryFilters: React.FC<CategoryFiltersProps> = ({
                 return (
                     <View key={filter.id} style={styles.filterContainer}>
                         <Text style={styles.filterLabel}>{filter.label}</Text>
-                        <View style={styles.multiselectContainer}>
+                        {/* ✅ NOUVEAU: Grille compacte 2 colonnes au lieu d'une liste */}
+                        <View style={styles.multiselectGridContainer}>
                             {filter.options?.map((option) => {
                                 const isSelected = Array.isArray(filters[filter.id]) &&
                                     filters[filter.id].includes(option.value);
@@ -219,10 +228,11 @@ const CategoryFilters: React.FC<CategoryFiltersProps> = ({
                                     <TouchableOpacity
                                         key={option.value}
                                         style={[
-                                            styles.multiselectOption,
+                                            styles.multiselectGridOption,
                                             isSelected && {
                                                 backgroundColor: categoryStyle.badgeColor,
                                                 borderColor: categoryStyle.primaryColor,
+                                                borderWidth: 2,
                                             },
                                         ]}
                                         onPress={() => {
@@ -236,17 +246,19 @@ const CategoryFilters: React.FC<CategoryFiltersProps> = ({
                                             });
                                         }}
                                     >
+                                        {isSelected && (
+                                            <SafeIcon name="check-circle" size={16} color={categoryStyle.primaryColor} style={styles.checkIconGrid} />
+                                        )}
                                         <Text
                                             style={[
-                                                styles.multiselectOptionText,
-                                                isSelected && { color: categoryStyle.primaryColor },
+                                                styles.multiselectGridText,
+                                                isSelected && { color: categoryStyle.primaryColor, fontWeight: '700' },
                                             ]}
+                                            numberOfLines={2}
+                                            ellipsizeMode="tail"
                                         >
                                             {option.label}
                                         </Text>
-                                        {isSelected && (
-                                            <SafeIcon name="check-circle" size={14} color={categoryStyle.primaryColor} />
-                                        )}
                                     </TouchableOpacity>
                                 );
                             })}
@@ -269,6 +281,22 @@ const CategoryFilters: React.FC<CategoryFiltersProps> = ({
                                 thumbColor="#FFFFFF"
                             />
                         </View>
+                    </View>
+                );
+
+            case 'text':
+                return (
+                    <View key={filter.id} style={styles.filterContainer}>
+                        <Text style={styles.filterLabel}>{filter.label}</Text>
+                        <TextInput
+                            style={styles.textInput}
+                            value={filters[filter.id] || ''}
+                            onChangeText={(text) => setFilters({
+                                ...filters,
+                                [filter.id]: text || null,
+                            })}
+                            placeholder={filter.placeholder || 'Saisir...'}
+                        />
                     </View>
                 );
 
@@ -314,6 +342,74 @@ const CategoryFilters: React.FC<CategoryFiltersProps> = ({
         const value = filters[key];
         return value !== null && value !== undefined && value !== '';
     }).length;
+
+    // ✅ NOUVEAU: Grouper les filtres par sections logiques
+    const groupFiltersBySection = (): Record<string, CategoryFilter[]> => {
+        const sections: Record<string, CategoryFilter[]> = {
+            essentials: [],  // Prix, disponibilité, etc.
+            specs: [],       // Caractéristiques techniques
+            features: [],    // Fonctionnalités optionnelles
+            other: []        // Autres filtres
+        };
+
+        categoryFilters.forEach(filter => {
+            // Filtres essentiels (prix, dates, etc.)
+            if (filter.id.includes('prix') || filter.id.includes('date') || filter.id.includes('disponibilit') || 
+                filter.id.includes('stock') || filter.id.includes('promotion')) {
+                sections.essentials.push(filter);
+            }
+            // Spécifications techniques (taille, poids, capacité, etc.)
+            else if (filter.id.includes('taille') || filter.id.includes('poids') || filter.id.includes('capacite') ||
+                     filter.id.includes('puissance') || filter.id.includes('ram') || filter.id.includes('stockage') ||
+                     filter.id.includes('processeur') || filter.id.includes('cylindree') || filter.id.includes('annee')) {
+                sections.specs.push(filter);
+            }
+            // Fonctionnalités optionnelles (toggle généralement)
+            else if (filter.type === 'toggle' || filter.id.includes('avec') || filter.id.includes('sans')) {
+                sections.features.push(filter);
+            }
+            // Autres filtres
+            else {
+                sections.other.push(filter);
+            }
+        });
+
+        // Supprimer les sections vides
+        Object.keys(sections).forEach(key => {
+            if (sections[key].length === 0) {
+                delete sections[key];
+            }
+        });
+
+        return sections;
+    };
+
+    const toggleSection = (sectionKey: string) => {
+        setExpandedSections(prev => ({
+            ...prev,
+            [sectionKey]: !prev[sectionKey]
+        }));
+    };
+
+    const getSectionTitle = (sectionKey: string): string => {
+        switch (sectionKey) {
+            case 'essentials': return '⭐ Filtres Essentiels';
+            case 'specs': return '🔧 Spécifications Techniques';
+            case 'features': return '✨ Fonctionnalités';
+            case 'other': return '📋 Autres Critères';
+            default: return 'Filtres';
+        }
+    };
+
+    const getSectionIcon = (sectionKey: string): string => {
+        switch (sectionKey) {
+            case 'essentials': return 'star';
+            case 'specs': return 'cpu';
+            case 'features': return 'zap';
+            case 'other': return 'list';
+            default: return 'filter';
+        }
+    };
 
     // ✅ NOUVEAU: Formater le temps écoulé
     const formatTimeAgo = (timestamp: number): string => {
@@ -467,9 +563,53 @@ const CategoryFilters: React.FC<CategoryFiltersProps> = ({
                         </View>
                     )}
 
-                    {/* Filters */}
+                    {/* ✅ NOUVEAU: Filtres organisés en sections accordéon */}
                     <ScrollView style={styles.filtersContent} showsVerticalScrollIndicator={false}>
-                        {categoryFilters.map((filter) => renderFilter(filter))}
+                        {(() => {
+                            const sections = groupFiltersBySection();
+                            return Object.entries(sections).map(([sectionKey, sectionFilters]) => (
+                                <View key={sectionKey} style={styles.accordionSection}>
+                                    {/* Header de section cliquable */}
+                                    <TouchableOpacity
+                                        style={[
+                                            styles.accordionHeader,
+                                            expandedSections[sectionKey] && styles.accordionHeaderExpanded
+                                        ]}
+                                        onPress={() => toggleSection(sectionKey)}
+                                        activeOpacity={0.7}
+                                    >
+                                        <View style={styles.accordionTitleContainer}>
+                                            <SafeIcon 
+                                                name={getSectionIcon(sectionKey)} 
+                                                size={20} 
+                                                color={expandedSections[sectionKey] ? categoryStyle.primaryColor : '#6B7280'} 
+                                            />
+                                            <Text style={[
+                                                styles.accordionTitle,
+                                                expandedSections[sectionKey] && { color: categoryStyle.primaryColor }
+                                            ]}>
+                                                {getSectionTitle(sectionKey)}
+                                            </Text>
+                                            <View style={[styles.accordionBadge, { backgroundColor: categoryStyle.badgeColor }]}>
+                                                <Text style={styles.accordionBadgeText}>{sectionFilters.length}</Text>
+                                            </View>
+                                        </View>
+                                        <SafeIcon
+                                            name={expandedSections[sectionKey] ? "chevron-up" : "chevron-down"}
+                                            size={20}
+                                            color={expandedSections[sectionKey] ? categoryStyle.primaryColor : '#6B7280'}
+                                        />
+                                    </TouchableOpacity>
+
+                                    {/* Contenu de la section (collapsible) */}
+                                    {expandedSections[sectionKey] && (
+                                        <View style={styles.accordionContent}>
+                                            {sectionFilters.map((filter) => renderFilter(filter))}
+                                        </View>
+                                    )}
+                                </View>
+                            ));
+                        })()}
                     </ScrollView>
 
                     {/* Actions */}
@@ -547,16 +687,16 @@ const styles = StyleSheet.create({
         padding: 4,
     },
     filtersContent: {
-        padding: 20,
+        padding: 16, // ✅ Réduit de 20 à 16 pour compacité
     },
     filterContainer: {
-        marginBottom: 24,
+        marginBottom: 16, // ✅ Réduit de 24 à 16 pour compacité
     },
     filterLabel: {
-        fontSize: 15,
+        fontSize: 14, // ✅ Réduit de 15 à 14 pour compacité
         fontWeight: '600',
         color: '#1F2937',
-        marginBottom: 12,
+        marginBottom: 8, // ✅ Réduit de 12 à 8 pour compacité
     },
     rangeContainer: {
         flexDirection: 'row',
@@ -697,6 +837,122 @@ const styles = StyleSheet.create({
         fontSize: 15,
         fontWeight: '700',
         color: '#FFFFFF',
+    },
+    // ✅ NOUVEAU: Styles pour les sections accordéon
+    accordionSection: {
+        marginBottom: 12,
+        backgroundColor: '#FFFFFF',
+        borderRadius: 12,
+        overflow: 'hidden',
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+    },
+    accordionHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: 16,
+        backgroundColor: '#F9FAFB',
+        borderBottomWidth: 0,
+    },
+    accordionHeaderExpanded: {
+        backgroundColor: '#FFFFFF',
+        borderBottomWidth: 1,
+        borderBottomColor: '#E5E7EB',
+    },
+    accordionTitleContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+        flex: 1,
+    },
+    accordionTitle: {
+        fontSize: 15,
+        fontWeight: '700',
+        color: '#374151',
+        flex: 1,
+    },
+    accordionBadge: {
+        paddingHorizontal: 8,
+        paddingVertical: 3,
+        borderRadius: 12,
+        minWidth: 24,
+        alignItems: 'center',
+    },
+    accordionBadgeText: {
+        fontSize: 11,
+        fontWeight: '700',
+        color: '#FFFFFF',
+    },
+    accordionContent: {
+        padding: 16,
+        paddingTop: 12,
+        backgroundColor: '#FFFFFF',
+    },
+    // ✅ NOUVEAU: Grille pour multiselect (2 colonnes)
+    multiselectGridContainer: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+        marginTop: 8,
+    },
+    multiselectGridOption: {
+        width: '48%', // 2 colonnes avec gap
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        paddingHorizontal: 10,
+        paddingVertical: 12,
+        borderRadius: 10,
+        borderWidth: 1.5,
+        borderColor: '#E5E7EB',
+        backgroundColor: '#FFFFFF',
+        minHeight: 48,
+    },
+    multiselectGridText: {
+        fontSize: 12,
+        fontWeight: '500',
+        color: '#4B5563',
+        flex: 1,
+    },
+    checkIconGrid: {
+        marginRight: 2,
+    },
+    // ✅ NOUVEAU: Grille pour select (3 colonnes)
+    selectGridContainer: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 6,
+        marginTop: 8,
+    },
+    selectGridOption: {
+        width: '31%', // 3 colonnes avec gap
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingHorizontal: 6,
+        paddingVertical: 12,
+        borderRadius: 10,
+        borderWidth: 2,
+        borderColor: '#E5E7EB',
+        backgroundColor: '#FFFFFF',
+        minHeight: 48,
+        position: 'relative',
+    },
+    selectGridText: {
+        fontSize: 11,
+        fontWeight: '500',
+        color: '#4B5563',
+        textAlign: 'center',
+    },
+    selectGridTextActive: {
+        color: '#FFFFFF',
+        fontWeight: '700',
+    },
+    checkIconSelect: {
+        position: 'absolute',
+        top: 4,
+        right: 4,
     },
     // ✅ NOUVEAUX STYLES: Suggestions & Historique
     suggestionsSection: {
