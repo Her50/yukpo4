@@ -26,6 +26,7 @@ import PaymentMethodSelector from '../components/PaymentMethodSelector';
 import { NativeButton, NativeCard, NativeDivider, NativeInput } from '../components/NativeDesign';
 // ✅ SUPPRIMÉ: ProductManagerMobile intégré directement dans le formulaire
 import AutocompleteGranularEditor from '../components/AutocompleteGranularEditor';
+import LocationSelector from '../components/LocationSelector';
 import PriceVariantSelector from '../components/PriceVariantSelector';
 // ✅ AJOUT: Composants pour modalités personnalisées et sélection multiple
 import ProductFieldSelector from '../components/ProductFieldSelector';
@@ -201,8 +202,14 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       // ✅ AJOUT: price_variant (variabilite_prix) va aussi dans le bloc produits
       // ✅ IMPORTANT: Les champs spécifiques au produit (nom_produit, categorie_produit, description_produit, prix_produit, devise_produit)
       //    vont dans le bloc Produits, PAS dans Informations générales (qui contient titre_service, category, description)
-      else if (['liste_produits', 'produits', 'listeproduit', 'variabilite_prix', 'price_variant', 'nom_produit', 'categorie_produit', 'description_produit', 'prix_produit', 'devise_produit'].includes(fieldName) || field.typeDonnee === 'price_variant') {
+      // ✅ CORRECTION CRITIQUE: Détecter aussi les champs par leur typeDonnee (autocomplete, price_variant)
+      else if (
+        ['liste_produits', 'produits', 'listeproduit', 'variabilite_prix', 'price_variant', 'nom_produit', 'categorie_produit', 'description_produit', 'prix_produit', 'devise_produit'].includes(fieldName) ||
+        field.typeDonnee === 'price_variant' ||
+        field.typeDonnee === 'autocomplete'
+      ) {
         blocks[3].fields.push(field);
+        console.log(`[FormulaireYukpoIntelligentScreen] ✅ Champ ajouté au bloc produits: ${field.name} (typeDonnee: ${field.typeDonnee})`);
       }
       // Bloc Médias
       else if (['images', 'videos', 'audios', 'documents', 'logo', 'banner', 'banniere'].includes(fieldName)) {
@@ -744,13 +751,58 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       // Extraire les valeurs des données IA pour pré-remplir les champs
       const initialValues: Record<string, any> = {};
       Object.keys(suggestion.data).forEach(fieldName => {
-        // ✅ CORRECTION: Ignorer produits ici, traité séparément
-        if (fieldName === 'produits') return;
-
         const fieldData = suggestion.data[fieldName];
+
+        // ✅ CORRECTION: Traiter tous les champs produits, y compris produits (autocomplete) et price_variant
         if (fieldData && typeof fieldData === 'object' && 'valeur' in fieldData) {
-          initialValues[fieldName] = fieldData.valeur;
-          console.log(`[FormulaireYukpoIntelligentScreen] Valeur pré-remplie automatiquement pour ${fieldName}:`, fieldData.valeur);
+          const typeDonnee = fieldData.type_donnee || 'string';
+
+          // ✅ NOUVEAU: Traitement spécial pour le champ produits (autocomplete)
+          if (fieldName === 'produits' && typeDonnee === 'autocomplete') {
+            // Pour autocomplete, garder toute la structure avec sous_caracteristiques
+            initialValues[fieldName] = {
+              type_donnee: 'autocomplete',
+              valeur: Array.isArray(fieldData.valeur) ? fieldData.valeur : [],
+              separateur: fieldData.separateur || ',',
+              sous_caracteristiques: fieldData.sous_caracteristiques || {},
+              identifiant_base: fieldData.identifiant_base || 'produits',
+              filtrable: fieldData.filtrable !== false,
+              origine_champs: fieldData.origine_champs || 'ia'
+            };
+            console.log(`[FormulaireYukpoIntelligentScreen] ✅ Champ produits (autocomplete) pré-rempli:`, initialValues[fieldName]);
+          }
+          // ✅ NOUVEAU: Traitement spécial pour price_variant (variabilite_prix)
+          else if (typeDonnee === 'price_variant' || fieldName === 'variabilite_prix') {
+            // Pré-remplir la structure complète avec prix si identifiés
+            const modalitesAvecValeurs = (fieldData.modalites || []).map((mod: any) => ({
+              valeur: mod.valeur || '',
+              prix: (mod.prix !== null && mod.prix !== undefined && mod.prix !== 0) ? mod.prix : 0,
+              devise: mod.devise || 'XAF',
+              stock: mod.stock
+            }));
+
+            initialValues[fieldName] = {
+              type_donnee: 'price_variant',
+              variable: fieldData.variable || 'variante',
+              modalites: modalitesAvecValeurs,
+              filtrable: fieldData.filtrable !== false,
+              origine_champs: fieldData.origine_champs || 'ia'
+            };
+            console.log(`[FormulaireYukpoIntelligentScreen] ✅ Champ price_variant pré-rempli:`, initialValues[fieldName]);
+          }
+          // ✅ NOUVEAU: Pré-remplir les prix s'ils sont identifiés
+          else if (fieldName === 'prix_produit' || fieldName === 'devise_produit') {
+            const valeur = fieldData.valeur;
+            if (valeur !== null && valeur !== undefined && valeur !== '') {
+              initialValues[fieldName] = valeur;
+              console.log(`[FormulaireYukpoIntelligentScreen] ✅ Prix pré-rempli depuis l'IA pour ${fieldName}:`, valeur);
+            }
+          }
+          else {
+            // Pour les autres champs, extraire juste la valeur
+            initialValues[fieldName] = fieldData.valeur;
+            console.log(`[FormulaireYukpoIntelligentScreen] Valeur pré-remplie automatiquement pour ${fieldName}:`, fieldData.valeur);
+          }
         } else if (typeof fieldData === 'string' || typeof fieldData === 'number' || typeof fieldData === 'boolean') {
           // Gérer les valeurs directes (pas dans un objet {valeur: ...})
           initialValues[fieldName] = fieldData;
@@ -758,8 +810,12 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         }
       });
 
-      // ✅ SUPPRIMÉ: Chargement produits IA - Les produits sont maintenant gérés via les champs dynamiques du formulaire
-      // Les produits seront chargés automatiquement si présents dans les valeurs du formulaire
+      // ✅ NOUVEAU: Log des champs produits détectés depuis l'IA
+      const productFields = ['nom_produit', 'categorie_produit', 'description_produit', 'prix_produit', 'devise_produit', 'produits'];
+      const detectedProductFields = productFields.filter(field => field in initialValues);
+      if (detectedProductFields.length > 0) {
+        console.log(`[FormulaireYukpoIntelligentScreen] ✅ ${detectedProductFields.length} champs produits détectés depuis l'IA:`, detectedProductFields);
+      }
 
       // CORRECTION: S'assurer que le champ category est bien chargé
       if (suggestion.data.category) {
@@ -826,21 +882,69 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     }
   }, [composants]);
 
-  // ✅ NOUVEAU : Scroll automatique vers le bloc courant (amélioré)
+  // ✅ NOUVEAU: Mettre à jour les valeurs des champs produits dans les blocs depuis valeursFormulaire
   useEffect(() => {
-    if (blockScrollViewRef.current && blocks.length > 0) {
-      // Calculer la position du bloc (largeur de l'onglet + gap)
-      // Chaque onglet fait environ 120px (minWidth) + 8px (gap) = 128px
-      const blockWidth = 128;
-      const scrollPosition = currentBlock * blockWidth;
+    if (blocks.length > 0 && Object.keys(valeursFormulaire).length > 0) {
+      const updatedBlocks = blocks.map(block => {
+        if (block.id === 'products') {
+          const updatedFields = block.fields.map(field => {
+            const fieldName = field.name;
+            const fieldValue = valeursFormulaire[fieldName];
 
-      // Scroll avec un petit offset pour centrer mieux le bloc actif
-      blockScrollViewRef.current.scrollTo({
-        x: Math.max(0, scrollPosition - 20), // Petit offset pour meilleure visibilité
-        animated: true
+            // Si une valeur existe dans valeursFormulaire pour ce champ, la mettre à jour
+            if (fieldValue !== undefined && fieldValue !== null && fieldValue !== '') {
+              // ✅ Pour le champ produits (autocomplete), garder la structure complète
+              if (fieldName === 'produits' && typeof fieldValue === 'object' && fieldValue.type_donnee === 'autocomplete') {
+                return {
+                  ...field,
+                  value: fieldValue.valeur || [],
+                  separateur: fieldValue.separateur || field.separateur || ',',
+                  sousCaracteristiques: fieldValue.sous_caracteristiques || field.sousCaracteristiques || {},
+                  identifiantBase: fieldValue.identifiant_base || field.identifiantBase || 'produits',
+                  filtrable: fieldValue.filtrable !== false
+                };
+              }
+              // ✅ Pour les autres champs produits, mettre à jour la valeur
+              else if (['nom_produit', 'categorie_produit', 'description_produit', 'prix_produit', 'devise_produit'].includes(fieldName)) {
+                return {
+                  ...field,
+                  value: fieldValue
+                };
+              }
+            }
+            return field;
+          });
+          return { ...block, fields: updatedFields };
+        }
+        return block;
       });
+
+      // Ne mettre à jour que si quelque chose a changé
+      const hasChanges = JSON.stringify(updatedBlocks) !== JSON.stringify(blocks);
+      if (hasChanges) {
+        console.log('[FormulaireYukpoIntelligentScreen] ✅ Valeurs des champs produits mises à jour depuis valeursFormulaire');
+        setBlocks(updatedBlocks);
+      }
     }
-  }, [currentBlock, blocks]);
+  }, [valeursFormulaire]); // Se déclenche quand valeursFormulaire change
+
+  // ✅ NOUVEAU : Scroll automatique vers le bloc courant (amélioré)
+  // ✅ DÉSACTIVÉ : Le scroll manuel gère maintenant le changement de bloc
+  // Ne plus forcer le scroll automatique pour permettre le scroll manuel
+  // useEffect(() => {
+  //   if (blockScrollViewRef.current && blocks.length > 0) {
+  //     // Calculer la position du bloc (largeur de l'onglet + gap)
+  //     // Chaque onglet fait environ 120px (minWidth) + 8px (gap) = 128px
+  //     const blockWidth = 128;
+  //     const scrollPosition = currentBlock * blockWidth;
+
+  //     // Scroll avec un petit offset pour centrer mieux le bloc actif
+  //     blockScrollViewRef.current.scrollTo({
+  //       x: Math.max(0, scrollPosition - 20), // Petit offset pour meilleure visibilité
+  //       animated: true
+  //     });
+  //   }
+  // }, [currentBlock, blocks]);
 
   // ✅ NOUVEAU : Scroll automatique vers le bloc produits si focusBlock === 'produits'
   useEffect(() => {
@@ -877,27 +981,35 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         console.log('[FormulaireYukpoIntelligentScreen] Composants générés:', components);
 
         // Extraire les valeurs des données IA pour pré-remplir les champs
-        // ⚠️ IMPORTANT: Ne pas pré-remplir les prix - l'utilisateur doit les renseigner manuellement
+        // ✅ CORRECTION: Pré-remplir les prix s'ils sont identifiés par l'IA
         const initialValues: Record<string, any> = {};
         Object.keys(suggestion.data).forEach(fieldName => {
           const fieldData = suggestion.data[fieldName];
 
-          // ⚠️ Ne pas pré-remplir les champs de prix
+          // ✅ NOUVEAU: Pré-remplir les champs de prix s'ils sont présents dans les données IA
           if (fieldName === 'prix_produit' || fieldName === 'devise_produit') {
-            // Laisser vide pour que l'utilisateur renseigne manuellement
-            console.log(`[FormulaireYukpoIntelligentScreen] Champ prix ignoré (à remplir manuellement): ${fieldName}`);
+            if (fieldData && typeof fieldData === 'object' && 'valeur' in fieldData) {
+              const valeur = fieldData.valeur;
+              // Pré-remplir seulement si la valeur existe et n'est pas null
+              if (valeur !== null && valeur !== undefined && valeur !== '') {
+                initialValues[fieldName] = valeur;
+                console.log(`[FormulaireYukpoIntelligentScreen] ✅ Prix pré-rempli depuis l'IA pour ${fieldName}:`, valeur);
+              } else {
+                console.log(`[FormulaireYukpoIntelligentScreen] Prix non identifié par l'IA pour ${fieldName}, laissé vide`);
+              }
+            }
             return;
           }
 
-          // Gestion spéciale pour price_variant (variabilite_prix)
-          // Pré-remplir la structure complète (variable + valeurs des modalités) mais PAS les prix
+          // ✅ CORRECTION: Gestion spéciale pour price_variant (variabilite_prix)
+          // Pré-remplir la structure complète (variable + valeurs des modalités + prix si identifiés)
           if (fieldName === 'variabilite_prix' || (fieldData && typeof fieldData === 'object' && fieldData.type_donnee === 'price_variant')) {
             if (fieldData && typeof fieldData === 'object') {
               // Pré-remplir la variable et les valeurs des modalités (ex: "38", "39", "M", "L")
-              // mais mettre les prix à 0 pour que l'utilisateur les renseigne manuellement
+              // ✅ NOUVEAU: Pré-remplir aussi les prix s'ils sont identifiés par l'IA
               const modalitesAvecValeurs = (fieldData.modalites || fieldData.valeur?.modalites || []).map((mod: any) => ({
                 valeur: mod.valeur || '', // ✅ PRÉ-REMPLI: Garder la valeur de la variante (ex: "38", "M", "Rouge")
-                prix: 0, // ⚠️ Prix vide - à remplir par l'utilisateur
+                prix: (mod.prix !== null && mod.prix !== undefined && mod.prix !== 0) ? mod.prix : 0, // ✅ PRÉ-REMPLI si identifié par l'IA, sinon 0
                 devise: mod.devise || 'XAF', // Garder la devise suggérée
                 stock: mod.stock // Garder le stock si présent
               }));
@@ -905,11 +1017,11 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
               initialValues[fieldName] = {
                 type_donnee: 'price_variant',
                 variable: fieldData.variable || 'variante', // ✅ PRÉ-REMPLI: variable (ex: "pointure", "taille")
-                modalites: modalitesAvecValeurs, // ✅ PRÉ-REMPLI: valeurs des variantes, mais prix à 0
+                modalites: modalitesAvecValeurs, // ✅ PRÉ-REMPLI: valeurs des variantes + prix si identifiés
                 filtrable: fieldData.filtrable !== false,
                 origine_champs: 'ia'
               };
-              console.log(`[FormulaireYukpoIntelligentScreen] Price variant structure pré-remplie (valeurs OK, prix vides) pour ${fieldName}:`, initialValues[fieldName]);
+              console.log(`[FormulaireYukpoIntelligentScreen] ✅ Price variant structure pré-remplie pour ${fieldName}:`, initialValues[fieldName]);
             }
           } else if (fieldData && typeof fieldData === 'object' && 'valeur' in fieldData) {
             initialValues[fieldName] = fieldData.valeur;
@@ -1105,14 +1217,24 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     if (field.typeDonnee === 'location') {
       return (
         <View key={field.name} style={styles.fieldContainer}>
-          <Text style={styles.fieldLabel}>
-            {field.label} {field.required && <Text style={styles.required}>*</Text>}
-          </Text>
-          <NativeInput
-            placeholder={field.placeholder || 'Entrez une localisation...'}
-            value={valeursFormulaire[field.name] || ''}
-            onChangeText={(text) => handleFieldChange(field.name, text)}
-            style={styles.fieldInput}
+          <LocationSelector
+            label={field.label}
+            value={valeursFormulaire[field.name]?.valeur || valeursFormulaire[field.name] || ''}
+            onSelect={(selectedLocation) => {
+              handleFieldChange(field.name, {
+                type_donnee: 'location',
+                valeur: selectedLocation,
+                composants: {
+                  // On pourrait enrichir avec des composants si besoin
+                  lieu: selectedLocation
+                },
+                filtrable: true,
+                origine_champs: 'formulaire'
+              });
+            }}
+            placeholder={field.placeholder || 'Rechercher une ville ou un lieu...'}
+            scope="city" // Peut être 'city' ou 'point' selon le contexte
+            required={field.required}
           />
           {field.composants && Object.keys(field.composants).length > 0 && (
             <View style={styles.hintBox}>
@@ -2178,8 +2300,38 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                   <ScrollView
                     ref={blockScrollViewRef}
                     horizontal
-                    showsHorizontalScrollIndicator={false}
+                    scrollEnabled={true}
+                    showsHorizontalScrollIndicator={true}
+                    pagingEnabled={false}
+                    decelerationRate="fast"
+                    snapToInterval={128}
+                    snapToAlignment="start"
+                    contentContainerStyle={styles.blockNavigationContent}
                     style={styles.blockNavigationScrollView}
+                    onScrollEndDrag={(event) => {
+                      // Détecter le bloc visible après le scroll manuel
+                      const scrollX = event.nativeEvent.contentOffset.x;
+                      const blockWidth = 128; // Largeur approximative d'un bloc avec gap (120px minWidth + 8px gap)
+                      const newBlockIndex = Math.round(scrollX / blockWidth);
+                      if (newBlockIndex >= 0 && newBlockIndex < blocks.length && newBlockIndex !== currentBlock) {
+                        setCurrentBlock(newBlockIndex);
+                        // Optionnel : Scroll léger pour centrer le bloc sélectionné
+                        blockScrollViewRef.current?.scrollTo({
+                          x: newBlockIndex * blockWidth,
+                          animated: true
+                        });
+                      }
+                    }}
+                    onMomentumScrollEnd={(event) => {
+                      // Détecter le bloc visible après le scroll avec momentum
+                      const scrollX = event.nativeEvent.contentOffset.x;
+                      const blockWidth = 128;
+                      const newBlockIndex = Math.round(scrollX / blockWidth);
+                      if (newBlockIndex >= 0 && newBlockIndex < blocks.length && newBlockIndex !== currentBlock) {
+                        setCurrentBlock(newBlockIndex);
+                      }
+                    }}
+                    scrollEventThrottle={16}
                   >
                     <View style={styles.blockNavigation}>
                       {(blocks || []).map((block, index) => (
@@ -2809,6 +2961,11 @@ const styles = StyleSheet.create({
   // Style pour le ScrollView horizontal du blockNavigation
   blockNavigationScrollView: {
     marginBottom: 20,
+    maxHeight: 80,
+  },
+  blockNavigationContent: {
+    paddingHorizontal: 8,
+    alignItems: 'center',
   },
   // Styles pour le champ GPS personnalisé
   gpsButton: {

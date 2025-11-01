@@ -6239,7 +6239,7 @@ const styles = StyleSheet.create({
     // ✅ OPTIMISATION 2: Style FlatList
     flatListContent: {
         flexGrow: 1,
-        paddingHorizontal: 8, // ✅ CORRECTION: Petite marge au bord (8px) pour un rendu plus propre
+        paddingHorizontal: 0, // ✅ CORRECTION: Suppression du padding pour que les cartes prennent toute la largeur
     },
     serviceCard: {
         marginBottom: 16,
@@ -6474,10 +6474,11 @@ const styles = StyleSheet.create({
     // 🎨 Nouveaux styles modernes pour les filtres
     modernFiltersContainer: {
         backgroundColor: '#FFFFFF',
-        marginHorizontal: 8, // ✅ CORRECTION: Petite marge au bord (8px) alignée avec les cartes
+        marginHorizontal: 0, // ✅ CORRECTION: Suppression de la marge horizontale
         marginVertical: 12,
-        borderRadius: 12, // ✅ CORRECTION: Border radius restauré pour un rendu plus moderne
-        padding: 16, // ✅ Le padding interne reste pour l'espacement du contenu
+        borderRadius: 0, // ✅ CORRECTION: Pas de border radius pour s'aligner avec les cartes full-width
+        paddingHorizontal: 16, // ✅ Padding interne pour l'espacement du contenu
+        paddingVertical: 16,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.08,

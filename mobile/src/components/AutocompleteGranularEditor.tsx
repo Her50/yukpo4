@@ -230,14 +230,30 @@ export const AutocompleteGranularEditor: React.FC<AutocompleteGranularEditorProp
         }
     }, [subCharacteristics, currentValues, editingIndex, separateur, onChange]);
 
+    // Helper pour obtenir un exemple de valeur selon le nom du champ
+    const getSampleValue = (fieldName: string): string => {
+        const samples: Record<string, string> = {
+            marque: 'Tapez "Toy" pour voir Toyota, Honda...',
+            modele: 'Tapez "RAV" pour voir RAV4, RAV5...',
+            annee: 'Tapez "202" pour voir 2020, 2021...',
+            couleur: 'Tapez "Noi" pour voir Noir, Noir mat...',
+            taille: 'Tapez "L" pour voir L, XL, XXL...',
+            matiere: 'Tapez "Cot" pour voir Coton, Cotton blend...',
+            type: 'Tapez les premières lettres...',
+        };
+        return samples[fieldName.toLowerCase()] || 'Tapez pour rechercher...';
+    };
+
     const renderSubCharacteristicInput = (subChar: SubCharacteristicInput, index: number) => {
         return (
             <View key={subChar.name} style={styles.subCharContainer}>
-                <Text style={styles.subCharLabel}>{subChar.name}</Text>
+                <Text style={styles.subCharLabel}>
+                    {subChar.name}
+                </Text>
                 <View style={styles.inputContainer}>
                     <TextInput
                         style={styles.input}
-                        placeholder={`Entrez ${subChar.name}...`}
+                        placeholder={`Ex: ${getSampleValue(subChar.name)}`}
                         placeholderTextColor="#9CA3AF"
                         value={subChar.value}
                         onChangeText={(text) => updateSubCharacteristic(index, text)}
@@ -249,23 +265,68 @@ export const AutocompleteGranularEditor: React.FC<AutocompleteGranularEditorProp
                     )}
                 </View>
 
-                {/* Suggestions */}
+                {/* Suggestions avec boutons d'action */}
                 {subChar.suggestions.length > 0 && (
                     <View style={styles.suggestionsContainer}>
+                        <Text style={styles.suggestionsHeader}>
+                            💡 {subChar.suggestions.length} suggestion(s) trouvée(s) :
+                        </Text>
                         {subChar.suggestions.map((suggestion, idx) => (
-                            <TouchableOpacity
-                                key={idx}
-                                style={styles.suggestionItem}
-                                onPress={() => selectSuggestion(index, suggestion)}
-                            >
-                                <SafeIcon name="search" size={14} color={modernColors.primary} />
-                                <Text style={styles.suggestionText}>{suggestion}</Text>
-                            </TouchableOpacity>
+                            <View key={idx} style={styles.suggestionItem}>
+                                <TouchableOpacity
+                                    style={styles.suggestionTextContainer}
+                                    onPress={() => selectSuggestion(index, suggestion)}
+                                >
+                                    <SafeIcon name="search" size={14} color={modernColors.primary} />
+                                    <Text style={styles.suggestionText}>{suggestion}</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={styles.suggestionEditButton}
+                                    onPress={() => {
+                                        // Pré-remplir avec la suggestion
+                                        const updated = [...subCharacteristics];
+                                        updated[index] = {
+                                            ...updated[index],
+                                            value: suggestion,
+                                            suggestions: [],
+                                        };
+                                        setSubCharacteristics(updated);
+                                    }}
+                                >
+                                    <SafeIcon name="edit" size={12} color={modernColors.primary} />
+                                    <Text style={styles.suggestionEditText}>Modifier</Text>
+                                </TouchableOpacity>
+                            </View>
                         ))}
+                        <Text style={styles.suggestionsFooter}>
+                            Cliquez directement pour ajouter, ou sur "Modifier" pour personnaliser avant d'ajouter
+                        </Text>
                     </View>
                 )}
             </View>
         );
+    };
+
+    // Générer un exemple dynamique basé sur les sous-caractéristiques de l'IA
+    const generateDynamicExample = () => {
+        const subCharNames = Object.keys(sousCaracteristiques);
+        if (subCharNames.length === 0) return '';
+
+        // Créer un exemple avec les noms des caractéristiques ET un exemple de valeur
+        const exampleParts = subCharNames.slice(0, 3).map(name => {
+            const values = sousCaracteristiques[name];
+            const firstValue = Array.isArray(values) && values.length > 0 ? values[0] : '';
+            // Retourner juste la première valeur comme exemple
+            return firstValue;
+        }).filter(Boolean);
+
+        // Afficher les noms des caractéristiques à rechercher
+        const charNames = subCharNames.slice(0, 4).join(', ');
+
+        if (exampleParts.length > 0) {
+            return `Recherchez: ${charNames}. Ex: ${exampleParts.join(', ')}`;
+        }
+        return `Recherchez: ${charNames}`;
     };
 
     return (
@@ -275,15 +336,44 @@ export const AutocompleteGranularEditor: React.FC<AutocompleteGranularEditorProp
                     {label}
                     {required && <Text style={styles.required}> *</Text>}
                 </Text>
+                <Text style={styles.helperText}>
+                    💡 Tapez pour rechercher les caractéristiques de votre produit et modifiez si besoin
+                    {generateDynamicExample() && (
+                        <Text style={styles.exampleText}> • {generateDynamicExample()}</Text>
+                    )}
+                </Text>
+            </View>
+
+            {/* Champ de saisie rapide avec bouton Ajouter aligné */}
+            <View style={styles.quickInputWrapper}>
+                <Text style={styles.quickInputLabel}>
+                    📝 {currentValues.length > 0 ? `${currentValues.length} ajoutée(s)` : 'Aucune caractéristique ajoutée'}
+                </Text>
                 <TouchableOpacity
-                    style={styles.addButton}
+                    style={styles.quickInputContainer}
+                    activeOpacity={0.7}
                     onPress={() => {
                         setEditingIndex(null);
                         setShowModal(true);
                     }}
                 >
-                    <SafeIcon name="plus" size={18} color="#FFFFFF" />
-                    <Text style={styles.addButtonText}>Ajouter</Text>
+                    <View style={styles.quickInput}>
+                        <Text style={currentValues.length > 0 ? styles.quickInputText : styles.quickInputPlaceholder}>
+                            {currentValues.length > 0
+                                ? 'Cliquez pour modifier ou ajouter'
+                                : (placeholder || "Cliquez sur Ajouter pour commencer")}
+                        </Text>
+                    </View>
+                    <TouchableOpacity
+                        style={styles.addButton}
+                        onPress={() => {
+                            setEditingIndex(null);
+                            setShowModal(true);
+                        }}
+                    >
+                        <SafeIcon name="plus" size={18} color="#FFFFFF" />
+                        <Text style={styles.addButtonText}>Ajouter</Text>
+                    </TouchableOpacity>
                 </TouchableOpacity>
             </View>
 
@@ -369,9 +459,6 @@ const styles = StyleSheet.create({
         marginBottom: 16,
     },
     header: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
         marginBottom: 12,
     },
     label: {
@@ -379,17 +466,63 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         color: modernColors.text,
     },
+    helperText: {
+        fontSize: 10,
+        color: modernColors.textSecondary,
+        marginTop: 4,
+        fontStyle: 'italic',
+        lineHeight: 13,
+    },
+    exampleText: {
+        fontSize: 9,
+        color: modernColors.primary,
+        fontWeight: '600',
+    },
     required: {
         color: modernColors.error,
+    },
+    quickInputWrapper: {
+        marginBottom: 12,
+    },
+    quickInputLabel: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: modernColors.textSecondary,
+        marginBottom: 6,
+    },
+    quickInputContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    quickInput: {
+        flex: 1,
+        borderWidth: 1,
+        borderColor: modernColors.border,
+        borderRadius: 8,
+        paddingHorizontal: 12,
+        paddingVertical: 10,
+        backgroundColor: '#FFFFFF',
+        justifyContent: 'center',
+        minHeight: 44,
+    },
+    quickInputText: {
+        fontSize: 14,
+        color: modernColors.text,
+    },
+    quickInputPlaceholder: {
+        fontSize: 14,
+        color: '#9CA3AF',
     },
     addButton: {
         flexDirection: 'row',
         alignItems: 'center',
         backgroundColor: modernColors.primary,
-        paddingHorizontal: 12,
-        paddingVertical: 6,
+        paddingHorizontal: 16,
+        paddingVertical: 10,
         borderRadius: 8,
         gap: 6,
+        minWidth: 100,
     },
     addButtonText: {
         color: '#FFFFFF',
@@ -464,6 +597,12 @@ const styles = StyleSheet.create({
         marginBottom: 8,
         textTransform: 'capitalize',
     },
+    subCharHint: {
+        fontSize: 11,
+        fontWeight: '400',
+        color: modernColors.textSecondary,
+        textTransform: 'none',
+    },
     inputContainer: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -484,20 +623,58 @@ const styles = StyleSheet.create({
     },
     suggestionsContainer: {
         marginTop: 8,
-        gap: 4,
+        backgroundColor: '#F9FAFB',
+        borderRadius: 8,
+        padding: 8,
+        gap: 6,
+    },
+    suggestionsHeader: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: modernColors.primary,
+        marginBottom: 4,
+    },
+    suggestionsFooter: {
+        fontSize: 10,
+        color: modernColors.textSecondary,
+        marginTop: 6,
+        fontStyle: 'italic',
+        lineHeight: 13,
     },
     suggestionItem: {
         flexDirection: 'row',
         alignItems: 'center',
-        padding: 10,
-        backgroundColor: '#F9FAFB',
+        backgroundColor: '#FFFFFF',
         borderRadius: 6,
+        borderWidth: 1,
+        borderColor: modernColors.border,
+        padding: 8,
+        gap: 8,
+    },
+    suggestionTextContainer: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
         gap: 8,
     },
     suggestionText: {
         fontSize: 14,
         color: modernColors.text,
         flex: 1,
+    },
+    suggestionEditButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#E0E7FF', // Bleu clair pour le bouton Modifier
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        borderRadius: 4,
+        gap: 4,
+    },
+    suggestionEditText: {
+        fontSize: 11,
+        fontWeight: '600',
+        color: modernColors.primary,
     },
     modalFooter: {
         flexDirection: 'row',
