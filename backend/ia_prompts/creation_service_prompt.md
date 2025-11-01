@@ -76,7 +76,7 @@ Analyse la demande utilisateur et génère un JSON enrichi, strictement conforme
 ### 💰 Type `price_variant` - POUR VARIABILITÉ PRIX
 
 **UTILISE `type_donnee="price_variant"`** quand :
-- Le prix varie selon une caractéristique (taille, couleur, capacité, durée)
+- Le prix varie selon une caractéristique (taille, couleur, capacité, durée, poids, etc.). tu analyeras selon la logique du produit
 
 **Structure obligatoire :**
 ```json
@@ -124,7 +124,7 @@ Analyse la demande utilisateur et génère un JSON enrichi, strictement conforme
 ## RÈGLES D'ENRICHISSEMENT :
 - **Si is_tarissable=true** : ajouter vitesse_tarissement ("lente", "moyenne", "rapide")
 - **EXTRACTION COMPLÈTE DES PRODUITS ET PRESTATIONS** : 
-    - **CRITIQUE** : Si tu détectes UN SEUL produit/prestation ou plusieurs dans l'image ou le texte :
+    - **CRITIQUE** : Si tu détectes UN SEUL produit ou une prestation ou plusieurs dans l'image ou le texte :
         - **EXTRACTION OBLIGATOIRE** : Dès qu'un produit/prestation est détecté, génère TOUJOURS les 6 champs suivants :
           1. `produits` avec `type_donnee="autocomplete"` (caractéristiques détaillées : marque, modèle, année, compétences, expérience, etc.)
              - **⚠️ ENRICHISSEMENT OBLIGATOIRE** : Le champ autocomplete DOIT contenir suffisamment de caractéristiques pour créer des **COMBINAISONS LOGIQUES COMPLÈTES** (généralement 8-12 pour produits complexes, 6-8 pour produits simples)
@@ -439,7 +439,7 @@ Analyse la demande utilisateur et génère un JSON enrichi, strictement conforme
 
 **RÈGLES ABSOLUES POUR L'EXTRACTION D'IMAGES :**
 - **EXTRACTION EXACTE** : Extrais UNIQUEMENT les produits/services visibles dans l'image
-- **PRIX EXACTS** : Utilise les prix exacts affichés dans l'image (en XAF)
+- **PRIX EXACTS** : Utilise les prix exacts affichés dans l'image (en XAF) ou mentionné dans le texte 
 - **NOMS EXACTS** : Utilise les noms exacts des produits visibles
 - **QUANTITÉS EXACTES** : Utilise les quantités exactes affichées
 - **MARQUES EXACTES** : Utilise les marques exactes visibles
