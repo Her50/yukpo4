@@ -111,14 +111,14 @@ pub async fn deactivate_product(
         produit_obj.insert("deactivation_reason".to_string(), json!(reason));
     }
     
-    // Notification - Extraire le nom AVANT la mise à jour
-    let default_name = format!("Produit #{}", product_index + 1);
+    // Extraire le nom du produit et le copier pour éviter les problèmes de borrow
     let product_name = produit_obj.get("nom")
         .and_then(|v| v.as_str())
-        .unwrap_or(&default_name);
+        .map(|s| s.to_string())
+        .unwrap_or_else(|| format!("Produit #{}", product_index + 1));
     
-    // Mettre à jour le service
-    let service_data_json = serde_json::to_value(&service_data)
+    // Mettre à jour le service - Cloner pour éviter E0502
+    let service_data_json = serde_json::to_value(service_data.clone())
         .map_err(|e| AppError::Internal(format!("Erreur sérialisation: {}", e)))?;
     
     sqlx::query("UPDATE services SET data = $1, updated_at = NOW() WHERE id = $2")
@@ -262,14 +262,14 @@ pub async fn reactivate_product(
     produit_obj.remove("deactivation_type");
     produit_obj.remove("deactivation_reason");
     
-    // Notification - Extraire le nom AVANT la mise à jour
-    let default_name = format!("Produit #{}", product_index + 1);
+    // Extraire le nom du produit et le copier pour éviter les problèmes de borrow
     let product_name = produit_obj.get("nom")
         .and_then(|v| v.as_str())
-        .unwrap_or(&default_name);
+        .map(|s| s.to_string())
+        .unwrap_or_else(|| format!("Produit #{}", product_index + 1));
     
-    // Mettre à jour le service
-    let service_data_json = serde_json::to_value(&service_data)
+    // Mettre à jour le service - Cloner pour éviter E0502
+    let service_data_json = serde_json::to_value(service_data.clone())
         .map_err(|e| AppError::Internal(format!("Erreur sérialisation: {}", e)))?;
     
     sqlx::query("UPDATE services SET data = $1, updated_at = NOW() WHERE id = $2")
@@ -288,7 +288,7 @@ pub async fn reactivate_product(
         Some(json!({
             "service_id": service_id,
             "product_index": product_index,
-            "product_name": product_name,
+            "product_name": product_name.clone(),
             "cost": cost,
             "days_inactive": days_inactive
         }))
