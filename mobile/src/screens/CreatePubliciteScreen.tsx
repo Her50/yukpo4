@@ -180,7 +180,7 @@ const CreatePubliciteScreen: React.FC = () => {
                 mediaTypes: ImagePicker.MediaTypeOptions.Videos,
                 allowsEditing: false,
                 quality: 0.8,
-                videoMaxDuration: 30, // 30 secondes max
+                // ✅ CORRECTION: Suppression de la contrainte de durée vidéo
             });
 
             if (!result.canceled && result.assets[0]) {

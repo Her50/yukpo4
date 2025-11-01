@@ -5,6 +5,7 @@ import React, { useState } from 'react';
 import { Alert, Dimensions, Image, Linking, Platform, Share, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { getCategoryConfig, getCategoryStyle, getCategoryTerminology } from '../config/categoryConfig';
 import { useLocationDisplay } from '../hooks/useLocationDisplay'; // ✅ NOUVEAU: Import pour localisation intelligente
+import { apiGet } from '../services/api'; // ✅ CORRECTION: Import statique au lieu de dynamique
 import { formatPrestationPlanning, getPharmacyStatus, hasEmergencyAvailable, isPharmacyOpenNow } from '../utils/healthServiceHelpers';
 import { getDepartureWarning, isTicketStillValid } from '../utils/ticketValidation';
 import HotelLocationDisplay from './HotelLocationDisplay';
@@ -57,20 +58,19 @@ const ProductCard: React.FC<ProductCardProps> = ({
 
             try {
                 setLoadingMedia(true);
-                const { apiGet } = await import('../services/api');
-                
+
                 // Essayer de charger depuis l'API
-                const response = await apiGet(`/api/media/product/${service.id}/${productIndex}/images`);
-                
-                if (response.success && response.images && response.images.length > 0) {
+                const response: any = await apiGet(`/api/media/product/${service.id}/${productIndex}/images`);
+
+                if (response?.success && response?.images && Array.isArray(response.images) && response.images.length > 0) {
                     console.log(`[ProductCard] ✅ ${response.images.length} images chargées depuis API media`);
                     setMediaImages(response.images);
                     setUseMediaAPI(true);
                 }
-                
+
                 // Charger vidéos aussi
-                const videosResp = await apiGet(`/api/media/product/${service.id}/${productIndex}/videos`);
-                if (videosResp.success && videosResp.videos && videosResp.videos.length > 0) {
+                const videosResp: any = await apiGet(`/api/media/product/${service.id}/${productIndex}/videos`);
+                if (videosResp?.success && videosResp?.videos && Array.isArray(videosResp.videos) && videosResp.videos.length > 0) {
                     console.log(`[ProductCard] ✅ ${videosResp.videos.length} vidéos chargées depuis API media`);
                     setMediaVideos(videosResp.videos);
                 }
@@ -101,14 +101,14 @@ const ProductCard: React.FC<ProductCardProps> = ({
     const vetementVariantImage = currentVetementVariant?.images?.[0];
 
     // ✅ AMÉLIORATION: Utiliser médias depuis API si disponibles, sinon fallback vers JSON
-    const images = useMediaAPI && mediaImages.length > 0 
-        ? mediaImages 
+    const images = useMediaAPI && mediaImages.length > 0
+        ? mediaImages
         : (product.images || product.imagesRealisations || []);
-    
-    const videos = useMediaAPI && mediaVideos.length > 0 
-        ? mediaVideos 
+
+    const videos = useMediaAPI && mediaVideos.length > 0
+        ? mediaVideos
         : (product.videos || product.videosRealisations || []);
-    
+
     const mainImage = vetementVariantImage || chaussureVariantImage || variantImage || images[0] || null; // ✅ Priorité aux variantes vêtements, chaussures, puis variantes génériques
     const hasVideo = videos.length > 0;
 
@@ -11312,9 +11312,9 @@ const ProductCard: React.FC<ProductCardProps> = ({
 
 const styles = StyleSheet.create({
     card: {
-        marginHorizontal: 16,
+        marginHorizontal: 8, // ✅ CORRECTION: Petite marge au bord (8px) pour un rendu plus propre
         marginVertical: 8,
-        borderRadius: 16,
+        borderRadius: 12, // ✅ CORRECTION: Border radius restauré pour un rendu plus moderne
         backgroundColor: '#FFFFFF',
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 4 },

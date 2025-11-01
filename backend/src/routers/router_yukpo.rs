@@ -257,43 +257,7 @@ async fn handle_direct_search(
             first_image.clone()
         };
         
-                // 1️⃣ Vérifier le solde utilisateur AVANT l'analyse (sqlx::query pour offline)
-                let user_balance_result = sqlx::query(
-                    "SELECT credits, devise FROM users WHERE id = $1"
-                )
-                .bind(user.id)
-                .fetch_one(&_state.pg)
-                .await;
-        
-        match user_balance_result {
-            Ok(user_row) => {
-                use sqlx::Row;
-                
-                let current_balance: i64 = user_row.try_get("credits").unwrap_or(0);
-                let user_devise: String = user_row.try_get("devise").unwrap_or_else(|_| "XAF".to_string());
-                
-                // Coût estimé minimum (sera ajusté après analyse)
-                let estimated_cost = match user_devise.as_str() {
-                    "XAF" | "FCFA" => 50,  // ~50 XAF minimum
-                    "EUR" => 1,             // ~0.10 EUR
-                    "USD" => 10,            // ~0.10 USD (centimes)
-                    _ => 50
-                };
-                
-                if current_balance < estimated_cost {
-                    let response = serde_json::json!({
-                        "status": "error",
-                        "error": "insufficient_credits",
-                        "message": format!("Solde insuffisant pour recherche par image. Requis: {} {}, Disponible: {} {}", 
-                                         estimated_cost, user_devise, current_balance, user_devise),
-                        "required": estimated_cost,
-                        "available": current_balance,
-                        "currency": user_devise
-                    });
-                    return Ok(Json(response));
-                }
-                
-                // 2️⃣ Recherche HYBRIDE: Analyse + Matching + Stockage
+                // ✅ RECHERCHE HYBRIDE: Analyse + Matching (GRATUITE - facturation annulée)
                 log_info("[DIRECT_SEARCH] ⚡ Lancement recherche hybride multi-critères...");
                 
                 // Extraire GPS si disponible
@@ -345,61 +309,22 @@ async fn handle_direct_search(
                             &analysis.search_query_semantic.chars().take(80).collect::<String>()
                         ));
                         
-                        // 3️⃣ FACTURATION CONDITIONNELLE (seulement si résultats trouvés)
-                        let mut billing_info = serde_json::json!({
+                        // ✅ FACTURATION ANNULÉE - Recherche par image GRATUITE
+                        let billing_info = serde_json::json!({
                             "charged": false,
                             "amount": 0,
-                            "currency": user_devise,
+                            "message": "Recherche par image gratuite",
                             "ai_cost_usd": ai_cost.cost_usd,
                             "ai_tokens": ai_cost.total_tokens,
                             "results_found": results_count
                         });
                         
-                        if results_count > 0 {
-                            let user_cost = IntelligentImageAnalysisService::calculate_user_cost(
-                                &ai_cost,
-                                &user_devise
-                            );
-                            
-                            // Débiter le solde
-                            let debit_result = sqlx::query(
-                                "UPDATE users SET credits = credits - $1 WHERE id = $2 AND credits >= $1 RETURNING credits"
-                            )
-                            .bind(user_cost)
-                            .bind(user.id)
-                            .fetch_optional(&_state.pg)
-                            .await;
-                            
-                            match debit_result {
-                                Ok(Some(updated_row)) => {
-                                    let new_balance: i64 = updated_row.try_get("credits").unwrap_or(0);
-                                    billing_info["charged"] = json!(true);
-                                    billing_info["amount"] = json!(user_cost);
-                                    billing_info["new_balance"] = json!(new_balance);
-                                    billing_info["message"] = json!(format!(
-                                        "{} résultats trouvés - {} {} débités",
-                                        results_count, user_cost, user_devise
-                                    ));
-                                    
-                                    log_info(&format!(
-                                        "[DIRECT_SEARCH] 💰 User {} facturé {} {} ({} résultats)",
-                                        user.id, user_cost, user_devise, results_count
-                                    ));
-                                },
-                                Ok(None) => {
-                                    billing_info["error"] = json!("Solde insuffisant");
-                                },
-                                Err(e) => {
-                                    log_error(&format!("[DIRECT_SEARCH] Erreur débit: {}", e));
-                                    billing_info["error"] = json!(format!("Erreur: {}", e));
-                                }
-                            }
-                        } else {
-                            billing_info["message"] = json!("Aucun résultat - Recherche gratuite");
-                            log_info(&format!("[DIRECT_SEARCH] 🆓 User {} NON facturé (0 résultat)", user.id));
-                        }
+                        log_info(&format!(
+                            "[DIRECT_SEARCH] 🆓 Recherche par image GRATUITE pour user {} ({} résultats)",
+                            user.id, results_count
+                        ));
                         
-                        // 4️⃣ Construire la réponse avec résultats hybrides
+                        // Construire la réponse avec résultats hybrides
                         let results_json: Vec<Value> = hybrid_results.iter().map(|result| {
                             json!({
                                 "service_id": result.service_id,
@@ -455,11 +380,6 @@ async fn handle_direct_search(
                         // Sinon, continuer vers recherche textuelle
                     }
                 }
-            },
-            Err(e) => {
-                log_error(&format!("[DIRECT_SEARCH] Erreur vérification solde: {}", e));
-            }
-        }
     }
     
     // ✅ Recherche textuelle normale ou fallback

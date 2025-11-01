@@ -64,26 +64,30 @@ const NotificationHistoryModal: React.FC<NotificationHistoryModalProps> = ({
 
       if (response.data && Array.isArray(response.data)) {
         console.log('[NotificationHistoryModal] ✅ Données valides, mapping en cours...');
-        
+
         // ✅ Mapper les données du backend vers le format attendu par le frontend
         const mappedNotifications = response.data.map((notif: any, index: number) => {
+          // ✅ CORRECTION: Le backend retourne notification_type (snake_case), pas type
+          const backendType = notif.notification_type || notif.type || 'system_alert';
+
           console.log(`[NotificationHistoryModal] 📝 Notif ${index}:`, {
             id: notif.id,
+            notification_type: notif.notification_type,
             type: notif.type,
             title: notif.title,
             message: notif.message?.substring(0, 50),
-            isRead: notif.isRead || notif.is_read,
-            createdAt: notif.createdAt
+            isRead: notif.is_read || notif.isRead,
+            createdAt: notif.created_at || notif.createdAt
           });
 
           return {
             id: String(notif.id),
-            type: mapNotificationType(notif.type),
+            type: mapNotificationType(backendType),
             title: notif.title || 'Sans titre',
             message: notif.message || 'Sans message',
-            timestamp: notif.createdAt || notif.timestamp || new Date().toISOString(),
-            isRead: notif.isRead || notif.is_read || false,
-            category: mapNotificationCategory(notif.type),
+            timestamp: notif.created_at || notif.createdAt || notif.timestamp || new Date().toISOString(),
+            isRead: notif.is_read || notif.isRead || false,
+            category: mapNotificationCategory(backendType),
             actionUrl: notif.data?.actionUrl,
             actionText: notif.data?.actionText
           };
@@ -98,7 +102,7 @@ const NotificationHistoryModal: React.FC<NotificationHistoryModalProps> = ({
             return acc;
           }, {})
         });
-        
+
         setNotifications(mappedNotifications);
       } else {
         console.warn('[NotificationHistoryModal] ⚠️ Format de réponse invalide');
@@ -343,8 +347,8 @@ const NotificationHistoryModal: React.FC<NotificationHistoryModalProps> = ({
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyIcon}>🔔</Text>
               <Text style={styles.emptyText}>
-                {notifications.length === 0 
-                  ? 'Aucune notification trouvée' 
+                {notifications.length === 0
+                  ? 'Aucune notification trouvée'
                   : `Aucune notification "${filterType}" trouvée`}
               </Text>
               {notifications.length > 0 && (

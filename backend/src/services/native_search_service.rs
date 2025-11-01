@@ -271,15 +271,17 @@ SELECT DISTINCT
                         ts_rank(to_tsvector('french', COALESCE(s.data->'description'->>'valeur', '')), plainto_tsquery('french', $1)) * 3.0 +
                         ts_rank(to_tsvector('french', COALESCE(s.data->'category'->>'valeur', '')), plainto_tsquery('french', $1)) * 4.0
                     ) +
-                    -- Score pour les produits (recherche dans tous les champs)
+                    -- ✅ CORRECTION: Score pour les produits (recherche dans TOUS les champs avec extract_all_product_text)
                     (
                         SELECT COALESCE(SUM(
-                            ts_rank(to_tsvector('french', product::text), plainto_tsquery('french', $1)) * 2.0
+                            ts_rank(to_tsvector('french', extract_all_product_text(product)), plainto_tsquery('french', $1)) * 3.0
                         ), 0.0)
                         FROM jsonb_array_elements(
                             CASE 
                                 WHEN jsonb_typeof(s.data->'produits') = 'array' 
                                 THEN s.data->'produits'
+                                WHEN jsonb_typeof(s.data->'produits'->'valeur') = 'array'
+                                THEN s.data->'produits'->'valeur'
                                 ELSE '[]'::jsonb
                             END
                         ) AS product
@@ -297,11 +299,14 @@ SELECT DISTINCT
                         WHEN s.data->'category'->>'valeur' ILIKE '%' || $1 || '%' THEN 5.0
                         ELSE 0.0
                     END +
-                    -- Bonus pour correspondances dans les produits (champs spécifiques)
-                    -- ✅ AMÉLIORATION FORMATION: Bonus pondéré spécifique pour les champs de formation
+                    -- ✅ CORRECTION: Bonus pour correspondances dans les produits (TOUS les champs avec extract_all_product_text)
+                    -- Recherche dans le texte extrait de tous les champs du produit
                     (
                         SELECT COALESCE(SUM(
                             CASE 
+                                -- Correspondance dans le texte complet extrait (tous champs)
+                                WHEN extract_all_product_text(product) ILIKE '%' || $1 || '%' THEN 3.0
+                                -- Bonus pour champs spécifiques importants
                                 WHEN product->>'nom' ILIKE '%' || $1 || '%' THEN 5.0
                                 WHEN product->>'description' ILIKE '%' || $1 || '%' THEN 3.0
                                 WHEN product->>'type' ILIKE '%' || $1 || '%' THEN 4.0
@@ -324,6 +329,17 @@ SELECT DISTINCT
                                 WHEN product->>'formats' ILIKE '%' || $1 || '%' THEN 4.5
                                 -- 📖 Boost pour anciens sujets
                                 WHEN product->>'anciensSujetsDisponibles' ILIKE '%' || $1 || '%' THEN 4.5
+                                -- 🏥 CLINIQUE/HÔPITAL: Boost pour prestations médicales
+                                WHEN product->'prestationsMedicales' IS NOT NULL AND EXISTS (
+                                    SELECT 1 FROM jsonb_array_elements_text(product->'prestationsMedicales') prestation
+                                    WHERE prestation ILIKE '%' || $1 || '%'
+                                ) THEN 4.5
+                                WHEN product->>'typeEtablissement' ILIKE '%' || $1 || '%' THEN 4.0
+                                -- 🚚 DÉMÉNAGEMENT: Boost pour type véhicule et services
+                                WHEN product->>'typeDemenagement' ILIKE '%' || $1 || '%' THEN 4.0
+                                WHEN product->>'typeVehicule' ILIKE '%' || $1 || '%' THEN 3.0
+                                WHEN product->>'volumeEstime' ILIKE '%' || $1 || '%' THEN 2.5
+                                -- 📍 Localisation
                                 WHEN product->>'quartier' ILIKE '%' || $1 || '%' THEN 2.5
                                 WHEN product->>'ville' ILIKE '%' || $1 || '%' THEN 2.5
                                 ELSE 0.0
@@ -333,6 +349,8 @@ SELECT DISTINCT
                             CASE 
                                 WHEN jsonb_typeof(s.data->'produits') = 'array' 
                                 THEN s.data->'produits'
+                                WHEN jsonb_typeof(s.data->'produits'->'valeur') = 'array'
+                                THEN s.data->'produits'->'valeur'
                                 ELSE '[]'::jsonb
                             END
                         ) AS product

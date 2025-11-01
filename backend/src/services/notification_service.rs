@@ -56,6 +56,7 @@ pub async fn create_notification(
 ) -> Result<i32, sqlx::Error> {
     log::info!("[NotificationService] Création notification pour user {}: {}", user_id, title);
     
+    // ✅ CORRECTION: Utiliser le bon nom de colonne (notification_type au lieu de type)
     let row = sqlx::query(
         r#"
         INSERT INTO notifications (user_id, notification_type, title, message, data, is_read)
@@ -83,9 +84,18 @@ pub async fn get_user_notifications(
     user_id: i32,
     limit: i64,
 ) -> Result<Vec<Notification>, sqlx::Error> {
+    // ✅ CORRECTION: Utiliser COALESCE pour gérer les deux noms de colonnes possibles (type ou notification_type)
     let rows = sqlx::query(
         r#"
-        SELECT id, user_id, notification_type, title, message, data, is_read, created_at
+        SELECT 
+            id, 
+            user_id, 
+            COALESCE(notification_type, type) as notification_type,
+            title, 
+            message, 
+            data, 
+            is_read, 
+            created_at
         FROM notifications
         WHERE user_id = $1
         ORDER BY created_at DESC

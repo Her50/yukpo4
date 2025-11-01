@@ -467,16 +467,19 @@ const ProductManager: React.FC<ProductManagerProps> = ({
             return;
         }
 
-        // ✅ Vérifier la taille des fichiers (images max 2MB, vidéos max 20MB)
-        const maxSizeMB = type === 'images' ? 2 : 20;
-        const oversizedFiles = validFiles.filter(file => file.size > maxSizeMB * 1024 * 1024);
-        if (oversizedFiles.length > 0) {
-            toast({
-                title: "Fichiers trop volumineux",
-                description: `Certains fichiers dépassent ${maxSizeMB} MB. Veuillez compresser vos ${type === 'images' ? 'images' : 'vidéos'}.`,
-            });
-            return;
+        // ✅ CORRECTION: Vérifier la taille des fichiers (images max 2MB, vidéos sans limite)
+        if (type === 'images') {
+            const maxSizeMB = 2;
+            const oversizedFiles = validFiles.filter(file => file.size > maxSizeMB * 1024 * 1024);
+            if (oversizedFiles.length > 0) {
+                toast({
+                    title: "Fichiers trop volumineux",
+                    description: `Certains fichiers dépassent ${maxSizeMB} MB. Veuillez compresser vos images.`,
+                });
+                return;
+            }
         }
+        // ✅ Vidéos : plus de limite de taille
 
         // Convertir les fichiers en base64
         const processFiles = async () => {

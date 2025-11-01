@@ -17,11 +17,11 @@ import {
 import BusSeatSelector from '../components/BusSeatSelector';
 import CategoryFilters from '../components/CategoryFilters';
 import ChatModalMobile from '../components/ChatModalMobile';
+import IntelligentSearchBar from '../components/IntelligentSearchBar';
 import ProductCard from '../components/ProductCard';
 import ProductCardErrorBoundary from '../components/ProductCardErrorBoundary';
 import ProductCardSkeleton from '../components/ProductCardSkeleton';
 import SafeIcon from '../components/SafeIcon';
-import SearchBar from '../components/SearchBar';
 import ServiceGalleryModal from '../components/ServiceGalleryModal';
 import UltraModernServiceCard from '../components/UltraModernServiceCard';
 import { categorySupportsVariants, getCategoryConfig, getCategoryStyle, getCategoryTerminology } from '../config/categoryConfig';
@@ -29,6 +29,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useLocation } from '../contexts/LocationContext';
 import { useNotifications } from '../hooks/useNotifications';
 import { apiGet, apiPost } from '../services/api';
+import { searchHistoryService } from '../services/searchHistoryService';
 import { theme } from '../theme/theme';
 import { generateAndDownloadTicket, shareTicketPDF } from '../utils/busTicketPdfGenerator';
 import {
@@ -264,7 +265,40 @@ const ResultatBesoinScreen: React.FC = () => {
 
     // Fonction pour extraire le prix d'un service
     // ✅ NOUVEAU: Récupérer le prix avec gestion intelligente des variantes par catégorie
+    // ✅ AMÉLIORATION PHASE 9: Support des nouveaux types price_variant
     const getServicePrice = (service: Service, mode: 'min' | 'max' | 'first' = 'first'): number | null => {
+        // ✅ NOUVEAU: Chercher d'abord dans les champs price_variant
+        if (service.data) {
+            for (const [key, value] of Object.entries(service.data)) {
+                if (value && typeof value === 'object' && 'type_donnee' in value && value.type_donnee === 'price_variant') {
+                    const priceVariant = value as any;
+                    if (priceVariant.modalites && Array.isArray(priceVariant.modalites) && priceVariant.modalites.length > 0) {
+                        const prices = priceVariant.modalites
+                            .map((m: any) => {
+                                const prix = m.prix;
+                                if (typeof prix === 'number') return prix;
+                                if (typeof prix === 'string') {
+                                    const parsed = parseFloat(prix);
+                                    return isNaN(parsed) ? null : parsed;
+                                }
+                                return null;
+                            })
+                            .filter((p: number | null): p is number => p !== null && p > 0);
+
+                        if (prices.length > 0) {
+                            if (mode === 'min') {
+                                return Math.min(...prices);
+                            } else if (mode === 'max') {
+                                return Math.max(...prices);
+                            } else {
+                                return Math.min(...prices);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         // Chercher dans les produits
         const produitsField = service.data?.produits;
         if (produitsField) {
@@ -324,12 +358,118 @@ const ResultatBesoinScreen: React.FC = () => {
     };
 
     // ✅ OPTIMISATION 1: Mémoriser les produits filtrés avec useMemo
+    // ✅ AMÉLIORATION PHASE 9: Support des nouveaux types autocomplete et price_variant
     const filteredProductsMemo = useMemo(() => {
         let filtered = [...products];
 
+        // ✅ NOUVEAU: Appliquer les filtres autocomplete intelligents
+        // Les filtres autocomplete sont stockés dans categoryFilters avec le format:
+        // { identifiant_base: { sous_caracteristique: ['valeur1', 'valeur2'] } }
+        const autocompleteFilters: Record<string, Record<string, string[]>> = {};
+        for (const [key, value] of Object.entries(categoryFilters)) {
+            if (key.includes('_autocomplete_') && typeof value === 'object' && value !== null) {
+                const parts = key.split('_autocomplete_');
+                if (parts.length === 2) {
+                    const identifiantBase = parts[0];
+                    const sousCaracteristique = parts[1];
+                    if (!autocompleteFilters[identifiantBase]) {
+                        autocompleteFilters[identifiantBase] = {};
+                    }
+                    if (Array.isArray(value)) {
+                        autocompleteFilters[identifiantBase][sousCaracteristique] = value;
+                    }
+                }
+            }
+        }
+
         // Appliquer les filtres de catégorie spécifiques
-        if (Object.keys(categoryFilters).length > 0) {
+        if (Object.keys(categoryFilters).length > 0 || Object.keys(autocompleteFilters).length > 0) {
             filtered = filtered.filter(product => {
+                // ✅ NOUVEAU: Filtrer par autocomplete si défini
+                if (Object.keys(autocompleteFilters).length > 0 && product.service?.data) {
+                    for (const [identifiantBase, sousCaracs] of Object.entries(autocompleteFilters)) {
+                        // Chercher le champ autocomplete dans service.data
+                        for (const [key, value] of Object.entries(product.service.data)) {
+                            if (value && typeof value === 'object' && 'type_donnee' in value && value.type_donnee === 'autocomplete') {
+                                const autocompleteField = value as any;
+                                if (autocompleteField.identifiant_base === identifiantBase && autocompleteField.valeur && Array.isArray(autocompleteField.valeur)) {
+                                    // Vérifier chaque sous-caractéristique filtrée
+                                    for (const [sousCarac, valeursRecherchees] of Object.entries(sousCaracs)) {
+                                        if (Array.isArray(valeursRecherchees) && valeursRecherchees.length > 0) {
+                                            // Extraire les valeurs de cette sous-caractéristique
+                                            const separateur = autocompleteField.separateur || ',';
+                                            const sousCaracsData = autocompleteField.sous_caracteristiques || {};
+                                            const indexSousCarac = Object.keys(sousCaracsData).indexOf(sousCarac);
+
+                                            if (indexSousCarac >= 0) {
+                                                // Vérifier si au moins une valeur concaténée correspond
+                                                const hasMatch = autocompleteField.valeur.some((valConcat: string) => {
+                                                    const parts = valConcat.split(separateur);
+                                                    if (parts[indexSousCarac]) {
+                                                        const valeurPart = parts[indexSousCarac].trim().toLowerCase();
+                                                        return valeursRecherchees.some((v: string) => valeurPart.includes(v.toLowerCase()) || v.toLowerCase().includes(valeurPart));
+                                                    }
+                                                    return false;
+                                                });
+
+                                                if (!hasMatch) return false;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // ✅ NOUVEAU: Filtrer par price_variant si défini
+                if (categoryFilters.price_variant_min !== undefined || categoryFilters.price_variant_max !== undefined) {
+                    if (product.service?.data) {
+                        let foundPriceVariant = false;
+                        let minPrice: number | null = null;
+                        let maxPrice: number | null = null;
+
+                        for (const [key, value] of Object.entries(product.service.data)) {
+                            if (value && typeof value === 'object' && 'type_donnee' in value && value.type_donnee === 'price_variant') {
+                                const priceVariant = value as any;
+                                if (priceVariant.modalites && Array.isArray(priceVariant.modalites)) {
+                                    const prices = priceVariant.modalites
+                                        .map((m: any) => {
+                                            const prix = m.prix;
+                                            if (typeof prix === 'number') return prix;
+                                            if (typeof prix === 'string') {
+                                                const parsed = parseFloat(prix);
+                                                return isNaN(parsed) ? null : parsed;
+                                            }
+                                            return null;
+                                        })
+                                        .filter((p: number | null): p is number => p !== null && p > 0);
+
+                                    if (prices.length > 0) {
+                                        foundPriceVariant = true;
+                                        minPrice = Math.min(...prices);
+                                        maxPrice = Math.max(...prices);
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+
+                        if (foundPriceVariant) {
+                            if (categoryFilters.price_variant_min !== undefined && minPrice !== null && minPrice < categoryFilters.price_variant_min) {
+                                return false;
+                            }
+                            if (categoryFilters.price_variant_max !== undefined && maxPrice !== null && maxPrice > categoryFilters.price_variant_max) {
+                                return false;
+                            }
+                        } else {
+                            // Si on cherche spécifiquement un price_variant mais qu'il n'y en a pas, exclure le produit
+                            if (categoryFilters.price_variant_min !== undefined || categoryFilters.price_variant_max !== undefined) {
+                                return false;
+                            }
+                        }
+                    }
+                }
                 // ✅ FILTRES SPÉCIAUX POUR CLINIQUES/HÔPITAUX
                 if (product.type === 'hopital_clinique') {
                     // Filtre "Ouvert maintenant" (même logique que pharmacies)
@@ -4872,7 +5012,7 @@ const ResultatBesoinScreen: React.FC = () => {
         setRefreshing(false);
     }, [initialResults]);
 
-    // Fonction de recherche (identique à HomeScreen)
+    // Fonction de recherche (identique à HomeScreen, sans le volet création)
     const handleSearch = async (input: any) => {
         try {
             // Vérifier l'authentification
@@ -4883,21 +5023,62 @@ const ResultatBesoinScreen: React.FC = () => {
 
             setLoading(true);
             console.log('[ResultatBesoinScreen] Recherche avec:', input);
+            console.log('[ResultatBesoinScreen] Utilisateur authentifié:', user.email);
 
-            // Utiliser yukpoclient (comme le frontend)
-            let rechercherServices;
-            try {
-                const yukpoclientModule = await import('../lib/yukpoclient');
-                rechercherServices = yukpoclientModule.rechercherServices;
-            } catch (error) {
-                console.error('[ResultatBesoinScreen] Erreur import yukpoclient:', error);
-                Alert.alert('Erreur', 'Service de recherche temporairement indisponible');
-                setLoading(false);
-                return;
-            }
+            // ✅ CORRECTION: Import direct comme dans HomeScreen
+            const { rechercherServices } = await import('../services/yukpoclient');
 
             const result = await rechercherServices(input);
             console.log('[ResultatBesoinScreen] Résultat API brut:', result);
+            console.log('[ResultatBesoinScreen] Type de result:', typeof result);
+            console.log('[ResultatBesoinScreen] Clés de result:', result ? Object.keys(result) : 'null');
+
+            // ✅ CORRECTION: Gestion de la facturation pour recherche par image (comme HomeScreen)
+            if (result?.search_method === 'image_ai' && result?.billing) {
+                const billing = result.billing;
+                console.log('[ResultatBesoinScreen] 🖼️ Recherche par image IA détectée:', billing);
+
+                // Si facturation activée, afficher confirmation
+                if (billing.charged && billing.amount > 0) {
+                    Alert.alert(
+                        '🖼️ Recherche par Image',
+                        `${billing.results_found} résultat(s) trouvé(s)!\n\n` +
+                        `💰 Coût: ${billing.amount} ${billing.currency}\n` +
+                        `Nouveau solde: ${billing.new_balance} ${billing.currency}\n\n` +
+                        `${billing.message || ''}`,
+                        [
+                            {
+                                text: 'OK',
+                                onPress: () => {
+                                    console.log('[ResultatBesoinScreen] Utilisateur a confirmé la facturation');
+                                }
+                            }
+                        ]
+                    );
+                } else if (billing.results_found === 0) {
+                    Alert.alert(
+                        '🖼️ Recherche par Image',
+                        'Aucun résultat trouvé pour cette image.\n\nLa recherche est gratuite.',
+                        [{ text: 'OK' }]
+                    );
+                }
+            }
+
+            // ✅ CORRECTION: Gestion erreur solde insuffisant (comme HomeScreen)
+            if (result?.status === 'error' && result?.error === 'insufficient_credits') {
+                Alert.alert(
+                    '💳 Solde Insuffisant',
+                    result.message || 'Votre solde est insuffisant pour effectuer une recherche par image.',
+                    [
+                        {
+                            text: 'OK',
+                            style: 'cancel'
+                        }
+                    ]
+                );
+                setLoading(false);
+                return; // Arrêter ici
+            }
 
             // Parser les résultats (même logique que HomeScreen)
             let results = [];
@@ -4921,6 +5102,13 @@ const ResultatBesoinScreen: React.FC = () => {
                 results = result.data;
                 console.log('[ResultatBesoinScreen] ✅ Résultats trouvés dans result.data:', results.length);
             }
+            else {
+                console.warn('[ResultatBesoinScreen] ⚠️ Aucun résultat trouvé dans la réponse API');
+                console.log('[ResultatBesoinScreen] Structure complète de la réponse:', JSON.stringify(result, null, 2));
+            }
+
+            console.log('[ResultatBesoinScreen] Résultats finaux extraits:', results);
+            console.log('[ResultatBesoinScreen] Nombre de résultats:', results.length);
 
             if (results.length > 0) {
                 console.log('[ResultatBesoinScreen] Traitement de', results.length, 'résultats');
@@ -4945,9 +5133,10 @@ const ResultatBesoinScreen: React.FC = () => {
             }
 
             setLoading(false);
-        } catch (error) {
+        } catch (error: any) {
             console.error('[ResultatBesoinScreen] Erreur recherche:', error);
-            Alert.alert('Erreur', 'Impossible d\'effectuer la recherche');
+            console.error('[ResultatBesoinScreen] Stack trace:', error?.stack);
+            Alert.alert('Erreur', `Impossible d'effectuer la recherche: ${error?.message || 'Erreur inconnue'}`);
             setLoading(false);
         }
     };
@@ -5207,16 +5396,38 @@ const ResultatBesoinScreen: React.FC = () => {
                 </TouchableOpacity>
             </View>
 
-            {/* 🔍 Barre de recherche simple et horizontale */}
+            {/* 🔍 Barre de recherche intelligente avec historique */}
             <View style={styles.searchContainer}>
-                <SearchBar
+                <IntelligentSearchBar
                     placeholder="Affiner votre recherche..."
                     onSubmit={async (query) => {
+                        // Enregistrer la recherche dans l'historique
+                        try {
+                            await searchHistoryService.recordSearch(
+                                query,
+                                'text',
+                                {
+                                    category: dominantCategory !== 'default' ? dominantCategory : undefined,
+                                    results_count: products.length,
+                                    location_lat: location?.lat,
+                                    location_lon: location?.lon,
+                                }
+                            );
+                        } catch (error) {
+                            console.error('[ResultatBesoinScreen] Erreur enregistrement recherche:', error);
+                        }
+
                         // Convertir la chaîne en objet comme HomeScreen
                         const input = { texte: query };
                         await handleSearch(input);
                     }}
                     showSendButton={true}
+                    category={dominantCategory !== 'default' ? dominantCategory : undefined}
+                    enableHistory={true}
+                    enableSuggestions={true}
+                    onSearchRecorded={(searchId) => {
+                        console.log('[ResultatBesoinScreen] ✅ Recherche enregistrée avec ID:', searchId);
+                    }}
                 />
             </View>
 
@@ -6028,6 +6239,7 @@ const styles = StyleSheet.create({
     // ✅ OPTIMISATION 2: Style FlatList
     flatListContent: {
         flexGrow: 1,
+        paddingHorizontal: 8, // ✅ CORRECTION: Petite marge au bord (8px) pour un rendu plus propre
     },
     serviceCard: {
         marginBottom: 16,
@@ -6262,10 +6474,10 @@ const styles = StyleSheet.create({
     // 🎨 Nouveaux styles modernes pour les filtres
     modernFiltersContainer: {
         backgroundColor: '#FFFFFF',
-        marginHorizontal: 16,
+        marginHorizontal: 8, // ✅ CORRECTION: Petite marge au bord (8px) alignée avec les cartes
         marginVertical: 12,
-        borderRadius: 16,
-        padding: 16,
+        borderRadius: 12, // ✅ CORRECTION: Border radius restauré pour un rendu plus moderne
+        padding: 16, // ✅ Le padding interne reste pour l'espacement du contenu
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.08,

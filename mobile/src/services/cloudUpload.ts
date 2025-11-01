@@ -64,13 +64,16 @@ export const uploadToCloud = async (
         const fileSize = Math.ceil((base64Data.length * 3) / 4);
         console.log('[CloudUpload] Taille fichier:', formatFileSize(fileSize));
 
-        // Vérifier la taille (limite 10MB pour la plupart des fichiers)
-        const maxSize = fileType === 'video' ? 50 * 1024 * 1024 : 10 * 1024 * 1024;
-        if (fileSize > maxSize) {
-            return {
-                success: false,
-                error: `Fichier trop volumineux (max ${formatFileSize(maxSize)})`
-            };
+        // ✅ CORRECTION: Suppression de la contrainte vidéo (pas de limite)
+        // Vérifier la taille (limite 10MB pour la plupart des fichiers, sauf vidéos)
+        if (fileType !== 'video') {
+            const maxSize = 10 * 1024 * 1024;
+            if (fileSize > maxSize) {
+                return {
+                    success: false,
+                    error: `Fichier trop volumineux (max ${formatFileSize(maxSize)})`
+                };
+            }
         }
 
         // Préparer les données pour l'upload
@@ -279,7 +282,8 @@ export const canUploadFile = (
 ): { canUpload: boolean; error?: string } => {
     const maxSizes: Record<string, number> = {
         image: 10 * 1024 * 1024, // 10 MB
-        video: 50 * 1024 * 1024, // 50 MB
+        // ✅ PHASE 10: Suppression de la contrainte vidéo (pas de limite)
+        video: Infinity, // Plus de limite pour les vidéos
         document: 10 * 1024 * 1024, // 10 MB
         audio: 10 * 1024 * 1024, // 10 MB
         excel: 5 * 1024 * 1024, // 5 MB
@@ -288,6 +292,11 @@ export const canUploadFile = (
     };
 
     const maxSize = maxSizes[fileType] || 10 * 1024 * 1024;
+
+    // ✅ PHASE 10: Ne pas bloquer les vidéos même si très volumineuses
+    if (fileType === 'video') {
+        return { canUpload: true };
+    }
 
     if (fileSize > maxSize) {
         return {

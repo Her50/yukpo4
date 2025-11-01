@@ -8,7 +8,7 @@
  * ✅ CORRECTION: Augmentation des limites pour plus de flexibilité
  */
 const MAX_IMAGE_SIZE = 2 * 1024 * 1024; // 2MB par image (augmenté de 1MB)
-const MAX_VIDEO_SIZE = 10 * 1024 * 1024; // 10MB par vidéo (augmenté de 5MB)
+const MAX_VIDEO_SIZE = Infinity; // ✅ CORRECTION: Suppression de la contrainte vidéo (pas de limite)
 const MAX_AUDIO_SIZE = 3 * 1024 * 1024; // 3MB par audio (augmenté de 2MB)
 const MAX_DOCUMENT_SIZE = 5 * 1024 * 1024; // 5MB par document (augmenté de 3MB)
 
@@ -96,6 +96,11 @@ export const compressImages = async (images: string[]): Promise<string[]> => {
  * Note: Une vraie compression vidéo nécessiterait un traitement backend
  */
 export const limitVideoSize = (video: string, maxSizeBytes: number = MAX_VIDEO_SIZE): string | null => {
+    // ✅ CORRECTION: Plus de limite pour les vidéos
+    if (maxSizeBytes === Infinity) {
+        return video; // Accepter toutes les vidéos sans limite
+    }
+
     const currentSize = getBase64Size(video);
 
     if (currentSize <= maxSizeBytes) {

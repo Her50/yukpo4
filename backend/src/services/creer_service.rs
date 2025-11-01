@@ -144,6 +144,111 @@ pub fn valider_service_json(data: &serde_json::Value) -> Result<serde_json::Valu
                 }
             }
         }
+        
+        // ✅ NOUVEAU : Validation spécifique des nouveaux types (autocomplete, price_variant, date, location)
+        for (key, value) in map.iter() {
+            if let Some(obj) = value.as_object() {
+                if let Some(type_donnee) = obj.get("type_donnee").and_then(|v| v.as_str()) {
+                    match type_donnee {
+                        "autocomplete" => {
+                            // Valider structure autocomplete
+                            if !obj.contains_key("valeur") || !obj.get("valeur").and_then(|v| v.as_array()).is_some() {
+                                return Err(AppError::BadRequest(format!("Champ '{}': autocomplete doit avoir 'valeur' (array)", key)));
+                            }
+                            if !obj.contains_key("separateur") {
+                                return Err(AppError::BadRequest(format!("Champ '{}': autocomplete doit avoir 'separateur'", key)));
+                            }
+                            if !obj.contains_key("sous_caracteristiques") {
+                                return Err(AppError::BadRequest(format!("Champ '{}': autocomplete doit avoir 'sous_caracteristiques'", key)));
+                            }
+                            if !obj.contains_key("identifiant_base") {
+                                return Err(AppError::BadRequest(format!("Champ '{}': autocomplete doit avoir 'identifiant_base'", key)));
+                            }
+                            log::info!("[valider_service_json] ✅ Champ '{}' autocomplete validé", key);
+                        },
+                        "price_variant" => {
+                            // Valider structure price_variant
+                            if !obj.contains_key("variable") {
+                                return Err(AppError::BadRequest(format!("Champ '{}': price_variant doit avoir 'variable'", key)));
+                            }
+                            if !obj.contains_key("modalites") {
+                                return Err(AppError::BadRequest(format!("Champ '{}': price_variant doit avoir 'modalites'", key)));
+                            }
+                            if let Some(modalites) = obj.get("modalites").and_then(|v| v.as_array()) {
+                                for (idx, modalite) in modalites.iter().enumerate() {
+                                    if let Some(mod_obj) = modalite.as_object() {
+                                        // Vérifier que prix est un nombre (jamais string)
+                                        if let Some(prix_val) = mod_obj.get("prix") {
+                                            if !prix_val.is_number() {
+                                                return Err(AppError::BadRequest(format!(
+                                                    "Champ '{}': modalite[{}].prix doit être un nombre (jamais string)", 
+                                                    key, idx
+                                                )));
+                                            }
+                                        } else {
+                                            return Err(AppError::BadRequest(format!(
+                                                "Champ '{}': modalite[{}] doit avoir 'prix' (number)", 
+                                                key, idx
+                                            )));
+                                        }
+                                        if !mod_obj.contains_key("valeur") {
+                                            return Err(AppError::BadRequest(format!(
+                                                "Champ '{}': modalite[{}] doit avoir 'valeur'", 
+                                                key, idx
+                                            )));
+                                        }
+                                        if !mod_obj.contains_key("devise") {
+                                            return Err(AppError::BadRequest(format!(
+                                                "Champ '{}': modalite[{}] doit avoir 'devise'", 
+                                                key, idx
+                                            )));
+                                        }
+                                    } else {
+                                        return Err(AppError::BadRequest(format!(
+                                            "Champ '{}': modalite[{}] doit être un objet", 
+                                            key, idx
+                                        )));
+                                    }
+                                }
+                            } else {
+                                return Err(AppError::BadRequest(format!("Champ '{}': price_variant.modalites doit être un array", key)));
+                            }
+                            log::info!("[valider_service_json] ✅ Champ '{}' price_variant validé", key);
+                        },
+                        "date" => {
+                            // Valider structure date
+                            if let Some(valeur) = obj.get("valeur").and_then(|v| v.as_str()) {
+                                // Valider format ISO (YYYY-MM-DD) avec regex simple
+                                let parts: Vec<&str> = valeur.split('-').collect();
+                                if parts.len() != 3 
+                                    || parts[0].len() != 4 
+                                    || parts[1].len() != 2 
+                                    || parts[2].len() != 2
+                                    || !parts[0].chars().all(|c| c.is_ascii_digit())
+                                    || !parts[1].chars().all(|c| c.is_ascii_digit())
+                                    || !parts[2].chars().all(|c| c.is_ascii_digit()) {
+                                    return Err(AppError::BadRequest(format!(
+                                        "Champ '{}': date.valeur doit être au format YYYY-MM-DD (ex: 2024-12-25)", 
+                                        key
+                                    )));
+                                }
+                            } else {
+                                return Err(AppError::BadRequest(format!("Champ '{}': date doit avoir 'valeur' (string format YYYY-MM-DD)", key)));
+                            }
+                            log::info!("[valider_service_json] ✅ Champ '{}' date validé", key);
+                        },
+                        "location" => {
+                            // Valider structure location
+                            if !obj.contains_key("valeur") {
+                                return Err(AppError::BadRequest(format!("Champ '{}': location doit avoir 'valeur'", key)));
+                            }
+                            log::info!("[valider_service_json] ✅ Champ '{}' location validé", key);
+                        },
+                        _ => {}
+                    }
+                }
+            }
+        }
     }
     
     // ? OPTIMISATION : Validation sch?ma simplifi?e
@@ -231,7 +336,25 @@ pub async fn creer_service(
         token_tracker.add_enrichment(ia_tokens_consumed);
         log::info!("[creer_service] Tokens IA externe extraits depuis les données: {}", ia_tokens_consumed);
     } else {
-        log::warn!("[creer_service] Aucun token IA trouvé dans les données (ni tokens_ia_externe ni tokens_consumed)");
+        // ✅ CORRECTION: Maintenir un coût minimum lors de la duplication de produit sans IA externe
+        // Calculer un coût basé sur la complexité du service (nombre de produits, champs, etc.)
+        let produits_count = data_processed.get("produits")
+            .and_then(|p| p.as_object())
+            .and_then(|obj| obj.get("valeur"))
+            .and_then(|v| v.as_array())
+            .map(|arr| arr.len())
+            .unwrap_or(0);
+        
+        // Coût minimum pour duplication : 50 tokens équivalents par produit
+        let min_cost_tokens = if produits_count > 0 {
+            produits_count as i64 * 50
+        } else {
+            100 // Coût minimum de base même sans produits
+        };
+        
+        token_tracker.add_enrichment(min_cost_tokens);
+        log::info!("[creer_service] ✅ Coût minimum appliqué pour duplication (sans IA externe): {} tokens ({} produits)", 
+            min_cost_tokens, produits_count);
     }
     
     let mut data_obj = valider_service_json(&data_processed)?;
@@ -373,14 +496,23 @@ pub async fn creer_service(
     let mut files_saved = 0;
     
     // ✅ AMÉLIORATION : Sauvegarder les images PAR PRODUIT (avec product_index)
+    // ✅ PHASE 10: Extraire d'abord les images du service pour les ajouter au premier produit
+    let service_images: Vec<String> = data_processed.get("base64_image")
+        .and_then(|v| v.as_array())
+        .map(|arr| arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect())
+        .unwrap_or_default();
+    
     // D'abord, extraire les produits du data_obj
-    if let Some(produits) = data_obj.get("produits").and_then(|v| v.as_array()) {
-        log::info!("[creer_service] 📦 Sauvegarde médias pour {} produits", produits.len());
+    if let Some(produits_array) = data_obj.get_mut("produits").and_then(|v| v.as_array_mut()) {
+        log::info!("[creer_service] 📦 Sauvegarde médias pour {} produits", produits_array.len());
         
         #[cfg(feature = "image_search")]
         let image_service = crate::services::image_search_service::ImageSearchService::new(pool.clone());
         
-        for (product_index, produit) in produits.iter().enumerate() {
+        // ✅ CORRECTION: Collecter les chemins des images sauvegardées pour mettre à jour le JSON
+        let mut saved_image_paths_by_product: Vec<Vec<String>> = vec![];
+        
+        for (product_index, produit) in produits_array.iter().enumerate() {
             let product_id = produit.get("id")
                 .and_then(|v| v.as_str())
                 .unwrap_or(&format!("prod_{}", product_index))
@@ -390,11 +522,32 @@ pub async fn creer_service(
                 product_id, product_index, 
                 produit.get("nom").and_then(|v| v.as_str()).unwrap_or("Sans nom"));
             
+            // ✅ PHASE 10: Si c'est le premier produit et qu'il y a des images du service, les ajouter en premier
+            let mut images_to_process: Vec<String> = vec![];
+            if product_index == 0 && !service_images.is_empty() {
+                log::info!("[creer_service] 🖼️ PHASE 10: Ajout de {} image(s) du service comme première(s) image(s) du premier produit", service_images.len());
+                images_to_process.extend(service_images.clone());
+            }
+            
             // ✅ Images du produit spécifique
             if let Some(product_images) = produit.get("images").and_then(|v| v.as_array()) {
-                for (image_index, img_url) in product_images.iter().enumerate() {
-                    if let Some(image_path) = img_url.as_str() {
-                        let is_main = image_index == 0; // Première image = principale
+                let product_image_strings: Vec<String> = product_images
+                    .iter()
+                    .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                    .collect();
+                images_to_process.extend(product_image_strings);
+            }
+            
+            // ✅ CORRECTION: Collecter les chemins des images sauvegardées pour ce produit
+            let mut saved_paths_for_product: Vec<String> = vec![];
+            
+            // Traiter toutes les images (service + produit)
+            if !images_to_process.is_empty() {
+                for (image_index, img_url) in images_to_process.iter().enumerate() {
+                    let image_path = img_url.as_str();
+                    if !image_path.is_empty() {
+                        // ✅ PHASE 10: La première image (image du service si présente) est toujours principale
+                        let is_main = image_index == 0;
                         
                         log::info!("[creer_service] 🖼️ Image {} de produit {} (main: {}): {}", 
                             image_index, product_index, is_main, &image_path[..image_path.len().min(50)]);
@@ -473,12 +626,92 @@ pub async fn creer_service(
                             continue;
                         }
                         
+                        // ✅ CORRECTION RECHERCHE IMAGE: Cataloguer automatiquement l'image avec les données du produit
+                        // Extraire les données du produit pour remplir media.ai_* et cataloguer dans image_analyses
+                        let product_name = produit.get("nom").and_then(|v| v.as_str()).unwrap_or("");
+                        let product_description = produit.get("description").and_then(|v| v.as_str()).unwrap_or("");
+                        let product_marque = produit.get("marque").and_then(|v| v.as_str());
+                        let product_category = produit.get("categorie").or_else(|| produit.get("category")).and_then(|v| v.as_str());
+                        let product_couleurs: Vec<String> = produit.get("couleurs")
+                            .and_then(|v| v.as_array())
+                            .map(|arr| arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect())
+                            .unwrap_or_default();
+                        
+                        // Construire une description IA complète à partir des données du produit
+                        let ai_description = if !product_description.is_empty() {
+                            product_description.to_string()
+                        } else if !product_name.is_empty() {
+                            format!("{} - {}", product_name, 
+                                produit.get("prix").and_then(|v| v.as_str()).unwrap_or(""))
+                        } else {
+                            String::new()
+                        };
+                        
+                        // Construire les tags IA à partir des données du produit
+                        let mut ai_tags: Vec<String> = vec![];
+                        if !product_name.is_empty() {
+                            ai_tags.push(product_name.to_string());
+                        }
+                        if let Some(marque) = product_marque {
+                            ai_tags.push(marque.to_string());
+                        }
+                        ai_tags.extend(product_couleurs.clone());
+                        if let Some(cat) = product_category {
+                            ai_tags.push(cat.to_string());
+                        }
+                        
+                        // Construire les métadonnées IA
+                        let mut ai_metadata = serde_json::json!({});
+                        if let Some(marque) = product_marque {
+                            ai_metadata["marque"] = serde_json::json!(marque);
+                        }
+                        if !product_couleurs.is_empty() {
+                            ai_metadata["couleurs"] = serde_json::json!(product_couleurs);
+                        }
+                        if let Some(prix) = produit.get("prix").and_then(|v| v.as_str()) {
+                            ai_metadata["prix"] = serde_json::json!(prix);
+                        }
+                        
+                        // ✅ Mettre à jour media.ai_* avec les données du produit
+                        if !ai_description.is_empty() || !ai_tags.is_empty() {
+                            if let Err(e) = sqlx::query(
+                                r#"
+                                UPDATE media 
+                                SET ai_description = $1,
+                                    ai_tags = $2,
+                                    ai_category = $3,
+                                    ai_metadata = $4,
+                                    ai_analyzed_at = $5,
+                                    ai_confidence = 0.95
+                                WHERE service_id = $6 AND path = $7
+                                "#
+                            )
+                            .bind(if ai_description.is_empty() { None::<String> } else { Some(ai_description.clone()) })
+                            .bind(if ai_tags.is_empty() { None::<Vec<String>> } else { Some(ai_tags.clone()) })
+                            .bind(product_category)
+                            .bind(if ai_metadata.is_null() { None::<serde_json::Value> } else { Some(ai_metadata.clone()) })
+                            .bind(Utc::now().naive_utc())
+                            .bind(service_id)
+                            .bind(&file_path)
+                            .execute(&mut *tx)
+                            .await {
+                                log::warn!("[creer_service] ⚠️ Erreur mise à jour media.ai_*: {}", e);
+                            } else {
+                                log::info!("[creer_service] ✅ Image cataloguée avec données produit ({} tags)", ai_tags.len());
+                            }
+                        }
+                        
                         files_saved += 1;
+                        // ✅ CORRECTION: Ajouter le chemin à la liste des chemins sauvegardés pour ce produit
+                        saved_paths_for_product.push(file_path.clone());
                         log::info!("[creer_service] ✅ Image {}/{} du produit {} sauvegardée (main: {})", 
-                            image_index + 1, product_images.len(), product_index, is_main);
+                            image_index + 1, images_to_process.len(), product_index, is_main);
                     }
                 }
             }
+            
+            // ✅ CORRECTION: Stocker les chemins sauvegardés pour ce produit
+            saved_image_paths_by_product.push(saved_paths_for_product);
             
             // ✅ Vidéos du produit spécifique
             if let Some(product_videos) = produit.get("videos").and_then(|v| v.as_array()) {
@@ -520,12 +753,32 @@ pub async fn creer_service(
                 }
             }
         }
+        
+        // ✅ CORRECTION: Mettre à jour le champ images du premier produit avec les chemins sauvegardés
+        // Les images du service doivent être en premier
+        if let Some(first_product) = produits_array.get_mut(0) {
+            if let Some(first_product_obj) = first_product.as_object_mut() {
+                if !saved_image_paths_by_product.is_empty() && !saved_image_paths_by_product[0].is_empty() {
+                    let image_paths_json: Vec<serde_json::Value> = saved_image_paths_by_product[0]
+                        .iter()
+                        .map(|path| serde_json::Value::String(path.clone()))
+                        .collect();
+                    
+                    first_product_obj.insert("images".to_string(), serde_json::Value::Array(image_paths_json));
+                    
+                    log::info!("[creer_service] ✅ CORRECTION: Champ 'images' du premier produit mis à jour avec {} chemin(s), images du service en premier", 
+                        saved_image_paths_by_product[0].len());
+                }
+            }
+        }
     }
     
     // ✅ FALLBACK : Si pas de produits, sauvegarder les images globales du service
+    // ✅ PHASE 10: Ne sauvegarder les images globales que si elles n'ont pas déjà été ajoutées au premier produit
     if let Some(images) = data_processed.get("base64_image").and_then(|v| v.as_array()) {
-        // Vérifier qu'on n'a pas déjà sauvegardé des images de produits
-        if files_saved == 0 {
+        let has_products = data_obj.get("produits").and_then(|v| v.as_array()).map(|arr| !arr.is_empty()).unwrap_or(false);
+        // Vérifier qu'on n'a pas déjà sauvegardé des images de produits ET que les images du service n'ont pas été utilisées
+        if files_saved == 0 || (!has_products && service_images.is_empty()) {
             let image_strings: Vec<String> = images
                 .iter()
                 .filter_map(|v| v.as_str().map(|s| s.to_string()))
@@ -1009,6 +1262,74 @@ pub async fn creer_service(
 
     // Ne pas attendre la fin des embeddings, retourner immédiatement
     log::info!("[CREER_SERVICE] ? Réponse immédiate au frontend, embeddings en arrière-plan");
+
+    // ✅ NOUVEAU : Historiser automatiquement les champs autocomplete avant le commit
+    // Cela enrichit l'historique même si l'IA externe a oublié certaines combinaisons
+    if let Some(map) = data_obj.as_object() {
+        for (key, value) in map.iter() {
+            if let Some(obj) = value.as_object() {
+                if let Some(type_donnee) = obj.get("type_donnee").and_then(|v| v.as_str()) {
+                    if type_donnee == "autocomplete" {
+                        // Extraire les données autocomplete
+                        if let (Some(valeur_array), Some(separateur), Some(sous_caracs), Some(identifiant_base)) = (
+                            obj.get("valeur").and_then(|v| v.as_array()),
+                            obj.get("separateur").and_then(|v| v.as_str()),
+                            obj.get("sous_caracteristiques"),
+                            obj.get("identifiant_base").and_then(|v| v.as_str())
+                        ) {
+                            // Convertir valeurs en Vec<String>
+                            let valeurs: Vec<String> = valeur_array
+                                .iter()
+                                .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                                .collect();
+                            
+                            // Déterminer origine_champs
+                            let origine_champs = obj.get("origine_champs")
+                                .and_then(|v| v.as_str())
+                                .unwrap_or("ia");
+                            
+                            // Historiser le champ autocomplete (en arrière-plan, ne bloque pas)
+                            let pool_clone = pool.clone();
+                            let identifiant_base_clone = identifiant_base.to_string();
+                            let separateur_clone = separateur.to_string();
+                            let sous_caracs_clone = sous_caracs.clone();
+                            let user_id_clone = user_id;
+                            let service_id_clone = service_id;
+                            let origine_champs_clone = origine_champs.to_string();
+                            
+                            tokio::spawn(async move {
+                                match crate::services::autocomplete_history_service::historize_autocomplete_field(
+                                    &pool_clone,
+                                    &identifiant_base_clone,
+                                    &valeurs,
+                                    &separateur_clone,
+                                    &sous_caracs_clone,
+                                    &origine_champs_clone,
+                                    Some(user_id_clone),
+                                    Some(service_id_clone),
+                                ).await {
+                                    Ok(ids) => {
+                                        log::info!(
+                                            "[CREER_SERVICE] ✅ {} caractéristiques autocomplete historisées pour champ '{}'",
+                                            ids.len(),
+                                            identifiant_base_clone
+                                        );
+                                    }
+                                    Err(e) => {
+                                        log::warn!(
+                                            "[CREER_SERVICE] ⚠️ Erreur historisation autocomplete pour '{}': {}",
+                                            identifiant_base_clone,
+                                            e
+                                        );
+                                    }
+                                }
+                            });
+                        }
+                    }
+                }
+            }
+        }
+    }
 
     // Commit de la transaction AVANT la réponse
     tx.commit()

@@ -98,6 +98,166 @@ impl HybridImageSearchService {
         Ok(analysis_id)
     }
 
+    /// ✅ CORRECTION: Analyser l'image avec le MÊME système que la création pour matching optimal
+    async fn analyze_image_like_creation(
+        app_ia: &AppIA,
+        image_base64: &str,
+    ) -> AppResult<(ImageAnalysis, AICost)> {
+        use crate::utils::log::log_info;
+        use serde_json::json;
+        
+        log_info("[HybridImageSearch] 🔍 Analyse image avec même système que création...");
+        
+        // ✅ Utiliser le MÊME prompt que la création pour extraction structurée
+        let search_prompt = r#"
+Tu es un expert en analyse multimodale pour la plateforme Yukpo.
+
+GÉNÈRE UN JSON STRICTEMENT CONFORME pour la recherche d'un produit similaire :
+
+**STRUCTURE OBLIGATOIRE :**
+```json
+{
+  "intention": "recherche_produit",
+  "produits": {
+    "type_donnee": "listeproduit",
+    "valeur": [
+      {
+        "nom": "<nom exact du produit visible>",
+        "quantite": <quantité exacte visible>,
+        "prix": <prix exact visible>,
+        "marque": "<marque exacte visible>",
+        "categorie": "<catégorie déduite>",
+        "description": "<description détaillée du produit visible>",
+        "couleurs": ["couleur1", "couleur2"]
+      }
+    ],
+    "origine_champs": "image"
+  }
+}
+```
+
+RÈGLES STRICTES CRITIQUES :
+- **EXTRACTION EXACTE** : Extrais UNIQUEMENT les produits/services visibles dans l'image
+- **PRIX EXACTS** : Utilise les prix exacts affichés dans l'image (en XAF)
+- **NOMS EXACTS** : Utilise les noms exacts des produits visibles
+- **QUANTITÉS EXACTES** : Utilise les quantités exactes affichées
+- **MARQUES EXACTES** : Utilise les marques exactes visibles
+- **INTERDICTION TOTALE** : Ne crée JAMAIS de produits qui ne sont pas visibles dans l'image
+- **FIDÉLITÉ TOTALE** : Reproduis fidèlement ce que tu observes, sans extrapolation
+- **COMPLÉTUDE** : Liste TOUS les produits visibles dans l'image, un par un
+
+RÉPONSE UNIQUEMENT EN JSON VALIDE (pas de texte avant/après).
+"#;
+
+        // ✅ CORRECTION: Préparer l'image exactement comme lors de la création
+        // Lors de la création, input.base64_image est un Option<Vec<String>> où chaque string est base64 pur
+        // predict_multimodal formate automatiquement avec "data:image/jpeg;base64,{}" dans call_openai_multimodal
+        // Donc on passe juste le base64 pur, comme lors de la création
+        let image_base64_pure = if image_base64.starts_with("http://") || image_base64.starts_with("https://") {
+            // URL directe - passer tel quel (rare cas)
+            image_base64.to_string()
+        } else if image_base64.starts_with("data:") {
+            // Data URI - extraire le base64 pur pour être cohérent avec la création
+            image_base64.split("base64,").nth(1).unwrap_or(image_base64).to_string()
+        } else {
+            // Base64 pur - passer tel quel (format attendu comme lors de la création)
+            image_base64.to_string()
+        };
+
+        // ✅ Appeler l'IA avec le même format que la création (base64 pur dans Vec)
+        let (json_response, model_name, tokens_used) = app_ia.predict_multimodal(
+            search_prompt,
+            Some(vec![image_base64_pure])
+        ).await?;
+
+        // Parser le JSON
+        let cleaned_json = json_response
+            .replace("```json", "")
+            .replace("```", "")
+            .trim()
+            .to_string();
+        
+        let parsed_json: serde_json::Value = serde_json::from_str(&cleaned_json)
+            .map_err(|e| crate::core::types::AppError::Internal(format!("Erreur parsing JSON: {}", e)))?;
+
+        // Extraire les données du produit (même format que création)
+        let produits_array = parsed_json
+            .get("produits")
+            .and_then(|p| p.get("valeur"))
+            .and_then(|v| v.as_array())
+            .unwrap_or(&vec![]);
+
+        // Prendre le premier produit pour l'analyse
+        let first_product = produits_array.first()
+            .ok_or_else(|| crate::core::types::AppError::BadRequest("Aucun produit détecté dans l'image".to_string()))?;
+
+        let nom = first_product.get("nom").and_then(|v| v.as_str()).unwrap_or("").to_string();
+        let description = first_product.get("description").and_then(|v| v.as_str()).unwrap_or(&nom).to_string();
+        let marque = first_product.get("marque").and_then(|v| v.as_str()).map(|s| s.to_string());
+        let categorie = first_product.get("categorie").or_else(|| parsed_json.get("category")).and_then(|v| v.as_str()).unwrap_or("autre").to_string();
+        let couleurs: Vec<String> = first_product.get("couleurs")
+            .and_then(|v| v.as_array())
+            .map(|arr| arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect())
+            .unwrap_or_default();
+
+        // Construire les tags à partir des données extraites
+        let mut tags = vec![nom.clone()];
+        if let Some(ref m) = marque {
+            tags.push(m.clone());
+        }
+        tags.extend(couleurs.clone());
+        tags.push(categorie.clone());
+
+        // Construire les requêtes de recherche
+        let search_query_exact = format!("{} {} {}", 
+            marque.as_ref().unwrap_or(&String::new()),
+            nom,
+            couleurs.first().unwrap_or(&String::new())
+        ).trim().to_string();
+
+        let search_query_broad = format!("{} {} {} {} {}", 
+            categorie,
+            nom,
+            marque.as_ref().unwrap_or(&String::new()),
+            couleurs.join(" "),
+            description.chars().take(30).collect::<String>()
+        ).trim().to_string();
+
+        let search_query_semantic = description.clone();
+
+        // Construire ImageAnalysis compatible
+        let analysis = ImageAnalysis {
+            description,
+            tags,
+            category_detected: categorie,
+            marque,
+            couleurs,
+            caracteristiques_cles: std::collections::HashMap::new(),
+            confiance: 0.95,
+            search_query: search_query_exact.clone(),
+            search_query_exact,
+            search_query_broad,
+            search_query_semantic,
+        };
+
+        // Calculer le coût
+        let cost = AICost {
+            cost_usd: (tokens_used as f64) * 0.00001, // Estimation
+            total_tokens: tokens_used,
+            prompt_tokens: tokens_used / 2,
+            completion_tokens: tokens_used / 2,
+            model_used: model_name,
+        };
+
+        log_info(&format!(
+            "[HybridImageSearch] ✅ Analyse avec système création: '{}' (confiance: {:.2})",
+            &analysis.description[..analysis.description.len().min(50)],
+            analysis.confiance
+        ));
+
+        Ok((analysis, cost))
+    }
+
     /// Recherche hybride: Analyse l'image de recherche + Compare avec analyses stockées
     pub async fn search_by_image(
         &self,
@@ -112,15 +272,9 @@ impl HybridImageSearchService {
     ) -> AppResult<(Vec<HybridSearchResult>, ImageAnalysis, AICost)> {
         log_info("[HybridImageSearch] 🔍 Recherche hybride par image");
 
-        // 1️⃣ Analyser l'image de recherche avec IA
-        log_info("[HybridImageSearch] Étape 1/3: Analyse IA de l'image...");
-        let (analysis, cost) = IntelligentImageAnalysisService::analyze_image_multimodel(
-            app_ia,
-            image_base64,
-            category_filter,
-            true, // Mode recherche
-        )
-        .await?;
+        // ✅ CORRECTION: Utiliser le MÊME système d'analyse que la création
+        log_info("[HybridImageSearch] Étape 1/3: Analyse IA avec système création...");
+        let (analysis, cost) = Self::analyze_image_like_creation(app_ia, image_base64).await?;
 
         log_info(&format!(
             "[HybridImageSearch] ✅ Analyse complétée: '{}' (confiance: {:.2})",
@@ -160,7 +314,8 @@ impl HybridImageSearchService {
         Ok((results, analysis, cost))
     }
 
-    /// Recherche SQL hybride utilisant la fonction PostgreSQL
+    /// ✅ CORRECTION: Recherche SQL hybride améliorée utilisant la fonction PostgreSQL
+    /// Cherche dans image_analyses ET media.ai_* pour matching complet
     async fn hybrid_sql_search(
         &self,
         analysis: &ImageAnalysis,
@@ -171,6 +326,23 @@ impl HybridImageSearchService {
         max_results: i32,
     ) -> AppResult<Vec<HybridSearchResult>> {
         let couleur_principale = analysis.couleurs.first().map(|s| s.as_str());
+        
+        // ✅ CORRECTION: Utiliser search_query_semantic OU search_query_broad pour meilleur matching
+        let search_query = if !analysis.search_query_semantic.is_empty() {
+            &analysis.search_query_semantic
+        } else if !analysis.search_query_broad.is_empty() {
+            &analysis.search_query_broad
+        } else {
+            &analysis.description
+        };
+
+        log_info(&format!(
+            "[HybridImageSearch] 🔍 Recherche avec {} tags, catégorie: {:?}, marque: {:?}, query: '{}'",
+            analysis.tags.len(),
+            category_filter,
+            analysis.marque,
+            &search_query.chars().take(50).collect::<String>()
+        ));
 
         let rows = sqlx::query(
             r#"
@@ -191,7 +363,7 @@ impl HybridImageSearchService {
         .bind(category_filter)
         .bind(&analysis.marque)
         .bind(couleur_principale)
-        .bind(&analysis.search_query_semantic)
+        .bind(search_query)  // ✅ CORRECTION: Utiliser search_query_semantic au lieu de description
         .bind(gps_lat)
         .bind(gps_lng)
         .bind(search_radius_km.unwrap_or(50))
