@@ -30,7 +30,7 @@ pub fn search_history_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
     // Routes protégées (requièrent authentification)
     let protected_routes = Router::new()
         // POST /api/search/history/{search_id}/click - Enregistrer un clic
-        .route("/api/search/history/:search_id/click", post(record_search_click))
+        .route("/api/search/history/{search_id}/click", post(record_search_click))
         // GET /api/search/history/user?limit=... - Historique utilisateur
         .route("/api/search/history/user", get(get_user_search_history))
         .layer(middleware::from_fn(jwt_auth))
