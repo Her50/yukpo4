@@ -312,13 +312,28 @@ const MesServicesScreen: React.FC = () => {
                 // Déclencher un rafraîchissement pour mettre à jour l'interface
                 loadServices(true);
 
-                Alert.alert('Succès', 'Service supprimé avec succès');
+                Alert.alert('✅ Succès', 'Service supprimé avec succès');
               } else {
-                throw new Error('Erreur lors de la suppression');
+                // ✅ NOUVEAU 2025-11-01: Objectif #4 - Blocage suppression si >= 2 produits
+                const errorData = await response.json().catch(() => ({}));
+                
+                if (response.status === 400 && errorData.message?.includes('2 or more products')) {
+                  Alert.alert(
+                    '⚠️ Suppression impossible',
+                    `Ce service contient 2 produits ou plus.\n\nVous devez d'abord supprimer les produits individuellement avant de pouvoir supprimer le service.\n\n💡 Gardez au minimum 1 produit par service.`,
+                    [{ text: 'OK' }]
+                  );
+                } else {
+                  throw new Error(errorData.message || 'Erreur lors de la suppression');
+                }
               }
-            } catch (error) {
+            } catch (error: any) {
               console.error('Erreur suppression:', error);
-              Alert.alert('Erreur', 'Impossible de supprimer le service');
+              // ✅ AMÉLIORATION: Message d'erreur plus précis
+              const message = error.response?.data?.message || 
+                             error.message || 
+                             'Impossible de supprimer le service. Vérifiez votre connexion.';
+              Alert.alert('❌ Erreur', message);
             }
           }
         }

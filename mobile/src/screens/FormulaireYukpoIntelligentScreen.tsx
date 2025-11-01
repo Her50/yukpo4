@@ -1652,10 +1652,10 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
   // ✅ NOUVEAU 2025-11-01: Fonction de gestion d'erreurs API améliorée (Objectif #10)
   const handleAPIError = (error: any, operation: string, retryFn?: () => void) => {
     console.error(`[${operation}]`, error);
-    
+
     let title = `❌ Erreur - ${operation}`;
     let message = 'Une erreur inattendue est survenue';
-    
+
     if (error.response) {
       // Erreur HTTP avec réponse du serveur
       switch (error.response.status) {
@@ -1698,16 +1698,16 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       // Autre type d'erreur
       message = error.message;
     }
-    
+
     const buttons: any[] = [{ text: 'OK' }];
-    
+
     if (retryFn) {
       buttons.push({
         text: '🔄 Réessayer',
         onPress: retryFn
       });
     }
-    
+
     Alert.alert(title, message, buttons);
   };
 

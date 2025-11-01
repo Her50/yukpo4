@@ -1896,10 +1896,10 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
     // ✅ NOUVEAU 2025-11-01: Fonction de gestion d'erreurs API (Objectif #10)
     const handleAPIError = (error: any, operation: string, retryFn?: () => void) => {
         console.error(`[ProductManagerMobile - ${operation}]`, error);
-        
+
         let title = `❌ Erreur - ${operation}`;
         let message = 'Une erreur inattendue est survenue';
-        
+
         if (error.response) {
             switch (error.response.status) {
                 case 400:
@@ -1931,12 +1931,12 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
         } else {
             message = error.message || message;
         }
-        
+
         const buttons: any[] = [{ text: 'OK' }];
         if (retryFn) {
             buttons.push({ text: '🔄 Réessayer', onPress: retryFn });
         }
-        
+
         Alert.alert(title, message, buttons);
     };
 
@@ -1996,7 +1996,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             // TODO: Remplacer par votre URL API
                             const API_URL = 'http://localhost:8080';
                             const userToken = 'YOUR_JWT_TOKEN'; // À récupérer depuis le contexte Auth
-                            
+
                             const response = await fetch(
                                 `${API_URL}/api/services/${serviceId}/products/${productIndex}/deactivate`,
                                 {
@@ -2007,7 +2007,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                     }
                                 }
                             );
-                            
+
                             if (response.ok) {
                                 Alert.alert('✅ Succès', 'Le produit a été désactivé');
                                 // Rafraîchir la liste des produits
@@ -2039,7 +2039,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                             // TODO: Remplacer par votre URL API
                             const API_URL = 'http://localhost:8080';
                             const userToken = 'YOUR_JWT_TOKEN'; // À récupérer depuis le contexte Auth
-                            
+
                             const response = await fetch(
                                 `${API_URL}/api/services/${serviceId}/products/${productIndex}/reactivate`,
                                 {
@@ -2050,11 +2050,11 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                     }
                                 }
                             );
-                            
+
                             if (response.ok) {
                                 const data = await response.json();
                                 Alert.alert(
-                                    '✅ Produit réactivé', 
+                                    '✅ Produit réactivé',
                                     `Le produit est à nouveau actif !\n\n💰 Coût : ${data.cost} FCFA\n💳 Nouveau solde : ${data.nouveau_solde} FCFA`
                                 );
                                 // Rafraîchir la liste
