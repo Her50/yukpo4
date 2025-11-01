@@ -104,7 +104,6 @@ impl HybridImageSearchService {
         image_base64: &str,
     ) -> AppResult<(ImageAnalysis, AICost)> {
         use crate::utils::log::log_info;
-        use serde_json::json;
         
         log_info("[HybridImageSearch] 🔍 Analyse image avec même système que création...");
         

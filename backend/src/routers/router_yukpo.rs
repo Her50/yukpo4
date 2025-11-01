@@ -237,7 +237,6 @@ async fn handle_direct_search(
     // ✅ NOUVELLE LOGIQUE: Si image présente (avec ou sans texte), utiliser recherche HYBRIDE
     if has_images {
         use crate::services::hybrid_image_search_service::HybridImageSearchService;
-        use crate::services::intelligent_image_analysis_service::IntelligentImageAnalysisService;
         
         log_info("[DIRECT_SEARCH] 🖼️ Image détectée - Recherche HYBRIDE activée");
         
