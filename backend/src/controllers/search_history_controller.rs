@@ -3,7 +3,7 @@ use axum::{
     http::{request::Parts, StatusCode},
     Json,
 };
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use std::sync::Arc;
 use crate::state::AppState;
 use crate::services::search_history_service;
@@ -12,7 +12,6 @@ use crate::middlewares::jwt::AuthenticatedUser;
 /// Extracteur personnalisé pour obtenir optionnellement l'utilisateur authentifié
 struct OptionalAuth(pub Option<AuthenticatedUser>);
 
-#[axum::async_trait]
 impl<S> FromRequestParts<S> for OptionalAuth
 where
     S: Send + Sync,
