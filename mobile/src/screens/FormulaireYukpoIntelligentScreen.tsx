@@ -728,8 +728,9 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
             setValeursFormulaire(formValues);
             setActiveStep(2); // Aller directement au formulaire
           }
-        } catch (error) {
+        } catch (error: any) {
           console.error('[FormulaireYukpoIntelligentScreen] Erreur chargement service:', error);
+          handleAPIError(error, 'Chargement du service');
         }
       } else {
         // Mode création : charger les contacts du dernier service
@@ -1648,6 +1649,68 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     }
   };
 
+  // ✅ NOUVEAU 2025-11-01: Fonction de gestion d'erreurs API améliorée (Objectif #10)
+  const handleAPIError = (error: any, operation: string, retryFn?: () => void) => {
+    console.error(`[${operation}]`, error);
+    
+    let title = `❌ Erreur - ${operation}`;
+    let message = 'Une erreur inattendue est survenue';
+    
+    if (error.response) {
+      // Erreur HTTP avec réponse du serveur
+      switch (error.response.status) {
+        case 400:
+          title = '⚠️ Données invalides';
+          message = error.response.data?.message || error.response.data?.error || 'Vérifiez les données saisies';
+          break;
+        case 401:
+          title = '🔐 Non autorisé';
+          message = 'Votre session a expiré. Veuillez vous reconnecter.';
+          break;
+        case 402:
+          title = '💳 Solde insuffisant';
+          message = error.response.data?.message || 'Rechargez votre compte pour continuer.\n\nRendez-vous dans "Recharger" pour ajouter des crédits.';
+          break;
+        case 404:
+          title = '🔍 Non trouvé';
+          message = 'La ressource demandée n\'existe pas ou a été supprimée.';
+          break;
+        case 413:
+          title = '📦 Fichiers trop volumineux';
+          message = 'Les médias sont trop volumineux. Réduisez la taille des images/vidéos.';
+          break;
+        case 500:
+          title = '⚙️ Erreur serveur';
+          message = 'Le serveur rencontre un problème temporaire. Réessayez dans quelques instants.';
+          break;
+        case 503:
+          title = '🔧 Service indisponible';
+          message = 'Le service est temporairement indisponible. Réessayez plus tard.';
+          break;
+        default:
+          message = error.response.data?.message || error.response.data?.error || error.response.statusText || message;
+      }
+    } else if (error.request) {
+      // Pas de réponse du serveur (problème réseau)
+      title = '📡 Pas de connexion';
+      message = 'Impossible de contacter le serveur.\n\nVérifiez votre connexion internet et réessayez.';
+    } else if (error.message) {
+      // Autre type d'erreur
+      message = error.message;
+    }
+    
+    const buttons: any[] = [{ text: 'OK' }];
+    
+    if (retryFn) {
+      buttons.push({
+        text: '🔄 Réessayer',
+        onPress: retryFn
+      });
+    }
+    
+    Alert.alert(title, message, buttons);
+  };
+
   // Fonction de validation des champs obligatoires
   const validateRequiredFields = () => {
     const errors: string[] = [];
@@ -1830,12 +1893,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
           return; // ✅ Sortir ici
         } catch (error: any) {
-          console.error('[FormulaireYukpoIntelligentScreen] ❌ Erreur ajout produit:', error);
-          Alert.alert(
-            '❌ Erreur',
-            error.message || 'Impossible d\'ajouter le produit. Veuillez réessayer.',
-            [{ text: 'OK' }]
-          );
+          handleAPIError(error, 'Ajout produit', () => soumettreFormulaire());
           return;
         } finally {
           setIsSubmitting(false);
