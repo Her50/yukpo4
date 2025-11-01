@@ -96,12 +96,19 @@ export async function appelerMoteurIA(input: any, onAfterCall?: () => void): Pro
   }
 
   try {
+    // ✅ CORRECTION: Ajouter un timeout pour éviter les connexions fermées (499)
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s pour appel IA
+
     // Utiliser fetch pour éviter les limites de taille
     const response = await fetch(`${API_BASE_URL}/api/ia/creation-service`, {
       method: 'POST',
       headers,
       body: JSON.stringify(input),
+      signal: controller.signal,
     });
+
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -120,6 +127,10 @@ export async function appelerMoteurIA(input: any, onAfterCall?: () => void): Pro
 
     return { data: data as IAResponse, headers: response.headers };
   } catch (error: any) {
+    if (error.name === 'AbortError') {
+      console.error('❌ Timeout lors de l\'appel à l\'API IA (60 secondes)');
+      throw new Error('Timeout: L\'appel à l\'IA a pris trop de temps (60 secondes). Vérifiez votre connexion internet.');
+    }
     console.error('❌ Erreur lors de l\'appel à l\'API IA:', error);
     if (error.message?.includes('401')) {
       console.error('🔐 Erreur d\'authentification. Activez le mode développeur ou connectez-vous.');
@@ -161,9 +172,9 @@ export async function genererSuggestionsService(input: any): Promise<IAResponseW
     pdf_base64: input.pdf_base64 || []
   };
 
-  // Créer un AbortController pour gérer le timeout
+  // ✅ CORRECTION: Timeout réduit à 60s (au lieu de 5 min) pour éviter les connexions fermées
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 5 * 60 * 1000); // 5 minutes
+  const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s pour appel IA
 
   try {
     // UNIQUEMENT ÉTAPE 1 : Appeler l'IA pour structurer les données
@@ -198,7 +209,7 @@ export async function genererSuggestionsService(input: any): Promise<IAResponseW
   } catch (error: any) {
     clearTimeout(timeoutId);
     if (error.name === 'AbortError') {
-      throw new Error('Timeout: La génération des suggestions a pris trop de temps (5 minutes)');
+      throw new Error('Timeout: La génération des suggestions a pris trop de temps (60 secondes)');
     }
     throw error;
   }
@@ -233,7 +244,7 @@ export async function creerService(donneesStructurees: any, tokensIAExterne?: nu
     if (tokensIAExterne) {
       serviceData.tokens_ia_externe = tokensIAExterne;
     }
-    
+
     // UNIQUEMENT ÉTAPE 2 : Créer le service avec les données déjà structurées
     const response = await fetch(`${API_BASE_URL}/api/services/create`, {
       method: 'POST',

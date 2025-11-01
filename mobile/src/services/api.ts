@@ -93,7 +93,12 @@ const apiCall = async <T>(
     // 180s (3 min) nécessaire pour :
     // - Upload 60-100 MB en 3G : 96-160s
     // - Traitement backend : 20-50s
-    const timeoutDuration = endpoint.includes('/services/create') ? 180000 : 15000;
+    // 60s pour création-service (appel IA OpenAI peut prendre 15-30s)
+    const timeoutDuration = endpoint.includes('/services/create')
+      ? 180000
+      : endpoint.includes('/ia/creation-service')
+        ? 60000
+        : 15000;
     const timeoutId = setTimeout(() => controller.abort(), timeoutDuration);
 
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {

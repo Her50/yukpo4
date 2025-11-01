@@ -92,3 +92,67 @@ pub fn extract_user_id_from_token(token: &str) -> Result<i32, String> {
         Err(e) => Err(format!("Erreur d?codage JWT: {e}")),
     }
 }
+
+/// Middleware optionnel qui essaie d'extraire le JWT mais ne bloque pas si absent
+/// Utile pour les routes publiques qui peuvent être utilisées avec ou sans authentification
+pub async fn optional_jwt_auth(
+    mut req: Request<Body>,
+    next: Next,
+) -> Response {
+    let auth_header = req
+        .headers()
+        .get("Authorization")
+        .and_then(|v| v.to_str().ok());
+
+    if let Some(auth_header) = auth_header {
+        if let Some(token) = auth_header.strip_prefix("Bearer ") {
+            // Mode développement : accepter les tokens de dev
+            if token.ends_with(".dev_signature") {
+                let parts: Vec<&str> = token.split('.').collect();
+                if parts.len() == 3 {
+                    if let Ok(payload_str) = general_purpose::STANDARD.decode(parts[1]) {
+                        if let Ok(payload) = serde_json::from_slice::<serde_json::Value>(&payload_str) {
+                            let authenticated_user = AuthenticatedUser {
+                                id: payload["sub"].as_str().unwrap_or("1").parse().unwrap_or(1),
+                                role: payload["role"].as_str().unwrap_or("admin").to_string(),
+                            };
+                            req.extensions_mut().insert(Some(authenticated_user));
+                            return next.run(req).await;
+                        }
+                    }
+                }
+            }
+            
+            let secret = match env::var("JWT_SECRET") {
+                Ok(s) => s,
+                Err(_) => {
+                    // Si JWT_SECRET manquant, continuer sans authentification
+                    req.extensions_mut().insert(None::<AuthenticatedUser>);
+                    return next.run(req).await;
+                }
+            };
+
+            match decode_jwt(token, &secret) {
+                Ok(token_data) => {
+                    let authenticated_user = AuthenticatedUser {
+                        id: token_data.claims.sub,
+                        role: token_data.claims.role,
+                    };
+                    req.extensions_mut().insert(Some(authenticated_user));
+                }
+                Err(_) => {
+                    // Token invalide, continuer sans authentification
+                    req.extensions_mut().insert(None::<AuthenticatedUser>);
+                }
+            }
+        } else {
+            // Header invalide, continuer sans authentification
+            req.extensions_mut().insert(None::<AuthenticatedUser>);
+        }
+    } else {
+        // Pas de header, continuer sans authentification
+        req.extensions_mut().insert(None::<AuthenticatedUser>);
+    }
+
+    next.run(req).await
+}

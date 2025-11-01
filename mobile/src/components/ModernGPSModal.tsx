@@ -5,12 +5,15 @@ import {
     Alert,
     Dimensions,
     Modal,
+    ScrollView,
     StyleSheet,
     Text,
     TextInput,
     TouchableOpacity,
+    TouchableWithoutFeedback,
     View
 } from 'react-native';
+import ENVIRONMENT from '../config/environment';
 import { modernColors } from '../theme/modernTheme';
 import ErrorBoundary from './ErrorBoundary';
 import InteractiveMapView from './InteractiveMapView';
@@ -43,6 +46,8 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
     const [address, setAddress] = useState('');
     const [mapStyle, setMapStyle] = useState<'standard' | 'satellite' | 'hybrid'>('hybrid');
     const [zoneType, setZoneType] = useState<'point' | 'polygon'>('point');
+    const [placeSuggestions, setPlaceSuggestions] = useState<any[]>([]);
+    const [showSuggestions, setShowSuggestions] = useState(false);
 
     useEffect(() => {
         if (visible) {
@@ -132,10 +137,96 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
         }
     };
 
+    // ✅ NOUVEAU: Autocomplete Google Places avec debounce
+    const handleSearchQueryChange = async (query: string) => {
+        setSearchQuery(query);
+
+        if (!query.trim() || query.length < 3) {
+            setPlaceSuggestions([]);
+            setShowSuggestions(false);
+            return;
+        }
+
+        try {
+            // ✅ Utiliser l'API Google Places Autocomplete depuis la configuration
+            const GOOGLE_MAPS_API_KEY = ENVIRONMENT.GOOGLE_MAPS_API_KEY;
+
+            if (!GOOGLE_MAPS_API_KEY) {
+                console.warn('[ModernGPSModal] ⚠️ Clé API Google Maps non configurée');
+                return;
+            }
+
+            const locationBias = selectedLocation || currentLocation || { lat: 4.031716, lng: 9.817201 }; // Douala par défaut
+
+            const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(query)}&location=${locationBias.lat},${locationBias.lng}&radius=50000&key=${GOOGLE_MAPS_API_KEY}&language=fr`;
+
+            const response = await fetch(url);
+            const data = await response.json();
+
+            if (data.status === 'OK' && data.predictions) {
+                setPlaceSuggestions(data.predictions);
+                setShowSuggestions(true);
+            } else {
+                setPlaceSuggestions([]);
+                setShowSuggestions(false);
+            }
+        } catch (error) {
+            console.error('[ModernGPSModal] Erreur autocomplete:', error);
+        }
+    };
+
+    const handleSelectSuggestion = async (placeId: string, description: string) => {
+        try {
+            setLoading(true);
+            setShowSuggestions(false);
+            setSearchQuery(description);
+
+            // ✅ Récupérer les détails du lieu avec l'API Place Details
+            const GOOGLE_MAPS_API_KEY = ENVIRONMENT.GOOGLE_MAPS_API_KEY;
+
+            if (!GOOGLE_MAPS_API_KEY) {
+                console.warn('[ModernGPSModal] ⚠️ Clé API Google Maps non configurée');
+                // Fallback sur le géocodage standard
+                const results = await Location.geocodeAsync(description);
+                if (results.length > 0) {
+                    const result = results[0];
+                    setSelectedLocation({ lat: result.latitude, lng: result.longitude });
+                    setAddress(description);
+                }
+                return;
+            }
+
+            const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=geometry&key=${GOOGLE_MAPS_API_KEY}`;
+
+            const response = await fetch(url);
+            const data = await response.json();
+
+            if (data.status === 'OK' && data.result?.geometry?.location) {
+                const { lat, lng } = data.result.geometry.location;
+                setSelectedLocation({ lat, lng });
+                setAddress(description);
+            } else {
+                // Fallback sur le géocodage standard
+                const results = await Location.geocodeAsync(description);
+                if (results.length > 0) {
+                    const result = results[0];
+                    setSelectedLocation({ lat: result.latitude, lng: result.longitude });
+                    setAddress(description);
+                }
+            }
+        } catch (error) {
+            console.error('[ModernGPSModal] Erreur sélection suggestion:', error);
+            Alert.alert('Erreur', 'Impossible de localiser ce lieu.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const handleSearch = async () => {
         if (!searchQuery.trim()) return;
 
         setLoading(true);
+        setShowSuggestions(false);
         try {
             const results = await Location.geocodeAsync(searchQuery);
             if (results.length > 0) {
@@ -244,7 +335,7 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
                 <View style={styles.topControlBar}>
                     {/* Mode de sélection - HORIZONTAL ET INTUITIF */}
                     <View style={[styles.topControlSection, { flex: 1.2 }]}>
-                        <Text style={[styles.topControlLabel, { fontSize: 9, fontWeight: '700' }]} numberOfLines={1} ellipsizeMode="tail">MODE</Text>
+                        <Text style={[styles.topControlLabel, { fontSize: 8, fontWeight: '700' }]} numberOfLines={1} ellipsizeMode="clip">Mode de sélection</Text>
                         <View style={styles.horizontalModeButtons}>
                             <TouchableOpacity
                                 style={[
@@ -255,16 +346,10 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
                                 onPress={() => setZoneType('point')}
                             >
                                 <SafeIcon
-                                    name="map-pin"
-                                    size={14}
+                                    name="circle"
+                                    size={16}
                                     color={zoneType === 'point' ? '#FFFFFF' : modernColors.primary}
                                 />
-                                <Text numberOfLines={1} ellipsizeMode="tail" style={[
-                                    styles.horizontalModeButtonText,
-                                    zoneType === 'point' && styles.horizontalModeButtonTextActive
-                                ]}>
-                                    Point
-                                </Text>
                             </TouchableOpacity>
 
                             {allowZoneSelection && (
@@ -277,36 +362,35 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
                                     onPress={() => setZoneType('polygon')}
                                 >
                                     <SafeIcon
-                                        name="square"
-                                        size={14}
+                                        name="maximize"
+                                        size={16}
                                         color={zoneType === 'polygon' ? '#FFFFFF' : modernColors.primary}
                                     />
-                                    <Text numberOfLines={1} ellipsizeMode="tail" style={[
-                                        styles.horizontalModeButtonText,
-                                        zoneType === 'polygon' && styles.horizontalModeButtonTextActive
-                                    ]}>
-                                        Zone
-                                    </Text>
                                 </TouchableOpacity>
                             )}
                         </View>
                     </View>
 
-                    {/* Recherche d'adresse - ULTRA CLAIRE */}
-                    <View style={[styles.topControlSection, { flex: 2 }]}>
+                    {/* Recherche d'adresse - AGRANDIE AVEC AUTOCOMPLETE */}
+                    <View style={[styles.topControlSection, { flex: 2.5, zIndex: 100 }]}>
                         <View style={styles.controlHeader}>
                             <SafeIcon name="search" size={10} color={modernColors.success} />
-                            <Text style={[styles.topControlLabel, { fontSize: 9, fontWeight: '700' }]} numberOfLines={1} ellipsizeMode="tail">RECHERCHE</Text>
+                            <Text style={[styles.topControlLabel, { fontSize: 9, fontWeight: '700' }]} numberOfLines={1} ellipsizeMode="tail">RECHERCHE DE LIEU</Text>
                         </View>
                         <View style={styles.topSearchContainer}>
                             <TextInput
-                                style={[styles.topSearchInput, { fontSize: 11, paddingHorizontal: 8, paddingVertical: 6 }]}
-                                placeholder="Entrez..."
+                                style={[styles.topSearchInput, { fontSize: 12, paddingHorizontal: 10, paddingVertical: 8 }]}
+                                placeholder="Rechercher un lieu..."
                                 value={searchQuery}
-                                onChangeText={setSearchQuery}
+                                onChangeText={handleSearchQueryChange}
                                 placeholderTextColor="#9CA3AF"
                                 returnKeyType="search"
                                 onSubmitEditing={handleSearch}
+                                onFocus={() => {
+                                    if (placeSuggestions.length > 0) {
+                                        setShowSuggestions(true);
+                                    }
+                                }}
                             />
                             <TouchableOpacity
                                 style={styles.topSearchButton}
@@ -316,89 +400,116 @@ const ModernGPSModal: React.FC<ModernGPSModalProps> = ({
                                 <SafeIcon name="search" size={14} color="#FFFFFF" />
                             </TouchableOpacity>
                         </View>
-                    </View>
 
-                    {/* ✅ NOUVEAU: Coordonnées sélectionnées - AFFICHAGE EN HAUT */}
-                    <View style={[styles.topControlSection, { flex: 1.3 }]}>
-                        <Text style={[styles.topControlLabel, { fontSize: 9, fontWeight: '700' }]} numberOfLines={1} ellipsizeMode="tail">COORDONNÉES</Text>
-                        {selectedLocation ? (
-                            <View style={styles.coordsDisplayContainer}>
-                                <View style={styles.coordsRow}>
-                                    <Text style={[styles.coordsLabel, { fontSize: 10 }]}>Lat:</Text>
-                                    <Text style={[styles.coordsValue, { fontSize: 10 }]}>{selectedLocation.lat.toFixed(5)}</Text>
-                                </View>
-                                <View style={styles.coordsRow}>
-                                    <Text style={[styles.coordsLabel, { fontSize: 10 }]}>Lng:</Text>
-                                    <Text style={[styles.coordsValue, { fontSize: 10 }]}>{selectedLocation.lng.toFixed(5)}</Text>
-                                </View>
-                            </View>
-                        ) : (
-                            <View style={styles.coordsDisplayContainer}>
-                                <Text style={[styles.coordsPlaceholder, { fontSize: 10 }]}>Aucune sélection</Text>
+                        {/* ✅ NOUVEAU: Liste de suggestions autocomplete */}
+                        {showSuggestions && placeSuggestions.length > 0 && (
+                            <View style={styles.suggestionsContainer}>
+                                <ScrollView
+                                    style={styles.suggestionsScrollView}
+                                    nestedScrollEnabled={true}
+                                    keyboardShouldPersistTaps="handled"
+                                >
+                                    {placeSuggestions.slice(0, 5).map((suggestion, index) => (
+                                        <TouchableOpacity
+                                            key={suggestion.place_id || index}
+                                            style={[
+                                                styles.suggestionItem,
+                                                index === placeSuggestions.slice(0, 5).length - 1 && styles.suggestionItemLast
+                                            ]}
+                                            onPress={() => handleSelectSuggestion(suggestion.place_id, suggestion.description)}
+                                        >
+                                            <SafeIcon name="map-pin" size={14} color={modernColors.textSecondary} />
+                                            <View style={styles.suggestionTextContainer}>
+                                                <Text style={styles.suggestionMainText} numberOfLines={1}>
+                                                    {suggestion.structured_formatting?.main_text || suggestion.description}
+                                                </Text>
+                                                {suggestion.structured_formatting?.secondary_text && (
+                                                    <Text style={styles.suggestionSecondaryText} numberOfLines={1}>
+                                                        {suggestion.structured_formatting.secondary_text}
+                                                    </Text>
+                                                )}
+                                            </View>
+                                        </TouchableOpacity>
+                                    ))}
+                                </ScrollView>
                             </View>
                         )}
                     </View>
 
                     {/* Ma position GPS - SIMPLIFIÉ ET CLAIR */}
-                    <View style={[styles.topControlSection, { flex: 0.7 }]}>
-                        <Text style={[styles.topControlLabel, { fontSize: 9, fontWeight: '700' }]} numberOfLines={1} ellipsizeMode="tail">MA POSITION</Text>
+                    <View style={[styles.topControlSection, { flex: 0.8 }]}>
+                        <Text style={[styles.topControlLabel, { fontSize: 8, fontWeight: '700' }]} numberOfLines={1} ellipsizeMode="clip">MA POS.</Text>
                         <TouchableOpacity
                             style={styles.topGPSButton}
                             onPress={handleGetCurrentLocation}
                             disabled={loading}
                         >
                             <SafeIcon
-                                name={loading ? "loader" : "navigation"}
-                                size={14}
+                                name={loading ? "loader" : "map-pin"}
+                                size={16}
                                 color="#FFFFFF"
                             />
-                            <Text style={[styles.topGPSButtonText, { fontSize: 10, fontWeight: '700' }]} numberOfLines={1}>
-                                {loading ? '...' : 'Ma position'}
-                            </Text>
                         </TouchableOpacity>
                     </View>
                 </View>
 
-                <View style={styles.content}>
-                    {/* ✅ SUPPRIMÉ: Barre gauche pour maximiser l'espace carte */}
-                    {/* Les coordonnées sont maintenant affichées en haut */}
-
-                    {/* Carte interactive - PLUS D'ESPACE */}
-                    <View style={styles.mapContainer}>
-                        <ErrorBoundary
-                            fallback={
-                                <View style={[styles.map, styles.mapErrorContainer]}>
-                                    <SafeIcon name="alert-circle" size={48} color="#EF4444" />
-                                    <Text style={styles.mapErrorText}>
-                                        Impossible de charger la carte
-                                    </Text>
-                                    <Text style={styles.mapErrorSubtext}>
-                                        Vérifiez votre connexion internet et les permissions GPS
-                                    </Text>
-                                    <TouchableOpacity
-                                        style={styles.retryButton}
-                                        onPress={() => {
-                                            onClose();
-                                            // Recharger en rouvrant
-                                        }}
-                                    >
-                                        <SafeIcon name="refresh-cw" size={16} color="#FFFFFF" />
-                                        <Text style={styles.retryButtonText}>Réessayer</Text>
-                                    </TouchableOpacity>
-                                </View>
-                            }
-                        >
-                            <InteractiveMapView
-                                selectedLocation={selectedLocation}
-                                onLocationSelect={handleLocationSelect}
-                                mapStyle={mapStyle}
-                                zoneType={zoneType}
-                                polygonPoints={selectedPolygon}
-                                onPolygonPointsChange={handlePolygonPointsChange}
-                            />
-                        </ErrorBoundary>
+                {/* ✅ NOUVEAU: Barre de coordonnées sous la barre principale */}
+                <View style={styles.coordsBar}>
+                    <View style={styles.coordsBarContent}>
+                        <SafeIcon name="map-pin" size={12} color={modernColors.primary} />
+                        <Text style={styles.coordsBarLabel}>COORDONNÉES:</Text>
+                        {selectedLocation ? (
+                            <Text style={styles.coordsBarValue} numberOfLines={1}>
+                                {selectedLocation.lat.toFixed(6)}, {selectedLocation.lng.toFixed(6)}
+                            </Text>
+                        ) : (
+                            <Text style={styles.coordsBarPlaceholder}>Aucune sélection</Text>
+                        )}
                     </View>
                 </View>
+
+                <TouchableWithoutFeedback onPress={() => setShowSuggestions(false)}>
+                    <View style={styles.content}>
+                        {/* ✅ SUPPRIMÉ: Barre gauche pour maximiser l'espace carte */}
+                        {/* Les coordonnées sont maintenant affichées en haut */}
+
+                        {/* Carte interactive - PLUS D'ESPACE */}
+                        <View style={styles.mapContainer}>
+                            <ErrorBoundary
+                                fallback={
+                                    <View style={[styles.map, styles.mapErrorContainer]}>
+                                        <SafeIcon name="alert-circle" size={48} color="#EF4444" />
+                                        <Text style={styles.mapErrorText}>
+                                            Impossible de charger la carte
+                                        </Text>
+                                        <Text style={styles.mapErrorSubtext}>
+                                            Vérifiez votre connexion internet et les permissions GPS
+                                        </Text>
+                                        <TouchableOpacity
+                                            style={styles.retryButton}
+                                            onPress={() => {
+                                                onClose();
+                                                // Recharger en rouvrant
+                                            }}
+                                        >
+                                            <SafeIcon name="refresh-cw" size={16} color="#FFFFFF" />
+                                            <Text style={styles.retryButtonText}>Réessayer</Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                }
+                            >
+                                <InteractiveMapView
+                                    selectedLocation={selectedLocation}
+                                    onLocationSelect={handleLocationSelect}
+                                    mapStyle={mapStyle}
+                                    zoneType={zoneType}
+                                    polygonPoints={selectedPolygon}
+                                    onPolygonPointsChange={handlePolygonPointsChange}
+                                />
+                            </ErrorBoundary>
+                        </View>
+                    </View>
+                </TouchableWithoutFeedback>
 
                 {/* Actions en bas */}
                 <View style={styles.actionBar}>
@@ -496,13 +607,47 @@ const styles = StyleSheet.create({
         paddingHorizontal: 12,
         paddingVertical: 10,
         borderBottomWidth: 1,
-        borderBottomColor: '#D1D5DB',
+        borderBottomColor: '#E5E7EB',
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.06,
         shadowRadius: 3,
         elevation: 2,
         gap: 10,
+    },
+    // ✅ NOUVEAU: Barre de coordonnées compacte
+    coordsBar: {
+        backgroundColor: '#F9FAFB',
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderBottomWidth: 1,
+        borderBottomColor: '#E5E7EB',
+    },
+    coordsBarContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+    },
+    coordsBarLabel: {
+        fontSize: 9,
+        fontWeight: '700',
+        color: '#6B7280',
+        letterSpacing: 0.3,
+        textTransform: 'uppercase',
+    },
+    coordsBarValue: {
+        fontSize: 10,
+        fontWeight: '600',
+        color: modernColors.primary,
+        fontFamily: 'monospace',
+        flex: 1,
+    },
+    coordsBarPlaceholder: {
+        fontSize: 10,
+        fontWeight: '500',
+        color: '#9CA3AF',
+        fontStyle: 'italic',
+        flex: 1,
     },
     topControlSection: {
         flex: 1,
@@ -645,6 +790,55 @@ const styles = StyleSheet.create({
         shadowRadius: 3,
         elevation: 3,
     },
+    // ✅ NOUVEAU: Styles pour l'autocomplete Google Places
+    suggestionsContainer: {
+        position: 'absolute',
+        top: '100%',
+        left: 0,
+        right: 0,
+        backgroundColor: '#FFFFFF',
+        borderRadius: 8,
+        marginTop: 4,
+        maxHeight: 200,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 8,
+        elevation: 6,
+        zIndex: 1000,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        overflow: 'hidden',
+    },
+    suggestionsScrollView: {
+        maxHeight: 200,
+    },
+    suggestionItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 10,
+        paddingHorizontal: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: '#F3F4F6',
+        gap: 10,
+    },
+    suggestionItemLast: {
+        borderBottomWidth: 0,
+    },
+    suggestionTextContainer: {
+        flex: 1,
+    },
+    suggestionMainText: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: modernColors.text,
+        marginBottom: 2,
+    },
+    suggestionSecondaryText: {
+        fontSize: 11,
+        fontWeight: '400',
+        color: modernColors.textSecondary,
+    },
     topGPSButton: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -691,6 +885,14 @@ const styles = StyleSheet.create({
         color: modernColors.text,
         fontFamily: 'monospace',
         letterSpacing: 0.3,
+    },
+    coordsCompact: {
+        fontSize: 9,
+        fontWeight: '600',
+        color: modernColors.text,
+        fontFamily: 'monospace',
+        textAlign: 'center',
+        lineHeight: 12,
     },
     coordsPlaceholder: {
         fontSize: 12,

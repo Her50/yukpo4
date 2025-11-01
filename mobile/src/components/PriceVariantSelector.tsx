@@ -1,0 +1,548 @@
+/**
+ * Composant PriceVariantSelector
+ * Sélecteur de variantes de prix pour les produits avec variantes (taille, pointure, quantité, etc.)
+ */
+
+import React, { useCallback, useState } from 'react';
+import {
+    Alert,
+    Modal,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
+} from 'react-native';
+import { modernColors } from '../theme/modernTheme';
+import SafeIcon from './SafeIcon';
+
+interface PriceModality {
+    valeur: string; // Ex: "38", "39", "40"
+    prix: number; // Prix numérique (jamais string)
+    devise: string; // Ex: "XAF", "EUR"
+    stock?: number; // Stock disponible (optionnel)
+}
+
+interface PriceVariantSelectorProps {
+    label: string;
+    variable: string; // Ex: "pointure", "taille", "quantite"
+    modalites: PriceModality[];
+    onChange: (modalites: PriceModality[]) => void;
+    required?: boolean;
+    availableCurrencies?: string[]; // Devises disponibles
+    defaultCurrency?: string; // Devise par défaut
+}
+
+export const PriceVariantSelector: React.FC<PriceVariantSelectorProps> = ({
+    label,
+    variable,
+    modalites,
+    onChange,
+    required = false,
+    availableCurrencies = ['XAF', 'EUR', 'USD'],
+    defaultCurrency = 'XAF',
+}) => {
+    const [showModal, setShowModal] = useState(false);
+    const [editingModality, setEditingModality] = useState<PriceModality | null>(null);
+    const [editIndex, setEditIndex] = useState<number | null>(null);
+    const [tempModality, setTempModality] = useState<Partial<PriceModality>>({
+        valeur: '',
+        prix: 0,
+        devise: defaultCurrency,
+        stock: undefined,
+    });
+
+    // Ouvrir le modal pour ajouter une nouvelle modalité
+    const openAddModal = useCallback(() => {
+        setTempModality({
+            valeur: '',
+            prix: 0,
+            devise: defaultCurrency,
+            stock: undefined,
+        });
+        setEditingModality(null);
+        setEditIndex(null);
+        setShowModal(true);
+    }, [defaultCurrency]);
+
+    // Ouvrir le modal pour éditer une modalité existante
+    const openEditModal = useCallback(
+        (modality: PriceModality, index: number) => {
+            setTempModality({
+                valeur: modality.valeur,
+                prix: modality.prix,
+                devise: modality.devise,
+                stock: modality.stock,
+            });
+            setEditingModality(modality);
+            setEditIndex(index);
+            setShowModal(true);
+        },
+        []
+    );
+
+    // Sauvegarder la modalité
+    const saveModality = useCallback(() => {
+        // Validation
+        if (!tempModality.valeur || tempModality.valeur.trim() === '') {
+            Alert.alert('Erreur', `Veuillez entrer une valeur pour ${variable}`);
+            return;
+        }
+
+        if (!tempModality.prix || tempModality.prix <= 0) {
+            Alert.alert('Erreur', 'Le prix doit être supérieur à 0');
+            return;
+        }
+
+        if (!tempModality.devise) {
+            Alert.alert('Erreur', 'Veuillez sélectionner une devise');
+            return;
+        }
+
+        // S'assurer que prix est un nombre (jamais string)
+        const prix = typeof tempModality.prix === 'string' ? parseFloat(tempModality.prix) : tempModality.prix;
+        if (isNaN(prix) || prix <= 0) {
+            Alert.alert('Erreur', 'Le prix doit être un nombre valide');
+            return;
+        }
+
+        const newModality: PriceModality = {
+            valeur: tempModality.valeur.trim(),
+            prix: prix, // Toujours un nombre
+            devise: tempModality.devise!,
+            stock: tempModality.stock && tempModality.stock > 0 ? tempModality.stock : undefined,
+        };
+
+        const updated = [...modalites];
+        if (editIndex !== null) {
+            // Modifier existante
+            updated[editIndex] = newModality;
+        } else {
+            // Ajouter nouvelle
+            updated.push(newModality);
+        }
+
+        onChange(updated);
+        setShowModal(false);
+        setEditingModality(null);
+        setEditIndex(null);
+    }, [tempModality, modalites, editIndex, variable, onChange]);
+
+    // Supprimer une modalité
+    const removeModality = useCallback(
+        (index: number) => {
+            Alert.alert(
+                'Confirmer',
+                `Voulez-vous supprimer la modalité "${modalites[index].valeur}" ?`,
+                [
+                    { text: 'Annuler', style: 'cancel' },
+                    {
+                        text: 'Supprimer',
+                        style: 'destructive',
+                        onPress: () => {
+                            const updated = modalites.filter((_, i) => i !== index);
+                            onChange(updated);
+                        },
+                    },
+                ]
+            );
+        },
+        [modalites, onChange]
+    );
+
+    // Formater le prix pour affichage
+    const formatPrice = useCallback((prix: number, devise: string) => {
+        return `${prix.toLocaleString('fr-FR')} ${devise}`;
+    }, []);
+
+    return (
+        <View style={styles.container}>
+            <View style={styles.header}>
+                <Text style={styles.label}>
+                    {label} ({variable})
+                    {required && <Text style={styles.required}> *</Text>}
+                </Text>
+                <TouchableOpacity style={styles.addButton} onPress={openAddModal}>
+                    <SafeIcon name="plus" size={18} color="#FFFFFF" />
+                    <Text style={styles.addButtonText}>Ajouter</Text>
+                </TouchableOpacity>
+            </View>
+
+            {/* Liste des modalités */}
+            {modalites.length > 0 ? (
+                <View style={styles.modalitiesList}>
+                    {modalites.map((modality, index) => (
+                        <View key={index} style={styles.modalityItem}>
+                            <View style={styles.modalityInfo}>
+                                <Text style={styles.modalityValue}>{modality.valeur}</Text>
+                                <Text style={styles.modalityPrice}>{formatPrice(modality.prix, modality.devise)}</Text>
+                                {modality.stock !== undefined && (
+                                    <Text style={styles.modalityStock}>Stock: {modality.stock}</Text>
+                                )}
+                            </View>
+                            <View style={styles.modalityActions}>
+                                <TouchableOpacity
+                                    style={styles.editButton}
+                                    onPress={() => openEditModal(modality, index)}
+                                >
+                                    <SafeIcon name="edit" size={14} color={modernColors.primary} />
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={styles.deleteButton}
+                                    onPress={() => removeModality(index)}
+                                >
+                                    <SafeIcon name="trash" size={14} color={modernColors.error} />
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                    ))}
+                </View>
+            ) : (
+                <View style={styles.emptyState}>
+                    <SafeIcon name="info" size={24} color={modernColors.textTertiary} />
+                    <Text style={styles.emptyStateText}>
+                        Aucune modalité de prix définie. Ajoutez-en une pour commencer.
+                    </Text>
+                </View>
+            )}
+
+            {/* Modal d'édition */}
+            <Modal
+                visible={showModal}
+                animationType="slide"
+                transparent={true}
+                onRequestClose={() => setShowModal(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <View style={styles.modalHeader}>
+                            <Text style={styles.modalTitle}>
+                                {editIndex !== null ? 'Modifier' : 'Ajouter'} une modalité
+                            </Text>
+                            <TouchableOpacity
+                                style={styles.closeButton}
+                                onPress={() => {
+                                    setShowModal(false);
+                                    setEditingModality(null);
+                                    setEditIndex(null);
+                                }}
+                            >
+                                <SafeIcon name="x" size={20} color={modernColors.text} />
+                            </TouchableOpacity>
+                        </View>
+
+                        <ScrollView style={styles.modalBody} contentContainerStyle={styles.modalBodyContent}>
+                            {/* Valeur */}
+                            <View style={styles.inputGroup}>
+                                <Text style={styles.inputLabel}>
+                                    Valeur ({variable}) <Text style={styles.required}>*</Text>
+                                </Text>
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder={`Ex: 38, 39, 40...`}
+                                    placeholderTextColor="#9CA3AF"
+                                    value={tempModality.valeur}
+                                    onChangeText={(text) => setTempModality({ ...tempModality, valeur: text })}
+                                    autoCapitalize="none"
+                                />
+                            </View>
+
+                            {/* Prix */}
+                            <View style={styles.inputGroup}>
+                                <Text style={styles.inputLabel}>
+                                    Prix <Text style={styles.required}>*</Text>
+                                </Text>
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder="0"
+                                    placeholderTextColor="#9CA3AF"
+                                    value={tempModality.prix?.toString() || ''}
+                                    onChangeText={(text) => {
+                                        const num = parseFloat(text);
+                                        setTempModality({
+                                            ...tempModality,
+                                            prix: isNaN(num) ? 0 : num,
+                                        });
+                                    }}
+                                    keyboardType="numeric"
+                                />
+                                <Text style={styles.inputHint}>⚠️ Le prix doit être un nombre (jamais texte)</Text>
+                            </View>
+
+                            {/* Devise */}
+                            <View style={styles.inputGroup}>
+                                <Text style={styles.inputLabel}>
+                                    Devise <Text style={styles.required}>*</Text>
+                                </Text>
+                                <View style={styles.currencyButtons}>
+                                    {availableCurrencies.map((currency) => (
+                                        <TouchableOpacity
+                                            key={currency}
+                                            style={[
+                                                styles.currencyButton,
+                                                tempModality.devise === currency && styles.currencyButtonActive,
+                                            ]}
+                                            onPress={() => setTempModality({ ...tempModality, devise: currency })}
+                                        >
+                                            <Text
+                                                style={[
+                                                    styles.currencyButtonText,
+                                                    tempModality.devise === currency && styles.currencyButtonTextActive,
+                                                ]}
+                                            >
+                                                {currency}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    ))}
+                                </View>
+                            </View>
+
+                            {/* Stock (optionnel) */}
+                            <View style={styles.inputGroup}>
+                                <Text style={styles.inputLabel}>Stock (optionnel)</Text>
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder="0"
+                                    placeholderTextColor="#9CA3AF"
+                                    value={tempModality.stock?.toString() || ''}
+                                    onChangeText={(text) => {
+                                        const num = parseInt(text, 10);
+                                        setTempModality({
+                                            ...tempModality,
+                                            stock: isNaN(num) ? undefined : num,
+                                        });
+                                    }}
+                                    keyboardType="numeric"
+                                />
+                                <Text style={styles.inputHint}>Laisser vide si illimité</Text>
+                            </View>
+                        </ScrollView>
+
+                        <View style={styles.modalFooter}>
+                            <TouchableOpacity
+                                style={styles.cancelButton}
+                                onPress={() => {
+                                    setShowModal(false);
+                                    setEditingModality(null);
+                                    setEditIndex(null);
+                                }}
+                            >
+                                <Text style={styles.cancelButtonText}>Annuler</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity style={styles.saveButton} onPress={saveModality}>
+                                <Text style={styles.saveButtonText}>Enregistrer</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
+        </View>
+    );
+};
+
+const styles = StyleSheet.create({
+    container: {
+        marginBottom: 16,
+    },
+    header: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 12,
+    },
+    label: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: modernColors.text,
+    },
+    required: {
+        color: modernColors.error,
+    },
+    addButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: modernColors.primary,
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 8,
+        gap: 6,
+    },
+    addButtonText: {
+        color: '#FFFFFF',
+        fontSize: 14,
+        fontWeight: '600',
+    },
+    modalitiesList: {
+        gap: 8,
+    },
+    modalityItem: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        backgroundColor: '#F9FAFB',
+        padding: 12,
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: modernColors.border,
+    },
+    modalityInfo: {
+        flex: 1,
+    },
+    modalityValue: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: modernColors.text,
+        marginBottom: 4,
+    },
+    modalityPrice: {
+        fontSize: 14,
+        color: modernColors.primary,
+        fontWeight: '600',
+    },
+    modalityStock: {
+        fontSize: 12,
+        color: modernColors.textSecondary,
+        marginTop: 4,
+    },
+    modalityActions: {
+        flexDirection: 'row',
+        gap: 8,
+    },
+    editButton: {
+        padding: 4,
+    },
+    deleteButton: {
+        padding: 4,
+    },
+    emptyState: {
+        alignItems: 'center',
+        padding: 24,
+        backgroundColor: '#F9FAFB',
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: modernColors.border,
+        borderStyle: 'dashed',
+    },
+    emptyStateText: {
+        fontSize: 14,
+        color: modernColors.textTertiary,
+        textAlign: 'center',
+        marginTop: 8,
+    },
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        justifyContent: 'flex-end',
+    },
+    modalContent: {
+        backgroundColor: '#FFFFFF',
+        borderTopLeftRadius: 20,
+        borderTopRightRadius: 20,
+        maxHeight: '80%',
+    },
+    modalHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: modernColors.border,
+    },
+    modalTitle: {
+        fontSize: 18,
+        fontWeight: '600',
+        color: modernColors.text,
+    },
+    closeButton: {
+        padding: 4,
+    },
+    modalBody: {
+        flex: 1,
+    },
+    modalBodyContent: {
+        padding: 16,
+    },
+    inputGroup: {
+        marginBottom: 20,
+    },
+    inputLabel: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: modernColors.text,
+        marginBottom: 8,
+    },
+    input: {
+        borderWidth: 1,
+        borderColor: modernColors.border,
+        borderRadius: 8,
+        paddingHorizontal: 12,
+        paddingVertical: 10,
+        fontSize: 14,
+        color: modernColors.text,
+        backgroundColor: '#FFFFFF',
+    },
+    inputHint: {
+        fontSize: 12,
+        color: modernColors.textSecondary,
+        marginTop: 4,
+    },
+    currencyButtons: {
+        flexDirection: 'row',
+        gap: 8,
+    },
+    currencyButton: {
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: modernColors.border,
+        backgroundColor: '#FFFFFF',
+    },
+    currencyButtonActive: {
+        backgroundColor: modernColors.primary,
+        borderColor: modernColors.primary,
+    },
+    currencyButtonText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: modernColors.text,
+    },
+    currencyButtonTextActive: {
+        color: '#FFFFFF',
+    },
+    modalFooter: {
+        flexDirection: 'row',
+        gap: 12,
+        padding: 16,
+        borderTopWidth: 1,
+        borderTopColor: modernColors.border,
+    },
+    cancelButton: {
+        flex: 1,
+        padding: 12,
+        borderRadius: 8,
+        backgroundColor: '#F3F4F6',
+        alignItems: 'center',
+    },
+    cancelButtonText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: modernColors.text,
+    },
+    saveButton: {
+        flex: 1,
+        padding: 12,
+        borderRadius: 8,
+        backgroundColor: modernColors.primary,
+        alignItems: 'center',
+    },
+    saveButtonText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#FFFFFF',
+    },
+});
+
+export default PriceVariantSelector;
+

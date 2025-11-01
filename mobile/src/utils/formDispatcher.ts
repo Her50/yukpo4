@@ -14,6 +14,23 @@ export interface DynamicField {
   allowMultiple?: boolean;
   maxSelections?: number;
   allowCustomModality?: boolean; // Permet d'ajouter de nouvelles modalités
+  // ✅ NOUVEAU: Support pour les nouveaux types
+  typeDonnee?: string; // 'autocomplete', 'price_variant', 'date', 'location'
+  // Pour autocomplete
+  separateur?: string;
+  sousCaracteristiques?: { [key: string]: string[] };
+  identifiantBase?: string;
+  filtrable?: boolean;
+  // Pour price_variant
+  variable?: string;
+  modalites?: Array<{
+    valeur: string;
+    prix: number;
+    devise: string;
+    stock?: number;
+  }>;
+  // Pour location
+  composants?: { [key: string]: string };
 }
 
 export interface IAData {
@@ -21,6 +38,23 @@ export interface IAData {
     valeur: any;
     type_donnee: string;
     origine_champs?: string;
+    // ✅ NOUVEAU: Champs pour autocomplete
+    separateur?: string;
+    sous_caracteristiques?: { [key: string]: string[] };
+    identifiant_base?: string;
+    filtrable?: boolean;
+    // ✅ NOUVEAU: Champs pour price_variant
+    variable?: string;
+    modalites?: Array<{
+      valeur: string;
+      prix: number;
+      devise: string;
+      stock?: number;
+    }>;
+    // ✅ NOUVEAU: Champs pour date
+    format?: string;
+    // ✅ NOUVEAU: Champs pour location
+    composants?: { [key: string]: string };
   };
 }
 
@@ -103,7 +137,7 @@ const MULTI_SELECT_FIELDS = [
 // Vérifier si un champ doit être en multi-select
 function shouldBeMultiSelect(fieldName: string): boolean {
   const normalizedName = fieldName.toLowerCase().trim();
-  return MULTI_SELECT_FIELDS.some(pattern => 
+  return MULTI_SELECT_FIELDS.some(pattern =>
     normalizedName.includes(pattern) || pattern.includes(normalizedName)
   );
 }
@@ -141,7 +175,80 @@ function createFieldComponent(fieldName: string, fieldData: any): DynamicField |
   const label = fieldLabels[fieldName] || fieldName;
 
   switch (typeDonnee) {
+    // ✅ NOUVEAU: Type autocomplete
+    case 'autocomplete':
+      return {
+        type: 'autocomplete',
+        label,
+        name: fieldName,
+        typeDonnee: 'autocomplete',
+        value: Array.isArray(valeur) ? valeur : [],
+        separateur: fieldData.separateur || ',',
+        sousCaracteristiques: fieldData.sous_caracteristiques || {},
+        identifiantBase: fieldData.identifiant_base || fieldName,
+        filtrable: fieldData.filtrable !== false, // true par défaut
+        allowCustomModality: true,
+        required: false
+      };
+
+    // ✅ NOUVEAU: Type price_variant
+    case 'price_variant':
+      return {
+        type: 'price_variant',
+        label,
+        name: fieldName,
+        typeDonnee: 'price_variant',
+        variable: fieldData.variable || 'variante',
+        modalites: Array.isArray(fieldData.modalites) ? fieldData.modalites : [],
+        filtrable: fieldData.filtrable !== false, // true par défaut
+        value: Array.isArray(fieldData.modalites) ? fieldData.modalites : [],
+        required: false
+      };
+
+    // ✅ NOUVEAU: Type date
+    case 'date':
+      return {
+        type: 'date',
+        label,
+        name: fieldName,
+        typeDonnee: 'date',
+        value: valeur || '',
+        placeholder: 'YYYY-MM-DD',
+        required: false
+      };
+
+    // ✅ NOUVEAU: Type location
+    case 'location':
+      // Détecter si c'est un champ de type lieu/adresse/localisation
+      const isLocationField = /lieu|adresse|localisation|ville|quartier|destination|depart|arrivee/i.test(fieldName);
+      return {
+        type: 'location',
+        label,
+        name: fieldName,
+        typeDonnee: 'location',
+        value: valeur || '',
+        composants: fieldData.composants || {},
+        filtrable: fieldData.filtrable !== false, // true par défaut
+        placeholder: isLocationField ? 'Sélectionner un lieu' : `Entrez votre ${label.toLowerCase()}`,
+        required: false
+      };
+
     case 'string':
+      // ✅ NOUVEAU: Détecter les champs lieu même avec type string
+      if (/lieu|adresse|localisation|ville|quartier|destination|depart|arrivee/i.test(fieldName)) {
+        return {
+          type: 'location',
+          label,
+          name: fieldName,
+          typeDonnee: 'location',
+          value: valeur || '',
+          composants: {},
+          filtrable: true,
+          placeholder: 'Sélectionner un lieu',
+          required: false
+        };
+      }
+
       if (fieldName === 'description') {
         return {
           type: 'textarea',
@@ -225,7 +332,7 @@ function createFieldComponent(fieldName: string, fieldData: any): DynamicField |
           maxSelections: 20
         };
       }
-      
+
       return {
         type: 'text',
         label,
@@ -312,7 +419,60 @@ export function extractSuggestionValues(suggestion: IASuggestion): Record<string
   Object.keys(suggestion.data).forEach(fieldName => {
     const fieldData = suggestion.data![fieldName];
     if (fieldData && typeof fieldData === 'object' && 'valeur' in fieldData) {
-      values[fieldName] = fieldData.valeur;
+      const typeDonnee = fieldData.type_donnee || 'string';
+
+      // ✅ NOUVEAU: Gestion spéciale pour les nouveaux types
+      switch (typeDonnee) {
+        case 'autocomplete':
+          // Pour autocomplete, garder toute la structure
+          values[fieldName] = {
+            type_donnee: 'autocomplete',
+            valeur: fieldData.valeur,
+            separateur: fieldData.separateur || ',',
+            sous_caracteristiques: fieldData.sous_caracteristiques || {},
+            identifiant_base: fieldData.identifiant_base || fieldName,
+            filtrable: fieldData.filtrable !== false,
+            origine_champs: fieldData.origine_champs || 'ia'
+          };
+          break;
+
+        case 'price_variant':
+          // Pour price_variant, garder toute la structure
+          values[fieldName] = {
+            type_donnee: 'price_variant',
+            variable: fieldData.variable || 'variante',
+            modalites: Array.isArray(fieldData.modalites) ? fieldData.modalites : [],
+            filtrable: fieldData.filtrable !== false,
+            origine_champs: fieldData.origine_champs || 'ia'
+          };
+          break;
+
+        case 'date':
+          // Pour date, garder valeur et format
+          values[fieldName] = {
+            type_donnee: 'date',
+            valeur: fieldData.valeur || '',
+            format: fieldData.format || 'YYYY-MM-DD',
+            origine_champs: fieldData.origine_champs || 'ia'
+          };
+          break;
+
+        case 'location':
+          // Pour location, garder valeur et composants
+          values[fieldName] = {
+            type_donnee: 'location',
+            valeur: fieldData.valeur || '',
+            composants: fieldData.composants || {},
+            filtrable: fieldData.filtrable !== false,
+            origine_champs: fieldData.origine_champs || 'ia'
+          };
+          break;
+
+        default:
+          // Pour les autres types, juste la valeur
+          values[fieldName] = fieldData.valeur;
+          break;
+      }
     }
   });
 

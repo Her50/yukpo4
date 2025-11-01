@@ -28,6 +28,8 @@ pub mod scheduling_search_routes; // ✅ NOUVEAU: Routes pour recherche avec pla
 pub mod service_team_routes; // ✅ NOUVEAU: Routes pour gestion d'équipe des services
 pub mod signalement_routes; // ✅ NOUVEAU: Routes pour signalements
 pub mod publicite_routes; // ✅ NOUVEAU: Routes pour système de publicité payante
+pub mod autocomplete_routes; // ✅ NOUVEAU: Routes pour autocomplete characteristics
+pub mod search_history_routes; // ✅ NOUVEAU: Routes pour historique de recherche
 pub mod recommendation_routes; // ✅ NOUVEAU: Routes pour recommandations et tracking visibilité
 pub mod embedding_routes; // ✅ Routes pour embeddings
 pub mod places_routes; // ✅ NOUVEAU: Routes pour autocomplete de lieux (Google Maps API)

@@ -33,6 +33,8 @@ pub mod recommendation_controller; // ✅ NOUVEAU: Contrôleur pour recommandati
 pub mod scoring_controller; // ✅ Contrôleur pour scoring de services
 pub mod mixed_content_controller; // ✅ NOUVEAU: Contrôleur pour contenu mixte (publicités + organiques)
 pub mod media_product_controller; // ✅ NOUVEAU: Contrôleur pour médias par produit spécifique
+pub mod autocomplete_controller; // ✅ NOUVEAU: Contrôleur pour autocomplete characteristics
+pub mod search_history_controller; // ✅ NOUVEAU: Contrôleur pour historique de recherche
 
 // pub use service_controller::update_token_debit;
 

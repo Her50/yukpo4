@@ -3,6 +3,9 @@ export const ENVIRONMENT = {
     // Clé API Google Translate
     GOOGLE_TRANSLATE_API_KEY: process.env.EXPO_PUBLIC_GOOGLE_TRANSLATE_API_KEY || '',
 
+    // Clé API Google Maps (Places, Geocoding, etc.)
+    GOOGLE_MAPS_API_KEY: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY || 'AIzaSyDFfWEq1Umm06SNTbR-cRhRQ5Sq_taEAWQ',
+
     // URL de l'API backend - Configurable via .env
     // Par défaut: Render (production)
     // Pour développement local: http://localhost:3000
@@ -50,6 +53,27 @@ export const ENVIRONMENT = {
         // Délai entre les tentatives (en millisecondes)
         RETRY_DELAY: 1000,
     },
+
+    // Configuration Sagaci Research (Base de données produits africains)
+    SAGACI: {
+        // Clé API Sagaci (à obtenir via contact commercial)
+        API_KEY: process.env.EXPO_PUBLIC_SAGACI_API_KEY || '',
+
+        // URL API Sagaci (à confirmer avec Sagaci)
+        API_URL: process.env.EXPO_PUBLIC_SAGACI_API_URL || 'https://api.sagaciresearch.com/v1',
+
+        // Activer/désactiver Sagaci
+        ENABLED: process.env.EXPO_PUBLIC_SAGACI_ENABLED === 'true',
+
+        // Pays par défaut
+        DEFAULT_COUNTRY: 'CM', // Cameroun
+
+        // Cache (durée en millisecondes)
+        CACHE_TTL: 3600000, // 1 heure
+
+        // Rayon de recherche géographique par défaut (km)
+        DEFAULT_RADIUS_KM: 20,
+    },
 };
 
 // Configuration pour l'API
@@ -57,6 +81,7 @@ export const config = {
     API_BASE_URL: ENVIRONMENT.API_URL,
     ENVIRONMENT: ENVIRONMENT.ENVIRONMENT,
     GOOGLE_TRANSLATE_API_KEY: ENVIRONMENT.GOOGLE_TRANSLATE_API_KEY,
+    GOOGLE_MAPS_API_KEY: ENVIRONMENT.GOOGLE_MAPS_API_KEY,
 };
 
 export default ENVIRONMENT;

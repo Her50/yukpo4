@@ -16,7 +16,6 @@ import {
   View
 } from 'react-native';
 import { apiGet, apiPost } from '../services/api';
-import { handleBusCreated } from '../utils/busReturnNotifier';
 // Code corrigé (remplace @ts-ignore)
 import BrandingManagerMobile from '../components/BrandingManagerMobile';
 // Code corrigé (remplace @ts-ignore)
@@ -25,9 +24,10 @@ import ModernGPSModal from '../components/ModernGPSModal';
 import PaymentMethodSelector from '../components/PaymentMethodSelector';
 // Code corrigé (remplace @ts-ignore)
 import { NativeButton, NativeCard, NativeDivider, NativeInput } from '../components/NativeDesign';
-import ProductManagerMobile from '../components/ProductManagerMobile';
+// ✅ SUPPRIMÉ: ProductManagerMobile intégré directement dans le formulaire
+import AutocompleteGranularEditor from '../components/AutocompleteGranularEditor';
+import PriceVariantSelector from '../components/PriceVariantSelector';
 // ✅ AJOUT: Composants pour modalités personnalisées et sélection multiple
-import ProductDuplicationModal from '../components/ProductDuplicationModal';
 import ProductFieldSelector from '../components/ProductFieldSelector';
 import { getSuggestedProductCategories } from '../utils/suggestProductCategories';
 // Code corrigé (remplace @ts-ignore)
@@ -87,8 +87,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
   const [valeursFormulaire, setValeursFormulaire] = useState<Record<string, any>>({});
   const [showGPSModal, setShowGPSModal] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: number } | null>(null);
-  const [showDuplicationModal, setShowDuplicationModal] = useState(false);
-  const [productToDuplicate, setProductToDuplicate] = useState<any | null>(null);
+  // ✅ SUPPRIMÉ: Duplication produits - Les produits sont maintenant gérés via les champs dynamiques
   const [mediaFiles, setMediaFiles] = useState<MediaFiles>({
     images: mediaData.base64_image || [],
     audios: mediaData.audio_base64 || [],
@@ -101,9 +100,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
   const [gps, setGps] = useState<string | undefined>(undefined);
   const [showSuccessToast, setShowSuccessToast] = useState(false);
   const [successData, setSuccessData] = useState<ServiceData | null>(null);
-  const [products, setProducts] = useState<any[]>([]);
+  // ✅ SUPPRIMÉ: products et setProducts - Les produits sont maintenant gérés via les champs dynamiques (autocomplete, price_variant)
   const [paymentMethod, setPaymentMethod] = useState<any>(null); // ✅ NOUVEAU: Mode de paiement
-  const [suggestedProductCategories, setSuggestedProductCategories] = useState<any[]>([]); // ✅ NOUVEAU: Catégories suggérées (matching local)
 
   // États pour la navigation par blocs
   const [currentBlock, setCurrentBlock] = useState(0);
@@ -219,15 +217,9 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     // Car ils utilisent des composants spécialisés
     const blocksWithFixedOnes = [...blocks];
 
-    // S'assurer que le bloc produits est toujours présent
-    if (!blocksWithFixedOnes.find(b => b.id === 'products').fields.length) {
-      blocksWithFixedOnes.find(b => b.id === 'products')!.fields.push({
-        name: '_products_manager',
-        type: 'custom',
-        label: 'Gestion des produits',
-        required: false
-      } as any);
-    }
+    // ✅ SUPPRIMÉ: Bloc produits géré directement par les champs dynamiques
+    // Les produits sont maintenant gérés via les champs autocomplete et price_variant
+    // Le bloc produits sera créé automatiquement si des champs produits sont présents
 
     // S'assurer que le bloc médias est toujours présent
     if (!blocksWithFixedOnes.find(b => b.id === 'media').fields.length) {
@@ -339,20 +331,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     const errors: string[] = [];
     const newFieldErrors: Record<string, string> = {};
 
-    // ✅ NOUVEAU : Validation spéciale pour le bloc produits
-    if (currentBlockData.id === 'products') {
-      if (products.length === 0) {
-        errors.push('⚠️ Vous devez ajouter au moins 1 produit avant de continuer');
-        return { isValid: false, errors, fieldErrors: {} };
-      }
-
-      // ✅ CORRECTION: Vérifier que chaque produit a une catégorie
-      const produitsNonCategorises = products.filter(p => !p.type || p.type === '' || p.type === 'autre');
-      if (produitsNonCategorises.length > 0) {
-        errors.push(`⚠️ ${produitsNonCategorises.length} produit(s) n'ont pas de catégorie définie. Veuillez les catégoriser avant de continuer.`);
-        return { isValid: false, errors, fieldErrors: {} };
-      }
-    }
+    // ✅ SUPPRIMÉ: Validation produits - Les produits sont maintenant gérés via les champs dynamiques (autocomplete, price_variant)
+    // La validation se fait au niveau des champs individuels requis
 
     currentBlockData.fields.forEach(field => {
       const value = valeursFormulaire[field.name];
@@ -402,31 +382,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     if (blockIndex >= 0 && blockIndex < blocks.length) {
       const targetBlock = blocks[blockIndex];
 
-      // ✅ CORRECTION: Trouver l'index du bloc "products"
-      const productsBlockIndex = blocks.findIndex(block => block.id === 'products');
-
-      // ✅ CORRECTION: Bloquer l'accès à TOUS les blocs après "products" si aucun produit
-      if (productsBlockIndex !== -1 && blockIndex > productsBlockIndex && products.length === 0) {
-        Alert.alert(
-          '⚠️ Produit requis',
-          'Vous devez ajouter au moins un produit avant d\'accéder aux étapes suivantes.',
-          [{ text: 'OK' }]
-        );
-        return;
-      }
-
-      // ✅ CORRECTION: Vérifier aussi que les produits ont une catégorie
-      if (productsBlockIndex !== -1 && blockIndex > productsBlockIndex && products.length > 0) {
-        const produitsNonCategorises = products.filter(p => !p.type || p.type === '' || p.type === 'autre');
-        if (produitsNonCategorises.length > 0) {
-          Alert.alert(
-            '⚠️ Catégorie requise',
-            `${produitsNonCategorises.length} produit(s) n'ont pas de catégorie définie. Veuillez les catégoriser avant de continuer.`,
-            [{ text: 'OK' }]
-          );
-          return;
-        }
-      }
+      // ✅ SUPPRIMÉ: Validation produits lors de la navigation - Les produits sont maintenant gérés via les champs dynamiques
 
       setCurrentBlock(blockIndex);
     }
@@ -472,15 +428,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
               website: formValues.website
             });
 
-            // ✅ CORRECTION CRITIQUE: Charger les produits existants
-            if (serviceData?.data?.produits) {
-              const { normalizeServiceProducts } = await import('../utils/productNormalizer');
-              const existingProducts = normalizeServiceProducts(serviceData.data.produits);
-              console.log('[FormulaireYukpoIntelligentScreen] ✅ Produits existants chargés:', existingProducts.length);
-              setProducts(existingProducts);
-            } else {
-              console.log('[FormulaireYukpoIntelligentScreen] ⚠️ Aucun produit trouvé dans le service');
-            }
+            // ✅ SUPPRIMÉ: Chargement produits - Les produits sont maintenant gérés via les champs dynamiques du formulaire
+            // Les produits existants seront chargés automatiquement via les valeurs du formulaire
 
             setValeursFormulaire(formValues);
             setActiveStep(2); // Aller directement au formulaire
@@ -544,14 +493,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         console.log('[FormulaireYukpoIntelligentScreen] ✅ Bloc produits ouvert automatiquement (édition)');
       }
 
-      // Trouver le produit dans la liste et s'assurer qu'il est présent
-      const productIndex = products.findIndex(p => p.id === focusProductId);
-      if (productIndex === -1) {
-        // Le produit n'est pas encore dans la liste (chargement en cours), attendre
-        console.log('[FormulaireYukpoIntelligentScreen] ⏳ Produit pas encore chargé, attente...');
-      } else {
-        console.log('[FormulaireYukpoIntelligentScreen] ✅ Produit trouvé dans la liste:', products[productIndex].nom);
-      }
+      // ✅ SUPPRIMÉ: Recherche produit - Les produits sont maintenant gérés via les champs dynamiques
     }
     // Cas 2: Création d'un nouveau produit (focusBlock uniquement)
     else if (focusBlock === 'products' && blocks.length > 0) {
@@ -562,7 +504,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         console.log('[FormulaireYukpoIntelligentScreen] ✅ Bloc produits ouvert automatiquement (création)');
       }
     }
-  }, [editProductData, focusProductId, serviceId, products, blocks, focusBlock]);
+  }, [editProductData, focusProductId, serviceId, blocks, focusBlock]);
 
   // Traiter les données IA au chargement (comme le frontend)
   useEffect(() => {
@@ -594,15 +536,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         }
       });
 
-      // ✅ CORRECTION CRITIQUE: Charger les produits générés par l'IA
-      if (suggestion.data.produits) {
-        (async () => {
-          const { normalizeServiceProducts } = await import('../utils/productNormalizer');
-          const iaProducts = normalizeServiceProducts(suggestion.data.produits);
-          console.log('[FormulaireYukpoIntelligentScreen] ✅ Produits IA chargés:', iaProducts.length);
-          setProducts(iaProducts);
-        })();
-      }
+      // ✅ SUPPRIMÉ: Chargement produits IA - Les produits sont maintenant gérés via les champs dynamiques du formulaire
+      // Les produits seront chargés automatiquement si présents dans les valeurs du formulaire
 
       // CORRECTION: S'assurer que le champ category est bien chargé
       if (suggestion.data.category) {
@@ -806,27 +741,130 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
   // Rendu d'un champ (aligné sur le frontend avec tous les types)
   const renderField = (field: DynamicField) => {
-    // Composants custom spécialisés
-    if (field.name === '_products_manager') {
+    // ✅ NOUVEAU: Support pour les nouveaux types de données
+    if (field.typeDonnee === 'autocomplete') {
       return (
-        <View key={field.name}>
-          <ProductManagerMobile
-            products={products}
-            onProductsChange={setProducts}
-            readonly={isReadonly}
-            titreService={valeursFormulaire.titre_service}
-            descriptionService={valeursFormulaire.description}
-            categoryService={valeursFormulaire.category}
-            suggestedCategories={suggestedProductCategories}
-            onDuplicate={(product) => {
-              setProductToDuplicate(product);
-              setShowDuplicationModal(true);
-            }}
-            focusProductId={focusProductId}
-            duplicateProduct={duplicateProduct}
-            serviceId={serviceId} // ✅ NOUVEAU: Pour navigation vers édition
-            serviceData={suggestion?.data || valeursFormulaire} // ✅ NOUVEAU: Données service
+        <View key={field.name} style={styles.fieldContainer}>
+          <AutocompleteGranularEditor
+            label={field.label}
+            identifiantBase={field.identifiantBase || field.name}
+            sousCaracteristiques={field.sousCaracteristiques || {}}
+            separateur={field.separateur || ','}
+            value={Array.isArray(valeursFormulaire[field.name]) ? valeursFormulaire[field.name] : []}
+            onChange={(values) => handleFieldChange(field.name, values)}
+            required={field.required}
+            placeholder={field.placeholder}
+            allowCustomModality={field.allowCustomModality !== false}
+            filtrable={field.filtrable !== false}
           />
+          {fieldErrors[field.name] && (
+            <Text style={styles.fieldErrorText}>⚠️ {String(fieldErrors[field.name])}</Text>
+          )}
+        </View>
+      );
+    }
+
+    if (field.typeDonnee === 'price_variant') {
+      return (
+        <View key={field.name} style={styles.fieldContainer}>
+          <PriceVariantSelector
+            label={field.label}
+            variable={field.variable || 'variante'}
+            modalites={valeursFormulaire[field.name]?.modalites || field.modalites || []}
+            onChange={(modalites) => {
+              handleFieldChange(field.name, {
+                type_donnee: 'price_variant',
+                variable: field.variable || 'variante',
+                modalites,
+                filtrable: field.filtrable !== false,
+                origine_champs: 'formulaire'
+              });
+            }}
+            required={field.required}
+            availableCurrencies={['XAF', 'EUR', 'USD']}
+            defaultCurrency={valeursFormulaire.devise || 'XAF'}
+          />
+          {fieldErrors[field.name] && (
+            <Text style={styles.fieldErrorText}>⚠️ {String(fieldErrors[field.name])}</Text>
+          )}
+        </View>
+      );
+    }
+
+    if (field.typeDonnee === 'date') {
+      return (
+        <View key={field.name} style={styles.fieldContainer}>
+          <Text style={styles.fieldLabel}>
+            {field.label} {field.required && <Text style={styles.required}>*</Text>}
+          </Text>
+          <TouchableOpacity
+            style={styles.pickerButton}
+            onPress={() => {
+              // Utiliser le sélecteur de date natif
+              const currentDate = valeursFormulaire[field.name] || new Date().toISOString().split('T')[0];
+              Alert.prompt(
+                'Sélectionner une date',
+                'Format: YYYY-MM-DD',
+                [
+                  {
+                    text: 'Annuler',
+                    style: 'cancel'
+                  },
+                  {
+                    text: 'OK',
+                    onPress: (dateStr) => {
+                      if (dateStr) {
+                        // Valider le format YYYY-MM-DD
+                        const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+                        if (dateRegex.test(dateStr)) {
+                          handleFieldChange(field.name, dateStr);
+                        } else {
+                          Alert.alert('Erreur', 'Format de date invalide. Utilisez YYYY-MM-DD (ex: 2024-12-25)');
+                        }
+                      }
+                    }
+                  }
+                ],
+                'plain-text',
+                currentDate
+              );
+            }}
+            disabled={isReadonly}
+          >
+            <Text style={styles.pickerButtonText}>
+              {valeursFormulaire[field.name] || field.placeholder || 'Sélectionner une date (YYYY-MM-DD)'}
+            </Text>
+            <SafeIcon name="calendar" size={16} color="#666" />
+          </TouchableOpacity>
+          {fieldErrors[field.name] && (
+            <Text style={styles.fieldErrorText}>⚠️ {String(fieldErrors[field.name])}</Text>
+          )}
+        </View>
+      );
+    }
+
+    if (field.typeDonnee === 'location') {
+      return (
+        <View key={field.name} style={styles.fieldContainer}>
+          <Text style={styles.fieldLabel}>
+            {field.label} {field.required && <Text style={styles.required}>*</Text>}
+          </Text>
+          <NativeInput
+            placeholder={field.placeholder || 'Entrez une localisation...'}
+            value={valeursFormulaire[field.name] || ''}
+            onChangeText={(text) => handleFieldChange(field.name, text)}
+            style={styles.fieldInput}
+          />
+          {field.composants && Object.keys(field.composants).length > 0 && (
+            <View style={styles.hintBox}>
+              <Text style={styles.hintText}>
+                💡 Composants disponibles: {Object.keys(field.composants).join(', ')}
+              </Text>
+            </View>
+          )}
+          {fieldErrors[field.name] && (
+            <Text style={styles.fieldErrorText}>⚠️ {String(fieldErrors[field.name])}</Text>
+          )}
         </View>
       );
     }
@@ -1154,31 +1192,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           }
         });
 
-        // Ajouter les produits (y compris les nouveaux)
-        if (products.length > 0) {
-          const cleanedProducts = products.map(product => {
-            const cleaned: any = {};
-            Object.keys(product).forEach(key => {
-              if (product[key] !== undefined && product[key] !== null && product[key] !== '') {
-                // Convertir les prix en nombres
-                if (key === 'prix' && typeof product[key] === 'string') {
-                  const numericValue = parseFloat(product[key]);
-                  cleaned[key] = isNaN(numericValue) ? product[key] : numericValue;
-                } else {
-                  cleaned[key] = product[key];
-                }
-              }
-            });
-            return cleaned;
-          });
-          // ✅ CORRECTION: Structure normalisée cohérente avec backend
-          finalServiceData.produits = {
-            type_donnee: 'listeproduit',
-            valeur: cleanedProducts,
-            origine_champs: 'formulaire'
-          };
-          console.log('[FormulaireYukpoIntelligentScreen] 📦 Produits ajoutés/mis à jour:', cleanedProducts.length);
-        }
+        // ✅ NOUVEAU: Les produits sont maintenant gérés via les champs dynamiques (autocomplete, price_variant)
+        // Ils sont déjà inclus dans finalServiceData via les valeurs du formulaire
 
         // Ajouter le GPS fixe si présent
         if (valeursFormulaire.gps_fixe) {
@@ -1205,29 +1220,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           throw new Error(response.error || 'Erreur lors de la modification');
         }
 
-        // ✅ NOUVEAU: Vérifier les demandes de retour pour les nouveaux tickets de voyage ajoutés
-        if (products && products.length > 0) {
-          const ticketsVoyage = products.filter(p => p.type === 'ticket_voyage');
-
-          for (const ticket of ticketsVoyage) {
-            if (ticket.depart && ticket.destination && ticket.dateDepart && ticket.heureDepart) {
-              try {
-                await handleBusCreated(
-                  ticket.id || `${serviceId}_${ticket.nom}`,
-                  {
-                    depart: ticket.depart,
-                    destination: ticket.destination,
-                    dateDepart: ticket.dateDepart,
-                    heureDepart: ticket.heureDepart
-                  }
-                );
-                console.log('✅ Vérification demandes retour effectuée pour:', ticket.nom);
-              } catch (error) {
-                console.error('⚠️ Erreur vérification retour (non bloquant):', error);
-              }
-            }
-          }
-        }
+        // ✅ SUPPRIMÉ: Vérification tickets de voyage - Géré maintenant via les champs dynamiques
 
         // ✅ Succès modification (pas de coût)
         Alert.alert(
@@ -1252,13 +1245,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         return; // ✅ Sortir ici pour éviter le flux de création
       }
 
-      // ✅ MODE CRÉATION : Appel IA + Vérification solde + Coût
-      console.log('[FormulaireYukpoIntelligentScreen] 🆕 MODE CRÉATION - Appel IA requis');
-
-      // ✅ Diagnostic réseau avant création
-      console.log('[FormulaireYukpoIntelligentScreen] 🔍 Diagnostic réseau - début création service');
-
-      // 💰 ÉTAPE 1 : Appeler l'IA externe pour générer le JSON structuré ET obtenir le coût réel
+      // ✅ MODE CRÉATION : Vérification solde + Coût (SANS appel IA - déjà fait lors de la génération du formulaire)
+      console.log('[FormulaireYukpoIntelligentScreen] 🆕 MODE CRÉATION - Utilisation des données du formulaire');
 
       // ✅ CORRECTION 413: Compresser les médias AVANT l'envoi
       console.log('[FormulaireYukpoIntelligentScreen] 🔄 Compression des médias...');
@@ -1284,36 +1272,39 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         );
       }
 
-      const donneesService = {
-        texte: (composants || []).map(c => `${c.name}: ${valeursFormulaire[c.name] || ''}`).join('\n'),
-        intention: 'creation_service',
-        base64_image: compressedMedia.images,
-        audio_base64: compressedMedia.audios,
-        video_base64: compressedMedia.videos,
-        doc_base64: compressedMedia.documents,
-        excel_base64: compressedMedia.excel,
-        logo: compressedMedia.logo,
-        banner: compressedMedia.banner
-      };
+      // 💰 ÉTAPE 1 : Récupérer le coût depuis la suggestion IA initiale (si disponible)
+      // Le formulaire a déjà été généré par l'IA via genererSuggestionsService, donc on récupère le coût déjà calculé
+      // Structure de suggestion depuis HomeScreen : { ...result.data, data: result.data.data }
+      // result.data contient : tokens_consumed, ia_model_used, data, service_data, etc.
+      const tokensIAExterne = suggestion?.tokens_consumed
+        || suggestion?.tokens_used
+        || suggestion?.tokens
+        || suggestion?.service_data?.tokens_consumed
+        || (suggestion?.data && typeof suggestion.data === 'object' && (suggestion.data.tokens_consumed || suggestion.data.tokens_used || suggestion.data.tokens))
+        || 0; // Fallback : 0 si pas de tokens (sera calculé côté backend)
 
-      console.log('[FormulaireYukpoIntelligentScreen] Données brutes pour génération IA (COMPRESSÉES)');
+      console.log('[FormulaireYukpoIntelligentScreen] ✅ Tokens IA récupérés depuis suggestion initiale:', tokensIAExterne);
+      console.log('[FormulaireYukpoIntelligentScreen] 📊 Structure suggestion:', {
+        hasTokensConsumed: !!suggestion?.tokens_consumed,
+        hasServiceData: !!suggestion?.service_data,
+        hasData: !!suggestion?.data,
+        suggestionKeys: suggestion ? Object.keys(suggestion) : []
+      });
 
-      // ✅ CORRIGÉ: Utilise apiPost pour appel IA
-      const iaResponse = await apiPost('/api/ia/creation-service', donneesService);
-
-      if (!iaResponse.success) {
-        console.error('[FormulaireYukpoIntelligentScreen] Erreur IA:', iaResponse.error);
-        throw new Error(`Erreur IA: ${iaResponse.error || 'Erreur inconnue'}`);
+      // Si aucun token n'est disponible dans la suggestion, estimer basé sur la taille des données
+      let tokensEstimes = tokensIAExterne;
+      if (tokensEstimes === 0) {
+        // Estimation basée sur la taille des données : ~1 token par 4 caractères + coût images
+        const texteLength = JSON.stringify(valeursFormulaire).length;
+        const imageCount = compressedMedia.images.length;
+        tokensEstimes = Math.ceil(texteLength / 4) + (imageCount * 170); // ~170 tokens par image (GPT-4 Vision)
+        console.log('[FormulaireYukpoIntelligentScreen] ⚠️ Aucun token trouvé dans suggestion, estimation:', tokensEstimes);
       }
-
-      const iaData: any = iaResponse.data;
-      console.log('[FormulaireYukpoIntelligentScreen] Réponse IA reçue:', iaData);
-
-      // 💰 ÉTAPE 2 : Calculer le coût réel avec le multiplier x100 pour création de service
-      const tokensIAExterne = iaData?.tokens_consumed || iaData?.tokens_used || iaData?.tokens || 0;
       const coutTokenOpenAIFCFA = 0.004;
-      const coutReel = Math.round(tokensIAExterne * coutTokenOpenAIFCFA * 100); // x100 pour création de service
-      console.log('💰 [FormulaireYukpoIntelligentScreen] Coût RÉEL calculé:', coutReel, 'FCFA pour', tokensIAExterne, 'tokens');
+      // Utiliser tokensEstimes si tokensIAExterne est 0
+      const tokensPourCalcul = tokensIAExterne > 0 ? tokensIAExterne : tokensEstimes;
+      const coutReel = Math.round(tokensPourCalcul * coutTokenOpenAIFCFA * 100); // x100 pour création de service
+      console.log('💰 [FormulaireYukpoIntelligentScreen] Coût RÉEL calculé:', coutReel, 'FCFA pour', tokensPourCalcul, 'tokens');
 
       // Vérifier le solde actuel
       // ✅ CORRIGÉ: Utilise apiGet avec nouvelle structure ApiResponse
@@ -1363,7 +1354,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       // Demander confirmation avec le coût RÉEL
       Alert.alert(
         '💰 Création de service',
-        `Coût réel : ${coutReel.toLocaleString()} FCFA\nTokens consommés : ${tokensIAExterne.toLocaleString()}\nVotre solde : ${soldeActuel.toLocaleString()} FCFA\nSolde après création : ${(soldeActuel - coutReel).toLocaleString()} FCFA\n\nConfirmez-vous la création de ce service ?`,
+        `Coût réel : ${coutReel.toLocaleString()} FCFA\nTokens consommés : ${tokensPourCalcul.toLocaleString()}${tokensIAExterne === 0 ? ' (estimé)' : ''}\nVotre solde : ${soldeActuel.toLocaleString()} FCFA\nSolde après création : ${(soldeActuel - coutReel).toLocaleString()} FCFA\n\nConfirmez-vous la création de ce service ?`,
         [
           {
             text: 'Annuler',
@@ -1385,18 +1376,26 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                 setIsSubmitting(true);
                 console.log('[FormulaireYukpoIntelligentScreen] Création du service en cours...');
 
-                // 🔧 ÉTAPE 3 : Extraire le JSON structuré de la réponse IA (comme le frontend)
-                let finalServiceData: any = iaData;
-                if (iaData?.service_data && iaData.service_data.data) {
-                  finalServiceData = iaData.service_data.data;
-                  console.log('[FormulaireYukpoIntelligentScreen] Données extraites depuis service_data.data:', finalServiceData);
-                } else if (iaData?.data) {
-                  finalServiceData = iaData.data;
-                  console.log('[FormulaireYukpoIntelligentScreen] Données extraites depuis data:', finalServiceData);
+                // 🔧 ÉTAPE 3 : Construire les données structurées directement depuis le formulaire
+                // ✅ CORRECTION : Plus besoin d'appeler l'IA, on utilise directement les données du formulaire
+                // Les données initiales sont déjà dans suggestion.data (depuis genererSuggestionsService)
+                let finalServiceData: any = {};
+
+                // Utiliser les données de la suggestion initiale si disponibles
+                // Structure : suggestion.data contient les champs structurés (titre_service, category, etc.)
+                if (suggestion?.data && typeof suggestion.data === 'object') {
+                  // Copier la structure de la suggestion initiale (qui vient de l'IA)
+                  finalServiceData = JSON.parse(JSON.stringify(suggestion.data));
+                  console.log('[FormulaireYukpoIntelligentScreen] ✅ Structure initiale depuis suggestion.data:', Object.keys(finalServiceData));
+                } else if (suggestion?.service_data?.data) {
+                  // Fallback : utiliser service_data.data si disponible
+                  finalServiceData = JSON.parse(JSON.stringify(suggestion.service_data.data));
+                  console.log('[FormulaireYukpoIntelligentScreen] ✅ Structure depuis suggestion.service_data.data:', Object.keys(finalServiceData));
+                } else {
+                  console.log('[FormulaireYukpoIntelligentScreen] ⚠️ Aucune structure initiale trouvée, construction depuis formulaire uniquement');
                 }
 
-                // ✅ NOUVEAU : Transformer les valeurs du formulaire en structure attendue par le backend
-                // Les données de valeursFormulaire doivent être fusionnées correctement
+                // ✅ Mettre à jour avec les valeurs du formulaire (les vraies valeurs saisies par l'utilisateur)
                 Object.keys(valeursFormulaire).forEach(key => {
                   const value = valeursFormulaire[key];
                   if (value !== undefined && value !== null && value !== '') {
@@ -1413,70 +1412,34 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                     }
                   }
                 });
-                console.log('[FormulaireYukpoIntelligentScreen] ✅ Données fusionnées avec le formulaire:', finalServiceData);
+                console.log('[FormulaireYukpoIntelligentScreen] ✅ Données finales construites depuis le formulaire:', finalServiceData);
 
-                // 🔧 ÉTAPE 4 : Ajouter les produits aux données de service (avec nettoyage + optimisation payload)
-                if (products.length > 0) {
-                  // ✅ OPTIMISATION : Calculer la taille totale estimée du payload
-                  let totalPayloadSize = JSON.stringify(finalServiceData).length;
-                  console.log(`[FormulaireYukpoIntelligentScreen] 📊 Taille payload avant produits: ${(totalPayloadSize / 1024).toFixed(2)} KB`);
+                // ✅ NOUVEAU: Les produits sont maintenant gérés via les champs dynamiques (autocomplete, price_variant)
+                // Ils sont déjà inclus dans finalServiceData via les valeurs du formulaire
+                const totalPayloadSize = JSON.stringify(finalServiceData).length;
+                const payloadSizeMB = totalPayloadSize / (1024 * 1024);
+                console.log(`[FormulaireYukpoIntelligentScreen] 📊 Taille payload: ${payloadSizeMB.toFixed(2)} MB`);
 
-                  // Nettoyer les produits : supprimer les champs undefined/null
-                  const cleanedProducts = products.map(product => {
-                    const cleaned: any = {};
-                    Object.keys(product).forEach(key => {
-                      const value = (product as any)[key];
-                      if (value !== undefined && value !== null && value !== '') {
-                        // ✅ Convertir les champs numériques connus en nombres
-                        const numericKeys = ['prix', 'prixParNuit', 'prixParPlace', 'prixHoraire', 'prixJournalier', 'prixMinimum'];
-                        if (numericKeys.includes(key)) {
-                          const num = typeof value === 'number' ? value : parseFloat(String(value));
-                          cleaned[key] = isNaN(num) ? value : num;
-                        } else {
-                          cleaned[key] = value;
-                        }
-                      }
-                    });
-                    return cleaned;
-                  });
-
-                  // ✅ CORRECTION: Envoyer la structure normalisée (cohérent avec backend)
-                  // Le backend normalise automatiquement, mais autant être cohérent
-                  finalServiceData.produits = {
-                    type_donnee: 'listeproduit',
-                    valeur: cleanedProducts,
-                    origine_champs: 'formulaire'
-                  };
-
-                  // ✅ VÉRIFICATION : Estimer la taille finale du payload
-                  const finalPayloadSize = JSON.stringify(finalServiceData).length;
-                  const finalSizeMB = finalPayloadSize / (1024 * 1024);
-                  console.log(`[FormulaireYukpoIntelligentScreen] 📊 Taille payload finale: ${finalSizeMB.toFixed(2)} MB`);
-                  console.log(`[FormulaireYukpoIntelligentScreen] 📊 Produits ajoutés: ${cleanedProducts.length}`);
-
-                  // ✅ ALERTE si payload trop gros (> 100MB)
-                  if (finalSizeMB > 100) {
-                    console.warn(`[FormulaireYukpoIntelligentScreen] ⚠️ Payload très volumineux: ${finalSizeMB.toFixed(2)} MB - Risque d'erreur 413`);
-                    Alert.alert(
-                      '⚠️ Données volumineuses',
-                      `Votre service contient beaucoup de médias (${finalSizeMB.toFixed(2)} MB).\n\nCela pourrait causer des problèmes d'envoi. Conseils :\n- Réduisez le nombre d'images par produit\n- Raccourcissez les vidéos\n- Supprimez les produits non essentiels`,
-                      [
-                        { text: 'Annuler', style: 'cancel', onPress: () => { setIsSubmitting(false); setLoading(false); return; } },
-                        { text: 'Continuer quand même', onPress: () => { /* Continue */ } }
-                      ]
-                    );
-                    return;
-                  }
-
-                  console.log('[FormulaireYukpoIntelligentScreen] ✅ Produits ajoutés (nettoyés):', cleanedProducts);
+                // ✅ ALERTE si payload trop gros (> 100MB)
+                if (payloadSizeMB > 100) {
+                  console.warn(`[FormulaireYukpoIntelligentScreen] ⚠️ Payload très volumineux: ${payloadSizeMB.toFixed(2)} MB - Risque d'erreur 413`);
+                  Alert.alert(
+                    '⚠️ Données volumineuses',
+                    `Votre service contient beaucoup de médias (${payloadSizeMB.toFixed(2)} MB).\n\nCela pourrait causer des problèmes d'envoi. Conseils :\n- Réduisez le nombre d'images\n- Raccourcissez les vidéos`,
+                    [
+                      { text: 'Annuler', style: 'cancel', onPress: () => { setIsSubmitting(false); setLoading(false); return; } },
+                      { text: 'Continuer quand même', onPress: () => { /* Continue */ } }
+                    ]
+                  );
+                  return;
                 }
 
                 // ✅ CORRECTION CRITIQUE : Ajouter le GPS fixe si présent (évite GPS Nigeria)
                 if (valeursFormulaire.gps_fixe) {
                   finalServiceData.gps_fixe = {
-                    type_donnee: 'string', // ✅ CORRECTION : type_donnee au lieu de type
+                    type_donnee: 'string',
                     valeur: valeursFormulaire.gps_fixe,
-                    origine_champs: 'formulaire' // ✅ CORRECTION : Ajouter origine_champs
+                    origine_champs: 'formulaire'
                   };
                   console.log('[FormulaireYukpoIntelligentScreen] ✅ GPS FIXE ajouté:', valeursFormulaire.gps_fixe);
                 } else {
@@ -1670,30 +1633,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                 // Voir mobile/src/services/api.ts lignes 102-105
                 // Le solde de tokens est aussi mis à jour automatiquement
 
-                // ✅ NOUVEAU: Vérifier les demandes de retour pour les tickets de voyage créés
-                if (products && products.length > 0) {
-                  const ticketsVoyage = products.filter(p => p.type === 'ticket_voyage');
-
-                  for (const ticket of ticketsVoyage) {
-                    if (ticket.depart && ticket.destination && ticket.dateDepart && ticket.heureDepart) {
-                      try {
-                        await handleBusCreated(
-                          ticket.id || `${result?.id || result?.service_id}_${ticket.nom}`,
-                          {
-                            depart: ticket.depart,
-                            destination: ticket.destination,
-                            dateDepart: ticket.dateDepart,
-                            heureDepart: ticket.heureDepart
-                          }
-                        );
-                        console.log('✅ Vérification demandes retour effectuée pour:', ticket.nom);
-                      } catch (error) {
-                        console.error('⚠️ Erreur vérification retour (non bloquant):', error);
-                        // Ne pas bloquer si la vérification échoue
-                      }
-                    }
-                  }
-                }
+                // ✅ SUPPRIMÉ: Vérification tickets de voyage - Géré maintenant via les champs dynamiques
+                // Les tickets de voyage sont gérés via les champs autocomplete et date dans le formulaire
 
                 setSuccessData({ serviceId: result?.id || result?.service_id || 'nouveau', cout: coutReel });
                 setShowSuccessToast(true);
@@ -2132,26 +2073,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       />
 
 
-      {/* ✅ Modal de duplication de produit */}
-      <ProductDuplicationModal
-        visible={showDuplicationModal}
-        onClose={() => {
-          setShowDuplicationModal(false);
-          setProductToDuplicate(null);
-        }}
-        product={productToDuplicate}
-        onDuplicate={(duplicatedProduct) => {
-          // Ajouter le produit dupliqué à la liste des produits
-          setProducts(prev => [...prev, duplicatedProduct]);
-          setShowDuplicationModal(false);
-          setProductToDuplicate(null);
-          Alert.alert(
-            '✅ Produit dupliqué',
-            'Le produit a été ajouté avec succès. Vous pouvez le modifier depuis la liste.',
-            [{ text: 'OK' }]
-          );
-        }}
-      />
+      {/* ✅ SUPPRIMÉ: Modal de duplication de produit - Les produits sont maintenant gérés via les champs dynamiques */}
     </View>
   );
 };

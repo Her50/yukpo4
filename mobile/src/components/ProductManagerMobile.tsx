@@ -41,6 +41,8 @@ import AssuranceProduitSelector from './AssuranceProduitSelector';
 import VehicleModelSelector from './VehicleModelSelector';
 // ✅ NOUVEAU: Configuration conditionnelle des champs prestations
 import { getEncouragementMessage, getFieldsConfig } from '../utils/prestationFieldsConfig';
+// ✅ NOUVEAU: Suggestions intelligentes de catégories basées sur les données IA du service
+import { suggestProductCategoriesFromServiceData } from '../utils/productCategoryMapper';
 import ChaussureVariantManager, { ChaussureVariant } from './ChaussureVariantManager';
 import HealthStructureSelector from './HealthStructureSelector';
 import HotelStructureSelector from './HotelStructureSelector';
@@ -1460,11 +1462,12 @@ export const PRODUCT_TYPES = [
     { value: 'cosmetique_parfum', label: 'Cosmétique & Parfum', icon: '✨', color: '#E91E63', description: 'Parfums, maquillage, soins beauté, huiles, crèmes', keywords: ['cosmétique', 'parfum', 'maquillage', 'beauté', 'soin', 'crème', 'lotion', 'sérum', 'masque', 'fond de teint', 'rouge à lèvres', 'mascara', 'vernis', 'eau de toilette', 'déodorant', 'gel douche', 'shampoing', 'Chanel', 'Dior', 'L\'Oréal', 'Nivea', 'naturel', 'bio'] },
     { value: 'bijoux', label: 'Bijoux & Accessoires', icon: '💎', color: '#FFD700', description: 'Colliers, bagues, bracelets, montres, pierres précieuses', keywords: ['bijou', 'bijouterie', 'collier', 'pendentif', 'bague', 'alliance', 'bracelet', 'gourmette', 'boucle d\'oreille', 'montre', 'chaîne', 'médaille', 'or', 'argent', 'platine', 'diamant', 'pierre précieuse', 'rubis', 'saphir', 'perle', '18k', '14k', 'plaqué or', 'Cartier', 'Tiffany'] },
     { value: 'coiffure_beaute', label: 'Coiffure & Beauté', icon: '💇‍♀️', color: '#E91E63', description: 'Mèches, extensions, perruques, accessoires de coiffure, soins cheveux', keywords: ['coiffure', 'cheveu', 'mèche', 'extension', 'perruque', 'tissage', 'tresse', 'défrisage', 'lissage', 'bouclage', 'coloration', 'teinture', 'balayage', 'coupe', 'brushing', 'lisse', 'bouclé', 'naturel', 'synthétique', 'brésilienne', 'indienne', 'remy hair', 'clip', 'pose'] },
+    { value: 'couturier', label: 'Couturier / Tailleur', icon: '✂️', color: '#EC4899', description: 'Couture sur mesure, retouches, confection vêtements traditionnels et modernes', keywords: ['couturier', 'tailleur', 'couture', 'sur mesure', 'retouche', 'confection', 'vêtement', 'robe', 'costume', 'boubou', 'bazin', 'wax', 'pagne', 'traditionnel', 'moderne', 'mariage', 'soirée', 'essayage', 'patron', 'coupe', 'couture', 'broderie', 'surjeteuse', 'machine à coudre', 'atelier', 'mesures', 'tissu', 'finition', 'haute couture', 'prêt-à-porter', 'créateur', 'styliste', 'modéliste', 'assemblage', 'ourlet', 'zip', 'bouton', 'doublure', 'parement'] },
     { value: 'pieces_auto', label: 'Pièces Détachées Auto', icon: '🔧', color: '#607D8B', description: 'Pièces moteur, freins, carrosserie, filtres, batteries', keywords: ['pièce auto', 'pièce détachée', 'pièce automobile', 'moteur', 'frein', 'disque', 'plaquette', 'carrosserie', 'pare-choc', 'aile', 'capot', 'phare', 'feu', 'filtre', 'huile', 'batterie', 'alternateur', 'bougie', 'courroie', 'embrayage', 'suspension', 'amortisseur', 'vidange', 'garage'] },
     { value: 'pieces_industrielles', label: 'Pièces Industrielles', icon: '⚙️', color: '#455A64', description: 'Roulements, courroies, moteurs, pompes, pièces machines', keywords: ['pièce industrielle', 'pièce machine', 'roulement', 'palier', 'courroie', 'chaîne', 'poulie', 'pignon', 'engrenage', 'moteur électrique', 'hydraulique', 'pneumatique', 'pompe', 'compresseur', 'vanne', 'vérin', 'tuyau', 'joint', 'acier', 'inox', 'industriel', 'usine', 'maintenance'] },
-    { value: 'prestation_service', label: 'Prestation de Service', icon: '🎯', color: '#8B5CF6', description: 'Services professionnels divers : coaching, consulting, développement...', keywords: ['prestation', 'service', 'serrurier', 'vitrier', 'couvreur', 'tapissier', 'soudeur', 'charpentier', 'ébéniste', 'coiffeur', 'barbier', 'esthéticienne', 'manucure', 'massage', 'kinésithérapeute', 'ostéopathe', 'infirmier', 'sage-femme', 'aide-soignant', 'photographe', 'vidéaste', 'graphiste', 'designer', 'développeur', 'programmeur', 'webmaster', 'informaticien', 'coach', 'formateur', 'professeur', 'enseignant', 'tuteur', 'traducteur', 'interprète', 'rédacteur', 'secrétaire', 'assistant', 'comptable', 'consultant', 'conseiller', 'expert', 'avocat', 'juriste', 'notaire', 'huissier', 'dresseur', 'toiletteur', 'DJ', 'musicien', 'animateur', 'artiste', 'comédien', 'danseur', 'maquilleur', 'styliste', 'couturier', 'tailleur', 'cordonnier', 'sellier', 'horloger', 'opticien', 'dentiste', 'orthodontiste', 'pédicure', 'podologue', 'sophrologue', 'psychologue', 'psychiatre', 'nutritionniste', 'diététicien', 'coach sportif', 'personal trainer', 'guide', 'moniteur', 'analyste', 'data scientist', 'économiste', 'chercheur', 'scientifique', 'agent immobilier', 'promoteur', 'gestionnaire', 'administrateur', 'manager', 'chef de projet', 'coordinateur', 'superviseur', 'expert-comptable', 'fiscaliste', 'banquier', 'conseiller financier', 'vendeur', 'commercial', 'représentant', 'logisticien', 'magasinier'] },
+    { value: 'prestation_service', label: 'Prestation de Service', icon: '🎯', color: '#8B5CF6', description: 'Services professionnels divers : coaching, consulting, développement, services non classés ailleurs', keywords: ['prestation', 'service', 'serrurier', 'vitrier', 'couvreur', 'tapissier', 'soudeur', 'photographe', 'vidéaste', 'graphiste', 'designer', 'développeur', 'programmeur', 'webmaster', 'informaticien', 'coach', 'formateur', 'tuteur', 'traducteur', 'interprète', 'rédacteur', 'secrétaire', 'assistant', 'comptable', 'consultant', 'conseiller', 'expert', 'avocat', 'juriste', 'notaire', 'huissier', 'dresseur', 'toiletteur', 'DJ', 'musicien', 'animateur', 'artiste', 'comédien', 'danseur', 'maquilleur', 'styliste', 'cordonnier', 'sellier', 'horloger', 'opticien', 'guide', 'moniteur', 'analyste', 'data scientist', 'économiste', 'chercheur', 'scientifique', 'agent immobilier', 'promoteur', 'gestionnaire', 'administrateur', 'manager', 'chef de projet', 'coordinateur', 'superviseur', 'expert-comptable', 'fiscaliste', 'banquier', 'conseiller financier', 'vendeur', 'commercial', 'représentant', 'logisticien', 'magasinier', 'wedding planner', 'organisateur', 'traiteur événementiel', 'décorateur', 'fleuriste', 'imprimeur', 'relieur', 'graveur'] },
     { value: 'ingenieur_archi', label: 'Ingénieur / Architecte', icon: '📐', color: '#0891B2', description: 'Bureau d\'études, plans, conception, suivi chantier, permis de construire', keywords: ['architecte', 'ingénieur', 'ingénieur bâtiment', 'ingénieur génie civil', 'bureau d\'études', 'bureau étude', 'BET', 'plan architecte', 'plan maison', 'plan architecture', 'conception architecturale', 'étude architecturale', 'permis de construire', 'dossier permis', 'déclaration préalable', 'étude technique', 'étude de sol', 'étude géotechnique', 'calcul structure', 'calcul béton', 'note de calcul', 'dimensionnement', 'maîtrise d\'œuvre', 'maître d\'œuvre', 'MOE', 'suivi de chantier', 'supervision travaux', 'coordination chantier', 'réception chantier', 'métrés', 'quantitatifs', 'avant-projet', 'APD', 'APS', 'plans d\'exécution', 'plans techniques', 'géomètre', 'topographe', 'levé topographique', 'bornage', 'implantation', 'urbanisme', 'étude urbanisme', 'PLU', 'rénovation énergétique', 'audit énergétique', 'thermique', 'RT2012', 'conception 3D', 'modélisation 3D', 'maquette 3D', 'dessinateur', 'projeteur', 'architecte d\'intérieur', 'aménagement intérieur', 'décoration architecturale'] },
-    1172 | { value: 'macon', label: 'Maçon', icon: '🧱', color: '#78716C', description: 'Maçonnerie, béton, construction, fondations, murs, dalles', keywords: ['maçon', 'maçonnerie', 'service maçonnerie', 'construction', 'bâtiment', 'fondation', 'dalle', 'mur', 'béton', 'ciment', 'parpaing', 'brique', 'agglo', 'coffrage', 'ferraillage', 'coulage béton', 'gros œuvre', 'soubassement', 'chaînage', 'linteau', 'poteau', 'poutre', 'plancher', 'chape', 'enduit', 'crépi', 'mortier', 'jointoiement', 'maçon urgence', 'dépanneur maçonnerie', 'réparation fissure', 'reprise sous-œuvre', 'rénovation mur', 'extension maison', 'surélévation', 'agrandissement', 'maçon qualifié', 'entreprise maçonnerie', 'travaux maçonnerie', 'devis maçonnerie', 'maçonnerie générale', 'maçonnerie traditionnelle', 'maçonnerie moderne'] },
+    { value: 'macon', label: 'Maçon', icon: '🧱', color: '#78716C', description: 'Maçonnerie, béton, construction, fondations, murs, dalles', keywords: ['maçon', 'maçonnerie', 'service maçonnerie', 'construction', 'bâtiment', 'fondation', 'dalle', 'mur', 'béton', 'ciment', 'parpaing', 'brique', 'agglo', 'coffrage', 'ferraillage', 'coulage béton', 'gros œuvre', 'soubassement', 'chaînage', 'linteau', 'poteau', 'poutre', 'plancher', 'chape', 'enduit', 'crépi', 'mortier', 'jointoiement', 'maçon urgence', 'dépanneur maçonnerie', 'réparation fissure', 'reprise sous-œuvre', 'rénovation mur', 'extension maison', 'surélévation', 'agrandissement', 'maçon qualifié', 'entreprise maçonnerie', 'travaux maçonnerie', 'devis maçonnerie', 'maçonnerie générale', 'maçonnerie traditionnelle', 'maçonnerie moderne'] },
     { value: 'plombier', label: 'Plombier', icon: '🔧', color: '#00BCD4', description: 'Services de plomberie : installation, réparation, dépannage urgence', keywords: ['plombier', 'plomberie', 'service plomberie', 'dépannage plomberie', 'urgence plomberie', 'installation plomberie', 'réparation plomberie', 'fuite eau', 'fuite', 'débouchage', 'déboucher', 'canalisation', 'tuyau', 'robinet', 'chauffe-eau', 'ballon eau chaude', 'chaudière', 'WC bouché', 'toilette bouchée', 'évier bouché', 'douche bouchée', 'lavabo', 'évier', 'salle de bain', 'sanitaire installation', 'raccordement eau', 'vidange', 'évacuation', 'siphon', 'mitigeur', 'installation sanitaire', 'rénovation salle de bain', 'plombier urgence', 'dépanneur plomberie', 'plombier 24h', 'intervention rapide', 'détection fuite', 'recherche fuite'] },
     { value: 'electricien', label: 'Électricien', icon: '⚡', color: '#FFC107', description: 'Services électricité : installation, dépannage, mise aux normes, urgence', keywords: ['électricien', 'électricité service', 'service électricité', 'dépannage électricité', 'urgence électricité', 'installation électrique', 'réparation électrique', 'panne électricité', 'panne courant', 'court-circuit', 'disjoncteur saute', 'tableau électrique', 'câblage maison', 'mise aux normes', 'norme électrique', 'raccordement électrique', 'branchement électrique', 'électricité bâtiment', 'installation lampe', 'lustre', 'plafonnier', 'éclairage maison', 'prise électrique installation', 'interrupteur installation', 'électricien urgence', 'dépanneur électricité', 'électricien 24h', 'intervention rapide électricité', 'diagnostic électrique', 'recherche panne', 'rénovation électrique', 'travaux électricité'] },
     { value: 'electricien_auto', label: 'Électricien Automobile', icon: '🔋', color: '#FF6B35', description: 'Électricité auto : diagnostic, réparation, installation équipements électroniques', keywords: ['électricien auto', 'électricité automobile', 'électricité voiture', 'électricité moto', 'électronique auto', 'diagnostic électronique', 'réparation électronique voiture', 'batterie auto', 'alternateur', 'démarreur', 'faisceau électrique', 'câblage auto', 'phare voiture', 'feu arrière', 'clignotant', 'klaxon', 'essuie-glace moteur', 'lève-vitre électrique', 'centralisation', 'autoradio installation', 'alarme voiture', 'GPS voiture', 'caméra recul installation', 'capteur parking', 'OBD diagnostic', 'valise diagnostic', 'calculateur moteur', 'boîtier électronique', 'panne électrique voiture', 'court-circuit auto', 'problème batterie', 'alternateur défaillant', 'voyant moteur', 'diagnostic panne électrique', 'réparation faisceau', 'installation équipement électronique'] },
@@ -1909,6 +1912,25 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
         videos: []
     });
 
+    // ✨ NOUVEAU: Calculer les suggestions intelligentes de catégories basées sur les données IA du service
+    const suggestedCategories = React.useMemo(() => {
+        if (!searchQuery.length) {
+            // ✅ CORRECTION: Enrichir les données avec titreService, descriptionService, categoryService
+            const enrichedData = {
+                ...serviceData,
+                titre: serviceData?.titre || { valeur: titreService },
+                description: serviceData?.description || { valeur: descriptionService },
+                categorie: serviceData?.categorie || { valeur: categoryService }
+            };
+
+            // Calculer seulement si on a des données ET pas de recherche en cours
+            const suggestions = suggestProductCategoriesFromServiceData(enrichedData, 3);
+            console.log('[ProductManagerMobile] 💡 Suggestions intelligentes (données enrichies):', suggestions);
+            return suggestions;
+        }
+        return [];
+    }, [serviceData, titreService, descriptionService, categoryService, searchQuery]);
+
     // ✅ NOUVEAU: Gérer l'ouverture automatique d'un produit spécifique
     React.useEffect(() => {
         if (focusProductId && products.length > 0) {
@@ -2002,7 +2024,7 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
             const totalSeats = firstRowPassengerSeats + (busConfig.rows - 1) * busConfig.seatsPerRow;
 
             // Générer le plan seulement si vide ou si la config a changé
-            if (!newProduct.seatMap || newProduct.seatMap.length === 0 || 
+            if (!newProduct.seatMap || newProduct.seatMap.length === 0 ||
                 newProduct.seatMap.length !== totalSeats) {
                 const seatMap = [];
                 let seatNumber = 1;
@@ -2252,31 +2274,24 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                 return;
             }
 
-            // ✅ NOUVEAU: Pas de limite sur le nombre de vidéos (stockage dans table media)
+            // ✅ PHASE 10: Suppression des contraintes vidéo (taille, durée)
             const result = await ImagePicker.launchImageLibraryAsync({
                 mediaTypes: ImagePicker.MediaTypeOptions.Videos,
                 allowsMultipleSelection: false,
-                quality: 0.5, // ✅ Qualité 50% = Bon compromis visuel/taille
-                videoMaxDuration: 20 // ✅ 20 secondes = Temps suffisant pour démonstration produit
+                quality: 0.5, // Qualité 50% = Bon compromis visuel/taille
+                // ✅ SUPPRIMÉ: videoMaxDuration - Plus de limite de durée
             });
 
             if (!result.canceled && result.assets && result.assets.length > 0) {
                 const asset = result.assets[0];
 
-                // ✅ CORRECTION: Taille max réduite à 5MB pour éviter erreur 413
+                // ✅ PHASE 10: Suppression de la vérification de taille
                 const fileInfo = await FileSystem.getInfoAsync(asset.uri);
                 let videoSizeMB = 0;
 
                 if (fileInfo.exists && 'size' in fileInfo && fileInfo.size) {
                     videoSizeMB = fileInfo.size / (1024 * 1024);
-                    if (videoSizeMB > 5) {
-                        Alert.alert(
-                            'Vidéo trop volumineuse',
-                            `📹 La vidéo fait ${videoSizeMB.toFixed(2)} MB.\n\n⚠️ Maximum : 5 MB et 15 secondes\n\n💡 Solutions :\n- Réduire la résolution (720p ou moins)\n- Raccourcir la vidéo (max 15s)\n- Filmer en qualité moyenne`,
-                            [{ text: 'OK' }]
-                        );
-                        return;
-                    }
+                    // ✅ SUPPRIMÉ: Vérification de taille max - Plus de limite
                 }
 
                 try {
@@ -2294,14 +2309,14 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                     const totalVideos = (newProduct.videos?.length || 0) + 1;
                     Alert.alert(
                         '✅ Vidéo ajoutée',
-                        `Vidéo ajoutée avec succès${videoSizeMB > 0 ? ` (${videoSizeMB.toFixed(2)} MB)` : ''}\n\n🎥 Total : ${totalVideos} vidéo(s) pour ce produit.\n\n💡 Recommandation : Max 15 secondes par vidéo pour une meilleure performance.`,
+                        `Vidéo ajoutée avec succès${videoSizeMB > 0 ? ` (${videoSizeMB.toFixed(2)} MB)` : ''}\n\n🎥 Total : ${totalVideos} vidéo(s) pour ce produit.`,
                         [{ text: 'OK' }]
                     );
                 } catch (err) {
                     console.error('Erreur conversion vidéo:', err);
                     Alert.alert(
                         'Erreur de conversion',
-                        'Impossible de convertir la vidéo. Essayez une vidéo plus courte ou de taille réduite.',
+                        'Impossible de convertir la vidéo. Veuillez réessayer.',
                         [{ text: 'OK' }]
                     );
                 }
@@ -21019,7 +21034,25 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                     <TouchableOpacity
                         style={styles.addButton}
                         onPress={() => {
-                            setCurrentStep('type');
+                            // ✅ CORRECTION: Si des produits existent déjà, ouvrir directement le formulaire avec leur type
+                            if (products.length > 0) {
+                                const existingType = products[0].type as ProductType;
+                                console.log('[ProductManagerMobile] ✅ Produits existants détectés, ouverture directe du formulaire:', existingType);
+                                setSelectedType(existingType);
+                                setCurrentStep('form');
+                                setNewProduct({
+                                    type: existingType,
+                                    nom: '',
+                                    prix: '',
+                                    devise: products[0].devise || 'XAF',  // Reprendre la devise du premier produit
+                                    description: '',
+                                    images: [],
+                                    videos: []
+                                });
+                            } else {
+                                // Sinon, ouvrir le sélecteur de type
+                                setCurrentStep('type');
+                            }
                             setShowAddModal(true);
                         }}
                     >
@@ -21109,26 +21142,83 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                                     ('keywords' in type && type.keywords.some((kw: string) => normalizeText(kw).includes(normalizedQuery)));
                                             });
 
-                                            // ✅ Si aucune catégorie ne correspond et qu'il y a une recherche, proposer "Prestation de service" par défaut
+                                            // ✅ CORRECTION: Ne plus forcer "Prestation de service" si aucun résultat
                                             const hasNoResults = filteredTypes.length === 0 && searchQuery.length > 0;
-                                            if (hasNoResults) {
-                                                const prestationService = PRODUCT_TYPES.find(t => t.value === 'prestation_service');
-                                                if (prestationService) {
-                                                    filteredTypes = [prestationService];
-                                                }
-                                            }
+
+                                            // ✨ NOUVEAU: Séparer les catégories suggérées et les autres
+                                            const suggestedTypeValues = suggestedCategories.map(s => s.type);
+                                            const suggestedTypes = filteredTypes.filter(type => suggestedTypeValues.includes(type.value));
+                                            const otherTypes = filteredTypes.filter(type => !suggestedTypeValues.includes(type.value));
 
                                             return (
                                                 <>
-                                                    {hasNoResults && filteredTypes.length > 0 && (
+                                                    {/* ✨ NOUVEAU: Bloc "SUGGESTIONS POUR VOUS" */}
+                                                    {!searchQuery && suggestedTypes.length > 0 && (
+                                                        <View style={styles.suggestionsBlock}>
+                                                            <View style={styles.suggestionsHeader}>
+                                                                <SafeIcon name="sparkles" size={18} color={modernColors.primary} />
+                                                                <Text style={styles.suggestionsTitle}>✨ Suggestions pour vous</Text>
+                                                            </View>
+                                                            <Text style={styles.suggestionsSubtitle}>
+                                                                Basées sur votre activité ({serviceData?.titre?.valeur || serviceData?.categorie?.valeur})
+                                                            </Text>
+                                                            {suggestedTypes.map((type) => {
+                                                                const suggestion = suggestedCategories.find(s => s.type === type.value);
+                                                                return (
+                                                                    <TouchableOpacity
+                                                                        key={`suggested-${type.value}`}
+                                                                        style={[
+                                                                            styles.dropdownItem,
+                                                                            styles.suggestedItem,
+                                                                            selectedType === type.value && styles.dropdownItemActive
+                                                                        ]}
+                                                                        onPress={() => handleSelectType(type.value as ProductType)}
+                                                                    >
+                                                                        <View style={styles.dropdownItemLeft}>
+                                                                            <View style={styles.suggestedBadge}>
+                                                                                <SafeIcon name="zap" size={12} color="#FFF" />
+                                                                            </View>
+                                                                            <Text style={styles.dropdownIcon}>{type.icon}</Text>
+                                                                            <View style={{ flex: 1 }}>
+                                                                                <View style={styles.suggestedLabelRow}>
+                                                                                    <Text style={[
+                                                                                        styles.dropdownLabel,
+                                                                                        styles.suggestedLabel,
+                                                                                        selectedType === type.value && styles.dropdownLabelActive
+                                                                                    ]}>{type.label}</Text>
+                                                                                    <View style={styles.scoreChip}>
+                                                                                        <Text style={styles.scoreText}>{Math.round(suggestion?.score || 0)} pts</Text>
+                                                                                    </View>
+                                                                                </View>
+                                                                                <Text style={styles.dropdownDescription}>{type.description}</Text>
+                                                                            </View>
+                                                                        </View>
+                                                                        {selectedType === type.value && (
+                                                                            <SafeIcon name="check" size={20} color={modernColors.primary} />
+                                                                        )}
+                                                                    </TouchableOpacity>
+                                                                );
+                                                            })}
+                                                            <View style={styles.suggestionsDivider}>
+                                                                <View style={styles.suggestionsDividerLine} />
+                                                                <Text style={styles.suggestionsDividerText}>Toutes les catégories</Text>
+                                                                <View style={styles.suggestionsDividerLine} />
+                                                            </View>
+                                                        </View>
+                                                    )}
+
+                                                    {/* Message si aucun résultat de recherche */}
+                                                    {hasNoResults && (
                                                         <View style={styles.noResultsHint}>
-                                                            <SafeIcon name="info" size={16} color={modernColors.primary} />
+                                                            <SafeIcon name="search" size={16} color={modernColors.textSecondary} />
                                                             <Text style={styles.noResultsText}>
-                                                                Aucune catégorie ne correspond. Nous vous proposons "Prestation de service" par défaut.
+                                                                Aucune catégorie ne correspond à "{searchQuery}". Essayez un autre terme.
                                                             </Text>
                                                         </View>
                                                     )}
-                                                    {filteredTypes.map((type) => (
+
+                                                    {/* Liste complète des catégories (sans les suggérées si déjà affichées) */}
+                                                    {(searchQuery ? filteredTypes : otherTypes).map((type) => (
                                                         <TouchableOpacity
                                                             key={type.value}
                                                             style={[
@@ -21164,15 +21254,26 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
                                 <View style={styles.stepContainer}>
                                     {/* Badge de type sélectionné */}
                                     <View style={styles.selectedTypeBadge}>
-                                        <Text style={styles.selectedTypeText}>
-                                            {getProductTypeInfo(selectedType).icon} {getProductTypeInfo(selectedType).label}
-                                        </Text>
-                                        <TouchableOpacity
-                                            onPress={() => setCurrentStep('type')}
-                                            style={styles.changeTypeButton}
-                                        >
-                                            <Text style={styles.changeTypeText}>Changer</Text>
-                                        </TouchableOpacity>
+                                        <View style={{ flex: 1 }}>
+                                            <Text style={styles.selectedTypeText}>
+                                                {getProductTypeInfo(selectedType).icon} {getProductTypeInfo(selectedType).label}
+                                            </Text>
+                                            {/* ✅ NOUVEAU: Message si catégorie verrouillée */}
+                                            {products.length > 0 && !editingProductId && (
+                                                <Text style={styles.lockedCategoryHint}>
+                                                    🔒 Catégorie verrouillée : tous les produits doivent avoir la même catégorie
+                                                </Text>
+                                            )}
+                                        </View>
+                                        {/* ✅ CORRECTION: Bloquer le changement si des produits existent */}
+                                        {(products.length === 0 || editingProductId) && (
+                                            <TouchableOpacity
+                                                onPress={() => setCurrentStep('type')}
+                                                style={styles.changeTypeButton}
+                                            >
+                                                <Text style={styles.changeTypeText}>Changer</Text>
+                                            </TouchableOpacity>
+                                        )}
                                     </View>
 
                                     {/* Bouton télécharger modèle Excel */}
@@ -22193,6 +22294,89 @@ const styles = StyleSheet.create({
         color: modernColors.textSecondary,
         marginTop: 2,
     },
+    // ✨ NOUVEAU: Styles pour les suggestions intelligentes
+    suggestionsBlock: {
+        backgroundColor: '#F0F9FF',
+        borderBottomWidth: 2,
+        borderBottomColor: modernColors.primary,
+        padding: 12,
+    },
+    suggestionsHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        marginBottom: 4,
+    },
+    suggestionsTitle: {
+        fontSize: 15,
+        fontWeight: '700',
+        color: modernColors.primary,
+    },
+    suggestionsSubtitle: {
+        fontSize: 10,
+        color: modernColors.textSecondary,
+        marginBottom: 12,
+    },
+    suggestedItem: {
+        backgroundColor: '#FFFFFF',
+        marginBottom: 8,
+        borderRadius: 10,
+        borderWidth: 2,
+        borderColor: modernColors.primary,
+        shadowColor: modernColors.primary,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 3,
+    },
+    suggestedBadge: {
+        backgroundColor: modernColors.primary,
+        borderRadius: 12,
+        width: 20,
+        height: 20,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    suggestedLabelRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 8,
+        marginBottom: 2,
+    },
+    suggestedLabel: {
+        fontWeight: '600',
+        flex: 0,
+    },
+    scoreChip: {
+        backgroundColor: '#DBEAFE',
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: 8,
+    },
+    scoreText: {
+        fontSize: 9,
+        fontWeight: '700',
+        color: modernColors.primary,
+    },
+    suggestionsDivider: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginTop: 8,
+        marginBottom: 4,
+    },
+    suggestionsDividerLine: {
+        flex: 1,
+        height: 1,
+        backgroundColor: modernColors.border,
+    },
+    suggestionsDividerText: {
+        fontSize: 10,
+        fontWeight: '600',
+        color: modernColors.textSecondary,
+        marginHorizontal: 12,
+        textTransform: 'uppercase',
+    },
     selectedTypeBadge: {
         flexDirection: 'row',
         justifyContent: 'space-between',
@@ -22207,6 +22391,13 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontWeight: '600',
         color: modernColors.primary,
+    },
+    lockedCategoryHint: {
+        fontSize: 10,
+        fontWeight: '500',
+        color: modernColors.textSecondary,
+        marginTop: 4,
+        fontStyle: 'italic',
     },
     changeTypeButton: {
         paddingHorizontal: 12,

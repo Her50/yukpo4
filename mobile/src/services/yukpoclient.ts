@@ -56,6 +56,10 @@ export async function genererSuggestionsService(input: any): Promise<IAResponseW
     pdf_base64: input.pdf_base64 || []
   };
 
+  // ✅ CORRECTION: Ajouter un timeout pour éviter les connexions fermées (499)
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s pour appel IA
+
   try {
     console.log('[yukpoclient] Appel /api/ia/creation-service (comme le frontend)...');
     const iaResponse = await fetch(`${API_BASE_URL}/api/ia/creation-service`, {
@@ -65,7 +69,10 @@ export async function genererSuggestionsService(input: any): Promise<IAResponseW
         'Authorization': `Bearer ${token}`
       },
       body: JSON.stringify(serviceRequest),
+      signal: controller.signal,
     });
+
+    clearTimeout(timeoutId);
 
     if (!iaResponse.ok) {
       const errorData = await iaResponse.json().catch((error) => {
@@ -106,6 +113,11 @@ export async function genererSuggestionsService(input: any): Promise<IAResponseW
       headers: iaResponse.headers
     };
   } catch (error: any) {
+    clearTimeout(timeoutId);
+    if (error.name === 'AbortError') {
+      console.error('[yukpoclient] Timeout lors de l\'appel IA (60 secondes)');
+      throw new Error('Timeout: La génération des suggestions a pris trop de temps (60 secondes). Vérifiez votre connexion internet.');
+    }
     console.error('[yukpoclient] Erreur génération suggestions:', error);
     throw error;
   }
@@ -187,13 +199,13 @@ export async function creerService(donneesStructurees: any, tokensIAExterne?: nu
 
   try {
     console.log('[yukpoclient] Création service...');
-    
+
     // ✅ CORRECTION: Ajouter tokens_ia_externe DANS le champ data, pas à la racine
     const serviceData = { ...donneesStructurees };
     if (tokensIAExterne) {
       serviceData.tokens_ia_externe = tokensIAExterne;
     }
-    
+
     const response = await fetch(`${API_BASE_URL}/api/services/create`, {
       method: 'POST',
       headers: {

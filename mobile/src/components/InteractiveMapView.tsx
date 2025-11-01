@@ -236,12 +236,12 @@ const InteractiveMapView: React.FC<InteractiveMapViewProps> = ({
                 {renderZoneOverlay()}
             </MapView>
 
-            {/* ✅ REFONTE: Contrôles de carte simplifiés et clairs */}
-            <View style={styles.mapControls}>
+            {/* ✅ REFONTE: Indicateur de mode en haut à gauche */}
+            <View style={styles.modeIndicatorLeft}>
                 {/* Indicateur de mode - AMÉLIORÉ */}
                 <View style={styles.modeIndicator}>
                     <SafeIcon
-                        name={zoneType === 'point' ? "map-pin" : "square"}
+                        name={zoneType === 'point' ? "circle" : "maximize"}
                         size={14}
                         color={modernColors.primary}
                     />
@@ -249,6 +249,10 @@ const InteractiveMapView: React.FC<InteractiveMapViewProps> = ({
                         {zoneType === 'point' ? 'Point précis' : `Zone (${localPolygonPoints.length} pts)`}
                     </Text>
                 </View>
+            </View>
+
+            {/* Contrôles de carte à droite */}
+            <View style={styles.mapControls}>
 
                 {/* ✅ Contrôles de zoom avec labels */}
                 <View style={styles.zoomControls}>
@@ -363,6 +367,12 @@ const styles = StyleSheet.create({
         color: '#6B7280',
         fontWeight: '500',
     },
+    modeIndicatorLeft: {
+        position: 'absolute',
+        top: 16,
+        left: 16,
+        zIndex: 10,
+    },
     mapControls: {
         position: 'absolute',
         top: 16,
@@ -373,15 +383,15 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         backgroundColor: 'rgba(255, 255, 255, 0.95)',
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        borderRadius: 4,
-        gap: 4,
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        borderRadius: 6,
+        gap: 6,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
+        shadowOpacity: 0.15,
         shadowRadius: 4,
-        elevation: 2,
+        elevation: 3,
     },
     modeText: {
         fontSize: 12,

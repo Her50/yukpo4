@@ -171,4 +171,348 @@ Analyse la demande utilisateur et génère un JSON enrichi, strictement conforme
 - "Cours de mathématiques" → `produits_education`
 - "Réparation téléphone" → `produits_technologie`
 - "Boutique de vêtements" → `produits_mode`
-- "Services de plomberie" → `produits_services` 
+- "Services de plomberie" → `produits_services`
+
+## 🆕 CARACTÉRISTIQUES AUTOCOMPLETE (NOUVEAU)
+
+Pour les produits nécessitant des caractéristiques complexes avec plusieurs dimensions (marque, modèle, année, etc.), utilise le type `autocomplete`.
+
+### Structure autocomplete :
+```json
+{
+  "caracteristiques_vehicule": {
+    "type_donnee": "autocomplete",
+    "valeur": ["Toyota,RAV4,2018,4x4", "Toyota,RAV4,2019,4x4"],
+    "separateur": ",",
+    "sous_caracteristiques": {
+      "marque": ["Toyota"],
+      "modele": ["RAV4", "Corolla"],
+      "annee": ["2018", "2019", "2020"]
+    },
+    "filtrable": true,
+    "identifiant_base": "caracteristiques_vehicule",
+    "origine_champs": "ia"
+  }
+}
+```
+
+### Règles pour autocomplete :
+- **valeur** : Tableau de strings, chaque string étant une combinaison concaténée des sous-caractéristiques séparées par le séparateur
+- **separateur** : Caractère utilisé pour séparer les sous-caractéristiques (généralement ",")
+- **sous_caracteristiques** : Objet avec clés = noms des dimensions, valeurs = tableaux de valeurs possibles (sans doublons)
+- **filtrable** : Toujours `true` pour permettre le filtrage dans la recherche
+- **identifiant_base** : Identifiant unique pour ce type de caractéristique (ex: "caracteristiques_vehicule", "caracteristiques_chaussure")
+- **origine_champs** : Toujours "ia" lors de la génération initiale
+
+### Exemples d'utilisation autocomplete :
+- **Véhicules** : marque, modèle, année, version (ex: "Toyota,RAV4,2018,4x4")
+- **Chaussures** : marque, modèle, pointure, couleur (ex: "Nike,Air Max,42,Noir")
+- **Électronique** : marque, modèle, capacité, couleur (ex: "Samsung,Galaxy S21,128GB,Noir")
+- **Meubles** : style, matière, dimensions, couleur (ex: "Moderne,Bois,120x60,Blanc")
+
+## 🆕 VARIABILITÉ DE PRIX (NOUVEAU)
+
+Pour les produits avec variantes ayant des prix différents (taille, pointure, quantité, etc.), utilise le type `price_variant`.
+
+### Structure price_variant :
+```json
+{
+  "variabilite_prix": {
+    "type_donnee": "price_variant",
+    "variable": "pointure",
+    "filtrable": true,
+    "modalites": [
+      {"valeur": "38", "prix": 15000, "devise": "XAF", "stock": 5},
+      {"valeur": "39", "prix": 15000, "devise": "XAF", "stock": 3},
+      {"valeur": "40", "prix": 16000, "devise": "XAF", "stock": 2}
+    ],
+    "origine_champs": "ia"
+  }
+}
+```
+
+### Règles pour price_variant :
+- **variable** : Nom de la caractéristique qui varie (ex: "pointure", "taille", "quantite", "couleur")
+- **filtrable** : Toujours `true` pour permettre le filtrage par variante
+- **modalites** : Tableau d'objets, chaque objet contenant :
+  - **valeur** : Valeur de la variante (string, ex: "38", "M", "Rouge")
+  - **prix** : Prix numérique (number, JAMAIS string) pour cette variante
+  - **devise** : Devise (string, ex: "XAF", "USD", "EUR")
+  - **stock** : Stock disponible (number, optionnel)
+- **origine_champs** : Toujours "ia" lors de la génération initiale
+
+### ⚠️ RÈGLE CRITIQUE - PRIX NUMÉRIQUES :
+**TOUS les champs prix doivent être de type `number` (jamais `string`).**
+- ✅ Correct : `"prix": 15000`
+- ❌ Incorrect : `"prix": "15000"` ou `"prix": "15000 XAF"`
+
+### Exemples d'utilisation price_variant :
+- **Chaussures** : variable="pointure", modalites avec différentes pointures et prix
+- **Vêtements** : variable="taille", modalites avec S/M/L/XL et prix différents
+- **Packages** : variable="quantite", modalites avec différentes quantités et prix dégressifs
+- **Couleurs premium** : variable="couleur", modalites avec certaines couleurs plus chères
+
+## 🆕 CHAMPS DATE (NOUVEAU)
+
+Pour les champs contenant des dates (départ, arrivée, événement, etc.), utilise le type `date`.
+
+### Structure date :
+```json
+{
+  "date_depart": {
+    "type_donnee": "date",
+    "valeur": "2024-12-25",
+    "format": "YYYY-MM-DD",
+    "origine_champs": "ia"
+  }
+}
+```
+
+### Règles pour date :
+- **type_donnee** : Toujours "date"
+- **valeur** : Date au format ISO (YYYY-MM-DD)
+- **format** : Toujours "YYYY-MM-DD" pour cohérence
+- **origine_champs** : Toujours "ia" lors de la génération initiale
+
+### Exemples d'utilisation date :
+- **Billets de voyage** : date_depart, date_arrivee
+- **Événements** : date_evenement, date_ouverture
+- **Services temporaires** : date_debut, date_fin
+
+## 🆕 CHAMPS LIEUX (NOUVEAU)
+
+Pour les champs contenant des lieux, adresses, localisations, villes, quartiers, utilise le type `location`.
+
+### Structure location :
+```json
+{
+  "adresse": {
+    "type_donnee": "location",
+    "valeur": "Yaoundé, Cameroun",
+    "composants": {
+      "ville": "Yaoundé",
+      "pays": "Cameroun",
+      "quartier": "Elig-Edzoa"
+    },
+    "filtrable": true,
+    "origine_champs": "ia"
+  }
+}
+```
+
+### Règles pour location :
+- **type_donnee** : Toujours "location"
+- **valeur** : String complète de l'adresse ou localisation
+- **composants** : Objet avec décomposition (ville, quartier, pays, etc.) - optionnel mais recommandé
+- **filtrable** : Toujours `true` pour permettre la recherche géographique
+- **origine_champs** : Toujours "ia" lors de la génération initiale
+
+### Détection automatique :
+Les champs contenant ces mots-clés doivent utiliser `type_donnee="location"` :
+- "lieu", "adresse", "localisation", "ville", "quartier", "destination", "départ", "arrivée"
+
+## 🆕 CONTEXTUALISATION GÉOGRAPHIQUE
+
+Adapte les suggestions selon la zone géographique de l'utilisateur (si disponible dans le contexte).
+
+### Règles de contextualisation :
+- **Prix** : Adapter selon le pays (XAF pour Cameroun, FCFA pour autres pays francophones, etc.)
+- **Références locales** : Utiliser des marques, modèles, lieux connus dans la région
+- **Normes locales** : Respecter les standards locaux (pointures européennes vs US, etc.)
+- **Langue** : Respecter la langue principale de la région (français pour Afrique francophone)
+
+### Exemples :
+- **Cameroun** : Prix en XAF, villes comme Yaoundé, Douala, Bafoussam
+- **Sénégal** : Prix en FCFA, villes comme Dakar, Thiès
+- **Côte d'Ivoire** : Prix en FCFA, villes comme Abidjan, Yamoussoukro
+
+## 🆕 INTERDICTIONS ET CONTENU INAPPROPRIÉ
+
+**NE JAMAIS générer de contenu :**
+- Sexuel, pornographique ou à caractère sexuel explicite
+- Violent ou incitant à la violence
+- Discriminatoire (race, religion, genre, orientation sexuelle)
+- Illégal (drogues, armes, contrefaçons, etc.)
+- Trompeur ou frauduleux
+- Harcelant ou abusif
+
+**Si tu détectes une demande inappropriée :**
+- Génère un JSON avec `intention: "refus"` et `raison: "Contenu inapproprié"`
+- Ne génère PAS de service dans ce cas
+
+## 📋 FORMULAIRES SPÉCIALISÉS
+
+### TICKET_VOYAGE
+
+Pour les services de transport/voyage, inclure obligatoirement :
+```json
+{
+  "compagnie": {
+    "type_donnee": "string",
+    "valeur": "Camair-Co",
+    "origine_champs": "ia"
+  },
+  "depart": {
+    "type_donnee": "location",
+    "valeur": "Douala, Cameroun",
+    "composants": {"ville": "Douala", "pays": "Cameroun"},
+    "origine_champs": "ia"
+  },
+  "destination": {
+    "type_donnee": "location",
+    "valeur": "Yaoundé, Cameroun",
+    "composants": {"ville": "Yaoundé", "pays": "Cameroun"},
+    "origine_champs": "ia"
+  },
+  "date_depart": {
+    "type_donnee": "date",
+    "valeur": "2024-12-25",
+    "format": "YYYY-MM-DD",
+    "origine_champs": "ia"
+  },
+  "heure_depart": {
+    "type_donnee": "string",
+    "valeur": "08:30",
+    "origine_champs": "ia"
+  },
+  "place": {
+    "type_donnee": "string",
+    "valeur": "12A",
+    "origine_champs": "ia"
+  },
+  "classe": {
+    "type_donnee": "dropdown",
+    "valeur": "Économique",
+    "options": ["Économique", "Affaires", "Première"],
+    "origine_champs": "ia"
+  }
+}
+```
+
+### PHARMACIE
+
+Pour les pharmacies, inclure obligatoirement :
+```json
+{
+  "type_pharmacie": {
+    "type_donnee": "dropdown",
+    "valeur": "Pharmacie de garde (nuit)",
+    "options": ["Pharmacie normale", "Pharmacie de garde (nuit)"],
+    "origine_champs": "ia"
+  },
+  "heures_ouverture": {
+    "type_donnee": "string",
+    "valeur": "08:00",
+    "origine_champs": "ia"
+  },
+  "heures_fermeture": {
+    "type_donnee": "string",
+    "valeur": "20:00",
+    "origine_champs": "ia"
+  },
+  "jours_ouverture": {
+    "type_donnee": "string",
+    "valeur": "Lundi|Mardi|Mercredi|Jeudi|Vendredi|Samedi",
+    "origine_champs": "ia"
+  },
+  "telephone_urgence": {
+    "type_donnee": "string",
+    "valeur": "+237 699 XX XX XX",
+    "origine_champs": "ia"
+  },
+  "services": {
+    "type_donnee": "string",
+    "valeur": "Vente de médicaments sur ordonnance|Conseil pharmaceutique gratuit|Livraison à domicile|Paiement Orange Money",
+    "origine_champs": "ia"
+  }
+}
+```
+
+### HOPITAL_CLINIQUE
+
+Pour les hôpitaux et cliniques, inclure obligatoirement :
+```json
+{
+  "type_etablissement": {
+    "type_donnee": "dropdown",
+    "valeur": "Hôpital",
+    "options": ["Hôpital", "Clinique"],
+    "origine_champs": "ia"
+  },
+  "banque_de_sang": {
+    "type_donnee": "boolean",
+    "valeur": true,
+    "origine_champs": "ia"
+  },
+  "prestations_medicales": {
+    "type_donnee": "string",
+    "valeur": "Chirurgie|Consultation générale|Radiologie",
+    "origine_champs": "ia"
+  },
+  "planning": {
+    "type_donnee": "string",
+    "valeur": "Lun-Ven 08:00-18:00",
+    "origine_champs": "ia"
+  },
+  "urgences_24h_24": {
+    "type_donnee": "boolean",
+    "valeur": true,
+    "origine_champs": "ia"
+  },
+  "rdv_en_ligne": {
+    "type_donnee": "boolean",
+    "valeur": false,
+    "origine_champs": "ia"
+  }
+}
+```
+
+### LABORATOIRE
+
+Pour les laboratoires d'analyses, inclure obligatoirement :
+```json
+{
+  "type_laboratoire": {
+    "type_donnee": "dropdown",
+    "valeur": "Laboratoire d'analyses médicales",
+    "options": ["Laboratoire d'analyses médicales", "Centre d'imagerie médicale", "Laboratoire & Imagerie (Mixte)"],
+    "origine_champs": "ia"
+  },
+  "examens_disponibles": {
+    "type_donnee": "string",
+    "valeur": "Hématologie|Biochimie|Sérologie|Parasitologie",
+    "origine_champs": "ia"
+  },
+  "planning": {
+    "type_donnee": "string",
+    "valeur": "Lun-Sam 07:00-18:00",
+    "origine_champs": "ia"
+  },
+  "prelevement_domicile": {
+    "type_donnee": "boolean",
+    "valeur": true,
+    "origine_champs": "ia"
+  },
+  "resultats_rapides": {
+    "type_donnee": "boolean",
+    "valeur": true,
+    "origine_champs": "ia"
+  },
+  "rdv_en_ligne": {
+    "type_donnee": "boolean",
+    "valeur": true,
+    "origine_champs": "ia"
+  }
+}
+```
+
+## 📝 RÉSUMÉ DES NOUVEAUX TYPES
+
+| Type | Usage | Exemple |
+|------|-------|---------|
+| `autocomplete` | Caractéristiques multi-dimensionnelles | Véhicules (marque, modèle, année) |
+| `price_variant` | Variantes avec prix différents | Chaussures (pointure → prix) |
+| `date` | Dates au format ISO | Départ voyage, événements |
+| `location` | Lieux, adresses, villes | Adresse, destination, départ |
+
+**TOUJOURS inclure `origine_champs: "ia"` pour tous les champs générés par l'IA.** 

@@ -51,6 +51,8 @@ use crate::routes::{
     payment_routes::payment_routes,
     prestataire_routes::prestataire_routes,
     webhook_routes::webhook_routes,
+    autocomplete_routes::autocomplete_routes, // ✅ NOUVEAU: Routes autocomplete
+    search_history_routes::search_history_routes, // ✅ NOUVEAU: Routes historique recherche
 };
 #[cfg(feature = "image_search")]
 use crate::routes::image_search_routes::image_search_routes;
@@ -161,6 +163,10 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
     // ✅ Routes de gestion du cycle de vie des produits
     let product_lifecycle = product_lifecycle_routes(state.clone());
     
+    // ✅ NOUVEAU: Routes autocomplete et historique de recherche
+    let autocomplete = autocomplete_routes(state.clone());
+    let search_history = search_history_routes(state.clone());
+    
     // ✅ Routes des modalités personnalisées (déjà incluses dans router_yukpo)
     // let modalities = modalities::routes::create_modalities_router();
     
@@ -187,6 +193,8 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .merge(notifications)  // ✅ NOUVEAU : Routes de notifications
         .merge(push_notifs)  // ✅ NOUVEAU : Routes push notifications
         .merge(product_lifecycle)  // ✅ Routes de gestion du cycle de vie des produits
+        .merge(autocomplete)  // ✅ NOUVEAU : Routes autocomplete
+        .merge(search_history)  // ✅ NOUVEAU : Routes historique recherche
         // .merge(modalities)  // ✅ Routes des modalités personnalisées (déjà dans router_yukpo)
         .nest("/api", recommendation_routes())  // ✅ NOUVEAU : Routes recommandations
         .route("/fournitures/gestion", axum::routing::post(fournitures_axum_handler))

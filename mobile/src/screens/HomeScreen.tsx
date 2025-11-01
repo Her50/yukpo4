@@ -16,10 +16,12 @@ import UserAvatarMenu from '../components/UserAvatarMenu';
 import { CRASH_PREVENTION_CONFIG } from '../config/gpsConfig';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguageSafe } from '../contexts/LanguageContext';
+import { useLocation } from '../contexts/LocationContext';
 import { apiGet } from '../services/api';
+import { searchHistoryService } from '../services/searchHistoryService';
 import userBehaviorService from '../services/userBehaviorService';
 import { genererSuggestionsService, rechercherServices } from '../services/yukpoclient';
-import { debugNotifications, cleanupGhostNotifications, printNotificationReport } from '../utils/debugNotifications';
+import { cleanupGhostNotifications, debugNotifications, printNotificationReport } from '../utils/debugNotifications';
 
 const { Alert, Dimensions, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View, KeyboardAvoidingView, Platform } = ReactNative;
 
@@ -29,6 +31,7 @@ const HomeScreen: React.FC = () => {
     const navigation = ReactNavigation.useNavigation();
     const { user, refreshUser } = useAuth(); // ✅ Ajout de refreshUser
     const { language, setLanguage, t } = useLanguageSafe(); // ✅ SAFE: Context de langue avec traduction (ne crash jamais)
+    const { location } = useLocation(); // ✅ NOUVEAU PHASE 9: Pour contextualiser les recherches géographiques
     const scrollViewRef = React.useRef<ScrollView>(null); // ✅ NOUVEAU: Référence pour scroll automatique
 
     // Debug pour vérifier les données utilisateur
@@ -80,7 +83,7 @@ const HomeScreen: React.FC = () => {
                     const response = await apiGet<{ count: number }>(`/api/notifications/user/${user.id}/unread-count`);
                     if (response.data && typeof response.data.count === 'number') {
                         setUnreadNotificationsCount(response.data.count);
-                        
+
                         // ✅ DÉBOGAGE: Si count > 0, vérifier qu'il y a vraiment des notifications
                         if (__DEV__ && response.data.count > 0) {
                             console.log('[HomeScreen] 🔔 Notifications non lues détectées:', response.data.count);
@@ -123,15 +126,15 @@ const HomeScreen: React.FC = () => {
             clearInterval(interval);
         };
     }, [user?.id, showNotificationModal]);
-    
+
     // ✅ NOUVEAU: Fonction pour déboguer et nettoyer les notifications fantômes
     const handleDebugNotifications = async () => {
         if (!user?.id) return;
-        
+
         try {
             console.log('[HomeScreen] 🔍 Démarrage du débogage des notifications...');
             await printNotificationReport(String(user.id));
-            
+
             Alert.alert(
                 '🔍 Débogage des notifications',
                 'Voulez-vous nettoyer les notifications fantômes ?\n\nCela va marquer toutes les notifications comme lues et réinitialiser le compteur.',
@@ -267,6 +270,21 @@ const HomeScreen: React.FC = () => {
                 await userBehaviorService.trackSearch(input.texte);
             }
 
+            // ✅ NOUVEAU PHASE 9: Enregistrer la recherche dans l'historique (en arrière-plan, ne bloque pas)
+            const searchQuery = input.texte || input.text || '';
+            if (searchQuery) {
+                searchHistoryService.recordSearch(
+                    searchQuery,
+                    input.base64_image?.length > 0 ? 'image' : 'text',
+                    {
+                        location_lat: location?.lat,
+                        location_lon: location?.lon,
+                    }
+                ).catch((error) => {
+                    console.error('[HomeScreen] Erreur enregistrement historique recherche:', error);
+                });
+            }
+
             // Utiliser yukpoclient (comme le frontend)
             const result = await rechercherServices(input);
 
@@ -378,7 +396,8 @@ const HomeScreen: React.FC = () => {
                 suggestion: result,
                 imageSearch: result?.search_method === 'image_ai',
                 imageAnalysis: result?.image_analysis || null,
-                billing: result?.billing || null
+                billing: result?.billing || null,
+                searchQuery: searchQuery // ✅ NOUVEAU PHASE 9: Passer la requête de recherche pour l'historique
             });
 
             console.log('[HomeScreen] Navigation déclenchée ✅');
