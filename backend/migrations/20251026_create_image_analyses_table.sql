@@ -161,116 +161,9 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql IMMUTABLE;
 
--- Fonction de recherche hybride intelligente
-CREATE OR REPLACE FUNCTION hybrid_image_search(
-    search_tags TEXT[],
-    search_category TEXT DEFAULT NULL,
-    search_marque TEXT DEFAULT NULL,
-    search_couleur TEXT DEFAULT NULL,
-    search_description TEXT DEFAULT NULL,
-    gps_lat FLOAT DEFAULT NULL,
-    gps_lng FLOAT DEFAULT NULL,
-    search_radius_km INTEGER DEFAULT 50,
-    max_results INTEGER DEFAULT 20
-)
-RETURNS TABLE (
-    analysis_id INTEGER,
-    service_id INTEGER,
-    media_id INTEGER,
-    product_description TEXT,
-    product_tags TEXT[],
-    product_marque TEXT,
-    product_couleurs TEXT[],
-    match_score FLOAT,
-    distance_km FLOAT,
-    service_data JSONB
-) AS $$
-BEGIN
-    RETURN QUERY
-    WITH filtered_analyses AS (
-        SELECT 
-            ia.id,
-            ia.service_id,
-            ia.media_id,
-            ia.description,
-            ia.tags,
-            ia.marque,
-            ia.couleurs,
-            ia.caracteristiques_cles,
-            s.data as service_data,
-            s.gps,
-            CASE 
-                WHEN gps_lat IS NOT NULL AND gps_lng IS NOT NULL AND s.gps IS NOT NULL THEN
-                    ST_Distance(
-                        ST_SetSRID(ST_MakePoint(gps_lng, gps_lat), 4326)::geography,
-                        ST_SetSRID(ST_GeomFromText(s.gps), 4326)::geography
-                    ) / 1000.0
-                ELSE NULL
-            END as distance_km
-        FROM image_analyses ia
-        JOIN services s ON s.id = ia.service_id
-        WHERE ia.analysis_type = 'cataloging'  -- Seulement les produits catalogués
-          AND s.is_active = true
-          AND (
-              -- Filtres de base
-              search_category IS NULL OR ia.category_detected = search_category
-          )
-          AND (
-              -- Au moins une correspondance pour filtrage initial
-              search_marque IS NULL OR ia.marque IS NOT NULL
-              OR search_couleur IS NULL OR ia.couleurs IS NOT NULL
-              OR array_length(search_tags, 1) IS NULL OR ia.tags IS NOT NULL
-          )
-          AND (
-              -- Filtre GPS si fourni
-              gps_lat IS NULL OR gps_lng IS NULL OR s.gps IS NULL
-              OR ST_DWithin(
-                  ST_SetSRID(ST_MakePoint(gps_lng, gps_lat), 4326)::geography,
-                  ST_SetSRID(ST_GeomFromText(s.gps), 4326)::geography,
-                  search_radius_km * 1000
-              )
-          )
-    ),
-    scored_results AS (
-        SELECT 
-            fa.id as analysis_id,
-            fa.service_id,
-            fa.media_id,
-            fa.description as product_description,
-            fa.tags as product_tags,
-            fa.marque as product_marque,
-            fa.couleurs as product_couleurs,
-            calculate_image_match_score(
-                search_tags,
-                search_marque,
-                search_couleur,
-                search_description,
-                fa.tags,
-                fa.marque,
-                fa.couleurs,
-                fa.description
-            ) as match_score,
-            fa.distance_km,
-            fa.service_data
-        FROM filtered_analyses fa
-    )
-    SELECT 
-        sr.analysis_id,
-        sr.service_id,
-        sr.media_id,
-        sr.product_description,
-        sr.product_tags,
-        sr.product_marque,
-        sr.product_couleurs,
-        sr.match_score,
-        sr.distance_km,
-        sr.service_data
-    FROM scored_results sr
-    WHERE sr.match_score > 10.0  -- Seuil minimum de pertinence
-    ORDER BY sr.match_score DESC, sr.distance_km ASC NULLS LAST
-    LIMIT max_results;
-END;
-$$ LANGUAGE plpgsql STABLE;
+-- ⚠️ NOTE: La fonction hybrid_image_search est créée dans la migration 20250122_create_hybrid_image_search_function.sql
+-- Cette migration crée uniquement la table image_analyses et la fonction helper calculate_image_match_score
+-- La fonction hybrid_image_search correcte (avec search_query_semantic) sera créée/remplacée par la migration 20250122
 
 -- ============================================
 -- TRIGGER pour mettre à jour updated_at
@@ -312,5 +205,5 @@ COMMENT ON COLUMN image_analyses.tokens_consumed IS 'Nombre de tokens consommés
 COMMENT ON COLUMN image_analyses.cost_usd IS 'Coût de l''analyse en USD';
 
 COMMENT ON FUNCTION calculate_image_match_score IS 'Calcule un score de matching multi-critères entre recherche et produit';
-COMMENT ON FUNCTION hybrid_image_search IS 'Recherche hybride intelligente avec scoring composite et filtrage GPS';
+-- NOTE: La fonction hybrid_image_search est définie dans 20250122_create_hybrid_image_search_function.sql
 

@@ -313,7 +313,12 @@ const NotificationHistoryModal: React.FC<NotificationHistoryModalProps> = ({
             />
           </View>
 
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filtersScroll}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.filtersScroll}
+            contentContainerStyle={styles.filtersScrollContent}
+          >
             <TouchableOpacity
               style={[styles.filterChip, filterType === 'all' && styles.filterChipActive]}
               onPress={() => setFilterType('all')}
@@ -532,8 +537,12 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   filtersScroll: {
-    paddingHorizontal: 16,
     paddingBottom: 16,
+  },
+  filtersScrollContent: {
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   filterChip: {
     paddingHorizontal: 12,

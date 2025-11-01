@@ -169,7 +169,12 @@ function createFieldComponent(fieldName: string, fieldData: any): DynamicField |
     experience: 'Expérience',
     certifications: 'Certifications',
     langues: 'Langues',
-    gps_fixe: 'Position GPS fixe'
+    gps_fixe: 'Position GPS fixe',
+    nom_produit: 'Nom du produit/prestation',
+    categorie_produit: 'Catégorie du produit/prestation',
+    description_produit: 'Description du produit/prestation',
+    prix_produit: 'Prix du produit/prestation',
+    devise_produit: 'Devise'
   };
 
   const label = fieldLabels[fieldName] || fieldName;

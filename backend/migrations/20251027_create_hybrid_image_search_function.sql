@@ -1,7 +1,8 @@
 -- Migration pour créer la fonction hybrid_image_search
 -- Combine recherche dans image_analyses ET media.ai_* pour matching amélioré
--- Date: 2025-01-22
+-- Date: 2025-10-27 (renommée depuis 2025-01-22 pour être appliquée APRÈS 20251026)
 -- Compatible avec sqlx offline mode
+-- IMPORTANT: Cette migration doit être appliquée APRÈS 20251026_create_image_analyses_table.sql
 
 -- Fonction helper pour calculer la distance GPS (formule Haversine)
 -- Compatible sqlx offline - utilise uniquement des fonctions PostgreSQL standard

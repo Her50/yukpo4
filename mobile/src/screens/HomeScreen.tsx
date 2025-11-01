@@ -638,7 +638,6 @@ const HomeScreen: React.FC = () => {
                     <View>
                         {/* ✅ TITRE SECTION CAROUSEL */}
                         <View style={styles.carouselHeader}>
-                            <Text style={styles.carouselTitle}>🎯 Découvrir pour vous</Text>
                             <Text style={styles.carouselSubtitle}>Produits et services recommandés</Text>
                         </View>
 

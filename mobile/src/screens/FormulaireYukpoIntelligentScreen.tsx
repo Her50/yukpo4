@@ -196,7 +196,12 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         blocks[2].fields.push(field);
       }
       // Bloc Produits
-      else if (['liste_produits', 'produits'].includes(fieldName)) {
+      // ✅ CORRECTION: Ne plus dépendre de la présence d'un champ produits de l'IA
+      // Le bloc produits sera toujours présent avec un champ par défaut (voir plus bas)
+      // ✅ AJOUT: price_variant (variabilite_prix) va aussi dans le bloc produits
+      // ✅ IMPORTANT: Les champs spécifiques au produit (nom_produit, categorie_produit, description_produit, prix_produit, devise_produit)
+      //    vont dans le bloc Produits, PAS dans Informations générales (qui contient titre_service, category, description)
+      else if (['liste_produits', 'produits', 'listeproduit', 'variabilite_prix', 'price_variant', 'nom_produit', 'categorie_produit', 'description_produit', 'prix_produit', 'devise_produit'].includes(fieldName) || field.typeDonnee === 'price_variant') {
         blocks[3].fields.push(field);
       }
       // Bloc Médias
@@ -217,9 +222,191 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     // Car ils utilisent des composants spécialisés
     const blocksWithFixedOnes = [...blocks];
 
-    // ✅ SUPPRIMÉ: Bloc produits géré directement par les champs dynamiques
-    // Les produits sont maintenant gérés via les champs autocomplete et price_variant
-    // Le bloc produits sera créé automatiquement si des champs produits sont présents
+    // ✅ CORRECTION: Le bloc produits doit TOUJOURS être présent, indépendamment de ce que génère l'IA
+    // Car l'IA ne génère le champ produits que dans certains cas (tableaux, plusieurs produits visibles)
+    // Mais TOUS les services peuvent contenir des produits/prestations
+    const productsBlock = blocksWithFixedOnes.find(b => b.id === 'products');
+
+    // ✅ RÈGLE ABSOLUE: Toujours créer/garantir le bloc produits avec autocomplete + champs spécifiques produits
+    if (!productsBlock) {
+      // Si le bloc n'existe pas du tout, le créer avec les champs par défaut
+      const defaultProductsFields: DynamicField[] = [
+        {
+          name: 'nom_produit',
+          type: 'text',
+          typeDonnee: 'string',
+          label: 'Nom du produit',
+          required: false,
+          placeholder: 'Ex: iPhone 14 Pro Max, Toyota RAV4 2018...',
+          value: ''
+        },
+        {
+          name: 'categorie_produit',
+          type: 'text',
+          typeDonnee: 'string',
+          label: 'Catégorie du produit',
+          required: false,
+          placeholder: 'Ex: Smartphone, Véhicule 4x4, Chaussure de sport...',
+          value: ''
+        },
+        {
+          name: 'description_produit',
+          type: 'textarea',
+          typeDonnee: 'string',
+          label: 'Description du produit',
+          required: false,
+          placeholder: 'Décrivez les caractéristiques spécifiques du produit...',
+          value: ''
+        },
+        {
+          name: 'produits',
+          type: 'autocomplete',
+          typeDonnee: 'autocomplete',
+          label: 'Caractéristiques détaillées (marque, modèle, année, etc.)',
+          required: false,
+          placeholder: 'Ajouter des caractéristiques...',
+          identifiantBase: 'produits',
+          sousCaracteristiques: {
+            marque: [],
+            modele: [],
+            annee: [],
+            version: [],
+            competences: [],
+            experience: []
+          },
+          separateur: ',',
+          filtrable: true,
+          allowCustomModality: true,
+          value: []
+        }
+      ];
+
+      blocksWithFixedOnes.push({
+        id: 'products',
+        title: 'Produits',
+        icon: '🛍️',
+        fields: defaultProductsFields
+      });
+    } else if (productsBlock.fields.length === 0) {
+      // Si le bloc existe mais est vide (IA n'a pas généré de champ produits), ajouter les champs par défaut
+      const defaultProductsFields: DynamicField[] = [
+        {
+          name: 'nom_produit',
+          type: 'text',
+          typeDonnee: 'string',
+          label: 'Nom du produit',
+          required: false,
+          placeholder: 'Ex: iPhone 14 Pro Max, Toyota RAV4 2018...',
+          value: ''
+        },
+        {
+          name: 'categorie_produit',
+          type: 'text',
+          typeDonnee: 'string',
+          label: 'Catégorie du produit',
+          required: false,
+          placeholder: 'Ex: Smartphone, Véhicule 4x4, Chaussure de sport...',
+          value: ''
+        },
+        {
+          name: 'description_produit',
+          type: 'textarea',
+          typeDonnee: 'string',
+          label: 'Description du produit',
+          required: false,
+          placeholder: 'Décrivez les caractéristiques spécifiques du produit...',
+          value: ''
+        },
+        {
+          name: 'produits',
+          type: 'autocomplete',
+          typeDonnee: 'autocomplete',
+          label: 'Caractéristiques détaillées (marque, modèle, année, etc.)',
+          required: false,
+          placeholder: 'Ajouter des caractéristiques...',
+          identifiantBase: 'produits',
+          sousCaracteristiques: {
+            marque: [],
+            modele: [],
+            annee: [],
+            version: [],
+            competences: [],
+            experience: []
+          },
+          separateur: ',',
+          filtrable: true,
+          allowCustomModality: true,
+          value: []
+        }
+      ];
+
+      productsBlock.fields.push(...defaultProductsFields);
+    } else {
+      // ✅ Si le bloc existe ET a déjà des champs, vérifier si les champs spécifiques produits existent
+      const hasNomProduit = productsBlock.fields.some(f => f.name === 'nom_produit');
+      const hasCategorieProduit = productsBlock.fields.some(f => f.name === 'categorie_produit');
+      const hasDescriptionProduit = productsBlock.fields.some(f => f.name === 'description_produit');
+
+      // Ajouter les champs manquants au début du bloc
+      const hasPrixProduit = productsBlock.fields.some(f => f.name === 'prix_produit');
+      const hasDeviseProduit = productsBlock.fields.some(f => f.name === 'devise_produit');
+
+      if (!hasNomProduit) {
+        productsBlock.fields.unshift({
+          name: 'nom_produit',
+          type: 'text',
+          typeDonnee: 'string',
+          label: 'Nom du produit/prestation',
+          required: false,
+          placeholder: 'Ex: iPhone 14 Pro Max, Cours de mathématiques, Réparation téléphone...',
+          value: ''
+        } as DynamicField);
+      }
+      if (!hasCategorieProduit) {
+        productsBlock.fields.splice(hasNomProduit ? 1 : 0, 0, {
+          name: 'categorie_produit',
+          type: 'text',
+          typeDonnee: 'string',
+          label: 'Catégorie du produit/prestation',
+          required: false,
+          placeholder: 'Ex: Smartphone, Cours particulier, Service de réparation...',
+          value: ''
+        } as DynamicField);
+      }
+      if (!hasDescriptionProduit) {
+        productsBlock.fields.splice((hasNomProduit ? 1 : 0) + (hasCategorieProduit ? 1 : 0), 0, {
+          name: 'description_produit',
+          type: 'textarea',
+          typeDonnee: 'string',
+          label: 'Description du produit/prestation',
+          required: false,
+          placeholder: 'Décrivez les caractéristiques spécifiques du produit/prestation...',
+          value: ''
+        } as DynamicField);
+      }
+      if (!hasPrixProduit) {
+        productsBlock.fields.splice((hasNomProduit ? 1 : 0) + (hasCategorieProduit ? 1 : 0) + (hasDescriptionProduit ? 1 : 0), 0, {
+          name: 'prix_produit',
+          type: 'number',
+          typeDonnee: 'number',
+          label: 'Prix du produit/prestation',
+          required: false,
+          placeholder: 'Ex: 150000',
+          value: ''
+        } as DynamicField);
+      }
+      if (!hasDeviseProduit) {
+        productsBlock.fields.splice((hasNomProduit ? 1 : 0) + (hasCategorieProduit ? 1 : 0) + (hasDescriptionProduit ? 1 : 0) + (hasPrixProduit ? 1 : 0), 0, {
+          name: 'devise_produit',
+          type: 'text',
+          typeDonnee: 'string',
+          label: 'Devise',
+          required: false,
+          placeholder: 'XAF, EUR, USD...',
+          value: 'XAF'
+        } as DynamicField);
+      }
+    }
 
     // S'assurer que le bloc médias est toujours présent
     if (!blocksWithFixedOnes.find(b => b.id === 'media').fields.length) {
@@ -323,6 +510,22 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     return { isValid: true, error: '' };
   };
 
+  // ✅ NOUVEAU: Vérifier si le bloc produits contient au moins un produit
+  const hasAtLeastOneProduct = (): boolean => {
+    const productsValue = valeursFormulaire['produits'];
+
+    // Vérifier si produits existe et contient au moins un élément
+    if (Array.isArray(productsValue)) {
+      // Pour autocomplete: chaque élément est une string concaténée (ex: "nom,marque,categorie,prix,quantite")
+      // On considère qu'un produit existe si la string n'est pas vide après trim
+      return productsValue.length > 0 && productsValue.some(product =>
+        typeof product === 'string' && product.trim().length > 0
+      );
+    }
+
+    return false;
+  };
+
   // Fonction de validation d'un bloc complet
   const validateCurrentBlock = (): { isValid: boolean; errors: string[]; fieldErrors: Record<string, string> } => {
     const currentBlockData = blocks[currentBlock];
@@ -331,9 +534,15 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     const errors: string[] = [];
     const newFieldErrors: Record<string, string> = {};
 
-    // ✅ SUPPRIMÉ: Validation produits - Les produits sont maintenant gérés via les champs dynamiques (autocomplete, price_variant)
-    // La validation se fait au niveau des champs individuels requis
+    // ✅ NOUVEAU: Validation spéciale pour le bloc produits - doit contenir au moins un produit
+    if (currentBlockData.id === 'products') {
+      if (!hasAtLeastOneProduct()) {
+        errors.push('Le bloc Produits est obligatoire. Vous devez ajouter au moins un produit ou une prestation.');
+        newFieldErrors['produits'] = 'Au moins un produit est requis';
+      }
+    }
 
+    // Validation des champs individuels
     currentBlockData.fields.forEach(field => {
       const value = valeursFormulaire[field.name];
       const validation = validateField(field, value);
@@ -381,8 +590,21 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
   const goToBlock = (blockIndex: number) => {
     if (blockIndex >= 0 && blockIndex < blocks.length) {
       const targetBlock = blocks[blockIndex];
+      const productsBlockIndex = blocks.findIndex(b => b.id === 'products');
 
-      // ✅ SUPPRIMÉ: Validation produits lors de la navigation - Les produits sont maintenant gérés via les champs dynamiques
+      // ✅ CORRECTION: Empêcher de passer à un bloc après le bloc produits si le bloc produits n'a pas de produits
+      if (productsBlockIndex !== -1 && currentBlock === productsBlockIndex && blockIndex > productsBlockIndex) {
+        // On essaie de quitter le bloc produits vers un bloc suivant
+        if (!hasAtLeastOneProduct()) {
+          Alert.alert(
+            'Bloc Produits obligatoire',
+            'Vous devez ajouter au moins un produit ou une prestation avant de continuer.',
+            [{ text: 'OK' }]
+          );
+          setFieldErrors({ produits: 'Au moins un produit est requis' });
+          return;
+        }
+      }
 
       setCurrentBlock(blockIndex);
     }
@@ -604,13 +826,19 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     }
   }, [composants]);
 
-  // ✅ NOUVEAU : Scroll automatique vers le bloc courant
+  // ✅ NOUVEAU : Scroll automatique vers le bloc courant (amélioré)
   useEffect(() => {
     if (blockScrollViewRef.current && blocks.length > 0) {
-      // Calculer la position du bloc (environ 130px par onglet)
-      const blockWidth = 130;
+      // Calculer la position du bloc (largeur de l'onglet + gap)
+      // Chaque onglet fait environ 120px (minWidth) + 8px (gap) = 128px
+      const blockWidth = 128;
       const scrollPosition = currentBlock * blockWidth;
-      blockScrollViewRef.current.scrollTo({ x: scrollPosition, animated: true });
+
+      // Scroll avec un petit offset pour centrer mieux le bloc actif
+      blockScrollViewRef.current.scrollTo({
+        x: Math.max(0, scrollPosition - 20), // Petit offset pour meilleure visibilité
+        animated: true
+      });
     }
   }, [currentBlock, blocks]);
 
@@ -649,10 +877,41 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         console.log('[FormulaireYukpoIntelligentScreen] Composants générés:', components);
 
         // Extraire les valeurs des données IA pour pré-remplir les champs
+        // ⚠️ IMPORTANT: Ne pas pré-remplir les prix - l'utilisateur doit les renseigner manuellement
         const initialValues: Record<string, any> = {};
         Object.keys(suggestion.data).forEach(fieldName => {
           const fieldData = suggestion.data[fieldName];
-          if (fieldData && typeof fieldData === 'object' && 'valeur' in fieldData) {
+
+          // ⚠️ Ne pas pré-remplir les champs de prix
+          if (fieldName === 'prix_produit' || fieldName === 'devise_produit') {
+            // Laisser vide pour que l'utilisateur renseigne manuellement
+            console.log(`[FormulaireYukpoIntelligentScreen] Champ prix ignoré (à remplir manuellement): ${fieldName}`);
+            return;
+          }
+
+          // Gestion spéciale pour price_variant (variabilite_prix)
+          // Pré-remplir la structure complète (variable + valeurs des modalités) mais PAS les prix
+          if (fieldName === 'variabilite_prix' || (fieldData && typeof fieldData === 'object' && fieldData.type_donnee === 'price_variant')) {
+            if (fieldData && typeof fieldData === 'object') {
+              // Pré-remplir la variable et les valeurs des modalités (ex: "38", "39", "M", "L")
+              // mais mettre les prix à 0 pour que l'utilisateur les renseigne manuellement
+              const modalitesAvecValeurs = (fieldData.modalites || fieldData.valeur?.modalites || []).map((mod: any) => ({
+                valeur: mod.valeur || '', // ✅ PRÉ-REMPLI: Garder la valeur de la variante (ex: "38", "M", "Rouge")
+                prix: 0, // ⚠️ Prix vide - à remplir par l'utilisateur
+                devise: mod.devise || 'XAF', // Garder la devise suggérée
+                stock: mod.stock // Garder le stock si présent
+              }));
+
+              initialValues[fieldName] = {
+                type_donnee: 'price_variant',
+                variable: fieldData.variable || 'variante', // ✅ PRÉ-REMPLI: variable (ex: "pointure", "taille")
+                modalites: modalitesAvecValeurs, // ✅ PRÉ-REMPLI: valeurs des variantes, mais prix à 0
+                filtrable: fieldData.filtrable !== false,
+                origine_champs: 'ia'
+              };
+              console.log(`[FormulaireYukpoIntelligentScreen] Price variant structure pré-remplie (valeurs OK, prix vides) pour ${fieldName}:`, initialValues[fieldName]);
+            }
+          } else if (fieldData && typeof fieldData === 'object' && 'valeur' in fieldData) {
             initialValues[fieldName] = fieldData.valeur;
             console.log(`[FormulaireYukpoIntelligentScreen] Valeur pré-remplie pour ${fieldName}:`, fieldData.valeur);
           } else if (typeof fieldData === 'string' || typeof fieldData === 'number' || typeof fieldData === 'boolean') {
@@ -782,7 +1041,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
             }}
             required={field.required}
             availableCurrencies={['XAF', 'EUR', 'USD']}
-            defaultCurrency={valeursFormulaire.devise || 'XAF'}
+            defaultCurrency={valeursFormulaire.devise_produit || valeursFormulaire.devise || 'XAF'}
           />
           {fieldErrors[field.name] && (
             <Text style={styles.fieldErrorText}>⚠️ {String(fieldErrors[field.name])}</Text>

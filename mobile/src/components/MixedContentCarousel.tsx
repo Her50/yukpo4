@@ -230,10 +230,11 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
                 animated: true,
             });
 
-            // Mettre à jour l'index après un court délai pour s'assurer que le scroll est terminé
+            // Mettre à jour l'index immédiatement pour déclencher le prochain timer
+            setCurrentIndex(nextIndex);
+
+            // Tracker la visibilité de l'élément précédent après un court délai
             setTimeout(() => {
-                setCurrentIndex(nextIndex);
-                // Tracker la visibilité de l'élément précédent
                 trackVisibility(currentItem, currentIndex);
             }, 100);
         }, delay);
@@ -271,6 +272,17 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
 
             // Reprendre auto-scroll après 3s
             setTimeout(() => setIsPaused(false), 3000);
+        }
+    };
+
+    // ✅ Gérer le scroll en cours (pour mise à jour continue de l'index)
+    const handleScrollEvent = (event: any) => {
+        const offsetX = event.nativeEvent.contentOffset.x;
+        const adjustedOffset = Math.max(0, offsetX - SCREEN_PADDING);
+        const index = Math.round(adjustedOffset / (CARD_WIDTH + CARD_MARGIN));
+
+        if (index >= 0 && index < content.length && index !== currentIndex) {
+            setCurrentIndex(index);
         }
     };
 
@@ -352,6 +364,7 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
                 decelerationRate="fast"
                 showsHorizontalScrollIndicator={false}
                 onMomentumScrollEnd={handleScroll}
+                onScroll={handleScrollEvent}
                 scrollEventThrottle={16}
                 style={styles.scrollView}
                 contentContainerStyle={styles.scrollContent}
