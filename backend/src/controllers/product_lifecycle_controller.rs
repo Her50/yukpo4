@@ -111,18 +111,22 @@ pub async fn deactivate_product(
         produit_obj.insert("deactivation_reason".to_string(), json!(reason));
     }
     
+    // Notification - Extraire le nom AVANT la mise à jour
+    let default_name = format!("Produit #{}", product_index + 1);
+    let product_name = produit_obj.get("nom")
+        .and_then(|v| v.as_str())
+        .unwrap_or(&default_name);
+    
     // Mettre à jour le service
+    let service_data_json = serde_json::to_value(&service_data)
+        .map_err(|e| AppError::Internal(format!("Erreur sérialisation: {}", e)))?;
+    
     sqlx::query("UPDATE services SET data = $1, updated_at = NOW() WHERE id = $2")
-        .bind(&service_data)
+        .bind(&service_data_json)
         .bind(service_id)
         .execute(&state.pg)
         .await
         .map_err(|e| AppError::Internal(format!("Erreur mise à jour: {}", e)))?;
-    
-    // Notification
-    let product_name = produit_obj.get("nom")
-        .and_then(|v| v.as_str())
-        .unwrap_or(&format!("Produit #{}", product_index + 1));
     
     let _ = crate::services::notification_service::create_notification(
         &state.pg,
@@ -258,18 +262,22 @@ pub async fn reactivate_product(
     produit_obj.remove("deactivation_type");
     produit_obj.remove("deactivation_reason");
     
+    // Notification - Extraire le nom AVANT la mise à jour
+    let default_name = format!("Produit #{}", product_index + 1);
+    let product_name = produit_obj.get("nom")
+        .and_then(|v| v.as_str())
+        .unwrap_or(&default_name);
+    
     // Mettre à jour le service
+    let service_data_json = serde_json::to_value(&service_data)
+        .map_err(|e| AppError::Internal(format!("Erreur sérialisation: {}", e)))?;
+    
     sqlx::query("UPDATE services SET data = $1, updated_at = NOW() WHERE id = $2")
-        .bind(&service_data)
+        .bind(&service_data_json)
         .bind(service_id)
         .execute(&state.pg)
         .await
         .map_err(|e| AppError::Internal(format!("Erreur mise à jour: {}", e)))?;
-    
-    // Notification
-    let product_name = produit_obj.get("nom")
-        .and_then(|v| v.as_str())
-        .unwrap_or(&format!("Produit #{}", product_index + 1));
     
     let _ = crate::services::notification_service::create_notification(
         &state.pg,
@@ -301,7 +309,7 @@ pub async fn reactivate_product(
 pub async fn auto_deactivate_expired_products(
     pool: &sqlx::PgPool,
 ) -> Result<usize, String> {
-    use crate::utils::log::{log_info, log_warn};
+    use crate::utils::log::log_info;
     
     log_info("[auto_deactivate] 🤖 Démarrage du job de désactivation automatique...");
     
@@ -348,10 +356,11 @@ pub async fn auto_deactivate_expired_products(
                         
                         log_info(&format!("[auto_deactivate] Produit {} du service {} désactivé automatiquement", index, service_id));
                         
-                        // Notification
+                        // Notification - Extraire le nom du produit
+                        let default_name = format!("Produit #{}", index + 1);
                         let product_name = produit_obj.get("nom")
                             .and_then(|v| v.as_str())
-                            .unwrap_or(&format!("Produit #{}", index + 1));
+                            .unwrap_or(&default_name);
                         
                         let _ = crate::services::notification_service::create_notification(
                             pool,

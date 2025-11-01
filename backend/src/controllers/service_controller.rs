@@ -442,17 +442,21 @@ pub async fn supprimer_service(
     
     let service_title = match &service_data {
         Ok(Some(row)) => {
-            row.data.get("titre_service")
-                .or_else(|| row.data.get("titre"))
-                .and_then(|v| {
-                    if let Some(obj) = v.as_object() {
-                        obj.get("valeur").and_then(|val| val.as_str())
-                    } else {
-                        v.as_str()
-                    }
-                })
-                .unwrap_or("Votre service")
-                .to_string()
+            if let Some(data_value) = &row.data {
+                data_value.get("titre_service")
+                    .or_else(|| data_value.get("titre"))
+                    .and_then(|v| {
+                        if let Some(obj) = v.as_object() {
+                            obj.get("valeur").and_then(|val| val.as_str())
+                        } else {
+                            v.as_str()
+                        }
+                    })
+                    .unwrap_or("Votre service")
+                    .to_string()
+            } else {
+                "Votre service".to_string()
+            }
         },
         _ => "Votre service".to_string()
     };

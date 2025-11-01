@@ -269,6 +269,9 @@ pub async fn check_tokens(
             // ?? ?TAPE 2 : Optimiser le prompt avant l'appel IA externe
             let prompt_optimized = optimize_prompt_if_enabled(&state, &mut request_json, &intention).await;
             
+            // ✅ Sauvegarder l'endpoint AVANT de consommer parts
+            let endpoint = parts.uri.path().to_string();
+            
             // Reconstituer la requ?te avec le contenu potentiellement optimis?
             let optimized_body = serde_json::to_vec(&request_json).unwrap_or(body_bytes.to_vec());
             let mut req = Request::from_parts(parts, Body::from(optimized_body));
@@ -317,7 +320,6 @@ pub async fn check_tokens(
                                 tokens_finaux, cout_reel_xaf, cout_en_tokens, user_id, user_final.tokens_balance, nouveau_solde, intention, processing_time);
                             
                             // ✅ NOUVEAU: Enregistrer l'historique de consommation de tokens
-                            let endpoint = parts.uri.path().to_string();
                             let response_source_str = if prompt_optimized { "optimized" } else { "external" };
                             
                             // ✅ Utiliser sqlx::query() au lieu de query!() pour compatibilité SQLX_OFFLINE

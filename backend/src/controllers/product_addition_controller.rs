@@ -157,6 +157,8 @@ pub async fn add_product_to_service(
                 &state.pg,
                 user.id,
                 crate::services::notification_service::NotificationType::ProductAdded,
+                "✨ Produit ajouté à votre service".to_string(),
+                format!("Un nouveau produit a été ajouté à votre service (index: {})", product_index),
                 Some(json!({
                     "service_id": service_id,
                     "product_index": product_index,
