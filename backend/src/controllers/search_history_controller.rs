@@ -10,7 +10,7 @@ use crate::services::search_history_service;
 use crate::middlewares::jwt::AuthenticatedUser;
 
 /// Extracteur personnalisé pour obtenir optionnellement l'utilisateur authentifié
-struct OptionalAuth(pub Option<AuthenticatedUser>);
+pub struct OptionalAuth(pub Option<AuthenticatedUser>);
 
 impl<S> FromRequestParts<S> for OptionalAuth
 where
