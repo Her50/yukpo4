@@ -180,11 +180,12 @@ RÉPONSE UNIQUEMENT EN JSON VALIDE (pas de texte avant/après).
             .map_err(|e| crate::core::types::AppError::Internal(format!("Erreur parsing JSON: {}", e)))?;
 
         // Extraire les données du produit (même format que création)
+        let empty_vec: Vec<serde_json::Value> = vec![];
         let produits_array = parsed_json
             .get("produits")
             .and_then(|p| p.get("valeur"))
             .and_then(|v| v.as_array())
-            .unwrap_or(&vec![]);
+            .unwrap_or(&empty_vec);
 
         // Prendre le premier produit pour l'analyse
         let first_product = produits_array.first()

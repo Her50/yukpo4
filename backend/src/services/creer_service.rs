@@ -1266,7 +1266,7 @@ pub async fn creer_service(
     // ✅ NOUVEAU : Historiser automatiquement les champs autocomplete avant le commit
     // Cela enrichit l'historique même si l'IA externe a oublié certaines combinaisons
     if let Some(map) = data_obj.as_object() {
-        for (key, value) in map.iter() {
+        for (_key, value) in map.iter() {
             if let Some(obj) = value.as_object() {
                 if let Some(type_donnee) = obj.get("type_donnee").and_then(|v| v.as_str()) {
                     if type_donnee == "autocomplete" {

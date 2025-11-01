@@ -1,6 +1,6 @@
 use axum::{
-    extract::{Query, State, Path, Extension},
-    http::StatusCode,
+    extract::{Query, State, Path, Extension, FromRequestParts},
+    http::{request::Parts, StatusCode},
     Json,
 };
 use serde::{Deserialize, Serialize};
@@ -8,6 +8,22 @@ use std::sync::Arc;
 use crate::state::AppState;
 use crate::services::search_history_service;
 use crate::middlewares::jwt::AuthenticatedUser;
+
+/// Extracteur personnalisé pour obtenir optionnellement l'utilisateur authentifié
+struct OptionalAuth(pub Option<AuthenticatedUser>);
+
+#[axum::async_trait]
+impl<S> FromRequestParts<S> for OptionalAuth
+where
+    S: Send + Sync,
+{
+    type Rejection = std::convert::Infallible;
+
+    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
+        let user = parts.extensions.get::<AuthenticatedUser>().cloned();
+        Ok(OptionalAuth(user))
+    }
+}
 
 #[derive(Debug, Deserialize)]
 pub struct RecordSearchRequest {
@@ -43,8 +59,8 @@ pub struct UserHistoryQuery {
 /// Enregistrer une recherche (peut être anonyme)
 pub async fn record_search(
     State(state): State<Arc<AppState>>,
+    OptionalAuth(user): OptionalAuth,
     Json(payload): Json<RecordSearchRequest>,
-    Extension(user): Extension<Option<AuthenticatedUser>>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
     let pool = &state.pg;
     let query_type = payload.query_type.unwrap_or_else(|| "text".to_string());
@@ -148,7 +164,7 @@ pub async fn get_popular_searches(
 pub async fn get_search_suggestions(
     Query(query): Query<SearchSuggestionsQuery>,
     State(state): State<Arc<AppState>>,
-    Extension(user): Extension<Option<AuthenticatedUser>>,
+    OptionalAuth(user): OptionalAuth,
 ) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
     let pool = &state.pg;
     let limit = query.limit.unwrap_or(5);

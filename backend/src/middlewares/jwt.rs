@@ -116,7 +116,7 @@ pub async fn optional_jwt_auth(
                                 id: payload["sub"].as_str().unwrap_or("1").parse().unwrap_or(1),
                                 role: payload["role"].as_str().unwrap_or("admin").to_string(),
                             };
-                            req.extensions_mut().insert(Some(authenticated_user));
+                            req.extensions_mut().insert(authenticated_user);
                             return next.run(req).await;
                         }
                     }
@@ -127,7 +127,6 @@ pub async fn optional_jwt_auth(
                 Ok(s) => s,
                 Err(_) => {
                     // Si JWT_SECRET manquant, continuer sans authentification
-                    req.extensions_mut().insert(None::<AuthenticatedUser>);
                     return next.run(req).await;
                 }
             };
@@ -138,20 +137,14 @@ pub async fn optional_jwt_auth(
                         id: token_data.claims.sub,
                         role: token_data.claims.role,
                     };
-                    req.extensions_mut().insert(Some(authenticated_user));
+                    req.extensions_mut().insert(authenticated_user);
                 }
                 Err(_) => {
                     // Token invalide, continuer sans authentification
-                    req.extensions_mut().insert(None::<AuthenticatedUser>);
                 }
             }
-        } else {
-            // Header invalide, continuer sans authentification
-            req.extensions_mut().insert(None::<AuthenticatedUser>);
         }
-    } else {
-        // Pas de header, continuer sans authentification
-        req.extensions_mut().insert(None::<AuthenticatedUser>);
+        // Header invalide ou absent, continuer sans authentification
     }
 
     next.run(req).await
