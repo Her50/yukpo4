@@ -19,22 +19,20 @@ pub async fn relancer_matching_echanges_once(pool: &sqlx::PgPool) {
         // Extraction du mode, mode_troc, gps, user_id, produits, etc. depuis offre/besoin
         let offre_obj = e.offre.as_object().cloned().unwrap_or_default();
         let besoin_obj = e.besoin.as_object().cloned().unwrap_or_default();
-        // Mode
-        let mut mode = offre_obj.get("mode").and_then(|v| v.as_str())
+        // Mode - extraire depuis les données, pas de valeur par défaut forcée
+        let mode = offre_obj.get("mode").and_then(|v| v.as_str())
             .or_else(|| besoin_obj.get("mode").and_then(|v| v.as_str()))
             .unwrap_or("");
-        if mode.is_empty() {
-            mode = "echange"; // Par d?faut si absent
+        if !mode.is_empty() {
+            data.insert("mode".to_string(), serde_json::Value::String(mode.to_string()));
         }
-        data.insert("mode".to_string(), serde_json::Value::String(mode.to_string()));
-        // Mode troc
-        let mut mode_troc = offre_obj.get("mode_troc").and_then(|v| v.as_str())
+        // Mode troc - extraire depuis les données, pas de valeur par défaut forcée
+        let mode_troc = offre_obj.get("mode_troc").and_then(|v| v.as_str())
             .or_else(|| besoin_obj.get("mode_troc").and_then(|v| v.as_str()))
             .unwrap_or("");
-        if mode_troc.is_empty() {
-            mode_troc = "echange"; // Par d?faut si absent
+        if !mode_troc.is_empty() {
+            data.insert("mode_troc".to_string(), serde_json::Value::String(mode_troc.to_string()));
         }
-        data.insert("mode_troc".to_string(), serde_json::Value::String(mode_troc.to_string()));
         // GPS
         let gps = offre_obj.get("gps").cloned()
             .or_else(|| besoin_obj.get("gps").cloned());
@@ -63,10 +61,15 @@ pub async fn relancer_matching_echanges_once(pool: &sqlx::PgPool) {
                 data.insert("besoin_produits".to_string(), serde_json::Value::Array(liste.clone()));
             }
         }
-        // intention (toujours "echange" ici)
-        data.insert("intention".to_string(), serde_json::Value::String("echange".to_string()));
-        // Validation stricte du mode avant appel m?tier
-        if mode != "echange" && mode != "don" {
+        // intention - extraire depuis les données plutôt que de forcer "echange"
+        let intention = offre_obj.get("intention").and_then(|v| v.as_str())
+            .or_else(|| besoin_obj.get("intention").and_then(|v| v.as_str()))
+            .unwrap_or("");
+        if !intention.is_empty() {
+            data.insert("intention".to_string(), serde_json::Value::String(intention.to_string()));
+        }
+        // Validation stricte du mode avant appel m?tier (seulement si mode est présent)
+        if !mode.is_empty() && mode != "echange" && mode != "don" {
             log::warn!("[MATCHING_CRON] ?change id={} ignor??: mode non autoris? ('{}')", e.id, mode);
             continue;
         }

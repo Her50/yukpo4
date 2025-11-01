@@ -22,8 +22,16 @@ pub async fn creer_echange(
     }
     // Construction d'un JSON strict pour validation m?tier et matching
     let mut data = serde_json::Map::new();
-    data.insert("intention".to_string(), serde_json::Value::String("echange".to_string()));
-    // Mode : on tente de l'extraire de l'offre, sinon 'echange'
+    // intention - extraire depuis les données plutôt que de forcer "echange"
+    let intention = serde_json::to_value(&payload).ok()
+        .and_then(|v| v.get("intention").and_then(|v| v.as_str()).map(|s| s.to_string()))
+        .or_else(|| payload.offre.get("intention").and_then(|v| v.as_str()).map(|s| s.to_string()))
+        .or_else(|| payload.besoin.get("intention").and_then(|v| v.as_str()).map(|s| s.to_string()))
+        .unwrap_or_else(|| "".to_string());
+    if !intention.is_empty() {
+        data.insert("intention".to_string(), serde_json::Value::String(intention));
+    }
+    // Mode : on tente de l'extraire de l'offre/besoin, pas de valeur par défaut forcée
 
     // Extraction du mode : racine, puis offre, puis besoin
     let mode = serde_json::to_value(&payload).ok()
@@ -31,8 +39,8 @@ pub async fn creer_echange(
         .or_else(|| payload.offre.get("mode").and_then(|v| v.as_str()).map(|s| s.to_string()))
         .or_else(|| payload.besoin.get("mode").and_then(|v| v.as_str()).map(|s| s.to_string()))
         .unwrap_or_else(|| "".to_string());
-    // Refuser tout mode non autoris?
-    if mode != "echange" && mode != "don" {
+    // Validation : seulement si mode est présent et non autorisé
+    if !mode.is_empty() && mode != "echange" && mode != "don" {
         return Json(json!({"error": "Le champ 'mode' doit ?tre 'echange' ou 'don'"}));
     }
     // Injection du champ 'mode' dans offre/besoin si absent

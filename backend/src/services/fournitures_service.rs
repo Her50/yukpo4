@@ -31,7 +31,7 @@ pub async fn gestion_fournitures_scolaires(
     // 3. G?n?ration automatique du besoin pour la classe sup?rieure
     // let besoin = generer_besoin_classe_superieure(etablissement, classe_finale).await?;
     // 4. Matching ou achat selon le choix utilisateur
-    let mode = payload.get("mode").and_then(|v| v.as_str()).unwrap_or("echange");
+    let mode = payload.get("mode").and_then(|v| v.as_str()).unwrap_or("");
     let resultat = if mode == "achat" {
         log::info!("[FOURNITURES] Re?u une demande avec mode=achat (user_id={:?}, payload={:?})", user_id, payload);
         // let achats = rechercher_besoin_librairie(&besoin, etablissement, classe_finale).await?;

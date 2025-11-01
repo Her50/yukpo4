@@ -203,7 +203,7 @@ pub async fn traiter_echange(
     });
 
     // 2. Matching optimis? avec pagination et cache
-    let mode = data.get("mode").and_then(|v| v.as_str()).unwrap_or("echange");
+    let mode = data.get("mode").and_then(|v| v.as_str()).unwrap_or("");
     if mode == "achat" {
         return Err(crate::core::types::AppError::BadRequest("Le mode 'achat' n'est pas support?".to_string()));
     }
