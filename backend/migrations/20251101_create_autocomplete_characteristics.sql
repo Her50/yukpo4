@@ -1,42 +1,33 @@
 -- Migration: Créer table autocomplete_characteristics pour historiser les caractéristiques autocomplete
--- Date: 2025-10-31
+-- Date: 2025-11-01
 -- Description: Table pour historiser les caractéristiques autocomplete créées par l'IA ou les utilisateurs
 --              Permet la réutilisation intelligente dans recherche et filtrage
--- Note: Compatible avec SQLx offline mode
+-- Note: Compatible avec SQLx offline mode (fichier SQL standard)
 
--- Vérifier et créer la table autocomplete_characteristics
-DO $$
-BEGIN
-    IF NOT EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'autocomplete_characteristics') THEN
-        CREATE TABLE autocomplete_characteristics (
-            id SERIAL PRIMARY KEY,
-            identifiant_base VARCHAR(255) NOT NULL,
-            -- Exemple: "caracteristiques_vehicule", "caracteristiques_chaussure"
-            sous_caracteristique VARCHAR(255) NOT NULL,
-            -- Exemple: "marque", "modele", "annee", "pointure", "couleur"
-            valeur VARCHAR(500) NOT NULL,
-            -- Exemple: "Toyota", "RAV4", "2018", "42", "Noir"
-            origine_champs VARCHAR(50) NOT NULL DEFAULT 'ia',
-            -- 'ia' pour généré par IA, 'utilisateur' pour créé manuellement
-            user_id INTEGER,
-            -- NULL si créé par IA, sinon ID de l'utilisateur qui l'a créé
-            service_id INTEGER,
-            -- ID du service où cette caractéristique a été utilisée (optionnel)
-            usage_count INTEGER DEFAULT 1,
-            -- Nombre de fois que cette valeur a été utilisée
-            created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-            updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-            
-            -- Contrainte unique : même identifiant_base + sous_caracteristique + valeur = même entrée
-            CONSTRAINT unique_autocomplete_characteristic 
-                UNIQUE (identifiant_base, sous_caracteristique, valeur)
-        );
-        
-        RAISE NOTICE 'Table autocomplete_characteristics créée avec succès';
-    ELSE
-        RAISE NOTICE 'Table autocomplete_characteristics existe déjà';
-    END IF;
-END $$;
+-- Créer la table autocomplete_characteristics
+CREATE TABLE IF NOT EXISTS autocomplete_characteristics (
+    id SERIAL PRIMARY KEY,
+    identifiant_base VARCHAR(255) NOT NULL,
+    -- Exemple: "produits", "services", "prestations"
+    sous_caracteristique VARCHAR(255) NOT NULL,
+    -- Exemple: "marque", "modele", "annee", "pointure", "couleur"
+    valeur VARCHAR(500) NOT NULL,
+    -- Exemple: "Toyota", "RAV4", "2018", "42", "Noir"
+    origine_champs VARCHAR(50) NOT NULL DEFAULT 'ia',
+    -- 'ia' pour généré par IA, 'utilisateur' pour créé manuellement
+    user_id INTEGER,
+    -- NULL si créé par IA, sinon ID de l'utilisateur qui l'a créé
+    service_id INTEGER,
+    -- ID du service où cette caractéristique a été utilisée (optionnel)
+    usage_count INTEGER DEFAULT 1,
+    -- Nombre de fois que cette valeur a été utilisée
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    
+    -- Contrainte unique : même identifiant_base + sous_caracteristique + valeur = même entrée
+    CONSTRAINT unique_autocomplete_characteristic 
+        UNIQUE (identifiant_base, sous_caracteristique, valeur)
+);
 
 -- Index pour recherche rapide par identifiant_base
 CREATE INDEX IF NOT EXISTS idx_autocomplete_identifiant_base 
@@ -59,12 +50,28 @@ CREATE INDEX IF NOT EXISTS idx_autocomplete_origine
     ON autocomplete_characteristics(origine_champs);
 
 -- Index pour recherche par user_id (si créé par utilisateur)
-CREATE INDEX IF NOT EXISTS idx_autocomplete_user_id 
-    ON autocomplete_characteristics(user_id) WHERE user_id IS NOT NULL;
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE c.relname = 'idx_autocomplete_user_id' AND n.nspname = 'public'
+    ) THEN
+        CREATE INDEX idx_autocomplete_user_id ON autocomplete_characteristics(user_id) WHERE user_id IS NOT NULL;
+    END IF;
+END $$;
 
 -- Index pour recherche par service_id
-CREATE INDEX IF NOT EXISTS idx_autocomplete_service_id 
-    ON autocomplete_characteristics(service_id) WHERE service_id IS NOT NULL;
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE c.relname = 'idx_autocomplete_service_id' AND n.nspname = 'public'
+    ) THEN
+        CREATE INDEX idx_autocomplete_service_id ON autocomplete_characteristics(service_id) WHERE service_id IS NOT NULL;
+    END IF;
+END $$;
 
 -- Index pour tri par usage_count (valeurs les plus utilisées en premier)
 CREATE INDEX IF NOT EXISTS idx_autocomplete_usage_count 
@@ -134,8 +141,9 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- Commentaires pour documentation
 COMMENT ON TABLE autocomplete_characteristics IS 'Historique des caractéristiques autocomplete pour réutilisation intelligente';
-COMMENT ON COLUMN autocomplete_characteristics.identifiant_base IS 'Identifiant du type de caractéristique (ex: caracteristiques_vehicule)';
+COMMENT ON COLUMN autocomplete_characteristics.identifiant_base IS 'Identifiant du type de caractéristique (ex: produits, services, prestations)';
 COMMENT ON COLUMN autocomplete_characteristics.sous_caracteristique IS 'Nom de la dimension (ex: marque, modele, annee)';
 COMMENT ON COLUMN autocomplete_characteristics.valeur IS 'Valeur de la caractéristique (ex: Toyota, RAV4, 2018)';
 COMMENT ON COLUMN autocomplete_characteristics.origine_champs IS 'Origine: ia ou utilisateur';

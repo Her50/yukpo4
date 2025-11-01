@@ -98,55 +98,28 @@ impl HybridImageSearchService {
         Ok(analysis_id)
     }
 
-    /// ✅ CORRECTION: Analyser l'image avec le MÊME système que la création pour matching optimal
+    /// ✅ CORRECTION 2025-11-01: Analyser l'image avec le MÊME prompt que la création pour matching optimal
     async fn analyze_image_like_creation(
         app_ia: &AppIA,
         image_base64: &str,
     ) -> AppResult<(ImageAnalysis, AICost)> {
         use crate::utils::log::log_info;
         
-        log_info("[HybridImageSearch] 🔍 Analyse image avec même système que création...");
+        log_info("[HybridImageSearch] 🔍 Analyse image avec prompt de recherche dédié...");
         
-        // ✅ Utiliser le MÊME prompt que la création pour extraction structurée
-        let search_prompt = r#"
-Tu es un expert en analyse multimodale pour la plateforme Yukpo.
-
-GÉNÈRE UN JSON STRICTEMENT CONFORME pour la recherche d'un produit similaire :
-
-**STRUCTURE OBLIGATOIRE :**
-```json
-{
-  "intention": "recherche_produit",
-  "produits": {
-    "type_donnee": "listeproduit",
-    "valeur": [
-      {
-        "nom": "<nom exact du produit visible>",
-        "quantite": <quantité exacte visible>,
-        "prix": <prix exact visible>,
-        "marque": "<marque exacte visible>",
-        "categorie": "<catégorie déduite>",
-        "description": "<description détaillée du produit visible>",
-        "couleurs": ["couleur1", "couleur2"]
-      }
-    ],
-    "origine_champs": "image"
-  }
-}
-```
-
-RÈGLES STRICTES CRITIQUES :
-- **EXTRACTION EXACTE** : Extrais UNIQUEMENT les produits/services visibles dans l'image
-- **PRIX EXACTS** : Utilise les prix exacts affichés dans l'image (en XAF)
-- **NOMS EXACTS** : Utilise les noms exacts des produits visibles
-- **QUANTITÉS EXACTES** : Utilise les quantités exactes affichées
-- **MARQUES EXACTES** : Utilise les marques exactes visibles
-- **INTERDICTION TOTALE** : Ne crée JAMAIS de produits qui ne sont pas visibles dans l'image
-- **FIDÉLITÉ TOTALE** : Reproduis fidèlement ce que tu observes, sans extrapolation
-- **COMPLÉTUDE** : Liste TOUS les produits visibles dans l'image, un par un
-
-RÉPONSE UNIQUEMENT EN JSON VALIDE (pas de texte avant/après).
-"#;
+        // ✅ NOUVEAU 2025-11-01: Charger le prompt dédié recherche_image_prompt.md
+        // Ce prompt est IDENTIQUE au prompt de création pour assurer compatibilité du JSON
+        let search_prompt = match tokio::fs::read_to_string("backend/ia_prompts/recherche_image_prompt.md").await {
+            Ok(content) => {
+                log_info("[HybridImageSearch] ✅ Prompt de recherche chargé depuis fichier (1169 lignes)");
+                content
+            },
+            Err(e) => {
+                log_warn(&format!("[HybridImageSearch] ⚠️ Impossible de charger prompt fichier: {}, utilisation embedded", e));
+                // Fallback vers prompt embedded (identique au fichier)
+                include_str!("../../ia_prompts/recherche_image_prompt.md").to_string()
+            }
+        };
 
         // ✅ CORRECTION: Préparer l'image exactement comme lors de la création
         // Lors de la création, input.base64_image est un Option<Vec<String>> où chaque string est base64 pur
@@ -179,34 +152,100 @@ RÉPONSE UNIQUEMENT EN JSON VALIDE (pas de texte avant/après).
         let parsed_json: serde_json::Value = serde_json::from_str(&cleaned_json)
             .map_err(|e| crate::core::types::AppError::Internal(format!("Erreur parsing JSON: {}", e)))?;
 
-        // Extraire les données du produit (même format que création)
-        let empty_vec: Vec<serde_json::Value> = vec![];
-        let produits_array = parsed_json
-            .get("produits")
-            .and_then(|p| p.get("valeur"))
-            .and_then(|v| v.as_array())
-            .unwrap_or(&empty_vec);
+        // ✅ NOUVEAU 2025-11-01: Parser le JSON au format création (avec data ou directement)
+        let data_obj = parsed_json.get("data").unwrap_or(&parsed_json);
+        
+        // Extraire category (au niveau service)
+        let category_str = data_obj.get("category")
+            .and_then(|c| {
+                if let Some(obj) = c.as_object() {
+                    obj.get("valeur").and_then(|v| v.as_str())
+                } else {
+                    c.as_str()
+                }
+            })
+            .unwrap_or("autre");
 
-        // Prendre le premier produit pour l'analyse
-        let first_product = produits_array.first()
-            .ok_or_else(|| crate::core::types::AppError::BadRequest("Aucun produit détecté dans l'image".to_string()))?;
+        // ✅ Extraire nom_produit, categorie_produit, description_produit (format création)
+        let nom_produit = data_obj.get("nom_produit")
+            .and_then(|n| {
+                if let Some(obj) = n.as_object() {
+                    obj.get("valeur").and_then(|v| v.as_str())
+                } else {
+                    n.as_str()
+                }
+            })
+            .unwrap_or("");
+            
+        let description_produit = data_obj.get("description_produit")
+            .and_then(|d| {
+                if let Some(obj) = d.as_object() {
+                    obj.get("valeur").and_then(|v| v.as_str())
+                } else {
+                    d.as_str()
+                }
+            })
+            .unwrap_or(nom_produit);
 
-        let nom = first_product.get("nom").and_then(|v| v.as_str()).unwrap_or("").to_string();
-        let description = first_product.get("description").and_then(|v| v.as_str()).unwrap_or(&nom).to_string();
-        let marque = first_product.get("marque").and_then(|v| v.as_str()).map(|s| s.to_string());
-        let categorie = first_product.get("categorie").or_else(|| parsed_json.get("category")).and_then(|v| v.as_str()).unwrap_or("autre").to_string();
-        let couleurs: Vec<String> = first_product.get("couleurs")
-            .and_then(|v| v.as_array())
-            .map(|arr| arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect())
-            .unwrap_or_default();
+        // ✅ NOUVEAU: Extraire depuis autocomplete.valeur (format: ["Logitech,MX Master 3,Sans fil,Noir"])
+        let produits_autocomplete = data_obj.get("produits");
+        let mut marque: Option<String> = None;
+        let mut modele: Option<String> = None;
+        let mut couleurs: Vec<String> = Vec::new();
+        let mut tags: Vec<String> = Vec::new();
 
-        // Construire les tags à partir des données extraites
-        let mut tags = vec![nom.clone()];
-        if let Some(ref m) = marque {
-            tags.push(m.clone());
+        // Parser l'autocomplete si présent
+        if let Some(prod_obj) = produits_autocomplete.and_then(|p| p.as_object()) {
+            // Extraire valeur autocomplete
+            if let Some(valeur_arr) = prod_obj.get("valeur").and_then(|v| v.as_array()) {
+                if let Some(first_val) = valeur_arr.first().and_then(|v| v.as_str()) {
+                    // Parser "Logitech,MX Master 3,Sans fil,Noir"
+                    let parts: Vec<&str> = first_val.split(',').map(|s| s.trim()).collect();
+                    tags.extend(parts.iter().map(|s| s.to_string()));
+                }
+            }
+            
+            // ✅ CRITIQUE: Extraire depuis sous_caracteristiques
+            if let Some(sous_caracs) = prod_obj.get("sous_caracteristiques").and_then(|sc| sc.as_object()) {
+                // Marque
+                if let Some(marques_arr) = sous_caracs.get("marque").or_else(|| sous_caracs.get("brand")).and_then(|m| m.as_array()) {
+                    marque = marques_arr.first().and_then(|v| v.as_str()).map(|s| s.to_string());
+                    tags.extend(marques_arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())));
+                }
+                
+                // Modèle
+                if let Some(modeles_arr) = sous_caracs.get("modele").or_else(|| sous_caracs.get("model")).and_then(|m| m.as_array()) {
+                    modele = modeles_arr.first().and_then(|v| v.as_str()).map(|s| s.to_string());
+                    tags.extend(modeles_arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())));
+                }
+                
+                // Couleurs
+                if let Some(couleurs_arr) = sous_caracs.get("couleur").or_else(|| sous_caracs.get("color")).and_then(|c| c.as_array()) {
+                    couleurs = couleurs_arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect();
+                    tags.extend(couleurs.clone());
+                }
+                
+                // Ajouter toutes les autres caractéristiques aux tags
+                for (key, value) in sous_caracs.iter() {
+                    if let Some(vals) = value.as_array() {
+                        tags.extend(vals.iter().filter_map(|v| v.as_str().map(|s| s.to_string())));
+                    }
+                }
+            }
         }
-        tags.extend(couleurs.clone());
-        tags.push(categorie.clone());
+
+        let nom = if !nom_produit.is_empty() { nom_produit.to_string() } else { "Produit recherché".to_string() };
+        let description = if !description_produit.is_empty() { description_produit.to_string() } else { nom.clone() };
+        let categorie = category_str.to_string();
+
+        // ✅ Tags déjà construits lors du parsing autocomplete ci-dessus
+        // Ajouter nom et catégorie si pas déjà présents
+        if !tags.contains(&nom) {
+            tags.push(nom.clone());
+        }
+        if !tags.contains(&categorie) {
+            tags.push(categorie.clone());
+        }
 
         // Construire les requêtes de recherche
         let search_query_exact = format!("{} {} {}", 

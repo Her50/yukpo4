@@ -15,14 +15,15 @@ import {
     View
 } from 'react-native';
 import BusSeatSelector from '../components/BusSeatSelector';
-import CategoryFilters from '../components/CategoryFilters';
 import ChatModalMobile from '../components/ChatModalMobile';
-import IntelligentSearchBar from '../components/IntelligentSearchBar';
+import DistanceBadge from '../components/DistanceBadge';
+import DynamicAutocompleteFilters from '../components/DynamicAutocompleteFilters';
 import ProductCard from '../components/ProductCard';
 import ProductCardErrorBoundary from '../components/ProductCardErrorBoundary';
 import ProductCardSkeleton from '../components/ProductCardSkeleton';
 import SafeIcon from '../components/SafeIcon';
 import ServiceGalleryModal from '../components/ServiceGalleryModal';
+import SmartSearchBar from '../components/SmartSearchBar';
 import UltraModernServiceCard from '../components/UltraModernServiceCard';
 import { categorySupportsVariants, getCategoryConfig, getCategoryStyle, getCategoryTerminology } from '../config/categoryConfig';
 import { useAuth } from '../contexts/AuthContext';
@@ -32,6 +33,11 @@ import { apiGet, apiPost } from '../services/api';
 import { searchHistoryService } from '../services/searchHistoryService';
 import { theme } from '../theme/theme';
 import { generateAndDownloadTicket, shareTicketPDF } from '../utils/busTicketPdfGenerator';
+import {
+    extractAvailableCharacteristics,
+    filterProductsByAutocomplete,
+    filterProductsByProximity
+} from '../utils/characteristicsExtractor';
 import {
     getCurrentDayShort,
     isPharmacyOpenNow
@@ -121,6 +127,12 @@ const ResultatBesoinScreen: React.FC = () => {
     const [showCategoryFilters, setShowCategoryFilters] = useState(false);
     const [categoryFilters, setCategoryFilters] = useState<Record<string, any>>({});
 
+    // ✅ NOUVEAU: États pour filtrage par proximité
+    const [locationFilterCoords, setLocationFilterCoords] = useState<{ lat: number, lon: number } | null>(
+        location ? { lat: location.coords.latitude, lon: location.coords.longitude } : null
+    );
+    const [locationFilterRadius, setLocationFilterRadius] = useState<number | null>(10); // 10 km par défaut
+
     // ✅ NOUVEAUX ÉTATS: Suggestions intelligentes
     const [smartSuggestions, setSmartSuggestions] = useState<SmartFilterSuggestion[]>([]);
     const [showSmartSuggestions, setShowSmartSuggestions] = useState(false);
@@ -140,6 +152,11 @@ const ResultatBesoinScreen: React.FC = () => {
         console.log(`🎯 [ResultatBesoinScreen] Catégorie dominante détectée: ${detected} (${products.length} produits)`);
 
         return detected;
+    }, [products]);
+
+    // ✅ NOUVEAU: Extraire les caractéristiques disponibles pour les filtres dynamiques
+    const availableCharacteristics = useMemo(() => {
+        return extractAvailableCharacteristics(products);
     }, [products]);
 
     // Récupérer la configuration de la catégorie dominante
@@ -358,71 +375,34 @@ const ResultatBesoinScreen: React.FC = () => {
     };
 
     // ✅ OPTIMISATION 1: Mémoriser les produits filtrés avec useMemo
-    // ✅ AMÉLIORATION PHASE 9: Support des nouveaux types autocomplete et price_variant
+    // ✅ AMÉLIORATION FINALE: 100% Filtrage Dynamique Autocomplete + Proximité GPS (2025-11-01)
     const filteredProductsMemo = useMemo(() => {
         let filtered = [...products];
 
-        // ✅ NOUVEAU: Appliquer les filtres autocomplete intelligents
-        // Les filtres autocomplete sont stockés dans categoryFilters avec le format:
-        // { identifiant_base: { sous_caracteristique: ['valeur1', 'valeur2'] } }
-        const autocompleteFilters: Record<string, Record<string, string[]>> = {};
-        for (const [key, value] of Object.entries(categoryFilters)) {
-            if (key.includes('_autocomplete_') && typeof value === 'object' && value !== null) {
-                const parts = key.split('_autocomplete_');
-                if (parts.length === 2) {
-                    const identifiantBase = parts[0];
-                    const sousCaracteristique = parts[1];
-                    if (!autocompleteFilters[identifiantBase]) {
-                        autocompleteFilters[identifiantBase] = {};
-                    }
-                    if (Array.isArray(value)) {
-                        autocompleteFilters[identifiantBase][sousCaracteristique] = value;
-                    }
-                }
-            }
+        // ✅ ÉTAPE 1: Appliquer les filtres autocomplete dynamiques (UNIQUE SOURCE DE VÉRITÉ)
+        if (Object.keys(categoryFilters).length > 0) {
+            filtered = filterProductsByAutocomplete(filtered, categoryFilters);
+            console.log(`🔍 [Filtrage Dynamique] ${filtered.length} produits après filtres autocomplete`);
         }
 
-        // Appliquer les filtres de catégorie spécifiques
-        if (Object.keys(categoryFilters).length > 0 || Object.keys(autocompleteFilters).length > 0) {
+        // ✅ ÉTAPE 1.5: Appliquer le filtrage par proximité GPS
+        if (locationFilterCoords && locationFilterRadius !== null && calculateDistance) {
+            const beforeProximity = filtered.length;
+            filtered = filterProductsByProximity(
+                filtered,
+                locationFilterCoords.lat,
+                locationFilterCoords.lon,
+                locationFilterRadius,
+                calculateDistance
+            );
+            console.log(`📍 [Filtrage Proximité] ${filtered.length} produits dans rayon ${locationFilterRadius} km (avant: ${beforeProximity})`);
+        }
+
+        // ✅ ÉTAPE 2: Appliquer les filtres spéciaux (santé, transport, price_variant, etc.)
+        // Note: Les filtres autocomplete sont déjà appliqués par filterProductsByAutocomplete ci-dessus
+        if (Object.keys(categoryFilters).length > 0) {
             filtered = filtered.filter(product => {
-                // ✅ NOUVEAU: Filtrer par autocomplete si défini
-                if (Object.keys(autocompleteFilters).length > 0 && product.service?.data) {
-                    for (const [identifiantBase, sousCaracs] of Object.entries(autocompleteFilters)) {
-                        // Chercher le champ autocomplete dans service.data
-                        for (const [key, value] of Object.entries(product.service.data)) {
-                            if (value && typeof value === 'object' && 'type_donnee' in value && value.type_donnee === 'autocomplete') {
-                                const autocompleteField = value as any;
-                                if (autocompleteField.identifiant_base === identifiantBase && autocompleteField.valeur && Array.isArray(autocompleteField.valeur)) {
-                                    // Vérifier chaque sous-caractéristique filtrée
-                                    for (const [sousCarac, valeursRecherchees] of Object.entries(sousCaracs)) {
-                                        if (Array.isArray(valeursRecherchees) && valeursRecherchees.length > 0) {
-                                            // Extraire les valeurs de cette sous-caractéristique
-                                            const separateur = autocompleteField.separateur || ',';
-                                            const sousCaracsData = autocompleteField.sous_caracteristiques || {};
-                                            const indexSousCarac = Object.keys(sousCaracsData).indexOf(sousCarac);
-
-                                            if (indexSousCarac >= 0) {
-                                                // Vérifier si au moins une valeur concaténée correspond
-                                                const hasMatch = autocompleteField.valeur.some((valConcat: string) => {
-                                                    const parts = valConcat.split(separateur);
-                                                    if (parts[indexSousCarac]) {
-                                                        const valeurPart = parts[indexSousCarac].trim().toLowerCase();
-                                                        return valeursRecherchees.some((v: string) => valeurPart.includes(v.toLowerCase()) || v.toLowerCase().includes(valeurPart));
-                                                    }
-                                                    return false;
-                                                });
-
-                                                if (!hasMatch) return false;
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // ✅ NOUVEAU: Filtrer par price_variant si défini
+                // ✅ Filtrer par price_variant si défini
                 if (categoryFilters.price_variant_min !== undefined || categoryFilters.price_variant_max !== undefined) {
                     if (product.service?.data) {
                         let foundPriceVariant = false;
@@ -4306,26 +4286,42 @@ const ResultatBesoinScreen: React.FC = () => {
             });
         }
 
-        // ✅ TRI PRIORITAIRE : Produits en promotion d'abord
+        // ✅ TRI INTELLIGENT selon sortBy
         filtered.sort((a, b) => {
-            // 1. Priorité PROMO
+            // 1. Priorité PROMO (toujours en premier)
             const promoA = a.en_promotion || a.promotion_active ? 1 : 0;
             const promoB = b.en_promotion || b.promotion_active ? 1 : 0;
             if (promoA !== promoB) return promoB - promoA;
 
-            // 2. Score (pertinence)
+            // 2. Tri selon l'option choisie
+            if (sortBy === 'distance') {
+                // Tri par distance (si disponible)
+                const distA = a.distance !== undefined ? a.distance : Infinity;
+                const distB = b.distance !== undefined ? b.distance : Infinity;
+                if (distA !== distB) return distA - distB;
+            } else if (sortBy === 'price_asc') {
+                const priceA = parseFloat(a.prix || a.price || '0');
+                const priceB = parseFloat(b.prix || b.price || '0');
+                if (priceA !== priceB) return priceA - priceB;
+            } else if (sortBy === 'price_desc') {
+                const priceA = parseFloat(a.prix || a.price || '0');
+                const priceB = parseFloat(b.prix || b.price || '0');
+                if (priceA !== priceB) return priceB - priceA;
+            }
+
+            // 3. Tri secondaire par score (pertinence)
             const scoreA = a.score || 0;
             const scoreB = b.score || 0;
             if (scoreA !== scoreB) return scoreB - scoreA;
 
-            // 3. Distance (proximité)
+            // 4. Tri tertiaire par distance (si disponible)
             const distA = a.distance || Infinity;
             const distB = b.distance || Infinity;
             return distA - distB;
         });
 
         return filtered;
-    }, [products, categoryFilters, priceFilter, sortBy]); // ✅ Dépendances optimisées
+    }, [products, categoryFilters, priceFilter, sortBy, locationFilterCoords, locationFilterRadius]); // ✅ Dépendances optimisées
 
     // ✅ Fonction wrapper pour compatibilité avec l'ancien code
     const filterProducts = (productsList: any[]): any[] => {
@@ -5248,64 +5244,106 @@ const ResultatBesoinScreen: React.FC = () => {
 
     // Composant ServiceResultCard amélioré
     // Composant de rendu pour chaque produit
-    const ProductCardComponent = ({ product }: { product: any }) => {
-        const service = product._service;
-        const prestataire = product._prestataire || prestataires.get(service.user_id) || null;
+    // ✅ RÉÉCRITURE COMPLÈTE 2025-11-01 : Composant de rendu de carte produit
+    // Simplifié et sécurisé pour éliminer toute erreur silencieuse
+    const ProductCardComponent = React.memo(({ product }: { product: any }) => {
+        // Validation des données requises
+        if (!product || !product._service) {
+            console.warn('[ProductCard] Produit invalide ignoré:', product);
+            return null;
+        }
 
-        // ✅ NOUVEAU: Préparer la localisation utilisateur pour ProductCard
-        const userLocationForCard = location ? {
+        const service = product._service;
+        const prestataire = product._prestataire || prestataires.get(service?.user_id) || null;
+
+        // ✅ Préparer la localisation utilisateur
+        const userLocationForCard = location?.coords ? {
             latitude: location.coords.latitude,
             longitude: location.coords.longitude
         } : null;
 
+        // ✅ Handlers propres et isolés
+        const handleProductPress = async () => {
+            try {
+                setSelectedProduct(product);
+                setSelectedService(service);
+                setSelectedPrestataire(prestataire);
+
+                // Track la visualisation
+                await trackProductView(
+                    product.id || product.nom || 'unknown',
+                    product.type || dominantCategory,
+                    dominantCategory,
+                    prestataire?.id || service?.user_id
+                );
+            } catch (error) {
+                console.error('[ProductCard] Erreur handleProductPress:', error);
+            }
+        };
+
+        const handleChatPress = async () => {
+            try {
+                setSelectedProduct(product);
+                setSelectedService(service);
+                setSelectedPrestataire(prestataire);
+                setShowChatModal(true);
+
+                // Track le contact
+                await trackProductContact(
+                    product.id || product.nom || 'unknown',
+                    dominantCategory,
+                    'message',
+                    prestataire?.id || service?.user_id
+                );
+            } catch (error) {
+                console.error('[ProductCard] Erreur handleChatPress:', error);
+            }
+        };
+
+        const handleGalleryPress = () => {
+            try {
+                setSelectedProduct(product);
+                setSelectedService(service);
+                setSelectedPrestataire(prestataire);
+                setShowGalleryModal(true);
+            } catch (error) {
+                console.error('[ProductCard] Erreur handleGalleryPress:', error);
+            }
+        };
+
+        const handleBookSeat = () => {
+            try {
+                setSelectedProduct(product);
+                setSelectedService(service);
+                setSelectedPrestataire(prestataire);
+                setShowSeatSelector(true);
+            } catch (error) {
+                console.error('[ProductCard] Erreur handleBookSeat:', error);
+            }
+        };
+
+        // ✅ Rendu propre avec badge de distance si disponible
         return (
-            <ProductCard
-                product={product}
-                service={service}
-                prestataire={prestataire}
-                userLocation={userLocationForCard} // ✅ NOUVEAU: Passer la localisation
-                onPress={async () => {
-                    setSelectedProduct(product);
-                    setSelectedService(service);
-                    setSelectedPrestataire(prestataire);
-
-                    // ✅ OPTIMISATION 6: Track la visualisation du produit
-                    await trackProductView(
-                        product.id || product.nom,
-                        product.type || dominantCategory,
-                        dominantCategory,
-                        prestataire?.id || service.user_id
-                    );
-                }}
-                onChatPress={async () => {
-                    setSelectedProduct(product);
-                    setSelectedService(service);
-                    setSelectedPrestataire(prestataire);
-                    setShowChatModal(true);
-
-                    // ✅ OPTIMISATION 6: Track le contact via chat
-                    await trackProductContact(
-                        product.id || product.nom,
-                        dominantCategory,
-                        'message',
-                        prestataire?.id || service.user_id
-                    );
-                }}
-                onGalleryPress={() => {
-                    setSelectedProduct(product);
-                    setSelectedService(service);
-                    setSelectedPrestataire(prestataire);
-                    setShowGalleryModal(true);
-                }}
-                onBookSeat={() => {
-                    setSelectedProduct(product);
-                    setSelectedService(service);
-                    setSelectedPrestataire(prestataire);
-                    setShowSeatSelector(true);
-                }}
-            />
+            <View>
+                <ProductCard
+                    product={product}
+                    service={service}
+                    prestataire={prestataire}
+                    userLocation={userLocationForCard}
+                    onPress={handleProductPress}
+                    onChatPress={handleChatPress}
+                    onGalleryPress={handleGalleryPress}
+                    onBookSeat={handleBookSeat}
+                />
+                {/* Badge de distance si disponible */}
+                {product.distance !== undefined && product.distance !== Infinity && (
+                    <View style={styles.distanceBadgeContainer}>
+                        <DistanceBadge distance={product.distance} variant="compact" />
+                    </View>
+                )}
+            </View>
         );
-    };
+    });
 
     // Composant de rendu pour chaque service
     const ServiceCardComponent = ({ service }: { service: Service }) => {
@@ -5396,38 +5434,52 @@ const ResultatBesoinScreen: React.FC = () => {
                 </TouchableOpacity>
             </View>
 
-            {/* 🔍 Barre de recherche intelligente avec historique */}
+            {/* 🔍 Barre de recherche intelligente avec autocomplete dynamique + proximité */}
             <View style={styles.searchContainer}>
-                <IntelligentSearchBar
+                <SmartSearchBar
                     placeholder="Affiner votre recherche..."
-                    onSubmit={async (query) => {
+                    availableProducts={products}
+                    onLocationFilterPress={() => setShowCategoryFilters(true)} // Ouvre le modal de filtres complet
+                    hasLocationFilter={locationFilterCoords !== null}
+                    onSearch={async (query, filters) => {
+                        console.log('🔍 Recherche SmartSearchBar:', { query, filters });
+
                         // Enregistrer la recherche dans l'historique
                         try {
                             await searchHistoryService.recordSearch(
-                                query,
+                                query || 'Filtres uniquement',
                                 'text',
                                 {
                                     category: dominantCategory !== 'default' ? dominantCategory : undefined,
                                     results_count: products.length,
-                                    location_lat: location?.lat,
-                                    location_lon: location?.lon,
+                                    location_lat: location?.coords?.latitude,
+                                    location_lon: location?.coords?.longitude,
+                                    filters: filters
                                 }
                             );
                         } catch (error) {
                             console.error('[ResultatBesoinScreen] Erreur enregistrement recherche:', error);
                         }
 
-                        // Convertir la chaîne en objet comme HomeScreen
-                        const input = { texte: query };
-                        await handleSearch(input);
+                        // Appliquer les filtres
+                        if (filters && Object.keys(filters).length > 0) {
+                            setCategoryFilters(filters);
+                            console.log(`✅ Filtres appliqués depuis SmartSearchBar: ${Object.keys(filters).length} caractéristiques`);
+                        }
+
+                        // Si requête texte, lancer la recherche
+                        if (query && query.trim()) {
+                            const input = { texte: query };
+                            await handleSearch(input);
+                        }
                     }}
-                    showSendButton={true}
-                    category={dominantCategory !== 'default' ? dominantCategory : undefined}
-                    enableHistory={true}
-                    enableSuggestions={true}
-                    onSearchRecorded={(searchId) => {
-                        console.log('[ResultatBesoinScreen] ✅ Recherche enregistrée avec ID:', searchId);
+                    onClear={() => {
+                        setCategoryFilters({});
+                        setLocationFilterCoords(null);
+                        setLocationFilterRadius(10);
+                        console.log('✨ Tous les filtres effacés (autocomplete + location)');
                     }}
+                    showFilters={true}
                 />
             </View>
 
@@ -5503,7 +5555,59 @@ const ResultatBesoinScreen: React.FC = () => {
                         {/* En-tête avec compteur */}
                         <View style={styles.modernFiltersHeader}>
                             <View style={styles.modernHeaderLeft}>
-                                <Text style={styles.modernHeaderIcon}>{categoryStyle.icon}</Text>
+                                {(() => {
+                                    // 🚨 LOGS DE DIAGNOSTIC pour le problème du "cube décalé"
+                                    console.log('[DEBUG_CUBE] ═══════════════════════════════════');
+                                    console.log('[DEBUG_CUBE] categoryStyle:', JSON.stringify(categoryStyle));
+                                    console.log('[DEBUG_CUBE] icon value:', categoryStyle.icon);
+                                    console.log('[DEBUG_CUBE] icon type:', typeof categoryStyle.icon);
+                                    console.log('[DEBUG_CUBE] icon length:', categoryStyle.icon?.length);
+                                    console.log('[DEBUG_CUBE] icon charCodes:',
+                                        categoryStyle.icon?.split('').map(c => `${c}=${c.charCodeAt(0)}`).join(', ')
+                                    );
+                                    console.log('[DEBUG_CUBE] dominantCategory:', dominantCategory);
+                                    console.log('[DEBUG_CUBE] products sample:', products.slice(0, 2).map(p => ({
+                                        type: p.type,
+                                        category: p.category,
+                                        _service_category: p._service?.data?.category
+                                    })));
+                                    console.log('[DEBUG_CUBE] ═══════════════════════════════════');
+
+                                    // ✅ VALIDATION STRICTE : Vérifier que l'icône est un emoji valide
+                                    const isValidEmoji = (str: string) => {
+                                        if (!str || typeof str !== 'string') return false;
+                                        // Vérifier longueur (emojis = 1-4 caractères généralement)
+                                        if (str.length > 10) return false;
+                                        // Vérifier que ce n'est PAS uniquement des chiffres
+                                        if (/^\d+$/.test(str)) {
+                                            console.warn(`[DEBUG_CUBE] ❌ Icône rejetée (chiffres): ${str}`);
+                                            return false;
+                                        }
+                                        // Vérifier plages Unicode des emojis courants
+                                        const emojiRegex = /[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F600}-\u{1F64F}\u{1F680}-\u{1F6FF}\u{1F1E0}-\u{1F1FF}]/u;
+                                        const isEmoji = emojiRegex.test(str);
+                                        if (!isEmoji) {
+                                            console.warn(`[DEBUG_CUBE] ❌ Icône rejetée (pas un emoji): ${str}`);
+                                        }
+                                        return isEmoji;
+                                    };
+
+                                    // Déterminer l'icône à afficher avec validation stricte
+                                    let iconToDisplay = '📦';  // Valeur par défaut sûre
+
+                                    if (isValidEmoji(categoryStyle.icon)) {
+                                        iconToDisplay = categoryStyle.icon;
+                                        console.log('[DEBUG_CUBE] ✅ Icône validée:', iconToDisplay);
+                                    } else {
+                                        console.warn('[DEBUG_CUBE] ⚠️ Icône invalide, fallback vers 📦');
+                                        console.warn('[DEBUG_CUBE] Icône rejetée:', categoryStyle.icon);
+                                        console.warn('[DEBUG_CUBE] Catégorie:', dominantCategory);
+                                    }
+
+                                    return (
+                                        <Text style={styles.modernHeaderIcon}>{iconToDisplay}</Text>
+                                    );
+                                })()}
                                 <View style={styles.modernHeaderText}>
                                     <Text style={styles.modernHeaderTitle} numberOfLines={1} ellipsizeMode="tail">
                                         Résultats de recherche
@@ -5627,50 +5731,112 @@ const ResultatBesoinScreen: React.FC = () => {
                         </ScrollView>
                     </View>
 
-                    {/* Modal de filtres de catégorie - AMÉLIORÉ */}
-                    <CategoryFilters
-                        category={dominantCategory}
+                    {/* ✅ NOUVEAU: Modal de filtres dynamiques autocomplete + proximité GPS */}
+                    <DynamicAutocompleteFilters
                         visible={showCategoryFilters}
                         onClose={() => setShowCategoryFilters(false)}
-                        onApply={async (filters) => {
+                        availableCharacteristics={availableCharacteristics}
+                        initialLocationCoords={locationFilterCoords}
+                        initialLocationRadius={locationFilterRadius}
+                        onApply={async (filters, locationCoords, locationRadius) => {
+                            console.log('🎯 Filtres appliqués:', {
+                                autocomplete: filters,
+                                location: locationCoords,
+                                radius: locationRadius
+                            });
+
+                            // Appliquer filtres autocomplete
                             setCategoryFilters(filters);
 
-                            // ✅ AMÉLIORATION: Sauvegarder dans l'historique
-                            const filteredResults = filterProducts(products);
-                            await saveFilterToHistory(dominantCategory, filters, filteredResults.length);
+                            // Appliquer filtres de proximité
+                            setLocationFilterCoords(locationCoords);
+                            setLocationFilterRadius(locationRadius);
+
+                            // ✅ AMÉLIORATION: Calcul combiné pour l'historique
+                            let filteredResults = filterProductsByAutocomplete(products, filters);
+                            if (locationCoords && locationRadius !== null && calculateDistance) {
+                                filteredResults = filterProductsByProximity(
+                                    filteredResults,
+                                    locationCoords.lat,
+                                    locationCoords.lon,
+                                    locationRadius,
+                                    calculateDistance
+                                );
+                            }
+
+                            // Sauvegarder dans l'historique
+                            await saveFilterToHistory(dominantCategory, {
+                                ...filters,
+                                _location: locationCoords ? {
+                                    lat: locationCoords.lat,
+                                    lon: locationCoords.lon,
+                                    radius: locationRadius
+                                } : null
+                            }, filteredResults.length);
 
                             // Recharger l'historique
                             const updatedHistory = await getFilterHistory(dominantCategory);
                             setFilterHistory(updatedHistory);
 
-                            console.log(`✅ Filtres appliqués: ${Object.keys(filters).length} filtres → ${filteredResults.length} résultats`);
+                            console.log(`✅ Filtres combinés: ${Object.keys(filters).length} caractéristiques + ${locationCoords ? 'proximité' : 'sans proximité'} → ${filteredResults.length} résultats`);
                         }}
                         initialFilters={categoryFilters}
-                        smartSuggestions={smartSuggestions}
-                        filterHistory={filterHistory}
+                        categoryName={`Filtrer ${terminology.product}s`}
+                        categoryIcon={categoryStyle.icon || '🔍'}
                     />
 
-                    {/* ✅ OPTIMISATION 2: FlatList avec lazy loading pour performance */}
+                    {/* ✅ RÉÉCRITURE COMPLÈTE 2025-11-01 : Liste des produits */}
                     {(() => {
-                        // ✅ CORRECTION: Afficher UNIQUEMENT les produits (pas les services)
                         const filteredProducts = filterProducts(products);
 
-                        return filteredProducts.length > 0 ? (
+                        console.log(`[ResultatBesoin] Rendu de ${filteredProducts.length} produits filtrés`);
+
+                        if (filteredProducts.length === 0) {
+                            // État vide
+                            return (
+                                <View style={styles.emptyState}>
+                                    <SafeIcon name="package" size={48} color="#D1D5DB" />
+                                    <Text style={styles.emptyStateTitle}>Aucun résultat trouvé</Text>
+                                    <Text style={styles.emptyStateSubtitle}>
+                                        Essayez de modifier vos critères de recherche
+                                    </Text>
+                                </View>
+                            );
+                        }
+
+                        return (
                             <FlatList
                                 data={filteredProducts}
-                                keyExtractor={(item, index) => `product-${normalizeProduct(item).id}-${index}`}
-                                renderItem={({ item }) => {
+                                keyExtractor={(item, index) => {
                                     const product = normalizeProduct(item);
-                                    return (
-                                        <ProductCardErrorBoundary
-                                            productId={product.id}
-                                            onError={(error) => {
-                                                console.error(`ProductCard Error for ${product.id}:`, error);
-                                            }}
-                                        >
-                                            <ProductCardComponent product={product} />
-                                        </ProductCardErrorBoundary>
-                                    );
+                                    return `product-${product.id || index}-${product.nom || 'unnamed'}-${index}`;
+                                }}
+                                renderItem={({ item, index }) => {
+                                    try {
+                                        const product = normalizeProduct(item);
+
+                                        // Validation supplémentaire
+                                        if (!product || !product._service) {
+                                            console.warn(`[ResultatBesoin] Produit ${index} invalide, ignoré`);
+                                            return null;
+                                        }
+
+                                        return (
+                                            <View style={styles.productCardWrapper}>
+                                                <ProductCardErrorBoundary
+                                                    productId={product.id || `product-${index}`}
+                                                    onError={(error) => {
+                                                        console.error(`[ProductCard] Erreur pour produit ${product.id || index}:`, error);
+                                                    }}
+                                                >
+                                                    <ProductCardComponent product={product} />
+                                                </ProductCardErrorBoundary>
+                                            </View>
+                                        );
+                                    } catch (error) {
+                                        console.error(`[ResultatBesoin] Erreur renderItem index ${index}:`, error);
+                                        return null;
+                                    }
                                 }}
                                 // ✅ Optimisations performance
                                 windowSize={5}
@@ -5683,22 +5849,12 @@ const ResultatBesoinScreen: React.FC = () => {
                                     <RefreshControl
                                         refreshing={refreshing}
                                         onRefresh={onRefresh}
-                                        colors={[categoryStyle.primaryColor]}
-                                        tintColor={categoryStyle.primaryColor}
+                                        colors={[categoryStyle.primaryColor || '#6366F1']}
+                                        tintColor={categoryStyle.primaryColor || '#6366F1'}
                                     />
                                 }
-                                // ✅ État vide
-                                ListEmptyComponent={
-                                    <View style={styles.emptyState}>
-                                        <SafeIcon name="package" size={48} color="#D1D5DB" />
-                                        <Text style={styles.emptyStateText}>Aucun résultat trouvé</Text>
-                                        <Text style={styles.emptyStateSubtext}>
-                                            {Object.keys(categoryFilters).length > 0
-                                                ? 'Essayez de modifier vos filtres'
-                                                : 'Essayez de modifier votre recherche'}
-                                        </Text>
-                                    </View>
-                                }
+                                // ✅ Séparateur entre cartes (pas de marginBottom dans productCardWrapper)
+                                ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
                                 // ✅ Footer
                                 ListFooterComponent={
                                     <View style={styles.footerContainer}>
@@ -5730,17 +5886,8 @@ const ResultatBesoinScreen: React.FC = () => {
                                     </View>
                                 }
                                 contentContainerStyle={styles.flatListContent}
+                                showsVerticalScrollIndicator={false}
                             />
-                        ) : (
-                            <View style={styles.emptyState}>
-                                <SafeIcon name="package" size={48} color="#D1D5DB" />
-                                <Text style={styles.emptyStateText}>Aucun résultat trouvé</Text>
-                                <Text style={styles.emptyStateSubtext}>
-                                    {Object.keys(categoryFilters).length > 0
-                                        ? 'Essayez de modifier vos filtres'
-                                        : 'Essayez de modifier votre recherche'}
-                                </Text>
-                            </View>
                         );
                     })()}
                 </>
@@ -6140,6 +6287,19 @@ const styles = StyleSheet.create({
         padding: 48,
         alignItems: 'center',
         justifyContent: 'center',
+        minHeight: 300,
+    },
+    emptyStateTitle: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: '#374151',
+        marginTop: 16,
+    },
+    emptyStateSubtitle: {
+        fontSize: 14,
+        color: '#9CA3AF',
+        marginTop: 8,
+        textAlign: 'center',
     },
     emptyStateText: {
         fontSize: 16,
@@ -6240,6 +6400,23 @@ const styles = StyleSheet.create({
     flatListContent: {
         flexGrow: 1,
         paddingHorizontal: 0, // ✅ CORRECTION: Suppression du padding pour que les cartes prennent toute la largeur
+    },
+    productCardWrapper: {
+        // ✅ NOUVEAU 2025-11-01: Wrapper propre pour chaque carte
+        // Pas de flexDirection row, pas de composant externe
+        width: '100%',
+        marginBottom: 0, // Le séparateur gère l'espacement
+    },
+    distanceBadgeContainer: {
+        position: 'absolute',
+        top: 12,
+        right: 12,
+        zIndex: 10,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 3.84,
+        elevation: 5,
     },
     serviceCard: {
         marginBottom: 16,

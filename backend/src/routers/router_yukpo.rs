@@ -18,6 +18,8 @@ use crate::{
         interaction_controller::{post_message, post_review, get_service_interactions, get_service_reviews, get_service_score, get_service_stats, post_audio, post_call, post_share, post_review_helpful},
         service_controller::{get_services_for_prestataire, toggle_service_status, modifier_service, supprimer_service, get_service_by_id},
         intelligent_service_controller::{process_services_intelligently, get_services_pending_processing, reactivate_service_intelligent},
+        product_addition_controller::add_product_to_service, // ✅ NOUVEAU 2025-11-01
+        product_lifecycle_controller::{deactivate_product, reactivate_product}, // ✅ NOUVEAU 2025-11-01
     },
     routes::products_management::update_product,
     routes::{
@@ -129,6 +131,11 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route("/api/services/{service_id}/delete", delete(supprimer_service))
         // ✅ NOUVEAU: Route pour modifier un produit spécifique (avec historique)
         .route("/api/products/{product_id}/update", patch(update_product))
+        // ✅ NOUVEAU 2025-11-01: Route pour ajouter un produit incrémental (coût fixe 3000 FCFA)
+        .route("/api/services/{service_id}/products", post(add_product_to_service))
+        // ✅ NOUVEAU 2025-11-01: Routes pour cycle de vie produits (désactivation/réactivation)
+        .route("/api/services/{service_id}/products/{product_index}/deactivate", post(deactivate_product))
+        .route("/api/services/{service_id}/products/{product_index}/reactivate", post(reactivate_product))
         // Route pour r?cup?rer un service par ID (public)
         .route("/api/services/{service_id}", get(get_service_by_id))
         // Route pour récupérer les médias d'un service
@@ -198,6 +205,9 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
     let media_fallback_route = Router::new()
         .route("/api/media/{*file_path}", get(serve_media_file));
     
+    // ✅ NOUVEAU: Routes pour statistiques de tokens
+    let token_stats_routes_merged = crate::routes::token_stats_routes::token_stats_routes();
+    
     // Combinaison des routes
     public_routes
         .merge(protected_routes)
@@ -208,6 +218,7 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .merge(service_team_routes_merged)
         .merge(image_search_routes_merged)
         .merge(publicite_routes_inline)
+        .merge(token_stats_routes_merged)
         .merge(modality_routes)
         .merge(media_fallback_route) // ⚠️ Route wildcard en dernier
         .with_state(state)
@@ -367,13 +378,45 @@ async fn handle_direct_search(
                     Err(e) => {
                         log_error(&format!("[DIRECT_SEARCH] Erreur analyse IA: {:?}", e));
                         
-                        // Retourner erreur si image sans texte
+                        // ✅ CORRECTION: Au lieu de retourner erreur, faire fallback vers recherche générique
                         if !has_text {
-                            let response = serde_json::json!({
-                                "status": "error",
-                                "message": format!("Erreur analyse d'image: {}", e),
-                                "error": "image_analysis_failed"
+                            log_warn("[DIRECT_SEARCH] ⚠️ Analyse IA échouée sans texte - Fallback vers recherche générique");
+                            
+                            // Recherche générique avec tous les produits récents
+                            let fallback_result = sqlx::query_as::<_, (i32, Value, Option<String>)>(
+                                r#"
+                                SELECT id, data, gps
+                                FROM services
+                                WHERE is_active = true
+                                AND data IS NOT NULL
+                                ORDER BY created_at DESC
+                                LIMIT 20
+                                "#
+                            )
+                            .fetch_all(&_state.pg)
+                            .await
+                            .map_err(|e| AppError::Internal(format!("Erreur recherche fallback: {}", e)))?;
+                            
+                            let fallback_json: Vec<Value> = fallback_result.iter().map(|(id, data, gps)| {
+                                json!({
+                                    "service_id": id,
+                                    "data": data,
+                                    "gps": gps,
+                                    "score": 0.5,
+                                    "match_reason": "Fallback - recherche générique"
+                                })
+                            }).collect();
+                            
+                            let response = json!({
+                                "status": "success",
+                                "intention": "recherche_besoin",
+                                "resultats": fallback_json,
+                                "tokens_consumed": 0,
+                                "message": format!("Recherche générique (analyse image échouée): {} résultats", fallback_json.len()),
+                                "search_method": "fallback_generic",
+                                "image_analysis_error": format!("{}", e)
                             });
+                            
                             return Ok(Json(response));
                         }
                         // Sinon, continuer vers recherche textuelle

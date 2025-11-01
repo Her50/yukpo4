@@ -7,6 +7,31 @@ use log::info;
 use chrono::Utc;
 use base64::{Engine, engine::general_purpose::STANDARD};
 
+// ✅ NOUVEAU 2025-11-01 : Configuration des coûts de création de services et produits
+mod service_costs {
+    /// Coût de création du premier produit (basé sur tokens IA)
+    pub const COST_PER_TOKEN_XAF: f64 = 0.004;
+    pub const MULTIPLIER_FIRST_PRODUCT: f64 = 100.0;
+    
+    /// ✅ Coût fixe d'ajout d'un nouveau produit dupliqué (modifié)
+    pub const COST_NEW_PRODUCT_DUPLICATE_XAF: i64 = 3000;
+    
+    /// Coût minimum de création d'un service sans produits
+    pub const COST_SERVICE_MINIMUM_XAF: i64 = 500;
+    
+    /// Calculer le coût de création d'un service selon le contexte
+    pub fn calculate_service_creation_cost(tokens_ia_externe: i64, is_first_product: bool) -> i64 {
+        if is_first_product {
+            // Premier produit : coût basé sur tokens IA
+            let cost = (tokens_ia_externe as f64) * COST_PER_TOKEN_XAF * MULTIPLIER_FIRST_PRODUCT;
+            cost.round() as i64
+        } else {
+            // Produits suivants : coût fixe
+            COST_NEW_PRODUCT_DUPLICATE_XAF
+        }
+    }
+}
+
 // ?? Imports pour la génération de signatures d'images (conditionnels)
 #[cfg(feature = "image_search")]
 use md5;
@@ -332,29 +357,71 @@ pub async fn creer_service(
         .or_else(|| data_processed.get("tokens_consumed").and_then(|v| v.as_u64()))
         .unwrap_or(0) as i64;
     
+    // ✅ NOUVEAU 2025-11-01 : Déterminer si c'est le premier produit ou un produit dupliqué
+    // Si tokens_ia_externe > 0 : c'est le premier produit (analysé par IA)
+    // Si tokens_ia_externe = 0 : c'est un produit dupliqué (pas d'analyse IA)
+    let is_first_product = ia_tokens_consumed > 0;
+    
+    // ✅ NOUVEAU 2025-11-01 : Calculer le coût réel avec le système configurable
+    let cout_reel_xaf = service_costs::calculate_service_creation_cost(ia_tokens_consumed, is_first_product);
+    
+    log::info!("[creer_service] 💰 Coût calculé: {} FCFA (tokens IA: {}, premier produit: {})", 
+        cout_reel_xaf, ia_tokens_consumed, is_first_product);
+    
+    // ✅ NOUVEAU 2025-11-01 : Vérifier et débiter le solde AVANT de créer le service
+    let current_balance_result = sqlx::query("SELECT tokens_balance FROM users WHERE id = $1")
+        .bind(user_id)
+        .fetch_one(pool)
+        .await;
+    
+    let current_balance = match current_balance_result {
+        Ok(row) => row.try_get::<i64, _>("tokens_balance").unwrap_or(0),
+        Err(e) => {
+            log::error!("[creer_service] ❌ Impossible de récupérer le solde utilisateur {}: {}", user_id, e);
+            return Err(AppError::Internal(format!("Erreur récupération solde: {}", e)));
+        }
+    };
+    
+    // Vérifier solde suffisant
+    if current_balance < cout_reel_xaf {
+        log::error!("[creer_service] ❌ Solde insuffisant pour user {}: {} FCFA < {} FCFA requis", 
+            user_id, current_balance, cout_reel_xaf);
+        return Err(AppError::BadRequest(format!(
+            "Solde insuffisant: {} FCFA disponible, {} FCFA requis",
+            current_balance, cout_reel_xaf
+        )));
+    }
+    
+    // ✅ Débiter le solde
+    let debit_result = sqlx::query(
+        "UPDATE users SET tokens_balance = tokens_balance - $1 WHERE id = $2 RETURNING tokens_balance"
+    )
+    .bind(cout_reel_xaf)
+    .bind(user_id)
+    .fetch_one(pool)
+    .await;
+    
+    let new_balance = match debit_result {
+        Ok(row) => row.try_get::<i64, _>("tokens_balance").unwrap_or(0),
+        Err(e) => {
+            log::error!("[creer_service] ❌ Échec débit solde pour user {}: {}", user_id, e);
+            return Err(AppError::Internal(format!("Erreur débit solde: {}", e)));
+        }
+    };
+    
+    log::info!("[creer_service] ✅ Solde débité : {} FCFA (ancien: {}, nouveau: {})", 
+        cout_reel_xaf, current_balance, new_balance);
+    
+    // Ajouter les tokens au tracker pour cohérence (même si déjà débités)
     if ia_tokens_consumed > 0 {
         token_tracker.add_enrichment(ia_tokens_consumed);
         log::info!("[creer_service] Tokens IA externe extraits depuis les données: {}", ia_tokens_consumed);
     } else {
-        // ✅ CORRECTION: Maintenir un coût minimum lors de la duplication de produit sans IA externe
-        // Calculer un coût basé sur la complexité du service (nombre de produits, champs, etc.)
-        let produits_count = data_processed.get("produits")
-            .and_then(|p| p.as_object())
-            .and_then(|obj| obj.get("valeur"))
-            .and_then(|v| v.as_array())
-            .map(|arr| arr.len())
-            .unwrap_or(0);
-        
-        // Coût minimum pour duplication : 50 tokens équivalents par produit
-        let min_cost_tokens = if produits_count > 0 {
-            produits_count as i64 * 50
-        } else {
-            100 // Coût minimum de base même sans produits
-        };
-        
+        // Token tracking pour stats (pas pour facturation, déjà facturé ci-dessus)
+        let min_cost_tokens = cout_reel_xaf / 10; // Conversion approximative pour stats
         token_tracker.add_enrichment(min_cost_tokens);
-        log::info!("[creer_service] ✅ Coût minimum appliqué pour duplication (sans IA externe): {} tokens ({} produits)", 
-            min_cost_tokens, produits_count);
+        log::info!("[creer_service] ✅ Tokens équivalents pour stats: {} (coût fixe: {} FCFA)", 
+            min_cost_tokens, cout_reel_xaf);
     }
     
     let mut data_obj = valider_service_json(&data_processed)?;

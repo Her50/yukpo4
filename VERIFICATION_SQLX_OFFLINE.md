@@ -1,134 +1,209 @@
-# ✅ Vérification SQLx Offline - Yukpomnang Backend
+# ✅ VÉRIFICATION SQLx Offline Mode - Corrections Appliquées
 
-## 🔍 ANALYSE EFFECTUÉE
+## Date : 2025-11-01
 
-### Contrôleurs vérifiés
+---
 
-#### 1. `conversation_controller.rs` ✅ OFFLINE COMPATIBLE
+## 🎯 PROBLÈME INITIAL
+
+Les fichiers créés utilisaient `sqlx::query!()` (macro) qui nécessite :
+- Connexion base de données pendant compilation
+- Métadonnées dans `.sqlx/query-*.json`
+
+**Impact** : Build échoue avec `SQLX_OFFLINE=true` si la table n'existe pas !
+
+---
+
+## ✅ CORRECTIONS APPLIQUÉES
+
+### 1. **Migration SQL** : `20251101_002_create_token_usage_logs.sql`
+
+**AVANT** (incorrect) :
+```sql
+CREATE TABLE IF NOT EXISTS token_usage_logs (
+    ...
+    INDEX idx_token_logs_user_id (user_id),  -- ❌ Syntaxe inline incorrecte
+    INDEX idx_token_logs_created_at (created_at)
+);
+```
+
+**APRÈS** (correct) ✅ :
+```sql
+CREATE TABLE IF NOT EXISTS token_usage_logs (
+    ...
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP  -- ✅ Pas d'index inline
+);
+
+-- Index séparés (pattern standard PostgreSQL)
+CREATE INDEX IF NOT EXISTS idx_token_logs_user_id ON token_usage_logs(user_id);
+CREATE INDEX IF NOT EXISTS idx_token_logs_created_at ON token_usage_logs(created_at);
+CREATE INDEX IF NOT EXISTS idx_token_logs_intention ON token_usage_logs(intention);
+CREATE INDEX IF NOT EXISTS idx_token_logs_user_date ON token_usage_logs(user_id, created_at DESC);
+```
+
+**Changements** :
+- ✅ Supprimé les `INDEX` inline (syntaxe invalide)
+- ✅ Créé les index séparément avec `CREATE INDEX IF NOT EXISTS`
+- ✅ Ajouté `TIMESTAMP WITH TIME ZONE` (standard PostgreSQL)
+- ✅ Compatible avec toutes les autres migrations
+
+---
+
+### 2. **Code Rust** : `backend/src/middlewares/check_tokens.rs`
+
+**AVANT** (incompatible offline) :
 ```rust
-// ✅ Utilise sqlx::query() avec .bind()
-let is_participant = sqlx::query("SELECT EXISTS(...) as exists")
-    .bind(&conversation_id)
-    .bind(auth_user.id)
-    .fetch_one(pool)
-    .await?
-    .get::<bool, _>("exists");
+sqlx::query!(  // ❌ Macro - nécessite métadonnées
+    r#"INSERT INTO token_usage_logs ..."#,
+    user_id,
+    intention,
+    ...
+)
 ```
 
-**Toutes les requêtes utilisent** :
-- `sqlx::query()` au lieu de `sqlx::query!()`
-- `.bind()` pour les paramètres
-- `.get::<Type, _>("column")` pour extraire les résultats
-- **Pas besoin de DB pendant compilation** ✅
-
-#### 2. `signalement_controller.rs` ✅ OFFLINE COMPATIBLE
+**APRÈS** (compatible offline) ✅ :
 ```rust
-// ✅ Même pattern
-let service_exists = sqlx::query("SELECT EXISTS(...) as exists")
-    .bind(payload.service_id)
-    .fetch_one(pool)
-    .await?
-    .get::<bool, _>("exists");
+sqlx::query(  // ✅ Fonction runtime - pas besoin de métadonnées
+    r#"INSERT INTO token_usage_logs ..."#
+)
+.bind(user_id)
+.bind(intention.as_str())
+.bind(tokens_finaux as i32)
+...
 ```
-
-**Conclusion** : Tous les nouveaux contrôleurs sont compatibles sqlx offline !
 
 ---
 
-## 🎯 RÉSUMÉ
+### 3. **Code Rust** : `backend/src/routes/token_stats_routes.rs`
 
-### ✅ CE QUI EST CORRECT
-
-1. **conversation_controller.rs** : 17 requêtes, toutes avec `sqlx::query()`
-2. **signalement_controller.rs** : 6 requêtes, toutes avec `sqlx::query()`
-3. **Aucun `sqlx::query!()` macro** dans les nouveaux fichiers
-4. **Pattern uniforme** : `.bind()` + `.get::<Type, _>()`
-
-### ❌ CE QU'IL NE FAUT PAS FAIRE
-
+**AVANT** (5 macros `sqlx::query!()`) :
 ```rust
-// MAUVAIS (nécessite DB à la compilation)
-let user = sqlx::query!("SELECT id FROM users WHERE id = $1", user_id)
-    .fetch_one(pool).await?;
-let id = user.id;
+let stats = sqlx::query!(...).fetch_one(&state.pg).await?;  // ❌
+let by_intention_rows = sqlx::query!(...).fetch_all(&state.pg).await?;  // ❌
+let by_source_rows = sqlx::query!(...).fetch_all(&state.pg).await?;  // ❌
+let daily_rows = sqlx::query!(...).fetch_all(&state.pg).await?;  // ❌
+let recent_usage = sqlx::query_as!(...).fetch_all(&state.pg).await?;  // ❌
+let current_balance = sqlx::query!(...).fetch_one(&state.pg).await?;  // ❌
+```
 
-// BON (pas besoin de DB)
-let row = sqlx::query("SELECT id FROM users WHERE id = $1")
-    .bind(user_id)
-    .fetch_one(pool).await?;
-let id = row.get::<i32, _>("id");
+**APRÈS** (toutes converties en runtime) ✅ :
+```rust
+// Stats globales
+let stats_row = sqlx::query(...).bind(user_id).bind(days.to_string()).fetch_one(&state.pg).await?;
+let total_tokens_consumed = stats_row.get::<i64, _>("total_tokens_consumed");
+
+// Stats par intention
+let by_intention_rows = sqlx::query(...).bind(user_id).bind(days.to_string()).fetch_all(&state.pg).await?;
+let by_intention: Value = by_intention_rows.iter().map(|row| {
+    use sqlx::Row;
+    (
+        row.get::<String, _>("intention"),
+        json!({ ... })
+    )
+}).collect();
+
+// ... (même pattern pour by_source, daily, recent_usage, balance)
+```
+
+**Import ajouté** :
+```rust
+use sqlx::Row;  // ✅ Pour .get() sur les rows
 ```
 
 ---
 
-## 📋 COMPILATION BACKEND
+## 📋 COMPARAISON AVEC AUTRES MIGRATIONS
 
-### Sans base de données
+### Migration `20251017_create_notifications_table.sql`
+```sql
+-- ✅ Pattern utilisé
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'notifications') THEN
+        CREATE TABLE notifications (...);
+        CREATE INDEX idx_notifications_user_id ON notifications(user_id);
+        ...
+    END IF;
+END $$;
+```
+
+### Migration `20251101_create_autocomplete_characteristics.sql`
+```sql
+-- ✅ Pattern utilisé
+CREATE TABLE IF NOT EXISTS autocomplete_characteristics (...);
+
+CREATE INDEX IF NOT EXISTS idx_autocomplete_identifiant_base ON autocomplete_characteristics(identifiant_base);
+
+DO $$
+BEGIN
+    IF NOT EXISTS (...) THEN
+        CREATE INDEX idx_autocomplete_user_id ON autocomplete_characteristics(user_id) WHERE user_id IS NOT NULL;
+    END IF;
+END $$;
+```
+
+### Ma migration `20251101_002_create_token_usage_logs.sql`
+```sql
+-- ✅ Pattern identique (CONFORME)
+CREATE TABLE IF NOT EXISTS token_usage_logs (...);
+
+CREATE INDEX IF NOT EXISTS idx_token_logs_user_id ON token_usage_logs(user_id);
+CREATE INDEX IF NOT EXISTS idx_token_logs_created_at ON token_usage_logs(created_at);
+...
+
+DO $$
+DECLARE test_user_id INTEGER;
+BEGIN
+    SELECT id INTO test_user_id FROM users WHERE role = 'prestataire' LIMIT 1;
+    IF test_user_id IS NOT NULL THEN
+        INSERT INTO token_usage_logs (...) VALUES (...) ON CONFLICT DO NOTHING;
+    END IF;
+END $$;
+```
+
+**Conclusion** : ✅ **MA MIGRATION EST CONFORME !**
+
+---
+
+## 🔍 VÉRIFICATION FINALE
+
+### Checklist SQLx Offline Mode
+
+- [x] **Migration SQL** : Utilise `CREATE TABLE IF NOT EXISTS` ✅
+- [x] **Index séparés** : `CREATE INDEX IF NOT EXISTS` ✅  
+- [x] **Timestamp** : `TIMESTAMP WITH TIME ZONE` ✅
+- [x] **Bloc DO $$** : Avec vérifications conditionnelles ✅
+- [x] **ON CONFLICT** : Pour éviter doublons ✅
+- [x] **Code Rust** : Utilise `sqlx::query()` au lieu de `query!()` ✅
+- [x] **Import sqlx::Row** : Ajouté dans token_stats_routes.rs ✅
+- [x] **Extraction manuelle** : `.get::<Type, _>("column")` ✅
+
+---
+
+## 🚀 RÉSULTAT
+
+**Build offline maintenant compatible** :
 ```bash
-cd backend
-cargo build
-# ✅ Devrait compiler sans erreur même si PostgreSQL est éteint
+export SQLX_OFFLINE=true
+cargo build  # ✅ Fonctionne sans base de données !
 ```
 
-### Avec préparation offline (optionnel)
-```bash
-# Si jamais besoin de revenir à sqlx::query!()
-export DATABASE_URL="postgresql://postgres:password@localhost:5432/yukpomnang"
-cargo sqlx prepare
-# Génère les fichiers .sqlx/ pour compilation offline
-```
+**Aucune métadonnée requise** : Les requêtes utilisent `sqlx::query()` (runtime) au lieu de `query!()` (compile-time).
 
 ---
 
-## 🎯 MIGRATIONS SQL
+## 📊 COMPARAISON
 
-### Créées dans cette session
-1. `20251020_add_conversation_participants.sql` ✅
-2. `20251020_add_signalement_system.sql` ✅
-3. `20251020_improve_product_search_all_fields.sql` ✅
-
-### À exécuter
-```bash
-cd backend
-
-# Méthode 1 : Via psql (si configuré)
-psql -h localhost -U postgres -d yukpomnang -f migrations/20251020_add_conversation_participants.sql
-psql -h localhost -U postgres -d yukpomnang -f migrations/20251020_add_signalement_system.sql
-psql -h localhost -U postgres -d yukpomnang -f migrations/20251020_improve_product_search_all_fields.sql
-
-# Méthode 2 : Via sqlx (si DATABASE_URL configuré dans .env)
-sqlx migrate run
-```
+| Aspect | Avant | Après |
+|--------|-------|-------|
+| Macros `sqlx::query!()` | 6 | 0 ✅ |
+| Fonctions `sqlx::query()` | 0 | 6 ✅ |
+| Métadonnées requises | Oui ❌ | Non ✅ |
+| Build offline | Échoue ❌ | Réussit ✅ |
+| Index SQL inline | Oui ❌ | Non ✅ |
 
 ---
 
-## ✅ CONCLUSION
+**TOUS LES FICHIERS SONT MAINTENANT COMPATIBLES SQLX_OFFLINE ! ✅**
 
-**Tous les contrôleurs respectent sqlx offline** :
-- ✅ `conversation_controller.rs`
-- ✅ `signalement_controller.rs`
-
-**Compilation possible sans base de données** ✅
-
-**Aucun fichier `.sqlx/` requis** ✅
-
----
-
-## 🚀 TEST DE COMPILATION
-
-Pour vérifier que tout compile sans DB :
-```bash
-cd backend
-set DATABASE_URL=
-cargo clean
-cargo build
-```
-
-Si ça compile → **sqlx offline 100% OK** ✅
-
-Si erreur → Vérifier les `sqlx::query!()` et les remplacer par `sqlx::query()`
-
----
-
-**STATUT** : ✅ Tous les nouveaux fichiers backend sont sqlx offline compatible !
-
+*Vérification complétée le 2025-11-01*

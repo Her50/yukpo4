@@ -265,16 +265,18 @@ SELECT DISTINCT
                 s.gps,
                 s.category,
                 (
-                    -- Score principal basé sur ts_rank avec pondération équilibrée
+                    -- ✅ CORRECTION 2025-11-01: RÉDUIRE priorité SERVICE (total 7.0 au lieu de 13.0)
+                    -- Priorité : PRODUITS > SERVICE pour meilleure pertinence
                     (
-                        ts_rank(to_tsvector('french', COALESCE(s.data->'titre_service'->>'valeur', '')), plainto_tsquery('french', $1)) * 6.0 +
-                        ts_rank(to_tsvector('french', COALESCE(s.data->'description'->>'valeur', '')), plainto_tsquery('french', $1)) * 3.0 +
-                        ts_rank(to_tsvector('french', COALESCE(s.data->'category'->>'valeur', '')), plainto_tsquery('french', $1)) * 4.0
+                        ts_rank(to_tsvector('french', COALESCE(s.data->'titre_service'->>'valeur', '')), plainto_tsquery('french', $1)) * 3.0 +
+                        ts_rank(to_tsvector('french', COALESCE(s.data->'description'->>'valeur', '')), plainto_tsquery('french', $1)) * 2.0 +
+                        ts_rank(to_tsvector('french', COALESCE(s.data->'category'->>'valeur', '')), plainto_tsquery('french', $1)) * 2.0
                     ) +
-                    -- ✅ CORRECTION: Score pour les produits (recherche dans TOUS les champs avec extract_all_product_text)
+                    -- ✅ CORRECTION 2025-11-01: AUGMENTER priorité PRODUITS (10.0 au lieu de 3.0)
+                    -- Les caractéristiques des produits sont maintenant PRIORITAIRES
                     (
                         SELECT COALESCE(SUM(
-                            ts_rank(to_tsvector('french', extract_all_product_text(product)), plainto_tsquery('french', $1)) * 3.0
+                            ts_rank(to_tsvector('french', extract_all_product_text(product)), plainto_tsquery('french', $1)) * 10.0
                         ), 0.0)
                         FROM jsonb_array_elements(
                             CASE 
@@ -299,20 +301,21 @@ SELECT DISTINCT
                         WHEN s.data->'category'->>'valeur' ILIKE '%' || $1 || '%' THEN 5.0
                         ELSE 0.0
                     END +
-                    -- ✅ CORRECTION: Bonus pour correspondances dans les produits (TOUS les champs avec extract_all_product_text)
-                    -- Recherche dans le texte extrait de tous les champs du produit
+                    -- ✅ CORRECTION 2025-11-01: AUGMENTER bonus pour correspondances dans les produits
+                    -- Recherche dans le texte extrait de tous les champs du produit (autocomplete inclus)
                     (
                         SELECT COALESCE(SUM(
                             CASE 
-                                -- Correspondance dans le texte complet extrait (tous champs)
-                                WHEN extract_all_product_text(product) ILIKE '%' || $1 || '%' THEN 3.0
-                                -- Bonus pour champs spécifiques importants
-                                WHEN product->>'nom' ILIKE '%' || $1 || '%' THEN 5.0
-                                WHEN product->>'description' ILIKE '%' || $1 || '%' THEN 3.0
-                                WHEN product->>'type' ILIKE '%' || $1 || '%' THEN 4.0
-                                WHEN product->>'marque' ILIKE '%' || $1 || '%' THEN 3.0
-                                WHEN product->>'modele' ILIKE '%' || $1 || '%' THEN 3.0
-                                WHEN product->>'titre' ILIKE '%' || $1 || '%' THEN 3.0
+                                -- ✅ Correspondance dans le texte complet extrait (AUGMENTÉ 3.0 → 5.0)
+                                WHEN extract_all_product_text(product) ILIKE '%' || $1 || '%' THEN 5.0
+                                -- ✅ Bonus pour champs spécifiques importants (AUGMENTÉ 5.0 → 8.0)
+                                WHEN product->>'nom' ILIKE '%' || $1 || '%' THEN 8.0
+                                -- ✅ Description produit (AUGMENTÉ 3.0 → 5.0)
+                                WHEN product->>'description' ILIKE '%' || $1 || '%' THEN 5.0
+                                WHEN product->>'type' ILIKE '%' || $1 || '%' THEN 5.0
+                                WHEN product->>'marque' ILIKE '%' || $1 || '%' THEN 5.0
+                                WHEN product->>'modele' ILIKE '%' || $1 || '%' THEN 5.0
+                                WHEN product->>'titre' ILIKE '%' || $1 || '%' THEN 5.0
                                 -- 🎓 FORMATION & ÉDUCATION: Boost spécifique pour typeFormation (+20%)
                                 WHEN product->>'typeFormation' ILIKE '%' || $1 || '%' THEN 6.0
                                 -- 📚 Boost pour matières enseignées (+15%)
@@ -354,6 +357,36 @@ SELECT DISTINCT
                                 ELSE '[]'::jsonb
                             END
                         ) AS product
+                    ) +
+                    -- ✅ NOUVEAU 2025-11-01: BOOST MAJEUR pour autocomplete_characteristics
+                    -- Recherche dans la table structurée (BEAUCOUP plus précis et rapide que JSON)
+                    -- Score: 8.0-20.0 par caractéristique + boost popularité (usage_count)
+                    (
+                        SELECT COALESCE(SUM(
+                            CASE ac.sous_caracteristique
+                                -- Caractéristiques CRITIQUES (20.0)
+                                WHEN 'marque', 'brand' THEN 20.0
+                                WHEN 'modele', 'model' THEN 18.0
+                                -- Caractéristiques TRÈS IMPORTANTES (15.0)
+                                WHEN 'type', 'categorie', 'category' THEN 15.0
+                                -- Caractéristiques IMPORTANTES (12.0)
+                                WHEN 'couleur', 'color' THEN 12.0
+                                WHEN 'taille', 'size', 'pointure' THEN 12.0
+                                WHEN 'carburant', 'transmission', 'annee', 'kilometrage' THEN 12.0
+                                -- Caractéristiques UTILES (10.0)
+                                WHEN 'typeBatiment', 'nombre_chambres', 'surface' THEN 10.0
+                                WHEN 'matiere', 'style', 'etat' THEN 10.0
+                                -- Autres caractéristiques (8.0)
+                                ELSE 8.0
+                            END *
+                            ts_rank(to_tsvector('french', ac.valeur), plainto_tsquery('french', $1)) *
+                            -- BOOST selon popularité (usage_count: 1-10 fois utilisé = 1.1x-2.0x boost)
+                            (1.0 + (ac.usage_count::REAL / 10.0))
+                        ), 0.0)
+                        FROM autocomplete_characteristics ac
+                        WHERE ac.service_id = s.id
+                        AND ac.identifiant_base LIKE 'produit%'
+                        AND to_tsvector('french', ac.valeur) @@ plainto_tsquery('french', $1)
                     ) +
                     -- Bonus pour correspondances sans accents
                     CASE 

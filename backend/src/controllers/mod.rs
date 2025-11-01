@@ -35,6 +35,8 @@ pub mod mixed_content_controller; // ✅ NOUVEAU: Contrôleur pour contenu mixte
 pub mod media_product_controller; // ✅ NOUVEAU: Contrôleur pour médias par produit spécifique
 pub mod autocomplete_controller; // ✅ NOUVEAU: Contrôleur pour autocomplete characteristics
 pub mod search_history_controller; // ✅ NOUVEAU: Contrôleur pour historique de recherche
+pub mod product_addition_controller; // ✅ NOUVEAU 2025-11-01: Contrôleur pour ajout incrémental de produits
+pub mod product_lifecycle_controller; // ✅ NOUVEAU 2025-11-01: Contrôleur pour cycle de vie produits (désactivation/réactivation)
 
 // pub use service_controller::update_token_debit;
 

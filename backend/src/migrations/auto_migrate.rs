@@ -368,6 +368,10 @@ pub async fn run_auto_migrations(pool: &PgPool) {
         Err(e) => error!("❌ Erreur migration auto notifications: {}", e),
     }
     
+    // Note: Table autocomplete_characteristics est maintenant créée via migration SQL standard
+    // Voir: backend/migrations/20251101_create_autocomplete_characteristics.sql
+    // Cette approche est compatible avec SQLx offline mode
+    
     info!("✅ Migrations automatiques terminées");
 }
 

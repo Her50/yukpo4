@@ -11,6 +11,7 @@ pub enum NotificationType {
     ServiceDeactivated,
     ServiceModified,
     ServiceDeleted,
+    ProductAdded, // ✅ NOUVEAU 2025-11-01
     NewMessage,
     NewReview,
     SystemAlert,
@@ -25,6 +26,7 @@ impl NotificationType {
             NotificationType::ServiceDeactivated => "service_deactivated",
             NotificationType::ServiceModified => "service_modified",
             NotificationType::ServiceDeleted => "service_deleted",
+            NotificationType::ProductAdded => "product_added", // ✅ NOUVEAU 2025-11-01
             NotificationType::NewMessage => "new_message",
             NotificationType::NewReview => "new_review",
             NotificationType::SystemAlert => "system_alert",

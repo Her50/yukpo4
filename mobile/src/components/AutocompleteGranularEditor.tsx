@@ -56,6 +56,9 @@ export const AutocompleteGranularEditor: React.FC<AutocompleteGranularEditorProp
     const [subCharacteristics, setSubCharacteristics] = useState<SubCharacteristicInput[]>([]);
     const [editingIndex, setEditingIndex] = useState<number | null>(null);
     const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
+    const [showAddCustomModal, setShowAddCustomModal] = useState(false);
+    const [customModalityLabel, setCustomModalityLabel] = useState('');
+    const [customModalityValue, setCustomModalityValue] = useState('');
 
     // Initialiser les sous-caractéristiques
     useEffect(() => {
@@ -230,18 +233,18 @@ export const AutocompleteGranularEditor: React.FC<AutocompleteGranularEditorProp
         }
     }, [subCharacteristics, currentValues, editingIndex, separateur, onChange]);
 
-    // Helper pour obtenir un exemple de valeur selon le nom du champ
+    // Helper pour obtenir un exemple de valeur selon les données de l'IA
     const getSampleValue = (fieldName: string): string => {
-        const samples: Record<string, string> = {
-            marque: 'Tapez "Toy" pour voir Toyota, Honda...',
-            modele: 'Tapez "RAV" pour voir RAV4, RAV5...',
-            annee: 'Tapez "202" pour voir 2020, 2021...',
-            couleur: 'Tapez "Noi" pour voir Noir, Noir mat...',
-            taille: 'Tapez "L" pour voir L, XL, XXL...',
-            matiere: 'Tapez "Cot" pour voir Coton, Cotton blend...',
-            type: 'Tapez les premières lettres...',
-        };
-        return samples[fieldName.toLowerCase()] || 'Tapez pour rechercher...';
+        // Utiliser les valeurs réelles fournies par l'IA si disponibles
+        const values = sousCaracteristiques[fieldName];
+        if (Array.isArray(values) && values.length > 0) {
+            // Prendre la première valeur comme exemple
+            const firstValue = values[0];
+            return `Ex: ${firstValue}${values.length > 1 ? ', ' + values[1] : ''}...`;
+        }
+
+        // Fallback générique si pas de données IA
+        return 'Tapez pour rechercher...';
     };
 
     const renderSubCharacteristicInput = (subChar: SubCharacteristicInput, index: number) => {
@@ -312,21 +315,22 @@ export const AutocompleteGranularEditor: React.FC<AutocompleteGranularEditorProp
         const subCharNames = Object.keys(sousCaracteristiques);
         if (subCharNames.length === 0) return '';
 
-        // Créer un exemple avec les noms des caractéristiques ET un exemple de valeur
+        // Créer un exemple avec les noms des caractéristiques ET un exemple de valeur réel de l'IA
         const exampleParts = subCharNames.slice(0, 3).map(name => {
             const values = sousCaracteristiques[name];
+            // Utiliser la première valeur fournie par l'IA comme exemple
             const firstValue = Array.isArray(values) && values.length > 0 ? values[0] : '';
-            // Retourner juste la première valeur comme exemple
             return firstValue;
         }).filter(Boolean);
 
-        // Afficher les noms des caractéristiques à rechercher
+        // Afficher les noms des caractéristiques à rechercher (max 4)
         const charNames = subCharNames.slice(0, 4).join(', ');
 
         if (exampleParts.length > 0) {
-            return `Recherchez: ${charNames}. Ex: ${exampleParts.join(', ')}`;
+            // Utiliser les vraies valeurs générées par l'IA comme exemples
+            return `Tapez pour rechercher: ${charNames} - Ex: ${exampleParts.join(', ')}`;
         }
-        return `Recherchez: ${charNames}`;
+        return `Tapez pour rechercher: ${charNames}`;
     };
 
     return (
@@ -435,6 +439,15 @@ export const AutocompleteGranularEditor: React.FC<AutocompleteGranularEditorProp
 
                         <View style={styles.modalFooter}>
                             <TouchableOpacity
+                                style={styles.addCustomButton}
+                                onPress={() => {
+                                    setShowAddCustomModal(true);
+                                }}
+                            >
+                                <SafeIcon name="plus-circle" size={18} color={modernColors.primary} />
+                                <Text style={styles.addCustomButtonText}>Ajouter caractéristique</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
                                 style={styles.cancelButton}
                                 onPress={() => {
                                     setShowModal(false);
@@ -445,6 +458,117 @@ export const AutocompleteGranularEditor: React.FC<AutocompleteGranularEditorProp
                             </TouchableOpacity>
                             <TouchableOpacity style={styles.saveButton} onPress={saveEdit}>
                                 <Text style={styles.saveButtonText}>Enregistrer</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
+
+            {/* Modal d'ajout de modalité personnalisée */}
+            <Modal
+                visible={showAddCustomModal}
+                animationType="fade"
+                transparent={true}
+                onRequestClose={() => setShowAddCustomModal(false)}
+            >
+                <View style={styles.customModalOverlay}>
+                    <View style={styles.customModalContent}>
+                        <View style={styles.customModalHeader}>
+                            <SafeIcon name="plus-circle" size={24} color={modernColors.primary} />
+                            <Text style={styles.customModalTitle}>Ajouter une caractéristique</Text>
+                            <TouchableOpacity
+                                style={styles.closeButton}
+                                onPress={() => {
+                                    setShowAddCustomModal(false);
+                                    setCustomModalityLabel('');
+                                    setCustomModalityValue('');
+                                }}
+                            >
+                                <SafeIcon name="x" size={20} color={modernColors.text} />
+                            </TouchableOpacity>
+                        </View>
+
+                        <View style={styles.customModalBody}>
+                            <Text style={styles.customModalDescription}>
+                                Ajoutez une nouvelle caractéristique qui n'est pas dans la liste
+                            </Text>
+
+                            <View style={styles.customInputContainer}>
+                                <Text style={styles.customInputLabel}>Nom de la caractéristique</Text>
+                                <TextInput
+                                    style={styles.customInput}
+                                    placeholder="Ex: couleur, taille, matière..."
+                                    placeholderTextColor="#9CA3AF"
+                                    value={customModalityLabel}
+                                    onChangeText={setCustomModalityLabel}
+                                    autoCapitalize="none"
+                                    autoCorrect={false}
+                                />
+                            </View>
+
+                            <View style={styles.customInputContainer}>
+                                <Text style={styles.customInputLabel}>Valeur</Text>
+                                <TextInput
+                                    style={styles.customInput}
+                                    placeholder="Ex: Noir, XL, Coton..."
+                                    placeholderTextColor="#9CA3AF"
+                                    value={customModalityValue}
+                                    onChangeText={setCustomModalityValue}
+                                    autoCapitalize="none"
+                                    autoCorrect={false}
+                                />
+                            </View>
+                        </View>
+
+                        <View style={styles.customModalFooter}>
+                            <TouchableOpacity
+                                style={styles.customCancelButton}
+                                onPress={() => {
+                                    setShowAddCustomModal(false);
+                                    setCustomModalityLabel('');
+                                    setCustomModalityValue('');
+                                }}
+                            >
+                                <Text style={styles.cancelButtonText}>Annuler</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[
+                                    styles.customSaveButton,
+                                    (!customModalityLabel || !customModalityValue) && styles.customSaveButtonDisabled
+                                ]}
+                                onPress={() => {
+                                    if (!customModalityLabel || !customModalityValue) return;
+
+                                    // Ajouter la nouvelle caractéristique
+                                    const updated = [...subCharacteristics];
+                                    const existingIndex = updated.findIndex(s => s.name.toLowerCase() === customModalityLabel.toLowerCase());
+
+                                    if (existingIndex >= 0) {
+                                        // Si la caractéristique existe déjà, mettre à jour sa valeur
+                                        updated[existingIndex] = {
+                                            ...updated[existingIndex],
+                                            value: customModalityValue,
+                                            suggestions: []
+                                        };
+                                    } else {
+                                        // Sinon, ajouter une nouvelle entrée
+                                        updated.push({
+                                            name: customModalityLabel.trim(),
+                                            value: customModalityValue.trim(),
+                                            suggestions: [],
+                                            isLoading: false
+                                        });
+                                    }
+
+                                    setSubCharacteristics(updated);
+                                    setShowAddCustomModal(false);
+                                    setCustomModalityLabel('');
+                                    setCustomModalityValue('');
+                                }}
+                                disabled={!customModalityLabel || !customModalityValue}
+                            >
+                                <SafeIcon name="check" size={18} color="#FFFFFF" />
+                                <Text style={styles.customSaveButtonText}>Ajouter</Text>
                             </TouchableOpacity>
                         </View>
                     </View>
@@ -703,6 +827,112 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     saveButtonText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#FFFFFF',
+    },
+    addCustomButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#E0E7FF',
+        paddingHorizontal: 12,
+        paddingVertical: 10,
+        borderRadius: 8,
+        gap: 6,
+    },
+    addCustomButtonText: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: modernColors.primary,
+    },
+    customModalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.6)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 20,
+    },
+    customModalContent: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 16,
+        width: '100%',
+        maxWidth: 400,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 8,
+    },
+    customModalHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 20,
+        borderBottomWidth: 1,
+        borderBottomColor: modernColors.border,
+        gap: 12,
+    },
+    customModalTitle: {
+        flex: 1,
+        fontSize: 18,
+        fontWeight: '600',
+        color: modernColors.text,
+    },
+    customModalBody: {
+        padding: 20,
+        gap: 20,
+    },
+    customModalDescription: {
+        fontSize: 14,
+        color: modernColors.textSecondary,
+        lineHeight: 20,
+    },
+    customInputContainer: {
+        gap: 8,
+    },
+    customInputLabel: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: modernColors.text,
+    },
+    customInput: {
+        borderWidth: 1,
+        borderColor: modernColors.border,
+        borderRadius: 8,
+        paddingHorizontal: 12,
+        paddingVertical: 12,
+        fontSize: 14,
+        color: modernColors.text,
+        backgroundColor: '#F9FAFB',
+    },
+    customModalFooter: {
+        flexDirection: 'row',
+        gap: 12,
+        padding: 16,
+        borderTopWidth: 1,
+        borderTopColor: modernColors.border,
+    },
+    customCancelButton: {
+        flex: 1,
+        padding: 12,
+        borderRadius: 8,
+        backgroundColor: '#F3F4F6',
+        alignItems: 'center',
+    },
+    customSaveButton: {
+        flex: 1,
+        flexDirection: 'row',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 12,
+        borderRadius: 8,
+        backgroundColor: modernColors.primary,
+        gap: 6,
+    },
+    customSaveButtonDisabled: {
+        backgroundColor: '#9CA3AF',
+        opacity: 0.5,
+    },
+    customSaveButtonText: {
         fontSize: 14,
         fontWeight: '600',
         color: '#FFFFFF',

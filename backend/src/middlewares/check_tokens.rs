@@ -316,6 +316,36 @@ pub async fn check_tokens(
                             info!("[check_tokens] ? {} tokens IA consommés ({} XAF = {} tokens) déduits pour utilisateur {}: {} -> {} (intention: {}, durée: {}ms)",
                                 tokens_finaux, cout_reel_xaf, cout_en_tokens, user_id, user_final.tokens_balance, nouveau_solde, intention, processing_time);
                             
+                            // ✅ NOUVEAU: Enregistrer l'historique de consommation de tokens
+                            let endpoint = parts.uri.path().to_string();
+                            let response_source_str = if prompt_optimized { "optimized" } else { "external" };
+                            
+                            // ✅ Utiliser sqlx::query() au lieu de query!() pour compatibilité SQLX_OFFLINE
+                            if let Err(e) = sqlx::query(
+                                r#"
+                                INSERT INTO token_usage_logs 
+                                    (user_id, intention, tokens_ia_consumed, tokens_cost_xaf, tokens_deducted, 
+                                     balance_before, balance_after, processing_time_ms, response_source, endpoint)
+                                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+                                "#
+                            )
+                            .bind(user_id)
+                            .bind(intention.as_str())
+                            .bind(tokens_finaux as i32)
+                            .bind(cout_reel_xaf as i32)
+                            .bind(cout_en_tokens as i32)
+                            .bind(user_final.tokens_balance)
+                            .bind(nouveau_solde)
+                            .bind(processing_time as i32)
+                            .bind(response_source_str)
+                            .bind(endpoint)
+                            .execute(&state.pg)
+                            .await {
+                                warn!("[check_tokens] Impossible d'enregistrer l'historique de tokens: {}", e);
+                            } else {
+                                debug!("[check_tokens] ✅ Historique de consommation enregistré");
+                            }
+                            
                             // ?? Mettre ? jour le JWT avec le nouveau solde
                             if let Ok(new_jwt) = update_jwt_with_new_balance(user_id, nouveau_solde, &state).await {
                                 response.headers_mut().insert(

@@ -1951,38 +1951,27 @@ const ProductManagerMobile: React.FC<ProductManagerMobileProps> = ({
         }
     }, [focusProductId, products]);
 
-    // ✅ NOUVEAU: Gérer la duplication automatique d'un produit
+    // ✅ NOUVEAU 2025-11-01: Gérer la duplication automatique d'un produit
+    // Navigation vers FormulaireYukpoIntelligent avec mode='add_product'
     React.useEffect(() => {
-        if (duplicateProduct) {
-            console.log('[ProductManagerMobile] 📋 Duplication automatique du produit:', {
+        if (duplicateProduct && serviceId && serviceData) {
+            console.log('[ProductManagerMobile] 📋 Navigation vers formulaire pour dupliquer produit:', {
                 nom: duplicateProduct.nom,
-                type: duplicateProduct.type
+                type: duplicateProduct.type,
+                serviceId
             });
 
-            // Créer une copie du produit
-            const duplicatedProduct = {
-                ...duplicateProduct,
-                id: `duplicate_${Date.now()}`, // Nouvel ID temporaire
-                nom: duplicateProduct.nom // Le nom "(Copie)" est déjà ajouté par MesProduitsScreen
-            };
-
-            // Ajouter la copie à la liste
-            onProductsChange([...products, duplicatedProduct]);
-
-            // Ouvrir le modal d'édition avec le produit dupliqué
-            setEditingProductId(duplicatedProduct.id);
-            setSelectedType(duplicatedProduct.type as ProductType);
-            setNewProduct(duplicatedProduct);
-            setCurrentStep('form');
-            setShowAddModal(true);
-
-            Alert.alert(
-                '✅ Produit dupliqué',
-                `"${duplicatedProduct.nom}" a été ajouté.\n\nVous pouvez maintenant le modifier.`,
-                [{ text: 'OK' }]
-            );
+            // ✅ NOUVEAU: Naviguer vers FormulaireYukpoIntelligent au lieu de dupliquer localement
+            (navigation as any).navigate('FormulaireYukpoIntelligent', {
+                serviceId: serviceId,
+                duplicateProduct: duplicateProduct,
+                serviceData: serviceData,
+                mode: 'add_product', // ✅ Mode spécial pour ajout produit
+                focusBlock: 'products',
+                fromMesProduits: true
+            });
         }
-    }, [duplicateProduct]);
+    }, [duplicateProduct, serviceId, serviceData, navigation]);
 
     // ✅ NOUVEAU: Configuration conditionnelle des champs prestations
     const [prestationFieldsConfig, setPrestationFieldsConfig] = useState(getFieldsConfig(''));

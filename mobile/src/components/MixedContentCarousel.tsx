@@ -72,13 +72,15 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
             // Déclencher le premier scroll après un court délai
             const initialTimer = setTimeout(() => {
                 if (scrollViewRef.current && content.length > 1) {
-                    const firstScrollPosition = SCREEN_PADDING;
+                    console.log('[MixedContentCarousel] 🎬 Démarrage scroll automatique initial');
+                    const firstScrollPosition = SCREEN_PADDING + (CARD_WIDTH + CARD_MARGIN);
                     scrollViewRef.current.scrollTo({
                         x: firstScrollPosition,
-                        animated: false,
+                        animated: true, // ✅ CHANGÉ: animated true pour meilleur visuel
                     });
+                    setCurrentIndex(1); // ✅ AJOUTÉ: Déclencher le timer suivant
                 }
-            }, 500);
+            }, 1000); // ✅ CHANGÉ: 1s au lieu de 500ms pour laisser le temps de render
             return () => clearTimeout(initialTimer);
         }
     }, [content.length, isPaused]);
@@ -202,20 +204,40 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
 
     // ✅ Auto-scroll intelligent - CORRIGÉ pour fonctionner correctement
     useEffect(() => {
-        if (content.length <= 1 || isPaused) {
+        console.log('[MixedContentCarousel] Timer check:', {
+            contentLength: content.length,
+            isPaused,
+            currentIndex,
+            hasCurrentItem: !!content[currentIndex]
+        });
+
+        if (content.length <= 1) {
+            console.log('[MixedContentCarousel] ⚠️ Scroll annulé: Pas assez d\'éléments (besoin de 2 minimum)');
+            return;
+        }
+
+        if (isPaused) {
+            console.log('[MixedContentCarousel] ⏸️ Scroll en pause (scroll manuel ou interaction)');
             return;
         }
 
         const currentItem = content[currentIndex];
         if (!currentItem) {
+            console.log('[MixedContentCarousel] ⚠️ Item courant non trouvé à l\'index', currentIndex);
             return;
         }
 
         const delay = calculateDelay(currentItem);
-        if (delay === 0) return;
+        if (delay === 0) {
+            console.log('[MixedContentCarousel] ⚠️ Délai = 0, scroll annulé');
+            return;
+        }
+
+        console.log(`[MixedContentCarousel] ⏱️ Timer démarré: ${delay}ms jusqu'au prochain scroll (${currentIndex} → ${(currentIndex + 1) % content.length})`);
 
         const timer = setTimeout(() => {
             if (!scrollViewRef.current) {
+                console.log('[MixedContentCarousel] ⚠️ ScrollView ref null, scroll annulé');
                 return;
             }
 
@@ -223,6 +245,8 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
 
             // Calculer la position exacte pour le scroll (avec padding au début)
             const scrollPosition = SCREEN_PADDING + nextIndex * (CARD_WIDTH + CARD_MARGIN);
+
+            console.log(`[MixedContentCarousel] 🎬 Scroll automatique: index ${currentIndex} → ${nextIndex} (position ${scrollPosition}px)`);
 
             // Scroll vers la position suivante
             scrollViewRef.current.scrollTo({

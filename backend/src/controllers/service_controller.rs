@@ -372,6 +372,38 @@ pub async fn modifier_service(
     match result {
         Ok(Some(_)) => {
             info!("[modifier_service] ? Service {} modifi? avec succ?s par utilisateur {}", service_id, user_id);
+            
+            // ✅ Créer une notification de modification de service
+            let service_title = payload.data.get("titre_service")
+                .or_else(|| payload.data.get("titre"))
+                .and_then(|v| {
+                    if let Some(obj) = v.as_object() {
+                        obj.get("valeur").and_then(|val| val.as_str())
+                    } else {
+                        v.as_str()
+                    }
+                })
+                .unwrap_or("Votre service");
+            
+            let notification_data = serde_json::json!({
+                "service_id": service_id,
+                "service_title": service_title
+            });
+            
+            // Créer la notification (ne pas bloquer si ça échoue)
+            if let Err(e) = crate::services::notification_service::create_notification(
+                pg_pool,
+                user_id,
+                crate::services::notification_service::NotificationType::ServiceModified,
+                "✏️ Service modifié".to_string(),
+                format!("Votre service '{}' a été mis à jour avec succès.", service_title),
+                Some(notification_data),
+            ).await {
+                warn!("[modifier_service] Impossible de créer la notification: {}", e);
+            } else {
+                info!("[modifier_service] ✅ Notification de modification envoyée");
+            }
+            
             (StatusCode::OK, Json(json!({
                 "message": "Service modifi? avec succ?s",
                 "service_id": service_id
@@ -399,21 +431,62 @@ pub async fn supprimer_service(
     
     let pg_pool = &state.pg;
     
-    // V?rifier que le service appartient ? l'utilisateur
-    let service_exists = sqlx::query!(
-        "SELECT id FROM services WHERE id = $1 AND user_id = $2",
+    // V?rifier que le service appartient ? l'utilisateur ET récupérer son titre pour la notification
+    let service_data = sqlx::query!(
+        "SELECT id, data FROM services WHERE id = $1 AND user_id = $2",
         service_id,
         user_id
     )
     .fetch_optional(pg_pool)
     .await;
     
-    match service_exists {
+    let service_title = match &service_data {
+        Ok(Some(row)) => {
+            row.data.get("titre_service")
+                .or_else(|| row.data.get("titre"))
+                .and_then(|v| {
+                    if let Some(obj) = v.as_object() {
+                        obj.get("valeur").and_then(|val| val.as_str())
+                    } else {
+                        v.as_str()
+                    }
+                })
+                .unwrap_or("Votre service")
+                .to_string()
+        },
+        _ => "Votre service".to_string()
+    };
+    
+    match service_data {
         Ok(None) => {
             return (StatusCode::NOT_FOUND, Json(json!({"error": "Service non trouv? ou non autoris?"}))).into_response();
         },
-        Ok(Some(_)) => {
-            // Service trouv?, on peut le supprimer
+        Ok(Some(row)) => {
+            // Service trouv?, vérifier le nombre de produits
+            // ✅ NOUVEAU 2025-11-01: Bloquer suppression si >= 2 produits
+            let produits_array = row.data.get("produits")
+                .and_then(|p| p.as_object())
+                .and_then(|obj| obj.get("valeur"))
+                .and_then(|v| v.as_array());
+            
+            let produits_count = produits_array.map(|arr| arr.len()).unwrap_or(0);
+            
+            info!("[supprimer_service] Service {} contient {} produit(s)", service_id, produits_count);
+            
+            if produits_count >= 2 {
+                warn!("[supprimer_service] ❌ Suppression bloquée : {} produits présents", produits_count);
+                return (StatusCode::BAD_REQUEST, Json(json!({
+                    "error": format!(
+                        "Impossible de supprimer ce service car il contient {} produits.\n\
+                        Veuillez d'abord supprimer les produits avant de supprimer le service.\n\
+                        (Accédez à la gestion des produits pour les supprimer individuellement)",
+                        produits_count
+                    ),
+                    "produits_count": produits_count
+                }))).into_response();
+            }
+            
+            info!("[supprimer_service] ✅ Suppression autorisée ({} produit(s))", produits_count);
         },
         Err(e) => {
             error!("[supprimer_service] Erreur v?rification service: {}", e);
@@ -433,6 +506,27 @@ pub async fn supprimer_service(
     match result {
         Ok(Some(_)) => {
             info!("[supprimer_service] ? Service {} supprim? avec succ?s par utilisateur {}", service_id, user_id);
+            
+            // ✅ Créer une notification de suppression de service
+            let notification_data = serde_json::json!({
+                "service_id": service_id,
+                "service_title": service_title.clone()
+            });
+            
+            // Créer la notification (ne pas bloquer si ça échoue)
+            if let Err(e) = crate::services::notification_service::create_notification(
+                pg_pool,
+                user_id,
+                crate::services::notification_service::NotificationType::ServiceDeleted,
+                "🗑️ Service supprimé".to_string(),
+                format!("Votre service '{}' a été supprimé définitivement.", service_title),
+                Some(notification_data),
+            ).await {
+                warn!("[supprimer_service] Impossible de créer la notification: {}", e);
+            } else {
+                info!("[supprimer_service] ✅ Notification de suppression envoyée");
+            }
+            
             (StatusCode::OK, Json(json!({
                 "message": "Service supprim? avec succ?s",
                 "service_id": service_id

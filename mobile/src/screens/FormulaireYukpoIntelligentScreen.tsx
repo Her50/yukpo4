@@ -25,7 +25,7 @@ import PaymentMethodSelector from '../components/PaymentMethodSelector';
 // Code corrigé (remplace @ts-ignore)
 import { NativeButton, NativeCard, NativeDivider, NativeInput } from '../components/NativeDesign';
 // ✅ SUPPRIMÉ: ProductManagerMobile intégré directement dans le formulaire
-import AutocompleteGranularEditor from '../components/AutocompleteGranularEditor';
+import LinearAutocompleteEditor from '../components/LinearAutocompleteEditor';
 import LocationSelector from '../components/LocationSelector';
 import PriceVariantSelector from '../components/PriceVariantSelector';
 // ✅ AJOUT: Composants pour modalités personnalisées et sélection multiple
@@ -79,6 +79,9 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
   // ✅ Déterminer si on est en mode lecture seule
   const isReadonly = mode === 'readonly' || mode === 'view' || readonlyParam;
+
+  // ✅ NOUVEAU 2025-11-01: Déterminer si on ajoute un produit à un service existant
+  const isAddingProduct = mode === 'add_product' && serviceId && duplicateProduct;
 
   // États locaux
   const [activeStep, setActiveStep] = useState(1);
@@ -135,7 +138,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
   };
 
   // Fonction pour organiser les champs en blocs (alignée sur le frontend)
-  const organizeFieldsIntoBlocks = (fields: DynamicField[]) => {
+  const organizeFieldsIntoBlocks = (fields: DynamicField[], formValues: Record<string, any> = {}) => {
     const blocks = [
       {
         id: 'general',
@@ -237,15 +240,21 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     // ✅ RÈGLE ABSOLUE: Toujours créer/garantir le bloc produits avec autocomplete + champs spécifiques produits
     if (!productsBlock) {
       // Si le bloc n'existe pas du tout, le créer avec les champs par défaut
+      // ✅ NOUVEAU: Label dynamique selon type_offre de l'IA
+      const typeOffre = formValues.type_offre || formValues.nature_offre || 'produit';
+      const isPrestation = typeOffre === 'prestation' || typeOffre === 'service';
+
       const defaultProductsFields: DynamicField[] = [
         {
           name: 'nom_produit',
           type: 'text',
           typeDonnee: 'string',
-          label: 'Nom du produit',
+          label: isPrestation ? 'Nom de la prestation' : 'Nom du produit',
           required: false,
-          placeholder: 'Ex: iPhone 14 Pro Max, Toyota RAV4 2018...',
-          value: ''
+          placeholder: isPrestation
+            ? 'Ex: Cours de maths niveau terminal, Réparation écran téléphone...'
+            : 'Ex: iPhone 14 Pro Max 256GB, Toyota RAV4 2018 4x4...',
+          value: formValues.nom_produit || ''
         },
         {
           name: 'categorie_produit',
@@ -254,7 +263,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           label: 'Catégorie du produit',
           required: false,
           placeholder: 'Ex: Smartphone, Véhicule 4x4, Chaussure de sport...',
-          value: ''
+          value: formValues.categorie_produit || ''
         },
         {
           name: 'description_produit',
@@ -263,48 +272,74 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           label: 'Description du produit',
           required: false,
           placeholder: 'Décrivez les caractéristiques spécifiques du produit...',
-          value: ''
+          value: formValues.description_produit || ''
         },
         {
           name: 'produits',
           type: 'autocomplete',
           typeDonnee: 'autocomplete',
-          label: 'Caractéristiques détaillées (marque, modèle, année, etc.)',
+          label: isPrestation ? 'Caractéristiques prestation' : 'Caractéristiques produit',
           required: false,
-          placeholder: 'Ajouter des caractéristiques...',
+          placeholder: 'Tapez pour voir les suggestions...',
           identifiantBase: 'produits',
-          sousCaracteristiques: {
+          sousCaracteristiques: formValues.produits?.sous_caracteristiques || {
+            // ✅ PHASE 2: Localisation produit (chargée dynamiquement via placesService)
+            // Note: Vide ici, sera rempli par LinearAutocompleteEditor avec autocomplete intelligent
+            localisation: [],
+            ville: [],
+            quartier: [],
+
+            // Caractéristiques essentielles
             marque: [],
             modele: [],
-            annee: [],
+            couleur: ['Noir', 'Blanc', 'Gris', 'Rouge', 'Bleu', 'Vert', 'Jaune', 'Orange', 'Rose', 'Violet'],
+
+            // Caractéristiques secondaires
+            annee: ['2024', '2023', '2022', '2021', '2020', '2019', '2018'],
+            etat: ['Neuf', 'Comme neuf', 'Bon état', 'Très bon état', 'Occasion', 'À rénover'],
             version: [],
+
+            // Caractéristiques prestations
             competences: [],
-            experience: []
+            experience: ['Débutant', 'Intermédiaire', 'Avancé', 'Expert', 'Professionnel'],
+            niveau: ['Débutant', 'Intermédiaire', 'Avancé', 'Expert', 'Professionnel']
           },
           separateur: ',',
           filtrable: true,
           allowCustomModality: true,
-          value: []
+          value: formValues.produits?.valeur || []
+        },
+        {
+          name: '_product_media_manager',
+          type: 'custom',
+          label: 'Photos et vidéos du produit',
+          required: false
         }
       ];
 
       blocksWithFixedOnes.push({
         id: 'products',
-        title: 'Produits',
-        icon: '🛍️',
+        title: isPrestation ? 'Prestations' : 'Produits',
+        icon: isPrestation ? '⚙️' : '🛍️',
         fields: defaultProductsFields
       });
     } else if (productsBlock.fields.length === 0) {
       // Si le bloc existe mais est vide (IA n'a pas généré de champ produits), ajouter les champs par défaut
+      // ✅ NOUVEAU: Label dynamique selon type_offre de l'IA
+      const typeOffre = formValues.type_offre || formValues.nature_offre || 'produit';
+      const isPrestation = typeOffre === 'prestation' || typeOffre === 'service';
+
       const defaultProductsFields: DynamicField[] = [
         {
           name: 'nom_produit',
           type: 'text',
           typeDonnee: 'string',
-          label: 'Nom du produit',
+          label: isPrestation ? 'Nom de la prestation' : 'Nom du produit',
           required: false,
-          placeholder: 'Ex: iPhone 14 Pro Max, Toyota RAV4 2018...',
-          value: ''
+          placeholder: isPrestation
+            ? 'Ex: Cours de maths niveau terminal, Réparation écran téléphone...'
+            : 'Ex: iPhone 14 Pro Max 256GB, Toyota RAV4 2018 4x4...',
+          value: formValues.nom_produit || ''
         },
         {
           name: 'categorie_produit',
@@ -313,7 +348,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           label: 'Catégorie du produit',
           required: false,
           placeholder: 'Ex: Smartphone, Véhicule 4x4, Chaussure de sport...',
-          value: ''
+          value: formValues.categorie_produit || ''
         },
         {
           name: 'description_produit',
@@ -322,34 +357,58 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           label: 'Description du produit',
           required: false,
           placeholder: 'Décrivez les caractéristiques spécifiques du produit...',
-          value: ''
+          value: formValues.description_produit || ''
         },
         {
           name: 'produits',
           type: 'autocomplete',
           typeDonnee: 'autocomplete',
-          label: 'Caractéristiques détaillées (marque, modèle, année, etc.)',
+          label: isPrestation ? 'Caractéristiques prestation' : 'Caractéristiques produit',
           required: false,
-          placeholder: 'Ajouter des caractéristiques...',
+          placeholder: 'Tapez pour voir les suggestions...',
           identifiantBase: 'produits',
-          sousCaracteristiques: {
+          sousCaracteristiques: formValues.produits?.sous_caracteristiques || {
+            // ✅ PHASE 2: Localisation produit (chargée dynamiquement via placesService)
+            // Note: Vide ici, sera rempli par LinearAutocompleteEditor avec autocomplete intelligent
+            localisation: [],
+            ville: [],
+            quartier: [],
+
+            // Caractéristiques essentielles
             marque: [],
             modele: [],
-            annee: [],
+            couleur: ['Noir', 'Blanc', 'Gris', 'Rouge', 'Bleu', 'Vert', 'Jaune', 'Orange', 'Rose', 'Violet'],
+
+            // Caractéristiques secondaires
+            annee: ['2024', '2023', '2022', '2021', '2020', '2019', '2018'],
+            etat: ['Neuf', 'Comme neuf', 'Bon état', 'Très bon état', 'Occasion', 'À rénover'],
             version: [],
+
+            // Caractéristiques prestations
             competences: [],
-            experience: []
+            experience: ['Débutant', 'Intermédiaire', 'Avancé', 'Expert', 'Professionnel'],
+            niveau: ['Débutant', 'Intermédiaire', 'Avancé', 'Expert', 'Professionnel']
           },
           separateur: ',',
           filtrable: true,
           allowCustomModality: true,
-          value: []
+          value: formValues.produits?.valeur || []
+        },
+        {
+          name: '_product_media_manager',
+          type: 'custom',
+          label: 'Photos et vidéos du produit',
+          required: false
         }
       ];
 
       productsBlock.fields.push(...defaultProductsFields);
+      // ✅ NOUVEAU: Mettre à jour le titre du bloc aussi
+      productsBlock.title = isPrestation ? 'Prestations' : 'Produits';
+      productsBlock.icon = isPrestation ? '⚙️' : '🛍️';
     } else {
       // ✅ Si le bloc existe ET a déjà des champs, vérifier si les champs spécifiques produits existent
+      // ✅ NOUVEAU: Vérifier aussi si type_offre existe pour adapter le label
       const hasNomProduit = productsBlock.fields.some(f => f.name === 'nom_produit');
       const hasCategorieProduit = productsBlock.fields.some(f => f.name === 'categorie_produit');
       const hasDescriptionProduit = productsBlock.fields.some(f => f.name === 'description_produit');
@@ -359,14 +418,20 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       const hasDeviseProduit = productsBlock.fields.some(f => f.name === 'devise_produit');
 
       if (!hasNomProduit) {
+        // ✅ NOUVEAU: Label dynamique selon type_offre de l'IA
+        const typeOffre = formValues.type_offre || formValues.nature_offre || 'produit';
+        const isPrestation = typeOffre === 'prestation' || typeOffre === 'service';
+
         productsBlock.fields.unshift({
           name: 'nom_produit',
           type: 'text',
           typeDonnee: 'string',
-          label: 'Nom du produit/prestation',
+          label: isPrestation ? 'Nom de la prestation' : 'Nom du produit',
           required: false,
-          placeholder: 'Ex: iPhone 14 Pro Max, Cours de mathématiques, Réparation téléphone...',
-          value: ''
+          placeholder: isPrestation
+            ? 'Ex: Cours de mathématiques, Réparation téléphone, Consultation médicale...'
+            : 'Ex: iPhone 14 Pro Max, Toyota RAV4 2018, Nike Air Max...',
+          value: formValues.nom_produit || ''
         } as DynamicField);
       }
       if (!hasCategorieProduit) {
@@ -377,7 +442,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           label: 'Catégorie du produit/prestation',
           required: false,
           placeholder: 'Ex: Smartphone, Cours particulier, Service de réparation...',
-          value: ''
+          value: formValues.categorie_produit || ''
         } as DynamicField);
       }
       if (!hasDescriptionProduit) {
@@ -388,7 +453,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           label: 'Description du produit/prestation',
           required: false,
           placeholder: 'Décrivez les caractéristiques spécifiques du produit/prestation...',
-          value: ''
+          value: formValues.description_produit || ''
         } as DynamicField);
       }
       if (!hasPrixProduit) {
@@ -399,7 +464,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           label: 'Prix du produit/prestation',
           required: false,
           placeholder: 'Ex: 150000',
-          value: ''
+          value: formValues.prix_produit || ''
         } as DynamicField);
       }
       if (!hasDeviseProduit) {
@@ -410,7 +475,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           label: 'Devise',
           required: false,
           placeholder: 'XAF, EUR, USD...',
-          value: 'XAF'
+          value: formValues.devise_produit || 'XAF'
         } as DynamicField);
       }
     }
@@ -873,60 +938,57 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     }
   }, [suggestion]); // Se déclenche quand suggestion change
 
-  // Organiser les champs en blocs quand les composants changent
+  // ✅ NOUVEAU 2025-11-01: Préremplir le formulaire en mode add_product
   useEffect(() => {
-    if (composants.length > 0) {
-      const organizedBlocks = organizeFieldsIntoBlocks(composants);
-      setBlocks(organizedBlocks);
-      console.log('[FormulaireYukpoIntelligentScreen] Blocs organisés:', organizedBlocks);
-    }
-  }, [composants]);
+    if (isAddingProduct && duplicateProduct && suggestion?.data) {
+      console.log('[FormulaireYukpoIntelligentScreen] 📋 MODE ADD_PRODUCT détecté - Préremplissage...');
+      console.log('[FormulaireYukpoIntelligentScreen] Service data:', suggestion.data);
+      console.log('[FormulaireYukpoIntelligentScreen] Produit à dupliquer:', duplicateProduct);
 
-  // ✅ NOUVEAU: Mettre à jour les valeurs des champs produits dans les blocs depuis valeursFormulaire
-  useEffect(() => {
-    if (blocks.length > 0 && Object.keys(valeursFormulaire).length > 0) {
-      const updatedBlocks = blocks.map(block => {
-        if (block.id === 'products') {
-          const updatedFields = block.fields.map(field => {
-            const fieldName = field.name;
-            const fieldValue = valeursFormulaire[fieldName];
+      // Préremplir avec les données du service + produit dupliqué
+      const produitValues: Record<string, any> = {
+        nom_produit: duplicateProduct.nom || '',
+        prix_produit: duplicateProduct.prix || '',
+        devise_produit: duplicateProduct.devise || 'XAF',
+        description_produit: duplicateProduct.description || '',
+        categorie_produit: duplicateProduct.type || '',
+      };
 
-            // Si une valeur existe dans valeursFormulaire pour ce champ, la mettre à jour
-            if (fieldValue !== undefined && fieldValue !== null && fieldValue !== '') {
-              // ✅ Pour le champ produits (autocomplete), garder la structure complète
-              if (fieldName === 'produits' && typeof fieldValue === 'object' && fieldValue.type_donnee === 'autocomplete') {
-                return {
-                  ...field,
-                  value: fieldValue.valeur || [],
-                  separateur: fieldValue.separateur || field.separateur || ',',
-                  sousCaracteristiques: fieldValue.sous_caracteristiques || field.sousCaracteristiques || {},
-                  identifiantBase: fieldValue.identifiant_base || field.identifiantBase || 'produits',
-                  filtrable: fieldValue.filtrable !== false
-                };
-              }
-              // ✅ Pour les autres champs produits, mettre à jour la valeur
-              else if (['nom_produit', 'categorie_produit', 'description_produit', 'prix_produit', 'devise_produit'].includes(fieldName)) {
-                return {
-                  ...field,
-                  value: fieldValue
-                };
-              }
-            }
-            return field;
-          });
-          return { ...block, fields: updatedFields };
+      // Ajouter tous les autres champs du produit dupliqué
+      Object.keys(duplicateProduct).forEach(key => {
+        if (!['nom', 'prix', 'devise', 'description', 'type', 'id'].includes(key)) {
+          produitValues[key] = duplicateProduct[key];
         }
-        return block;
       });
 
-      // Ne mettre à jour que si quelque chose a changé
-      const hasChanges = JSON.stringify(updatedBlocks) !== JSON.stringify(blocks);
-      if (hasChanges) {
-        console.log('[FormulaireYukpoIntelligentScreen] ✅ Valeurs des champs produits mises à jour depuis valeursFormulaire');
-        setBlocks(updatedBlocks);
-      }
+      console.log('[FormulaireYukpoIntelligentScreen] ✅ Valeurs produit extraites:', produitValues);
+
+      setValeursFormulaire(prev => ({
+        ...suggestion.data, // Données service complètes
+        ...produitValues // Surcharger avec produit dupliqué
+      }));
+
+      setActiveStep(2); // Aller directement au formulaire
+
+      // Focus sur le bloc produits après un court délai
+      setTimeout(() => {
+        const productsBlockIndex = blocks.findIndex(b => b.id === 'products');
+        if (productsBlockIndex >= 0) {
+          setCurrentBlock(productsBlockIndex);
+          console.log('[FormulaireYukpoIntelligentScreen] ✅ Focus sur bloc produits, index:', productsBlockIndex);
+        }
+      }, 500);
     }
-  }, [valeursFormulaire]); // Se déclenche quand valeursFormulaire change
+  }, [isAddingProduct, duplicateProduct, suggestion, blocks]);
+
+  // Organiser les champs en blocs quand les composants ou valeursFormulaire changent
+  useEffect(() => {
+    if (composants.length > 0) {
+      const organizedBlocks = organizeFieldsIntoBlocks(composants, valeursFormulaire);
+      setBlocks(organizedBlocks);
+      console.log('[FormulaireYukpoIntelligentScreen] Blocs organisés avec valeurs:', organizedBlocks);
+    }
+  }, [composants, valeursFormulaire]); // Se déclenche quand valeursFormulaire change
 
   // ✅ NOUVEAU : Scroll automatique vers le bloc courant (amélioré)
   // ✅ DÉSACTIVÉ : Le scroll manuel gère maintenant le changement de bloc
@@ -1110,18 +1172,70 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     setMediaFiles(newMediaFiles);
   };
 
+  // ✅ PHASE 3: Générer exemple dynamique pour autocomplete
+  const generateDynamicExample = (field: DynamicField, currentValues: string[]): string => {
+    if (currentValues && currentValues.length > 0) {
+      return currentValues[0]; // Première modalité comme exemple
+    }
+
+    // Exemple par défaut selon catégorie
+    const categorie = valeursFormulaire.categorie_produit || valeursFormulaire.category || 'produit';
+    const categorieNormalized = categorie.toLowerCase();
+
+    const examples: Record<string, string> = {
+      'vehicule': 'Toyota,Corolla,Noir,Yaoundé,2024,Neuf',
+      'automobile': 'Toyota,Corolla,Noir,Yaoundé,2024,Neuf',
+      'meuble': 'Canapé 3 places,Cuir,Marron,Douala,Moderne,Neuf',
+      'telephone': 'Apple,iPhone 14 Pro,Noir,Yaoundé,256GB,Comme neuf',
+      'smartphone': 'Samsung,Galaxy S24,Noir,Douala,128GB,Neuf',
+      'vetement': 'Nike,Air Max,Blanc,Yaoundé - Bastos,42,Neuf',
+      'chaussure': 'Adidas,Superstar,Blanc,Douala - Akwa,42,Comme neuf'
+    };
+
+    return examples[categorieNormalized] || 'Marque,Modèle,Couleur,Localisation,Année,État';
+  };
+
   // Rendu d'un champ (aligné sur le frontend avec tous les types)
   const renderField = (field: DynamicField) => {
     // ✅ NOUVEAU: Support pour les nouveaux types de données
     if (field.typeDonnee === 'autocomplete') {
+      const currentValues = Array.isArray(valeursFormulaire[field.name]) ? valeursFormulaire[field.name] : [];
+      const nbModalites = currentValues.length;
+      const nbCaracteristiques = Object.keys(field.sousCaracteristiques || {}).length;
+
       return (
         <View key={field.name} style={styles.fieldContainer}>
-          <AutocompleteGranularEditor
+          {/* ✅ PHASE 3: Statistiques en temps réel */}
+          {nbModalites > 0 && (
+            <View style={styles.statsBox}>
+              <SafeIcon name="bar-chart-2" size={14} color={modernColors.success} />
+              <Text style={styles.statsText}>
+                {nbModalites} modalité{nbModalites > 1 ? 's' : ''} créée{nbModalites > 1 ? 's' : ''}
+              </Text>
+              <View style={styles.statsDot} />
+              <Text style={styles.statsSubtext}>
+                {nbCaracteristiques} caractéristique{nbCaracteristiques > 1 ? 's' : ''}
+              </Text>
+            </View>
+          )}
+
+          {/* ✅ PHASE 3: Exemple dynamique */}
+          <View style={styles.exampleBox}>
+            <SafeIcon name="lightbulb" size={14} color={modernColors.primary} />
+            <View style={styles.exampleContent}>
+              <Text style={styles.exampleLabel}>Exemple :</Text>
+              <Text style={styles.exampleValue} numberOfLines={1}>
+                {generateDynamicExample(field, currentValues)}
+              </Text>
+            </View>
+          </View>
+
+          <LinearAutocompleteEditor
             label={field.label}
             identifiantBase={field.identifiantBase || field.name}
             sousCaracteristiques={field.sousCaracteristiques || {}}
             separateur={field.separateur || ','}
-            value={Array.isArray(valeursFormulaire[field.name]) ? valeursFormulaire[field.name] : []}
+            value={currentValues}
             onChange={(values) => handleFieldChange(field.name, values)}
             required={field.required}
             placeholder={field.placeholder}
@@ -1277,6 +1391,25 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       );
     }
 
+    // ✅ NOUVEAU: Gestionnaire de média produit
+    if (field.name === '_product_media_manager') {
+      return (
+        <View key={field.name} style={styles.fieldContainer}>
+          <Text style={styles.fieldLabel}>{field.label}</Text>
+          <Text style={styles.helperText}>
+            Ajoutez des photos et vidéos pour illustrer votre produit/prestation
+          </Text>
+          <BrandingManagerMobile
+            logo={mediaFiles.images}
+            banner={mediaFiles.videos}
+            onLogoChange={(images) => handleMediaChange({ ...mediaFiles, images })}
+            onBannerChange={(videos) => handleMediaChange({ ...mediaFiles, videos })}
+            readonly={isReadonly}
+          />
+        </View>
+      );
+    }
+
     // Champ GPS fixe personnalisé
     if (field.name === 'gps_fixe') {
       return (
@@ -1357,9 +1490,10 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       case 'email':
       case 'url':
         const hasError = fieldErrors[field.name];
+        const isProductField = ['nom_produit', 'categorie_produit'].includes(field.name);
 
         return (
-          <View key={field.name} style={styles.fieldContainer}>
+          <View key={field.name} style={isProductField ? styles.productFieldContainer : styles.fieldContainer}>
             <Text style={styles.fieldLabel}>
               {field.label} {field.required && <Text style={styles.required}>*</Text>}
             </Text>
@@ -1385,8 +1519,9 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           </View>
         );
       case 'textarea':
+        const isProductDescField = field.name === 'description_produit';
         return (
-          <View key={field.name} style={styles.fieldContainer}>
+          <View key={field.name} style={isProductDescField ? styles.productFieldContainer : styles.fieldContainer}>
             <Text style={styles.fieldLabel}>
               {field.label} {field.required && <Text style={styles.required}>*</Text>}
             </Text>
@@ -1624,6 +1759,88 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         );
 
         return; // ✅ Sortir ici pour éviter le flux de création
+      }
+
+      // ✅ NOUVEAU 2025-11-01: SI MODE ADD_PRODUCT : Appeler route ajout produit incrémental
+      if (isAddingProduct && serviceId) {
+        console.log('[FormulaireYukpoIntelligentScreen] 📦 MODE ADD_PRODUCT - Ajout produit au service', serviceId);
+
+        try {
+          setIsSubmitting(true);
+
+          // Construire les données du nouveau produit uniquement
+          const nouveauProduit: Record<string, any> = {};
+
+          // Champs produits principaux
+          if (valeursFormulaire.nom_produit) nouveauProduit.nom = valeursFormulaire.nom_produit;
+          if (valeursFormulaire.prix_produit) nouveauProduit.prix = valeursFormulaire.prix_produit;
+          if (valeursFormulaire.devise_produit) nouveauProduit.devise = valeursFormulaire.devise_produit;
+          if (valeursFormulaire.description_produit) nouveauProduit.description = valeursFormulaire.description_produit;
+          if (valeursFormulaire.categorie_produit) nouveauProduit.categorie = valeursFormulaire.categorie_produit;
+
+          // Copier tous les autres champs du formulaire qui concernent le produit
+          Object.keys(valeursFormulaire).forEach(key => {
+            if (key.includes('produit') || key === 'produits') {
+              nouveauProduit[key] = valeursFormulaire[key];
+            }
+          });
+
+          console.log('[FormulaireYukpoIntelligentScreen] 📦 Données du nouveau produit:', nouveauProduit);
+
+          // ✅ Appel route POST /api/services/{serviceId}/products
+          const userId = parseInt(user?.id || '0', 10);
+          const response = await apiPost(`/api/services/${serviceId}/products`, {
+            user_id: userId,
+            product_data: nouveauProduit
+          });
+
+          if (!response.success) {
+            throw new Error(response.error || 'Erreur ajout produit');
+          }
+
+          const { cost, new_balance, product_index } = response.data;
+
+          console.log('[FormulaireYukpoIntelligentScreen] ✅ Produit ajouté avec succès:', {
+            cost,
+            new_balance,
+            product_index
+          });
+
+          Alert.alert(
+            '✅ Produit ajouté',
+            `Votre produit a été ajouté avec succès au service.\n\n💰 Coût: ${cost.toLocaleString()} FCFA\n💳 Nouveau solde: ${new_balance.toLocaleString()} FCFA`,
+            [
+              {
+                text: 'OK',
+                onPress: () => {
+                  setSuccessData({ serviceId, cout: cost });
+                  setShowSuccessToast(true);
+
+                  if (fromMesProduits) {
+                    (navigation as any).navigate('MesProduits');
+                  } else if (fromMesServices) {
+                    (navigation as any).navigate('MesServices');
+                  } else {
+                    navigation.goBack();
+                  }
+                }
+              }
+            ]
+          );
+
+          return; // ✅ Sortir ici
+        } catch (error: any) {
+          console.error('[FormulaireYukpoIntelligentScreen] ❌ Erreur ajout produit:', error);
+          Alert.alert(
+            '❌ Erreur',
+            error.message || 'Impossible d\'ajouter le produit. Veuillez réessayer.',
+            [{ text: 'OK' }]
+          );
+          return;
+        } finally {
+          setIsSubmitting(false);
+          setLoading(false);
+        }
       }
 
       // ✅ MODE CRÉATION : Vérification solde + Coût (SANS appel IA - déjà fait lors de la génération du formulaire)
@@ -2724,12 +2941,21 @@ const styles = StyleSheet.create({
   fieldContainer: {
     marginBottom: 20,
   },
+  productFieldContainer: {
+    marginBottom: 12,
+  },
   fieldLabel: {
     fontSize: 15,
     fontWeight: '600',
     color: modernColors.text,
     marginBottom: 10,
     letterSpacing: 0.2,
+  },
+  helperText: {
+    fontSize: 12,
+    color: modernColors.textSecondary,
+    marginBottom: 8,
+    fontStyle: 'italic',
   },
   required: {
     color: modernColors.error,
@@ -2957,6 +3183,60 @@ const styles = StyleSheet.create({
   hintBold: {
     fontWeight: '600',
     color: modernColors.text,
+  },
+  // ✅ PHASE 3: Styles pour statistiques autocomplete
+  statsBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F0FDF4',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    marginBottom: 12,
+    gap: 8,
+  },
+  statsText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: modernColors.success,
+  },
+  statsDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: modernColors.textSecondary,
+  },
+  statsSubtext: {
+    fontSize: 12,
+    color: modernColors.textSecondary,
+  },
+  // ✅ PHASE 3: Styles pour exemple dynamique
+  exampleBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EEF2FF',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 8,
+    marginBottom: 12,
+    gap: 8,
+  },
+  exampleContent: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  exampleLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: modernColors.primary,
+  },
+  exampleValue: {
+    flex: 1,
+    fontSize: 12,
+    color: modernColors.text,
+    fontStyle: 'italic',
   },
   // Style pour le ScrollView horizontal du blockNavigation
   blockNavigationScrollView: {
