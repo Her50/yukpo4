@@ -152,6 +152,80 @@ Analyse la demande utilisateur et génère un JSON enrichi, strictement conforme
 }
 ```
 
+#### 🎯 INTÉGRATION variation_prix DANS autocomplete (CRITIQUE)
+
+**⚡ RÈGLE NOUVELLE 2025-11-02** : Si le produit a des variations de prix (pointure, taille, capacité, etc.), `variation_prix` est une **PROPRIÉTÉ** du champ `produits`, PAS un champ séparé.
+
+**Structure AVEC variations** :
+```json
+{
+  "produits": {
+    "type_donnee": "autocomplete",
+    "valeur": [
+      "Nike,Air Max,Noir,Neuf,38",
+      "Nike,Air Max,Noir,Neuf,39",
+      "Nike,Air Max,Noir,Neuf,40"
+    ],
+    "separateur": ",",
+    "sous_caracteristiques": {
+      "marque": ["Nike"],
+      "modele": ["Air Max"],
+      "couleur": ["Noir"],
+      "etat": ["Neuf"],
+      "pointure": ["38", "39", "40", "41", "42"]
+    },
+    "variation_prix": {
+      "variable": "pointure",
+      "position": "last_before_location",
+      "modalites": [
+        {"valeur": "38", "prix": 45000, "devise": "XAF", "stock": 5},
+        {"valeur": "39", "prix": 45000, "devise": "XAF", "stock": 3},
+        {"valeur": "40", "prix": 48000, "devise": "XAF", "stock": 2}
+      ]
+    },
+    "filtrable": true,
+    "identifiant_base": "produits",
+    "origine_champs": "ia"
+  }
+}
+```
+
+**🔑 RÈGLES POSITION** :
+- **Dimension variable** (pointure, taille, stockage) = **AVANT-DERNIÈRE** position dans vecteur
+- **Dimension lieu** = **DERNIÈRE** position (toujours, ajoutée automatiquement)
+
+**Ordre vecteur** : `[caractéristiques fixes, dimension_variable, lieu]`  
+**Exemple** : `["Nike", "Air Max", "Noir", "Neuf", "38", "Douala"]`
+
+#### 🌍 DIMENSION LIEU (AUTOMATIQUE)
+
+**⚡ RÈGLE** : TOUJOURS ajouter une dimension `lieu` vide en FIN du vecteur autocomplete.
+
+Le lieu sera rempli par le prestataire et enrichi côté backend avec hiérarchie complète (GeoNames).
+
+**Structure** :
+```json
+{
+  "produits": {
+    "type_donnee": "autocomplete",
+    "valeur": ["Canapé,Tissu,Marron,2 places,"],
+    "separateur": ",",
+    "sous_caracteristiques": {
+      "type": ["Canapé"],
+      "materiau": ["Tissu", "Cuir", "Simili"],
+      "couleur": ["Marron", "Noir", "Beige"],
+      "places": ["2 places", "3 places", "5 places"],
+      "lieu": [""]
+    }
+  }
+}
+```
+
+**⚠️ IMPORTANT** : 
+- La sous_caracteristique `lieu` a une valeur vide `[""]`
+- Elle sera remplie par le champ `lieu_produit` du formulaire
+- Le backend enrichira avec `[Douala, Akwa, Littoral, Cameroun]`
+
 ## RÈGLES D'ENRICHISSEMENT :
 - **Si is_tarissable=true** : ajouter vitesse_tarissement ("lente", "moyenne", "rapide")
 - **EXTRACTION COMPLÈTE DES PRODUITS ET PRESTATIONS** : 
@@ -183,6 +257,136 @@ Analyse la demande utilisateur et génère un JSON enrichi, strictement conforme
 - **devise_produit** : TOUJOURS une string (ex: "XAF", "EUR", "USD", "FCFA")
 - **TOUS les champs structurés** DOIVENT avoir origine_champs
 - **Respect strict** du schéma JSON Yukpo
+
+## 🎯 RÈGLES ABSOLUES VARIATIONS PRIX & VECTEURS (2025-11-02)
+
+### 1️⃣ SI Variations Prix Détectées
+
+**Quand** : Produit avec prix différent selon dimension (pointure, taille, capacité, durée, etc.)
+
+**Action** :
+- ✅ Intégrer `variation_prix` **DANS** le champ `produits` (autocomplete)
+- ❌ **NE PAS** créer champ `variabilite_prix` séparé (déprécié)
+- ✅ Générer **PLUSIEURS** valeurs dans autocomplete (une par modalité)
+- ✅ Position dimension variable : `last_before_location`
+
+**Exemple** :
+```json
+"produits": {
+  "type_donnee": "autocomplete",
+  "valeur": [
+    "Nike,Air Max,Noir,38",
+    "Nike,Air Max,Noir,39",
+    "Nike,Air Max,Noir,40"
+  ],
+  "variation_prix": {
+    "variable": "pointure",
+    "position": "last_before_location",
+    "modalites": [...]
+  }
+}
+```
+
+### 2️⃣ Dimension Lieu (TOUJOURS)
+
+**⚡ OBLIGATOIRE** : Ajouter dimension `lieu` vide en **dernière** position
+
+```json
+"sous_caracteristiques": {
+  "marque": ["Nike"],
+  "pointure": ["38", "39", "40"],
+  "lieu": [""]  // ⬅️ TOUJOURS en dernier, valeur vide
+}
+```
+
+### 3️⃣ Multi-Combinaisons
+
+**SI** variations prix → Générer une valeur autocomplete **PAR** modalité
+
+**Chaussure pointures 38-42** :
+```json
+"valeur": [
+  "Nike,Air Max,Noir,38,",
+  "Nike,Air Max,Noir,39,",
+  "Nike,Air Max,Noir,40,",
+  "Nike,Air Max,Noir,41,",
+  "Nike,Air Max,Noir,42,"
+]
+```
+
+**⚠️ Virgule finale** : Réservée pour lieu (rempli par prestataire)
+
+### 4️⃣ Normalisation Labels
+
+**Standards à utiliser** :
+- Pointure : `"38"`, `"39"`, `"40"` (pas "taille 38", "pointure 38")
+- Taille vêtements : `"S"`, `"M"`, `"L"`, `"XL"` (majuscules)
+- Capacité : `"64 GB"`, `"128 GB"`, `"256 GB"` (avec unité)
+- Places : `"2 places"`, `"3 places"` (avec texte)
+
+### 5️⃣ VECTEUR AFFICHÉ DANS LE FORMULAIRE (CRITIQUE)
+
+**❓ Question** : Si `variation_prix` génère plusieurs combinaisons, laquelle est affichée dans le champ "Caractéristiques produit" ?
+
+**✅ Réponse** : La **PREMIÈRE valeur** du tableau `autocomplete.valeur` est la combinaison de référence affichée.
+
+**Exemple** :
+```json
+"produits": {
+  "type_donnee": "autocomplete",
+  "valeur": [
+    "Nike,Air Max,Noir,Neuf,38",  // ⬅️ CETTE LIGNE sera affichée dans le formulaire
+    "Nike,Air Max,Noir,Neuf,39",
+    "Nike,Air Max,Noir,Neuf,40"
+  ],
+  "sous_caracteristiques": {...},
+  "variation_prix": {
+    "variable": "pointure",
+    "modalites": [
+      {"valeur": "38", ...},
+      {"valeur": "39", ...},
+      {"valeur": "40", ...}
+    ]
+  }
+}
+```
+
+**Frontend comportement** :
+1. Le champ "Caractéristiques produit" affiche : `"Nike,Air Max,Noir,Neuf,38"`
+2. Un composant `PriceVariantSelector` affiche le tableau des variations (38, 39, 40 avec prix)
+3. Le prestataire peut modifier les prix, stock, ou ajouter/supprimer des pointures
+
+**🔑 RÈGLE GÉNÉRATION** :
+- **TOUJOURS** mettre la modalité la plus courante/standard en position 0
+- Chaussures : pointure 40 (taille moyenne homme) ou 38 (taille moyenne femme)
+- Vêtements : taille M ou L
+- Capacité smartphone : 128 GB (standard actuel)
+- Chambres hôtel : Chambre double (plus courant)
+
+**Ordre logique des modalités** :
+- ✅ Du plus petit au plus grand : `["38", "39", "40", "41", "42"]`
+- ✅ Du moins cher au plus cher si variation cohérente
+- ✅ Du standard aux extrêmes : `["M", "S", "L", "XS", "XL"]` → réorganiser en `["S", "M", "L", "XL"]`
+
+### 6️⃣ SANS Variations Prix
+
+**Si** produit à prix unique :
+```json
+"produits": {
+  "type_donnee": "autocomplete",
+  "valeur": ["Canapé,Tissu,Marron,Moderne,"],  // ⬅️ UNE SEULE valeur
+  "sous_caracteristiques": {
+    "type": ["Canapé"],
+    "materiau": ["Tissu", "Cuir"],
+    "couleur": ["Marron", "Noir"],
+    "style": ["Moderne"],
+    "lieu": [""]
+  }
+  // ❌ PAS de variation_prix
+}
+```
+
+**Formulaire affichera** : `"Canapé,Tissu,Marron,Moderne,"`
 
 ## Demande utilisateur
 {user_input}
@@ -344,39 +548,168 @@ Analyse la demande utilisateur et génère un JSON enrichi, strictement conforme
   "capacite": {"type_donnee": "number", "valeur": 200, "unite": "personnes", "origine_champs": "ia"}
 }
 ```
-### 🛍️ COMMERCE / VENTE PRODUITS
+### 👟 CHAUSSURES (AVEC VARIATIONS PRIX)
 ```json
 {
   "produits": {
     "type_donnee": "autocomplete",
-    "valeur": ["Nike,Air Max 90,2024,Running,Homme,42,Noir/Blanc,Cuir"],
+    "valeur": [
+      "Nike,Air Max 90,2024,Running,Homme,Noir/Blanc,Cuir,38",
+      "Nike,Air Max 90,2024,Running,Homme,Noir/Blanc,Cuir,39",
+      "Nike,Air Max 90,2024,Running,Homme,Noir/Blanc,Cuir,40",
+      "Nike,Air Max 90,2024,Running,Homme,Noir/Blanc,Cuir,41",
+      "Nike,Air Max 90,2024,Running,Homme,Noir/Blanc,Cuir,42"
+    ],
     "separateur": ",",
     "sous_caracteristiques": {
-      "marque": ["Nike", "Adidas", "Puma"],
-      "modele": ["Air Max 90", "Pegasus"],
-      "annee": ["2023", "2024"],
-      "categorie": ["Running", "Basketball"],
-      "genre": ["Homme", "Femme"],
-      "taille": ["38", "39", "40", "41", "42", "43"],
-      "couleur": ["Noir/Blanc", "Bleu", "Rouge"],
-      "matiere": ["Cuir", "Textile", "Synthétique"]
+      "marque": ["Nike"],
+      "modele": ["Air Max 90"],
+      "annee": ["2024"],
+      "categorie": ["Running"],
+      "genre": ["Homme"],
+      "couleur": ["Noir/Blanc"],
+      "matiere": ["Cuir"],
+      "pointure": ["38", "39", "40", "41", "42", "43", "44"]
+    },
+    "variation_prix": {
+      "variable": "pointure",
+      "position": "last_before_location",
+      "modalites": [
+        {"valeur": "38", "prix": 45000, "devise": "XAF", "stock": 5},
+        {"valeur": "39", "prix": 45000, "devise": "XAF", "stock": 8},
+        {"valeur": "40", "prix": 48000, "devise": "XAF", "stock": 3},
+        {"valeur": "41", "prix": 48000, "devise": "XAF", "stock": 6},
+        {"valeur": "42", "prix": 50000, "devise": "XAF", "stock": 2}
+      ]
     },
     "filtrable": true,
     "identifiant_base": "caracteristiques_chaussures",
     "origine_champs": "ia"
   },
-  "variabilite_prix": {
-    "type_donnee": "price_variant",
-    "variable": "taille",
-    "modalites": [
-      {"valeur": "38", "prix": 45000, "devise": "XAF", "disponible": true},
-      {"valeur": "42", "prix": 50000, "devise": "XAF", "disponible": true}
-    ],
-    "filtrable": true,
+  "nom_produit": {
+    "type_donnee": "string",
+    "valeur": "Nike Air Max 90 Running Homme",
+    "origine_champs": "ia"
+  },
+  "categorie_produit": {
+    "type_donnee": "string",
+    "valeur": "Chaussures de Sport",
+    "origine_champs": "ia"
+  },
+  "description_produit": {
+    "type_donnee": "string",
+    "valeur": "Chaussures Nike Air Max 90 pour homme, catégorie running, en cuir noir et blanc. Plusieurs pointures disponibles.",
     "origine_champs": "ia"
   }
 }
 ```
+
+**📝 NOTE** : 
+- Le champ `variabilite_prix` séparé est **DÉPRÉCIÉ**
+- Utilise `variation_prix` DANS `produits.autocomplete` à la place
+- La dimension variable (pointure) est en **avant-dernière** position
+
+### 🏨 HÔTEL / HÉBERGEMENT (AVEC VARIATIONS PRIX)
+```json
+{
+  "produits": {
+    "type_donnee": "autocomplete",
+    "valeur": [
+      "Chambre,Standard,Climatisée,Double,Vue mer,Chambre simple",
+      "Chambre,Standard,Climatisée,Double,Vue mer,Chambre double",
+      "Chambre,Standard,Climatisée,Double,Vue mer,Suite junior",
+      "Chambre,Standard,Climatisée,Double,Vue mer,Suite prestige"
+    ],
+    "separateur": ",",
+    "sous_caracteristiques": {
+      "type": ["Chambre"],
+      "standing": ["Standard", "Premium", "Luxe"],
+      "equipements": ["Climatisée", "TV", "WiFi"],
+      "lit": ["Simple", "Double", "King size"],
+      "vue": ["Vue mer", "Vue ville", "Vue jardin"],
+      "categorie_chambre": ["Chambre simple", "Chambre double", "Suite junior", "Suite prestige"]
+    },
+    "variation_prix": {
+      "variable": "categorie_chambre",
+      "position": "last_before_location",
+      "modalites": [
+        {"valeur": "Chambre simple", "prix": 25000, "devise": "XAF", "stock": 10},
+        {"valeur": "Chambre double", "prix": 35000, "devise": "XAF", "stock": 8},
+        {"valeur": "Suite junior", "prix": 55000, "devise": "XAF", "stock": 4},
+        {"valeur": "Suite prestige", "prix": 85000, "devise": "XAF", "stock": 2}
+      ]
+    },
+    "filtrable": true,
+    "identifiant_base": "caracteristiques_chambres",
+    "origine_champs": "ia"
+  },
+  "nom_produit": {
+    "type_donnee": "string",
+    "valeur": "Chambres d'Hôtel Tout Confort",
+    "origine_champs": "ia"
+  },
+  "categorie_produit": {
+    "type_donnee": "string",
+    "valeur": "Hébergement / Hôtel",
+    "origine_champs": "ia"
+  }
+}
+```
+
+### 🛋️ MEUBLES (AVEC VARIATIONS PRIX)
+```json
+{
+  "produits": {
+    "type_donnee": "autocomplete",
+    "valeur": [
+      "Canapé,Tissu,Marron,Moderne,2 places",
+      "Canapé,Tissu,Marron,Moderne,3 places",
+      "Canapé,Tissu,Marron,Moderne,5 places"
+    ],
+    "separateur": ",",
+    "sous_caracteristiques": {
+      "type": ["Canapé"],
+      "materiau": ["Tissu", "Cuir", "Simili cuir"],
+      "couleur": ["Marron", "Noir", "Beige", "Gris"],
+      "style": ["Moderne", "Classique", "Scandinave"],
+      "places": ["2 places", "3 places", "5 places", "6 places"],
+      "lieu": [""]
+    },
+    "variation_prix": {
+      "variable": "places",
+      "position": "last_before_location",
+      "modalites": [
+        {"valeur": "2 places", "prix": 85000, "devise": "XAF", "stock": 3},
+        {"valeur": "3 places", "prix": 120000, "devise": "XAF", "stock": 5},
+        {"valeur": "5 places", "prix": 180000, "devise": "XAF", "stock": 2}
+      ]
+    },
+    "filtrable": true,
+    "identifiant_base": "caracteristiques_canapes",
+    "origine_champs": "ia"
+  },
+  "nom_produit": {
+    "type_donnee": "string",
+    "valeur": "Canapé Tissu Marron Moderne",
+    "origine_champs": "ia"
+  },
+  "categorie_produit": {
+    "type_donnee": "string",
+    "valeur": "Meubles / Salon",
+    "origine_champs": "ia"
+  },
+  "description_produit": {
+    "type_donnee": "string",
+    "valeur": "Canapé moderne en tissu marron de qualité. Disponible en plusieurs tailles (2, 3 ou 5 places). Confortable et élégant.",
+    "origine_champs": "ia"
+  }
+}
+```
+
+**🔑 NOTE CRITIQUE** :
+- Dimension `lieu` avec valeur vide `[""]` → Remplie par prestataire
+- Dimension variable (places) en **avant-dernière** position
+- Vecteur final sera : `["Canapé", "Tissu", "Marron", "Moderne", "3 places", "Douala"]`
 
 ### 🎓 ÉDUCATION / FORMATION
 ```json

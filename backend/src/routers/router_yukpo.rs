@@ -65,6 +65,7 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route("/api/test/ping", get(handle_ping))
         .route("/api/geocoding/reverse", post(handle_reverse_geocode))
         .route("/api/places/autocomplete", get(autocomplete_places))
+        .route("/api/places/enrich", get(places_controller::enrich_location))
         .layer(axum::middleware::from_fn(monitoring::monitoring))
         .layer(axum::middleware::from_fn(audit_log::audit_log))
         .layer(axum::middleware::from_fn(rate_limit::rate_limit))

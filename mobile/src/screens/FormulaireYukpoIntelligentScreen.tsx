@@ -18,6 +18,8 @@ import {
 import { apiGet, apiPost } from '../services/api';
 // Code corrigé (remplace @ts-ignore)
 import BrandingManagerMobile from '../components/BrandingManagerMobile';
+// ✅ NOUVEAU 2025-11-02: Gestionnaire upload images/vidéos dédié
+import MediaUploadManager from '../components/MediaUploadManager';
 // Code corrigé (remplace @ts-ignore)
 import ModernGPSModal from '../components/ModernGPSModal';
 // Code corrigé (remplace @ts-ignore)
@@ -52,8 +54,6 @@ interface MediaFiles {
   videos: any[];
   documents: any[];
   excel: any[];
-  logo: any[];
-  banner: any[];
 }
 
 const FormulaireYukpoIntelligentScreen: React.FC = () => {
@@ -97,9 +97,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     audios: mediaData.audio_base64 || [],
     videos: mediaData.video_base64 || [],
     documents: mediaData.doc_base64 || [],
-    excel: mediaData.excel_base64 || [],
-    logo: mediaData.logo || [],
-    banner: mediaData.banner || []
+    excel: mediaData.excel_base64 || []
   });
   const [gps, setGps] = useState<string | undefined>(undefined);
   const [showSuccessToast, setShowSuccessToast] = useState(false);
@@ -214,8 +212,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         blocks[3].fields.push(field);
         console.log(`[FormulaireYukpoIntelligentScreen] ✅ Champ ajouté au bloc produits: ${field.name} (typeDonnee: ${field.typeDonnee})`);
       }
-      // Bloc Médias
-      else if (['images', 'videos', 'audios', 'documents', 'logo', 'banner', 'banniere'].includes(fieldName)) {
+      // Bloc Médias (✅ logo/banner retirés 2025-11-02)
+      else if (['images', 'videos', 'audios', 'documents'].includes(fieldName)) {
         blocks[4].fields.push(field);
       }
       // Bloc Paiement
@@ -876,11 +874,22 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         }
       });
 
-      // ✅ NOUVEAU: Log des champs produits détectés depuis l'IA
+      // ✅ CRITIQUE 2025-11-02: S'assurer que nom_produit, categorie_produit, description_produit sont chargés
       const productFields = ['nom_produit', 'categorie_produit', 'description_produit', 'prix_produit', 'devise_produit', 'produits'];
       const detectedProductFields = productFields.filter(field => field in initialValues);
       if (detectedProductFields.length > 0) {
         console.log(`[FormulaireYukpoIntelligentScreen] ✅ ${detectedProductFields.length} champs produits détectés depuis l'IA:`, detectedProductFields);
+
+        // Log détaillé pour chaque champ produit critique
+        ['nom_produit', 'categorie_produit', 'description_produit'].forEach(field => {
+          if (initialValues[field]) {
+            console.log(`[FormulaireYukpoIntelligentScreen] ✅ ${field} chargé:`, initialValues[field]);
+          } else {
+            console.warn(`[FormulaireYukpoIntelligentScreen] ⚠️ ${field} NON trouvé dans les données IA`);
+          }
+        });
+      } else {
+        console.warn('[FormulaireYukpoIntelligentScreen] ⚠️ Aucun champ produit détecté depuis l\'IA');
       }
 
       // CORRECTION: S'assurer que le champ category est bien chargé
@@ -1365,18 +1374,9 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       );
     }
 
+    // ✅ SUPPRIMÉ 2025-11-02: Bloc logo/bannière retiré selon demande utilisateur
     if (field.name === '_media_manager') {
-      return (
-        <View key={field.name}>
-          <BrandingManagerMobile
-            logo={mediaFiles.logo}
-            banner={mediaFiles.banner}
-            onLogoChange={(logo) => handleMediaChange({ ...mediaFiles, logo })}
-            onBannerChange={(banner) => handleMediaChange({ ...mediaFiles, banner })}
-            readonly={isReadonly}
-          />
-        </View>
-      );
+      return null; // Ne plus afficher ce bloc
     }
 
 
@@ -1392,20 +1392,22 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       );
     }
 
-    // ✅ NOUVEAU: Gestionnaire de média produit
+    // ✅ NOUVEAU 2025-11-02: Gestionnaire de média produit avec upload complet
     if (field.name === '_product_media_manager') {
       return (
         <View key={field.name} style={styles.fieldContainer}>
-          <Text style={styles.fieldLabel}>{field.label}</Text>
+          <Text style={styles.fieldLabel}>{field.label || '📸 Médias du produit'}</Text>
           <Text style={styles.helperText}>
             Ajoutez des photos et vidéos pour illustrer votre produit/prestation
           </Text>
-          <BrandingManagerMobile
-            logo={mediaFiles.images}
-            banner={mediaFiles.videos}
-            onLogoChange={(images) => handleMediaChange({ ...mediaFiles, images })}
-            onBannerChange={(videos) => handleMediaChange({ ...mediaFiles, videos })}
+          <MediaUploadManager
+            images={mediaFiles.images}
+            videos={mediaFiles.videos}
+            onImagesChange={(images) => handleMediaChange({ ...mediaFiles, images })}
+            onVideosChange={(videos) => handleMediaChange({ ...mediaFiles, videos })}
             readonly={isReadonly}
+            maxImages={10}
+            maxVideos={3}
           />
         </View>
       );
@@ -2196,6 +2198,46 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                     origine_champs: 'formulaire'
                   };
                   console.log('[FormulaireYukpoIntelligentScreen] ✅ Mode de paiement ajouté:', paymentMethod);
+                }
+
+                // ✅ CRITIQUE 2025-11-02: Transformer autocomplete → listeproduit AVANT envoi
+                if (finalServiceData.produits && finalServiceData.produits.type_donnee === 'autocomplete') {
+                  console.log('[FormulaireYukpoIntelligentScreen] 🔄 Transformation autocomplete → listeproduit...');
+
+                  const autocompleteData = finalServiceData.produits;
+
+                  // Extraire les champs individuels du produit
+                  const nomProduit = finalServiceData.nom_produit?.valeur || valeursFormulaire.nom_produit || '';
+                  const prixProduit = finalServiceData.prix_produit?.valeur || valeursFormulaire.prix_produit || 0;
+                  const categorieProduit = finalServiceData.categorie_produit?.valeur || valeursFormulaire.categorie_produit || '';
+                  const descriptionProduit = finalServiceData.description_produit?.valeur || valeursFormulaire.description_produit || '';
+                  const deviseProduit = finalServiceData.devise_produit?.valeur || valeursFormulaire.devise_produit || 'XAF';
+
+                  // Construire l'objet produit
+                  const produitObj = {
+                    nom: nomProduit,
+                    prix: prixProduit,
+                    categorie: categorieProduit,
+                    description: descriptionProduit,
+                    devise: deviseProduit
+                  };
+
+                  // Transformer en listeproduit
+                  finalServiceData.produits = {
+                    type_donnee: 'listeproduit',
+                    valeur: [produitObj],
+                    origine_champs: autocompleteData.origine_champs || 'formulaire',
+                    variation_prix: autocompleteData.variation_prix // Préserver variation_prix si existe
+                  };
+
+                  // Retirer les champs individuels (déjà dans listeproduit)
+                  delete finalServiceData.nom_produit;
+                  delete finalServiceData.prix_produit;
+                  delete finalServiceData.categorie_produit;
+                  delete finalServiceData.description_produit;
+                  delete finalServiceData.devise_produit;
+
+                  console.log('[FormulaireYukpoIntelligentScreen] ✅ Transformation réussie:', finalServiceData.produits);
                 }
 
                 // Le backend attend : { user_id: number, data: {...} }

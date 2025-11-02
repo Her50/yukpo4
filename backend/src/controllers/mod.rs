@@ -36,6 +36,7 @@ pub mod media_product_controller; // ✅ NOUVEAU: Contrôleur pour médias par p
 pub mod autocomplete_controller; // ✅ NOUVEAU: Contrôleur pour autocomplete characteristics
 pub mod search_history_controller; // ✅ NOUVEAU: Contrôleur pour historique de recherche
 pub mod product_addition_controller; // ✅ NOUVEAU 2025-11-01: Contrôleur pour ajout incrémental de produits
+pub mod places_controller; // ✅ NOUVEAU 2025-11-02: Contrôleur pour enrichissement géographique GeoNames
 
 // pub use service_controller::update_token_debit;
 

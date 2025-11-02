@@ -10,6 +10,7 @@ use crate::controllers::autocomplete_controller::{
     get_all_values,
     upsert_autocomplete_characteristic,
     historize_autocomplete_field,
+    search_combinations, // ✅ NOUVEAU 2025-11-02: Recherche vectorielle multi-filtres
 };
 
 /// Routes pour la gestion de l'autocomplete
@@ -25,6 +26,8 @@ pub fn autocomplete_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route("/api/autocomplete/upsert", post(upsert_autocomplete_characteristic))
         // POST /api/autocomplete/historize
         .route("/api/autocomplete/historize", post(historize_autocomplete_field))
+        // POST /api/autocomplete/search-combinations (✅ NOUVEAU 2025-11-02)
+        .route("/api/autocomplete/search-combinations", post(search_combinations))
         .with_state(state)
 }
 

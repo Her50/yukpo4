@@ -3,11 +3,15 @@ use axum::{
     http::StatusCode,
     Json,
     response::IntoResponse,
+    routing::get,
+    Router,
 };
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
+use sqlx::PgPool;
 
 use crate::state::AppState;
+use crate::controllers::places_controller;
 
 #[derive(Debug, Deserialize)]
 pub struct PlacesAutocompleteQuery {
@@ -175,3 +179,10 @@ pub async fn autocomplete_places(
     }
 }
 
+/// Créer le router pour les routes places
+pub fn places_routes(pool: PgPool) -> Router<Arc<AppState>> {
+    Router::new()
+        .route("/autocomplete", get(autocomplete_places))
+        .route("/enrich", get(places_controller::enrich_location))
+        .with_state(Arc::new(AppState { pool }))
+}

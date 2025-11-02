@@ -54,6 +54,7 @@ pub mod intelligent_image_analysis_service;
 pub mod hybrid_image_search_service; // ✅ NOUVEAU: Recherche hybride intelligente
 pub mod scheduling_search_service;
 pub mod geocoding_service;
+pub mod geonames_service; // ✅ NOUVEAU: Service GeoNames pour hiérarchie géographique
 pub mod intelligent_service_manager;
 pub mod phone_validation_service;
 pub mod payment_service;

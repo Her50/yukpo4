@@ -357,6 +357,10 @@ pub async fn creer_service(
         .or_else(|| data_processed.get("tokens_consumed").and_then(|v| v.as_u64()))
         .unwrap_or(0) as i64;
     
+    // ✅ CRITIQUE 2025-11-02 : VALIDER D'ABORD AVANT DE DÉBITER (éviter perte argent)
+    let mut data_obj = valider_service_json(&data_processed)?;
+    log::info!("[creer_service] ✅ Validation JSON réussie AVANT débit");
+    
     // ✅ NOUVEAU 2025-11-01 : Déterminer si c'est le premier produit ou un produit dupliqué
     // Si tokens_ia_externe > 0 : c'est le premier produit (analysé par IA)
     // Si tokens_ia_externe = 0 : c'est un produit dupliqué (pas d'analyse IA)
@@ -368,7 +372,7 @@ pub async fn creer_service(
     log::info!("[creer_service] 💰 Coût calculé: {} FCFA (tokens IA: {}, premier produit: {})", 
         cout_reel_xaf, ia_tokens_consumed, is_first_product);
     
-    // ✅ NOUVEAU 2025-11-01 : Vérifier et débiter le solde AVANT de créer le service
+    // ✅ NOUVEAU 2025-11-01 : Vérifier et débiter le solde APRÈS validation
     let current_balance_result = sqlx::query("SELECT tokens_balance FROM users WHERE id = $1")
         .bind(user_id)
         .fetch_one(pool)
@@ -423,8 +427,6 @@ pub async fn creer_service(
         log::info!("[creer_service] ✅ Tokens équivalents pour stats: {} (coût fixe: {} FCFA)", 
             min_cost_tokens, cout_reel_xaf);
     }
-    
-    let mut data_obj = valider_service_json(&data_processed)?;
     // Ajouter tokens de validation
     token_tracker.add_validation(2);
     
@@ -1407,6 +1409,13 @@ pub async fn creer_service(
     log::info!("[CREER_SERVICE] Tokens consommés pour utilisateur {}: {:?}", user_id, token_tracker);
     log::info!("[CREER_SERVICE] Total tokens retournés: {} (type: u32)", token_tracker.total_tokens);
     
+    // ✅ NOUVEAU 2025-11-02: Sauvegarder autocomplete combinations (non bloquant)
+    if let Err(e) = save_autocomplete_combination(pool, service_id, &data_obj).await {
+        log::warn!("[CREER_SERVICE] Erreur sauvegarde autocomplete: {} (non bloquant)", e);
+    } else {
+        log::info!("[CREER_SERVICE] ✅ Autocomplete combinations sauvegardées");
+    }
+    
     // ✅ NOUVEAU: Créer une notification de création de service
     let service_title = data_obj.get("titre_service")
         .or_else(|| data_obj.get("titre"))
@@ -1450,6 +1459,180 @@ pub async fn brouillon_service(
 
     // Pas d'insertion ni de cache, juste retour du JSON valid?
     Ok(data_obj)
+}
+
+/// Sauvegarde les combinaisons autocomplete avec vecteurs produit et localisation
+async fn save_autocomplete_combination(
+    pool: &PgPool,
+    service_id: i32,
+    data_obj: &serde_json::Value,
+) -> Result<(), AppError> {
+    use crate::services::geonames_service::{build_location_vector, extract_country_from_lieu, get_geoname_id};
+    
+    log::info!("[save_autocomplete_combination] Début sauvegarde pour service {}", service_id);
+    
+    // 1. Extraire vecteur produit depuis champ produits
+    let produits_field = match data_obj.get("produits") {
+        Some(p) => p,
+        None => {
+            log::warn!("[save_autocomplete_combination] Pas de champ produits");
+            return Ok(());
+        }
+    };
+    
+    // Vecteur produit depuis autocomplete
+    let product_vector: Vec<String> = if let Some(valeur_str) = produits_field.get("valeur").and_then(|v| v.as_str()) {
+        valeur_str.split(',').map(|s| s.trim().to_string()).collect()
+    } else if let Some(valeur_array) = produits_field.get("valeur").and_then(|v| v.as_array()) {
+        valeur_array.iter()
+            .filter_map(|v| v.as_str())
+            .map(|s| s.to_string())
+            .collect()
+    } else {
+        log::warn!("[save_autocomplete_combination] Format valeur produits non reconnu");
+        return Ok(());
+    };
+    
+    if product_vector.is_empty() {
+        log::warn!("[save_autocomplete_combination] Vecteur produit vide");
+        return Ok(());
+    }
+    
+    log::info!("[save_autocomplete_combination] Vecteur produit: {:?}", product_vector);
+    
+    // 2. Extraire lieu (plusieurs champs possibles)
+    let lieu_field = data_obj.get("lieu_produit")
+        .or_else(|| data_obj.get("localisation"))
+        .or_else(|| data_obj.get("ville"))
+        .or_else(|| data_obj.get("lieu"));
+    
+    let (location_vector, chosen_location, geoname_id) = if let Some(lieu) = lieu_field {
+        let lieu_str = lieu.get("valeur")
+            .and_then(|v| v.as_str())
+            .or_else(|| lieu.as_str())
+            .unwrap_or("");
+        
+        if !lieu_str.is_empty() {
+            let country = extract_country_from_lieu(lieu_str);
+            
+            // Construire vecteur lieu avec GeoNames
+            let loc_vector = build_location_vector(pool, lieu_str, country.as_deref())
+                .await
+                .unwrap_or_else(|e| {
+                    log::warn!("[save_autocomplete_combination] Erreur enrichissement lieu '{}': {}", lieu_str, e);
+                    vec![lieu_str.to_string()]
+                });
+            
+            let geoname_id_val = get_geoname_id(pool, lieu_str)
+                .await
+                .unwrap_or(None);
+            
+            log::info!("[save_autocomplete_combination] Vecteur lieu: {:?}", loc_vector);
+            
+            (loc_vector, Some(lieu_str.to_string()), geoname_id_val)
+        } else {
+            (vec![], None, None)
+        }
+    } else {
+        log::warn!("[save_autocomplete_combination] Pas de champ lieu trouvé");
+        (vec![], None, None)
+    };
+    
+    // 3. Vecteur complet = produit + location
+    let mut full_vector = product_vector.clone();
+    full_vector.extend(location_vector.clone());
+    
+    log::info!("[save_autocomplete_combination] Vecteur complet ({}): {:?}", full_vector.len(), full_vector);
+    
+    // 4. Gérer variations prix si existe
+    let variation_prix = produits_field.get("variation_prix");
+    
+    if let Some(variation) = variation_prix {
+        let variant_dimension = variation.get("variable")
+            .and_then(|v| v.as_str())
+            .unwrap_or("");
+        
+        let modalites = variation.get("modalites")
+            .and_then(|v| v.as_array());
+        
+        if let Some(modalites_array) = modalites {
+            log::info!("[save_autocomplete_combination] {} variations prix trouvées (dimension: {})", modalites_array.len(), variant_dimension);
+            
+            for modalite in modalites_array {
+                let variant_value = modalite.get("valeur").and_then(|v| v.as_str()).unwrap_or("");
+                let prix = modalite.get("prix").and_then(|v| v.as_f64()).unwrap_or(0.0);
+                let stock = modalite.get("stock").and_then(|v| v.as_i64()).unwrap_or(0) as i32;
+                let devise = modalite.get("devise").and_then(|v| v.as_str()).unwrap_or("XAF");
+                
+                // Vecteur avec variation : insérer AVANT le lieu
+                let mut variant_vector = product_vector.clone();
+                variant_vector.push(variant_value.to_string());
+                variant_vector.extend(location_vector.clone());
+                
+                // Sauvegarder
+                let result = sqlx::query!(
+                    r#"INSERT INTO autocomplete_combinations 
+                       (service_id, product_vector, location_vector, full_vector,
+                        chosen_location, chosen_location_geoname_id,
+                        has_variant, variant_dimension, variant_value, prix, devise, stock, usage_count)
+                       VALUES ($1, $2, $3, $4, $5, $6, true, $7, $8, $9, $10, $11, 1)
+                       ON CONFLICT (service_id, full_vector)
+                       DO UPDATE SET usage_count = autocomplete_combinations.usage_count + 1"#,
+                    service_id,
+                    &product_vector,
+                    &location_vector,
+                    &variant_vector,
+                    chosen_location.as_deref(),
+                    geoname_id,
+                    variant_dimension,
+                    variant_value,
+                    prix,
+                    devise,
+                    stock
+                ).execute(pool).await;
+                
+                if let Err(e) = result {
+                    log::error!("[save_autocomplete_combination] Erreur sauvegarde variation '{}': {}", variant_value, e);
+                } else {
+                    log::info!("[save_autocomplete_combination] ✅ Sauvegardé variation: {}", variant_value);
+                }
+            }
+        }
+    } else {
+        // Pas de variation : sauvegarder une seule combinaison
+        let prix = produits_field.get("prix")
+            .and_then(|p| p.get("valeur"))
+            .or_else(|| produits_field.get("prix"))
+            .and_then(|v| v.as_f64())
+            .unwrap_or(0.0);
+        
+        let result = sqlx::query!(
+            r#"INSERT INTO autocomplete_combinations 
+               (service_id, product_vector, location_vector, full_vector,
+                chosen_location, chosen_location_geoname_id,
+                has_variant, prix, usage_count)
+               VALUES ($1, $2, $3, $4, $5, $6, false, $7, 1)
+               ON CONFLICT (service_id, full_vector)
+               DO UPDATE SET usage_count = autocomplete_combinations.usage_count + 1"#,
+            service_id,
+            &product_vector,
+            &location_vector,
+            &full_vector,
+            chosen_location.as_deref(),
+            geoname_id,
+            prix
+        ).execute(pool).await;
+        
+        if let Err(e) = result {
+            log::error!("[save_autocomplete_combination] Erreur sauvegarde: {}", e);
+        } else {
+            log::info!("[save_autocomplete_combination] ✅ Sauvegardé (sans variation)");
+        }
+    }
+    
+    log::info!("[save_autocomplete_combination] Fin sauvegarde pour service {}", service_id);
+    
+    Ok(())
 }
 
 /// Fonction utilitaire pour r?cup?rer le GPS dynamique du prestataire
