@@ -214,7 +214,7 @@ pub async fn enrich_location_bidirectional(
     let lng: f64 = geoname_place.lng.parse().unwrap_or(0.0);
     
     // 10. Sauvegarder dans geo_hierarchy
-    sqlx::query!(
+    sqlx::query(
         "INSERT INTO geo_hierarchy 
          (geoname_id, place_name, display_name, feature_code, admin_level, 
           is_leaf, parent_country, parent_country_code, location_vector, 
@@ -223,21 +223,21 @@ pub async fn enrich_location_bidirectional(
          ON CONFLICT (geoname_id) DO UPDATE SET
             location_vector = $9,
             last_enriched_at = NOW(),
-            times_used = geo_hierarchy.times_used + 1",
-        geoname_id,
-        place_name,
-        display_name,
-        geoname_place.fcode,
-        admin_level,
-        is_leaf,
-        country_name,
-        country_code,
-        &vector,
-        lat,
-        lng,
-        geoname_place.population.map(|p| p as i32),
-        geoname_place.timezone
+            times_used = geo_hierarchy.times_used + 1"
     )
+    .bind(geoname_id)
+    .bind(place_name)
+    .bind(display_name)
+    .bind(geoname_place.fcode)
+    .bind(admin_level)
+    .bind(is_leaf)
+    .bind(country_name)
+    .bind(country_code)
+    .bind(&vector)
+    .bind(lat)
+    .bind(lng)
+    .bind(geoname_place.population.map(|p| p as i32))
+    .bind(geoname_place.timezone)
     .execute(pool)
     .await?;
     
@@ -275,18 +275,18 @@ pub async fn expand_location_search(
     pool: &PgPool,
     location: &str,
 ) -> Result<Vec<String>, AppError> {
-    let geo = sqlx::query!(
+    let geo = sqlx::query_as::<_, (Vec<String>,)>(
         "SELECT location_vector FROM geo_hierarchy 
          WHERE place_name = $1
          ORDER BY times_used DESC
-         LIMIT 1",
-        location
+         LIMIT 1"
     )
+    .bind(location)
     .fetch_optional(pool)
     .await?;
     
     if let Some(geo) = geo {
-        Ok(geo.location_vector)
+        Ok(geo.0)
     } else {
         // Pas enrichi encore → Retourne juste le nom
         Ok(vec![location.to_string()])
@@ -298,17 +298,17 @@ pub async fn get_geoname_id(
     pool: &PgPool,
     place_name: &str,
 ) -> Result<Option<i64>, AppError> {
-    let result = sqlx::query!(
+    let result = sqlx::query_as::<_, (i64,)>(
         "SELECT geoname_id FROM geo_hierarchy 
          WHERE place_name = $1
          ORDER BY times_used DESC
-         LIMIT 1",
-        place_name
+         LIMIT 1"
     )
+    .bind(place_name)
     .fetch_optional(pool)
     .await?;
     
-    Ok(result.map(|r| r.geoname_id))
+    Ok(result.map(|r| r.0))
 }
 
 /// Convertit feature code GeoNames en niveau administratif

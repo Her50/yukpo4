@@ -60,7 +60,10 @@ pub async fn enrich_location(
     let pool = &state.pg;
     
     // 1. Chercher dans cache d'abord
-    let cached = sqlx::query!(
+    let cached = sqlx::query_as::<_, (
+        i64, String, Vec<String>, i32, bool, String, Option<String>,
+        sqlx::types::BigDecimal, sqlx::types::BigDecimal, Option<i32>, Option<String>
+    )>(
         "SELECT 
             geoname_id,
             display_name,
@@ -74,21 +77,26 @@ pub async fn enrich_location(
             population,
             timezone
          FROM geo_hierarchy 
-         WHERE place_name = $1 AND parent_country = $2",
-        params.place_name,
-        params.country.as_deref().unwrap_or("")
+         WHERE place_name = $1 AND parent_country = $2"
     )
+    .bind(&params.place_name)
+    .bind(params.country.as_deref().unwrap_or(""))
     .fetch_optional(pool)
     .await?;
     
     if let Some(cached) = cached {
         info!("✅ Trouvé en cache pour {}", params.place_name);
         
+        use sqlx::types::BigDecimal;
+        use std::str::FromStr;
+        
+        let (geoname_id, display_name, location_vector, admin_level, is_leaf, 
+             parent_country, parent_country_code, lat, lng, population, timezone) = cached;
+        
         // Séparer location_vector en parents et enfants
-        let location_vector = cached.location_vector.clone();
         let children = if location_vector.len() > 1 {
             location_vector[1..].iter()
-                .take_while(|s| !cached.parent_country.contains(*s))
+                .take_while(|s| !parent_country.contains(s.as_str()))
                 .cloned()
                 .collect()
         } else {
@@ -97,7 +105,7 @@ pub async fn enrich_location(
         
         let parents = if location_vector.len() > 1 {
             location_vector[1..].iter()
-                .skip_while(|s| !cached.parent_country.contains(*s))
+                .skip_while(|s| !parent_country.contains(s.as_str()))
                 .cloned()
                 .collect()
         } else {
@@ -106,24 +114,24 @@ pub async fn enrich_location(
         
         return Ok(Json(EnrichLocationResponse {
             place_name: params.place_name.clone(),
-            geoname_id: Some(cached.geoname_id),
-            display_name: cached.display_name,
-            location_vector: cached.location_vector,
+            geoname_id: Some(geoname_id),
+            display_name,
+            location_vector: location_vector.clone(),
             hierarchy: LocationHierarchy {
                 parents,
                 children,
-                is_leaf: cached.is_leaf,
-                admin_level: cached.admin_level,
+                is_leaf,
+                admin_level,
             },
             coordinates: Coordinates {
-                lat: cached.lat.to_f64().unwrap_or(0.0),
-                lng: cached.lng.to_f64().unwrap_or(0.0),
+                lat: lat.to_string().parse().unwrap_or(0.0),
+                lng: lng.to_string().parse().unwrap_or(0.0),
             },
             metadata: LocationMetadata {
-                country: cached.parent_country,
-                country_code: cached.parent_country_code,
-                population: cached.population,
-                timezone: cached.timezone,
+                country: parent_country,
+                country_code: parent_country_code,
+                population,
+                timezone,
             },
         }));
     }
@@ -139,7 +147,10 @@ pub async fn enrich_location(
     .await?;
     
     // 3. Re-fetch après enrichissement
-    let enriched = sqlx::query!(
+    let enriched = sqlx::query_as::<_, (
+        i64, String, Vec<String>, i32, bool, String, Option<String>,
+        sqlx::types::BigDecimal, sqlx::types::BigDecimal, Option<i32>, Option<String>
+    )>(
         "SELECT 
             geoname_id,
             display_name,
@@ -153,54 +164,57 @@ pub async fn enrich_location(
             population,
             timezone
          FROM geo_hierarchy 
-         WHERE place_name = $1 AND parent_country = $2",
-        params.place_name,
-        params.country.as_deref().unwrap_or("")
+         WHERE place_name = $1 AND parent_country = $2"
     )
+    .bind(&params.place_name)
+    .bind(params.country.as_deref().unwrap_or(""))
     .fetch_one(pool)
     .await?;
     
+    let (geoname_id, display_name, location_vector, admin_level, is_leaf, 
+         parent_country, parent_country_code, lat, lng, population, timezone) = enriched;
+    
     // Séparer location_vector en parents et enfants
-    let children = if enriched.location_vector.len() > 1 {
-        enriched.location_vector[1..].iter()
-            .take_while(|s| !enriched.parent_country.contains(*s))
+    let children = if location_vector.len() > 1 {
+        location_vector[1..].iter()
+            .take_while(|s| !parent_country.contains(s.as_str()))
             .cloned()
             .collect()
     } else {
         vec![]
     };
     
-    let parents = if enriched.location_vector.len() > 1 {
-        enriched.location_vector[1..].iter()
-            .skip_while(|s| !enriched.parent_country.contains(*s))
+    let parents = if location_vector.len() > 1 {
+        location_vector[1..].iter()
+            .skip_while(|s| !parent_country.contains(s.as_str()))
             .cloned()
             .collect()
     } else {
         vec![]
     };
     
-    info!("✅ Enrichissement terminé pour {} : {} éléments", params.place_name, enriched.location_vector.len());
+    info!("✅ Enrichissement terminé pour {} : {} éléments", params.place_name, location_vector.len());
     
     Ok(Json(EnrichLocationResponse {
         place_name: params.place_name,
-        geoname_id: Some(enriched.geoname_id),
-        display_name: enriched.display_name,
-        location_vector: enriched.location_vector,
+        geoname_id: Some(geoname_id),
+        display_name,
+        location_vector: location_vector.clone(),
         hierarchy: LocationHierarchy {
             parents,
             children,
-            is_leaf: enriched.is_leaf,
-            admin_level: enriched.admin_level,
+            is_leaf,
+            admin_level,
         },
         coordinates: Coordinates {
-            lat: enriched.lat.to_f64().unwrap_or(0.0),
-            lng: enriched.lng.to_f64().unwrap_or(0.0),
+            lat: lat.to_string().parse().unwrap_or(0.0),
+            lng: lng.to_string().parse().unwrap_or(0.0),
         },
         metadata: LocationMetadata {
-            country: enriched.parent_country,
-            country_code: enriched.parent_country_code,
-            population: enriched.population,
-            timezone: enriched.timezone,
+            country: parent_country,
+            country_code: parent_country_code,
+            population,
+            timezone,
         },
     }))
 }
