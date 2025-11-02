@@ -1,12 +1,12 @@
 /**
- * Composant LinearAutocompleteEditor
- * Autocomplete linéaire avec affichage horizontal des suggestions (style SelectorLocation)
- * Permet édition inline, ajout de modalités personnalisées, et cache des suggestions IA
+ * LinearAutocompleteEditor - Version 2.0 (2025-11-02)
+ * Affiche et édite le vecteur autocomplete généré par l'IA
+ * Plus de recherche BDD - Juste affichage et modification du vecteur
  */
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
-    ActivityIndicator,
+    Alert,
     Modal,
     ScrollView,
     StyleSheet,
@@ -15,28 +15,24 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import { autocompleteHistoryService } from '../services/autocompleteHistoryService';
-import { placesService } from '../services/placesService';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
 
 interface LinearAutocompleteEditorProps {
     label: string;
     identifiantBase: string;
-    sousCaracteristiques: Record<string, string[]>; // Ex: { style: ["Moderne"], matiere: ["Bois"] }
+    sousCaracteristiques: Record<string, string[]>; // { marque: ["Nike"], pointure: ["38", "39", "40"] }
     separateur: string;
-    value: string[]; // Modalités concaténées: ["Moderne,Bois,Table,6 places"]
+    value: string[]; // ["Nike,Air Max,Noir,40"] - Position 0 affichée
     onChange: (values: string[]) => void;
     required?: boolean;
-    placeholder?: string;
-    allowCustomModality?: boolean;
-    filtrable?: boolean;
+    readonly?: boolean;
 }
 
-interface ModalityChip {
-    key: string; // Ex: "style"
-    value: string; // Ex: "Moderne"
-    index: number; // Position dans la modalité concaténée
+interface ChipData {
+    key: string;      // "marque"
+    value: string;    // "Nike"
+    index: number;    // Position dans vecteur
 }
 
 export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> = ({
@@ -47,220 +43,106 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
     value,
     onChange,
     required = false,
-    placeholder,
-    allowCustomModality = true,
-    filtrable = true,
+    readonly = false,
 }) => {
-    const [selectedModalities, setSelectedModalities] = useState<string[]>(value || []);
-    const [searchQuery, setSearchQuery] = useState('');
-    const [iaSuggestions, setIaSuggestions] = useState<string[]>([]);
-    const [dbSuggestions, setDbSuggestions] = useState<string[]>([]);
-    const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
+    // État : Affiche la première valeur (combinaison de référence)
+    const displayValue = value && value.length > 0 ? value[0] : '';
+    
+    const [showEditModal, setShowEditModal] = useState(false);
+    const [editingChipIndex, setEditingChipIndex] = useState<number | null>(null);
     const [showAddModal, setShowAddModal] = useState(false);
-    const [editingModalityIndex, setEditingModalityIndex] = useState<number | null>(null);
-    const [customKey, setCustomKey] = useState('');
-    const [customValue, setCustomValue] = useState('');
+    const [newCharKey, setNewCharKey] = useState('');
+    const [newCharValue, setNewCharValue] = useState('');
 
-    // Extraire les suggestions de l'IA au montage (cache instantané)
-    useEffect(() => {
-        const iaCache: string[] = [];
-        const subCharKeys = Object.keys(sousCaracteristiques);
-
-        // Créer des modalités complètes à partir des suggestions IA
-        if (subCharKeys.length > 0) {
-            // Prendre les premières valeurs de chaque caractéristique pour créer des exemples
-            const firstValues = subCharKeys.map(key => {
-                const values = sousCaracteristiques[key];
-                return Array.isArray(values) && values.length > 0 ? values[0] : '';
-            });
-
-            // Créer une modalité exemple avec toutes les caractéristiques
-            if (firstValues.every(v => v)) {
-                iaCache.push(firstValues.join(separateur));
-            }
-
-            // Créer des variantes avec différentes combinaisons
-            subCharKeys.forEach((key, idx) => {
-                const values = sousCaracteristiques[key];
-                if (Array.isArray(values) && values.length > 1) {
-                    // Pour chaque valeur supplémentaire, créer une variante
-                    for (let i = 1; i < Math.min(values.length, 3); i++) {
-                        const variant = [...firstValues];
-                        variant[idx] = values[i];
-                        if (variant.every(v => v)) {
-                            iaCache.push(variant.join(separateur));
-                        }
-                    }
-                }
-            });
-        }
-
-        setIaSuggestions(iaCache);
-    }, [sousCaracteristiques, separateur]);
-
-    // ✅ AMÉLIORATION: Détecter si une caractéristique est de type localisation
-    const isLocationCharacteristic = (key: string): boolean => {
-        const locationKeys = ['localisation', 'ville', 'quartier', 'zone', 'lieu', 'city', 'location'];
-        return locationKeys.includes(key.toLowerCase());
-    };
-
-    // Charger les suggestions DB quand on tape (avec support intelligent pour localisation)
-    useEffect(() => {
-        if (!searchQuery || searchQuery.length < 1) {
-            setDbSuggestions([]);
-            return;
-        }
-
-        const loadDbSuggestions = async () => {
-            setIsLoadingSuggestions(true);
-            try {
-                const allSuggestions: string[] = [];
-                const subCharKeys = Object.keys(sousCaracteristiques);
-
-                for (const key of subCharKeys) {
-                    // ✅ NOUVEAU: Si c'est une localisation, utiliser placesService
-                    if (isLocationCharacteristic(key)) {
-                        try {
-                            const locationSuggestions = await placesService.autocomplete(searchQuery, 'city');
-
-                            // Créer des modalités complètes avec ces lieux
-                            locationSuggestions.slice(0, 5).forEach(lieu => {
-                                const modalityParts = subCharKeys.map(k =>
-                                    k === key ? lieu : (sousCaracteristiques[k][0] || '')
-                                );
-                                if (modalityParts.every(p => p)) {
-                                    allSuggestions.push(modalityParts.join(separateur));
-                                }
-                            });
-                        } catch (error) {
-                            console.error('[LinearAutocompleteEditor] Erreur chargement lieux:', error);
-                        }
-                    } else {
-                        // Utiliser autocompleteHistoryService pour les autres caractéristiques
-                        const suggestions = await autocompleteHistoryService.getSuggestions(
-                            identifiantBase,
-                            key,
-                            searchQuery,
-                            5
-                        );
-
-                        // Créer des modalités complètes avec ces suggestions
-                        suggestions.forEach(sugg => {
-                            const modalityParts = subCharKeys.map(k =>
-                                k === key ? sugg.valeur : (sousCaracteristiques[k][0] || '')
-                            );
-                            if (modalityParts.every(p => p)) {
-                                allSuggestions.push(modalityParts.join(separateur));
-                            }
-                        });
-                    }
-                }
-
-                setDbSuggestions(allSuggestions);
-            } catch (error) {
-                console.error('[LinearAutocompleteEditor] Erreur chargement suggestions:', error);
-            } finally {
-                setIsLoadingSuggestions(false);
-            }
-        };
-
-        const timeoutId = setTimeout(loadDbSuggestions, 300);
-        return () => clearTimeout(timeoutId);
-    }, [searchQuery, identifiantBase, sousCaracteristiques, separateur]);
-
-    // Décomposer une modalité en chips
-    const decomposeModality = (modality: string): ModalityChip[] => {
-        const parts = modality.split(separateur).map(p => p.trim());
+    // Décomposer le vecteur en chips
+    const parseVectorToChips = (vectorStr: string): ChipData[] => {
+        const parts = vectorStr.split(separateur).map(p => p.trim()).filter(p => p);
         const subCharKeys = Object.keys(sousCaracteristiques);
 
         return parts.map((value, index) => ({
-            key: subCharKeys[index] || `item_${index}`,
+            key: subCharKeys[index] || `dimension_${index}`,
             value: value,
             index: index,
         }));
     };
 
-    // Ajouter une modalité
-    const addModality = useCallback((modality: string) => {
-        if (!modality || selectedModalities.includes(modality)) return;
+    const chips = displayValue ? parseVectorToChips(displayValue) : [];
 
-        const newModalities = [...selectedModalities, modality];
-        setSelectedModalities(newModalities);
-        onChange(newModalities);
-        setSearchQuery('');
-
-        // Historiser
-        autocompleteHistoryService
-            .historizeField(
-                identifiantBase,
-                [modality],
-                separateur,
-                sousCaracteristiques,
-                'utilisateur'
-            )
-            .catch(console.error);
-    }, [selectedModalities, onChange, identifiantBase, separateur, sousCaracteristiques]);
-
-    // Supprimer une modalité
-    const removeModality = useCallback((index: number) => {
-        const newModalities = selectedModalities.filter((_, i) => i !== index);
-        setSelectedModalities(newModalities);
-        onChange(newModalities);
-    }, [selectedModalities, onChange]);
-
-    // Éditer une modalité
-    const editModality = useCallback((index: number) => {
-        setEditingModalityIndex(index);
-        const modality = selectedModalities[index];
-        const chips = decomposeModality(modality);
-        // Pré-remplir le formulaire d'édition si besoin
-    }, [selectedModalities]);
-
-    // Ajouter une modalité personnalisée
-    const addCustomModality = useCallback(() => {
-        if (!customKey || !customValue) return;
-
-        // Créer une modalité avec cette nouvelle caractéristique
-        const subCharKeys = Object.keys(sousCaracteristiques);
-        const modalityParts = subCharKeys.map(key => {
-            if (key === customKey) return customValue;
-            return sousCaracteristiques[key][0] || '';
-        });
-
-        // Si la clé n'existe pas, l'ajouter à la fin
-        if (!subCharKeys.includes(customKey)) {
-            modalityParts.push(customValue);
-        }
-
-        const newModality = modalityParts.filter(p => p).join(separateur);
-        addModality(newModality);
-
-        setShowAddModal(false);
-        setCustomKey('');
-        setCustomValue('');
-    }, [customKey, customValue, sousCaracteristiques, separateur, addModality]);
-
-    // Générer un texte d'aide dynamique
-    const getHelperText = () => {
-        const subCharKeys = Object.keys(sousCaracteristiques);
-        if (subCharKeys.length === 0) return 'Tapez pour rechercher...';
-
-        const examples = subCharKeys.slice(0, 3).map(key => {
-            const values = sousCaracteristiques[key];
-            return Array.isArray(values) && values.length > 0 ? values[0] : '';
-        }).filter(Boolean);
-
-        if (examples.length > 0) {
-            return `Ex: ${examples.join(', ')}`;
-        }
-        return `Recherchez: ${subCharKeys.slice(0, 4).join(', ')}`;
+    // Modifier une caractéristique
+    const handleModifyChip = (chipIndex: number) => {
+        setEditingChipIndex(chipIndex);
+        setShowEditModal(true);
     };
 
-    // Combiner les suggestions (IA en premier pour effet instantané)
-    const allSuggestions = [...iaSuggestions, ...dbSuggestions];
-    const uniqueSuggestions = Array.from(new Set(allSuggestions))
-        .filter(s => !selectedModalities.includes(s))
-        .slice(0, 10);
+    // Sauvegarder modification
+    const saveChipModification = (newValue: string) => {
+        if (!newValue.trim() || editingChipIndex === null) return;
+
+        const parts = displayValue.split(separateur).map(p => p.trim());
+        parts[editingChipIndex] = newValue.trim();
+        
+        const newVector = parts.join(separateur);
+        onChange([newVector]);
+        
+        setShowEditModal(false);
+        setEditingChipIndex(null);
+    };
+
+    // Supprimer une caractéristique
+    const handleDeleteChip = (chipIndex: number) => {
+        Alert.alert(
+            'Supprimer caractéristique',
+            `Êtes-vous sûr de vouloir supprimer "${chips[chipIndex].value}" ?`,
+            [
+                { text: 'Annuler', style: 'cancel' },
+                {
+                    text: 'Supprimer',
+                    style: 'destructive',
+                    onPress: () => {
+                        const parts = displayValue.split(separateur).map(p => p.trim());
+                        parts.splice(chipIndex, 1);
+                        
+                        const newVector = parts.join(separateur);
+                        onChange([newVector]);
+                    }
+                }
+            ]
+        );
+    };
+
+    // Ajouter nouvelle caractéristique
+    const handleAddCharacteristic = () => {
+        if (!newCharValue.trim()) {
+            Alert.alert('Erreur', 'Veuillez remplir une valeur');
+            return;
+        }
+
+        const parts = displayValue ? displayValue.split(separateur).map(p => p.trim()) : [];
+        parts.push(newCharValue.trim());
+        
+        const newVector = parts.join(separateur);
+        onChange([newVector]);
+        
+        setShowAddModal(false);
+        setNewCharKey('');
+        setNewCharValue('');
+    };
+
+    if (readonly) {
+        return (
+            <View style={styles.container}>
+                <Text style={styles.label}>{label}</Text>
+                <View style={styles.chipsContainer}>
+                    {chips.map((chip, index) => (
+                        <View key={index} style={styles.chipReadonly}>
+                            <Text style={styles.chipKey}>{chip.key}:</Text>
+                            <Text style={styles.chipValue}>{chip.value}</Text>
+                        </View>
+                    ))}
+                </View>
+            </View>
+        );
+    }
 
     return (
         <View style={styles.container}>
@@ -271,193 +153,177 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                     {required && <Text style={styles.required}> *</Text>}
                 </Text>
                 <Text style={styles.helperText}>
-                    {getHelperText()}
+                    🤖 Généré par l'IA - Modifiable
                 </Text>
             </View>
 
-            {/* Barre de recherche */}
-            <View style={styles.searchContainer}>
-                <SafeIcon name="search" size={18} color={modernColors.textSecondary} />
-                <TextInput
-                    style={styles.searchInput}
-                    placeholder={placeholder || "Tapez pour rechercher..."}
-                    placeholderTextColor="#9CA3AF"
-                    value={searchQuery}
-                    onChangeText={setSearchQuery}
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                />
-                {isLoadingSuggestions && (
-                    <ActivityIndicator size="small" color={modernColors.primary} />
-                )}
-                {allowCustomModality && (
-                    <TouchableOpacity
-                        style={styles.addButton}
-                        onPress={() => setShowAddModal(true)}
-                    >
-                        <SafeIcon name="plus-circle" size={20} color={modernColors.primary} />
-                    </TouchableOpacity>
-                )}
-            </View>
-
-            {/* Suggestions linéaires (affichage horizontal) */}
-            {uniqueSuggestions.length > 0 && (
-                <View style={styles.suggestionsSection}>
-                    <Text style={styles.suggestionsTitle}>💡 Suggestions</Text>
-                    <ScrollView
-                        horizontal
+            {/* Vecteur affiché en chips */}
+            {chips.length > 0 ? (
+                <View style={styles.vectorContainer}>
+                    <ScrollView 
+                        horizontal 
                         showsHorizontalScrollIndicator={false}
-                        contentContainerStyle={styles.suggestionsScroll}
+                        contentContainerStyle={styles.chipsScroll}
                     >
-                        {uniqueSuggestions.map((suggestion, idx) => (
-                            <TouchableOpacity
-                                key={idx}
-                                style={styles.suggestionChip}
-                                onPress={() => addModality(suggestion)}
-                            >
-                                <Text style={styles.suggestionText} numberOfLines={1}>
-                                    {suggestion}
-                                </Text>
-                                <SafeIcon name="plus" size={14} color={modernColors.primary} />
-                            </TouchableOpacity>
+                        {chips.map((chip, index) => (
+                            <View key={index} style={styles.chip}>
+                                <View style={styles.chipContent}>
+                                    <Text style={styles.chipKey}>{chip.key}</Text>
+                                    <Text style={styles.chipValue}>{chip.value}</Text>
+                                </View>
+                                <View style={styles.chipActions}>
+                                    <TouchableOpacity
+                                        style={styles.chipButton}
+                                        onPress={() => handleModifyChip(index)}
+                                    >
+                                        <SafeIcon name="edit-2" size={14} color={modernColors.primary} />
+                                    </TouchableOpacity>
+                                    <TouchableOpacity
+                                        style={styles.chipButton}
+                                        onPress={() => handleDeleteChip(index)}
+                                    >
+                                        <SafeIcon name="trash-2" size={14} color="#EF4444" />
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
                         ))}
                     </ScrollView>
+
+                    {/* Bouton Ajouter */}
+                    <TouchableOpacity
+                        style={styles.addChipButton}
+                        onPress={() => setShowAddModal(true)}
+                    >
+                        <SafeIcon name="plus" size={18} color={modernColors.primary} />
+                        <Text style={styles.addChipText}>Ajouter</Text>
+                    </TouchableOpacity>
+                </View>
+            ) : (
+                <View style={styles.emptyState}>
+                    <SafeIcon name="package" size={32} color="#D1D5DB" />
+                    <Text style={styles.emptyText}>Aucune caractéristique</Text>
+                    <TouchableOpacity
+                        style={styles.addFirstButton}
+                        onPress={() => setShowAddModal(true)}
+                    >
+                        <SafeIcon name="plus" size={16} color="#FFF" />
+                        <Text style={styles.addFirstButtonText}>Ajouter une caractéristique</Text>
+                    </TouchableOpacity>
                 </View>
             )}
 
-            {/* Modalités sélectionnées (chips éditables) */}
-            {selectedModalities.length > 0 && (
-                <View style={styles.selectedSection}>
-                    <Text style={styles.selectedTitle}>
-                        ✓ {selectedModalities.length} sélectionnée(s)
-                    </Text>
-                    <View style={styles.selectedChips}>
-                        {selectedModalities.map((modality, index) => {
-                            const chips = decomposeModality(modality);
-                            return (
-                                <View key={index} style={styles.selectedChipContainer}>
-                                    <ScrollView
-                                        horizontal
-                                        showsHorizontalScrollIndicator={false}
-                                        style={styles.chipScroll}
-                                    >
-                                        {chips.map((chip, chipIdx) => (
-                                            <View key={chipIdx} style={styles.miniChip}>
-                                                <Text style={styles.miniChipKey}>{chip.key}:</Text>
-                                                <Text style={styles.miniChipValue}>{chip.value}</Text>
-                                            </View>
-                                        ))}
-                                    </ScrollView>
-                                    <View style={styles.chipActions}>
-                                        <TouchableOpacity
-                                            style={styles.chipEditButton}
-                                            onPress={() => editModality(index)}
-                                        >
-                                            <SafeIcon name="edit" size={14} color={modernColors.primary} />
-                                        </TouchableOpacity>
-                                        <TouchableOpacity
-                                            style={styles.chipDeleteButton}
-                                            onPress={() => removeModality(index)}
-                                        >
-                                            <SafeIcon name="x" size={14} color={modernColors.error} />
-                                        </TouchableOpacity>
+            {/* Modal Édition */}
+            <Modal
+                visible={showEditModal && editingChipIndex !== null}
+                animationType="slide"
+                transparent={true}
+                onRequestClose={() => setShowEditModal(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <View style={styles.modalHeader}>
+                            <Text style={styles.modalTitle}>
+                                Modifier {editingChipIndex !== null ? chips[editingChipIndex]?.key : ''}
+                            </Text>
+                            <TouchableOpacity onPress={() => setShowEditModal(false)}>
+                                <SafeIcon name="x" size={24} color="#6B7280" />
+                            </TouchableOpacity>
+                        </View>
+
+                        {editingChipIndex !== null && (
+                            <View style={styles.modalBody}>
+                                <Text style={styles.modalLabel}>Valeur actuelle</Text>
+                                <Text style={styles.currentValue}>{chips[editingChipIndex]?.value}</Text>
+
+                                {/* Options disponibles si définies par l'IA */}
+                                {sousCaracteristiques[chips[editingChipIndex]?.key] && (
+                                    <View style={styles.optionsSection}>
+                                        <Text style={styles.optionsTitle}>Options suggérées :</Text>
+                                        <ScrollView style={styles.optionsList}>
+                                            {sousCaracteristiques[chips[editingChipIndex]?.key].map((option, idx) => (
+                                                <TouchableOpacity
+                                                    key={idx}
+                                                    style={[
+                                                        styles.optionItem,
+                                                        option === chips[editingChipIndex]?.value && styles.optionItemSelected
+                                                    ]}
+                                                    onPress={() => saveChipModification(option)}
+                                                >
+                                                    <Text style={[
+                                                        styles.optionText,
+                                                        option === chips[editingChipIndex]?.value && styles.optionTextSelected
+                                                    ]}>
+                                                        {option}
+                                                    </Text>
+                                                    {option === chips[editingChipIndex]?.value && (
+                                                        <SafeIcon name="check" size={16} color={modernColors.primary} />
+                                                    )}
+                                                </TouchableOpacity>
+                                            ))}
+                                        </ScrollView>
                                     </View>
-                                </View>
-                            );
-                        })}
+                                )}
+
+                                <TouchableOpacity
+                                    style={styles.cancelButton}
+                                    onPress={() => setShowEditModal(false)}
+                                >
+                                    <Text style={styles.cancelButtonText}>Annuler</Text>
+                                </TouchableOpacity>
+                            </View>
+                        )}
                     </View>
                 </View>
-            )}
+            </Modal>
 
-            {/* Message vide */}
-            {selectedModalities.length === 0 && uniqueSuggestions.length === 0 && !searchQuery && (
-                <View style={styles.emptyState}>
-                    <SafeIcon name="info" size={32} color={modernColors.textSecondary} />
-                    <Text style={styles.emptyText}>
-                        Aucune caractéristique ajoutée
-                    </Text>
-                    <Text style={styles.emptySubtext}>
-                        Tapez pour rechercher ou cliquez sur + pour ajouter
-                    </Text>
-                </View>
-            )}
-
-            {/* Modal d'ajout personnalisé */}
+            {/* Modal Ajout */}
             <Modal
                 visible={showAddModal}
-                animationType="fade"
+                animationType="slide"
                 transparent={true}
                 onRequestClose={() => setShowAddModal(false)}
             >
                 <View style={styles.modalOverlay}>
                     <View style={styles.modalContent}>
                         <View style={styles.modalHeader}>
-                            <SafeIcon name="plus-circle" size={24} color={modernColors.primary} />
                             <Text style={styles.modalTitle}>Ajouter une caractéristique</Text>
-                            <TouchableOpacity
-                                style={styles.closeButton}
-                                onPress={() => {
-                                    setShowAddModal(false);
-                                    setCustomKey('');
-                                    setCustomValue('');
-                                }}
-                            >
-                                <SafeIcon name="x" size={20} color={modernColors.text} />
+                            <TouchableOpacity onPress={() => setShowAddModal(false)}>
+                                <SafeIcon name="x" size={24} color="#6B7280" />
                             </TouchableOpacity>
                         </View>
 
                         <View style={styles.modalBody}>
-                            <Text style={styles.modalDescription}>
-                                Ajoutez une nouvelle caractéristique personnalisée
-                            </Text>
+                            <Text style={styles.modalLabel}>Type de caractéristique</Text>
+                            <TextInput
+                                style={styles.modalInput}
+                                placeholder="Ex: matière, couleur, taille..."
+                                value={newCharKey}
+                                onChangeText={setNewCharKey}
+                            />
 
-                            <View style={styles.inputContainer}>
-                                <Text style={styles.inputLabel}>Nom de la caractéristique</Text>
-                                <TextInput
-                                    style={styles.input}
-                                    placeholder="Ex: couleur, taille, matière..."
-                                    placeholderTextColor="#9CA3AF"
-                                    value={customKey}
-                                    onChangeText={setCustomKey}
-                                    autoCapitalize="none"
-                                />
+                            <Text style={styles.modalLabel}>Valeur</Text>
+                            <TextInput
+                                style={styles.modalInput}
+                                placeholder="Ex: Cuir, Rouge, XL..."
+                                value={newCharValue}
+                                onChangeText={setNewCharValue}
+                            />
+
+                            <View style={styles.modalActions}>
+                                <TouchableOpacity
+                                    style={styles.cancelButton}
+                                    onPress={() => setShowAddModal(false)}
+                                >
+                                    <Text style={styles.cancelButtonText}>Annuler</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={styles.saveButton}
+                                    onPress={handleAddCharacteristic}
+                                >
+                                    <SafeIcon name="plus" size={16} color="#FFF" />
+                                    <Text style={styles.saveButtonText}>Ajouter</Text>
+                                </TouchableOpacity>
                             </View>
-
-                            <View style={styles.inputContainer}>
-                                <Text style={styles.inputLabel}>Valeur</Text>
-                                <TextInput
-                                    style={styles.input}
-                                    placeholder="Ex: Noir, XL, Coton..."
-                                    placeholderTextColor="#9CA3AF"
-                                    value={customValue}
-                                    onChangeText={setCustomValue}
-                                    autoCapitalize="none"
-                                />
-                            </View>
-                        </View>
-
-                        <View style={styles.modalFooter}>
-                            <TouchableOpacity
-                                style={styles.cancelButton}
-                                onPress={() => {
-                                    setShowAddModal(false);
-                                    setCustomKey('');
-                                    setCustomValue('');
-                                }}
-                            >
-                                <Text style={styles.cancelButtonText}>Annuler</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                style={[
-                                    styles.saveButton,
-                                    (!customKey || !customValue) && styles.saveButtonDisabled
-                                ]}
-                                onPress={addCustomModality}
-                                disabled={!customKey || !customValue}
-                            >
-                                <SafeIcon name="check" size={18} color="#FFFFFF" />
-                                <Text style={styles.saveButtonText}>Ajouter</Text>
-                            </TouchableOpacity>
                         </View>
                     </View>
                 </View>
@@ -468,244 +334,233 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
 
 const styles = StyleSheet.create({
     container: {
-        marginBottom: 16,
+        gap: 12,
     },
     header: {
-        marginBottom: 12,
+        gap: 4,
     },
     label: {
         fontSize: 16,
         fontWeight: '600',
-        color: modernColors.text,
-        marginBottom: 4,
+        color: '#1F2937',
     },
     required: {
-        color: modernColors.error,
+        color: '#EF4444',
     },
     helperText: {
-        fontSize: 12,
-        color: modernColors.textSecondary,
-        fontStyle: 'italic',
+        fontSize: 13,
+        color: '#6B7280',
     },
-    searchContainer: {
+    vectorContainer: {
+        gap: 12,
+    },
+    chipsScroll: {
+        gap: 8,
+        paddingVertical: 8,
+    },
+    chip: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#FFFFFF',
-        borderWidth: 1,
-        borderColor: modernColors.border,
+        backgroundColor: '#F3F4F6',
         borderRadius: 12,
         paddingHorizontal: 12,
-        paddingVertical: 10,
-        gap: 8,
-    },
-    searchInput: {
-        flex: 1,
-        fontSize: 14,
-        color: modernColors.text,
-        padding: 0,
-    },
-    addButton: {
-        padding: 4,
-    },
-    suggestionsSection: {
-        marginTop: 12,
-    },
-    suggestionsTitle: {
-        fontSize: 12,
-        fontWeight: '600',
-        color: modernColors.primary,
-        marginBottom: 8,
-    },
-    suggestionsScroll: {
-        gap: 8,
-        paddingRight: 16,
-    },
-    suggestionChip: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#E0E7FF',
-        paddingHorizontal: 12,
         paddingVertical: 8,
-        borderRadius: 20,
-        gap: 6,
-        maxWidth: 200,
+        gap: 8,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
     },
-    suggestionText: {
-        fontSize: 13,
-        color: modernColors.primary,
+    chipContent: {
+        gap: 2,
+    },
+    chipKey: {
+        fontSize: 11,
+        color: '#6B7280',
         fontWeight: '500',
     },
-    selectedSection: {
-        marginTop: 12,
-    },
-    selectedTitle: {
-        fontSize: 12,
+    chipValue: {
+        fontSize: 14,
+        color: '#1F2937',
         fontWeight: '600',
-        color: modernColors.success,
-        marginBottom: 8,
-    },
-    selectedChips: {
-        gap: 8,
-    },
-    selectedChipContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#F0FDF4',
-        borderWidth: 1,
-        borderColor: modernColors.success,
-        borderRadius: 8,
-        padding: 8,
-        gap: 8,
-    },
-    chipScroll: {
-        flex: 1,
-    },
-    miniChip: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#FFFFFF',
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        borderRadius: 6,
-        marginRight: 4,
-        gap: 4,
-    },
-    miniChipKey: {
-        fontSize: 11,
-        fontWeight: '600',
-        color: modernColors.textSecondary,
-    },
-    miniChipValue: {
-        fontSize: 11,
-        color: modernColors.text,
     },
     chipActions: {
         flexDirection: 'row',
+        gap: 8,
+        marginLeft: 8,
+        paddingLeft: 8,
+        borderLeftWidth: 1,
+        borderLeftColor: '#E5E7EB',
+    },
+    chipButton: {
+        padding: 4,
+    },
+    chipReadonly: {
+        flexDirection: 'row',
         gap: 4,
+        backgroundColor: '#F9FAFB',
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 8,
     },
-    chipEditButton: {
-        padding: 4,
+    addChipButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 6,
+        paddingVertical: 12,
+        borderWidth: 2,
+        borderColor: modernColors.primary,
+        borderRadius: 12,
+        borderStyle: 'dashed',
     },
-    chipDeleteButton: {
-        padding: 4,
+    addChipText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: modernColors.primary,
     },
     emptyState: {
         alignItems: 'center',
-        justifyContent: 'center',
         paddingVertical: 32,
-        gap: 8,
+        gap: 12,
     },
     emptyText: {
         fontSize: 14,
-        fontWeight: '600',
-        color: modernColors.textSecondary,
+        color: '#9CA3AF',
     },
-    emptySubtext: {
-        fontSize: 12,
-        color: modernColors.textSecondary,
-        textAlign: 'center',
+    addFirstButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        backgroundColor: modernColors.primary,
+        paddingHorizontal: 16,
+        paddingVertical: 10,
+        borderRadius: 8,
+    },
+    addFirstButtonText: {
+        color: '#FFF',
+        fontSize: 14,
+        fontWeight: '600',
+    },
+    chipsContainer: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
     },
     modalOverlay: {
         flex: 1,
-        backgroundColor: 'rgba(0, 0, 0, 0.6)',
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: 20,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        justifyContent: 'flex-end',
     },
     modalContent: {
-        backgroundColor: '#FFFFFF',
-        borderRadius: 16,
-        width: '100%',
-        maxWidth: 400,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
-        elevation: 8,
+        backgroundColor: '#FFF',
+        borderTopLeftRadius: 24,
+        borderTopRightRadius: 24,
+        paddingBottom: 40,
+        maxHeight: '80%',
     },
     modalHeader: {
         flexDirection: 'row',
+        justifyContent: 'space-between',
         alignItems: 'center',
         padding: 20,
         borderBottomWidth: 1,
-        borderBottomColor: modernColors.border,
-        gap: 12,
+        borderBottomColor: '#E5E7EB',
     },
     modalTitle: {
-        flex: 1,
         fontSize: 18,
-        fontWeight: '600',
-        color: modernColors.text,
-    },
-    closeButton: {
-        padding: 4,
+        fontWeight: '700',
+        color: '#1F2937',
     },
     modalBody: {
         padding: 20,
-        gap: 20,
+        gap: 16,
     },
-    modalDescription: {
-        fontSize: 14,
-        color: modernColors.textSecondary,
-        lineHeight: 20,
-    },
-    inputContainer: {
-        gap: 8,
-    },
-    inputLabel: {
+    modalLabel: {
         fontSize: 14,
         fontWeight: '600',
-        color: modernColors.text,
+        color: '#374151',
+        marginBottom: 4,
     },
-    input: {
-        borderWidth: 1,
-        borderColor: modernColors.border,
-        borderRadius: 8,
-        paddingHorizontal: 12,
-        paddingVertical: 12,
-        fontSize: 14,
-        color: modernColors.text,
+    currentValue: {
+        fontSize: 16,
+        color: '#6B7280',
+        padding: 12,
         backgroundColor: '#F9FAFB',
+        borderRadius: 8,
     },
-    modalFooter: {
+    optionsSection: {
+        gap: 8,
+    },
+    optionsTitle: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#374151',
+    },
+    optionsList: {
+        maxHeight: 200,
+    },
+    optionItem: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: 12,
+        backgroundColor: '#F9FAFB',
+        borderRadius: 8,
+        marginBottom: 8,
+    },
+    optionItemSelected: {
+        backgroundColor: modernColors.primaryLight || '#EEF2FF',
+        borderWidth: 2,
+        borderColor: modernColors.primary,
+    },
+    optionText: {
+        fontSize: 15,
+        color: '#1F2937',
+    },
+    optionTextSelected: {
+        fontWeight: '600',
+        color: modernColors.primary,
+    },
+    modalInput: {
+        borderWidth: 1,
+        borderColor: '#D1D5DB',
+        borderRadius: 8,
+        padding: 12,
+        fontSize: 15,
+        color: '#1F2937',
+    },
+    modalActions: {
         flexDirection: 'row',
         gap: 12,
-        padding: 16,
-        borderTopWidth: 1,
-        borderTopColor: modernColors.border,
+        marginTop: 8,
     },
     cancelButton: {
         flex: 1,
-        padding: 12,
+        paddingVertical: 12,
         borderRadius: 8,
-        backgroundColor: '#F3F4F6',
+        borderWidth: 1,
+        borderColor: '#D1D5DB',
         alignItems: 'center',
     },
     cancelButtonText: {
-        fontSize: 14,
+        fontSize: 15,
         fontWeight: '600',
-        color: modernColors.text,
+        color: '#6B7280',
     },
     saveButton: {
         flex: 1,
         flexDirection: 'row',
-        justifyContent: 'center',
         alignItems: 'center',
-        padding: 12,
+        justifyContent: 'center',
+        gap: 6,
+        paddingVertical: 12,
         borderRadius: 8,
         backgroundColor: modernColors.primary,
-        gap: 6,
-    },
-    saveButtonDisabled: {
-        backgroundColor: '#9CA3AF',
-        opacity: 0.5,
     },
     saveButtonText: {
-        fontSize: 14,
+        fontSize: 15,
         fontWeight: '600',
-        color: '#FFFFFF',
+        color: '#FFF',
     },
 });
 
 export default LinearAutocompleteEditor;
-

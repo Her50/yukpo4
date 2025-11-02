@@ -20,6 +20,7 @@ use crate::{
         intelligent_service_controller::{process_services_intelligently, get_services_pending_processing, reactivate_service_intelligent},
         product_addition_controller::add_product_to_service, // ✅ NOUVEAU 2025-11-01
         product_lifecycle_controller::{deactivate_product, reactivate_product}, // ✅ NOUVEAU 2025-11-01
+        places_controller, // ✅ NOUVEAU 2025-11-02
     },
     routes::products_management::update_product,
     routes::{

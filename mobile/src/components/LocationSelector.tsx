@@ -1,17 +1,91 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { PlaceScope, placesService } from '../services/placesService';
+import { apiGet } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
 
+// ✅ Parser string location en composants
+const parseLocationString = (locationStr: string): LocationObject => {
+    const parts = locationStr.split(',').map(s => s.trim());
+    
+    const components: any = {};
+    
+    // Déduction selon nombre de parties
+    if (parts.length >= 3) {
+        components.ville = parts[0];
+        components.region = parts[1];
+        components.pays = parts[2];
+    } else if (parts.length === 2) {
+        components.ville = parts[0];
+        components.pays = parts[1];
+    } else if (parts.length === 1) {
+        components.ville = parts[0];
+    }
+    
+    return {
+        raw: locationStr,
+        place_name: parts[0] || locationStr,
+        components,
+    };
+};
+
+// ✅ Enrichir avec backend GeoNames
+const enrichLocation = async (location: LocationObject): Promise<LocationObject> => {
+    try {
+        const response = await apiGet(
+            `/api/places/enrich?place_name=${encodeURIComponent(location.place_name)}&country=${encodeURIComponent(location.components?.pays || '')}`
+        );
+        
+        if (response.success && response.data) {
+            return {
+                raw: location.raw,
+                place_name: response.data.place_name,
+                components: {
+                    ville: response.data.place_name,
+                    region: response.data.hierarchy?.parents?.[0],
+                    pays: response.data.metadata?.country,
+                },
+                coordinates: response.data.coordinates,
+                geoname_id: response.data.geoname_id,
+                location_vector: response.data.location_vector,
+            };
+        }
+        
+        return location;
+    } catch (error) {
+        console.error('[enrichLocation] Erreur:', error);
+        return location;
+    }
+};
+
+// ✅ NOUVEAU 2025-11-02: Structure objet complet pour localisation
+export interface LocationObject {
+    raw: string;                    // "Douala, Littoral, Cameroun"
+    place_name: string;             // "Douala"
+    components?: {
+        quartier?: string;
+        ville?: string;
+        region?: string;
+        pays?: string;
+    };
+    coordinates?: {
+        lat: number;
+        lng: number;
+    };
+    geoname_id?: number;
+    location_vector?: string[];     // Enrichi par backend
+}
+
 interface LocationSelectorProps {
     label: string;
-    value: string;
-    onSelect: (value: string) => void;
+    value: string | LocationObject;  // ✅ Supporte string (ancien) ou objet (nouveau)
+    onSelect: (value: LocationObject) => void;  // ✅ Retourne toujours objet
     placeholder?: string;
     scope?: PlaceScope; // 'city' | 'point'
     cityContext?: string; // For point search filtering
     required?: boolean;
+    enrichWithBackend?: boolean;  // ✅ Si true, appelle /api/places/enrich
 }
 
 export const LocationSelector: React.FC<LocationSelectorProps> = ({
@@ -22,11 +96,16 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
     scope = 'city',
     cityContext,
     required = false,
+    enrichWithBackend = false,
 }) => {
     const [open, setOpen] = useState(false);
     const [query, setQuery] = useState('');
     const [loading, setLoading] = useState(false);
+    const [enriching, setEnriching] = useState(false);
     const [options, setOptions] = useState<string[]>([]);
+    
+    // ✅ Parser valeur affichée (string ou objet)
+    const displayValue = typeof value === 'string' ? value : value?.raw || '';
 
     // Debounce query
     const debouncedQuery = useMemo(() => query.trim(), [query]);
@@ -52,17 +131,25 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
                 {label} {required && <Text style={styles.required}>*</Text>}
             </Text>
             <TouchableOpacity
-                style={[styles.selector, !value && styles.selectorPlaceholder]}
+                style={[styles.selector, !displayValue && styles.selectorPlaceholder]}
                 onPress={() => setOpen(true)}
             >
-                <Text style={[styles.selectorText, !value && styles.placeholderText]}>
-                    {value || placeholder}
-                </Text>
+                <View style={{flex: 1}}>
+                    <Text style={[styles.selectorText, !displayValue && styles.placeholderText]}>
+                        {displayValue || placeholder}
+                    </Text>
+                    {enriching && (
+                        <Text style={styles.enrichingText}>🌍 Enrichissement en cours...</Text>
+                    )}
+                </View>
                 <SafeIcon name="search" size={18} color={modernColors.textSecondary} />
             </TouchableOpacity>
 
-            {!!value && (
-                <TouchableOpacity style={styles.clearButton} onPress={() => onSelect('')}>
+            {!!displayValue && (
+                <TouchableOpacity 
+                    style={styles.clearButton} 
+                    onPress={() => onSelect({raw: '', place_name: ''})}
+                >
                     <SafeIcon name="x-circle" size={16} color={modernColors.error} />
                     <Text style={styles.clearText}>Effacer</Text>
                 </TouchableOpacity>
@@ -105,9 +192,28 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
                                     <TouchableOpacity
                                         key={opt}
                                         style={styles.optionItem}
-                                        onPress={() => {
-                                            onSelect(opt);
+                                        onPress={async () => {
                                             setOpen(false);
+                                            
+                                            // ✅ Parser composants du lieu
+                                            const locationObj = parseLocationString(opt);
+                                            
+                                            // ✅ Enrichir avec backend si demandé
+                                            if (enrichWithBackend) {
+                                                setEnriching(true);
+                                                try {
+                                                    const enriched = await enrichLocation(locationObj);
+                                                    onSelect(enriched);
+                                                } catch (error) {
+                                                    console.error('[LocationSelector] Erreur enrichissement:', error);
+                                                    // Fallback : retourner sans enrichissement
+                                                    onSelect(locationObj);
+                                                } finally {
+                                                    setEnriching(false);
+                                                }
+                                            } else {
+                                                onSelect(locationObj);
+                                            }
                                         }}
                                     >
                                         <Text style={styles.optionText}>{opt}</Text>

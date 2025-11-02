@@ -5,7 +5,6 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use sqlx::PgPool;
 use log::info;
 use crate::state::AppState;
 use crate::services::autocomplete_history_service;

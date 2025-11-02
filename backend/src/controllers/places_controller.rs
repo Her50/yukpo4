@@ -4,10 +4,11 @@ use axum::{
     Json,
 };
 use serde::{Deserialize, Serialize};
-use sqlx::PgPool;
+use std::sync::Arc;
 use log::info;
 use crate::core::error::AppError;
 use crate::services::geonames_service;
+use crate::state::AppState;
 
 #[derive(Debug, Deserialize)]
 pub struct EnrichLocationRequest {
@@ -51,10 +52,12 @@ pub struct LocationMetadata {
 /// GET /api/places/enrich
 /// Enrichit un lieu avec sa hiérarchie géographique complète
 pub async fn enrich_location(
-    State(pool): State<PgPool>,
+    State(state): State<Arc<AppState>>,
     Query(params): Query<EnrichLocationRequest>,
 ) -> Result<Json<EnrichLocationResponse>, AppError> {
     info!("🌍 Enrichissement lieu: {} ({})", params.place_name, params.country.as_deref().unwrap_or("?"));
+    
+    let pool = &state.pg;
     
     // 1. Chercher dans cache d'abord
     let cached = sqlx::query!(
@@ -75,7 +78,7 @@ pub async fn enrich_location(
         params.place_name,
         params.country.as_deref().unwrap_or("")
     )
-    .fetch_optional(&pool)
+    .fetch_optional(pool)
     .await?;
     
     if let Some(cached) = cached {
@@ -129,7 +132,7 @@ pub async fn enrich_location(
     info!("🌍 Pas en cache, enrichissement avec GeoNames...");
     
     let location_vector = geonames_service::enrich_location_bidirectional(
-        &pool,
+        pool,
         &params.place_name,
         params.country.as_deref(),
     )
@@ -154,7 +157,7 @@ pub async fn enrich_location(
         params.place_name,
         params.country.as_deref().unwrap_or("")
     )
-    .fetch_one(&pool)
+    .fetch_one(pool)
     .await?;
     
     // Séparer location_vector en parents et enfants
