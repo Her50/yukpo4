@@ -122,7 +122,7 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
         
         const newVector = parts.join(separateur);
         onChange([newVector]);
-        
+
         setShowAddModal(false);
         setNewCharKey('');
         setNewCharValue('');
@@ -228,7 +228,7 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                             <TouchableOpacity onPress={() => setShowEditModal(false)}>
                                 <SafeIcon name="x" size={24} color="#6B7280" />
                             </TouchableOpacity>
-                        </View>
+            </View>
 
                         {editingChipIndex !== null && (
                             <View style={styles.modalBody}>
@@ -241,8 +241,8 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                                         <Text style={styles.optionsTitle}>Options suggérées :</Text>
                                         <ScrollView style={styles.optionsList}>
                                             {sousCaracteristiques[chips[editingChipIndex]?.key].map((option, idx) => (
-                                                <TouchableOpacity
-                                                    key={idx}
+                            <TouchableOpacity
+                                key={idx}
                                                     style={[
                                                         styles.optionItem,
                                                         option === chips[editingChipIndex]?.value && styles.optionItemSelected
@@ -254,23 +254,23 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                                                         option === chips[editingChipIndex]?.value && styles.optionTextSelected
                                                     ]}>
                                                         {option}
-                                                    </Text>
+                                </Text>
                                                     {option === chips[editingChipIndex]?.value && (
                                                         <SafeIcon name="check" size={16} color={modernColors.primary} />
                                                     )}
-                                                </TouchableOpacity>
-                                            ))}
-                                        </ScrollView>
-                                    </View>
-                                )}
+                            </TouchableOpacity>
+                        ))}
+                    </ScrollView>
+                </View>
+            )}
 
-                                <TouchableOpacity
+                                        <TouchableOpacity
                                     style={styles.cancelButton}
                                     onPress={() => setShowEditModal(false)}
                                 >
                                     <Text style={styles.cancelButtonText}>Annuler</Text>
-                                </TouchableOpacity>
-                            </View>
+                                        </TouchableOpacity>
+                                    </View>
                         )}
                     </View>
                 </View>
@@ -294,7 +294,7 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
 
                         <View style={styles.modalBody}>
                             <Text style={styles.modalLabel}>Type de caractéristique</Text>
-                            <TextInput
+                                <TextInput
                                 style={styles.modalInput}
                                 placeholder="Ex: matière, couleur, taille..."
                                 value={newCharKey}
@@ -302,7 +302,7 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                             />
 
                             <Text style={styles.modalLabel}>Valeur</Text>
-                            <TextInput
+                                <TextInput
                                 style={styles.modalInput}
                                 placeholder="Ex: Cuir, Rouge, XL..."
                                 value={newCharValue}
@@ -310,19 +310,19 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                             />
 
                             <View style={styles.modalActions}>
-                                <TouchableOpacity
-                                    style={styles.cancelButton}
+                            <TouchableOpacity
+                                style={styles.cancelButton}
                                     onPress={() => setShowAddModal(false)}
-                                >
-                                    <Text style={styles.cancelButtonText}>Annuler</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity
+                            >
+                                <Text style={styles.cancelButtonText}>Annuler</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
                                     style={styles.saveButton}
                                     onPress={handleAddCharacteristic}
                                 >
                                     <SafeIcon name="plus" size={16} color="#FFF" />
-                                    <Text style={styles.saveButtonText}>Ajouter</Text>
-                                </TouchableOpacity>
+                                <Text style={styles.saveButtonText}>Ajouter</Text>
+                            </TouchableOpacity>
                             </View>
                         </View>
                     </View>

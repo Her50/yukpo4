@@ -4,22 +4,22 @@
  * Sauvegarde : ProductCard.backup.tsx
  */
 
+import { useNavigation } from '@react-navigation/native';
 import React, { useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
+  Dimensions,
   Image,
   ScrollView,
-  Dimensions,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { modernColors } from '../theme/modernTheme';
-import SafeIcon from './SafeIcon';
-import { NativeCard, NativeButton } from './NativeDesign';
 import ChatModalMobile from './ChatModalMobile';
+import { NativeButton, NativeCard } from './NativeDesign';
+import ProductMediaCarousel from './ProductMediaCarousel';
+import SafeIcon from './SafeIcon';
 
 const { width } = Dimensions.get('window');
 
@@ -54,13 +54,13 @@ const getCountryFlag = (country?: string): string => {
   };
 
   if (!country) return '🌍';
-  
+
   for (const [key, flag] of Object.entries(countryMap)) {
     if (country.toLowerCase().includes(key.toLowerCase())) {
       return flag;
     }
   }
-  
+
   return '🌍';
 };
 
@@ -73,7 +73,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
   const navigation = useNavigation();
   const [imageError, setImageError] = useState(false);
   const [showChatModal, setShowChatModal] = useState(false);
-  const [showAllImages, setShowAllImages] = useState(false);
+  const [selectedVariantIndex, setSelectedVariantIndex] = useState<number | null>(null);
 
   // Données produit
   const productVector = product.product_vector || [];
@@ -86,9 +86,15 @@ const ProductCard: React.FC<ProductCardProps> = ({
     user_id: service?.user_id,
   };
 
-  // Images
+  // Images et vidéos
   const images = product.images || service?.images || [];
-  const mainImage = product.image || images[0];
+  const videos = product.videos || service?.videos || [];
+
+  // Image de la variation sélectionnée (si existe)
+  const selectedVariant = selectedVariantIndex !== null && variants[selectedVariantIndex]
+    ? variants[selectedVariantIndex]
+    : null;
+  const variantImage = selectedVariant?.image || selectedVariant?.images?.[0];
 
   // Prix
   const displayPrice = hasVariant && variants.length > 0
@@ -101,9 +107,9 @@ const ProductCard: React.FC<ProductCardProps> = ({
   const distanceKm = product.distance_km;
 
   // Pays (pour drapeau)
-  const pays = locationVector[locationVector.length - 1] || 
-               product.pays || 
-               service?.data?.pays?.valeur;
+  const pays = locationVector[locationVector.length - 1] ||
+    product.pays ||
+    service?.data?.pays?.valeur;
 
   const countryFlag = getCountryFlag(pays);
 
@@ -119,26 +125,16 @@ const ProductCard: React.FC<ProductCardProps> = ({
           activeOpacity={0.9}
           onPress={onPress || (() => navigation.navigate('ServiceDetail' as any, { serviceId: product.service_id || service?.id }))}
         >
-          {/* Image avec gradient overlay */}
+          {/* Carousel d'images/vidéos avec support variation */}
           <View style={styles.imageContainer}>
-            {mainImage && !imageError ? (
-              <>
-                <Image
-                  source={{ uri: mainImage }}
-                  style={styles.image}
-                  onError={() => setImageError(true)}
-                  resizeMode="cover"
-                />
-                <LinearGradient
-                  colors={['transparent', 'rgba(0,0,0,0.7)']}
-                  style={styles.imageGradient}
-                />
-              </>
-            ) : (
-              <View style={styles.imagePlaceholder}>
-                <SafeIcon name="package" size={48} color="#D1D5DB" />
-              </View>
-            )}
+            <ProductMediaCarousel
+              images={images}
+              videos={videos}
+              variantImage={variantImage}
+              onImagePress={(index) => {
+                // Optionnel : ouvrir galerie complète
+              }}
+            />
 
             {/* Badge pays (coin supérieur droit) */}
             {countryFlag && (
@@ -152,22 +148,11 @@ const ProductCard: React.FC<ProductCardProps> = ({
               <View style={styles.distanceBadge}>
                 <SafeIcon name="navigation" size={12} color="#FFF" />
                 <Text style={styles.distanceText}>
-                  {distanceKm < 1 
-                    ? `${Math.round(distanceKm * 1000)}m` 
+                  {distanceKm < 1
+                    ? `${Math.round(distanceKm * 1000)}m`
                     : `${distanceKm.toFixed(1)}km`}
                 </Text>
               </View>
-            )}
-
-            {/* Compteur images (si plusieurs) */}
-            {images.length > 1 && (
-              <TouchableOpacity
-                style={styles.imageCountBadge}
-                onPress={() => setShowAllImages(true)}
-              >
-                <SafeIcon name="image" size={12} color="#FFF" />
-                <Text style={styles.imageCountText}>{images.length}</Text>
-              </TouchableOpacity>
             )}
           </View>
 
@@ -249,18 +234,36 @@ const ProductCard: React.FC<ProductCardProps> = ({
                     Prix selon {product.variant_dimension || 'variante'}
                   </Text>
                 </View>
-                
+
                 <View style={styles.priceTable}>
                   <View style={styles.priceTableHeader}>
                     <Text style={styles.tableHeaderText}>Variante</Text>
                     <Text style={styles.tableHeaderText}>Prix</Text>
                     <Text style={styles.tableHeaderText}>Stock</Text>
                   </View>
-                  
+
                   {variants.slice(0, 5).map((variant: any, i: number) => (
-                    <View key={i} style={styles.priceRow}>
+                    <TouchableOpacity
+                      key={i}
+                      style={[
+                        styles.priceRow,
+                        selectedVariantIndex === i && styles.priceRowSelected
+                      ]}
+                      onPress={() => {
+                        // Sélectionner la variation pour afficher son image
+                        setSelectedVariantIndex(selectedVariantIndex === i ? null : i);
+                      }}
+                    >
                       <View style={styles.cellVariant}>
-                        <Text style={styles.variantValue}>{variant.value}</Text>
+                        {/* Image de la variation si existe */}
+                        {variant.image && (
+                          <Image
+                            source={{ uri: variant.image.startsWith('data:') ? variant.image : `data:image/jpeg;base64,${variant.image}` }}
+                            style={styles.variantImageThumb}
+                            resizeMode="cover"
+                          />
+                        )}
+                        <Text style={styles.variantValue}>{variant.value || variant.valeur}</Text>
                       </View>
                       <View style={styles.cellPrice}>
                         <Text style={styles.variantPrice}>
@@ -271,24 +274,24 @@ const ProductCard: React.FC<ProductCardProps> = ({
                       <View style={styles.cellStock}>
                         <View style={[
                           styles.stockBadge,
-                          (variant.stock || 0) > 5 ? styles.stockOK : 
-                          (variant.stock || 0) > 0 ? styles.stockLow : styles.stockOut
+                          (variant.stock || 0) > 5 ? styles.stockOK :
+                            (variant.stock || 0) > 0 ? styles.stockLow : styles.stockOut
                         ]}>
                           <Text style={styles.stockText}>
                             {(variant.stock || 0) > 0 ? `${variant.stock}` : '0'}
                           </Text>
                         </View>
                       </View>
-                    </View>
+                    </TouchableOpacity>
                   ))}
-                  
+
                   {variants.length > 5 && (
                     <Text style={styles.moreVariantsText}>
                       +{variants.length - 5} autres variantes
                     </Text>
                   )}
                 </View>
-                
+
                 <View style={styles.priceFromContainer}>
                   <Text style={styles.priceFromLabel}>À partir de</Text>
                   <Text style={styles.priceFromValue}>
@@ -377,7 +380,7 @@ const formatDate = (dateStr: string): string => {
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
     const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-    
+
     if (diffDays === 0) return "Aujourd'hui";
     if (diffDays === 1) return 'Hier';
     if (diffDays < 7) return `Il y a ${diffDays}j`;
@@ -393,30 +396,6 @@ const styles = StyleSheet.create({
     position: 'relative',
     width: '100%',
     height: 220,
-  },
-  image: {
-    width: '100%',
-    height: '100%',
-    borderTopLeftRadius: 12,
-    borderTopRightRadius: 12,
-  },
-  imageGradient: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    height: 100,
-    borderTopLeftRadius: 12,
-    borderTopRightRadius: 12,
-  },
-  imagePlaceholder: {
-    width: '100%',
-    height: '100%',
-    backgroundColor: '#F3F4F6',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderTopLeftRadius: 12,
-    borderTopRightRadius: 12,
   },
   countryBadge: {
     position: 'absolute',
@@ -583,12 +562,28 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 8,
+    paddingHorizontal: 4,
     borderBottomWidth: 1,
     borderBottomColor: '#F3F4F6',
+    borderRadius: 6,
+  },
+  priceRowSelected: {
+    backgroundColor: '#EEF2FF',
+    borderWidth: 2,
+    borderColor: modernColors.primary,
   },
   cellVariant: {
     flex: 1,
-    alignItems: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  variantImageThumb: {
+    width: 32,
+    height: 32,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
   cellPrice: {
     flex: 1,

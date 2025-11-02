@@ -60,6 +60,7 @@ pub mod phone_validation_service;
 pub mod payment_service;
 pub mod publicite_search_service;
 pub mod autocomplete_history_service;
+pub mod autocomplete_combinations_service;
 pub mod search_history_service;
 // pub mod payment_service_temporary;
 // pub mod push_notifications;

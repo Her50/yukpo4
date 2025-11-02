@@ -131,12 +131,69 @@ Analyse la demande utilisateur et génère un JSON enrichi, strictement conforme
 - Caractéristiques de produits (marque, modèle, couleur, taille, etc.)
 - Équipements, services inclus, spécialités
 
-**Structure obligatoire :**
+**⚡ RÈGLE CRITIQUE 2025-11-02 : GÉNÉRATION MULTI-COMBINAISONS**
+
+Quand l'utilisateur fournit **SEULEMENT du TEXTE** (sans image montrant le produit précis) :
+- ❌ **NE PAS** générer UNE SEULE combinaison
+- ✅ **GÉNÉRER TOUTES** les combinaisons logiques possibles
+- ✅ **MARQUER** la combinaison qui correspond aux caractéristiques **explicitement identifiées** comme préférée
+
+**Pourquoi ?** L'IA ne peut pas deviner quelle combinaison précise correspond au produit de l'utilisateur quand il dit juste "Je vends des chaussures". L'utilisateur doit pouvoir **choisir** parmi les options.
+
+**Structure obligatoire (AVEC MULTI-COMBINAISONS) :**
 ```json
 {
   "produits": {
     "type_donnee": "autocomplete",
-    "valeur": ["Toyota,RAV4,2020,Essence,Automatique"],
+    "valeur": [
+      "Nike,Air Max,Noir,42,",          // ⬅️ Combinaison explicitement identifiée (PRÉFÉRÉE)
+      "Nike,Air Max,Blanc,42,",
+      "Nike,Air Max,Rouge,42,",
+      "Nike,Air Force,Noir,42,",
+      "Adidas,Superstar,Noir,42,"
+    ],
+    "separateur": ",",
+    "sous_caracteristiques": {
+      "marque": ["Nike", "Adidas", "Puma"],
+      "modele": ["Air Max", "Air Force", "Superstar"],
+      "couleur": ["Noir", "Blanc", "Rouge", "Bleu"],
+      "pointure": ["38", "39", "40", "41", "42", "43"],
+      "lieu": [""]
+    },
+    "filtrable": true,
+    "identifiant_base": "produits",
+    "origine_champs": "ia",
+    "ai_preferred_index": 0  // ⬅️ Index de la combinaison préférée (celle explicitement identifiée)
+  }
+}
+```
+
+**RÈGLES DE GÉNÉRATION MULTI-COMBINAISONS :**
+
+1. **Si texte = "Je vends Nike Air Max noires pointure 42"**
+   - Combinaison explicite : `Nike,Air Max,Noir,42`
+   - `ai_preferred_index: 0` (première position)
+   - Générer aussi : Autres couleurs, autres modèles Nike, autres marques similaires
+
+2. **Si texte = "Je vends des chaussures"** (très vague)
+   - Combinaison préférée : Choisir le modèle le plus courant (ex: Nike Air Max Noir 42)
+   - `ai_preferred_index: 0`
+   - Générer : Marques populaires, modèles populaires, couleurs courantes
+
+3. **Nombre de combinaisons** : Minimum 5, Maximum 20
+   - Prioriser la variété intelligente (différentes marques, modèles, couleurs)
+   - Éviter les doublons inutiles
+
+4. **Ordre des combinaisons** :
+   - Position 0 : Combinaison **explicitement identifiée** dans le texte/image
+   - Positions suivantes : Variantes logiques par ordre de pertinence décroissante
+
+**Structure simple (1 seule combinaison évidente) :**
+```json
+{
+  "produits": {
+    "type_donnee": "autocomplete",
+    "valeur": ["Toyota,RAV4,2020,Essence,Automatique,"],  // Une seule si très spécifique
     "separateur": ",",
     "sous_caracteristiques": {
       "marque": ["Toyota", "Honda", "Ford"],
@@ -146,8 +203,9 @@ Analyse la demande utilisateur et génère un JSON enrichi, strictement conforme
       "transmission": ["Manuelle", "Automatique"]
     },
     "filtrable": true,
-    "identifiant_base": "caracteristiques_vehicule",
+    "identifiant_base": "produits",
     "origine_champs": "ia"
+    // Pas de ai_preferred_index si une seule combinaison
   }
 }
 ```
@@ -326,47 +384,84 @@ Le lieu sera rempli par le prestataire et enrichi côté backend avec hiérarchi
 
 ### 5️⃣ VECTEUR AFFICHÉ DANS LE FORMULAIRE (CRITIQUE)
 
-**❓ Question** : Si `variation_prix` génère plusieurs combinaisons, laquelle est affichée dans le champ "Caractéristiques produit" ?
+**❓ Question** : Quelle combinaison est affichée/proposée en premier dans le formulaire ?
 
-**✅ Réponse** : La **PREMIÈRE valeur** du tableau `autocomplete.valeur` est la combinaison de référence affichée.
+**✅ Réponse** : La combinaison marquée par `ai_preferred_index` (ou position 0 par défaut).
 
-**Exemple** :
+**🎯 DISTINCTION IMPORTANTE - 2 CAS D'USAGE :**
+
+#### **CAS 1 : Multi-combinaisons (texte vague SANS image précise)**
+
+L'utilisateur dit "Je vends des chaussures" → L'IA génère PLUSIEURS combinaisons possibles.
+
 ```json
 "produits": {
   "type_donnee": "autocomplete",
   "valeur": [
-    "Nike,Air Max,Noir,Neuf,38",  // ⬅️ CETTE LIGNE sera affichée dans le formulaire
-    "Nike,Air Max,Noir,Neuf,39",
-    "Nike,Air Max,Noir,Neuf,40"
+    "Nike,Air Max,Noir,42,",          // ⬅️ Position 0 - Préférée (la plus logique)
+    "Nike,Air Max,Blanc,42,",
+    "Adidas,Superstar,Noir,42,",
+    "Puma,Suede,Noir,42,"
   ],
-  "sous_caracteristiques": {...},
-  "variation_prix": {
-    "variable": "pointure",
-    "modalites": [
-      {"valeur": "38", ...},
-      {"valeur": "39", ...},
-      {"valeur": "40", ...}
-    ]
-  }
+  "ai_preferred_index": 0,  // ⬅️ OBLIGATOIRE pour multi-combinaisons
+  "sous_caracteristiques": {...}
 }
 ```
 
 **Frontend comportement** :
-1. Le champ "Caractéristiques produit" affiche : `"Nike,Air Max,Noir,Neuf,38"`
-2. Un composant `PriceVariantSelector` affiche le tableau des variations (38, 39, 40 avec prix)
-3. Le prestataire peut modifier les prix, stock, ou ajouter/supprimer des pointures
+1. Champ intelligent avec **recherche autocomplete**
+2. Affiche la combinaison préférée (index 0) comme **placeholder dynamique**
+3. Pendant la saisie, propose **toutes les combinaisons** générées
+4. Le prestataire **choisit** celle qui correspond à son produit
 
-**🔑 RÈGLE GÉNÉRATION** :
-- **TOUJOURS** mettre la modalité la plus courante/standard en position 0
-- Chaussures : pointure 40 (taille moyenne homme) ou 38 (taille moyenne femme)
+#### **CAS 2 : Variation de prix (produit identifié AVEC variations)**
+
+Le produit est clairement identifié, seule la dimension variable change (pointure, taille, etc.).
+
+```json
+"produits": {
+  "type_donnee": "autocomplete",
+  "valeur": [
+    "Nike,Air Max,Noir,Neuf,38,",  // ⬅️ Variation 1
+    "Nike,Air Max,Noir,Neuf,39,",  // ⬅️ Variation 2
+    "Nike,Air Max,Noir,Neuf,40,"   // ⬅️ Variation 3
+  ],
+  "variation_prix": {
+    "variable": "pointure",
+    "modalites": [
+      {"valeur": "38", "prix": 45000, ...},
+      {"valeur": "39", "prix": 45000, ...},
+      {"valeur": "40", "prix": 48000, ...}
+    ]
+  },
+  "sous_caracteristiques": {...}
+  // Pas de ai_preferred_index car toutes les variations sont du MÊME produit
+}
+```
+
+**Frontend comportement** :
+1. Affiche la première variation comme référence
+2. Un composant `PriceVariantSelector` affiche **toutes** les modalités avec prix
+3. Le prestataire peut modifier prix, stock, ajouter/supprimer des variantes
+
+**🔑 RÈGLES DE POSITIONNEMENT** :
+
+**Pour multi-combinaisons (CAS 1)** :
+- Position 0 : Combinaison **explicitement identifiée** dans le texte
+- Si rien d'explicite : Choisir le produit le plus **courant/populaire**
+- Ajouter `"ai_preferred_index": 0`
+
+**Pour variations de prix (CAS 2)** :
+- Position 0 : Variante la plus **standard/courante**
+- Chaussures : pointure 40 (homme) ou 38 (femme)
 - Vêtements : taille M ou L
-- Capacité smartphone : 128 GB (standard actuel)
-- Chambres hôtel : Chambre double (plus courant)
+- Capacité : 128 GB (standard actuel)
+- Ordre : Du plus petit au plus grand
 
-**Ordre logique des modalités** :
+**Ordre logique des valeurs** :
 - ✅ Du plus petit au plus grand : `["38", "39", "40", "41", "42"]`
-- ✅ Du moins cher au plus cher si variation cohérente
-- ✅ Du standard aux extrêmes : `["M", "S", "L", "XS", "XL"]` → réorganiser en `["S", "M", "L", "XL"]`
+- ✅ Alphabétique pour textes : `["S", "M", "L", "XL"]`
+- ✅ Du standard aux extrêmes
 
 ### 6️⃣ SANS Variations Prix
 
@@ -548,17 +643,76 @@ Le lieu sera rempli par le prestataire et enrichi côté backend avec hiérarchi
   "capacite": {"type_donnee": "number", "valeur": 200, "unite": "personnes", "origine_champs": "ia"}
 }
 ```
-### 👟 CHAUSSURES (AVEC VARIATIONS PRIX)
+### 👟 CHAUSSURES - CAS 1 : TEXTE VAGUE (MULTI-COMBINAISONS)
+
+**Demande utilisateur** : "Je vends des chaussures de sport"
+
+**🎯 Comportement IA** : Générer PLUSIEURS combinaisons car le texte est vague.
+
 ```json
 {
   "produits": {
     "type_donnee": "autocomplete",
     "valeur": [
-      "Nike,Air Max 90,2024,Running,Homme,Noir/Blanc,Cuir,38",
-      "Nike,Air Max 90,2024,Running,Homme,Noir/Blanc,Cuir,39",
-      "Nike,Air Max 90,2024,Running,Homme,Noir/Blanc,Cuir,40",
-      "Nike,Air Max 90,2024,Running,Homme,Noir/Blanc,Cuir,41",
-      "Nike,Air Max 90,2024,Running,Homme,Noir/Blanc,Cuir,42"
+      "Nike,Air Max,Noir,42,",          // ⬅️ Préférée (marque + type populaires)
+      "Nike,Air Max,Blanc,42,",
+      "Adidas,Superstar,Noir,42,",
+      "Puma,Suede,Noir,42,",
+      "Nike,Air Force,Noir,42,",
+      "Adidas,Stan Smith,Blanc,42,"
+    ],
+    "separateur": ",",
+    "sous_caracteristiques": {
+      "marque": ["Nike", "Adidas", "Puma", "Reebok"],
+      "modele": ["Air Max", "Air Force", "Superstar", "Stan Smith", "Suede"],
+      "couleur": ["Noir", "Blanc", "Rouge", "Bleu"],
+      "pointure": ["38", "39", "40", "41", "42", "43", "44"],
+      "lieu": [""]
+    },
+    "ai_preferred_index": 0,  // ⬅️ OBLIGATOIRE - Marque la combinaison préférée
+    "filtrable": true,
+    "identifiant_base": "produits",
+    "origine_champs": "ia"
+  },
+  "nom_produit": {
+    "type_donnee": "string",
+    "valeur": "Chaussures de Sport",
+    "origine_champs": "ia"
+  },
+  "categorie_produit": {
+    "type_donnee": "string",
+    "valeur": "Chaussures / Sport",
+    "origine_champs": "ia"
+  },
+  "description_produit": {
+    "type_donnee": "string",
+    "valeur": "Chaussures de sport. Plusieurs marques et modèles disponibles.",
+    "origine_champs": "ia"
+  }
+}
+```
+
+**💡 Explication** :
+- Texte vague → L'IA ne peut pas deviner LE produit précis
+- Elle génère 6 combinaisons couvrant marques/modèles populaires
+- La première (`Nike,Air Max,Noir,42`) est marquée comme préférée (choix logique par défaut)
+- Le prestataire choisira la bonne combinaison dans le formulaire
+
+### 👟 CHAUSSURES - CAS 2 : TEXTE PRÉCIS (VARIATIONS PRIX)
+**Demande utilisateur** : "Je vends Nike Air Max 90 running homme noir/blanc en cuir, plusieurs pointures"
+
+**🎯 Comportement IA** : Produit TRÈS spécifique → Variations de pointures uniquement.
+
+```json
+{
+  "produits": {
+    "type_donnee": "autocomplete",
+    "valeur": [
+      "Nike,Air Max 90,2024,Running,Homme,Noir/Blanc,Cuir,38,",
+      "Nike,Air Max 90,2024,Running,Homme,Noir/Blanc,Cuir,39,",
+      "Nike,Air Max 90,2024,Running,Homme,Noir/Blanc,Cuir,40,",
+      "Nike,Air Max 90,2024,Running,Homme,Noir/Blanc,Cuir,41,",
+      "Nike,Air Max 90,2024,Running,Homme,Noir/Blanc,Cuir,42,"
     ],
     "separateur": ",",
     "sous_caracteristiques": {
@@ -569,7 +723,8 @@ Le lieu sera rempli par le prestataire et enrichi côté backend avec hiérarchi
       "genre": ["Homme"],
       "couleur": ["Noir/Blanc"],
       "matiere": ["Cuir"],
-      "pointure": ["38", "39", "40", "41", "42", "43", "44"]
+      "pointure": ["38", "39", "40", "41", "42", "43", "44"],
+      "lieu": [""]
     },
     "variation_prix": {
       "variable": "pointure",
@@ -583,8 +738,9 @@ Le lieu sera rempli par le prestataire et enrichi côté backend avec hiérarchi
       ]
     },
     "filtrable": true,
-    "identifiant_base": "caracteristiques_chaussures",
+    "identifiant_base": "produits",
     "origine_champs": "ia"
+    // Pas de ai_preferred_index car toutes les variations sont du MÊME produit
   },
   "nom_produit": {
     "type_donnee": "string",
@@ -604,10 +760,84 @@ Le lieu sera rempli par le prestataire et enrichi côté backend avec hiérarchi
 }
 ```
 
+**💡 Explication** :
+- Produit très spécifique → Toutes les caractéristiques identifiées
+- Les 5 combinaisons sont des **variations du MÊME produit** (juste la pointure change)
+- `variation_prix` présent → Géré avec prix différents par pointure
+- Pas de `ai_preferred_index` car ce n'est pas un choix entre produits différents
+
 **📝 NOTE** : 
 - Le champ `variabilite_prix` séparé est **DÉPRÉCIÉ**
 - Utilise `variation_prix` DANS `produits.autocomplete` à la place
 - La dimension variable (pointure) est en **avant-dernière** position
+
+---
+
+## 🎯 RÈGLE ABSOLUE : PRÉFÉRENCE AI BASÉE SUR CARACTÉRISTIQUES EXPLICITES (2025-11-02)
+
+**⚡ PRINCIPE FONDAMENTAL** : `ai_preferred_index` doit TOUJOURS pointer vers la combinaison qui correspond aux caractéristiques **EXPLICITEMENT IDENTIFIÉES** dans le texte ou l'image.
+
+### ✅ Exemples de préférence correcte
+
+**Exemple 1 : Texte avec marque explicite**
+- Texte : "Je vends **Nike Air Max** noires"
+- Caractéristiques explicites : marque=Nike, modèle=Air Max, couleur=Noir
+- Combinaison préférée : `"Nike,Air Max,Noir,42,"`
+- `ai_preferred_index: 0` (si c'est en position 0)
+
+**Exemple 2 : Texte très vague**
+- Texte : "Je vends des chaussures"
+- Caractéristiques explicites : AUCUNE (juste "chaussures")
+- Combinaison préférée : Choisir le modèle **le plus populaire/courant** dans la catégorie
+- `ai_preferred_index: 0` avec `"Nike,Air Max,Noir,42,"` (choix par défaut logique)
+
+**Exemple 3 : Image montrant produit précis**
+- Image : Photo d'une **Adidas Superstar blanche** pointure visible "43"
+- Caractéristiques explicites : marque=Adidas, modèle=Superstar, couleur=Blanc, pointure=43
+- Combinaison préférée : `"Adidas,Superstar,Blanc,43,"`
+- `ai_preferred_index: 0` (DOIT correspondre exactement à l'image)
+
+### ❌ Erreurs à éviter
+
+**Erreur 1 : Préférence arbitraire**
+- ❌ Texte : "Je vends des chaussures" → Préférer `"Puma,Suede,Rouge,38,"` (arbitraire)
+- ✅ Texte : "Je vends des chaussures" → Préférer `"Nike,Air Max,Noir,42,"` (populaire/logique)
+
+**Erreur 2 : Préférence qui ignore le texte**
+- ❌ Texte : "Je vends **Adidas** Superstar" → Préférer `"Nike,Air Max,Noir,42,"` (ignore Adidas)
+- ✅ Texte : "Je vends **Adidas** Superstar" → Préférer `"Adidas,Superstar,Noir,42,"` (respecte Adidas)
+
+**Erreur 3 : Préférence qui contredit l'image**
+- ❌ Image montre Toyota → Préférer `"Honda,Civic,..."` (contredit l'image)
+- ✅ Image montre Toyota → Préférer `"Toyota,RAV4,..."` (respecte l'image)
+
+### 🔑 CHECKLIST PRÉFÉRENCE AI
+
+Avant de définir `ai_preferred_index`, vérifie :
+
+1. ✅ **Quelles caractéristiques sont EXPLICITEMENT mentionnées** dans le texte/image ?
+   - Marque ? Modèle ? Couleur ? Année ? Taille ?
+
+2. ✅ **La combinaison en position ai_preferred_index contient-elle TOUTES ces caractéristiques explicites ?**
+   - Si OUI → Bon choix ✅
+   - Si NON → ERREUR, chercher/créer la bonne combinaison ❌
+
+3. ✅ **Si aucune caractéristique explicite** (texte très vague) :
+   - Choisir le produit **le plus courant/populaire** dans la catégorie
+   - Ex: "chaussures" → Nike Air Max (populaire)
+   - Ex: "voiture" → Toyota (populaire en Afrique)
+   - Ex: "smartphone" → Samsung Galaxy (populaire)
+
+### 📊 Matrice de décision
+
+| Texte utilisateur | Caractéristiques explicites | Combinaison préférée | Autres combinaisons |
+|-------------------|------------------------------|----------------------|---------------------|
+| "Je vends Nike Air Max" | marque=Nike, modele=Air Max | `Nike,Air Max,Noir,42` | Autres couleurs Nike Air Max |
+| "Je vends des chaussures Nike" | marque=Nike | `Nike,Air Max,Noir,42` | Autres modèles Nike + autres marques |
+| "Je vends des chaussures" | AUCUNE | `Nike,Air Max,Noir,42` (populaire) | Toutes marques populaires |
+| "Je vends Adidas blanches 38" | marque=Adidas, couleur=Blanc, pointure=38 | `Adidas,Superstar,Blanc,38` | Autres modèles Adidas blancs |
+
+**🎯 RÉSUMÉ** : `ai_preferred_index` = Combinaison qui **CORRESPOND LE MIEUX** aux caractéristiques **EXPLICITEMENT** fournies par l'utilisateur.
 
 ### 🏨 HÔTEL / HÉBERGEMENT (AVEC VARIATIONS PRIX)
 ```json

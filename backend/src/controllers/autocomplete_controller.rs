@@ -8,6 +8,7 @@ use std::sync::Arc;
 use log::info;
 use crate::state::AppState;
 use crate::services::autocomplete_history_service;
+use crate::services::autocomplete_combinations_service;
 use crate::services::geonames_service;
 
 #[derive(Debug, Deserialize)]
@@ -199,42 +200,37 @@ pub async fn historize_autocomplete_field(
 
 #[derive(Debug, Deserialize)]
 pub struct SearchCombinationsRequest {
-    pub filters: Vec<String>,
-    pub limit: Option<i32>,
+    pub query: String, // Texte de recherche libre
+    pub user_location: Option<String>, // Localisation de l'utilisateur pour scoring géographique
+    pub limit: Option<i64>,
 }
 
-#[derive(Debug, Serialize)]
-pub struct CombinationResult {
+#[derive(Debug, Deserialize)]
+pub struct SaveAICombinationsRequest {
+    pub session_id: String,
+    pub combinations: Vec<serde_json::Value>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct LinkCombinationsRequest {
+    pub session_id: String,
     pub service_id: i32,
-    pub product_vector: Vec<String>,
-    pub location_vector: Vec<String>,
-    pub full_vector: Vec<String>,
-    pub chosen_location: Option<String>,
-    pub usage_count: i32,
-    pub has_variant: bool,
-    pub variant_dimension: Option<String>,
-    pub variant_value: Option<String>,
-    pub prix: Option<f64>,
-    pub devise: Option<String>,
-    pub stock: Option<i32>,
-    pub location_score: f32,
-    pub popularity_score: f32,
-    pub final_score: f32,
 }
 
 /// POST /api/autocomplete/search-combinations
-/// Recherche multi-filtres progressive dans les vecteurs autocomplete
+/// Recherche intelligente dans les combinaisons autocomplete
 pub async fn search_combinations(
     State(state): State<Arc<AppState>>,
     Json(request): Json<SearchCombinationsRequest>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
     let pool = &state.pg;
-    let filters = request.filters;
+    let query = request.query.trim();
+    let user_location = request.user_location.as_deref();
     let limit = request.limit.unwrap_or(20);
     
-    info!("🔍 Recherche vectorielle: {:?} (limit: {})", filters, limit);
+    info!("🔍 Recherche combinaisons: '{}' (location: {:?}, limit: {})", query, user_location, limit);
     
-    if filters.is_empty() {
+    if query.is_empty() {
         return Ok(Json(serde_json::json!({
             "success": true,
             "data": [],
@@ -242,138 +238,134 @@ pub async fn search_combinations(
         })));
     }
     
-    // Construire WHERE clauses pour chaque filtre
-    let mut where_parts = vec![];
-    let mut bind_values: Vec<String> = vec![];
-    
-    for filter in &filters {
-        // Vérifier si c'est un terme géographique
-        let is_location = is_geographic_term(filter);
-        
-        if is_location {
-            // Recherche géographique bidirectionnelle
-            let location_variants = geonames_service::expand_location_search(pool, filter)
-                .await
-                .unwrap_or_else(|_| vec![filter.clone()]);
-            
-            info!("🌍 Terme géographique '{}' étendu à {} variantes", filter, location_variants.len());
-            
-            // Clause : location_vector overlap avec variants
-            where_parts.push(format!("location_vector && ${}::TEXT[]", bind_values.len() + 1));
-            bind_values.push(format!("{{{}}}", location_variants.join(",")));
-        } else {
-            // Recherche caractéristique normale
-            where_parts.push(format!("${}::TEXT = ANY(full_vector)", bind_values.len() + 1));
-            bind_values.push(filter.clone());
+    match autocomplete_combinations_service::search_combinations(pool, query, user_location, limit).await {
+        Ok(results) => {
+            info!("✅ {} résultats trouvés", results.len());
+            Ok(Json(serde_json::json!({
+                "success": true,
+                "data": results,
+                "count": results.len()
+            })))
+        }
+        Err(e) => {
+            eprintln!("❌ Erreur recherche combinaisons: {:?}", e);
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Erreur recherche: {}", e)
+            ))
         }
     }
-    
-    // Construire requête SQL
-    let where_clause = if where_parts.is_empty() {
-        "TRUE".to_string()
-    } else {
-        where_parts.join(" AND ")
-    };
-    
-    let sql = format!(
-        "SELECT 
-            service_id,
-            product_vector,
-            location_vector,
-            full_vector,
-            chosen_location,
-            usage_count,
-            has_variant,
-            variant_dimension,
-            variant_value,
-            prix,
-            devise,
-            stock,
-            COALESCE(calculate_location_score($1, location_vector, chosen_location), 0.0) as location_score,
-            usage_count::FLOAT as popularity_score
-         FROM autocomplete_combinations
-         WHERE {}
-         ORDER BY 
-            (COALESCE(calculate_location_score($1, location_vector, chosen_location), 0.0) * 0.7 
-             + (usage_count::FLOAT / 100.0) * 0.3) DESC
-         LIMIT ${}",
-        where_clause,
-        bind_values.len() + 2
-    );
-    
-    info!("🔍 SQL query: {}", sql);
-    info!("🔍 Bind values: {:?}", bind_values);
-    
-    // Construire et exécuter la requête
-    let mut query = sqlx::query_as::<_, (
-        i32, Vec<String>, Vec<String>, Vec<String>, Option<String>,
-        i32, bool, Option<String>, Option<String>, Option<f64>, Option<String>, Option<i32>,
-        f32, f32
-    )>(&sql);
-    
-    // Bind location de référence pour scoring (premier filtre)
-    query = query.bind(&filters[0]);
-    
-    // Bind tous les filtres
-    for value in &bind_values {
-        query = query.bind(value);
-    }
-    
-    // Bind limit
-    query = query.bind(limit);
-    
-    let rows = query.fetch_all(pool).await.map_err(|e| {
-        eprintln!("❌ Erreur SQL recherche: {:?}", e);
-        (StatusCode::INTERNAL_SERVER_ERROR, format!("Erreur recherche: {}", e))
-    })?;
-    
-    // Transformer en résultats
-    let results: Vec<CombinationResult> = rows.into_iter().map(|row| {
-        let location_score = row.12;
-        let popularity_score = row.13;
-        let final_score = (location_score * 0.7) + (popularity_score / 100.0 * 0.3);
-        
-        CombinationResult {
-            service_id: row.0,
-            product_vector: row.1,
-            location_vector: row.2,
-            full_vector: row.3,
-            chosen_location: row.4,
-            usage_count: row.5,
-            has_variant: row.6,
-            variant_dimension: row.7,
-            variant_value: row.8,
-            prix: row.9,
-            devise: row.10,
-            stock: row.11,
-            location_score,
-            popularity_score,
-            final_score,
-        }
-    }).collect();
-    
-    info!("✅ {} résultats trouvés", results.len());
-    
-    Ok(Json(serde_json::json!({
-        "success": true,
-        "data": results,
-        "count": results.len()
-    })))
 }
 
-/// Détermine si un terme est géographique
-fn is_geographic_term(term: &str) -> bool {
-    let term_lower = term.to_lowercase();
+/// POST /api/autocomplete/save-ai-combinations
+/// Sauvegarder les combinaisons générées par l'IA (en arrière-plan)
+pub async fn save_ai_combinations(
+    State(state): State<Arc<AppState>>,
+    Json(request): Json<SaveAICombinationsRequest>,
+) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
+    let pool = &state.pg;
     
-    // Liste de mots-clés géographiques
-    let geo_keywords = [
-        "ville", "quartier", "arrondissement", "région", "département",
-        "cameroun", "douala", "yaoundé", "yaounde", "littoral", "centre", "ouest", "sud", "nord", "est",
-        "gabon", "libreville", "congo", "brazzaville", "kinshasa",
-        "sénégal", "senegal", "dakar", "côte", "cote", "ivoire", "abidjan",
-        "akwa", "bonamoussadi", "bonapriso", "bepanda", "makepe", "bonaberi",
-        // Ajoutez d'autres selon vos besoins
-    ];
+    info!("💾 Sauvegarde combinaisons IA (session: {})", request.session_id);
     
-    geo_keywords.iter().any(|keyword| term_lower.contains(keyword))
+    // Extraire les combinaisons depuis le JSON
+    let combinations = request.combinations
+        .into_iter()
+        .filter_map(|combo_json| {
+            autocomplete_combinations_service::extract_combinations_from_ai_response(&combo_json).ok()
+        })
+        .flatten()
+        .collect::<Vec<_>>();
+    
+    if combinations.is_empty() {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            "Aucune combinaison valide trouvée".to_string()
+        ));
+    }
+    
+    match autocomplete_combinations_service::save_ai_combinations_batch(
+        pool,
+        combinations,
+        &request.session_id
+    ).await {
+        Ok(ids) => {
+            info!("✅ {} combinaisons sauvegardées", ids.len());
+            Ok(Json(serde_json::json!({
+                "success": true,
+                "saved_count": ids.len(),
+                "ids": ids,
+                "session_id": request.session_id
+            })))
+        }
+        Err(e) => {
+            eprintln!("❌ Erreur sauvegarde combinaisons: {:?}", e);
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Erreur sauvegarde: {}", e)
+            ))
+        }
+    }
 }
+
+/// GET /api/autocomplete/combinations/session/:session_id
+/// Récupérer les combinaisons d'une session IA
+pub async fn get_combinations_by_session(
+    State(state): State<Arc<AppState>>,
+    Path(session_id): Path<String>,
+) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
+    let pool = &state.pg;
+    
+    info!("📥 Récupération combinaisons session: {}", session_id);
+    
+    match autocomplete_combinations_service::get_combinations_by_session(pool, &session_id).await {
+        Ok(combinations) => {
+            info!("✅ {} combinaisons récupérées", combinations.len());
+            Ok(Json(serde_json::json!({
+                "success": true,
+                "data": combinations,
+                "count": combinations.len()
+            })))
+        }
+        Err(e) => {
+            eprintln!("❌ Erreur récupération combinaisons: {:?}", e);
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Erreur récupération: {}", e)
+            ))
+        }
+    }
+}
+
+/// POST /api/autocomplete/combinations/link-to-service
+/// Lier des combinaisons à un service après création
+pub async fn link_combinations_to_service(
+    State(state): State<Arc<AppState>>,
+    Json(request): Json<LinkCombinationsRequest>,
+) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
+    let pool = &state.pg;
+    
+    info!("🔗 Liaison combinaisons au service {} (session: {})", request.service_id, request.session_id);
+    
+    match autocomplete_combinations_service::link_combinations_to_service(
+        pool,
+        &request.session_id,
+        request.service_id
+    ).await {
+        Ok(count) => {
+            info!("✅ {} combinaisons liées au service", count);
+            Ok(Json(serde_json::json!({
+                "success": true,
+                "linked_count": count,
+                "service_id": request.service_id
+            })))
+        }
+        Err(e) => {
+            eprintln!("❌ Erreur liaison combinaisons: {:?}", e);
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Erreur liaison: {}", e)
+            ))
+        }
+    }
+}
+

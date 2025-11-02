@@ -346,70 +346,155 @@ pub async fn ensure_notifications_table(pool: &PgPool) -> Result<(), sqlx::Error
     Ok(())
 }
 
-/// Vérifie et crée la table token_usage_logs si elle n'existe pas
-pub async fn ensure_token_usage_logs_table(pool: &PgPool) -> Result<(), sqlx::Error> {
-    info!("🔍 Vérification de la table token_usage_logs...");
+/// Vérifie et crée la table autocomplete_characteristics si elle n'existe pas
+pub async fn ensure_autocomplete_characteristics_table(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification de la table autocomplete_characteristics...");
     
     // Vérifier si la table existe
     let exists = sqlx::query_scalar::<_, bool>(
-        "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'token_usage_logs')"
+        "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'autocomplete_characteristics')"
     )
     .fetch_one(pool)
     .await?;
     
     if exists {
-        info!("✅ Table token_usage_logs déjà présente");
+        info!("✅ Table autocomplete_characteristics déjà présente");
         return Ok(());
     }
     
-    warn!("⚠️ Table token_usage_logs manquante, création en cours...");
+    warn!("⚠️ Table autocomplete_characteristics manquante, création en cours...");
     
-    // Créer la table token_usage_logs
+    // Créer la table autocomplete_characteristics
     sqlx::query(r#"
-        CREATE TABLE IF NOT EXISTS token_usage_logs (
+        CREATE TABLE IF NOT EXISTS autocomplete_characteristics (
             id SERIAL PRIMARY KEY,
-            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-            
-            -- Type d'opération
-            operation_type VARCHAR(50) NOT NULL,
-            
-            -- Montant
-            tokens_amount INTEGER NOT NULL,
-            tokens_before INTEGER NOT NULL,
-            tokens_after INTEGER NOT NULL,
-            
-            -- Contexte
-            service_id INTEGER REFERENCES services(id) ON DELETE SET NULL,
-            description TEXT,
-            metadata JSONB,
-            
-            -- Tracking
-            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-            ip_address VARCHAR(45),
-            user_agent TEXT
+            identifiant_base VARCHAR(255) NOT NULL,
+            sous_caracteristique VARCHAR(255) NOT NULL,
+            valeur VARCHAR(500) NOT NULL,
+            origine_champs VARCHAR(50) NOT NULL DEFAULT 'ia',
+            user_id INTEGER,
+            service_id INTEGER,
+            usage_count INTEGER DEFAULT 1,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+            updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+            CONSTRAINT unique_autocomplete_characteristic 
+                UNIQUE (identifiant_base, sous_caracteristique, valeur)
         )
     "#)
     .execute(pool)
     .await?;
     
     // Créer les index
-    sqlx::query("CREATE INDEX IF NOT EXISTS idx_token_logs_user_id ON token_usage_logs(user_id)")
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_autocomplete_identifiant_base ON autocomplete_characteristics(identifiant_base)")
         .execute(pool)
         .await?;
     
-    sqlx::query("CREATE INDEX IF NOT EXISTS idx_token_logs_operation ON token_usage_logs(operation_type)")
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_autocomplete_sous_caracteristique ON autocomplete_characteristics(sous_caracteristique)")
         .execute(pool)
         .await?;
     
-    sqlx::query("CREATE INDEX IF NOT EXISTS idx_token_logs_created_at ON token_usage_logs(created_at DESC)")
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_autocomplete_base_sous ON autocomplete_characteristics(identifiant_base, sous_caracteristique)")
         .execute(pool)
         .await?;
     
-    sqlx::query("CREATE INDEX IF NOT EXISTS idx_token_logs_service_id ON token_usage_logs(service_id) WHERE service_id IS NOT NULL")
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_autocomplete_valeur_lower ON autocomplete_characteristics(LOWER(valeur))")
         .execute(pool)
         .await?;
     
-    info!("✅ Table token_usage_logs créée avec succès !");
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_autocomplete_origine ON autocomplete_characteristics(origine_champs)")
+        .execute(pool)
+        .await?;
+    
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_autocomplete_user_id ON autocomplete_characteristics(user_id) WHERE user_id IS NOT NULL")
+        .execute(pool)
+        .await?;
+    
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_autocomplete_service_id ON autocomplete_characteristics(service_id) WHERE service_id IS NOT NULL")
+        .execute(pool)
+        .await?;
+    
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_autocomplete_usage_count ON autocomplete_characteristics(identifiant_base, sous_caracteristique, usage_count DESC)")
+        .execute(pool)
+        .await?;
+    
+    // Fonction pour updated_at
+    sqlx::query(r#"
+        CREATE OR REPLACE FUNCTION update_autocomplete_characteristics_updated_at()
+        RETURNS TRIGGER AS $$
+        BEGIN
+            NEW.updated_at = NOW();
+            RETURN NEW;
+        END;
+        $$ LANGUAGE plpgsql
+    "#)
+    .execute(pool)
+    .await?;
+    
+    // Trigger pour updated_at
+    let _ = sqlx::query("DROP TRIGGER IF EXISTS trigger_autocomplete_characteristics_updated_at ON autocomplete_characteristics")
+        .execute(pool)
+        .await;
+    
+    sqlx::query(r#"
+        CREATE TRIGGER trigger_autocomplete_characteristics_updated_at
+            BEFORE UPDATE ON autocomplete_characteristics
+            FOR EACH ROW
+            EXECUTE FUNCTION update_autocomplete_characteristics_updated_at()
+    "#)
+    .execute(pool)
+    .await?;
+    
+    // Fonction upsert
+    sqlx::query(r#"
+        CREATE OR REPLACE FUNCTION upsert_autocomplete_characteristic(
+            p_identifiant_base VARCHAR(255),
+            p_sous_caracteristique VARCHAR(255),
+            p_valeur VARCHAR(500),
+            p_origine_champs VARCHAR(50) DEFAULT 'ia',
+            p_user_id INTEGER DEFAULT NULL,
+            p_service_id INTEGER DEFAULT NULL
+        )
+        RETURNS INTEGER AS $$
+        DECLARE
+            v_id INTEGER;
+        BEGIN
+            INSERT INTO autocomplete_characteristics (
+                identifiant_base,
+                sous_caracteristique,
+                valeur,
+                origine_champs,
+                user_id,
+                service_id,
+                usage_count
+            )
+            VALUES (
+                p_identifiant_base,
+                p_sous_caracteristique,
+                p_valeur,
+                p_origine_champs,
+                p_user_id,
+                p_service_id,
+                1
+            )
+            ON CONFLICT (identifiant_base, sous_caracteristique, valeur)
+            DO UPDATE SET
+                usage_count = autocomplete_characteristics.usage_count + 1,
+                updated_at = NOW();
+            
+            SELECT id INTO v_id
+            FROM autocomplete_characteristics
+            WHERE identifiant_base = p_identifiant_base
+            AND sous_caracteristique = p_sous_caracteristique
+            AND valeur = p_valeur;
+            
+            RETURN v_id;
+        END;
+        $$ LANGUAGE plpgsql
+    "#)
+    .execute(pool)
+    .await?;
+    
+    info!("✅ Table autocomplete_characteristics créée avec succès !");
     
     Ok(())
 }
@@ -436,756 +521,191 @@ pub async fn ensure_autocomplete_combinations_table(pool: &PgPool) -> Result<(),
     sqlx::query(r#"
         CREATE TABLE IF NOT EXISTS autocomplete_combinations (
             id SERIAL PRIMARY KEY,
-            service_id INTEGER NOT NULL REFERENCES services(id) ON DELETE CASCADE,
-            
-            -- Vecteurs séparés
+            service_id INTEGER,
             product_vector TEXT[] NOT NULL,
-            location_vector TEXT[] NOT NULL DEFAULT '{}',
+            location_vector TEXT[] DEFAULT '{}',
             full_vector TEXT[] NOT NULL,
-            
-            -- Lieu choisi (pour scoring)
-            chosen_location VARCHAR(255),
-            chosen_location_geoname_id BIGINT,
-            
-            -- Variations prix (si existe)
-            has_variant BOOLEAN DEFAULT FALSE,
-            variant_dimension VARCHAR(255),
-            variant_value TEXT,
-            prix NUMERIC(12, 2),
-            devise VARCHAR(10) DEFAULT 'XAF',
-            stock INTEGER,
-            
-            -- Stats
+            chosen_location TEXT,
             usage_count INTEGER DEFAULT 1,
-            view_count INTEGER DEFAULT 0,
+            is_ai_preferred BOOLEAN DEFAULT FALSE,
+            ai_confidence FLOAT DEFAULT 0.0,
+            session_id TEXT,
+            has_variant BOOLEAN DEFAULT FALSE,
+            variant_dimension TEXT,
+            variant_value TEXT,
+            prix DECIMAL(12, 2),
+            devise TEXT DEFAULT 'XAF',
+            stock INTEGER,
             created_at TIMESTAMPTZ DEFAULT NOW(),
             updated_at TIMESTAMPTZ DEFAULT NOW(),
-            
-            -- Contrainte unicité
-            UNIQUE(service_id, full_vector)
-        )
-    "#)
-    .execute(pool)
-    .await?;
-    
-    // Créer les index GIN pour recherche vectorielle
-    sqlx::query("CREATE INDEX IF NOT EXISTS idx_full_vector_gin ON autocomplete_combinations USING GIN(full_vector)")
-        .execute(pool)
-        .await?;
-    
-    sqlx::query("CREATE INDEX IF NOT EXISTS idx_product_vector_gin ON autocomplete_combinations USING GIN(product_vector)")
-        .execute(pool)
-        .await?;
-    
-    sqlx::query("CREATE INDEX IF NOT EXISTS idx_location_vector_gin ON autocomplete_combinations USING GIN(location_vector)")
-        .execute(pool)
-        .await?;
-    
-    // Index normaux
-    sqlx::query("CREATE INDEX IF NOT EXISTS idx_autocomplete_service_id ON autocomplete_combinations(service_id)")
-        .execute(pool)
-        .await?;
-    
-    sqlx::query("CREATE INDEX IF NOT EXISTS idx_autocomplete_chosen_location ON autocomplete_combinations(chosen_location) WHERE chosen_location IS NOT NULL")
-        .execute(pool)
-        .await?;
-    
-    sqlx::query("CREATE INDEX IF NOT EXISTS idx_autocomplete_has_variant ON autocomplete_combinations(has_variant) WHERE has_variant = TRUE")
-        .execute(pool)
-        .await?;
-    
-    sqlx::query("CREATE INDEX IF NOT EXISTS idx_autocomplete_usage_count ON autocomplete_combinations(usage_count DESC)")
-        .execute(pool)
-        .await?;
-    
-    info!("✅ Table autocomplete_combinations créée avec succès !");
-    
-    Ok(())
-}
-
-/// Vérifie et crée la table geo_hierarchy si elle n'existe pas
-pub async fn ensure_geo_hierarchy_table(pool: &PgPool) -> Result<(), sqlx::Error> {
-    info!("🔍 Vérification de la table geo_hierarchy...");
-    
-    // Vérifier si la table existe
-    let exists = sqlx::query_scalar::<_, bool>(
-        "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'geo_hierarchy')"
-    )
-    .fetch_one(pool)
-    .await?;
-    
-    if exists {
-        info!("✅ Table geo_hierarchy déjà présente");
-        return Ok(());
-    }
-    
-    warn!("⚠️ Table geo_hierarchy manquante, création en cours...");
-    
-    // Créer la table geo_hierarchy
-    sqlx::query(r#"
-        CREATE TABLE IF NOT EXISTS geo_hierarchy (
-            geoname_id BIGINT PRIMARY KEY,
-            place_name VARCHAR(255) NOT NULL,
-            display_name TEXT NOT NULL,
-            
-            -- Type et niveau
-            feature_code VARCHAR(10) NOT NULL,
-            admin_level INTEGER NOT NULL,
-            is_leaf BOOLEAN DEFAULT FALSE,
-            
-            -- Contexte (homonymes)
-            parent_country VARCHAR(255) NOT NULL,
-            parent_country_code CHAR(2),
-            
-            -- Vecteur bidirectionnel [Choix, Enfants..., Parents...]
-            location_vector TEXT[] NOT NULL,
-            
-            -- Coordonnées
-            lat NUMERIC(10, 7) NOT NULL,
-            lng NUMERIC(10, 7) NOT NULL,
-            bounds JSONB,
-            
-            -- Métadonnées
-            population INTEGER,
-            timezone VARCHAR(50),
-            
-            -- Tracking
-            times_used INTEGER DEFAULT 0,
-            last_enriched_at TIMESTAMPTZ,
-            created_at TIMESTAMPTZ DEFAULT NOW(),
-            
-            -- Contrainte unicité (gérer homonymes)
-            UNIQUE (place_name, parent_country, lat, lng)
+            CONSTRAINT unique_full_vector UNIQUE (full_vector)
         )
     "#)
     .execute(pool)
     .await?;
     
     // Créer les index
-    sqlx::query("CREATE INDEX IF NOT EXISTS idx_geo_name_country ON geo_hierarchy(place_name, parent_country)")
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_combinations_service_id ON autocomplete_combinations(service_id) WHERE service_id IS NOT NULL")
         .execute(pool)
         .await?;
     
-    sqlx::query("CREATE INDEX IF NOT EXISTS idx_geo_vector_gin ON geo_hierarchy USING GIN(location_vector)")
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_combinations_session ON autocomplete_combinations(session_id)")
         .execute(pool)
         .await?;
     
-    sqlx::query("CREATE INDEX IF NOT EXISTS idx_geo_country ON geo_hierarchy(parent_country)")
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_combinations_ai_preferred ON autocomplete_combinations(is_ai_preferred) WHERE is_ai_preferred = TRUE")
         .execute(pool)
         .await?;
     
-    sqlx::query("CREATE INDEX IF NOT EXISTS idx_geo_geoname ON geo_hierarchy(geoname_id)")
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_combinations_product_vector_gin ON autocomplete_combinations USING GIN(product_vector)")
         .execute(pool)
         .await?;
     
-    sqlx::query("CREATE INDEX IF NOT EXISTS idx_geo_admin_level ON geo_hierarchy(admin_level)")
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_combinations_location_vector_gin ON autocomplete_combinations USING GIN(location_vector)")
         .execute(pool)
         .await?;
     
-    sqlx::query("CREATE INDEX IF NOT EXISTS idx_geo_is_leaf ON geo_hierarchy(is_leaf) WHERE is_leaf = TRUE")
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_combinations_full_vector_gin ON autocomplete_combinations USING GIN(full_vector)")
         .execute(pool)
         .await?;
     
-    sqlx::query("CREATE INDEX IF NOT EXISTS idx_geo_times_used ON geo_hierarchy(times_used DESC)")
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_combinations_usage_count ON autocomplete_combinations(usage_count DESC)")
         .execute(pool)
         .await?;
     
-    info!("✅ Table geo_hierarchy créée avec succès !");
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_combinations_location_usage ON autocomplete_combinations(chosen_location, usage_count DESC)")
+        .execute(pool)
+        .await?;
     
-    Ok(())
-}
-
-/// Vérifie et crée la table image_analyses si elle n'existe pas
-pub async fn ensure_image_analyses_table(pool: &PgPool) -> Result<(), sqlx::Error> {
-    info!("🔍 Vérification de la table image_analyses...");
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_combinations_variant ON autocomplete_combinations(has_variant, variant_dimension, variant_value)")
+        .execute(pool)
+        .await?;
     
-    // Vérifier si la table existe
-    let exists = sqlx::query_scalar::<_, bool>(
-        "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'image_analyses')"
-    )
-    .fetch_one(pool)
-    .await?;
-    
-    if exists {
-        info!("✅ Table image_analyses déjà présente");
-        return Ok(());
-    }
-    
-    warn!("⚠️ Table image_analyses manquante, création en cours...");
-    
-    // Créer la table image_analyses
+    // Fonction pour updated_at
     sqlx::query(r#"
-        CREATE TABLE IF NOT EXISTS image_analyses (
-            id SERIAL PRIMARY KEY,
-            service_id INTEGER NOT NULL REFERENCES services(id) ON DELETE CASCADE,
-            
-            -- Image source
-            image_url TEXT NOT NULL,
-            image_hash VARCHAR(64),
-            
-            -- Analyse IA
-            description_generee TEXT,
-            tags_detectes TEXT[] DEFAULT '{}',
-            couleur_dominante VARCHAR(50),
-            categorie_predite VARCHAR(100),
-            
-            -- Métadonnées
-            confidence_score NUMERIC(5, 2),
-            analysis_provider VARCHAR(50),
-            analysis_metadata JSONB,
-            
-            -- Tracking
-            created_at TIMESTAMPTZ DEFAULT NOW(),
-            updated_at TIMESTAMPTZ DEFAULT NOW()
-        )
+        CREATE OR REPLACE FUNCTION update_combinations_updated_at()
+        RETURNS TRIGGER AS $$
+        BEGIN
+            NEW.updated_at = NOW();
+            RETURN NEW;
+        END;
+        $$ LANGUAGE plpgsql
     "#)
     .execute(pool)
     .await?;
     
-    // Créer les index
-    sqlx::query("CREATE INDEX IF NOT EXISTS idx_image_analyses_service_id ON image_analyses(service_id)")
+    // Trigger pour updated_at
+    let _ = sqlx::query("DROP TRIGGER IF EXISTS trigger_combinations_updated_at ON autocomplete_combinations")
         .execute(pool)
-        .await?;
+        .await;
     
-    sqlx::query("CREATE INDEX IF NOT EXISTS idx_image_analyses_hash ON image_analyses(image_hash) WHERE image_hash IS NOT NULL")
-        .execute(pool)
-        .await?;
-    
-    sqlx::query("CREATE INDEX IF NOT EXISTS idx_image_analyses_tags_gin ON image_analyses USING GIN(tags_detectes)")
-        .execute(pool)
-        .await?;
-    
-    sqlx::query("CREATE INDEX IF NOT EXISTS idx_image_analyses_categorie ON image_analyses(categorie_predite) WHERE categorie_predite IS NOT NULL")
-        .execute(pool)
-        .await?;
-    
-    info!("✅ Table image_analyses créée avec succès !");
-    
-    Ok(())
-}
-
-/// Crée la fonction calculate_location_score pour le scoring géographique
-pub async fn ensure_calculate_location_score_function(pool: &PgPool) -> Result<(), sqlx::Error> {
-    info!("🔍 Vérification de la fonction calculate_location_score()...");
-    
-    // Vérifier si la fonction existe
-    let exists = sqlx::query_scalar::<_, bool>(
-        "SELECT EXISTS(SELECT 1 FROM pg_proc WHERE proname = 'calculate_location_score')"
-    )
-    .fetch_one(pool)
+    sqlx::query(r#"
+        CREATE TRIGGER trigger_combinations_updated_at
+            BEFORE UPDATE ON autocomplete_combinations
+            FOR EACH ROW
+            EXECUTE FUNCTION update_combinations_updated_at()
+    "#)
+    .execute(pool)
     .await?;
     
-    if exists {
-        info!("✅ Fonction calculate_location_score() déjà présente");
-        return Ok(());
-    }
+    // Fonction upsert
+    sqlx::query(r#"
+        CREATE OR REPLACE FUNCTION upsert_autocomplete_combination(
+            p_product_vector TEXT[],
+            p_location_vector TEXT[] DEFAULT '{}',
+            p_full_vector TEXT[],
+            p_chosen_location TEXT DEFAULT NULL,
+            p_is_ai_preferred BOOLEAN DEFAULT FALSE,
+            p_ai_confidence FLOAT DEFAULT 0.0,
+            p_session_id TEXT DEFAULT NULL,
+            p_has_variant BOOLEAN DEFAULT FALSE,
+            p_variant_dimension TEXT DEFAULT NULL,
+            p_variant_value TEXT DEFAULT NULL,
+            p_prix DECIMAL(12, 2) DEFAULT NULL,
+            p_devise TEXT DEFAULT 'XAF',
+            p_stock INTEGER DEFAULT NULL,
+            p_service_id INTEGER DEFAULT NULL
+        )
+        RETURNS INTEGER AS $$
+        DECLARE
+            v_id INTEGER;
+            v_existing_count INTEGER;
+        BEGIN
+            SELECT id, usage_count INTO v_id, v_existing_count
+            FROM autocomplete_combinations
+            WHERE full_vector = p_full_vector;
+            
+            IF FOUND THEN
+                UPDATE autocomplete_combinations
+                SET 
+                    usage_count = usage_count + 1,
+                    is_ai_preferred = CASE WHEN p_is_ai_preferred THEN TRUE ELSE is_ai_preferred END,
+                    ai_confidence = GREATEST(ai_confidence, p_ai_confidence),
+                    service_id = COALESCE(p_service_id, service_id),
+                    updated_at = NOW()
+                WHERE id = v_id;
+                RETURN v_id;
+            ELSE
+                INSERT INTO autocomplete_combinations (
+                    service_id, product_vector, location_vector, full_vector,
+                    chosen_location, usage_count, is_ai_preferred, ai_confidence,
+                    session_id, has_variant, variant_dimension, variant_value,
+                    prix, devise, stock
+                ) VALUES (
+                    p_service_id, p_product_vector, p_location_vector, p_full_vector,
+                    p_chosen_location, 1, p_is_ai_preferred, p_ai_confidence,
+                    p_session_id, p_has_variant, p_variant_dimension, p_variant_value,
+                    p_prix, p_devise, p_stock
+                )
+                RETURNING id INTO v_id;
+                RETURN v_id;
+            END IF;
+        END;
+        $$ LANGUAGE plpgsql
+    "#)
+    .execute(pool)
+    .await?;
     
-    warn!("⚠️ Fonction calculate_location_score() manquante, création en cours...");
-    
-    // Créer la fonction
+    // Fonction calculate_location_score
     sqlx::query(r#"
         CREATE OR REPLACE FUNCTION calculate_location_score(
             search_location TEXT,
             location_vector TEXT[],
             chosen_location TEXT
-        ) RETURNS FLOAT AS $$
+        )
+        RETURNS FLOAT AS $$
         DECLARE
-            position INTEGER;
-            score FLOAT;
-            vector_length INTEGER;
+            score FLOAT := 0.0;
+            search_lower TEXT;
+            i INTEGER;
         BEGIN
-            -- Match exact sur choix utilisateur
-            IF search_location = chosen_location THEN
-                RETURN 100.0;
-            END IF;
-            
-            -- Trouver position dans vecteur
-            SELECT idx INTO position
-            FROM unnest(location_vector) WITH ORDINALITY AS arr(val, idx)
-            WHERE val = search_location
-            LIMIT 1;
-            
-            -- Pas trouvé
-            IF position IS NULL THEN
+            IF search_location IS NULL OR location_vector IS NULL THEN
                 RETURN 0.0;
             END IF;
             
-            -- Calculer longueur vecteur
-            vector_length := array_length(location_vector, 1);
-            IF vector_length IS NULL OR vector_length = 0 THEN
-                RETURN 0.0;
+            search_lower := LOWER(search_location);
+            
+            IF chosen_location IS NOT NULL AND LOWER(chosen_location) = search_lower THEN
+                RETURN 1.0;
             END IF;
             
-            -- Score selon position : 
-            -- Position 1 (choix) = 100
-            -- Position 2-15 (enfants) = 100 / position
-            -- Position 16+ (parents) = 50 / position
-            IF position = 1 THEN
-                score := 100.0;
-            ELSIF position <= 15 THEN
-                score := 100.0 / position::FLOAT;
-            ELSE
-                score := 50.0 / position::FLOAT;
-            END IF;
+            FOR i IN 1..array_length(location_vector, 1) LOOP
+                IF LOWER(location_vector[i]) = search_lower THEN
+                    score := 1.0 - (i - 1) * 0.1;
+                    EXIT;
+                ELSIF LOWER(location_vector[i]) LIKE '%' || search_lower || '%' THEN
+                    score := 0.5 - (i - 1) * 0.1;
+                END IF;
+            END LOOP;
             
-            RETURN score;
+            RETURN GREATEST(score, 0.0);
         END;
-        $$ LANGUAGE plpgsql IMMUTABLE;
+        $$ LANGUAGE plpgsql IMMUTABLE
     "#)
     .execute(pool)
     .await?;
     
-    info!("✅ Fonction calculate_location_score() créée avec succès !");
-    
-    Ok(())
-}
-
-/// Crée la fonction hybrid_image_search pour la recherche par image
-pub async fn ensure_hybrid_image_search_function(pool: &PgPool) -> Result<(), sqlx::Error> {
-    info!("🔍 Vérification de la fonction hybrid_image_search()...");
-    
-    // Vérifier si la fonction existe
-    let exists = sqlx::query_scalar::<_, bool>(
-        "SELECT EXISTS(SELECT 1 FROM pg_proc WHERE proname = 'hybrid_image_search')"
-    )
-    .fetch_one(pool)
-    .await?;
-    
-    if exists {
-        info!("✅ Fonction hybrid_image_search() déjà présente");
-        return Ok(());
-    }
-    
-    warn!("⚠️ Fonction hybrid_image_search() manquante, création en cours...");
-    
-    // Créer la fonction
-    sqlx::query(r#"
-        CREATE OR REPLACE FUNCTION hybrid_image_search(
-            search_tags TEXT[],
-            search_category TEXT DEFAULT NULL,
-            search_color TEXT DEFAULT NULL,
-            limit_results INTEGER DEFAULT 20
-        ) RETURNS TABLE(
-            service_id INTEGER,
-            image_url TEXT,
-            tags_matched INTEGER,
-            confidence_score NUMERIC,
-            total_score FLOAT
-        ) AS $$
-        BEGIN
-            RETURN QUERY
-            SELECT 
-                ia.service_id,
-                ia.image_url,
-                (
-                    SELECT COUNT(*)::INTEGER
-                    FROM unnest(ia.tags_detectes) tag
-                    WHERE tag = ANY(search_tags)
-                ) as tags_matched,
-                ia.confidence_score,
-                (
-                    -- Score basé sur tags matchés
-                    (SELECT COUNT(*)::FLOAT FROM unnest(ia.tags_detectes) tag WHERE tag = ANY(search_tags)) * 10.0
-                    +
-                    -- Bonus catégorie
-                    CASE WHEN search_category IS NOT NULL AND ia.categorie_predite = search_category THEN 20.0 ELSE 0.0 END
-                    +
-                    -- Bonus couleur
-                    CASE WHEN search_color IS NOT NULL AND ia.couleur_dominante = search_color THEN 15.0 ELSE 0.0 END
-                    +
-                    -- Bonus confidence
-                    COALESCE(ia.confidence_score, 0.0)
-                ) as total_score
-            FROM image_analyses ia
-            WHERE 
-                (search_tags IS NULL OR ia.tags_detectes && search_tags)
-                OR (search_category IS NOT NULL AND ia.categorie_predite = search_category)
-                OR (search_color IS NOT NULL AND ia.couleur_dominante = search_color)
-            ORDER BY total_score DESC
-            LIMIT limit_results;
-        END;
-        $$ LANGUAGE plpgsql;
-    "#)
-    .execute(pool)
-    .await?;
-    
-    info!("✅ Fonction hybrid_image_search() créée avec succès !");
-    
-    Ok(())
-}
-
-/// Vérifie et crée la table users si elle n'existe pas
-pub async fn ensure_users_table(pool: &PgPool) -> Result<(), sqlx::Error> {
-    info!("🔍 Vérification de la table users...");
-    
-    let exists = sqlx::query_scalar::<_, bool>(
-        "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'users')"
-    )
-    .fetch_one(pool)
-    .await?;
-    
-    if exists {
-        info!("✅ Table users déjà présente");
-        return Ok(());
-    }
-    
-    warn!("⚠️ Table users manquante, création en cours...");
-    
-    sqlx::query(r#"
-        CREATE TABLE IF NOT EXISTS users (
-            id SERIAL PRIMARY KEY,
-            email TEXT UNIQUE NOT NULL,
-            password_hash TEXT NOT NULL,
-            role TEXT NOT NULL,
-            is_provider BOOLEAN NOT NULL DEFAULT FALSE,
-            tokens_balance BIGINT NOT NULL DEFAULT 0,
-            token_price_user DOUBLE PRECISION NOT NULL DEFAULT 0.004,
-            token_price_provider DOUBLE PRECISION NOT NULL DEFAULT 0.004,
-            commission_pct REAL NOT NULL DEFAULT 0.15,
-            preferred_lang TEXT NOT NULL DEFAULT 'fr',
-            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-            gps VARCHAR(255),
-            gps_consent BOOLEAN DEFAULT TRUE,
-            nom_complet VARCHAR(255),
-            telephone VARCHAR(20)
-        )
-    "#)
-    .execute(pool)
-    .await?;
-    
-    // Créer les index
-    sqlx::query("CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)")
-        .execute(pool)
-        .await?;
-    
-    sqlx::query("CREATE INDEX IF NOT EXISTS idx_users_role ON users(role)")
-        .execute(pool)
-        .await?;
-    
-    info!("✅ Table users créée avec succès !");
-    
-    Ok(())
-}
-
-/// Vérifie et crée la table services si elle n'existe pas
-pub async fn ensure_services_table(pool: &PgPool) -> Result<(), sqlx::Error> {
-    info!("🔍 Vérification de la table services...");
-    
-    let exists = sqlx::query_scalar::<_, bool>(
-        "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'services')"
-    )
-    .fetch_one(pool)
-    .await?;
-    
-    if exists {
-        info!("✅ Table services déjà présente");
-        return Ok(());
-    }
-    
-    warn!("⚠️ Table services manquante, création en cours...");
-    
-    sqlx::query(r#"
-        CREATE TABLE IF NOT EXISTS services (
-            id SERIAL PRIMARY KEY,
-            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-            data JSONB NOT NULL,
-            is_active BOOLEAN NOT NULL DEFAULT TRUE,
-            auto_deactivate_at TIMESTAMPTZ,
-            last_reactivated_at TIMESTAMPTZ,
-            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-            is_tarissable BOOLEAN,
-            vitesse_tarissement VARCHAR(255),
-            active_days INTEGER,
-            category VARCHAR(255),
-            last_alert_sent_at TIMESTAMP,
-            gps TEXT
-        )
-    "#)
-    .execute(pool)
-    .await?;
-    
-    // Créer les index
-    sqlx::query("CREATE INDEX IF NOT EXISTS idx_services_user_id ON services(user_id)")
-        .execute(pool)
-        .await?;
-    
-    sqlx::query("CREATE INDEX IF NOT EXISTS idx_services_is_active ON services(is_active)")
-        .execute(pool)
-        .await?;
-    
-    sqlx::query("CREATE INDEX IF NOT EXISTS idx_services_created_at ON services(created_at DESC)")
-        .execute(pool)
-        .await?;
-    
-    info!("✅ Table services créée avec succès !");
-    
-    Ok(())
-}
-
-/// Vérifie et crée la table media si elle n'existe pas
-pub async fn ensure_media_table(pool: &PgPool) -> Result<(), sqlx::Error> {
-    info!("🔍 Vérification de la table media...");
-    
-    let exists = sqlx::query_scalar::<_, bool>(
-        "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'media')"
-    )
-    .fetch_one(pool)
-    .await?;
-    
-    if exists {
-        info!("✅ Table media déjà présente, vérification des colonnes...");
-        
-        // ✅ Ajouter colonnes manquantes si table existe déjà
-        let columns_to_add = vec![
-            ("product_id", "TEXT"),
-            ("product_index", "INTEGER"),
-            ("is_main_image", "BOOLEAN DEFAULT FALSE"),
-            ("display_order", "INTEGER DEFAULT 0"),
-        ];
-        
-        for (column_name, column_type) in columns_to_add {
-            let column_exists = sqlx::query_scalar::<_, bool>(
-                "SELECT EXISTS(SELECT 1 FROM information_schema.columns 
-                 WHERE table_name = 'media' AND column_name = $1)"
-            )
-            .bind(column_name)
-            .fetch_one(pool)
-            .await?;
-            
-            if !column_exists {
-                warn!("⚠️ Colonne media.{} manquante, ajout en cours...", column_name);
-                let alter_query = format!("ALTER TABLE media ADD COLUMN IF NOT EXISTS {} {}", column_name, column_type);
-                sqlx::query(&alter_query)
-                    .execute(pool)
-                    .await?;
-                info!("✅ Colonne media.{} ajoutée", column_name);
-            }
-        }
-        
-        // Créer index manquants si colonnes ajoutées
-        let _ = sqlx::query("CREATE INDEX IF NOT EXISTS idx_media_product_id ON media(product_id) WHERE product_id IS NOT NULL")
-            .execute(pool)
-            .await;
-        
-        let _ = sqlx::query("CREATE INDEX IF NOT EXISTS idx_media_is_main ON media(service_id, is_main_image) WHERE is_main_image = TRUE")
-            .execute(pool)
-            .await;
-        
-        return Ok(());
-    }
-    
-    warn!("⚠️ Table media manquante, création en cours...");
-    
-    sqlx::query(r#"
-        CREATE TABLE IF NOT EXISTS media (
-            id SERIAL PRIMARY KEY,
-            service_id INTEGER NOT NULL REFERENCES services(id) ON DELETE CASCADE,
-            product_id TEXT,
-            product_index INTEGER,
-            type TEXT NOT NULL,
-            path TEXT NOT NULL,
-            uploaded_at TIMESTAMP DEFAULT NOW(),
-            media_type TEXT,
-            file_size BIGINT,
-            file_format TEXT,
-            is_main_image BOOLEAN DEFAULT FALSE,
-            display_order INTEGER DEFAULT 0,
-            image_signature JSONB,
-            image_hash VARCHAR(64),
-            image_metadata JSONB
-        )
-    "#)
-    .execute(pool)
-    .await?;
-    
-    // Créer les index
-    sqlx::query("CREATE INDEX IF NOT EXISTS idx_media_service_id ON media(service_id)")
-        .execute(pool)
-        .await?;
-    
-    sqlx::query("CREATE INDEX IF NOT EXISTS idx_media_type ON media(type)")
-        .execute(pool)
-        .await?;
-    
-    sqlx::query("CREATE INDEX IF NOT EXISTS idx_media_product_index ON media(service_id, product_index) WHERE product_index IS NOT NULL")
-        .execute(pool)
-        .await?;
-    
-    sqlx::query("CREATE INDEX IF NOT EXISTS idx_media_product_id ON media(product_id) WHERE product_id IS NOT NULL")
-        .execute(pool)
-        .await?;
-    
-    sqlx::query("CREATE INDEX IF NOT EXISTS idx_media_is_main ON media(service_id, is_main_image) WHERE is_main_image = TRUE")
-        .execute(pool)
-        .await?;
-    
-    sqlx::query("CREATE INDEX IF NOT EXISTS idx_media_display_order ON media(service_id, product_index, display_order)")
-        .execute(pool)
-        .await?;
-    
-    info!("✅ Table media créée avec succès !");
-    
-    Ok(())
-}
-
-/// Vérifie et crée la table echanges si elle n'existe pas
-pub async fn ensure_echanges_table(pool: &PgPool) -> Result<(), sqlx::Error> {
-    info!("🔍 Vérification de la table echanges...");
-    
-    let exists = sqlx::query_scalar::<_, bool>(
-        "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'echanges')"
-    )
-    .fetch_one(pool)
-    .await?;
-    
-    if exists {
-        info!("✅ Table echanges déjà présente");
-        return Ok(());
-    }
-    
-    warn!("⚠️ Table echanges manquante, création en cours...");
-    
-    sqlx::query(r#"
-        CREATE TABLE IF NOT EXISTS echanges (
-            id SERIAL PRIMARY KEY,
-            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-            offre JSONB NOT NULL,
-            besoin JSONB NOT NULL,
-            statut VARCHAR(32) NOT NULL DEFAULT 'en_attente',
-            matched_with INTEGER REFERENCES echanges(id),
-            quantite_offerte DOUBLE PRECISION,
-            quantite_requise DOUBLE PRECISION,
-            lot_id INTEGER,
-            disponibilite JSONB,
-            created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-            updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-        )
-    "#)
-    .execute(pool)
-    .await?;
-    
-    // Créer les index
-    sqlx::query("CREATE INDEX IF NOT EXISTS idx_echanges_user_id ON echanges(user_id)")
-        .execute(pool)
-        .await?;
-    
-    sqlx::query("CREATE INDEX IF NOT EXISTS idx_echanges_statut ON echanges(statut)")
-        .execute(pool)
-        .await?;
-    
-    info!("✅ Table echanges créée avec succès !");
-    
-    Ok(())
-}
-
-/// Vérifie et crée la table conversations si elle n'existe pas
-pub async fn ensure_conversations_table(pool: &PgPool) -> Result<(), sqlx::Error> {
-    info!("🔍 Vérification de la table conversations...");
-    
-    let exists = sqlx::query_scalar::<_, bool>(
-        "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'conversations')"
-    )
-    .fetch_one(pool)
-    .await?;
-    
-    if exists {
-        info!("✅ Table conversations déjà présente");
-        return Ok(());
-    }
-    
-    warn!("⚠️ Table conversations manquante, création en cours...");
-    
-    // Créer extension uuid si pas déjà fait
-    let _ = sqlx::query("CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\"")
-        .execute(pool)
-        .await;
-    
-    sqlx::query(r#"
-        CREATE TABLE IF NOT EXISTS conversations (
-            id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
-            client_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-            prestataire_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-            service_id INTEGER REFERENCES services(id) ON DELETE SET NULL,
-            service_title TEXT,
-            status VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active', 'completed', 'cancelled')),
-            is_active BOOLEAN DEFAULT TRUE,
-            created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-            updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-            last_message_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-        )
-    "#)
-    .execute(pool)
-    .await?;
-    
-    // Créer les index
-    sqlx::query("CREATE INDEX IF NOT EXISTS idx_conversations_client_id ON conversations(client_id)")
-        .execute(pool)
-        .await?;
-    
-    sqlx::query("CREATE INDEX IF NOT EXISTS idx_conversations_prestataire_id ON conversations(prestataire_id)")
-        .execute(pool)
-        .await?;
-    
-    sqlx::query("CREATE INDEX IF NOT EXISTS idx_conversations_service_id ON conversations(service_id)")
-        .execute(pool)
-        .await?;
-    
-    info!("✅ Table conversations créée avec succès !");
-    
-    Ok(())
-}
-
-/// Vérifie et crée la table chat_messages si elle n'existe pas
-pub async fn ensure_chat_messages_table(pool: &PgPool) -> Result<(), sqlx::Error> {
-    info!("🔍 Vérification de la table chat_messages...");
-    
-    let exists = sqlx::query_scalar::<_, bool>(
-        "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'chat_messages')"
-    )
-    .fetch_one(pool)
-    .await?;
-    
-    if exists {
-        info!("✅ Table chat_messages déjà présente");
-        return Ok(());
-    }
-    
-    warn!("⚠️ Table chat_messages manquante, création en cours...");
-    
-    sqlx::query(r#"
-        CREATE TABLE IF NOT EXISTS chat_messages (
-            id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
-            conversation_id TEXT NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
-            from_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-            content TEXT NOT NULL,
-            message_type VARCHAR(20) DEFAULT 'text' CHECK (message_type IN ('text', 'image', 'audio', 'video', 'file')),
-            metadata JSONB,
-            is_read BOOLEAN DEFAULT FALSE,
-            is_edited BOOLEAN DEFAULT FALSE,
-            edited_at TIMESTAMP WITH TIME ZONE,
-            created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-            updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-        )
-    "#)
-    .execute(pool)
-    .await?;
-    
-    // Créer les index
-    sqlx::query("CREATE INDEX IF NOT EXISTS idx_chat_messages_conversation_id ON chat_messages(conversation_id)")
-        .execute(pool)
-        .await?;
-    
-    sqlx::query("CREATE INDEX IF NOT EXISTS idx_chat_messages_from_user_id ON chat_messages(from_user_id)")
-        .execute(pool)
-        .await?;
-    
-    sqlx::query("CREATE INDEX IF NOT EXISTS idx_chat_messages_created_at ON chat_messages(created_at DESC)")
-        .execute(pool)
-        .await?;
-    
-    info!("✅ Table chat_messages créée avec succès !");
+    info!("✅ Table autocomplete_combinations créée avec succès !");
     
     Ok(())
 }
@@ -1193,42 +713,6 @@ pub async fn ensure_chat_messages_table(pool: &PgPool) -> Result<(), sqlx::Error
 /// Exécute toutes les migrations automatiques nécessaires
 pub async fn run_auto_migrations(pool: &PgPool) {
     info!("🚀 Démarrage des migrations automatiques...");
-    
-    // Migration 0.1: Table users
-    match ensure_users_table(pool).await {
-        Ok(_) => info!("✅ Migration auto: users table OK"),
-        Err(e) => error!("❌ Erreur migration auto users: {}", e),
-    }
-    
-    // Migration 0.2: Table services
-    match ensure_services_table(pool).await {
-        Ok(_) => info!("✅ Migration auto: services table OK"),
-        Err(e) => error!("❌ Erreur migration auto services: {}", e),
-    }
-    
-    // Migration 0.3: Table media
-    match ensure_media_table(pool).await {
-        Ok(_) => info!("✅ Migration auto: media table OK"),
-        Err(e) => error!("❌ Erreur migration auto media: {}", e),
-    }
-    
-    // Migration 0.4: Table echanges
-    match ensure_echanges_table(pool).await {
-        Ok(_) => info!("✅ Migration auto: echanges table OK"),
-        Err(e) => error!("❌ Erreur migration auto echanges: {}", e),
-    }
-    
-    // Migration 0.5: Table conversations
-    match ensure_conversations_table(pool).await {
-        Ok(_) => info!("✅ Migration auto: conversations table OK"),
-        Err(e) => error!("❌ Erreur migration auto conversations: {}", e),
-    }
-    
-    // Migration 0.6: Table chat_messages
-    match ensure_chat_messages_table(pool).await {
-        Ok(_) => info!("✅ Migration auto: chat_messages table OK"),
-        Err(e) => error!("❌ Erreur migration auto chat_messages: {}", e),
-    }
     
     // Migration 1: Fonction de désactivation des produits
     match ensure_deactivate_expired_products_function(pool).await {
@@ -1248,42 +732,18 @@ pub async fn run_auto_migrations(pool: &PgPool) {
         Err(e) => error!("❌ Erreur migration auto notifications: {}", e),
     }
     
-    // Migration 4: Table token_usage_logs
-    match ensure_token_usage_logs_table(pool).await {
-        Ok(_) => info!("✅ Migration auto: token_usage_logs table OK"),
-        Err(e) => error!("❌ Erreur migration auto token_usage_logs: {}", e),
+    // Migration 4: Table autocomplete_characteristics (✅ 2025-11-01)
+    match ensure_autocomplete_characteristics_table(pool).await {
+        Ok(_) => info!("✅ Migration auto: autocomplete_characteristics table OK"),
+        Err(e) => error!("❌ Erreur migration auto autocomplete_characteristics: {}", e),
     }
     
-    // Migration 5: Table autocomplete_combinations
+    // Migration 5: Table autocomplete_combinations (✅ NOUVEAU 2025-11-02)
     match ensure_autocomplete_combinations_table(pool).await {
         Ok(_) => info!("✅ Migration auto: autocomplete_combinations table OK"),
         Err(e) => error!("❌ Erreur migration auto autocomplete_combinations: {}", e),
     }
     
-    // Migration 6: Table geo_hierarchy
-    match ensure_geo_hierarchy_table(pool).await {
-        Ok(_) => info!("✅ Migration auto: geo_hierarchy table OK"),
-        Err(e) => error!("❌ Erreur migration auto geo_hierarchy: {}", e),
-    }
-    
-    // Migration 7: Table image_analyses
-    match ensure_image_analyses_table(pool).await {
-        Ok(_) => info!("✅ Migration auto: image_analyses table OK"),
-        Err(e) => error!("❌ Erreur migration auto image_analyses: {}", e),
-    }
-    
-    // Migration 8: Fonction calculate_location_score
-    match ensure_calculate_location_score_function(pool).await {
-        Ok(_) => info!("✅ Migration auto: calculate_location_score() function OK"),
-        Err(e) => error!("❌ Erreur migration auto calculate_location_score: {}", e),
-    }
-    
-    // Migration 9: Fonction hybrid_image_search
-    match ensure_hybrid_image_search_function(pool).await {
-        Ok(_) => info!("✅ Migration auto: hybrid_image_search() function OK"),
-        Err(e) => error!("❌ Erreur migration auto hybrid_image_search: {}", e),
-    }
-    
-    info!("✅ Migrations automatiques terminées (15 migrations exécutées)");
+    info!("✅ Migrations automatiques terminées");
 }
 

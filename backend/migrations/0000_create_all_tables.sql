@@ -136,3 +136,486 @@ CREATE INDEX IF NOT EXISTS idx_payment_transactions_status ON payment_transactio
 CREATE INDEX IF NOT EXISTS idx_payment_transactions_created_at ON payment_transactions(created_at);
 CREATE INDEX IF NOT EXISTS idx_token_transactions_user_id ON token_transactions(user_id);
 CREATE INDEX IF NOT EXISTS idx_token_transactions_type ON token_transactions(transaction_type);
+
+-- Table autocomplete_characteristics (✅ 2025-11-01)
+-- Stocke les caractéristiques individuelles pour autocomplete intelligent
+CREATE TABLE IF NOT EXISTS autocomplete_characteristics (
+    id SERIAL PRIMARY KEY,
+    identifiant_base VARCHAR(255) NOT NULL,
+    sous_caracteristique VARCHAR(255) NOT NULL,
+    valeur VARCHAR(500) NOT NULL,
+    origine_champs VARCHAR(50) NOT NULL DEFAULT 'ia',
+    user_id INTEGER,
+    service_id INTEGER,
+    usage_count INTEGER DEFAULT 1,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    CONSTRAINT unique_autocomplete_characteristic 
+        UNIQUE (identifiant_base, sous_caracteristique, valeur)
+);
+
+-- Index pour autocomplete_characteristics
+CREATE INDEX IF NOT EXISTS idx_autocomplete_identifiant_base ON autocomplete_characteristics(identifiant_base);
+CREATE INDEX IF NOT EXISTS idx_autocomplete_sous_caracteristique ON autocomplete_characteristics(sous_caracteristique);
+CREATE INDEX IF NOT EXISTS idx_autocomplete_base_sous ON autocomplete_characteristics(identifiant_base, sous_caracteristique);
+CREATE INDEX IF NOT EXISTS idx_autocomplete_valeur_lower ON autocomplete_characteristics(LOWER(valeur));
+CREATE INDEX IF NOT EXISTS idx_autocomplete_origine ON autocomplete_characteristics(origine_champs);
+CREATE INDEX IF NOT EXISTS idx_autocomplete_usage_count ON autocomplete_characteristics(identifiant_base, sous_caracteristique, usage_count DESC);
+
+-- Index conditionnels pour autocomplete_characteristics
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE c.relname = 'idx_autocomplete_user_id' AND n.nspname = 'public'
+    ) THEN
+        CREATE INDEX idx_autocomplete_user_id ON autocomplete_characteristics(user_id) WHERE user_id IS NOT NULL;
+    END IF;
+END $$;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE c.relname = 'idx_autocomplete_service_id' AND n.nspname = 'public'
+    ) THEN
+        CREATE INDEX idx_autocomplete_service_id ON autocomplete_characteristics(service_id) WHERE service_id IS NOT NULL;
+    END IF;
+END $$;
+
+-- Table autocomplete_combinations (✅ NOUVEAU 2025-11-02)
+-- Stocke les vecteurs complets de produits pour recherche intelligente
+CREATE TABLE IF NOT EXISTS autocomplete_combinations (
+    id SERIAL PRIMARY KEY,
+    service_id INTEGER,
+    product_vector TEXT[] NOT NULL,
+    location_vector TEXT[] DEFAULT '{}',
+    full_vector TEXT[] NOT NULL,
+    chosen_location TEXT,
+    usage_count INTEGER DEFAULT 1,
+    is_ai_preferred BOOLEAN DEFAULT FALSE,
+    ai_confidence FLOAT DEFAULT 0.0,
+    session_id TEXT,
+    has_variant BOOLEAN DEFAULT FALSE,
+    variant_dimension TEXT,
+    variant_value TEXT,
+    prix DECIMAL(12, 2),
+    devise TEXT DEFAULT 'XAF',
+    stock INTEGER,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    CONSTRAINT unique_full_vector UNIQUE (full_vector)
+);
+
+-- Index pour autocomplete_combinations
+CREATE INDEX IF NOT EXISTS idx_combinations_session ON autocomplete_combinations(session_id);
+CREATE INDEX IF NOT EXISTS idx_combinations_usage_count ON autocomplete_combinations(usage_count DESC);
+CREATE INDEX IF NOT EXISTS idx_combinations_location_usage ON autocomplete_combinations(chosen_location, usage_count DESC);
+CREATE INDEX IF NOT EXISTS idx_combinations_variant ON autocomplete_combinations(has_variant, variant_dimension, variant_value);
+CREATE INDEX IF NOT EXISTS idx_combinations_product_vector_gin ON autocomplete_combinations USING GIN(product_vector);
+CREATE INDEX IF NOT EXISTS idx_combinations_location_vector_gin ON autocomplete_combinations USING GIN(location_vector);
+CREATE INDEX IF NOT EXISTS idx_combinations_full_vector_gin ON autocomplete_combinations USING GIN(full_vector);
+
+-- Index conditionnels pour autocomplete_combinations
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE c.relname = 'idx_combinations_service_id' AND n.nspname = 'public'
+    ) THEN
+        CREATE INDEX idx_combinations_service_id ON autocomplete_combinations(service_id) WHERE service_id IS NOT NULL;
+    END IF;
+END $$;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE c.relname = 'idx_combinations_ai_preferred' AND n.nspname = 'public'
+    ) THEN
+        CREATE INDEX idx_combinations_ai_preferred ON autocomplete_combinations(is_ai_preferred) WHERE is_ai_preferred = TRUE;
+    END IF;
+END $$;
+
+-- Table products_lifecycle (gestion cycle de vie des produits)
+CREATE TABLE IF NOT EXISTS products_lifecycle (
+    id SERIAL PRIMARY KEY,
+    service_id INTEGER NOT NULL REFERENCES services(id) ON DELETE CASCADE,
+    product_index INTEGER NOT NULL,
+    product_nom TEXT NOT NULL,
+    product_type TEXT NOT NULL,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    auto_deactivate_at TIMESTAMPTZ DEFAULT (NOW() + INTERVAL '30 days'),
+    last_reactivated_at TIMESTAMPTZ,
+    reactivation_cost INTEGER DEFAULT 1000,
+    deactivation_count INTEGER DEFAULT 0,
+    total_reactivation_paid INTEGER DEFAULT 0,
+    UNIQUE(service_id, product_index)
+);
+
+-- Index pour products_lifecycle
+CREATE INDEX IF NOT EXISTS idx_products_lifecycle_service_id ON products_lifecycle(service_id);
+CREATE INDEX IF NOT EXISTS idx_products_lifecycle_active ON products_lifecycle(is_active);
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE c.relname = 'idx_products_lifecycle_auto_deactivate' AND n.nspname = 'public'
+    ) THEN
+        CREATE INDEX idx_products_lifecycle_auto_deactivate ON products_lifecycle(auto_deactivate_at) WHERE is_active = TRUE;
+    END IF;
+END $$;
+
+-- Table publicites (gestion des publicités)
+CREATE TABLE IF NOT EXISTS publicites (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    titre VARCHAR(255) NOT NULL,
+    description TEXT,
+    produits_indexes TEXT[] NOT NULL DEFAULT '{}',
+    videos TEXT[] DEFAULT '{}',
+    thumbnails TEXT[] DEFAULT '{}',
+    duree_jours INTEGER NOT NULL CHECK (duree_jours > 0),
+    cout INTEGER NOT NULL CHECK (cout >= 0),
+    devise_utilisateur VARCHAR(10) DEFAULT 'FCFA',
+    zone_geographique VARCHAR(50) NOT NULL DEFAULT 'local' CHECK (zone_geographique IN ('local', 'regional', 'international')),
+    geo_publicitaire GEOMETRY(POINT, 4326),
+    rayon_km INTEGER DEFAULT 50,
+    status VARCHAR(20) NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'expired', 'pending', 'paused')),
+    date_debut TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    date_fin TIMESTAMPTZ NOT NULL,
+    vues INTEGER NOT NULL DEFAULT 0,
+    clics INTEGER NOT NULL DEFAULT 0,
+    impressions INTEGER NOT NULL DEFAULT 0,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT check_date_fin_after_debut CHECK (date_fin > date_debut),
+    CONSTRAINT check_produits_not_empty CHECK (array_length(produits_indexes, 1) > 0)
+);
+
+-- Index pour publicites
+CREATE INDEX IF NOT EXISTS idx_publicites_user_id ON publicites(user_id);
+CREATE INDEX IF NOT EXISTS idx_publicites_status ON publicites(status);
+CREATE INDEX IF NOT EXISTS idx_publicites_zone ON publicites(zone_geographique);
+CREATE INDEX IF NOT EXISTS idx_publicites_date_fin ON publicites(date_fin);
+CREATE INDEX IF NOT EXISTS idx_publicites_produits_gin ON publicites USING GIN(produits_indexes);
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE c.relname = 'idx_publicites_active' AND n.nspname = 'public'
+    ) THEN
+        CREATE INDEX idx_publicites_active ON publicites(status, date_fin) WHERE status = 'active';
+    END IF;
+END $$;
+
+-- Table notifications (gestion des notifications utilisateurs)
+CREATE TABLE IF NOT EXISTS notifications (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    type VARCHAR(50),
+    notification_type VARCHAR(50),
+    title VARCHAR(255),
+    message TEXT NOT NULL,
+    data JSONB,
+    metadata JSONB,
+    is_read BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    read_at TIMESTAMPTZ
+);
+
+-- Index pour notifications
+CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id);
+CREATE INDEX IF NOT EXISTS idx_notifications_is_read ON notifications(is_read);
+CREATE INDEX IF NOT EXISTS idx_notifications_created_at ON notifications(created_at DESC);
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE c.relname = 'idx_notifications_user_unread' AND n.nspname = 'public'
+    ) THEN
+        CREATE INDEX idx_notifications_user_unread ON notifications(user_id, is_read) WHERE is_read = FALSE;
+    END IF;
+END $$;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE c.relname = 'idx_notifications_type' AND n.nspname = 'public'
+    ) THEN
+        CREATE INDEX idx_notifications_type ON notifications(type) WHERE type IS NOT NULL;
+    END IF;
+END $$;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE c.relname = 'idx_notifications_notification_type' AND n.nspname = 'public'
+    ) THEN
+        CREATE INDEX idx_notifications_notification_type ON notifications(notification_type) WHERE notification_type IS NOT NULL;
+    END IF;
+END $$;
+
+-- ========================================
+-- FONCTIONS ET TRIGGERS SQL
+-- ========================================
+
+-- Fonction : Désactiver les produits expirés automatiquement
+CREATE OR REPLACE FUNCTION deactivate_expired_products()
+RETURNS TABLE(
+    service_id INTEGER,
+    product_index INTEGER,
+    product_nom TEXT,
+    user_id INTEGER
+) AS $$
+BEGIN
+    RETURN QUERY
+    UPDATE products_lifecycle pl
+    SET 
+        is_active = FALSE,
+        updated_at = NOW(),
+        deactivation_count = deactivation_count + 1
+    FROM services s
+    WHERE pl.service_id = s.id
+        AND pl.is_active = TRUE
+        AND pl.auto_deactivate_at <= NOW()
+    RETURNING 
+        pl.service_id,
+        pl.product_index,
+        pl.product_nom,
+        s.user_id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Fonction : Mettre à jour updated_at pour publicites
+CREATE OR REPLACE FUNCTION update_publicites_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Trigger : Appliquer update_publicites_updated_at
+DROP TRIGGER IF EXISTS trigger_update_publicites_updated_at ON publicites;
+CREATE TRIGGER trigger_update_publicites_updated_at
+    BEFORE UPDATE ON publicites
+    FOR EACH ROW
+    EXECUTE FUNCTION update_publicites_updated_at();
+
+-- Fonction : Calculer automatiquement date_fin pour publicites
+CREATE OR REPLACE FUNCTION set_publicite_date_fin()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW.date_fin IS NULL OR NEW.date_fin = NEW.date_debut THEN
+        NEW.date_fin = NEW.date_debut + (NEW.duree_jours || ' days')::interval;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Trigger : Appliquer set_publicite_date_fin
+DROP TRIGGER IF EXISTS trigger_set_publicite_date_fin ON publicites;
+CREATE TRIGGER trigger_set_publicite_date_fin
+    BEFORE INSERT OR UPDATE ON publicites
+    FOR EACH ROW
+    EXECUTE FUNCTION set_publicite_date_fin();
+
+-- Fonction : Désactiver les publicités expirées
+CREATE OR REPLACE FUNCTION deactivate_expired_publicites()
+RETURNS INTEGER AS $$
+DECLARE
+    affected_count INTEGER;
+BEGIN
+    UPDATE publicites
+    SET status = 'expired'
+    WHERE status = 'active'
+    AND date_fin < NOW();
+    
+    GET DIAGNOSTICS affected_count = ROW_COUNT;
+    RETURN affected_count;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Fonction : Mettre à jour updated_at pour autocomplete_characteristics
+CREATE OR REPLACE FUNCTION update_autocomplete_characteristics_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Trigger : Appliquer update_autocomplete_characteristics_updated_at
+DROP TRIGGER IF EXISTS trigger_autocomplete_characteristics_updated_at ON autocomplete_characteristics;
+CREATE TRIGGER trigger_autocomplete_characteristics_updated_at
+    BEFORE UPDATE ON autocomplete_characteristics
+    FOR EACH ROW
+    EXECUTE FUNCTION update_autocomplete_characteristics_updated_at();
+
+-- Fonction : Upsert caractéristique autocomplete (incrémenter usage_count si existe)
+CREATE OR REPLACE FUNCTION upsert_autocomplete_characteristic(
+    p_identifiant_base VARCHAR(255),
+    p_sous_caracteristique VARCHAR(255),
+    p_valeur VARCHAR(500),
+    p_origine_champs VARCHAR(50) DEFAULT 'ia',
+    p_user_id INTEGER DEFAULT NULL,
+    p_service_id INTEGER DEFAULT NULL
+)
+RETURNS INTEGER AS $$
+DECLARE
+    v_id INTEGER;
+BEGIN
+    INSERT INTO autocomplete_characteristics (
+        identifiant_base,
+        sous_caracteristique,
+        valeur,
+        origine_champs,
+        user_id,
+        service_id,
+        usage_count
+    )
+    VALUES (
+        p_identifiant_base,
+        p_sous_caracteristique,
+        p_valeur,
+        p_origine_champs,
+        p_user_id,
+        p_service_id,
+        1
+    )
+    ON CONFLICT (identifiant_base, sous_caracteristique, valeur)
+    DO UPDATE SET
+        usage_count = autocomplete_characteristics.usage_count + 1,
+        updated_at = NOW();
+    
+    SELECT id INTO v_id
+    FROM autocomplete_characteristics
+    WHERE identifiant_base = p_identifiant_base
+    AND sous_caracteristique = p_sous_caracteristique
+    AND valeur = p_valeur;
+    
+    RETURN v_id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Fonction : Mettre à jour updated_at pour autocomplete_combinations
+CREATE OR REPLACE FUNCTION update_combinations_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Trigger : Appliquer update_combinations_updated_at
+DROP TRIGGER IF EXISTS trigger_combinations_updated_at ON autocomplete_combinations;
+CREATE TRIGGER trigger_combinations_updated_at
+    BEFORE UPDATE ON autocomplete_combinations
+    FOR EACH ROW
+    EXECUTE FUNCTION update_combinations_updated_at();
+
+-- Fonction : Upsert combinaison autocomplete
+CREATE OR REPLACE FUNCTION upsert_autocomplete_combination(
+    p_product_vector TEXT[],
+    p_location_vector TEXT[] DEFAULT '{}',
+    p_full_vector TEXT[],
+    p_chosen_location TEXT DEFAULT NULL,
+    p_is_ai_preferred BOOLEAN DEFAULT FALSE,
+    p_ai_confidence FLOAT DEFAULT 0.0,
+    p_session_id TEXT DEFAULT NULL,
+    p_has_variant BOOLEAN DEFAULT FALSE,
+    p_variant_dimension TEXT DEFAULT NULL,
+    p_variant_value TEXT DEFAULT NULL,
+    p_prix DECIMAL(12, 2) DEFAULT NULL,
+    p_devise TEXT DEFAULT 'XAF',
+    p_stock INTEGER DEFAULT NULL,
+    p_service_id INTEGER DEFAULT NULL
+)
+RETURNS INTEGER AS $$
+DECLARE
+    v_id INTEGER;
+    v_existing_count INTEGER;
+BEGIN
+    SELECT id, usage_count INTO v_id, v_existing_count
+    FROM autocomplete_combinations
+    WHERE full_vector = p_full_vector;
+    
+    IF FOUND THEN
+        UPDATE autocomplete_combinations
+        SET 
+            usage_count = usage_count + 1,
+            is_ai_preferred = CASE WHEN p_is_ai_preferred THEN TRUE ELSE is_ai_preferred END,
+            ai_confidence = GREATEST(ai_confidence, p_ai_confidence),
+            service_id = COALESCE(p_service_id, service_id),
+            updated_at = NOW()
+        WHERE id = v_id;
+        RETURN v_id;
+    ELSE
+        INSERT INTO autocomplete_combinations (
+            service_id, product_vector, location_vector, full_vector,
+            chosen_location, usage_count, is_ai_preferred, ai_confidence,
+            session_id, has_variant, variant_dimension, variant_value,
+            prix, devise, stock
+        ) VALUES (
+            p_service_id, p_product_vector, p_location_vector, p_full_vector,
+            p_chosen_location, 1, p_is_ai_preferred, p_ai_confidence,
+            p_session_id, p_has_variant, p_variant_dimension, p_variant_value,
+            p_prix, p_devise, p_stock
+        )
+        RETURNING id INTO v_id;
+        RETURN v_id;
+    END IF;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Fonction : Calculer le score de localisation pour autocomplete
+CREATE OR REPLACE FUNCTION calculate_location_score(
+    search_location TEXT,
+    location_vector TEXT[],
+    chosen_location TEXT
+)
+RETURNS FLOAT AS $$
+DECLARE
+    score FLOAT := 0.0;
+    search_lower TEXT;
+    i INTEGER;
+BEGIN
+    IF search_location IS NULL OR location_vector IS NULL THEN
+        RETURN 0.0;
+    END IF;
+    
+    search_lower := LOWER(search_location);
+    
+    IF chosen_location IS NOT NULL AND LOWER(chosen_location) = search_lower THEN
+        RETURN 1.0;
+    END IF;
+    
+    FOR i IN 1..array_length(location_vector, 1) LOOP
+        IF LOWER(location_vector[i]) = search_lower THEN
+            score := 1.0 - (i - 1) * 0.1;
+            EXIT;
+        ELSIF LOWER(location_vector[i]) LIKE '%' || search_lower || '%' THEN
+            score := 0.5 - (i - 1) * 0.1;
+        END IF;
+    END LOOP;
+    
+    RETURN GREATEST(score, 0.0);
+END;
+$$ LANGUAGE plpgsql IMMUTABLE;

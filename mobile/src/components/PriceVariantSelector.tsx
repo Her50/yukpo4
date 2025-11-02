@@ -3,9 +3,11 @@
  * Sélecteur de variantes de prix pour les produits avec variantes (taille, pointure, quantité, etc.)
  */
 
+import * as ImagePicker from 'expo-image-picker';
 import React, { useCallback, useState } from 'react';
 import {
     Alert,
+    Image,
     Modal,
     ScrollView,
     StyleSheet,
@@ -22,6 +24,7 @@ interface PriceModality {
     prix: number; // Prix numérique (jamais string)
     devise: string; // Ex: "XAF", "EUR"
     stock?: number; // Stock disponible (optionnel)
+    image?: string; // Image spécifique à cette modalité (base64 ou URI)
 }
 
 interface PriceVariantSelectorProps {
@@ -51,6 +54,7 @@ export const PriceVariantSelector: React.FC<PriceVariantSelectorProps> = ({
         prix: 0,
         devise: defaultCurrency,
         stock: undefined,
+        image: undefined,
     });
 
     // Ouvrir le modal pour ajouter une nouvelle modalité
@@ -60,6 +64,7 @@ export const PriceVariantSelector: React.FC<PriceVariantSelectorProps> = ({
             prix: 0,
             devise: defaultCurrency,
             stock: undefined,
+            image: undefined,
         });
         setEditingModality(null);
         setEditIndex(null);
@@ -74,6 +79,7 @@ export const PriceVariantSelector: React.FC<PriceVariantSelectorProps> = ({
                 prix: modality.prix,
                 devise: modality.devise,
                 stock: modality.stock,
+                image: modality.image,
             });
             setEditingModality(modality);
             setEditIndex(index);
@@ -112,6 +118,7 @@ export const PriceVariantSelector: React.FC<PriceVariantSelectorProps> = ({
             prix: prix, // Toujours un nombre
             devise: tempModality.devise!,
             stock: tempModality.stock && tempModality.stock > 0 ? tempModality.stock : undefined,
+            image: tempModality.image,
         };
 
         const updated = [...modalites];
@@ -174,6 +181,14 @@ export const PriceVariantSelector: React.FC<PriceVariantSelectorProps> = ({
                 <View style={styles.modalitiesList}>
                     {modalites.map((modality, index) => (
                         <View key={index} style={styles.modalityItem}>
+                            {/* Image de la modalité */}
+                            {modality.image && (
+                                <Image
+                                    source={{ uri: modality.image.startsWith('data:') ? modality.image : `data:image/jpeg;base64,${modality.image}` }}
+                                    style={styles.modalityImage}
+                                    resizeMode="cover"
+                                />
+                            )}
                             <View style={styles.modalityInfo}>
                                 <Text style={styles.modalityValue}>{modality.valeur}</Text>
                                 <Text style={styles.modalityPrice}>{formatPrice(modality.prix, modality.devise)}</Text>
@@ -317,6 +332,59 @@ export const PriceVariantSelector: React.FC<PriceVariantSelectorProps> = ({
                                 />
                                 <Text style={styles.inputHint}>Laisser vide si illimité</Text>
                             </View>
+
+                            {/* Image (optionnel) */}
+                            <View style={styles.inputGroup}>
+                                <Text style={styles.inputLabel}>Image spécifique (optionnel)</Text>
+                                {tempModality.image ? (
+                                    <View style={styles.imagePreviewContainer}>
+                                        <Image
+                                            source={{ uri: tempModality.image.startsWith('data:') ? tempModality.image : `data:image/jpeg;base64,${tempModality.image}` }}
+                                            style={styles.imagePreview}
+                                            resizeMode="cover"
+                                        />
+                                        <TouchableOpacity
+                                            style={styles.removeImageButton}
+                                            onPress={() => setTempModality({ ...tempModality, image: undefined })}
+                                        >
+                                            <SafeIcon name="x" size={16} color="#FFF" />
+                                        </TouchableOpacity>
+                                    </View>
+                                ) : (
+                                    <TouchableOpacity
+                                        style={styles.uploadImageButton}
+                                        onPress={async () => {
+                                            try {
+                                                const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+                                                if (!permissionResult.granted) {
+                                                    Alert.alert('Permission refusée', 'Vous devez autoriser l\'accès à la galerie');
+                                                    return;
+                                                }
+
+                                                const result = await ImagePicker.launchImageLibraryAsync({
+                                                    mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                                                    allowsEditing: true,
+                                                    aspect: [4, 3],
+                                                    quality: 0.8,
+                                                    base64: true,
+                                                });
+
+                                                if (!result.canceled && result.assets[0]?.base64) {
+                                                    const imageBase64 = `data:image/jpeg;base64,${result.assets[0].base64}`;
+                                                    setTempModality({ ...tempModality, image: imageBase64 });
+                                                }
+                                            } catch (error) {
+                                                console.error('Erreur sélection image:', error);
+                                                Alert.alert('Erreur', 'Impossible de sélectionner l\'image');
+                                            }
+                                        }}
+                                    >
+                                        <SafeIcon name="image" size={20} color={modernColors.primary} />
+                                        <Text style={styles.uploadImageText}>Ajouter une image</Text>
+                                    </TouchableOpacity>
+                                )}
+                                <Text style={styles.inputHint}>Image spécifique à cette modalité (ex: photo du produit en pointure 38)</Text>
+                            </View>
                         </ScrollView>
 
                         <View style={styles.modalFooter}>
@@ -385,6 +453,7 @@ const styles = StyleSheet.create({
         borderRadius: 8,
         borderWidth: 1,
         borderColor: modernColors.border,
+        gap: 12,
     },
     modalityInfo: {
         flex: 1,
@@ -541,6 +610,50 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontWeight: '600',
         color: '#FFFFFF',
+    },
+    modalityImage: {
+        width: 60,
+        height: 60,
+        borderRadius: 8,
+        marginRight: 12,
+    },
+    imagePreviewContainer: {
+        position: 'relative',
+        marginBottom: 8,
+    },
+    imagePreview: {
+        width: '100%',
+        height: 200,
+        borderRadius: 8,
+        backgroundColor: '#F3F4F6',
+    },
+    removeImageButton: {
+        position: 'absolute',
+        top: 8,
+        right: 8,
+        backgroundColor: 'rgba(0, 0, 0, 0.6)',
+        borderRadius: 20,
+        width: 32,
+        height: 32,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    uploadImageButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        padding: 16,
+        borderRadius: 8,
+        borderWidth: 2,
+        borderColor: modernColors.primary,
+        borderStyle: 'dashed',
+        backgroundColor: '#F9FAFB',
+    },
+    uploadImageText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: modernColors.primary,
     },
 });
 

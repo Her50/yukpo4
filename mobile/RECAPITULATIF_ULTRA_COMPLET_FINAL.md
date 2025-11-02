@@ -723,3 +723,5 @@ Les patterns créés sont **réutilisables** pour les 44 catégories restantes.
 
 
 
+
+

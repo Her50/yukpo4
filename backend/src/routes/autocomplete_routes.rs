@@ -11,6 +11,9 @@ use crate::controllers::autocomplete_controller::{
     upsert_autocomplete_characteristic,
     historize_autocomplete_field,
     search_combinations, // ✅ NOUVEAU 2025-11-02: Recherche vectorielle multi-filtres
+    save_ai_combinations,
+    get_combinations_by_session,
+    link_combinations_to_service,
 };
 
 /// Routes pour la gestion de l'autocomplete
@@ -28,6 +31,12 @@ pub fn autocomplete_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route("/api/autocomplete/historize", post(historize_autocomplete_field))
         // POST /api/autocomplete/search-combinations (✅ NOUVEAU 2025-11-02)
         .route("/api/autocomplete/search-combinations", post(search_combinations))
+        // POST /api/autocomplete/save-ai-combinations (✅ NOUVEAU 2025-11-02)
+        .route("/api/autocomplete/save-ai-combinations", post(save_ai_combinations))
+        // GET /api/autocomplete/combinations/session/:session_id (✅ NOUVEAU 2025-11-02)
+        .route("/api/autocomplete/combinations/session/:session_id", get(get_combinations_by_session))
+        // POST /api/autocomplete/combinations/link-to-service (✅ NOUVEAU 2025-11-02)
+        .route("/api/autocomplete/combinations/link-to-service", post(link_combinations_to_service))
         .with_state(state)
 }
 
