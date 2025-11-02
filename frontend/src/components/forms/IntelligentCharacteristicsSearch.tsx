@@ -382,23 +382,40 @@ export const IntelligentCharacteristicsSearch: React.FC<IntelligentCharacteristi
 
       {/* Aide contextuelle avec info sur la préférence AI */}
       <div className="mt-2 space-y-1">
-        <div className="text-xs text-gray-500 flex items-start gap-2">
-          <Info className="w-3 h-3 flex-shrink-0 mt-0.5" />
+        {/* Message d'aide principal */}
+        <div className="text-xs text-gray-600 flex items-start gap-2">
+          <Info className="w-3 h-3 flex-shrink-0 mt-0.5 text-blue-500" />
           <span>
-            Tapez pour rechercher parmi les combinaisons existantes ou saisissez directement vos caractéristiques séparées par "{separateur}"
+            L'exemple ci-dessus <strong className="text-blue-600">({dynamicPlaceholder})</strong> est la combinaison recommandée par l'IA. 
+            Vous pouvez la sélectionner, la modifier, ou en choisir une autre en tapant dans le champ.
           </span>
         </div>
         
-        {preferredCombination && !value && (
-          <div className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded px-2 py-1.5 flex items-start gap-2">
-            <Sparkles className="w-3 h-3 flex-shrink-0 mt-0.5" />
-            <span>
-              <strong>Suggestion IA recommandée :</strong> {preferredVector}
-              <br />
-              <span className="text-amber-700">
-                (basée sur les caractéristiques identifiées dans votre demande)
-              </span>
-            </span>
+        {/* Encadré avec la recommandation IA si disponible */}
+        {preferredCombination && (
+          <div className="text-xs bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-300 rounded-lg px-3 py-2 flex items-start gap-2">
+            <Sparkles className="w-4 h-4 flex-shrink-0 mt-0.5 text-amber-600" />
+            <div>
+              <div className="font-semibold text-amber-900 mb-1">
+                🎯 Choix IA recommandé (basé sur votre demande)
+              </div>
+              <div className="text-amber-800 font-mono bg-white px-2 py-1 rounded border border-amber-200">
+                {preferredVector}
+              </div>
+              <div className="text-amber-700 mt-1 italic">
+                Confiance IA : {Math.round((preferredCombination.ai_confidence || 0) * 100)}%
+                {' · '}
+                {sessionCombinations.length - 1} autre{sessionCombinations.length > 2 ? 's' : ''} option{sessionCombinations.length > 2 ? 's' : ''} disponible{sessionCombinations.length > 2 ? 's' : ''}
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {/* Instructions si pas de valeur saisie */}
+        {!value && (
+          <div className="text-xs text-gray-500 bg-gray-50 border border-gray-200 rounded px-2 py-1.5">
+            💡 <strong>Comment utiliser :</strong> Cliquez dans le champ pour voir toutes les suggestions, 
+            ou commencez à taper (ex: "Nike", "Adidas", "noir", "42") pour rechercher dans les vecteurs.
           </div>
         )}
       </div>
