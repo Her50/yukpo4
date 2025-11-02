@@ -6,7 +6,7 @@ use axum::{
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use log::info;
-use crate::core::error::AppError;
+use crate::core::types::AppError;
 use crate::services::geonames_service;
 use crate::state::AppState;
 

@@ -33,22 +33,24 @@ const parseLocationString = (locationStr: string): LocationObject => {
 // ✅ Enrichir avec backend GeoNames
 const enrichLocation = async (location: LocationObject): Promise<LocationObject> => {
     try {
-        const response = await apiGet(
+        const response = await apiGet<any>(
             `/api/places/enrich?place_name=${encodeURIComponent(location.place_name)}&country=${encodeURIComponent(location.components?.pays || '')}`
         );
         
         if (response.success && response.data) {
+            const data: any = response.data;
+            
             return {
                 raw: location.raw,
-                place_name: response.data.place_name,
+                place_name: data.place_name || location.place_name,
                 components: {
-                    ville: response.data.place_name,
-                    region: response.data.hierarchy?.parents?.[0],
-                    pays: response.data.metadata?.country,
+                    ville: data.place_name || location.place_name,
+                    region: data.hierarchy?.parents?.[0] || location.components?.region,
+                    pays: data.metadata?.country || location.components?.pays,
                 },
-                coordinates: response.data.coordinates,
-                geoname_id: response.data.geoname_id,
-                location_vector: response.data.location_vector,
+                coordinates: data.coordinates || location.coordinates,
+                geoname_id: data.geoname_id,
+                location_vector: data.location_vector,
             };
         }
         
@@ -246,6 +248,7 @@ const styles = StyleSheet.create({
     selectorPlaceholder: { borderColor: modernColors.border },
     selectorText: { fontSize: 14, color: modernColors.text },
     placeholderText: { color: modernColors.textSecondary },
+    enrichingText: { fontSize: 11, color: modernColors.primary, marginTop: 2 },
     clearButton: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6 },
     clearText: { fontSize: 12, color: modernColors.error, fontWeight: '600' },
     modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.2)', justifyContent: 'flex-end' },

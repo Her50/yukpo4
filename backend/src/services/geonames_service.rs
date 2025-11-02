@@ -3,7 +3,7 @@ use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use log::{info, warn};
-use crate::core::error::AppError;
+use crate::core::types::AppError;
 
 const GEONAMES_BASE: &str = "http://api.geonames.org";
 const MAX_DEPTH: u8 = 7; // Quartier max
@@ -128,18 +128,18 @@ pub async fn enrich_location_bidirectional(
     
     // 1. Chercher dans cache d'abord
     let cache_key = format!("{}_{}", place_name, country_context.unwrap_or(""));
-    let cached = sqlx::query!(
+    let cached = sqlx::query_as::<_, (Vec<String>,)>(
         "SELECT location_vector FROM geo_hierarchy 
-         WHERE place_name = $1 AND parent_country = $2",
-        place_name,
-        country_context.unwrap_or("")
+         WHERE place_name = $1 AND parent_country = $2"
     )
+    .bind(place_name)
+    .bind(country_context.unwrap_or(""))
     .fetch_optional(pool)
     .await?;
     
     if let Some(cached) = cached {
         info!("✅ Trouvé en cache pour {}", place_name);
-        return Ok(cached.location_vector);
+        return Ok(cached.0);
     }
     
     // 2. Pas en cache → Chercher dans GeoNames
