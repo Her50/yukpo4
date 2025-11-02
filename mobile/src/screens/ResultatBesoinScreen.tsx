@@ -1,6 +1,6 @@
 ﻿/**
- * ResultatBesoinScreen v2.0 - Réécriture complète (2025-11-02)
- * Recherche progressive avec suggestions vecteurs autocomplete
+ * ResultatBesoinScreen v3.0 - Version optimale (2025-11-02)
+ * Recherche progressive + Filtrage intelligent + Tri proximité/prix
  * Sauvegarde originale : ResultatBesoinScreen.backup.tsx
  */
 
@@ -9,7 +9,6 @@ import {
   View,
   Text,
   StyleSheet,
-  TextInput,
   FlatList,
   TouchableOpacity,
   ActivityIndicator,
@@ -21,6 +20,8 @@ import { modernColors } from '../theme/modernTheme';
 import SafeIcon from '../components/SafeIcon';
 import { NativeCard } from '../components/NativeDesign';
 import ProductCard from '../components/ProductCard';
+import ChatInputMobile from '../components/ChatInputMobile';
+import { useLocation } from '../contexts/LocationContext';
 
 interface CombinationSuggestion {
   service_id: number;
@@ -59,30 +60,42 @@ interface Product {
   prix?: number;
   devise?: string;
   image?: string;
+  coordinates?: { lat: number; lng: number };
 }
+
+type SortOption = 'pertinence' | 'proximite' | 'prix_asc' | 'prix_desc';
+type FilterCategory = 'all' | 'with_stock' | 'with_variants' | 'nearby';
 
 const ResultatBesoinScreen: React.FC = () => {
   const navigation = useNavigation();
   const route = useRoute();
+  const { location } = useLocation();
 
-  // États
-  const [searchText, setSearchText] = useState('');
+  // États recherche
+  const [searchQuery, setSearchQuery] = useState('');
   const [filters, setFilters] = useState<string[]>([]);
   const [suggestions, setSuggestions] = useState<CombinationSuggestion[]>([]);
   const [results, setResults] = useState<Product[]>([]);
+  const [filteredResults, setFilteredResults] = useState<Product[]>([]);
+  
+  // États UI
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
   const [loadingResults, setLoadingResults] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  
+  // États filtrage et tri
+  const [sortBy, setSortBy] = useState<SortOption>('pertinence');
+  const [filterCategory, setFilterCategory] = useState<FilterCategory>('all');
+  const [showFilters, setShowFilters] = useState(false);
 
-  // Recherche progressive autocomplete
+  // ✅ Recherche progressive autocomplete
   useEffect(() => {
     const debounce = setTimeout(async () => {
-      if (searchText.trim()) {
-        const words = searchText.split(' ').filter(w => w.trim());
+      if (searchQuery.trim()) {
+        const words = searchQuery.split(' ').filter(w => w.trim());
         setFilters(words);
 
-        // Afficher suggestions si plus de 2 caractères
-        if (searchText.length >= 2) {
+        if (searchQuery.length >= 2) {
           setLoadingSuggestions(true);
           setShowSuggestions(true);
 
@@ -114,27 +127,96 @@ const ResultatBesoinScreen: React.FC = () => {
     }, 300);
 
     return () => clearTimeout(debounce);
-  }, [searchText]);
+  }, [searchQuery]);
 
-  // Sélectionner une suggestion
+  // ✅ Appliquer filtres et tri
+  useEffect(() => {
+    let filtered = [...results];
+
+    // Filtres par catégorie
+    switch (filterCategory) {
+      case 'with_stock':
+        filtered = filtered.filter(p => {
+          if (p.has_variant && p.variants) {
+            return p.variants.some(v => (v.stock || 0) > 0);
+          }
+          return true;
+        });
+        break;
+      case 'with_variants':
+        filtered = filtered.filter(p => p.has_variant);
+        break;
+      case 'nearby':
+        filtered = filtered.filter(p => p.distance_km !== undefined && p.distance_km < 5);
+        break;
+    }
+
+    // Tri
+    switch (sortBy) {
+      case 'proximite':
+        filtered.sort((a, b) => {
+          const distA = a.distance_km ?? 999999;
+          const distB = b.distance_km ?? 999999;
+          return distA - distB;
+        });
+        break;
+      case 'prix_asc':
+        filtered.sort((a, b) => {
+          const prixA = getPrixMin(a);
+          const prixB = getPrixMin(b);
+          return prixA - prixB;
+        });
+        break;
+      case 'prix_desc':
+        filtered.sort((a, b) => {
+          const prixA = getPrixMin(a);
+          const prixB = getPrixMin(b);
+          return prixB - prixA;
+        });
+        break;
+      // 'pertinence' : pas de tri (déjà trié par backend)
+    }
+
+    setFilteredResults(filtered);
+  }, [results, sortBy, filterCategory]);
+
+  // Helper : Prix minimum
+  const getPrixMin = (product: Product): number => {
+    if (product.has_variant && product.variants && product.variants.length > 0) {
+      return Math.min(...product.variants.map(v => v.prix || 0));
+    }
+    return product.prix || 0;
+  };
+
+  // Sélectionner suggestion
   const selectSuggestion = async (suggestion: CombinationSuggestion) => {
-    // Mettre vecteur complet dans barre recherche
-    setSearchText(suggestion.full_vector.join(', '));
+    setSearchQuery(suggestion.full_vector.join(', '));
     setFilters(suggestion.full_vector);
     setShowSuggestions(false);
-
-    // Lancer recherche finale
     await searchFinal(suggestion.full_vector);
   };
 
-  // Recherche finale dans services
+  // Recherche finale
   const searchFinal = async (finalFilters: string[]) => {
     setLoadingResults(true);
 
     try {
-      const response = await apiPost('/api/search/by-autocomplete', {
+      const payload: any = {
         combination_vector: finalFilters,
-      });
+      };
+
+      // Ajouter localisation utilisateur si disponible
+      if (location && typeof location === 'object') {
+        const loc = location as any;
+        if (loc.latitude && loc.longitude) {
+          payload.user_location = {
+            lat: loc.latitude,
+            lng: loc.longitude,
+          };
+        }
+      }
+
+      const response = await apiPost('/api/search/by-autocomplete', payload);
 
       if (response.success && response.data) {
         setResults(response.data as Product[]);
@@ -142,19 +224,17 @@ const ResultatBesoinScreen: React.FC = () => {
         setResults([]);
       }
     } catch (error) {
-      console.error('[ResultatBesoinScreen] Erreur recherche finale:', error);
+      console.error('[ResultatBesoinScreen] Erreur recherche:', error);
       setResults([]);
     } finally {
       setLoadingResults(false);
     }
   };
 
-  // Recherche manuelle (sans suggestion)
-  const handleManualSearch = () => {
-    setShowSuggestions(false);
-    if (filters.length > 0) {
-      searchFinal(filters);
-    }
+  // Handler ChatInput (identique HomeScreen)
+  const handleChatSubmit = async (input: string, mediaData: any, gpsData: any) => {
+    setSearchQuery(input);
+    // Le useEffect se chargera de lancer la recherche
   };
 
   return (
@@ -165,35 +245,24 @@ const ResultatBesoinScreen: React.FC = () => {
           style={styles.backButton}
           onPress={() => navigation.goBack()}
         >
-          <SafeIcon name="arrow-left" size={24} color={modernColors.text} />
+          <SafeIcon name="arrow-left" size={24} color="#1F2937" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Recherche de produits</Text>
-        <View style={{ width: 40 }} />
+        <Text style={styles.headerTitle}>Recherche</Text>
+        <TouchableOpacity
+          style={styles.filterButton}
+          onPress={() => setShowFilters(!showFilters)}
+        >
+          <SafeIcon name="sliders" size={20} color={modernColors.primary} />
+        </TouchableOpacity>
       </View>
 
-      {/* Barre de recherche */}
+      {/* Barre de recherche ChatInput (identique HomeScreen) */}
       <View style={styles.searchSection}>
-        <View style={styles.searchBar}>
-          <SafeIcon name="search" size={20} color={modernColors.textSecondary} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Rechercher un produit ou service..."
-            placeholderTextColor={modernColors.textSecondary}
-            value={searchText}
-            onChangeText={setSearchText}
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
-          {searchText.length > 0 && (
-            <TouchableOpacity onPress={() => {
-              setSearchText('');
-              setSuggestions([]);
-              setResults([]);
-            }}>
-              <SafeIcon name="x-circle" size={20} color={modernColors.textSecondary} />
-            </TouchableOpacity>
-          )}
-        </View>
+        <ChatInputMobile
+          onSubmit={handleChatSubmit}
+          loading={loadingSuggestions || loadingResults}
+          placeholder="Décrivez votre besoin..."
+        />
 
         {/* Filtres actifs */}
         {filters.length > 0 && !showSuggestions && (
@@ -202,6 +271,7 @@ const ResultatBesoinScreen: React.FC = () => {
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.filtersScroll}
           >
+            <Text style={styles.filtersLabel}>Filtres :</Text>
             {filters.map((filter, index) => (
               <View key={index} style={styles.filterChip}>
                 <Text style={styles.filterText}>{filter}</Text>
@@ -210,6 +280,78 @@ const ResultatBesoinScreen: React.FC = () => {
           </ScrollView>
         )}
       </View>
+
+      {/* Panneau Filtres & Tri */}
+      {showFilters && (
+        <View style={styles.filtersPanel}>
+          {/* Tri */}
+          <View style={styles.filterGroup}>
+            <Text style={styles.filterGroupTitle}>📊 Trier par :</Text>
+            <View style={styles.filterOptions}>
+              {[
+                { key: 'pertinence', label: '🎯 Pertinence', icon: 'zap' },
+                { key: 'proximite', label: '📍 Proximité', icon: 'map-pin' },
+                { key: 'prix_asc', label: '💰 Prix croissant', icon: 'arrow-up' },
+                { key: 'prix_desc', label: '💎 Prix décroissant', icon: 'arrow-down' },
+              ].map((option) => (
+                <TouchableOpacity
+                  key={option.key}
+                  style={[
+                    styles.filterOption,
+                    sortBy === option.key && styles.filterOptionActive,
+                  ]}
+                  onPress={() => setSortBy(option.key as SortOption)}
+                >
+                  <SafeIcon
+                    name={option.icon as any}
+                    size={16}
+                    color={sortBy === option.key ? '#FFF' : modernColors.primary}
+                  />
+                  <Text
+                    style={[
+                      styles.filterOptionText,
+                      sortBy === option.key && styles.filterOptionTextActive,
+                    ]}
+                  >
+                    {option.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          {/* Filtres */}
+          <View style={styles.filterGroup}>
+            <Text style={styles.filterGroupTitle}>🔍 Filtrer :</Text>
+            <View style={styles.filterOptions}>
+              {[
+                { key: 'all', label: 'Tous' },
+                { key: 'with_stock', label: 'En stock' },
+                { key: 'with_variants', label: 'Avec variations' },
+                { key: 'nearby', label: 'À proximité (<5km)' },
+              ].map((option) => (
+                <TouchableOpacity
+                  key={option.key}
+                  style={[
+                    styles.filterOption,
+                    filterCategory === option.key && styles.filterOptionActive,
+                  ]}
+                  onPress={() => setFilterCategory(option.key as FilterCategory)}
+                >
+                  <Text
+                    style={[
+                      styles.filterOptionText,
+                      filterCategory === option.key && styles.filterOptionTextActive,
+                    ]}
+                  >
+                    {option.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        </View>
+      )}
 
       {/* Suggestions vecteurs */}
       {showSuggestions && (
@@ -221,7 +363,7 @@ const ResultatBesoinScreen: React.FC = () => {
             </View>
           ) : suggestions.length > 0 ? (
             <>
-              <Text style={styles.suggestionsTitle}>💡 Produits complets correspondants</Text>
+              <Text style={styles.suggestionsTitle}>💡 Suggestions ({suggestions.length})</Text>
               <ScrollView style={styles.suggestionsList}>
                 {suggestions.map((suggestion, index) => (
                   <TouchableOpacity
@@ -250,7 +392,7 @@ const ResultatBesoinScreen: React.FC = () => {
                       {/* Stats */}
                       <View style={styles.statsRow}>
                         <Text style={styles.statsText}>
-                          📊 {suggestion.usage_count} fois utilisé
+                          📊 {suggestion.usage_count}× utilisé
                         </Text>
                         {suggestion.has_variant && suggestion.variant_dimension && (
                           <Text style={styles.statsText}>
@@ -264,20 +406,22 @@ const ResultatBesoinScreen: React.FC = () => {
                         )}
                       </View>
 
-                      {/* Bouton sélection */}
+                      {/* Bouton */}
                       <View style={styles.selectButton}>
                         <SafeIcon name="check-circle" size={16} color="#FFF" />
-                        <Text style={styles.selectButtonText}>Sélectionner ce produit</Text>
+                        <Text style={styles.selectButtonText}>Sélectionner</Text>
                       </View>
                     </NativeCard>
                   </TouchableOpacity>
                 ))}
               </ScrollView>
 
-              {/* Bouton recherche manuelle */}
               <TouchableOpacity
                 style={styles.manualSearchButton}
-                onPress={handleManualSearch}
+                onPress={() => {
+                  setShowSuggestions(false);
+                  searchFinal(filters);
+                }}
               >
                 <SafeIcon name="search" size={16} color={modernColors.primary} />
                 <Text style={styles.manualSearchText}>
@@ -287,17 +431,16 @@ const ResultatBesoinScreen: React.FC = () => {
             </>
           ) : (
             <View style={styles.noSuggestionsContainer}>
-              <Text style={styles.noSuggestionsText}>
-                Aucune suggestion trouvée
-              </Text>
+              <Text style={styles.noSuggestionsText}>Aucune suggestion</Text>
               <TouchableOpacity
                 style={styles.manualSearchButton}
-                onPress={handleManualSearch}
+                onPress={() => {
+                  setShowSuggestions(false);
+                  searchFinal(filters);
+                }}
               >
                 <SafeIcon name="search" size={16} color={modernColors.primary} />
-                <Text style={styles.manualSearchText}>
-                  Rechercher quand même
-                </Text>
+                <Text style={styles.manualSearchText}>Rechercher quand même</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -307,14 +450,32 @@ const ResultatBesoinScreen: React.FC = () => {
       {/* Résultats */}
       {!showSuggestions && (
         <View style={styles.resultsContainer}>
+          {/* Header résultats */}
+          {filteredResults.length > 0 && (
+            <View style={styles.resultsHeader}>
+              <Text style={styles.resultsCount}>
+                {filteredResults.length} résultat{filteredResults.length > 1 ? 's' : ''}
+              </Text>
+              {sortBy !== 'pertinence' && (
+                <Text style={styles.sortInfo}>
+                  Trié par : {
+                    sortBy === 'proximite' ? '📍 Proximité' :
+                    sortBy === 'prix_asc' ? '💰 Prix ↑' :
+                    '💎 Prix ↓'
+                  }
+                </Text>
+              )}
+            </View>
+          )}
+
           {loadingResults ? (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="large" color={modernColors.primary} />
               <Text style={styles.loadingText}>Recherche en cours...</Text>
             </View>
-          ) : results.length > 0 ? (
+          ) : filteredResults.length > 0 ? (
             <FlatList
-              data={results}
+              data={filteredResults}
               keyExtractor={(item) => `${item.service_id}`}
               renderItem={({ item }) => (
                 <ProductCard 
@@ -325,12 +486,12 @@ const ResultatBesoinScreen: React.FC = () => {
               contentContainerStyle={styles.resultsList}
               ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
             />
-          ) : searchText.length > 0 ? (
+          ) : searchQuery.length > 0 ? (
             <View style={styles.emptyState}>
               <SafeIcon name="package-x" size={64} color="#D1D5DB" />
               <Text style={styles.emptyTitle}>Aucun résultat</Text>
               <Text style={styles.emptyText}>
-                Essayez avec d'autres mots-clés
+                Essayez avec d'autres mots-clés ou ajustez les filtres
               </Text>
             </View>
           ) : (
@@ -338,7 +499,7 @@ const ResultatBesoinScreen: React.FC = () => {
               <SafeIcon name="search" size={64} color="#D1D5DB" />
               <Text style={styles.emptyTitle}>Recherchez un produit</Text>
               <Text style={styles.emptyText}>
-                Tapez pour voir des suggestions
+                Décrivez ce que vous cherchez en langage naturel
               </Text>
             </View>
           )}
@@ -371,6 +532,9 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#1F2937',
   },
+  filterButton: {
+    padding: 8,
+  },
   searchSection: {
     backgroundColor: '#FFF',
     paddingHorizontal: 16,
@@ -379,22 +543,15 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#E5E7EB',
   },
-  searchBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    backgroundColor: '#F3F4F6',
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 15,
-    color: '#1F2937',
-  },
   filtersScroll: {
+    flexDirection: 'row',
     gap: 8,
+    alignItems: 'center',
+  },
+  filtersLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#6B7280',
   },
   filterChip: {
     backgroundColor: modernColors.primary,
@@ -406,6 +563,48 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 13,
     fontWeight: '600',
+  },
+  filtersPanel: {
+    backgroundColor: '#FFF',
+    padding: 16,
+    gap: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  filterGroup: {
+    gap: 12,
+  },
+  filterGroupTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1F2937',
+  },
+  filterOptions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  filterOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: modernColors.primary,
+    backgroundColor: '#FFF',
+  },
+  filterOptionActive: {
+    backgroundColor: modernColors.primary,
+  },
+  filterOptionText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: modernColors.primary,
+  },
+  filterOptionTextActive: {
+    color: '#FFF',
   },
   suggestionsContainer: {
     flex: 1,
@@ -511,6 +710,25 @@ const styles = StyleSheet.create({
   },
   resultsContainer: {
     flex: 1,
+  },
+  resultsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#FFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  resultsCount: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1F2937',
+  },
+  sortInfo: {
+    fontSize: 12,
+    color: '#6B7280',
   },
   resultsList: {
     padding: 16,

@@ -127,7 +127,6 @@ pub async fn enrich_location_bidirectional(
     info!("🌍 Enrichissement bidirectionnel pour: {} ({})", place_name, country_context.unwrap_or("?"));
     
     // 1. Chercher dans cache d'abord
-    let cache_key = format!("{}_{}", place_name, country_context.unwrap_or(""));
     let cached = sqlx::query_as::<_, (Vec<String>,)>(
         "SELECT location_vector FROM geo_hierarchy 
          WHERE place_name = $1 AND parent_country = $2"
@@ -253,17 +252,17 @@ pub async fn build_location_vector(
     country_context: Option<&str>,
 ) -> Result<Vec<String>, AppError> {
     // Chercher dans cache
-    let cached = sqlx::query!(
+    let cached = sqlx::query_as::<_, (Vec<String>,)>(
         "SELECT location_vector FROM geo_hierarchy 
-         WHERE place_name = $1 AND parent_country = $2",
-        chosen_place,
-        country_context.unwrap_or("")
+         WHERE place_name = $1 AND parent_country = $2"
     )
+    .bind(chosen_place)
+    .bind(country_context.unwrap_or(""))
     .fetch_optional(pool)
     .await?;
     
     if let Some(cached) = cached {
-        return Ok(cached.location_vector);
+        return Ok(cached.0);
     }
     
     // Pas en cache → Enrichir

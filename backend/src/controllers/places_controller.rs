@@ -87,9 +87,6 @@ pub async fn enrich_location(
     if let Some(cached) = cached {
         info!("✅ Trouvé en cache pour {}", params.place_name);
         
-        use sqlx::types::BigDecimal;
-        use std::str::FromStr;
-        
         let (geoname_id, display_name, location_vector, admin_level, is_leaf, 
              parent_country, parent_country_code, lat, lng, population, timezone) = cached;
         
@@ -139,7 +136,7 @@ pub async fn enrich_location(
     // 2. Pas en cache → Enrichir avec GeoNames
     info!("🌍 Pas en cache, enrichissement avec GeoNames...");
     
-    let location_vector = geonames_service::enrich_location_bidirectional(
+    let _location_vector = geonames_service::enrich_location_bidirectional(
         pool,
         &params.place_name,
         params.country.as_deref(),
