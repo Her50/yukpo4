@@ -11,6 +11,8 @@ pub struct AutocompleteCombination {
     pub product_vector: Vec<String>,
     pub location_vector: Vec<String>,
     pub full_vector: Vec<String>,
+    pub product_labels: Vec<String>,      // ✅ NOUVEAU : Étiquettes du product_vector
+    pub location_labels: Vec<String>,     // ✅ NOUVEAU : Étiquettes du location_vector
     pub chosen_location: Option<String>,
     pub usage_count: i32,
     pub is_ai_preferred: bool,
@@ -55,7 +57,9 @@ pub async fn save_ai_combinations_batch(
         match upsert_combination(
             pool,
             &combo.product_vector,
+            &combo.product_labels,           // ✅ Passer les labels
             &combo.location_vector,
+            &combo.location_labels,          // ✅ Passer les labels location
             &combo.full_vector,
             combo.chosen_location.as_deref(),
             is_preferred,
@@ -91,7 +95,9 @@ pub async fn save_ai_combinations_batch(
 pub async fn upsert_combination(
     pool: &PgPool,
     product_vector: &[String],
+    product_labels: &[String],      // ✅ NOUVEAU : Labels du vecteur
     location_vector: &[String],
+    location_labels: &[String],     // ✅ NOUVEAU : Labels de localisation
     full_vector: &[String],
     chosen_location: Option<&str>,
     is_ai_preferred: bool,
@@ -110,12 +116,15 @@ pub async fn upsert_combination(
     let row = sqlx::query(
         r#"
         SELECT upsert_autocomplete_combination(
-            $1::TEXT[], $2::TEXT[], $3::TEXT[], $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14
+            $1::TEXT[], $2::TEXT[], $3::TEXT[], $4::TEXT[], $5::TEXT[], 
+            $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16
         ) as id
         "#
     )
     .bind(product_vector)
+    .bind(product_labels)
     .bind(location_vector)
+    .bind(location_labels)
     .bind(full_vector)
     .bind(chosen_location)
     .bind(is_ai_preferred)
@@ -354,6 +363,24 @@ pub fn extract_combinations_from_ai_response(
         .and_then(|s| s.as_str())
         .unwrap_or(",");
 
+    // ✅ NOUVEAU : Extraire les labels depuis sous_caracteristiques
+    let sous_caracs = produits_field
+        .get("sous_caracteristiques")
+        .and_then(|sc| sc.as_object())
+        .ok_or_else(|| AppError::BadRequest("Champ 'sous_caracteristiques' manquant".to_string()))?;
+
+    // Extraire les labels (clés) dans l'ordre
+    let product_labels: Vec<String> = sous_caracs
+        .keys()
+        .filter(|k| *k != "lieu") // Exclure "lieu" qui est dans location_labels
+        .map(|k| k.clone())
+        .collect();
+
+    log::info!(
+        "[extract_combinations] Labels extraits: {:?}",
+        product_labels
+    );
+
     // Extraire variation_prix si présente
     let variation_prix = produits_field.get("variation_prix");
     let has_variant = variation_prix.is_some();
@@ -448,9 +475,14 @@ pub fn extract_combinations_from_ai_response(
             // Confiance IA : légèrement décroissante pour les combinaisons suivantes
             let ai_confidence = 1.0 - (index as f32 * 0.05);
 
+            // Location labels (vide pour l'instant, sera rempli par le prestataire)
+            let location_labels: Vec<String> = vec![];
+
             combinations.push(AICombinationInput {
                 product_vector,
+                product_labels: product_labels.clone(),      // ✅ Labels du vecteur produit
                 location_vector,
+                location_labels,                              // ✅ Labels de localisation (vide)
                 full_vector,
                 chosen_location: None,
                 ai_confidence,
@@ -465,8 +497,9 @@ pub fn extract_combinations_from_ai_response(
     }
 
     log::info!(
-        "[AutocompleteCombinations] ✅ {} combinaisons extraites du JSON IA",
-        combinations.len()
+        "[AutocompleteCombinations] ✅ {} combinaisons extraites du JSON IA (labels: {:?})",
+        combinations.len(),
+        product_labels
     );
 
     Ok(combinations)
@@ -476,7 +509,9 @@ pub fn extract_combinations_from_ai_response(
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AICombinationInput {
     pub product_vector: Vec<String>,
+    pub product_labels: Vec<String>,      // ✅ NOUVEAU : Labels du vecteur
     pub location_vector: Vec<String>,
+    pub location_labels: Vec<String>,     // ✅ NOUVEAU : Labels de localisation
     pub full_vector: Vec<String>,
     pub chosen_location: Option<String>,
     pub ai_confidence: f32,

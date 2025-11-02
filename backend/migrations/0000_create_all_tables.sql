@@ -550,10 +550,12 @@ CREATE TRIGGER trigger_combinations_updated_at
     FOR EACH ROW
     EXECUTE FUNCTION update_combinations_updated_at();
 
--- Fonction : Upsert combinaison autocomplete
+-- Fonction : Upsert combinaison autocomplete (avec labels)
 CREATE OR REPLACE FUNCTION upsert_autocomplete_combination(
     p_product_vector TEXT[],
+    p_product_labels TEXT[],
     p_location_vector TEXT[] DEFAULT '{}',
+    p_location_labels TEXT[] DEFAULT '{}',
     p_full_vector TEXT[],
     p_chosen_location TEXT DEFAULT NULL,
     p_is_ai_preferred BOOLEAN DEFAULT FALSE,
@@ -583,17 +585,19 @@ BEGIN
             is_ai_preferred = CASE WHEN p_is_ai_preferred THEN TRUE ELSE is_ai_preferred END,
             ai_confidence = GREATEST(ai_confidence, p_ai_confidence),
             service_id = COALESCE(p_service_id, service_id),
+            product_labels = p_product_labels,
+            location_labels = p_location_labels,
             updated_at = NOW()
         WHERE id = v_id;
         RETURN v_id;
     ELSE
         INSERT INTO autocomplete_combinations (
-            service_id, product_vector, location_vector, full_vector,
+            service_id, product_vector, product_labels, location_vector, location_labels, full_vector,
             chosen_location, usage_count, is_ai_preferred, ai_confidence,
             session_id, has_variant, variant_dimension, variant_value,
             prix, devise, stock
         ) VALUES (
-            p_service_id, p_product_vector, p_location_vector, p_full_vector,
+            p_service_id, p_product_vector, p_product_labels, p_location_vector, p_location_labels, p_full_vector,
             p_chosen_location, 1, p_is_ai_preferred, p_ai_confidence,
             p_session_id, p_has_variant, p_variant_dimension, p_variant_value,
             p_prix, p_devise, p_stock
@@ -636,5 +640,62 @@ BEGIN
     END LOOP;
     
     RETURN GREATEST(score, 0.0);
+END;
+$$ LANGUAGE plpgsql IMMUTABLE;
+
+-- Fonction : Extraire une valeur du vecteur par son label
+-- Ex: get_vector_value_by_label(["Nike", "Air Max", "Noir"], ["marque", "modele", "couleur"], "couleur") → "Noir"
+CREATE OR REPLACE FUNCTION get_vector_value_by_label(
+    p_vector TEXT[],
+    p_labels TEXT[],
+    p_search_label TEXT
+)
+RETURNS TEXT AS $$
+DECLARE
+    i INTEGER;
+BEGIN
+    IF p_vector IS NULL OR p_labels IS NULL OR p_search_label IS NULL THEN
+        RETURN NULL;
+    END IF;
+    
+    IF array_length(p_vector, 1) != array_length(p_labels, 1) THEN
+        RETURN NULL;
+    END IF;
+    
+    FOR i IN 1..array_length(p_labels, 1) LOOP
+        IF LOWER(p_labels[i]) = LOWER(p_search_label) THEN
+            RETURN p_vector[i];
+        END IF;
+    END LOOP;
+    
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql IMMUTABLE;
+
+-- Fonction : Convertir vecteur + labels en JSONB structuré
+-- Ex: vector_to_jsonb(["Nike", "Air Max", "Noir"], ["marque", "modele", "couleur"]) 
+--     → {"marque": "Nike", "modele": "Air Max", "couleur": "Noir"}
+CREATE OR REPLACE FUNCTION vector_to_jsonb(
+    p_vector TEXT[],
+    p_labels TEXT[]
+)
+RETURNS JSONB AS $$
+DECLARE
+    result JSONB := '{}'::JSONB;
+    i INTEGER;
+BEGIN
+    IF p_vector IS NULL OR p_labels IS NULL THEN
+        RETURN result;
+    END IF;
+    
+    IF array_length(p_vector, 1) != array_length(p_labels, 1) THEN
+        RETURN result;
+    END IF;
+    
+    FOR i IN 1..array_length(p_labels, 1) LOOP
+        result := result || jsonb_build_object(p_labels[i], p_vector[i]);
+    END LOOP;
+    
+    RETURN result;
 END;
 $$ LANGUAGE plpgsql IMMUTABLE;
