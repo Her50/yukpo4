@@ -1570,26 +1570,27 @@ async fn save_autocomplete_combination(
                 variant_vector.extend(location_vector.clone());
                 
                 // Sauvegarder
-                let result = sqlx::query!(
+                let result = sqlx::query(
                     r#"INSERT INTO autocomplete_combinations 
                        (service_id, product_vector, location_vector, full_vector,
                         chosen_location, chosen_location_geoname_id,
                         has_variant, variant_dimension, variant_value, prix, devise, stock, usage_count)
                        VALUES ($1, $2, $3, $4, $5, $6, true, $7, $8, $9, $10, $11, 1)
                        ON CONFLICT (service_id, full_vector)
-                       DO UPDATE SET usage_count = autocomplete_combinations.usage_count + 1"#,
-                    service_id,
-                    &product_vector,
-                    &location_vector,
-                    &variant_vector,
-                    chosen_location.as_deref(),
-                    geoname_id,
-                    variant_dimension,
-                    variant_value,
-                    prix,
-                    devise,
-                    stock
-                ).execute(pool).await;
+                       DO UPDATE SET usage_count = autocomplete_combinations.usage_count + 1"#
+                )
+                .bind(service_id)
+                .bind(&product_vector)
+                .bind(&location_vector)
+                .bind(&variant_vector)
+                .bind(chosen_location.as_deref())
+                .bind(geoname_id)
+                .bind(variant_dimension)
+                .bind(variant_value)
+                .bind(prix)
+                .bind(devise)
+                .bind(stock)
+                .execute(pool).await;
                 
                 if let Err(e) = result {
                     log::error!("[save_autocomplete_combination] Erreur sauvegarde variation '{}': {}", variant_value, e);
@@ -1606,22 +1607,23 @@ async fn save_autocomplete_combination(
             .and_then(|v| v.as_f64())
             .unwrap_or(0.0);
         
-        let result = sqlx::query!(
+        let result = sqlx::query(
             r#"INSERT INTO autocomplete_combinations 
                (service_id, product_vector, location_vector, full_vector,
                 chosen_location, chosen_location_geoname_id,
                 has_variant, prix, usage_count)
                VALUES ($1, $2, $3, $4, $5, $6, false, $7, 1)
                ON CONFLICT (service_id, full_vector)
-               DO UPDATE SET usage_count = autocomplete_combinations.usage_count + 1"#,
-            service_id,
-            &product_vector,
-            &location_vector,
-            &full_vector,
-            chosen_location.as_deref(),
-            geoname_id,
-            prix
-        ).execute(pool).await;
+               DO UPDATE SET usage_count = autocomplete_combinations.usage_count + 1"#
+        )
+        .bind(service_id)
+        .bind(&product_vector)
+        .bind(&location_vector)
+        .bind(&full_vector)
+        .bind(chosen_location.as_deref())
+        .bind(geoname_id)
+        .bind(prix)
+        .execute(pool).await;
         
         if let Err(e) = result {
             log::error!("[save_autocomplete_combination] Erreur sauvegarde: {}", e);

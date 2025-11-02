@@ -232,8 +232,9 @@ const ResultatBesoinScreen: React.FC = () => {
   };
 
   // Handler ChatInput (identique HomeScreen)
-  const handleChatSubmit = async (input: string, mediaData: any, gpsData: any) => {
-    setSearchQuery(input);
+  const handleChatSubmit = async (input: any) => {
+    const queryText = typeof input === 'string' ? input : input?.text || '';
+    setSearchQuery(queryText);
     // Le useEffect se chargera de lancer la recherche
   };
 

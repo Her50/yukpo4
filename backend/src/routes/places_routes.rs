@@ -175,6 +175,5 @@ pub async fn autocomplete_places(
     }
 }
 
-/// Créer le router pour les routes places
-/// Note: Cette fonction n'est pas utilisée car les routes sont définies dans router_yukpo.rs
-/// Elle est conservée pour référence uniquement
+// Note: Le router pour les routes places n'est pas défini ici car les routes 
+// sont définies directement dans router_yukpo.rs (lignes 67-68)
