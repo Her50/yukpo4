@@ -17,6 +17,7 @@ mod service_costs {
     pub const COST_NEW_PRODUCT_DUPLICATE_XAF: i64 = 3000;
     
     /// Coût minimum de création d'un service sans produits
+    #[allow(dead_code)]
     pub const COST_SERVICE_MINIMUM_XAF: i64 = 500;
     
     /// Calculer le coût de création d'un service selon le contexte
