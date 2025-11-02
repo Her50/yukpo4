@@ -3,13 +3,12 @@ use axum::{
     http::StatusCode,
     Json,
 };
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use std::sync::Arc;
 use log::info;
 use crate::state::AppState;
 use crate::services::autocomplete_history_service;
 use crate::services::autocomplete_combinations_service;
-use crate::services::geonames_service;
 
 #[derive(Debug, Deserialize)]
 pub struct AutocompleteSuggestionsQuery {

@@ -170,23 +170,37 @@ Quand l'utilisateur fournit **SEULEMENT du TEXTE** (sans image montrant le produ
 
 **RÈGLES DE GÉNÉRATION MULTI-COMBINAISONS :**
 
+**🚨 RÈGLE ABSOLUE : `ai_preferred_index` est OBLIGATOIRE pour TOUTES les multi-combinaisons 🚨**
+
 1. **Si texte = "Je vends Nike Air Max noires pointure 42"**
    - Combinaison explicite : `Nike,Air Max,Noir,42`
-   - `ai_preferred_index: 0` (première position)
+   - `ai_preferred_index: 0` ✅ OBLIGATOIRE (première position)
    - Générer aussi : Autres couleurs, autres modèles Nike, autres marques similaires
 
 2. **Si texte = "Je vends des chaussures"** (très vague)
    - Combinaison préférée : Choisir le modèle le plus courant (ex: Nike Air Max Noir 42)
-   - `ai_preferred_index: 0`
+   - `ai_preferred_index: 0` ✅ OBLIGATOIRE même si choix arbitraire
    - Générer : Marques populaires, modèles populaires, couleurs courantes
+   - **IMPORTANT** : Même sans info précise, TU DOIS choisir la combinaison la plus logique/populaire
 
-3. **Nombre de combinaisons** : Minimum 5, Maximum 20
+3. **Si texte = "Je vends Adidas"** (partiellement précis)
+   - Combinaison préférée : Modèle Adidas populaire (ex: Adidas Superstar Noir 42)
+   - `ai_preferred_index: 0` ✅ OBLIGATOIRE
+   - Générer : Différents modèles Adidas, puis autres marques
+
+4. **Nombre de combinaisons** : Minimum 5, Maximum 20
    - Prioriser la variété intelligente (différentes marques, modèles, couleurs)
    - Éviter les doublons inutiles
 
-4. **Ordre des combinaisons** :
-   - Position 0 : Combinaison **explicitement identifiée** dans le texte/image
+5. **Ordre des combinaisons** :
+   - **Position 0 : TOUJOURS la combinaison préférée** (celle qui correspond le mieux aux caractéristiques explicites)
    - Positions suivantes : Variantes logiques par ordre de pertinence décroissante
+
+6. **`ai_preferred_index` OBLIGATOIRE** :
+   - ✅ TOUJOURS inclure `"ai_preferred_index": 0` pour multi-combinaisons
+   - ✅ Même si le texte est vague, choisis la combinaison la plus logique/populaire
+   - ❌ JAMAIS laisser sans `ai_preferred_index` si plusieurs combinaisons
+   - **POURQUOI** : Le frontend utilise ce choix pour le placeholder et l'orientation de l'utilisateur
 
 **Structure simple (1 seule combinaison évidente) :**
 ```json
@@ -838,6 +852,18 @@ Avant de définir `ai_preferred_index`, vérifie :
 | "Je vends Adidas blanches 38" | marque=Adidas, couleur=Blanc, pointure=38 | `Adidas,Superstar,Blanc,38` | Autres modèles Adidas blancs |
 
 **🎯 RÉSUMÉ** : `ai_preferred_index` = Combinaison qui **CORRESPOND LE MIEUX** aux caractéristiques **EXPLICITEMENT** fournies par l'utilisateur.
+
+**🚨 RÈGLE CRITIQUE FINALE** :
+- Si tu génères PLUSIEURS combinaisons (texte vague) → `ai_preferred_index` est **OBLIGATOIRE**
+- Si tu génères UNE SEULE combinaison (produit très spécifique) → `ai_preferred_index` est **OPTIONNEL**
+- Si tu génères des variations de prix (même produit, pointures différentes) → `ai_preferred_index` est **OPTIONNEL** (utilise `variation_prix` à la place)
+
+**POURQUOI C'EST CRITIQUE** : Le frontend utilise `ai_preferred_index` pour :
+1. Afficher le **placeholder dynamique** dans le champ de recherche
+2. Montrer à l'utilisateur **l'exemple recommandé** pendant la saisie
+3. Orienter l'utilisateur vers le **meilleur choix initial**
+
+**❌ ERREUR FATALE** : Générer multi-combinaisons SANS `ai_preferred_index` → Le frontend ne saura pas quelle combinaison afficher comme exemple !
 
 ### 🏨 HÔTEL / HÉBERGEMENT (AVEC VARIATIONS PRIX)
 ```json
