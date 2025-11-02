@@ -190,23 +190,42 @@ END $$;
 CREATE TABLE IF NOT EXISTS autocomplete_combinations (
     id SERIAL PRIMARY KEY,
     service_id INTEGER,
-    product_vector TEXT[] NOT NULL,
-    location_vector TEXT[] DEFAULT '{}',
-    full_vector TEXT[] NOT NULL,
+    
+    -- Vecteurs de VALEURS
+    product_vector TEXT[] NOT NULL,        -- Ex: ["Nike", "Air Max", "Noir", "42"]
+    location_vector TEXT[] DEFAULT '{}',   -- Ex: ["Douala", "Akwa", "Littoral", "Cameroun"]
+    full_vector TEXT[] NOT NULL,           -- product_vector + location_vector
+    
+    -- Vecteurs d'ÉTIQUETTES (labels) - ✅ NOUVEAU pour traçabilité
+    product_labels TEXT[] NOT NULL,        -- Ex: ["marque", "modele", "couleur", "pointure"]
+    location_labels TEXT[] DEFAULT '{}',   -- Ex: ["ville", "quartier", "region", "pays"]
+    
+    -- Métadonnées de localisation
     chosen_location TEXT,
+    
+    -- Statistiques et IA
     usage_count INTEGER DEFAULT 1,
     is_ai_preferred BOOLEAN DEFAULT FALSE,
     ai_confidence FLOAT DEFAULT 0.0,
     session_id TEXT,
+    
+    -- Variabilité de prix
     has_variant BOOLEAN DEFAULT FALSE,
-    variant_dimension TEXT,
-    variant_value TEXT,
+    variant_dimension TEXT,                 -- Ex: "pointure", "taille"
+    variant_value TEXT,                     -- Ex: "42", "M"
+    
+    -- Prix et stock
     prix DECIMAL(12, 2),
     devise TEXT DEFAULT 'XAF',
     stock INTEGER,
+    
+    -- Timestamps
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
-    CONSTRAINT unique_full_vector UNIQUE (full_vector)
+    
+    -- Contraintes
+    CONSTRAINT unique_full_vector UNIQUE (full_vector),
+    CONSTRAINT check_vectors_labels_length CHECK (array_length(product_vector, 1) = array_length(product_labels, 1))
 );
 
 -- Index pour autocomplete_combinations

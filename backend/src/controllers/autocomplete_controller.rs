@@ -319,8 +319,8 @@ pub async fn get_combinations_by_session(
     match autocomplete_combinations_service::get_combinations_by_session(pool, &session_id).await {
         Ok(combinations) => {
             info!("✅ {} combinaisons récupérées", combinations.len());
-            Ok(Json(serde_json::json!({
-                "success": true,
+    Ok(Json(serde_json::json!({
+        "success": true,
                 "data": combinations,
                 "count": combinations.len()
             })))
