@@ -37,6 +37,7 @@ pub mod autocomplete_controller; // ✅ NOUVEAU: Contrôleur pour autocomplete c
 pub mod search_history_controller; // ✅ NOUVEAU: Contrôleur pour historique de recherche
 pub mod product_addition_controller; // ✅ NOUVEAU 2025-11-01: Contrôleur pour ajout incrémental de produits
 pub mod places_controller; // ✅ NOUVEAU 2025-11-02: Contrôleur pour enrichissement géographique GeoNames
+pub mod combination_progress_controller; // ✅ NOUVEAU 2025-11-03: Contrôleur pour progression génération combinaisons
 
 // pub use service_controller::update_token_debit;
 

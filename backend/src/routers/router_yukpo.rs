@@ -824,6 +824,99 @@ Format JSON attendu :
     
     log::info!("[handle_creation_service_direct] JSON parsé avec succès: {}", data);
     
+    // ✅ NOUVEAU 2025-11-03: Génération progressive de combinaisons
+    let session_id = uuid::Uuid::new_v4().to_string();
+    let mut combination_info = json!({
+        "status": "no_combinations",
+        "seeds_count": 0,
+        "estimated_total": 0,
+        "estimated_time_seconds": 0,
+        "progress_endpoint": format!("/api/combinations/progress/{}", session_id)
+    });
+    
+    // Vérifier si type_offre = "produit" et si produits.type_donnee = "autocomplete"
+    if let Some(type_offre) = data.get("data")
+        .and_then(|d| d.get("type_offre"))
+        .and_then(|t| t.get("valeur"))
+        .and_then(|v| v.as_str()) 
+    {
+        if type_offre == "produit" {
+            if let Some(produits) = data.get("data").and_then(|d| d.get("produits")) {
+                if produits.get("type_donnee").and_then(|t| t.as_str()) == Some("autocomplete") {
+                    // Extraire et sauvegarder les SEEDS immédiatement
+                    match crate::services::autocomplete_combinations_service::extract_combinations_from_ai_response(&data) {
+                        Ok(seeds) => {
+                            log::info!("[handle_creation_service_direct] ✅ {} seeds extraits", seeds.len());
+                            
+                            // Sauvegarder les seeds immédiatement
+                            match crate::services::autocomplete_combinations_service::save_ai_combinations_batch(
+                                &state.pg,
+                                seeds.clone(),
+                                &session_id,
+                            ).await {
+                                Ok(_) => {
+                                    log::info!("[handle_creation_service_direct] ✅ Seeds sauvegardés en DB");
+                                }
+                                Err(e) => {
+                                    log::warn!("[handle_creation_service_direct] Erreur sauvegarde seeds: {}", e);
+                                }
+                            }
+                            
+                            // Estimer le nombre total de combinaisons
+                            match crate::services::exhaustive_combination_generator::ExhaustiveCombinationGenerator::from_ia_response(&data) {
+                                Ok(generator) => {
+                                    let estimated_total = generator.estimate_total_combinations();
+                                    let estimated_time = crate::services::background_combination_generator::estimate_generation_time(estimated_total);
+                                    
+                                    log::info!(
+                                        "[handle_creation_service_direct] Estimation: {} combinaisons (~{} secondes)",
+                                        estimated_total,
+                                        estimated_time
+                                    );
+                                    
+                                    combination_info = json!({
+                                        "status": "in_progress",
+                                        "seeds_count": seeds.len(),
+                                        "estimated_total": estimated_total,
+                                        "estimated_time_seconds": estimated_time,
+                                        "progress_endpoint": format!("/api/combinations/progress/{}", session_id)
+                                    });
+                                    
+                                    // 🚀 LANCER LA GÉNÉRATION EN BACKGROUND (non-bloquant)
+                                    let state_clone = state.clone();
+                                    let data_clone = data.clone();
+                                    let session_id_clone = session_id.clone();
+                                    
+                                    tokio::spawn(async move {
+                                        log::info!("[Background] 🚀 Task de génération lancée pour session {}", session_id_clone);
+                                        
+                                        if let Err(e) = crate::services::background_combination_generator::generate_all_combinations_background(
+                                            state_clone,
+                                            data_clone,
+                                            session_id_clone.clone(),
+                                        ).await {
+                                            log::error!("[Background] ❌ Erreur génération session {}: {}", session_id_clone, e);
+                                        } else {
+                                            log::info!("[Background] ✅ Génération terminée pour session {}", session_id_clone);
+                                        }
+                                    });
+                                    
+                                    log::info!("[handle_creation_service_direct] 🚀 Génération background lancée");
+                                }
+                                Err(e) => {
+                                    log::warn!("[handle_creation_service_direct] Impossible d'estimer combinaisons: {}", e);
+                                }
+                            }
+                        }
+                        Err(e) => {
+                            log::warn!("[handle_creation_service_direct] Impossible d'extraire seeds: {}", e);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
     // ?? NOUVEAU : Extraire les données du service sans les créer dans la base
     let service_data = data.get("data").unwrap_or(&data);
     
@@ -848,6 +941,7 @@ Format JSON attendu :
     let final_response = json!({
         "status": "success",
         "intention": "creation_service",
+        "session_id": session_id,  // ✅ NOUVEAU : Session ID pour tracking
         "data": {
             "titre_service": {
                 "type_donnee": "string",
@@ -886,6 +980,7 @@ Format JSON attendu :
             "total_types": total_files
         },
         "service_data": service_request_data,
+        "combination_generation": combination_info,  // ✅ NOUVEAU : Info génération progressive
         "note": "Le service sera créé par le formulaire via /api/services/create"
     });
     
