@@ -5,7 +5,7 @@ use sqlx::PgPool;
 use crate::core::types::AppError;
 use crate::state::AppState;
 use super::exhaustive_combination_generator::ExhaustiveCombinationGenerator;
-use super::autocomplete_combinations_service;
+// use super::autocomplete_combinations_service;
 
 /// Génération de toutes les combinaisons en background
 pub async fn generate_all_combinations_background(
@@ -64,10 +64,10 @@ pub async fn generate_all_combinations_background(
         ).await?;
         
         // Mettre à jour la progression dans Redis
-        if let Some(ref redis_client) = state.redis_client {
+        {
             let current = (i + 1) * batch_size.min(all_combinations.len() - i * batch_size);
             update_progress(
-                redis_client,
+                &state.redis_client,
                 &session_id,
                 current,
                 all_combinations.len(),
@@ -92,8 +92,8 @@ pub async fn generate_all_combinations_background(
     }
     
     // 5. Marquer comme terminé
-    if let Some(ref redis_client) = state.redis_client {
-        mark_generation_completed(redis_client, &session_id).await.ok();
+    {
+        mark_generation_completed(&state.redis_client, &session_id).await.ok();
     }
     
     let total_time = start_time.elapsed();

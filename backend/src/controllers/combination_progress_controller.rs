@@ -32,8 +32,8 @@ pub async fn get_combination_progress(
     );
     
     // 1. Vérifier dans Redis si génération en cours
-    if let Some(ref redis_client) = state.redis_client {
-        match get_progress_from_redis(redis_client, &session_id).await {
+    {
+        match get_progress_from_redis(&state.redis_client, &session_id).await {
             Ok(Some(progress)) => {
                 log::info!(
                     "[ProgressController] Redis: {} ({:.1}%)",
