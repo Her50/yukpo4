@@ -54,6 +54,15 @@ pub async fn save_ai_combinations_batch(
         // Marquer la première combinaison comme préférée par l'IA
         let is_preferred = index == 0;
         
+        // Log si combinaison préférée avec explication
+        if is_preferred && combo.preferred_explanation.is_some() {
+            log::info!(
+                "[AutocompleteCombinations] ⭐ Combinaison préférée: {} (confiance: {:.2})",
+                combo.preferred_explanation.as_ref().unwrap(),
+                combo.ai_confidence
+            );
+        }
+        
         match upsert_combination(
             pool,
             &combo.product_vector,
@@ -424,6 +433,26 @@ pub fn extract_combinations_from_ai_response(
         .unwrap_or("XAF")
         .to_string();
 
+    // ✅ NOUVEAU 2025-11-03: Extraire les informations de combinaison préférée
+    let preferred_match = produits_field.get("preferred_match");
+    let preferred_explanation = preferred_match
+        .and_then(|pm| pm.get("explanation"))
+        .and_then(|e| e.as_str())
+        .map(|s| s.to_string());
+    
+    let preferred_confidence = preferred_match
+        .and_then(|pm| pm.get("confidence"))
+        .and_then(|c| c.as_f64())
+        .map(|f| f as f32);
+    
+    if let Some(ref expl) = preferred_explanation {
+        log::info!(
+            "[extract_combinations] ⭐ Combinaison préférée détectée: {} (confiance: {:.2})",
+            expl,
+            preferred_confidence.unwrap_or(0.0)
+        );
+    }
+
     let mut combinations = Vec::new();
 
     for (index, valeur_str) in valeurs.iter().enumerate() {
@@ -473,10 +502,22 @@ pub fn extract_combinations_from_ai_response(
             };
 
             // Confiance IA : légèrement décroissante pour les combinaisons suivantes
-            let ai_confidence = 1.0 - (index as f32 * 0.05);
+            // SAUF si c'est la préférée, on garde la confiance du preferred_match
+            let ai_confidence = if index == 0 && preferred_confidence.is_some() {
+                preferred_confidence.unwrap()
+            } else {
+                1.0 - (index as f32 * 0.05)
+            };
 
             // Location labels (vide pour l'instant, sera rempli par le prestataire)
             let location_labels: Vec<String> = vec![];
+
+            // Explication de la préférence (seulement pour index 0)
+            let expl = if index == 0 {
+                preferred_explanation.clone()
+            } else {
+                None
+            };
 
             combinations.push(AICombinationInput {
                 product_vector,
@@ -492,6 +533,8 @@ pub fn extract_combinations_from_ai_response(
                 prix,
                 devise: Some(devise),
                 stock,
+                preferred_explanation: expl,                  // ✅ NOUVEAU 2025-11-03
+                preferred_match_confidence: if index == 0 { preferred_confidence } else { None }, // ✅ NOUVEAU 2025-11-03
             });
         }
     }
@@ -521,6 +564,8 @@ pub struct AICombinationInput {
     pub prix: Option<f64>,
     pub devise: Option<String>,
     pub stock: Option<i32>,
+    pub preferred_explanation: Option<String>,  // ✅ NOUVEAU 2025-11-03: Explication choix préféré
+    pub preferred_match_confidence: Option<f32>, // ✅ NOUVEAU 2025-11-03: Confiance du match
 }
 
 /// Calcul du score de localisation (version Rust, miroir de la fonction SQL)

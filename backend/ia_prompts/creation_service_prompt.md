@@ -390,13 +390,192 @@ Ces dimensions **NE PEUVENT PAS** être combinées librement :
 
 ---
 
+## 🎯 COMBINAISON PRÉFÉRÉE (OBLIGATOIRE)
+
+### 🚨 RÈGLE CRITIQUE : Tu DOIS toujours préciser une combinaison favorite
+
+**ÉTAPES pour choisir la combinaison préférée :**
+
+#### 1. ANALYSER l'input utilisateur pour indices spécifiques
+
+**Exemples d'indices :**
+```
+"Je vends des Honda" → Préférer marque=Honda
+"T-shirts noirs" → Préférer couleur=Noir
+"Riz basmati" → Préférer variete=Basmati
+"Voiture 2020" → Préférer annee=2020
+"Chaussures Nike pointure 42" → Préférer marque=Nike, pointure=42
+```
+
+#### 2. GÉNÉRER la combinaison qui CORRESPOND LE MIEUX
+
+**Structure :**
+
+```json
+"produits": {
+  "valeur": [
+    "[Combinaison qui match le mieux l'input]",  ← Index 0 (préférée)
+    "[Autre combinaison variée]",                 ← Index 1
+    "[Autre combinaison variée]"                  ← Index 2
+  ],
+  "ai_preferred_index": 0,  // TOUJOURS 0 (première combinaison)
+  
+  "preferred_match": {
+    "explanation": "Honda détecté dans l'input",
+    "matched_dimensions": {
+      "marque": "Honda",
+      "modele": "Civic"
+    },
+    "confidence": 0.9
+  }
+}
+```
+
+#### 3. SI INPUT VAGUE (pas d'indice spécifique)
+
+**Logique de choix intelligente :**
+
+```
+Critères de sélection (par ordre de priorité) :
+
+1. Popularité (produit le plus courant)
+   - Voitures → Toyota Corolla (bestseller mondial)
+   - Téléphones → Samsung Galaxy (populaire)
+   - Vêtements → T-shirt noir M (taille courante)
+
+2. Prix moyen (ni trop cher, ni trop bas)
+   - Éviter les extrêmes
+   - Viser milieu de gamme
+
+3. Disponibilité (état courant)
+   - Neuf ou Bon état (pas "À rénover")
+   - Stock disponible
+
+4. Neutralité (choix standard)
+   - Couleur : Noir, Blanc, Gris (couleurs classiques)
+   - Taille : M, L (tailles courantes)
+```
+
+**Exemple pour "Je vends des voitures" (vague) :**
+
+```json
+"preferred_match": {
+  "explanation": "Input vague - choix basé sur popularité (Toyota Corolla = bestseller mondial) et prix moyen",
+  "matched_dimensions": {},
+  "confidence": 0.6,
+  "selection_criteria": "popularity_and_mid_price"
+}
+```
+
+#### 4. STRUCTURE COMPLÈTE
+
+```json
+"produits": {
+  "type_donnee": "autocomplete",
+  
+  "valeur": [
+    "[MEILLEUR MATCH selon input]",  ← ai_preferred_index: 0
+    "[Variante 1]",
+    "[Variante 2]"
+  ],
+  
+  "ai_preferred_index": 0,  // TOUJOURS indiquer la préférée
+  
+  "preferred_match": {
+    "explanation": "[Pourquoi cette combinaison est préférée]",
+    "matched_dimensions": {
+      "[dimension]": "[valeur matchée]",
+      ...
+    },
+    "confidence": 0.0-1.0,  // 1.0 = match exact, 0.5 = logique métier
+    "selection_criteria": "user_input|popularity|mid_price|availability"
+  },
+  
+  "separateur": ",",
+  "ordre_dimensions": [...],
+  "sous_caracteristiques": {...},
+  "dependencies": {...}
+}
+```
+
+---
+
+## 📊 EXEMPLES CONCRETS
+
+### Exemple 1 : Input spécifique
+
+**Input** : `"Je vends des Honda Civic"`
+
+```json
+"valeur": [
+  "Honda,Civic,Berline,5,2020,Gris,Essence,Automatique,30000km,Excellent,",  ← Préférée (Honda Civic détecté)
+  "Honda,Accord,Berline,5,2019,Noir,Diesel,Automatique,40000km,Bon,",
+  "Honda,CR-V,SUV,5,2021,Blanc,Hybride,Automatique,20000km,Excellent,"
+],
+"ai_preferred_index": 0,
+"preferred_match": {
+  "explanation": "Honda Civic explicitement mentionné dans l'input utilisateur",
+  "matched_dimensions": {
+    "marque": "Honda",
+    "modele": "Civic"
+  },
+  "confidence": 1.0,
+  "selection_criteria": "user_input"
+}
+```
+
+### Exemple 2 : Input avec indices partiels
+
+**Input** : `"Je vends des T-shirts noirs taille M"`
+
+```json
+"valeur": [
+  "T-shirt,CM,M,Noir,Coton,Casual,Homme,Neuf,",  ← Préférée (Noir M détecté)
+  "T-shirt,CM,L,Blanc,Coton,Sport,Homme,Neuf,",
+  "Polo,CM,M,Bleu,Piqué,Casual,Homme,Neuf,"
+],
+"ai_preferred_index": 0,
+"preferred_match": {
+  "explanation": "Couleur noire et taille M détectées dans l'input",
+  "matched_dimensions": {
+    "type": "T-shirt",
+    "taille": "M",
+    "couleur": "Noir"
+  },
+  "confidence": 0.95,
+  "selection_criteria": "user_input"
+}
+```
+
+### Exemple 3 : Input vague
+
+**Input** : `"Je vends des vêtements"`
+
+```json
+"valeur": [
+  "T-shirt,Generic,M,Noir,Coton,Casual,Unisexe,Neuf,",  ← Préférée (choix logique)
+  "Polo,Generic,L,Blanc,Piqué,Sport,Homme,Neuf,",
+  "Chemise,Generic,M,Bleu,Oxford,Formel,Homme,Neuf,"
+],
+"ai_preferred_index": 0,
+"preferred_match": {
+  "explanation": "Input vague - T-shirt noir taille M choisi car produit le plus populaire et universel",
+  "matched_dimensions": {},
+  "confidence": 0.5,
+  "selection_criteria": "popularity"
+}
+```
+
+---
+
 ## 🚨 RAPPELS IMPORTANTS
 
-1. **EXHAUSTIVITÉ** : Plus de modalités = Mieux
+1. **EXHAUSTIVITÉ** : Plus de modalités = Mieux (8-20+/dimension)
 2. **DÉPENDANCES** : Déclare TOUTES les liaisons entre dimensions
 3. **COMBINAISONS VALIDES** : Liste le MAXIMUM (15-50+)
 4. **ORDRE** : Dimensions liées EN PREMIER
 5. **NOMBRE** : Prix en number, pas string
+6. **🔥 COMBINAISON PRÉFÉRÉE** : TOUJOURS inclure "preferred_match" avec explication
 
 **Génère UNIQUEMENT du JSON valide, sans texte avant ou après.**
 

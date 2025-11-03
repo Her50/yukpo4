@@ -102,7 +102,7 @@ async fn get_progress_from_redis(
     redis_client: &redis::Client,
     session_id: &str,
 ) -> Result<Option<ProgressResponse>, AppError> {
-    let mut conn = redis_client.get_async_connection().await
+    let mut conn = redis_client.get_multiplexed_async_connection().await
         .map_err(|e| AppError::Internal(format!("Erreur connexion Redis: {}", e)))?;
     
     let key = format!("combination_progress:{}", session_id);

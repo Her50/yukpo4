@@ -143,8 +143,8 @@ async fn save_combinations_batch(
         };
         
         b.push_bind(session_id)
-         .push_bind(&product_vector)
-         .push_bind(&location_vector)
+         .push_bind(product_vector)  // Pas de &, on donne ownership
+         .push_bind(location_vector)  // Pas de &, on donne ownership
          .push_bind(combo)
          .push_bind(product_labels)
          .push_bind(location_labels)
@@ -170,7 +170,7 @@ async fn update_progress(
     current: usize,
     total: usize,
 ) -> Result<(), AppError> {
-    let mut conn = redis_client.get_async_connection().await
+    let mut conn = redis_client.get_multiplexed_async_connection().await
         .map_err(|e| AppError::Internal(format!("Erreur Redis: {}", e)))?;
     
     let key = format!("combination_progress:{}", session_id);
@@ -200,7 +200,7 @@ async fn mark_generation_completed(
     redis_client: &redis::Client,
     session_id: &str,
 ) -> Result<(), AppError> {
-    let mut conn = redis_client.get_async_connection().await
+    let mut conn = redis_client.get_multiplexed_async_connection().await
         .map_err(|e| AppError::Internal(format!("Erreur Redis: {}", e)))?;
     
     let key = format!("combination_progress:{}", session_id);
