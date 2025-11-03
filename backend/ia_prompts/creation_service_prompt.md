@@ -246,6 +246,12 @@ type, domaine, niveau, duree, mode_livraison, langue, certification, horaires, [
 
 ---
 
+## 🎯 REQUÊTE UTILISATEUR À TRAITER
+
+{user_input}
+
+---
+
 **Génère UNIQUEMENT du JSON valide sans texte explicatif.**
 
 **FIN PROMPT**
