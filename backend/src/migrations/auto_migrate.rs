@@ -611,25 +611,25 @@ pub async fn ensure_autocomplete_combinations_table(pool: &PgPool) -> Result<(),
     .execute(pool)
     .await?;
     
-    // Fonction upsert (avec labels)
+    // Fonction upsert (avec labels) - ORDRE CORRIGÉ 2025-11-03
     sqlx::query(r#"
         CREATE OR REPLACE FUNCTION upsert_autocomplete_combination(
             p_product_vector TEXT[],
-            p_product_labels TEXT[],
-            p_location_vector TEXT[] DEFAULT '{}',
-            p_location_labels TEXT[] DEFAULT '{}',
+            p_location_vector TEXT[],
             p_full_vector TEXT[],
-            p_chosen_location TEXT DEFAULT NULL,
-            p_is_ai_preferred BOOLEAN DEFAULT FALSE,
-            p_ai_confidence FLOAT DEFAULT 0.0,
-            p_session_id TEXT DEFAULT NULL,
-            p_has_variant BOOLEAN DEFAULT FALSE,
-            p_variant_dimension TEXT DEFAULT NULL,
-            p_variant_value TEXT DEFAULT NULL,
-            p_prix DECIMAL(12, 2) DEFAULT NULL,
-            p_devise TEXT DEFAULT 'XAF',
-            p_stock INTEGER DEFAULT NULL,
-            p_service_id INTEGER DEFAULT NULL
+            p_product_labels TEXT[],
+            p_location_labels TEXT[],
+            p_chosen_location TEXT,
+            p_is_ai_preferred BOOLEAN,
+            p_ai_confidence FLOAT,
+            p_session_id TEXT,
+            p_has_variant BOOLEAN,
+            p_variant_dimension TEXT,
+            p_variant_value TEXT,
+            p_prix DECIMAL(12, 2),
+            p_devise TEXT,
+            p_stock INTEGER,
+            p_service_id INTEGER
         )
         RETURNS INTEGER AS $$
         DECLARE
