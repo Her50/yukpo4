@@ -16,6 +16,7 @@ BEGIN
 END $$;
 
 -- 2. Créer la fonction upsert_autocomplete_combination si manquante
+-- IMPORTANT: Ordre des paramètres doit correspondre aux appels Rust
 CREATE OR REPLACE FUNCTION upsert_autocomplete_combination(
     p_product_vector TEXT[],
     p_location_vector TEXT[],
@@ -36,27 +37,42 @@ CREATE OR REPLACE FUNCTION upsert_autocomplete_combination(
 ) RETURNS INTEGER AS $$
 DECLARE
     v_id INTEGER;
+    v_existing_count INTEGER;
 BEGIN
-    -- Insérer ou récupérer l'ID
-    INSERT INTO autocomplete_combinations (
-        product_vector, location_vector, full_vector,
-        product_labels, location_labels,
-        chosen_location, is_ai_preferred, ai_confidence, session_id,
-        has_variant, variant_dimension, variant_value,
-        prix, devise, stock, service_id, usage_count
-    ) VALUES (
-        p_product_vector, p_location_vector, p_full_vector,
-        p_product_labels, p_location_labels,
-        p_chosen_location, p_is_ai_preferred, p_ai_confidence, p_session_id,
-        p_has_variant, p_variant_dimension, p_variant_value,
-        p_prix, p_devise, p_stock, p_service_id, 1
-    )
-    ON CONFLICT (full_vector) DO UPDATE SET
-        usage_count = autocomplete_combinations.usage_count + 1,
-        updated_at = NOW()
-    RETURNING id INTO v_id;
+    -- Vérifier si existe déjà
+    SELECT id, usage_count INTO v_id, v_existing_count
+    FROM autocomplete_combinations
+    WHERE full_vector = p_full_vector;
     
-    RETURN v_id;
+    IF FOUND THEN
+        -- Mise à jour
+        UPDATE autocomplete_combinations
+        SET 
+            usage_count = usage_count + 1,
+            is_ai_preferred = CASE WHEN p_is_ai_preferred THEN TRUE ELSE is_ai_preferred END,
+            ai_confidence = GREATEST(ai_confidence, p_ai_confidence),
+            service_id = COALESCE(p_service_id, service_id),
+            product_labels = p_product_labels,
+            location_labels = p_location_labels,
+            updated_at = NOW()
+        WHERE id = v_id;
+        RETURN v_id;
+    ELSE
+        -- Insertion
+        INSERT INTO autocomplete_combinations (
+            service_id, product_vector, product_labels, location_vector, location_labels, full_vector,
+            chosen_location, usage_count, is_ai_preferred, ai_confidence,
+            session_id, has_variant, variant_dimension, variant_value,
+            prix, devise, stock
+        ) VALUES (
+            p_service_id, p_product_vector, p_product_labels, p_location_vector, p_location_labels, p_full_vector,
+            p_chosen_location, 1, p_is_ai_preferred, p_ai_confidence,
+            p_session_id, p_has_variant, p_variant_dimension, p_variant_value,
+            p_prix, p_devise, p_stock
+        )
+        RETURNING id INTO v_id;
+        RETURN v_id;
+    END IF;
 END;
 $$ LANGUAGE plpgsql;
 
