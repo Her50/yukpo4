@@ -1113,12 +1113,18 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           console.log('[FormulaireYukpoIntelligentScreen] Catégorie chargée:', categoryValue);
         }
 
-        console.log('[FormulaireYukpoIntelligentScreen] Valeurs initiales:', initialValues);
+      console.log('[FormulaireYukpoIntelligentScreen] Valeurs initiales:', initialValues);
 
-        setComposants(components);
-        setValeursFormulaire(initialValues);
-        setActiveStep(2);
-        setCurrentBlock(0);
+      // ✅ CRITIQUE 2025-11-03: Organiser les blocs directement avec initialValues
+      // Au lieu d'attendre que useEffect se déclenche avec valeursFormulaire vide
+      const organizedBlocks = organizeFieldsIntoBlocks(components, initialValues);
+      
+      // Mettre à jour les states
+      setValeursFormulaire(initialValues);
+      setComposants(components);
+      setBlocks(organizedBlocks);  // ✅ Utilise les valeurs IA !
+      setActiveStep(2);
+      setCurrentBlock(0);
       } else {
         console.log('[FormulaireYukpoIntelligentScreen] Aucune donnée IA, utilisation des composants par défaut');
 
