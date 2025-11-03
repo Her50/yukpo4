@@ -67,7 +67,14 @@ Tu es assistant IA Yukpo. Génère un JSON structuré pour création de service 
         }
       ]
     },
-    "ai_preferred_index": 0,  // OBLIGATOIRE si texte vague
+    "variation_prix": {  // OPTIONNEL - Seulement si produit spécifique avec dimension variable
+      "variable": "[dimension_variable]",  // Ex: "poids", "pointure", "taille"
+      "modalites": [
+        {"valeur": "[val1]", "prix": [PRIX1], "devise": "XAF", "stock": [QTÉ1]},
+        {"valeur": "[val2]", "prix": [PRIX2], "devise": "XAF", "stock": [QTÉ2]}
+      ]
+    },
+    "ai_preferred_index": 0,  // OBLIGATOIRE si texte vague (multi-combinaisons)
     "filtrable": true,
     "identifiant_base": "produits",
     "origine_champs": "ia"
@@ -82,10 +89,13 @@ Tu es assistant IA Yukpo. Génère un JSON structuré pour création de service 
 
 **🚨 RÈGLES OBLIGATOIRES :**
 1. ✅ Minimum 8 dimensions dans `sous_caracteristiques`
-2. ✅ **CHAQUE dimension DOIT avoir AU MOINS 2 valeurs** (sauf `lieu`)
-3. ✅ `dependencies.strict` OBLIGATOIRE (tableau vide `[]` si aucune dépendance)
-4. ✅ Si dépendances existent, GÉNÉRER `valid_combinations` EXPLICITES
-5. ✅ Les dimensions liées DOIVENT être en PREMIÈRE position dans l'ordre
+2. ✅ `dependencies.strict` OBLIGATOIRE (tableau vide `[]` si aucune dépendance)
+3. ✅ Si dépendances existent, GÉNÉRER `valid_combinations` EXPLICITES
+4. ✅ Les dimensions liées DOIVENT être en PREMIÈRE position dans l'ordre
+
+**⚠️ RÈGLE VARIABILITÉ (dépend du cas)** :
+- **Multi-combinaisons** (texte vague) : **CHAQUE dimension AU MOINS 2 valeurs** (sauf `lieu`)
+- **Variation de prix** (texte spécifique) : **UNE SEULE dimension variable** (identifie selon produit : `poids`/`volume` pour alimentation, `pointure` pour chaussures, `taille` pour vêtements, etc.) avec 2+ valeurs, **autres dimensions = 1 valeur**
 
 ---
 
@@ -172,7 +182,7 @@ T-shirt → CM → M/L/XL (dépendances)
 **Exemple 1 : Lait avec dependencies**
 ```json
 {
-  "sous_caracteristiques": {
+    "sous_caracteristiques": {
     "type": ["Lait poudre", "Lait liquide"],
     "marque": ["Nido", "Picot", "Gloria"],
     "poids": ["250g", "500g", "1kg"],
@@ -217,7 +227,7 @@ T-shirt → CM → M/L/XL (dépendances)
 **Exemple 2 : Électronique avec dependencies**
 ```json
 {
-  "sous_caracteristiques": {
+    "sous_caracteristiques": {
     "type": ["Télévision", "Ordinateur portable", "Smartphone"],
     "marque": ["Samsung", "HP", "Apple", "LG"],
     "modele": ["55 pouces", "15 pouces", "iPhone 13", "Galaxy S23"],
@@ -226,8 +236,8 @@ T-shirt → CM → M/L/XL (dépendances)
     "etat": ["Neuf", "Occasion"],
     "puissance_ou_capacite": ["Smart TV", "8GB RAM", "5G"],
     "garantie": ["Garantie 1 an", "Garantie 2 ans"],
-    "lieu": [""]
-  },
+      "lieu": [""]
+    },
   "dependencies": {
     "strict": [
       {
@@ -337,23 +347,74 @@ T-shirt → CM → M/L/XL (dépendances)
 
 ### Variation de prix (texte spécifique)
 
-**Quand** : Input spécifique, MÊME produit, dimension variable
+**Quand** : Input spécifique, MÊME produit, avec mention d'une dimension variable (ex: "Riz 5kg/10kg", "Chaussures Nike taille 38/39/40", "T-shirt CM S/M/L")
 
 **Comment** :
 - Générer 3-5 variantes du MÊME produit
-- Dimension qui varie : poids, taille, volume, etc.
+- **1 seule dimension varie** (identifie la dimension appropriée selon le produit)
+- **Autres dimensions = 1 valeur** (car produit identique)
 - Ajouter `"variation_prix"` :
 
+**⚠️ IDENTIFIER LA DIMENSION VARIABLE selon le type de produit** :
+- **Alimentation** : `poids`, `volume`, `contenance`
+- **Chaussures** : `pointure`, `taille`
+- **Vêtements** : `taille`
+- **Meubles** : `dimensions`, `format`
+- **Boissons** : `contenance`, `volume`
+- **Électronique** : `capacite`, `taille_ecran`, `puissance`
+
+**Exemple 1 : Riz avec variation de poids**
 ```json
-"variation_prix": {
-  "variable": "[dimension_qui_varie]",
-  "position": "last_before_location",
-  "modalites": [
-    {"valeur": "[val1]", "prix": [PRIX1], "devise": "XAF", "stock": [QTÉ]},
-    {"valeur": "[val2]", "prix": [PRIX2], "devise": "XAF", "stock": [QTÉ]}
-  ]
+{
+    "sous_caracteristiques": {
+    "type": ["Riz"],                    // ✅ 1 valeur (même type)
+    "marque": ["Uncle Ben's"],          // ✅ 1 valeur (même marque)
+    "variete": ["Basmati"],             // ✅ 1 valeur (même variété)
+    "couleur": ["Blanc"],               // ✅ 1 valeur
+    "poids": ["5kg", "10kg", "25kg"],   // ✅ DIMENSION VARIABLE
+    "origine": ["USA"],                 // ✅ 1 valeur
+    "qualite": ["Premium"],             // ✅ 1 valeur
+    "conditionnement": ["Sachet"],      // ✅ 1 valeur
+    "lieu": [""]
+  },
+  "variation_prix": {
+    "variable": "poids",
+    "modalites": [
+      {"valeur": "5kg", "prix": 5000, "devise": "XAF", "stock": 50},
+      {"valeur": "10kg", "prix": 9000, "devise": "XAF", "stock": 30},
+      {"valeur": "25kg", "prix": 20000, "devise": "XAF", "stock": 10}
+    ]
+  }
 }
 ```
+
+**Exemple 2 : Chaussures avec variation de pointure**
+```json
+{
+  "sous_caracteristiques": {
+    "marque": ["Nike"],                 // ✅ 1 valeur (même marque)
+    "modele": ["Air Max"],              // ✅ 1 valeur (même modèle)
+    "pointure": ["38", "39", "40", "41"], // ✅ DIMENSION VARIABLE
+    "couleur": ["Noir"],                // ✅ 1 valeur
+    "matiere": ["Cuir"],                // ✅ 1 valeur
+    "type_usage": ["Sport"],            // ✅ 1 valeur
+    "genre": ["Homme"],                 // ✅ 1 valeur
+    "etat": ["Neuf"],                   // ✅ 1 valeur
+    "lieu": [""]
+  },
+  "variation_prix": {
+    "variable": "pointure",
+    "modalites": [
+      {"valeur": "38", "prix": 45000, "devise": "XAF", "stock": 5},
+      {"valeur": "39", "prix": 45000, "devise": "XAF", "stock": 8},
+      {"valeur": "40", "prix": 45000, "devise": "XAF", "stock": 12},
+      {"valeur": "41", "prix": 45000, "devise": "XAF", "stock": 7}
+    ]
+  }
+}
+```
+
+**Calcul combinaisons** : 1×1×**N**×1×1×1×1×1×1 = **N combinaisons** (N = nombre de valeurs de la dimension variable)
 
 **Frontend reconnaît via** : `variation_prix` présent
 
@@ -379,7 +440,12 @@ T-shirt → CM → M/L/XL (dépendances)
 [ ] J'ai CHOISI les dimensions ADAPTÉES (pas copiées)
 [ ] J'ai au moins 8 dimensions
 [ ] "lieu" est en dernier avec [""]
-[ ] CHAQUE dimension a AU MOINS 2 valeurs (sauf lieu)
+
+📌 VARIABILITÉ (selon cas) :
+[ ] Multi-combinaisons : CHAQUE dimension ≥ 2 valeurs (sauf lieu)
+[ ] Variation de prix : 1 dimension variable identifiée (poids/pointure/taille/etc.)
+[ ] Si variation_prix : modalites[] avec valeur/prix/devise/stock
+
 [ ] J'ai ajouté "dependencies": {"strict": [...]}
 [ ] Si dépendances : valid_combinations EXPLICITES générées
 [ ] Les dimensions liées sont en PREMIÈRE position
@@ -434,8 +500,8 @@ T-shirt → CM → M/L/XL (dépendances)
       "ai_preferred_index": 0,
       "filtrable": true,
       "identifiant_base": "produits",
-      "origine_champs": "ia"
-    },
+    "origine_champs": "ia"
+  },
     "nom_produit": {...},
     "categorie_produit": {...},
     "description_produit": {...},
