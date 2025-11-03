@@ -87,11 +87,42 @@ Tu es assistant IA Yukpo. Génère un JSON structuré pour création de service 
 }
 ```
 
+**🚨 RÈGLE CRITIQUE - FORMAT `valeur` vs `sous_caracteristiques` :**
+
+**`sous_caracteristiques`** = TOUTES les valeurs POSSIBLES de chaque dimension :
+```json
+"sous_caracteristiques": {
+  "[dimension1]": ["[valA]", "[valB]", "[valC]"],  // ✅ TOUTES les valeurs possibles
+  "[dimension2]": ["[val1]", "[val2]"]             // ✅ TOUTES les valeurs possibles
+}
+```
+
+**`valeur[]`** = CHAQUE combinaison choisit **UNE SEULE** valeur par dimension :
+```json
+"valeur": [
+  "[valA],[val1],[dim3_val1],...,",  // ✅ Une valeur par dimension
+  "[valB],[val2],[dim3_val2],...,",  // ✅ Une valeur par dimension
+  "[valC],[val1],[dim3_val3],..."    // ✅ Une valeur par dimension
+]
+```
+
+**❌ INTERDIT** :
+```json
+"valeur": [
+  "[valA],[valB],[valC],[val1],..."  // ❌ PLUSIEURS valeurs d'une même dimension !
+]
+```
+
+**Règle** : Chaque combinaison = **1 valeur par dimension** (suivant l'ordre de `sous_caracteristiques`)
+
+---
+
 **🚨 RÈGLES OBLIGATOIRES :**
 1. ✅ Minimum 8 dimensions dans `sous_caracteristiques`
 2. ✅ `dependencies.strict` OBLIGATOIRE (tableau vide `[]` si aucune dépendance)
 3. ✅ Si dépendances existent, GÉNÉRER `valid_combinations` EXPLICITES
 4. ✅ Les dimensions liées DOIVENT être en PREMIÈRE position dans l'ordre
+5. ✅ **CHAQUE combinaison dans `valeur[]` = UNE valeur par dimension**
 
 **⚠️ RÈGLE VARIABILITÉ (dépend du cas)** :
 - **Multi-combinaisons** (texte vague) : **CHAQUE dimension AU MOINS 2 valeurs** (sauf `lieu`)
@@ -355,6 +386,11 @@ T-shirt → CM → M/L/XL (dépendances)
 - **Autres dimensions = 1 valeur** (car produit identique)
 - Ajouter `"variation_prix"` :
 
+**🔑 RÈGLE IMPORTANTE** :
+- La dimension variable DOIT apparaître dans **`sous_caracteristiques`** avec 2+ valeurs
+- La dimension variable DOIT AUSSI apparaître dans **`variation_prix.variable`**
+- Les valeurs dans `modalites[]` DOIVENT correspondre aux valeurs de `sous_caracteristiques`
+
 **⚠️ IDENTIFIER LA DIMENSION VARIABLE selon le type de produit** :
 - **Alimentation** : `poids`, `volume`, `contenance`
 - **Chaussures** : `pointure`, `taille`
@@ -366,19 +402,24 @@ T-shirt → CM → M/L/XL (dépendances)
 **Exemple 1 : Riz avec variation de poids**
 ```json
 {
-    "sous_caracteristiques": {
+  "sous_caracteristiques": {
     "type": ["Riz"],                    // ✅ 1 valeur (même type)
     "marque": ["Uncle Ben's"],          // ✅ 1 valeur (même marque)
     "variete": ["Basmati"],             // ✅ 1 valeur (même variété)
     "couleur": ["Blanc"],               // ✅ 1 valeur
-    "poids": ["5kg", "10kg", "25kg"],   // ✅ DIMENSION VARIABLE
+    "poids": ["5kg", "10kg", "25kg"],   // ✅ DIMENSION VARIABLE (dans sous_caracteristiques)
     "origine": ["USA"],                 // ✅ 1 valeur
     "qualite": ["Premium"],             // ✅ 1 valeur
     "conditionnement": ["Sachet"],      // ✅ 1 valeur
     "lieu": [""]
   },
+  "valeur": [
+    "Riz,Uncle Ben's,Basmati,Blanc,5kg,USA,Premium,Sachet,",   // ✅ Combinaison 1 : poids=5kg
+    "Riz,Uncle Ben's,Basmati,Blanc,10kg,USA,Premium,Sachet,",  // ✅ Combinaison 2 : poids=10kg
+    "Riz,Uncle Ben's,Basmati,Blanc,25kg,USA,Premium,Sachet,"   // ✅ Combinaison 3 : poids=25kg
+  ],
   "variation_prix": {
-    "variable": "poids",
+    "variable": "poids",  // ✅ Même nom que dans sous_caracteristiques
     "modalites": [
       {"valeur": "5kg", "prix": 5000, "devise": "XAF", "stock": 50},
       {"valeur": "10kg", "prix": 9000, "devise": "XAF", "stock": 30},
@@ -394,7 +435,7 @@ T-shirt → CM → M/L/XL (dépendances)
   "sous_caracteristiques": {
     "marque": ["Nike"],                 // ✅ 1 valeur (même marque)
     "modele": ["Air Max"],              // ✅ 1 valeur (même modèle)
-    "pointure": ["38", "39", "40", "41"], // ✅ DIMENSION VARIABLE
+    "pointure": ["38", "39", "40", "41"], // ✅ DIMENSION VARIABLE (dans sous_caracteristiques)
     "couleur": ["Noir"],                // ✅ 1 valeur
     "matiere": ["Cuir"],                // ✅ 1 valeur
     "type_usage": ["Sport"],            // ✅ 1 valeur
@@ -402,8 +443,14 @@ T-shirt → CM → M/L/XL (dépendances)
     "etat": ["Neuf"],                   // ✅ 1 valeur
     "lieu": [""]
   },
+  "valeur": [
+    "Nike,Air Max,38,Noir,Cuir,Sport,Homme,Neuf,",  // ✅ Combinaison 1 : pointure=38
+    "Nike,Air Max,39,Noir,Cuir,Sport,Homme,Neuf,",  // ✅ Combinaison 2 : pointure=39
+    "Nike,Air Max,40,Noir,Cuir,Sport,Homme,Neuf,",  // ✅ Combinaison 3 : pointure=40
+    "Nike,Air Max,41,Noir,Cuir,Sport,Homme,Neuf,"   // ✅ Combinaison 4 : pointure=41
+  ],
   "variation_prix": {
-    "variable": "pointure",
+    "variable": "pointure",  // ✅ Même nom que dans sous_caracteristiques
     "modalites": [
       {"valeur": "38", "prix": 45000, "devise": "XAF", "stock": 5},
       {"valeur": "39", "prix": 45000, "devise": "XAF", "stock": 8},
@@ -441,9 +488,16 @@ T-shirt → CM → M/L/XL (dépendances)
 [ ] J'ai au moins 8 dimensions
 [ ] "lieu" est en dernier avec [""]
 
+🔴 FORMAT VALEUR[] (CRITIQUE) :
+[ ] CHAQUE combinaison dans valeur[] = 1 SEULE valeur par dimension
+[ ] ❌ PAS de "M,L,XL" dans UNE combinaison !
+[ ] ✅ Créer 3 combinaisons séparées : "...M...", "...L...", "...XL..."
+[ ] L'ordre des valeurs suit l'ordre de sous_caracteristiques
+
 📌 VARIABILITÉ (selon cas) :
 [ ] Multi-combinaisons : CHAQUE dimension ≥ 2 valeurs (sauf lieu)
 [ ] Variation de prix : 1 dimension variable identifiée (poids/pointure/taille/etc.)
+[ ] Si variation_prix : dimension variable dans sous_caracteristiques ET variation_prix.variable
 [ ] Si variation_prix : modalites[] avec valeur/prix/devise/stock
 
 [ ] J'ai ajouté "dependencies": {"strict": [...]}
