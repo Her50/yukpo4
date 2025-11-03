@@ -1,3 +1,7 @@
+// Contrôleur unifié pour :
+// 1. autocomplete_characteristics (valeurs individuelles validées) → Routes /api/autocomplete/*
+// 2. autocomplete_combinations (vecteurs complets IA) → Routes /api/combinations/*
+
 use axum::{
     extract::{Query, State, Path},
     http::StatusCode,
@@ -216,8 +220,8 @@ pub struct LinkCombinationsRequest {
     pub service_id: i32,
 }
 
-/// POST /api/autocomplete/search-combinations
-/// Recherche intelligente dans les combinaisons autocomplete
+/// POST /api/combinations/search
+/// Recherche intelligente dans autocomplete_combinations (vecteurs IA)
 pub async fn search_combinations(
     State(state): State<Arc<AppState>>,
     Json(request): Json<SearchCombinationsRequest>,
@@ -256,8 +260,8 @@ pub async fn search_combinations(
     }
 }
 
-/// POST /api/autocomplete/save-ai-combinations
-/// Sauvegarder les combinaisons générées par l'IA (en arrière-plan)
+/// POST /api/combinations/save-ai
+/// Sauvegarder les combinaisons générées par l'IA dans autocomplete_combinations
 pub async fn save_ai_combinations(
     State(state): State<Arc<AppState>>,
     Json(request): Json<SaveAICombinationsRequest>,
@@ -306,8 +310,8 @@ pub async fn save_ai_combinations(
     }
 }
 
-/// GET /api/autocomplete/combinations/session/:session_id
-/// Récupérer les combinaisons d'une session IA
+/// GET /api/combinations/session/{session_id}
+/// Récupérer les combinaisons d'une session IA depuis autocomplete_combinations
 pub async fn get_combinations_by_session(
     State(state): State<Arc<AppState>>,
     Path(session_id): Path<String>,
@@ -335,8 +339,8 @@ pub async fn get_combinations_by_session(
     }
 }
 
-/// POST /api/autocomplete/combinations/link-to-service
-/// Lier des combinaisons à un service après création
+/// POST /api/combinations/link-to-service
+/// Lier des combinaisons à un service après création dans autocomplete_combinations
 pub async fn link_combinations_to_service(
     State(state): State<Arc<AppState>>,
     Json(request): Json<LinkCombinationsRequest>,

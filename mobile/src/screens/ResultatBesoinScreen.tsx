@@ -100,8 +100,8 @@ const ResultatBesoinScreen: React.FC = () => {
           setShowSuggestions(true);
 
           try {
-            const response = await apiPost('/api/autocomplete/search-combinations', {
-              filters: words,
+            const response = await apiPost('/api/combinations/search', {
+              query: searchQuery,
               limit: 10,
             });
 
