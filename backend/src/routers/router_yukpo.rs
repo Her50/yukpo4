@@ -830,11 +830,11 @@ Format JSON attendu :
     // ?? NOUVEAU : Préparer les données pour le formulaire (sans création en base)
     let service_request_data = json!({
         "data": service_data,
-        "base64_image": vec![],  // Ne pas renvoyer les images (déjà traitées)
-        "audio_base64": vec![],  // Ne pas renvoyer les audios
-        "video_base64": vec![],  // Ne pas renvoyer les vidéos
-        "doc_base64": vec![],    // Ne pas renvoyer les documents
-        "excel_base64": vec![],  // Ne pas renvoyer les fichiers Excel
+        "base64_image": json!([]),  // Ne pas renvoyer les images (déjà traitées)
+        "audio_base64": json!([]),  // Ne pas renvoyer les audios
+        "video_base64": json!([]),  // Ne pas renvoyer les vidéos
+        "doc_base64": json!([]),    // Ne pas renvoyer les documents
+        "excel_base64": json!([]),  // Ne pas renvoyer les fichiers Excel
         "tokens_consumed": tokens_consumed,
         "ia_model_used": model_name
     });
