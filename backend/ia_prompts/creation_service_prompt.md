@@ -54,9 +54,18 @@ Tu es assistant IA Yukpo. Génère un JSON structuré pour création de service 
       "lieu": [""]  // TOUJOURS en dernier
     },
     "dependencies": {
-      "[dimension_liée]": "[dimension_parent]"
-      // Ex: "modele": "marque" signifie modele dépend de marque
-      // Si vide : {}
+      "strict": [
+        {
+          "id": "dep_[nom]",
+          "dimensions": ["[parent]", "[child]"],
+          "explanation": "[child] dépend de [parent]",
+          "valid_combinations": [
+            ["[parent_val1]", "[child_val1]"],
+            ["[parent_val1]", "[child_val2]"],
+            ["[parent_val2]", "[child_val3]"]
+          ]
+        }
+      ]
     },
     "ai_preferred_index": 0,  // OBLIGATOIRE si texte vague
     "filtrable": true,
@@ -74,8 +83,9 @@ Tu es assistant IA Yukpo. Génère un JSON structuré pour création de service 
 **🚨 RÈGLES OBLIGATOIRES :**
 1. ✅ Minimum 8 dimensions dans `sous_caracteristiques`
 2. ✅ **CHAQUE dimension DOIT avoir AU MOINS 2 valeurs** (sauf `lieu`)
-3. ✅ `dependencies` OBLIGATOIRE (même si vide `{}`)
-4. ✅ Si dépendances existent, les dimensions liées DOIVENT être listées dans `dependencies`
+3. ✅ `dependencies.strict` OBLIGATOIRE (tableau vide `[]` si aucune dépendance)
+4. ✅ Si dépendances existent, GÉNÉRER `valid_combinations` EXPLICITES
+5. ✅ Les dimensions liées DOIVENT être en PREMIÈRE position dans l'ordre
 
 ---
 
@@ -174,8 +184,32 @@ T-shirt → CM → M/L/XL (dépendances)
     "lieu": [""]
   },
   "dependencies": {
-    "marque": "type",
-    "poids": "marque"
+    "strict": [
+      {
+        "id": "dep_type_marque",
+        "dimensions": ["type", "marque"],
+        "explanation": "marque dépend de type (poudre vs liquide)",
+        "valid_combinations": [
+          ["Lait poudre", "Nido"],
+          ["Lait poudre", "Picot"],
+          ["Lait liquide", "Gloria"]
+        ]
+      },
+      {
+        "id": "dep_marque_poids",
+        "dimensions": ["marque", "poids"],
+        "explanation": "poids dépend de marque (formats spécifiques)",
+        "valid_combinations": [
+          ["Nido", "250g"],
+          ["Nido", "500g"],
+          ["Nido", "1kg"],
+          ["Picot", "250g"],
+          ["Picot", "500g"],
+          ["Gloria", "500g"],
+          ["Gloria", "1kg"]
+        ]
+      }
+    ]
   }
 }
 ```
@@ -186,8 +220,8 @@ T-shirt → CM → M/L/XL (dépendances)
   "sous_caracteristiques": {
     "type": ["Télévision", "Ordinateur portable", "Smartphone"],
     "marque": ["Samsung", "HP", "Apple", "LG"],
-    "modele": ["55 pouces", "15 pouces", "iPhone 13"],
-    "caracteristique_principale": ["4K", "Intel i5", "128GB"],
+    "modele": ["55 pouces", "15 pouces", "iPhone 13", "Galaxy S23"],
+    "caracteristique_principale": ["4K", "Intel i5", "128GB", "OLED"],
     "couleur": ["Noir", "Argent", "Blanc"],
     "etat": ["Neuf", "Occasion"],
     "puissance_ou_capacite": ["Smart TV", "8GB RAM", "5G"],
@@ -195,21 +229,72 @@ T-shirt → CM → M/L/XL (dépendances)
     "lieu": [""]
   },
   "dependencies": {
-    "marque": "type",
-    "modele": "marque"
+    "strict": [
+      {
+        "id": "dep_type_marque",
+        "dimensions": ["type", "marque"],
+        "explanation": "marque dépend de type (TV/PC/Phone)",
+        "valid_combinations": [
+          ["Télévision", "Samsung"],
+          ["Télévision", "LG"],
+          ["Ordinateur portable", "HP"],
+          ["Smartphone", "Apple"],
+          ["Smartphone", "Samsung"]
+        ]
+      },
+      {
+        "id": "dep_marque_modele",
+        "dimensions": ["marque", "modele"],
+        "explanation": "modele dépend de marque",
+        "valid_combinations": [
+          ["Samsung", "55 pouces"],
+          ["Samsung", "Galaxy S23"],
+          ["LG", "OLED"],
+          ["HP", "15 pouces"],
+          ["Apple", "iPhone 13"]
+        ]
+      }
+    ]
   }
 }
 ```
 
 **Calcul combinaisons CORRECT avec dépendances** :
-- ❌ Faux : 3 types × 4 marques × 3 modèles = 36
-- ✅ Vrai : TV(2 marques × 1 modèle) + PC(1×1) + Phone(1×1) = 2+1+1 = 4
+- ❌ Faux : 3 types × 4 marques × 4 modèles = 48 (ignore dépendances)
+- ✅ Vrai : Combos valides = Samsung(55"|S23) + LG(OLED) + HP(15") + Apple(iPhone) = 2+1+1+1 = **5 combinaisons**
 
 **Frontend utilise ces dépendances pour** :
 - Filtrage intelligent (si type="TV" → masque HP/Apple)
 - Autocomplete contextuel  
 - Validation cohérence
 - **Calcul exact nombre de combinaisons**
+
+**⚠️ FORMAT OBLIGATOIRE** :
+```json
+"dependencies": {
+  "strict": [
+    // Tableau vide [] si AUCUNE dépendance
+    // OU liste des objets avec :
+    {
+      "id": "dep_[parent]_[child]",
+      "dimensions": ["[dimension_parent]", "[dimension_enfant]"],
+      "explanation": "Description de la dépendance",
+      "valid_combinations": [
+        ["[val_parent1]", "[val_child1]"],
+        ["[val_parent1]", "[val_child2]"],
+        ["[val_parent2]", "[val_child3]"]
+      ]
+    }
+  ]
+}
+```
+
+**Exemple sans dépendances** :
+```json
+"dependencies": {
+  "strict": []
+}
+```
 
 ---
 
@@ -295,8 +380,9 @@ T-shirt → CM → M/L/XL (dépendances)
 [ ] J'ai au moins 8 dimensions
 [ ] "lieu" est en dernier avec [""]
 [ ] CHAQUE dimension a AU MOINS 2 valeurs (sauf lieu)
-[ ] J'ai ajouté "dependencies": {...} (ou {} si aucune)
-[ ] Les dimensions liées sont listées dans dependencies
+[ ] J'ai ajouté "dependencies": {"strict": [...]}
+[ ] Si dépendances : valid_combinations EXPLICITES générées
+[ ] Les dimensions liées sont en PREMIÈRE position
 [ ] type_offre correspond (produit vs prestation)
 [ ] Prix en NUMBER (pas string)
 [ ] ai_preferred_index: 0 si multi-combinaisons
