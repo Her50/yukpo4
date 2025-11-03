@@ -123,6 +123,50 @@ type, domaine, niveau, duree, mode_livraison, langue, certification, horaires, [
 
 ---
 
+## 🔗 DÉPENDANCES & ORDRE DES DIMENSIONS
+
+### Ordre des dimensions (CRITIQUE)
+
+**Dimensions LIÉES doivent être en PREMIÈRE position** :
+
+**Exemple Lait** :
+```
+type, marque, poids, format, qualite, age_cible, origine, conditionnement, [lieu]
+↑     ↑      ↑
+Dimensions liées (type→marque→poids) en PREMIER
+```
+
+**Dépendances explicites** :
+- **type → marque** : Le type détermine les marques possibles
+- **marque → poids** : Certaines marques ont des formats spécifiques
+- **type → format** : Lait poudre vs liquide
+
+**Exemple Vêtements** :
+```
+type, marque, taille, couleur, matiere, style, genre, etat, [lieu]
+↑     ↑      ↑
+T-shirt → CM → M/L/XL (dépendances)
+```
+
+### Logique de dépendances
+
+**Si type="Lait poudre"** :
+- marque: Nido, Picot, Gloria (marques de lait poudre)
+- poids: 250g, 500g, 1kg, 2.5kg
+- age_cible: 0-6mois, 6-12mois, 1-3ans
+
+**Si type="Lait liquide"** :
+- marque: Gloria, Nido (versions liquides)
+- volume: 500ml, 1L, 1.5L
+- conservation: Frais, UHT
+
+**Frontend utilise ces dépendances pour** :
+- Filtrage intelligent (si type="Poudre" → masque volumes liquides)
+- Autocomplete contextuel
+- Validation cohérence
+
+---
+
 ## 🎯 MULTI-COMBINAISONS vs VARIATION PRIX
 
 ### Multi-combinaisons (texte vague)
@@ -131,8 +175,30 @@ type, domaine, niveau, duree, mode_livraison, langue, certification, horaires, [
 
 **Comment** :
 - Générer 5-15 combinaisons de produits DIFFÉRENTS
-- Varier 2-3 dimensions (pas juste 1)
+- **VARIÉTÉ OBLIGATOIRE** : Varier 2-3 dimensions intelligemment
 - Ajouter `"ai_preferred_index": 0`
+
+**ARRANGEMENT** : Toutes combinaisons suivent le MÊME ORDRE de dimensions
+
+**❌ INTERDIT** (pas de variété) :
+```
+"valeur": [
+  "Lait,Nido,500g,Poudre,",      ← Tout à 500g
+  "Lait,Nido,500g,Poudre,",      ← Identique !
+  "Lait,Gloria,500g,Poudre,"     ← Seule marque change
+]
+```
+
+**✅ CORRECT** (vraie variété) :
+```
+"valeur": [
+  "Lait,Nido,500g,Poudre,Premium,0-6mois,",        ← 500g, Premium, nourrisson
+  "Lait,Gloria,1kg,Liquide,Standard,6-12mois,",    ← 1kg, Liquide, autre âge
+  "Lait,Picot,250g,Poudre,Économique,0-6mois,"     ← 250g, Économique
+]
+```
+
+**Dimensions variées** : poids (500g→1kg→250g), format (Poudre→Liquide), qualité, âge ✅
 
 **Frontend reconnaît via** : `ai_preferred_index` présent
 
