@@ -53,6 +53,11 @@ Tu es assistant IA Yukpo. Génère un JSON structuré pour création de service 
       // MINIMUM 8 dimensions ADAPTÉES au produit identifié
       "lieu": [""]  // TOUJOURS en dernier
     },
+    "dependencies": {
+      "[dimension_liée]": "[dimension_parent]"
+      // Ex: "modele": "marque" signifie modele dépend de marque
+      // Si vide : {}
+    },
     "ai_preferred_index": 0,  // OBLIGATOIRE si texte vague
     "filtrable": true,
     "identifiant_base": "produits",
@@ -66,7 +71,11 @@ Tu es assistant IA Yukpo. Génère un JSON structuré pour création de service 
 }
 ```
 
-**🚨 VALIDATION : sous_caracteristiques DOIT avoir au moins 8 dimensions**
+**🚨 RÈGLES OBLIGATOIRES :**
+1. ✅ Minimum 8 dimensions dans `sous_caracteristiques`
+2. ✅ **CHAQUE dimension DOIT avoir AU MOINS 2 valeurs** (sauf `lieu`)
+3. ✅ `dependencies` OBLIGATOIRE (même si vide `{}`)
+4. ✅ Si dépendances existent, les dimensions liées DOIVENT être listées dans `dependencies`
 
 ---
 
@@ -148,22 +157,59 @@ type, marque, taille, couleur, matiere, style, genre, etat, [lieu]
 T-shirt → CM → M/L/XL (dépendances)
 ```
 
-### Logique de dépendances
+### Logique de dépendances - EXEMPLES JSON
 
-**Si type="Lait poudre"** :
-- marque: Nido, Picot, Gloria (marques de lait poudre)
-- poids: 250g, 500g, 1kg, 2.5kg
-- age_cible: 0-6mois, 6-12mois, 1-3ans
+**Exemple 1 : Lait avec dependencies**
+```json
+{
+  "sous_caracteristiques": {
+    "type": ["Lait poudre", "Lait liquide"],
+    "marque": ["Nido", "Picot", "Gloria"],
+    "poids": ["250g", "500g", "1kg"],
+    "format": ["Sachet", "Boîte", "Brique"],
+    "qualite": ["Premium", "Standard"],
+    "age_cible": ["0-6mois", "6-12mois", "1-3ans"],
+    "origine": ["France", "Pays-Bas"],
+    "etat": ["Neuf", "Proche expiration"],
+    "lieu": [""]
+  },
+  "dependencies": {
+    "marque": "type",
+    "poids": "marque"
+  }
+}
+```
 
-**Si type="Lait liquide"** :
-- marque: Gloria, Nido (versions liquides)
-- volume: 500ml, 1L, 1.5L
-- conservation: Frais, UHT
+**Exemple 2 : Électronique avec dependencies**
+```json
+{
+  "sous_caracteristiques": {
+    "type": ["Télévision", "Ordinateur portable", "Smartphone"],
+    "marque": ["Samsung", "HP", "Apple", "LG"],
+    "modele": ["55 pouces", "15 pouces", "iPhone 13"],
+    "caracteristique_principale": ["4K", "Intel i5", "128GB"],
+    "couleur": ["Noir", "Argent", "Blanc"],
+    "etat": ["Neuf", "Occasion"],
+    "puissance_ou_capacite": ["Smart TV", "8GB RAM", "5G"],
+    "garantie": ["Garantie 1 an", "Garantie 2 ans"],
+    "lieu": [""]
+  },
+  "dependencies": {
+    "marque": "type",
+    "modele": "marque"
+  }
+}
+```
+
+**Calcul combinaisons CORRECT avec dépendances** :
+- ❌ Faux : 3 types × 4 marques × 3 modèles = 36
+- ✅ Vrai : TV(2 marques × 1 modèle) + PC(1×1) + Phone(1×1) = 2+1+1 = 4
 
 **Frontend utilise ces dépendances pour** :
-- Filtrage intelligent (si type="Poudre" → masque volumes liquides)
-- Autocomplete contextuel
+- Filtrage intelligent (si type="TV" → masque HP/Apple)
+- Autocomplete contextuel  
 - Validation cohérence
+- **Calcul exact nombre de combinaisons**
 
 ---
 
@@ -248,6 +294,9 @@ T-shirt → CM → M/L/XL (dépendances)
 [ ] J'ai CHOISI les dimensions ADAPTÉES (pas copiées)
 [ ] J'ai au moins 8 dimensions
 [ ] "lieu" est en dernier avec [""]
+[ ] CHAQUE dimension a AU MOINS 2 valeurs (sauf lieu)
+[ ] J'ai ajouté "dependencies": {...} (ou {} si aucune)
+[ ] Les dimensions liées sont listées dans dependencies
 [ ] type_offre correspond (produit vs prestation)
 [ ] Prix en NUMBER (pas string)
 [ ] ai_preferred_index: 0 si multi-combinaisons
