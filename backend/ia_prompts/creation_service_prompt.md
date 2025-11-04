@@ -96,7 +96,7 @@ Tu es assistant IA Yukpo. Génère un JSON structuré pour création de service 
 
 **`sous_caracteristiques`** = TOUTES les valeurs POSSIBLES de chaque dimension :
 ```json
-"sous_caracteristiques": {
+    "sous_caracteristiques": {
   "[dimension1]": ["[valA]", "[valB]", "[valC]"],  // ✅ TOUTES les valeurs possibles
   "[dimension2]": ["[val1]", "[val2]"]             // ✅ TOUTES les valeurs possibles
 }
@@ -104,7 +104,7 @@ Tu es assistant IA Yukpo. Génère un JSON structuré pour création de service 
 
 **`valeur[]`** = CHAQUE combinaison choisit **UNE SEULE** valeur par dimension :
 ```json
-"valeur": [
+  "valeur": [
   "[valA],[val1],[dim3_val1],...,",  // ✅ Une valeur par dimension
   "[valB],[val2],[dim3_val2],...,",  // ✅ Une valeur par dimension
   "[valC],[val1],[dim3_val3],..."    // ✅ Une valeur par dimension
@@ -414,7 +414,7 @@ T-shirt → CM → M/L/XL (dépendances)
 **Exemple 1 : Riz avec variation de poids**
 ```json
 {
-  "sous_caracteristiques": {
+    "sous_caracteristiques": {
     "type": ["Riz"],                    // ✅ 1 valeur (même type)
     "marque": ["Uncle Ben's"],          // ✅ 1 valeur (même marque)
     "variete": ["Basmati"],             // ✅ 1 valeur (même variété)

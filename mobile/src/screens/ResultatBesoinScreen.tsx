@@ -7,13 +7,13 @@
 import { useNavigation, useRoute } from '@react-navigation/native';
 import React, { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    FlatList,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  FlatList,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import ChatInputMobile from '../components/ChatInputMobile';
 import { NativeCard } from '../components/NativeDesign';
@@ -67,9 +67,9 @@ type SortOption = 'pertinence' | 'proximite' | 'prix_asc' | 'prix_desc';
 type FilterCategory = 'all' | 'with_stock' | 'with_variants' | 'nearby';
 
 const ResultatBesoinScreen: React.FC = () => {
-    const navigation = useNavigation();
-    const route = useRoute();
-    const { location } = useLocation();
+  const navigation = useNavigation();
+  const route = useRoute();
+  const { location } = useLocation();
 
   // États recherche
   const [searchQuery, setSearchQuery] = useState('');
@@ -77,19 +77,19 @@ const ResultatBesoinScreen: React.FC = () => {
   const [suggestions, setSuggestions] = useState<CombinationSuggestion[]>([]);
   const [results, setResults] = useState<Product[]>([]);
   const [filteredResults, setFilteredResults] = useState<Product[]>([]);
-  
+
   // États UI
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
   const [loadingResults, setLoadingResults] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
-  
+
   // États filtrage et tri
   const [sortBy, setSortBy] = useState<SortOption>('pertinence');
   const [filterCategory, setFilterCategory] = useState<FilterCategory>('all');
   const [showFilters, setShowFilters] = useState(false);
 
   // ✅ Recherche progressive autocomplete
-    useEffect(() => {
+  useEffect(() => {
     const debounce = setTimeout(async () => {
       if (searchQuery.trim()) {
         const words = searchQuery.split(' ').filter(w => w.trim());
@@ -107,20 +107,20 @@ const ResultatBesoinScreen: React.FC = () => {
 
             if (response.success && response.data) {
               setSuggestions(response.data as CombinationSuggestion[]);
-                    } else {
+            } else {
               setSuggestions([]);
-                }
-            } catch (error) {
+            }
+          } catch (error) {
             console.error('[ResultatBesoinScreen] Erreur suggestions:', error);
             setSuggestions([]);
           } finally {
             setLoadingSuggestions(false);
           }
-                            } else {
+        } else {
           setSuggestions([]);
           setShowSuggestions(false);
         }
-                        } else {
+      } else {
         setSuggestions([]);
         setShowSuggestions(false);
       }
@@ -139,9 +139,9 @@ const ResultatBesoinScreen: React.FC = () => {
         filtered = filtered.filter(p => {
           if (p.has_variant && p.variants) {
             return p.variants.some(v => (v.stock || 0) > 0);
-                }
-                return true;
-            });
+          }
+          return true;
+        });
         break;
       case 'with_variants':
         filtered = filtered.filter(p => p.has_variant);
@@ -157,7 +157,7 @@ const ResultatBesoinScreen: React.FC = () => {
         filtered.sort((a, b) => {
           const distA = a.distance_km ?? 999999;
           const distB = b.distance_km ?? 999999;
-            return distA - distB;
+          return distA - distB;
         });
         break;
       case 'prix_asc':
@@ -220,11 +220,11 @@ const ResultatBesoinScreen: React.FC = () => {
 
       if (response.success && response.data) {
         setResults(response.data as Product[]);
-                    } else {
+      } else {
         setResults([]);
-                }
-            } catch (error) {
-            console.error('[ResultatBesoinScreen] Erreur recherche:', error);
+      }
+    } catch (error) {
+      console.error('[ResultatBesoinScreen] Erreur recherche:', error);
       setResults([]);
     } finally {
       setLoadingResults(false);
@@ -238,24 +238,24 @@ const ResultatBesoinScreen: React.FC = () => {
     // Le useEffect se chargera de lancer la recherche
   };
 
-        return (
+  return (
     <View style={styles.container}>
       {/* Header */}
-            <View style={styles.header}>
-                <TouchableOpacity
-                    style={styles.backButton}
-                            onPress={() => navigation.goBack()}
-                        >
+      <View style={styles.header}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}
+        >
           <SafeIcon name="arrow-left" size={24} color="#1F2937" />
-                        </TouchableOpacity>
+        </TouchableOpacity>
         <Text style={styles.headerTitle}>Recherche</Text>
-                        <TouchableOpacity
+        <TouchableOpacity
           style={styles.filterButton}
           onPress={() => setShowFilters(!showFilters)}
-                        >
+        >
           <SafeIcon name="sliders" size={20} color={modernColors.primary} />
-                        </TouchableOpacity>
-                    </View>
+        </TouchableOpacity>
+      </View>
 
       {/* Barre de recherche ChatInput (identique HomeScreen) */}
       <View style={styles.searchSection}>
@@ -276,11 +276,11 @@ const ResultatBesoinScreen: React.FC = () => {
             {filters.map((filter, index) => (
               <View key={index} style={styles.filterChip}>
                 <Text style={styles.filterText}>{filter}</Text>
-                                    </View>
+              </View>
             ))}
           </ScrollView>
-                                )}
-                        </View>
+        )}
+      </View>
 
       {/* Panneau Filtres & Tri */}
       {showFilters && (
@@ -295,28 +295,28 @@ const ResultatBesoinScreen: React.FC = () => {
                 { key: 'prix_asc', label: '💰 Prix croissant', icon: 'arrow-up' },
                 { key: 'prix_desc', label: '💎 Prix décroissant', icon: 'arrow-down' },
               ].map((option) => (
-                                <TouchableOpacity
+                <TouchableOpacity
                   key={option.key}
-                                    style={[
+                  style={[
                     styles.filterOption,
                     sortBy === option.key && styles.filterOptionActive,
-                                    ]}
+                  ]}
                   onPress={() => setSortBy(option.key as SortOption)}
-                                >
+                >
                   <SafeIcon
                     name={option.icon as any}
                     size={16}
                     color={sortBy === option.key ? '#FFF' : modernColors.primary}
                   />
-                                    <Text
-                                        style={[
+                  <Text
+                    style={[
                       styles.filterOptionText,
                       sortBy === option.key && styles.filterOptionTextActive,
-                                        ]}
-                                    >
+                    ]}
+                  >
                     {option.label}
-                                    </Text>
-                                </TouchableOpacity>
+                  </Text>
+                </TouchableOpacity>
               ))}
             </View>
           </View>
@@ -331,23 +331,23 @@ const ResultatBesoinScreen: React.FC = () => {
                 { key: 'with_variants', label: 'Avec variations' },
                 { key: 'nearby', label: 'À proximité (<5km)' },
               ].map((option) => (
-                                <TouchableOpacity
+                <TouchableOpacity
                   key={option.key}
-                                    style={[
+                  style={[
                     styles.filterOption,
                     filterCategory === option.key && styles.filterOptionActive,
                   ]}
                   onPress={() => setFilterCategory(option.key as FilterCategory)}
                 >
-                                        <Text
-                                            style={[
+                  <Text
+                    style={[
                       styles.filterOptionText,
                       filterCategory === option.key && styles.filterOptionTextActive,
-                                            ]}
-                                        >
+                    ]}
+                  >
                     {option.label}
-                                        </Text>
-                                </TouchableOpacity>
+                  </Text>
+                </TouchableOpacity>
               ))}
             </View>
           </View>
@@ -367,7 +367,7 @@ const ResultatBesoinScreen: React.FC = () => {
               <Text style={styles.suggestionsTitle}>💡 Suggestions ({suggestions.length})</Text>
               <ScrollView style={styles.suggestionsList}>
                 {suggestions.map((suggestion, index) => (
-                                <TouchableOpacity
+                  <TouchableOpacity
                     key={index}
                     style={styles.suggestionCard}
                     onPress={() => selectSuggestion(suggestion)}
@@ -394,7 +394,7 @@ const ResultatBesoinScreen: React.FC = () => {
                       <View style={styles.statsRow}>
                         <Text style={styles.statsText}>
                           📊 {suggestion.usage_count}× utilisé
-                                    </Text>
+                        </Text>
                         {suggestion.has_variant && suggestion.variant_dimension && (
                           <Text style={styles.statsText}>
                             • {suggestion.variant_dimension}
@@ -413,11 +413,11 @@ const ResultatBesoinScreen: React.FC = () => {
                         <Text style={styles.selectButtonText}>Sélectionner</Text>
                       </View>
                     </NativeCard>
-                                </TouchableOpacity>
+                  </TouchableOpacity>
                 ))}
               </ScrollView>
 
-                                    <TouchableOpacity
+              <TouchableOpacity
                 style={styles.manualSearchButton}
                 onPress={() => {
                   setShowSuggestions(false);
@@ -427,8 +427,8 @@ const ResultatBesoinScreen: React.FC = () => {
                 <SafeIcon name="search" size={16} color={modernColors.primary} />
                 <Text style={styles.manualSearchText}>
                   Rechercher sans suggestion
-                                        </Text>
-                                    </TouchableOpacity>
+                </Text>
+              </TouchableOpacity>
             </>
           ) : (
             <View style={styles.noSuggestionsContainer}>
@@ -444,8 +444,8 @@ const ResultatBesoinScreen: React.FC = () => {
                 <Text style={styles.manualSearchText}>Rechercher quand même</Text>
               </TouchableOpacity>
             </View>
-                                )}
-                            </View>
+          )}
+        </View>
       )}
 
       {/* Résultats */}
@@ -461,31 +461,31 @@ const ResultatBesoinScreen: React.FC = () => {
                 <Text style={styles.sortInfo}>
                   Trié par : {
                     sortBy === 'proximite' ? '📍 Proximité' :
-                    sortBy === 'prix_asc' ? '💰 Prix ↑' :
-                    '💎 Prix ↓'
+                      sortBy === 'prix_asc' ? '💰 Prix ↑' :
+                        '💎 Prix ↓'
                   }
-                                    </Text>
+                </Text>
               )}
-                                </View>
+            </View>
           )}
 
           {loadingResults ? (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="large" color={modernColors.primary} />
               <Text style={styles.loadingText}>Recherche en cours...</Text>
-                                            </View>
+            </View>
           ) : filteredResults.length > 0 ? (
             <FlatList
               data={filteredResults}
               keyExtractor={(item) => `${item.service_id}`}
               renderItem={({ item }) => (
-                <ProductCard 
-                  product={item} 
+                <ProductCard
+                  product={item}
                   service={item as any}
                 />
               )}
               contentContainerStyle={styles.resultsList}
-                                ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
+              ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
             />
           ) : searchQuery.length > 0 ? (
             <View style={styles.emptyState}>
@@ -494,7 +494,7 @@ const ResultatBesoinScreen: React.FC = () => {
               <Text style={styles.emptyText}>
                 Essayez avec d'autres mots-clés ou ajustez les filtres
               </Text>
-                                                        </View>
+            </View>
           ) : (
             <View style={styles.emptyState}>
               <SafeIcon name="search" size={64} color="#D1D5DB" />
@@ -502,30 +502,30 @@ const ResultatBesoinScreen: React.FC = () => {
               <Text style={styles.emptyText}>
                 Décrivez ce que vous cherchez en langage naturel
               </Text>
-                                                    </View>
+            </View>
           )}
-                                                        </View>
+        </View>
       )}
-                                                    </View>
-    );
+    </View>
+  );
 };
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
+  container: {
+    flex: 1,
     backgroundColor: '#F9FAFB',
-    },
-    header: {
-        flexDirection: 'row',
-        alignItems: 'center',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
-        paddingHorizontal: 16,
-        paddingVertical: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     backgroundColor: '#FFF',
-        borderBottomWidth: 1,
-        borderBottomColor: '#E5E7EB',
-    },
-    backButton: {
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  backButton: {
     padding: 8,
   },
   headerTitle: {
@@ -541,13 +541,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     gap: 12,
-        borderBottomWidth: 1,
+    borderBottomWidth: 1,
     borderBottomColor: '#E5E7EB',
-    },
+  },
   filtersScroll: {
-        flexDirection: 'row',
-        gap: 8,
-        alignItems: 'center',
+    flexDirection: 'row',
+    gap: 8,
+    alignItems: 'center',
   },
   filtersLabel: {
     fontSize: 13,
@@ -556,7 +556,7 @@ const styles = StyleSheet.create({
   },
   filterChip: {
     backgroundColor: modernColors.primary,
-        paddingHorizontal: 12,
+    paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
   },
@@ -576,18 +576,18 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   filterGroupTitle: {
-        fontSize: 14,
+    fontSize: 14,
     fontWeight: '700',
     color: '#1F2937',
-    },
+  },
   filterOptions: {
-        flexDirection: 'row',
+    flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
   },
   filterOption: {
-        flexDirection: 'row',
-        alignItems: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 6,
     paddingHorizontal: 12,
     paddingVertical: 8,
@@ -601,7 +601,7 @@ const styles = StyleSheet.create({
   },
   filterOptionText: {
     fontSize: 13,
-        fontWeight: '600',
+    fontWeight: '600',
     color: modernColors.primary,
   },
   filterOptionTextActive: {
@@ -614,27 +614,27 @@ const styles = StyleSheet.create({
   },
   suggestionsTitle: {
     fontSize: 16,
-        fontWeight: '700',
+    fontWeight: '700',
     color: '#1F2937',
     marginBottom: 12,
   },
   suggestionsList: {
-        flex: 1,
+    flex: 1,
   },
   suggestionCard: {
     marginBottom: 12,
   },
   vectorChips: {
-        flexDirection: 'row',
+    flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 6,
-        marginBottom: 12,
-    },
+    marginBottom: 12,
+  },
   productChip: {
     backgroundColor: '#EEF2FF',
     paddingHorizontal: 10,
     paddingVertical: 5,
-        borderRadius: 6,
+    borderRadius: 6,
     borderWidth: 1,
     borderColor: modernColors.primary,
   },
@@ -647,31 +647,31 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-        marginBottom: 8,
-    },
+    marginBottom: 8,
+  },
   locationText: {
-        fontSize: 14,
+    fontSize: 14,
     color: '#6B7280',
-    },
+  },
   statsRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 12,
-        marginBottom: 12,
-    },
+    marginBottom: 12,
+  },
   statsText: {
-        fontSize: 12,
+    fontSize: 12,
     color: '#9CA3AF',
-    },
+  },
   priceText: {
-        fontSize: 14,
+    fontSize: 14,
     fontWeight: '700',
     color: modernColors.primary,
     marginLeft: 'auto',
   },
   selectButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
     backgroundColor: modernColors.primary,
@@ -680,42 +680,42 @@ const styles = StyleSheet.create({
   },
   selectButtonText: {
     color: '#FFF',
-        fontSize: 14,
+    fontSize: 14,
     fontWeight: '600',
-    },
+  },
   manualSearchButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 8,
-        paddingVertical: 12,
-        borderWidth: 2,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    borderWidth: 2,
     borderColor: modernColors.primary,
     borderRadius: 12,
     borderStyle: 'dashed',
     marginTop: 16,
   },
   manualSearchText: {
-        fontSize: 14,
+    fontSize: 14,
     fontWeight: '600',
     color: modernColors.primary,
   },
   noSuggestionsContainer: {
-        alignItems: 'center',
+    alignItems: 'center',
     paddingVertical: 40,
   },
   noSuggestionsText: {
-        fontSize: 14,
+    fontSize: 14,
     color: '#6B7280',
     marginBottom: 16,
   },
   resultsContainer: {
-        flex: 1,
+    flex: 1,
   },
   resultsHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
     backgroundColor: '#FFF',
@@ -725,28 +725,28 @@ const styles = StyleSheet.create({
   resultsCount: {
     fontSize: 14,
     fontWeight: '700',
-        color: '#1F2937',
-    },
+    color: '#1F2937',
+  },
   sortInfo: {
     fontSize: 12,
-        color: '#6B7280',
+    color: '#6B7280',
   },
   resultsList: {
     padding: 16,
   },
   loadingContainer: {
     flex: 1,
-        alignItems: 'center',
+    alignItems: 'center',
     justifyContent: 'center',
-        gap: 12,
-    },
+    gap: 12,
+  },
   loadingText: {
-        fontSize: 14,
+    fontSize: 14,
     color: '#6B7280',
   },
   emptyState: {
-        flex: 1,
-        alignItems: 'center',
+    flex: 1,
+    alignItems: 'center',
     justifyContent: 'center',
     gap: 12,
     paddingHorizontal: 40,
@@ -757,10 +757,10 @@ const styles = StyleSheet.create({
     color: '#374151',
   },
   emptyText: {
-        fontSize: 14,
+    fontSize: 14,
     color: '#6B7280',
-        textAlign: 'center',
-    },
+    textAlign: 'center',
+  },
 });
 
 export default ResultatBesoinScreen;

@@ -813,6 +813,88 @@ pub async fn run_auto_migrations(pool: &PgPool) {
         Err(e) => error!("❌ Erreur migration auto autocomplete_combinations: {}", e),
     }
     
+    // Migration 6: Table token_usage_logs (✅ NOUVEAU 2025-11-03)
+    match ensure_token_usage_logs_table(pool).await {
+        Ok(_) => info!("✅ Migration auto: token_usage_logs table OK"),
+        Err(e) => error!("❌ Erreur migration auto token_usage_logs: {}", e),
+    }
+    
     info!("✅ Migrations automatiques terminées");
+}
+
+/// Vérifie et crée la table token_usage_logs si elle n'existe pas
+pub async fn ensure_token_usage_logs_table(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification de la table token_usage_logs...");
+    
+    // Vérifier si la table existe
+    let exists = sqlx::query_scalar::<_, bool>(
+        "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'token_usage_logs')"
+    )
+    .fetch_one(pool)
+    .await?;
+    
+    if exists {
+        info!("✅ Table token_usage_logs déjà présente");
+        
+        // Vérifier si la colonne intention existe
+        let col_exists = sqlx::query_scalar::<_, bool>(
+            "SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name = 'token_usage_logs' AND column_name = 'intention')"
+        )
+        .fetch_one(pool)
+        .await?;
+        
+        if !col_exists {
+            warn!("⚠️ Colonne 'intention' manquante, ajout en cours...");
+            sqlx::query("ALTER TABLE token_usage_logs ADD COLUMN IF NOT EXISTS intention VARCHAR(100) DEFAULT 'assistance_generale'")
+                .execute(pool)
+                .await?;
+            info!("✅ Colonne 'intention' ajoutée");
+        }
+        
+        return Ok(());
+    }
+    
+    warn!("⚠️ Table token_usage_logs manquante, création en cours...");
+    
+    // Créer la table token_usage_logs
+    sqlx::query(r#"
+        CREATE TABLE IF NOT EXISTS token_usage_logs (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            intention VARCHAR(100) DEFAULT 'assistance_generale',
+            tokens_ia_consumed INTEGER NOT NULL,
+            tokens_cost_xaf NUMERIC(15, 2) DEFAULT 0,
+            tokens_deducted INTEGER NOT NULL,
+            balance_before INTEGER NOT NULL,
+            balance_after INTEGER NOT NULL,
+            processing_time_ms INTEGER,
+            response_source VARCHAR(50),
+            endpoint TEXT,
+            created_at TIMESTAMPTZ DEFAULT NOW()
+        )
+    "#)
+    .execute(pool)
+    .await?;
+    
+    // Créer les index
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_token_usage_user_id ON token_usage_logs(user_id)")
+        .execute(pool)
+        .await?;
+    
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_token_usage_intention ON token_usage_logs(intention)")
+        .execute(pool)
+        .await?;
+    
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_token_usage_created_at ON token_usage_logs(created_at DESC)")
+        .execute(pool)
+        .await?;
+    
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_token_usage_user_intention ON token_usage_logs(user_id, intention, created_at DESC)")
+        .execute(pool)
+        .await?;
+    
+    info!("✅ Table token_usage_logs créée avec succès !");
+    
+    Ok(())
 }
 

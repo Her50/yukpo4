@@ -17,7 +17,6 @@ import {
 } from 'react-native';
 import { apiGet, apiPost } from '../services/api';
 // Code corrigé (remplace @ts-ignore)
-import BrandingManagerMobile from '../components/BrandingManagerMobile';
 // ✅ NOUVEAU 2025-11-02: Gestionnaire upload images/vidéos dédié
 import MediaUploadManager from '../components/MediaUploadManager';
 // Code corrigé (remplace @ts-ignore)
@@ -936,7 +935,12 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
       console.log('[FormulaireYukpoIntelligentScreen] Valeurs initiales automatiques:', initialValues);
 
+      // ✅ CRITIQUE 2025-11-03: Organiser les blocs directement avec initialValues
+      const organizedBlocks = organizeFieldsIntoBlocks(components, initialValues);
+
+      // Mettre à jour les states
       setComposants(components);
+      setBlocks(organizedBlocks);  // ✅ Utilise les valeurs IA !
       setValeursFormulaire(prev => ({
         ...prev, // Garder les contacts précédents
         ...initialValues // Les données IA écrasent les contacts si présentes
@@ -1113,18 +1117,18 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           console.log('[FormulaireYukpoIntelligentScreen] Catégorie chargée:', categoryValue);
         }
 
-      console.log('[FormulaireYukpoIntelligentScreen] Valeurs initiales:', initialValues);
+        console.log('[FormulaireYukpoIntelligentScreen] Valeurs initiales:', initialValues);
 
-      // ✅ CRITIQUE 2025-11-03: Organiser les blocs directement avec initialValues
-      // Au lieu d'attendre que useEffect se déclenche avec valeursFormulaire vide
-      const organizedBlocks = organizeFieldsIntoBlocks(components, initialValues);
-      
-      // Mettre à jour les states
-      setValeursFormulaire(initialValues);
-      setComposants(components);
-      setBlocks(organizedBlocks);  // ✅ Utilise les valeurs IA !
-      setActiveStep(2);
-      setCurrentBlock(0);
+        // ✅ CRITIQUE 2025-11-03: Organiser les blocs directement avec initialValues
+        // Au lieu d'attendre que useEffect se déclenche avec valeursFormulaire vide
+        const organizedBlocks = organizeFieldsIntoBlocks(components, initialValues);
+
+        // Mettre à jour les states
+        setValeursFormulaire(initialValues);
+        setComposants(components);
+        setBlocks(organizedBlocks);  // ✅ Utilise les valeurs IA !
+        setActiveStep(2);
+        setCurrentBlock(0);
       } else {
         console.log('[FormulaireYukpoIntelligentScreen] Aucune donnée IA, utilisation des composants par défaut');
 
