@@ -7,6 +7,7 @@ use axum::{
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::sync::Arc;
+use sqlx::Row;
 
 use crate::state::AppState;
 use crate::middlewares::jwt::AuthenticatedUser;
