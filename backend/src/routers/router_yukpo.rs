@@ -167,7 +167,8 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .merge(vehicle_model_routes(state.clone()))
         .merge(appliance_model_routes(state.clone()))
         .merge(phone_model_routes(state.clone()))
-        .merge(popular_products_routes(state.clone()));
+        .merge(popular_products_routes(state.clone()))
+        .merge(crate::routes::product_reactions_routes::product_reactions_routes(state.clone())); // ✅ NOUVEAU: Réactions produits
     
     // ✅ NOUVEAU: Routes pour @mentions et multi-participants conversations
     let conversation_routes_merged = crate::routes::conversation_routes::conversation_routes(state.clone());
@@ -249,11 +250,11 @@ async fn handle_direct_search(
     
     log_info(&format!("[DIRECT_SEARCH] Contenu: texte={}, images={}", has_text, has_images));
     
-    // ✅ NOUVELLE LOGIQUE: Si image présente (avec ou sans texte), utiliser recherche HYBRIDE
+    // ✅ NOUVELLE LOGIQUE 2025-11-04: Si image présente, analyser PUIS combiner avec texte pour recherche globale
     if has_images {
-        use crate::services::hybrid_image_search_service::HybridImageSearchService;
+        use crate::services::intelligent_image_analysis_service::IntelligentImageAnalysisService;
         
-        log_info("[DIRECT_SEARCH] 🖼️ Image détectée - Recherche HYBRIDE activée");
+        log_info("[DIRECT_SEARCH] 🖼️ Image détectée - Analyse IA puis recherche globale");
         
         let images = input.base64_image.as_ref().unwrap();
         let first_image = &images[0];
@@ -271,120 +272,192 @@ async fn handle_direct_search(
             first_image.clone()
         };
         
-                // ✅ RECHERCHE HYBRIDE: Analyse + Matching (GRATUITE - facturation annulée)
-                log_info("[DIRECT_SEARCH] ⚡ Lancement recherche hybride multi-critères...");
+        // ✅ ÉTAPE 1: Analyser l'image pour extraire le vecteur de caractéristiques
+        log_info("[DIRECT_SEARCH] 📸 Étape 1/2: Analyse IA de l'image...");
+        
+        let analysis_result = IntelligentImageAnalysisService::analyze_image_multimodel(
+            &_state.ia,
+            &image_base64,
+            None,  // Catégorie auto-détectée
+            true   // Mode recherche
+        ).await;
+        
+        match analysis_result {
+            Ok((analysis, ai_cost)) => {
+                log_info(&format!(
+                    "[DIRECT_SEARCH] ✅ Analyse réussie: {} (confiance: {:.2})",
+                    &analysis.description.chars().take(50).collect::<String>(),
+                    analysis.confiance
+                ));
                 
-                // Extraire GPS si disponible
-                let (gps_lat, gps_lng) = if let Some(gps_str) = input.gps_mobile.as_deref() {
-                    let coords: Vec<&str> = gps_str.split(',').collect();
-                    if coords.len() == 2 {
-                        (
-                            coords[0].trim().parse::<f64>().ok(),
-                            coords[1].trim().parse::<f64>().ok()
-                        )
-                    } else {
-                        (None, None)
-                    }
+                // ✅ ÉTAPE 2: Combiner vecteur + titre + catégorie + description + texte utilisateur
+                log_info("[DIRECT_SEARCH] 🔗 Étape 2/2: Combinaison vecteur + texte pour recherche globale...");
+                
+                // Construire l'input combiné pour recherche globale
+                let combined_search_text = if has_text {
+                    // Texte utilisateur + Catégorie + Nom + Description + Tags
+                    format!(
+                        "{} {} {} {} {}",
+                        user_text.trim(),
+                        analysis.category_detected,
+                        analysis.search_query_exact,
+                        analysis.description.chars().take(100).collect::<String>(),
+                        analysis.tags.join(" ")
+                    )
                 } else {
-                    (None, None)
+                    // Seulement analyse image : Catégorie + Nom + Description + Tags
+                    format!(
+                        "{} {} {} {}",
+                        analysis.category_detected,
+                        analysis.search_query_exact,
+                        analysis.description,
+                        analysis.tags.join(" ")
+                    )
                 };
                 
-                let hybrid_service = HybridImageSearchService::new(_state.pg.clone());
+                log_info(&format!(
+                    "[DIRECT_SEARCH] 🎯 Input combiné ({}+ caractères): '{}'",
+                    combined_search_text.len(),
+                    &combined_search_text.chars().take(150).collect::<String>()
+                ));
                 
-                let analysis_result = hybrid_service.search_by_image(
-                    &_state.ia,
-                    &image_base64,
-                    user.id,
-                    None,  // Catégorie auto-détectée
-                    gps_lat,
-                    gps_lng,
-                    Some(50),  // Rayon 50km
-                    20   // Max 20 résultats
-                ).await;
+                // Extraire GPS
+                let gps_zone = input.gps_mobile.as_deref();
+                let search_radius_km = Some(50);
                 
-                match analysis_result {
-                    Ok((hybrid_results, analysis, ai_cost)) => {
-                        let results_count = hybrid_results.len();
+                // ✅ APPELER RECHERCHE GLOBALE avec l'input combiné
+                let (mut result, tokens_consumed_search) = rechercher_besoin_direct(
+                    Some(user.id),
+                    &combined_search_text,
+                    gps_zone,
+                    search_radius_km
+                ).await?;
+                
+                let results_count = result.get("resultats")
+                    .and_then(|r| r.as_array())
+                    .map(|arr| arr.len())
+                    .unwrap_or(0);
                         
-                        log_info(&format!(
-                            "[DIRECT_SEARCH] ✅ Recherche hybride réussie: {} résultats trouvés",
-                            results_count
-                        ));
-                        log_info(&format!(
-                            "[DIRECT_SEARCH] 📊 Analyse: '{}' (confiance: {:.2}, tokens: {})",
-                            &analysis.description.chars().take(50).collect::<String>(),
-                            analysis.confiance,
-                            ai_cost.total_tokens
-                        ));
-                        log_info(&format!(
-                            "[DIRECT_SEARCH] 🎯 Queries générées:\n  - Exact: '{}'\n  - Broad: '{}'\n  - Semantic: '{}'",
-                            &analysis.search_query_exact.chars().take(40).collect::<String>(),
-                            &analysis.search_query_broad.chars().take(60).collect::<String>(),
-                            &analysis.search_query_semantic.chars().take(80).collect::<String>()
-                        ));
-                        
-                        // ✅ FACTURATION ANNULÉE - Recherche par image GRATUITE
-                        let billing_info = serde_json::json!({
-                            "charged": false,
-                            "amount": 0,
-                            "message": "Recherche par image gratuite",
-                            "ai_cost_usd": ai_cost.cost_usd,
-                            "ai_tokens": ai_cost.total_tokens,
-                            "results_found": results_count
-                        });
-                        
-                        log_info(&format!(
-                            "[DIRECT_SEARCH] 🆓 Recherche par image GRATUITE pour user {} ({} résultats)",
-                            user.id, results_count
-                        ));
-                        
-                        // Construire la réponse avec résultats hybrides
-                        let results_json: Vec<Value> = hybrid_results.iter().map(|result| {
-                            json!({
-                                "service_id": result.service_id,
-                                "data": result.service_data,
-                                "product_description": result.product_description,
-                                "product_tags": result.product_tags,
-                                "product_marque": result.product_marque,
-                                "match_score": result.match_score,
-                                "distance_km": result.distance_km,
-                                "media_id": result.media_id,
-                                "analysis_id": result.analysis_id,
-                            })
-                        }).collect();
-                        
-                        let response = serde_json::json!({
-                            "status": "success",
-                            "intention": "recherche_besoin",
-                            "resultats": results_json,
-                            "tokens_consumed": ai_cost.total_tokens,
-                            "message": format!("Recherche hybride par image: {} résultats", results_count),
-                            "search_method": "hybrid_image_ai",
-                            "image_analysis": {
-                                "description": analysis.description,
-                                "tags": analysis.tags,
-                                "category": analysis.category_detected,
-                                "marque": analysis.marque,
-                                "couleurs": analysis.couleurs,
-                                "confiance": analysis.confiance,
-                                "search_query_exact": analysis.search_query_exact,
-                                "search_query_broad": analysis.search_query_broad,
-                                "search_query_semantic": analysis.search_query_semantic,
-                                "model_used": ai_cost.model_used
-                            },
-                            "billing": billing_info,
-                            "gps_filtered": gps_lat.is_some() && gps_lng.is_some(),
-                            "search_radius_km": 50
-                        });
-                        
-                        return Ok(Json(response));
+                log_info(&format!(
+                    "[DIRECT_SEARCH] ✅ Recherche globale réussie: {} résultats trouvés",
+                    results_count
+                ));
+                log_info(&format!(
+                    "[DIRECT_SEARCH] 📊 Analyse image: '{}' (confiance: {:.2}, tokens: {})",
+                    &analysis.description.chars().take(50).collect::<String>(),
+                    analysis.confiance,
+                    ai_cost.total_tokens
+                ));
+                log_info(&format!(
+                    "[DIRECT_SEARCH] 🎯 Vecteur: {} caractéristiques extraites",
+                    analysis.tags.len()
+                ));
+                
+                // ✅ FACTURATION ANNULÉE - Recherche par image GRATUITE
+                let billing_info = serde_json::json!({
+                    "charged": false,
+                    "amount": 0,
+                    "message": "Recherche par image gratuite",
+                    "ai_cost_usd": ai_cost.cost_usd,
+                    "ai_tokens": ai_cost.total_tokens,
+                    "results_found": results_count
+                });
+                
+                log_info(&format!(
+                    "[DIRECT_SEARCH] 🆓 Recherche par image GRATUITE pour user {} ({} résultats)",
+                    user.id, results_count
+                ));
+                
+                // ✅ Enrichir résultats avec publicités
+                if let Some(resultats) = result.get_mut("resultats").and_then(|r| r.as_array_mut()) {
+                    let user_coords = gps_zone.and_then(|gps_str| {
+                        let coords: Vec<&str> = gps_str.split(',').collect();
+                        if coords.len() == 2 {
+                            Some((
+                                coords[0].trim().parse::<f64>().ok()?,
+                                coords[1].trim().parse::<f64>().ok()?
+                            ))
+                        } else {
+                            None
+                        }
+                    });
+
+                    if let Err(e) = crate::services::publicite_search_service::PubliciteSearchService::enrich_search_results_with_promotion(
+                        &_state.pg,
+                        resultats,
+                        user_coords
+                    ).await {
+                        log_error(&format!("[DIRECT_SEARCH] Erreur enrichissement promotion: {}", e));
+                    }
+
+                    // Re-trier par score
+                    resultats.sort_by(|a, b| {
+                        let score_a = a.get("score").and_then(|s| s.as_f64()).unwrap_or(0.0);
+                        let score_b = b.get("score").and_then(|s| s.as_f64()).unwrap_or(0.0);
+                        score_b.partial_cmp(&score_a).unwrap_or(std::cmp::Ordering::Equal)
+                    });
+                }
+                
+                // Construire la réponse avec résultats de recherche globale + méta-données analyse image
+                let response = serde_json::json!({
+                    "status": "success",
+                    "intention": "recherche_besoin",
+                    "resultats": result.get("resultats"),
+                    "tokens_consumed": ai_cost.total_tokens + tokens_consumed_search,
+                    "message": format!("Recherche par image + texte: {} résultats", results_count),
+                    "search_method": "image_analysis_then_global_search",
+                    "image_analysis": {
+                        "description": analysis.description,
+                        "tags": analysis.tags,
+                        "category": analysis.category_detected,
+                        "marque": analysis.marque,
+                        "couleurs": analysis.couleurs,
+                        "confiance": analysis.confiance,
+                        "search_query_exact": analysis.search_query_exact,
+                        "search_query_broad": analysis.search_query_broad,
+                        "search_query_semantic": analysis.search_query_semantic,
+                        "model_used": ai_cost.model_used,
+                        "vecteur_caracteristiques": analysis.tags.clone()
                     },
-                    Err(e) => {
-                        log_error(&format!("[DIRECT_SEARCH] Erreur analyse IA: {:?}", e));
-                        
-                        // ✅ CORRECTION: Au lieu de retourner erreur, faire fallback vers recherche générique
-                        if !has_text {
-                            log_warn("[DIRECT_SEARCH] ⚠️ Analyse IA échouée sans texte - Fallback vers recherche générique");
+                    "user_text_provided": has_text,
+                    "combined_search_used": true,
+                    "billing": billing_info,
+                    "gps_filtered": gps_zone.is_some(),
+                    "search_radius_km": search_radius_km
+                });
+                
+                return Ok(Json(response));
+            },
+            Err(e) => {
+                log_error(&format!("[DIRECT_SEARCH] ❌ Erreur analyse IA image: {:?}", e));
+                
+                // ✅ FALLBACK: Si analyse échoue mais il y a du texte, utiliser juste le texte
+                if has_text {
+                    log_warn("[DIRECT_SEARCH] ⚠️ Analyse image échouée - Fallback vers recherche textuelle");
+                    
+                    let gps_zone = input.gps_mobile.as_deref();
+                    let search_radius_km = Some(50);
+                    
+                    let (result, tokens_consumed) = rechercher_besoin_direct(
+                        Some(user.id),
+                        &user_text,
+                        gps_zone,
+                        search_radius_km
+                    ).await?;
+                    
+                    let response = serde_json::json!({
+                        "status": "success",
+                        "intention": "recherche_besoin",
+                        "resultats": result,
+                        "tokens_consumed": tokens_consumed,
+                        "message": "Recherche textuelle (analyse image échouée)",
+                        "search_method": "text_fallback",
+                        "image_analysis_error": format!("{}", e)
+                    });
+                    
+                    return Ok(Json(response));
+                } else {
+                    log_warn("[DIRECT_SEARCH] ⚠️ Analyse IA échouée sans texte - Fallback vers recherche générique");
                             
                             // Recherche générique avec tous les produits récents
                             let fallback_result = sqlx::query_as::<_, (i32, Value, Option<String>)>(
@@ -422,10 +495,9 @@ async fn handle_direct_search(
                             });
                             
                             return Ok(Json(response));
-                        }
-                        // Sinon, continuer vers recherche textuelle
-                    }
                 }
+            }
+        }
     }
     
     // ✅ Recherche textuelle normale ou fallback

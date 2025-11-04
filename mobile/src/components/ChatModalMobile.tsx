@@ -31,6 +31,8 @@ interface ChatModalMobileProps {
     service: any;
     prestataireInfo: any;
     user: any;
+    conversationId?: string;  // ✅ NOUVEAU : Pour conversations privées (format UUID)
+    isPrivateConversation?: boolean;  // ✅ NOUVEAU : Flag pour conversation privée
 }
 
 interface Participant {
@@ -49,7 +51,9 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
     onClose,
     service,
     prestataireInfo,
-    user
+    user,
+    conversationId: privateConversationId,
+    isPrivateConversation = false
 }) => {
     const [newMessage, setNewMessage] = useState('');
     const [isTyping, setIsTyping] = useState(false);
@@ -87,6 +91,11 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
     const scrollViewRef = useRef<any>(null);
     const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+    // ✅ NOUVEAU : Utiliser conversationId si conversation privée, sinon service.id
+    const effectiveServiceId = isPrivateConversation && privateConversationId
+        ? parseInt(privateConversationId, 10)
+        : (service?.id || 0);
+
     // Utiliser le hook WebSocket
     const {
         messages,
@@ -97,7 +106,7 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
         deleteMessage,
         markAsRead
     } = useWebSocketChat(
-        service?.id || 0,
+        effectiveServiceId,
         prestataireInfo?.userId || 0,
         user?.id || 0
     );
@@ -142,10 +151,11 @@ const ChatModalMobile: React.FC<ChatModalMobileProps> = ({
 
     // ✅ NOUVEAU: Charger les participants de la conversation
     const loadParticipants = async () => {
-        if (!service?.id) return;
+        const convId = effectiveServiceId;
+        if (!convId) return;
 
         try {
-            const response = await apiGet<Participant[]>(`/api/conversations/${service.id}/participants`);
+            const response = await apiGet<Participant[]>(`/api/conversations/${convId}/participants`);
             if (response.success && response.data) {
                 setParticipants(response.data);
                 console.log('[ChatModalMobile] Participants chargés:', response.data);

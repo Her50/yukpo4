@@ -22,6 +22,7 @@ interface ServiceCardModernProps {
     onDelete: (service: any) => void;
     onPromotion?: (service: any) => void;
     onViewProducts?: (service: any) => void;
+    onManageTeam?: (service: any) => void;  // ✅ NOUVEAU : Gérer l'équipe
 }
 
 const ServiceCardModern: React.FC<ServiceCardModernProps> = ({
@@ -32,7 +33,8 @@ const ServiceCardModern: React.FC<ServiceCardModernProps> = ({
     onToggleStatus,
     onDelete,
     onPromotion,
-    onViewProducts
+    onViewProducts,
+    onManageTeam  // ✅ NOUVEAU
 }) => {
     const getStatusColor = (status: string) => {
         switch (status) {
@@ -199,6 +201,49 @@ const ServiceCardModern: React.FC<ServiceCardModernProps> = ({
                         <Text style={[styles.actionLabel, { color: '#EF4444' }]}>Supprimer</Text>
                     </TouchableOpacity>
                 </View>
+
+                {/* ✅ NOUVEAU : Seconde rangée d'actions */}
+                <View style={styles.actionsRow}>
+                    {/* Gérer l'équipe */}
+                    {onManageTeam && (
+                        <TouchableOpacity
+                            style={[styles.actionButton, styles.actionTeam]}
+                            onPress={() => onManageTeam(service)}
+                            activeOpacity={0.7}
+                        >
+                            <SafeIcon name="users" size={18} color="#6366F1" />
+                            <Text style={[styles.actionLabel, { color: '#6366F1' }]}>Équipe</Text>
+                        </TouchableOpacity>
+                    )}
+
+                    {/* Promouvoir (publicité) */}
+                    {onPromotion && (
+                        <TouchableOpacity
+                            style={[styles.actionButton, styles.actionPromo]}
+                            onPress={() => onPromotion(service)}
+                            activeOpacity={0.7}
+                        >
+                            <SafeIcon name="megaphone" size={18} color="#F59E0B" />
+                            <Text style={[styles.actionLabel, { color: '#F59E0B' }]}>Promouvoir</Text>
+                        </TouchableOpacity>
+                    )}
+
+                    {/* Activer/Désactiver */}
+                    <TouchableOpacity
+                        style={[styles.actionButton, service.status === 'active' ? styles.actionDeactivate : styles.actionActivate]}
+                        onPress={() => onToggleStatus(service)}
+                        activeOpacity={0.7}
+                    >
+                        <SafeIcon
+                            name={service.status === 'active' ? 'pause-circle' : 'play-circle'}
+                            size={18}
+                            color={service.status === 'active' ? '#F97316' : '#10B981'}
+                        />
+                        <Text style={[styles.actionLabel, { color: service.status === 'active' ? '#F97316' : '#10B981' }]}>
+                            {service.status === 'active' ? 'Désactiver' : 'Activer'}
+                        </Text>
+                    </TouchableOpacity>
+                </View>
             </View>
         </View>
     );
@@ -353,6 +398,22 @@ const styles = StyleSheet.create({
     actionDelete: {
         backgroundColor: '#FEF2F2',
         borderColor: '#FECACA',
+    },
+    actionTeam: {
+        backgroundColor: '#EEF2FF',
+        borderColor: '#C7D2FE',
+    },
+    actionPromo: {
+        backgroundColor: '#FEF3C7',
+        borderColor: '#FDE68A',
+    },
+    actionActivate: {
+        backgroundColor: '#D1FAE5',
+        borderColor: '#A7F3D0',
+    },
+    actionDeactivate: {
+        backgroundColor: '#FFEDD5',
+        borderColor: '#FED7AA',
     },
     actionLabel: {
         fontSize: 11,

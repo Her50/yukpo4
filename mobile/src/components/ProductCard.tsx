@@ -17,7 +17,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { apiGet } from '../services/api';
+import { apiGet, apiPost } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
 import ChatModalMobile from './ChatModalMobile';
 import { NativeButton, NativeCard } from './NativeDesign';
@@ -36,6 +36,16 @@ interface ProductCardProps {
   onPress?: () => void;
   onChatPress?: () => void; // ✅ NOUVEAU: Handler chat personnalisé
 }
+
+// ✅ NOUVEAU : Constantes pour réactions
+const REACTIONS = [
+  { type: 'love', emoji: '❤️', label: 'J\'adore' },
+  { type: 'like', emoji: '👍', label: 'J\'aime' },
+  { type: 'wow', emoji: '😮', label: 'Impressionnant' },
+  { type: 'interested', emoji: '🎯', label: 'Intéressant' },
+  { type: 'thinking', emoji: '🤔', label: 'À réfléchir' },
+  { type: 'disappointed', emoji: '😕', label: 'Déçu' },
+];
 
 // Mapper codes pays → drapeaux emoji
 const getCountryFlag = (country?: string): string => {
@@ -83,10 +93,14 @@ const ProductCard: React.FC<ProductCardProps> = ({
   const [imageError, setImageError] = useState(false);
   const [showChatModal, setShowChatModal] = useState(false);
   const [selectedVariantIndex, setSelectedVariantIndex] = useState<number | null>(null);
+  // ✅ NOUVEAU : États pour contact privé
+  const [privateConversationId, setPrivateConversationId] = useState<string | null>(null);
   // ✅ NOUVEAU : États pour avis/ratings et galerie
   const [showGallery, setShowGallery] = useState(false);
   const [serviceReviews, setServiceReviews] = useState<any[]>([]);
   const [serviceRating, setServiceRating] = useState<{ avg: number; count: number } | null>(null);
+  // ✅ NOUVEAU : États pour réactions
+  const [reactions, setReactions] = useState<Record<string, { count: number; hasReacted: boolean }>>({});
 
   // Données produit
   const productVector = product.product_vector || product.characteristic_vector || [];
@@ -196,6 +210,110 @@ const ProductCard: React.FC<ProductCardProps> = ({
 
     loadReviews();
   }, [product.service_id, service?.id]);
+
+  // ✅ NOUVEAU : Charger réactions du produit
+  useEffect(() => {
+    const loadReactions = async () => {
+      const serviceId = product.service_id || service?.id;
+      if (!serviceId) return;
+
+      const productId = `${serviceId}_${product.product_index || 0}`;
+
+      try {
+        const response = await apiGet(`/api/products/${serviceId}/${productId}/reactions`);
+        if (response.success && response.data) {
+          const reactionsMap: Record<string, { count: number; hasReacted: boolean }> = {};
+          const reactionsArray = response.data as any[];
+          reactionsArray.forEach((r: any) => {
+            reactionsMap[r.reaction_type] = {
+              count: r.count,
+              hasReacted: r.has_reacted
+            };
+          });
+          setReactions(reactionsMap);
+        }
+      } catch (error) {
+        console.error('[ProductCard] Erreur chargement réactions:', error);
+      }
+    };
+
+    loadReactions();
+  }, [product.service_id, product.product_index, service?.id]);
+
+  // ✅ NOUVEAU : Handler pour réagir
+  const handleReaction = async (reactionType: string) => {
+    const serviceId = product.service_id || service?.id;
+    if (!serviceId) return;
+
+    const productId = `${serviceId}_${product.product_index || 0}`;
+
+    try {
+      const response = await apiPost(`/api/products/${serviceId}/${productId}/react`, {
+        reaction_type: reactionType
+      });
+
+      if (response.success) {
+        setReactions(prev => {
+          const current = prev[reactionType] || { count: 0, hasReacted: false };
+          const data = response.data as { action: string };
+          const action = data.action;
+
+          return {
+            ...prev,
+            [reactionType]: {
+              count: action === 'added' ? current.count + 1 : Math.max(0, current.count - 1),
+              hasReacted: action === 'added'
+            }
+          };
+        });
+      }
+    } catch (error) {
+      console.error('[ProductCard] Erreur réaction:', error);
+    }
+  };
+
+  // ✅ NOUVEAU : Handler pour contacter un utilisateur en privé
+  const handleContactUser = async (userId: number, userName: string) => {
+    try {
+      // Vérifier si une conversation existe déjà
+      const checkResponse = await apiGet(`/api/conversations/private/${userId}`);
+
+      let conversationId: string | null = null;
+
+      if (checkResponse.success && checkResponse.data) {
+        const data = checkResponse.data as { conversation_id?: string };
+        conversationId = data.conversation_id || null;
+      }
+
+      if (!conversationId) {
+        // Créer une nouvelle conversation privée
+        const createResponse = await apiPost('/api/conversations/create-private', {
+          target_user_id: userId,
+          context: 'product_review'
+        });
+
+        if (createResponse.success && createResponse.data) {
+          const data = createResponse.data as { conversation_id?: string };
+          conversationId = data.conversation_id || null;
+        }
+      }
+
+      if (conversationId) {
+        setPrivateConversationId(conversationId);
+        setShowChatModal(true);
+        Alert.alert(
+          'Conversation privée',
+          `Vous pouvez maintenant discuter en privé avec ${userName}`,
+          [{ text: 'OK' }]
+        );
+      } else {
+        Alert.alert('Erreur', 'Impossible de créer la conversation privée');
+      }
+    } catch (error) {
+      console.error('[ProductCard] Erreur création conversation privée:', error);
+      Alert.alert('Erreur', 'Impossible de contacter cet utilisateur');
+    }
+  };
 
   return (
     <>
@@ -349,6 +467,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
                   reviews: serviceReviews,
                   user_rating: serviceRating?.avg || 0,
                 }}
+                onContactUser={handleContactUser}  // ✅ NOUVEAU : Contact privé
                 onRatingSubmit={async (rating, comment) => {
                   try {
                     const response = await fetch(`/api/services/${product.service_id || service?.id}/reviews`, {
@@ -389,6 +508,42 @@ const ProductCard: React.FC<ProductCardProps> = ({
                 }}
                 showReviewForm={true}
               />
+
+              {/* ✅ NOUVEAU : Section Réactions rapides */}
+              <View style={styles.reactionsSubsection}>
+                <View style={styles.reactionsSectionHeader}>
+                  <Text style={styles.reactionsSectionTitle}>🎭 Réactions</Text>
+                </View>
+
+                <View style={styles.reactionsBar}>
+                  {REACTIONS.map((reaction) => {
+                    const count = reactions[reaction.type]?.count || 0;
+                    const hasReacted = reactions[reaction.type]?.hasReacted || false;
+
+                    return (
+                      <TouchableOpacity
+                        key={reaction.type}
+                        style={[
+                          styles.reactionButton,
+                          hasReacted && styles.reactionButtonActive
+                        ]}
+                        onPress={() => handleReaction(reaction.type)}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={styles.reactionEmoji}>{reaction.emoji}</Text>
+                        {count > 0 && (
+                          <Text style={[
+                            styles.reactionCount,
+                            hasReacted && styles.reactionCountActive
+                          ]}>
+                            {count}
+                          </Text>
+                        )}
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </View>
             </View>
 
             {/* Caractéristiques (vecteur produit) en chips */}
@@ -1081,6 +1236,58 @@ const styles = StyleSheet.create({
   secondaryActionText: {
     fontSize: 13,
     fontWeight: '600',
+    color: modernColors.primary,
+  },
+  // ✅ NOUVEAU : Styles pour réactions
+  reactionsSubsection: {
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+  },
+  reactionsSectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  reactionsSectionTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#1F2937',
+  },
+  reactionsBar: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  reactionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    backgroundColor: '#F9FAFB',
+    gap: 4,
+  },
+  reactionButtonActive: {
+    borderColor: modernColors.primary,
+    backgroundColor: modernColors.primary + '10',
+    borderWidth: 2,
+  },
+  reactionEmoji: {
+    fontSize: 18,
+  },
+  reactionCount: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#6B7280',
+    minWidth: 20,
+    textAlign: 'center',
+  },
+  reactionCountActive: {
     color: modernColors.primary,
   },
 });

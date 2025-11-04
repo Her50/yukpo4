@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import ReactNative from 'react-native';
 import { Card, TextInput } from 'react-native-paper';
 import { theme } from '../theme/theme';
+import UserMentionPicker from './UserMentionPicker';
 
 const { Alert, StyleSheet, Text, TouchableOpacity, View } = ReactNative;
 
@@ -30,6 +31,14 @@ interface ServiceRatingProps {
   onReviewHelpful?: (reviewId: number) => Promise<void>;
   showReviewForm?: boolean;
   customStyle?: any;
+  onContactUser?: (userId: number, userName: string) => void;  // ✅ NOUVEAU : Contact privé
+}
+
+interface User {
+  id: number;
+  nom_complet: string;
+  email: string;
+  avatar_url?: string;
 }
 
 export const ServiceRating: React.FC<ServiceRatingProps> = ({
@@ -37,12 +46,16 @@ export const ServiceRating: React.FC<ServiceRatingProps> = ({
   onRatingSubmit,
   onReviewHelpful,
   showReviewForm = false,
-  customStyle
+  customStyle,
+  onContactUser
 }) => {
   const [showReviewFormLocal, setShowReviewFormLocal] = useState(showReviewForm);
   const [rating, setRating] = useState(service.user_rating || 0);
   const [comment, setComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // ✅ NOUVEAU : États pour @mention
+  const [showMentionPicker, setShowMentionPicker] = useState(false);
+  const [mentionQuery, setMentionQuery] = useState('');
 
   const stats = service.data?.stats;
   const reviews = service.reviews || [];
@@ -111,6 +124,80 @@ export const ServiceRating: React.FC<ServiceRatingProps> = ({
     return '#F44336';
   };
 
+  // ✅ NOUVEAU : Détecter "@" dans le commentaire
+  const handleCommentChange = (text: string) => {
+    setComment(text);
+
+    // Détecter @mention
+    const lastAtIndex = text.lastIndexOf('@');
+    if (lastAtIndex >= 0) {
+      const textAfterAt = text.substring(lastAtIndex + 1);
+      const spaceIndex = textAfterAt.indexOf(' ');
+
+      if (spaceIndex === -1) {
+        // Pas encore d'espace après @, rechercher
+        setMentionQuery(textAfterAt);
+        setShowMentionPicker(true);
+      } else {
+        setShowMentionPicker(false);
+      }
+    } else {
+      setShowMentionPicker(false);
+    }
+  };
+
+  // ✅ NOUVEAU : Insérer la mention
+  const insertMention = (user: User) => {
+    const lastAtIndex = comment.lastIndexOf('@');
+    const beforeAt = comment.substring(0, lastAtIndex);
+    const afterAt = comment.substring(lastAtIndex + 1);
+    const spaceIndex = afterAt.indexOf(' ');
+    const afterMention = spaceIndex >= 0 ? afterAt.substring(spaceIndex) : '';
+
+    setComment(`${beforeAt}@${user.nom_complet} ${afterMention}`);
+    setShowMentionPicker(false);
+  };
+
+  // ✅ NOUVEAU : Parser les @mentions pour l'affichage
+  const parseMentions = (text: string): React.ReactNode[] => {
+    const parts: React.ReactNode[] = [];
+    const regex = /@([A-Za-zÀ-ÿ\s]+?)(?=\s|$|[.,!?])/g;
+    let lastIndex = 0;
+    let match;
+    let key = 0;
+
+    while ((match = regex.exec(text)) !== null) {
+      // Texte avant la mention
+      if (match.index > lastIndex) {
+        parts.push(
+          <Text key={`text-${key++}`} style={styles.reviewComment}>
+            {text.substring(lastIndex, match.index)}
+          </Text>
+        );
+      }
+
+      // Mention
+      parts.push(
+        <Text key={`mention-${key++}`} style={styles.mentionText}>
+          @{match[1]}
+        </Text>
+      );
+
+      lastIndex = match.index + match[0].length;
+    }
+
+    // Texte après la dernière mention
+    if (lastIndex < text.length) {
+      parts.push(
+        <Text key={`text-${key++}`} style={styles.reviewComment}>
+          {text.substring(lastIndex)}
+        </Text>
+      );
+    }
+
+    return parts.length > 0 ? parts : [<Text key="default" style={styles.reviewComment}>{text}</Text>];
+  };
+
   return (
     <View style={[styles.container, customStyle]}>
       {/* En-tête avec note moyenne */}
@@ -150,12 +237,12 @@ export const ServiceRating: React.FC<ServiceRatingProps> = ({
             <TextInput
               label="Commentaire (optionnel)"
               value={comment}
-              onChangeText={setComment}
+              onChangeText={handleCommentChange}  // ✅ MODIFIÉ : Détecter @
               mode="outlined"
               multiline
               numberOfLines={3}
               style={styles.commentInput}
-              placeholder="Partagez votre expérience..."
+              placeholder="Partagez votre expérience... (@ pour taguer quelqu'un)"
             />
 
             <View style={styles.formActions}>
@@ -218,7 +305,9 @@ export const ServiceRating: React.FC<ServiceRatingProps> = ({
                 </View>
 
                 {review.comment && (
-                  <Text style={styles.reviewComment}>{review.comment}</Text>
+                  <View style={styles.reviewCommentContainer}>
+                    {parseMentions(review.comment)}
+                  </View>
                 )}
 
                 <View style={styles.reviewActions}>
@@ -238,6 +327,19 @@ export const ServiceRating: React.FC<ServiceRatingProps> = ({
                       Utile ({review.helpful_count})
                     </Text>
                   </TouchableOpacity>
+
+                  {/* ✅ NOUVEAU : Bouton Contacter en privé */}
+                  {onContactUser && review.user_id && (
+                    <TouchableOpacity
+                      style={styles.contactButton}
+                      onPress={() => onContactUser(review.user_id, review.user_name)}
+                    >
+                      <ChatCircle size={14} color={theme.colors.primary} weight="regular" />
+                      <Text style={styles.contactButtonText}>
+                        Contacter en privé
+                      </Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
               </Card.Content>
             </Card>
@@ -262,6 +364,16 @@ export const ServiceRating: React.FC<ServiceRatingProps> = ({
             Soyez le premier à donner votre avis !
           </Text>
         </View>
+      )}
+
+      {/* ✅ NOUVEAU : Modal pour @mention */}
+      {showMentionPicker && (
+        <UserMentionPicker
+          visible={showMentionPicker}
+          onClose={() => setShowMentionPicker(false)}
+          onSelectUser={insertMention}
+          currentQuery={mentionQuery}
+        />
       )}
     </View>
   );
@@ -482,6 +594,28 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: theme.colors.textSecondary,
     textAlign: 'center',
+  },
+  // ✅ NOUVEAU : Styles pour @mentions et contact privé
+  reviewCommentContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  mentionText: {
+    color: theme.colors.primary,
+    fontWeight: '600',
+  },
+  contactButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    marginLeft: 12,
+  },
+  contactButtonText: {
+    fontSize: 12,
+    color: theme.colors.primary,
+    marginLeft: 4,
+    fontWeight: '500',
   },
 });
 

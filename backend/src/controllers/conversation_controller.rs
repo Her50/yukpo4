@@ -26,6 +26,12 @@ pub struct InviteUserRequest {
 }
 
 #[derive(Debug, Deserialize)]
+pub struct CreatePrivateConversationRequest {
+    pub target_user_id: i32,
+    pub context: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
 pub struct SearchUsersQuery {
     pub query: Option<String>,
     pub category: Option<String>,
@@ -443,4 +449,150 @@ pub async fn record_message_mention(
         .map_err(|e| AppError::Internal(format!("Failed to record mentions: {}", e)))?;
     
     Ok(())
+}
+
+/// GET /api/conversations/private/:target_user_id
+/// Vérifier si une conversation privée existe entre l'utilisateur actuel et target_user_id
+pub async fn check_private_conversation(
+    State(state): State<Arc<AppState>>,
+    Extension(auth_user): Extension<AuthenticatedUser>,
+    Path(target_user_id): Path<i32>,
+) -> AppResult<Json<serde_json::Value>> {
+    info!("[check_private_conversation] Checking private conversation between {} and {}", 
+          auth_user.id, target_user_id);
+    
+    let pool = &state.pg;
+    
+    // Normaliser les IDs (user_1 < user_2)
+    let (user_1, user_2) = if auth_user.id < target_user_id {
+        (auth_user.id, target_user_id)
+    } else {
+        (target_user_id, auth_user.id)
+    };
+    
+    // Chercher conversation privée existante
+    let conversation = sqlx::query(
+        "SELECT id FROM private_conversations WHERE user_1_id = $1 AND user_2_id = $2"
+    )
+    .bind(user_1)
+    .bind(user_2)
+    .fetch_optional(pool)
+    .await
+    .map_err(|e| {
+        error!("[check_private_conversation] Database error: {:?}", e);
+        AppError::Internal("Database error".to_string())
+    })?;
+    
+    if let Some(conv) = conversation {
+        let conv_id = conv.get::<i32, _>("id");
+        info!("[check_private_conversation] Found existing conversation {}", conv_id);
+        
+        Ok(Json(json!({
+            "success": true,
+            "conversation_id": conv_id.to_string()
+        })))
+    } else {
+        info!("[check_private_conversation] No existing conversation found");
+        
+        Ok(Json(json!({
+            "success": false,
+            "conversation_id": null
+        })))
+    }
+}
+
+/// POST /api/conversations/create-private
+/// Créer une conversation privée 1-to-1
+pub async fn create_private_conversation(
+    State(state): State<Arc<AppState>>,
+    Extension(auth_user): Extension<AuthenticatedUser>,
+    Json(payload): Json<CreatePrivateConversationRequest>,
+) -> AppResult<Json<serde_json::Value>> {
+    info!("[create_private_conversation] Creating private conversation between {} and {}", 
+          auth_user.id, payload.target_user_id);
+    
+    let pool = &state.pg;
+    
+    // Vérifier que l'utilisateur cible existe et est actif
+    let target_user = sqlx::query(
+        "SELECT id, nom_complet FROM users WHERE id = $1 AND is_active = TRUE"
+    )
+    .bind(payload.target_user_id)
+    .fetch_optional(pool)
+    .await
+    .map_err(|e| {
+        error!("[create_private_conversation] Error checking target user: {:?}", e);
+        AppError::Internal("Database error".to_string())
+    })?;
+    
+    if target_user.is_none() {
+        return Err(AppError::NotFound("Utilisateur non trouvé ou inactif".to_string()));
+    }
+    
+    let target_user_name = target_user.as_ref()
+        .and_then(|row| row.get::<Option<String>, _>("nom_complet"))
+        .unwrap_or_else(|| format!("User {}", payload.target_user_id));
+    
+    // Normaliser les IDs (user_1 < user_2)
+    let (user_1, user_2) = if auth_user.id < payload.target_user_id {
+        (auth_user.id, payload.target_user_id)
+    } else {
+        (payload.target_user_id, auth_user.id)
+    };
+    
+    // Créer la conversation (ou récupérer si existe déjà)
+    let conversation_id = sqlx::query_scalar::<_, i32>(
+        r#"
+        INSERT INTO private_conversations (user_1_id, user_2_id, context, last_message_at)
+        VALUES ($1, $2, $3, NOW())
+        ON CONFLICT (user_1_id, user_2_id) DO UPDATE
+        SET last_message_at = NOW(), context = COALESCE($3, private_conversations.context)
+        RETURNING id
+        "#
+    )
+    .bind(user_1)
+    .bind(user_2)
+    .bind(payload.context.as_deref().unwrap_or("direct_contact"))
+    .fetch_one(pool)
+    .await
+    .map_err(|e| {
+        error!("[create_private_conversation] Error creating conversation: {:?}", e);
+        AppError::Internal("Failed to create conversation".to_string())
+    })?;
+    
+    // Créer une notification pour l'utilisateur cible
+    let current_user_name = sqlx::query("SELECT nom_complet FROM users WHERE id = $1")
+        .bind(auth_user.id)
+        .fetch_optional(pool)
+        .await
+        .ok()
+        .flatten()
+        .and_then(|row| row.get::<Option<String>, _>("nom_complet"))
+        .unwrap_or_else(|| "Un utilisateur".to_string());
+    
+    let _ = sqlx::query(
+        r#"
+        INSERT INTO notifications (user_id, title, message, type, priority, metadata)
+        VALUES ($1, $2, $3, 'private_conversation', 'normal', $4)
+        "#
+    )
+    .bind(payload.target_user_id)
+    .bind(format!("💬 {} souhaite discuter avec vous", current_user_name))
+    .bind("Une nouvelle conversation privée a été créée. Répondez pour commencer à discuter.")
+    .bind(json!({
+        "conversation_id": conversation_id,
+        "initiator_id": auth_user.id,
+        "initiator_name": current_user_name,
+        "context": payload.context
+    }))
+    .execute(pool)
+    .await;
+    
+    info!("[create_private_conversation] Conversation {} created successfully", conversation_id);
+    
+    Ok(Json(json!({
+        "success": true,
+        "conversation_id": conversation_id.to_string(),
+        "message": format!("Conversation privée créée avec {}", target_user_name)
+    })))
 }

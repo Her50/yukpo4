@@ -107,17 +107,17 @@ impl HybridImageSearchService {
         
         log_info("[HybridImageSearch] 🔍 Analyse image avec prompt de recherche dédié...");
         
-        // ✅ NOUVEAU 2025-11-01: Charger le prompt dédié recherche_image_prompt.md
-        // Ce prompt est IDENTIQUE au prompt de création pour assurer compatibilité du JSON
-        let search_prompt = match tokio::fs::read_to_string("backend/ia_prompts/recherche_image_prompt.md").await {
+        // ✅ NOUVEAU 2025-11-04: Charger le nouveau prompt optimisé pour recherche par image
+        // Ce prompt extrait uniquement le vecteur de caractéristiques (sans dépendances/combinaisons)
+        let search_prompt = match tokio::fs::read_to_string("backend/ia_prompts/recherche_image_produit_prompt.md").await {
             Ok(content) => {
-                log_info("[HybridImageSearch] ✅ Prompt de recherche chargé depuis fichier (1169 lignes)");
+                log_info("[HybridImageSearch] ✅ Prompt de recherche par image chargé depuis fichier");
                 content
             },
             Err(e) => {
                 log_warn(&format!("[HybridImageSearch] ⚠️ Impossible de charger prompt fichier: {}, utilisation embedded", e));
-                // Fallback vers prompt embedded (identique au fichier)
-                include_str!("../../ia_prompts/recherche_image_prompt.md").to_string()
+                // Fallback vers prompt embedded
+                include_str!("../../ia_prompts/recherche_image_produit_prompt.md").to_string()
             }
         };
 
@@ -150,119 +150,111 @@ impl HybridImageSearchService {
             .to_string();
         
         let parsed_json: serde_json::Value = serde_json::from_str(&cleaned_json)
-            .map_err(|e| crate::core::types::AppError::Internal(format!("Erreur parsing JSON: {}", e)))?;
+            .map_err(|e| crate::core::types::AppError::Internal(format!("Erreur parsing JSON image: {}", e)))?;
 
-        // ✅ NOUVEAU 2025-11-01: Parser le JSON au format création (avec data ou directement)
-        let data_obj = parsed_json.get("data").unwrap_or(&parsed_json);
+        // ✅ NOUVEAU 2025-11-04: Parser le nouveau format avec vecteur_caracteristiques
+        log_info(&format!("[HybridImageSearch] JSON parsé: {}", &cleaned_json.chars().take(200).collect::<String>()));
         
-        // Extraire category (au niveau service)
-        let category_str = data_obj.get("category")
-            .and_then(|c| {
-                if let Some(obj) = c.as_object() {
-                    obj.get("valeur").and_then(|v| v.as_str())
-                } else {
-                    c.as_str()
-                }
-            })
-            .unwrap_or("autre");
+        // ✅ NOUVEAU 2025-11-04: Parser le nouveau format avec vecteur_caracteristiques
+        let vecteur_caracteristiques = parsed_json.get("vecteur_caracteristiques")
+            .and_then(|v| v.as_array())
+            .map(|arr| arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect::<Vec<String>>())
+            .unwrap_or_default();
 
-        // ✅ Extraire nom_produit, categorie_produit, description_produit (format création)
-        let nom_produit = data_obj.get("nom_produit")
-            .and_then(|n| {
-                if let Some(obj) = n.as_object() {
-                    obj.get("valeur").and_then(|v| v.as_str())
-                } else {
-                    n.as_str()
-                }
-            })
-            .unwrap_or("");
-            
-        let description_produit = data_obj.get("description_produit")
-            .and_then(|d| {
-                if let Some(obj) = d.as_object() {
-                    obj.get("valeur").and_then(|v| v.as_str())
-                } else {
-                    d.as_str()
-                }
-            })
-            .unwrap_or(nom_produit);
+        let labels_dimensions = parsed_json.get("labels_dimensions")
+            .and_then(|l| l.as_array())
+            .map(|arr| arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect::<Vec<String>>())
+            .unwrap_or_default();
 
-        // ✅ NOUVEAU: Extraire depuis autocomplete.valeur (format: ["Logitech,MX Master 3,Sans fil,Noir"])
-        let produits_autocomplete = data_obj.get("produits");
+        let categorie = parsed_json.get("categorie_detectee")
+            .and_then(|c| c.as_str())
+            .unwrap_or("autre")
+            .to_string();
+
+        let nom = parsed_json.get("nom_produit")
+            .and_then(|n| n.as_str())
+            .unwrap_or("Produit recherché")
+            .to_string();
+
+        let description = parsed_json.get("description_produit")
+            .and_then(|d| d.as_str())
+            .unwrap_or(&nom)
+            .to_string();
+
+        let search_query_from_json = parsed_json.get("search_query")
+            .and_then(|sq| sq.as_str())
+            .unwrap_or("")
+            .to_string();
+
+        // Extraire marque depuis le vecteur (chercher index du label "marque")
         let mut marque: Option<String> = None;
-        let mut _modele: Option<String> = None;
         let mut couleurs: Vec<String> = Vec::new();
-        let mut tags: Vec<String> = Vec::new();
-
-        // Parser l'autocomplete si présent
-        if let Some(prod_obj) = produits_autocomplete.and_then(|p| p.as_object()) {
-            // Extraire valeur autocomplete
-            if let Some(valeur_arr) = prod_obj.get("valeur").and_then(|v| v.as_array()) {
-                if let Some(first_val) = valeur_arr.first().and_then(|v| v.as_str()) {
-                    // Parser "Logitech,MX Master 3,Sans fil,Noir"
-                    let parts: Vec<&str> = first_val.split(',').map(|s| s.trim()).collect();
-                    tags.extend(parts.iter().map(|s| s.to_string()));
+        
+        for (i, label) in labels_dimensions.iter().enumerate() {
+            if label == "marque" || label == "brand" {
+                if i < vecteur_caracteristiques.len() {
+                    marque = Some(vecteur_caracteristiques[i].clone());
                 }
             }
-            
-            // ✅ CRITIQUE: Extraire depuis sous_caracteristiques
-            if let Some(sous_caracs) = prod_obj.get("sous_caracteristiques").and_then(|sc| sc.as_object()) {
-                // Marque
-                if let Some(marques_arr) = sous_caracs.get("marque").or_else(|| sous_caracs.get("brand")).and_then(|m| m.as_array()) {
-                    marque = marques_arr.first().and_then(|v| v.as_str()).map(|s| s.to_string());
-                    tags.extend(marques_arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())));
-                }
-                
-                // Modèle
-                if let Some(modeles_arr) = sous_caracs.get("modele").or_else(|| sous_caracs.get("model")).and_then(|m| m.as_array()) {
-                    _modele = modeles_arr.first().and_then(|v| v.as_str()).map(|s| s.to_string());
-                    tags.extend(modeles_arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())));
-                }
-                
-                // Couleurs
-                if let Some(couleurs_arr) = sous_caracs.get("couleur").or_else(|| sous_caracs.get("color")).and_then(|c| c.as_array()) {
-                    couleurs = couleurs_arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect();
-                    tags.extend(couleurs.clone());
-                }
-                
-                // Ajouter toutes les autres caractéristiques aux tags
-                for (_key, value) in sous_caracs.iter() {
-                    if let Some(vals) = value.as_array() {
-                        tags.extend(vals.iter().filter_map(|v| v.as_str().map(|s| s.to_string())));
-                    }
+            if label.contains("couleur") || label == "color" {
+                if i < vecteur_caracteristiques.len() {
+                    couleurs.push(vecteur_caracteristiques[i].clone());
                 }
             }
         }
 
-        let nom = if !nom_produit.is_empty() { nom_produit.to_string() } else { "Produit recherché".to_string() };
-        let description = if !description_produit.is_empty() { description_produit.to_string() } else { nom.clone() };
-        let categorie = category_str.to_string();
-
-        // ✅ Tags déjà construits lors du parsing autocomplete ci-dessus
-        // Ajouter nom et catégorie si pas déjà présents
+        // Construire tags depuis le vecteur complet
+        let mut tags: Vec<String> = vecteur_caracteristiques.clone();
+        
+        // Ajouter nom et catégorie
         if !tags.contains(&nom) {
             tags.push(nom.clone());
         }
         if !tags.contains(&categorie) {
             tags.push(categorie.clone());
         }
+        
+        // Ajouter texte visible si présent
+        if let Some(texte_visible_arr) = parsed_json.get("texte_visible").and_then(|tv| tv.as_array()) {
+            tags.extend(texte_visible_arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())));
+        }
 
         // Construire les requêtes de recherche
-        let search_query_exact = format!("{} {} {}", 
-            marque.as_ref().unwrap_or(&String::new()),
-            nom,
-            couleurs.first().unwrap_or(&String::new())
-        ).trim().to_string();
+        let search_query_exact = if !search_query_from_json.is_empty() {
+            search_query_from_json.clone()
+        } else {
+            vecteur_caracteristiques.join(" ")
+        };
 
-        let search_query_broad = format!("{} {} {} {} {}", 
+        let search_query_broad = format!("{} {} {} {}", 
             categorie,
+            vecteur_caracteristiques.join(" "),
             nom,
-            marque.as_ref().unwrap_or(&String::new()),
-            couleurs.join(" "),
-            description.chars().take(30).collect::<String>()
+            description.chars().take(50).collect::<String>()
         ).trim().to_string();
 
         let search_query_semantic = description.clone();
+
+        // Extraire confiance
+        let confiance = parsed_json.get("confiance")
+            .and_then(|c| c.as_f64())
+            .unwrap_or(0.95) as f32;
+
+        log_info(&format!(
+            "[HybridImageSearch] ✅ Vecteur extrait: {} caractéristiques, Catégorie: {}, Marque: {:?}, Confiance: {:.2}",
+            vecteur_caracteristiques.len(),
+            categorie,
+            marque,
+            confiance
+        ));
+
+        // Construire caracteristiques_cles depuis vecteur + labels
+        let mut caracteristiques_cles = std::collections::HashMap::new();
+        for (i, label) in labels_dimensions.iter().enumerate() {
+            if i < vecteur_caracteristiques.len() {
+                caracteristiques_cles.insert(label.clone(), vecteur_caracteristiques[i].clone());
+            }
+        }
 
         // Construire ImageAnalysis compatible
         let analysis = ImageAnalysis {
@@ -271,8 +263,8 @@ impl HybridImageSearchService {
             category_detected: categorie,
             marque,
             couleurs,
-            caracteristiques_cles: std::collections::HashMap::new(),
-            confiance: 0.95,
+            caracteristiques_cles,
+            confiance,
             search_query: search_query_exact.clone(),
             search_query_exact,
             search_query_broad,
@@ -289,9 +281,10 @@ impl HybridImageSearchService {
         };
 
         log_info(&format!(
-            "[HybridImageSearch] ✅ Analyse avec système création: '{}' (confiance: {:.2})",
+            "[HybridImageSearch] ✅ Analyse nouveau format: '{}' (confiance: {:.2}, vecteur: {} dims)",
             &analysis.description[..analysis.description.len().min(50)],
-            analysis.confiance
+            analysis.confiance,
+            vecteur_caracteristiques.len()
         ));
 
         Ok((analysis, cost))

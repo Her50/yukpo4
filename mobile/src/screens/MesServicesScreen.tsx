@@ -5,10 +5,11 @@ import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as React from 'react';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Dimensions, RefreshControl, ScrollView, Share, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Dimensions, Modal, RefreshControl, ScrollView, Share, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { NativeButton, NativeCard } from '../components/NativeDesign';
 import SafeIcon from '../components/SafeIcon';
 import ServiceCardModern from '../components/ServiceCardModern';
+import ServiceTeamManager from '../components/ServiceTeamManager';
 import { useAuth } from '../contexts/AuthContext';
 import { apiDelete, apiGet, apiPatch, apiPost } from '../services/api';
 import { modernColors, modernStyles } from '../theme/modernTheme';
@@ -36,6 +37,9 @@ const MesServicesScreen: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [filter, setFilter] = useState<'tous' | 'actif' | 'inactif'>('tous');
+  // ✅ NOUVEAU : États pour gestion d'équipe
+  const [showTeamManager, setShowTeamManager] = useState(false);
+  const [selectedService, setSelectedService] = useState<Service | null>(null);
 
   useEffect(() => {
     loadServices();
@@ -316,7 +320,7 @@ const MesServicesScreen: React.FC = () => {
               } else {
                 // ✅ NOUVEAU 2025-11-01: Objectif #4 - Blocage suppression si >= 2 produits
                 const errorData = await response.json().catch(() => ({}));
-                
+
                 if (response.status === 400 && errorData.message?.includes('2 or more products')) {
                   Alert.alert(
                     '⚠️ Suppression impossible',
@@ -330,15 +334,21 @@ const MesServicesScreen: React.FC = () => {
             } catch (error: any) {
               console.error('Erreur suppression:', error);
               // ✅ AMÉLIORATION: Message d'erreur plus précis
-              const message = error.response?.data?.message || 
-                             error.message || 
-                             'Impossible de supprimer le service. Vérifiez votre connexion.';
+              const message = error.response?.data?.message ||
+                error.message ||
+                'Impossible de supprimer le service. Vérifiez votre connexion.';
               Alert.alert('❌ Erreur', message);
             }
           }
         }
       ]
     );
+  };
+
+  // ✅ NOUVEAU : Handler pour gérer l'équipe d'un service
+  const handleManageTeam = (service: Service) => {
+    setSelectedService(service);
+    setShowTeamManager(true);
   };
 
   const handlePromotionService = (service: any) => {
@@ -550,6 +560,7 @@ const MesServicesScreen: React.FC = () => {
                 onDelete={handleDeleteService}
                 onPromotion={handlePromotionService}
                 onViewProducts={() => navigation.navigate('MesProduits' as never)}
+                onManageTeam={handleManageTeam}  // ✅ NOUVEAU
               />
             ))}
           </View>
@@ -573,6 +584,32 @@ const MesServicesScreen: React.FC = () => {
           />
         </View>
       </ScrollView>
+
+      {/* ✅ NOUVEAU : Modal Gestion d'équipe */}
+      {showTeamManager && selectedService && (
+        <Modal
+          visible={showTeamManager}
+          animationType="slide"
+          presentationStyle="fullScreen"
+          onRequestClose={() => setShowTeamManager(false)}
+        >
+          <ServiceTeamManager
+            serviceId={selectedService.id.toString()}
+            onClose={() => {
+              setShowTeamManager(false);
+              setSelectedService(null);
+            }}
+            onMemberAdded={() => {
+              Alert.alert('✅ Succès', 'Membre ajouté à l\'équipe avec succès');
+              loadServices(true);
+            }}
+            onMemberRemoved={() => {
+              Alert.alert('✅ Succès', 'Membre retiré de l\'équipe avec succès');
+              loadServices(true);
+            }}
+          />
+        </Modal>
+      )}
     </View>
   );
 };
