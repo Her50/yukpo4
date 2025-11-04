@@ -1,5 +1,5 @@
 use crate::core::types::AppResult;
-use sqlx::{Row, PgPool};
+use sqlx::Row;
 
 // use crate::utils::embedding_client::SearchEmbeddingPineconeRequest; // SUSPENDU - Recherche native PostgreSQL uniquement
 use crate::utils::log::{log_info, log_warn};

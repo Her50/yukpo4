@@ -4,7 +4,6 @@ use log::{info, warn};
 pub async fn ensure_product_reactions_table(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Vérification de la table product_reactions...");
 
-    // Créer la table product_reactions si elle n'existe pas
     sqlx::query(r#"
         CREATE TABLE IF NOT EXISTS product_reactions (
             id SERIAL PRIMARY KEY,
@@ -12,7 +11,12 @@ pub async fn ensure_product_reactions_table(pool: &PgPool) -> Result<(), sqlx::E
             service_id INTEGER NOT NULL REFERENCES services(id) ON DELETE CASCADE,
             product_id TEXT NOT NULL,
             reaction_type VARCHAR(20) NOT NULL CHECK (reaction_type IN (
-                'love', 'like', 'wow', 'interested', 'thinking', 'disappointed'
+                'love',
+                'like',
+                'wow',
+                'interested',
+                'thinking',
+                'disappointed'
             )),
             created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
             UNIQUE(user_id, service_id, product_id, reaction_type)
@@ -21,40 +25,25 @@ pub async fn ensure_product_reactions_table(pool: &PgPool) -> Result<(), sqlx::E
     .execute(pool)
     .await?;
 
-    // Créer les index de manière conditionnelle (SQLx offline mode compatible)
     sqlx::query(r#"
-        DO $$ 
-        BEGIN 
+        DO $$
+        BEGIN
             IF NOT EXISTS (
-                SELECT 1 FROM pg_indexes 
+                SELECT 1 FROM pg_indexes
                 WHERE indexname = 'idx_product_reactions_product'
             ) THEN
                 CREATE INDEX idx_product_reactions_product ON product_reactions(service_id, product_id);
             END IF;
-        END $$;
-    "#)
-    .execute(pool)
-    .await?;
 
-    sqlx::query(r#"
-        DO $$ 
-        BEGIN 
             IF NOT EXISTS (
-                SELECT 1 FROM pg_indexes 
+                SELECT 1 FROM pg_indexes
                 WHERE indexname = 'idx_product_reactions_user'
             ) THEN
                 CREATE INDEX idx_product_reactions_user ON product_reactions(user_id);
             END IF;
-        END $$;
-    "#)
-    .execute(pool)
-    .await?;
 
-    sqlx::query(r#"
-        DO $$ 
-        BEGIN 
             IF NOT EXISTS (
-                SELECT 1 FROM pg_indexes 
+                SELECT 1 FROM pg_indexes
                 WHERE indexname = 'idx_product_reactions_type'
             ) THEN
                 CREATE INDEX idx_product_reactions_type ON product_reactions(reaction_type);
@@ -64,7 +53,6 @@ pub async fn ensure_product_reactions_table(pool: &PgPool) -> Result<(), sqlx::E
     .execute(pool)
     .await?;
 
-    // Créer la fonction get_product_reactions_count
     sqlx::query(r#"
         CREATE OR REPLACE FUNCTION get_product_reactions_count(
             p_service_id INTEGER,
@@ -77,7 +65,7 @@ pub async fn ensure_product_reactions_table(pool: &PgPool) -> Result<(), sqlx::E
         )
         LANGUAGE SQL
         AS $$
-            SELECT 
+            SELECT
                 pr.reaction_type,
                 COUNT(*)::BIGINT as count,
                 array_agg(u.name ORDER BY pr.created_at DESC)::TEXT[] as users_sample
@@ -96,4 +84,3 @@ pub async fn ensure_product_reactions_table(pool: &PgPool) -> Result<(), sqlx::E
 
     Ok(())
 }
-

@@ -100,7 +100,7 @@ impl NativeSearchService {
         gps_zone: Option<&str>,
         search_radius_km: Option<i32>,
     ) -> AppResult<Vec<SearchResult>> {
-        let start_time = std::time::Instant::now();
+        let _start_time = std::time::Instant::now();
         log_info(&format!("[NativeSearch] Recherche avec pré-filtre lieu: '{}' (input complet: '{}')", 
             search_query, user_input_full));
         
@@ -159,7 +159,7 @@ impl NativeSearchService {
         gps_zone: Option<&str>,
         search_radius_km: Option<i32>,
     ) -> AppResult<Vec<SearchResult>> {
-        let start_time = std::time::Instant::now();
+        let _start_time = std::time::Instant::now();
         log_info(&format!("[NativeSearch] Début recherche: '{}' (GPS: {:?}, Rayon: {:?}km)", 
             search_query, gps_zone, search_radius_km));
 
@@ -214,7 +214,7 @@ impl NativeSearchService {
         // Trier les résultats (pas de limite)
         fulltext_results.sort_by(|a, b| b.total_score.partial_cmp(&a.total_score).unwrap_or(std::cmp::Ordering::Equal));
 
-        let duration = start_time.elapsed();
+        let duration = _start_time.elapsed();
         log_info(&format!(
             "[NativeSearch] Recherche terminée en {:?}: {} résultats (avec filtrage GPS: {})",
             duration, fulltext_results.len(), gps_zone.is_some()

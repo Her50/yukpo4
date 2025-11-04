@@ -13,7 +13,7 @@ use log::info;
 use crate::state::AppState;
 use crate::services::autocomplete_history_service;
 use crate::services::autocomplete_combinations_service;
-use crate::services::autocomplete_search_service;  // ✅ NOUVEAU 2025-11-04
+// use crate::services::autocomplete_search_service;  // ✅ NOUVEAU 2025-11-04 (non utilisé)
 use crate::services::autocomplete_client_service;  // ✅ NOUVEAU 2025-11-04: Suggestions CLIENT
 
 #[derive(Debug, Deserialize)]

@@ -1,6 +1,6 @@
 // Service de recherche de produits par vecteur autocomplete
 // Utilise autocomplete_characteristics pour trouver les VRAIS produits des prestataires
-use sqlx::PgPool;
+use sqlx::{PgPool, Row};
 use serde::{Deserialize, Serialize};
 use crate::core::types::AppError;
 

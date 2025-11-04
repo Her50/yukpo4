@@ -10,7 +10,6 @@ use std::sync::Arc;
 
 use crate::state::AppState;
 use crate::middlewares::jwt::AuthenticatedUser;
-use crate::core::types::AppResult;
 
 #[derive(Debug, Deserialize)]
 pub struct ReactionPayload {

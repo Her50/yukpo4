@@ -1,6 +1,6 @@
 // Service pour suggestions autocomplete CÔTÉ CLIENT
 // Utilise autocomplete_characteristics (VRAIS produits) pour aider le client à préciser sa recherche
-use sqlx::PgPool;
+use sqlx::{PgPool, Row};
 use serde::{Deserialize, Serialize};
 use crate::core::types::AppError;
 
