@@ -1346,17 +1346,6 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
             </View>
           )}
 
-          {/* ✅ PHASE 3: Exemple dynamique */}
-          <View style={styles.exampleBox}>
-            <SafeIcon name="lightbulb" size={14} color={modernColors.primary} />
-            <View style={styles.exampleContent}>
-              <Text style={styles.exampleLabel}>Exemple :</Text>
-              <Text style={styles.exampleValue} numberOfLines={1}>
-                {generateDynamicExample(field, currentValues)}
-              </Text>
-            </View>
-          </View>
-
           <LinearAutocompleteEditor
             label={field.label}
             identifiantBase={field.identifiantBase || field.name}

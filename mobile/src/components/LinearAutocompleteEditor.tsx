@@ -66,10 +66,11 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
     const [newCharKey, setNewCharKey] = useState('');
     const [newCharValue, setNewCharValue] = useState('');
 
-    // ✅ NOUVEAU : Suggestions populaires
-    const [popularProducts, setPopularProducts] = useState<PopularProduct[]>([]);
-    const [loadingPopular, setLoadingPopular] = useState(false);
-    const [showPopular, setShowPopular] = useState(false);
+    // ✅ NOUVEAU 2025-11-04 : Recherche progressive
+    const [searchQuery, setSearchQuery] = useState('');
+    const [suggestions, setSuggestions] = useState<PopularProduct[]>([]);
+    const [loadingSuggestions, setLoadingSuggestions] = useState(false);
+    const [showSuggestions, setShowSuggestions] = useState(false);
 
     // Décomposer le vecteur en chips
     const parseVectorToChips = (vectorStr: string): ChipData[] => {
@@ -85,42 +86,51 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
 
     const chips = displayValue ? parseVectorToChips(displayValue) : [];
 
-    // ✅ Charger produits populaires au montage
+    // ✅ NOUVEAU 2025-11-04 : Recherche progressive dans autocomplete_combinations
     useEffect(() => {
-        loadPopularProducts();
-    }, [identifiantBase]);
+        if (searchQuery.trim().length >= 2) {
+            searchSuggestions(searchQuery);
+        } else {
+            setSuggestions([]);
+            setShowSuggestions(false);
+        }
+    }, [searchQuery]);
 
-    const loadPopularProducts = async () => {
-        setLoadingPopular(true);
+    const searchSuggestions = async (query: string) => {
+        setLoadingSuggestions(true);
         try {
-            // Extraire une recherche partielle depuis le vecteur existant
-            const searchQuery = displayValue ? displayValue.split(separateur)[0] : '';
-
             const response = await apiGet(
-                `/api/products/popular?search=${encodeURIComponent(searchQuery)}&limit=10`
+                `/api/products/popular?search=${encodeURIComponent(query)}&limit=8`
             );
 
             if (response.success && response.data) {
-                setPopularProducts(response.data as PopularProduct[]);
+                setSuggestions(response.data as PopularProduct[]);
+                setShowSuggestions(true);
             }
         } catch (error) {
-            console.error('[LinearAutocompleteEditor] Erreur chargement produits populaires:', error);
+            console.error('[LinearAutocompleteEditor] Erreur recherche suggestions:', error);
+            setSuggestions([]);
         } finally {
-            setLoadingPopular(false);
+            setLoadingSuggestions(false);
         }
     };
 
-    // Sélectionner un produit populaire
-    const selectPopularProduct = (product: PopularProduct) => {
+    // Sélectionner une suggestion
+    const selectSuggestion = (product: PopularProduct) => {
         const newVector = product.product_vector.join(separateur);
-        onChange([newVector]);
-        setShowPopular(false);
+        
+        // Mettre à jour sousCaracteristiques avec les labels du produit sélectionné
+        const updatedSousCaracs: Record<string, string[]> = {};
+        product.product_labels.forEach((label, index) => {
+            if (!updatedSousCaracs[label]) {
+                updatedSousCaracs[label] = [];
+            }
+            updatedSousCaracs[label].push(product.product_vector[index]);
+        });
 
-        Alert.alert(
-            'Produit populaire sélectionné',
-            `${product.usage_count} prestataires vendent ce produit`,
-            [{ text: 'OK' }]
-        );
+        onChange([newVector], updatedSousCaracs);
+        setSearchQuery('');
+        setShowSuggestions(false);
     };
 
     // Modifier une caractéristique
@@ -213,6 +223,23 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
         );
     }
 
+    // Générer placeholder dynamique depuis la combinaison IA
+    const generatePlaceholder = (): string => {
+        // Si un vecteur existe déjà (de l'IA), l'utiliser comme exemple
+        if (displayValue) {
+            const firstValues = displayValue.split(separateur).slice(0, 4).join(',');
+            return `Ex: ${firstValues}... 🤖`;
+        }
+        // Sinon, exemple générique basé sur les dimensions disponibles
+        const exampleParts = Object.keys(sousCaracteristiques).slice(0, 4).map((key, idx) => {
+            const values = sousCaracteristiques[key];
+            return values && values.length > 0 ? values[0] : `${key}_val`;
+        });
+        return exampleParts.length > 0 
+            ? `Ex: ${exampleParts.join(',')}...` 
+            : 'Rechercher un produit...';
+    };
+
     return (
         <View style={styles.container}>
             {/* Header */}
@@ -225,6 +252,61 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                     🤖 Généré par l'IA - Modifiable
                 </Text>
             </View>
+
+            {/* ✅ NOUVEAU : Champ de recherche */}
+            <View style={styles.searchContainer}>
+                <SafeIcon name="search" size={18} color="#9CA3AF" style={styles.searchIcon} />
+                <TextInput
+                    style={styles.searchInput}
+                    placeholder={generatePlaceholder()}
+                    placeholderTextColor="#9CA3AF"
+                    value={searchQuery}
+                    onChangeText={setSearchQuery}
+                    onFocus={() => setShowSuggestions(searchQuery.trim().length >= 2)}
+                />
+                {searchQuery.length > 0 && (
+                    <TouchableOpacity onPress={() => { setSearchQuery(''); setShowSuggestions(false); }}>
+                        <SafeIcon name="x" size={18} color="#9CA3AF" />
+                    </TouchableOpacity>
+                )}
+            </View>
+
+            {/* ✅ Suggestions progressives */}
+            {showSuggestions && suggestions.length > 0 && (
+                <View style={styles.suggestionsContainer}>
+                    <Text style={styles.suggestionsTitle}>📦 Suggestions populaires</Text>
+                    {loadingSuggestions && <ActivityIndicator size="small" color={modernColors.primary} />}
+                    {suggestions.map((product, index) => (
+                        <TouchableOpacity
+                            key={index}
+                            style={styles.suggestionItem}
+                            onPress={() => selectSuggestion(product)}
+                        >
+                            <View style={styles.suggestionContent}>
+                                <Text style={styles.suggestionVector} numberOfLines={1}>
+                                    {product.product_vector.join(' • ')}
+                                </Text>
+                                <View style={styles.suggestionMeta}>
+                                    {product.is_trending && (
+                                        <View style={styles.trendingBadge}>
+                                            <Text style={styles.trendingText}>📈 TENDANCE</Text>
+                                        </View>
+                                    )}
+                                    <Text style={styles.suggestionCount}>
+                                        👥 {product.usage_count} vendeur{product.usage_count > 1 ? 's' : ''}
+                                    </Text>
+                                    {product.prix_moyen && (
+                                        <Text style={styles.suggestionPrice}>
+                                            💰 {product.prix_moyen.toFixed(0)} XAF
+                                        </Text>
+                                    )}
+                                </View>
+                            </View>
+                            <SafeIcon name="chevron-right" size={16} color="#9CA3AF" />
+                        </TouchableOpacity>
+                    ))}
+                </View>
+            )}
 
             {/* Vecteur affiché en chips */}
             {chips.length > 0 ? (
@@ -258,28 +340,16 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                         ))}
                     </ScrollView>
 
-                    {/* Bouton Ajouter */}
+                    {/* ✅ NOUVEAU : Bouton édition quand vecteur sélectionné */}
                     <TouchableOpacity
-                        style={styles.addChipButton}
+                        style={styles.editButton}
                         onPress={() => setShowAddModal(true)}
                     >
-                        <SafeIcon name="plus" size={18} color={modernColors.primary} />
-                        <Text style={styles.addChipText}>Ajouter</Text>
+                        <SafeIcon name="edit-3" size={16} color={modernColors.primary} />
+                        <Text style={styles.editButtonText}>Éditer</Text>
                     </TouchableOpacity>
                 </View>
-            ) : (
-                <View style={styles.emptyState}>
-                    <SafeIcon name="package" size={32} color="#D1D5DB" />
-                    <Text style={styles.emptyText}>Aucune caractéristique</Text>
-                    <TouchableOpacity
-                        style={styles.addFirstButton}
-                        onPress={() => setShowAddModal(true)}
-                    >
-                        <SafeIcon name="plus" size={16} color="#FFF" />
-                        <Text style={styles.addFirstButtonText}>Ajouter une caractéristique</Text>
-                    </TouchableOpacity>
-                </View>
-            )}
+            ) : null}
 
             {/* ✅ NOUVEAU : Bouton pour afficher produits populaires */}
             <TouchableOpacity
