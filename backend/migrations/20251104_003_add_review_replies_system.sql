@@ -29,7 +29,7 @@ SELECT
     rr.id as reply_to_id,
     rr.user_id as reply_to_user_id,
     rr.rating as reply_to_rating,
-    rr.review_text as reply_to_text,
+    rr.comment as reply_to_text,
     rr.created_at as reply_to_created_at,
     ru.name as reply_to_user_name,
     ru.avatar_url as reply_to_user_avatar
@@ -52,7 +52,7 @@ RETURNS TABLE (
     user_name TEXT,
     user_avatar TEXT,
     rating INTEGER,
-    review_text TEXT,
+    comment TEXT,
     created_at TIMESTAMP WITH TIME ZONE,
     updated_at TIMESTAMP WITH TIME ZONE,
     reply_to_review_id INTEGER,
@@ -71,7 +71,7 @@ BEGIN
         u.name::TEXT as user_name,
         u.avatar_url::TEXT as user_avatar,
         r.rating::INTEGER,
-        r.review_text::TEXT,
+        r.comment::TEXT,
         r.created_at,
         r.updated_at,
         r.reply_to_review_id::INTEGER,
@@ -116,7 +116,7 @@ BEGIN
         u.name::TEXT as user_name,
         u.avatar_url::TEXT as user_avatar,
         r.rating::INTEGER,
-        r.review_text::TEXT as reply_text,
+        r.comment::TEXT as reply_text,
         r.created_at
     FROM service_reviews r
     LEFT JOIN users u ON r.user_id = u.id

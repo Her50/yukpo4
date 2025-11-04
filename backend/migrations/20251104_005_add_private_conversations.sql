@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS private_conversations (
     id SERIAL PRIMARY KEY,
     user_1_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     user_2_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    context VARCHAR(50),  -- 'product_review', 'direct_contact', 'mention', etc.
+    context TEXT,  -- 'product_review', 'direct_contact', 'mention', etc.
     created_at TIMESTAMPTZ DEFAULT NOW(),
     last_message_at TIMESTAMPTZ,
     
@@ -21,30 +21,23 @@ DO $$
 BEGIN 
     IF NOT EXISTS (
         SELECT 1 FROM pg_indexes 
-        WHERE indexname = 'idx_private_conv_user1'
+        WHERE indexname = 'idx_private_conversations_user_1'
     ) THEN
-        CREATE INDEX idx_private_conv_user1 ON private_conversations(user_1_id);
+        CREATE INDEX idx_private_conversations_user_1 ON private_conversations(user_1_id);
     END IF;
 
     IF NOT EXISTS (
         SELECT 1 FROM pg_indexes 
-        WHERE indexname = 'idx_private_conv_user2'
+        WHERE indexname = 'idx_private_conversations_user_2'
     ) THEN
-        CREATE INDEX idx_private_conv_user2 ON private_conversations(user_2_id);
+        CREATE INDEX idx_private_conversations_user_2 ON private_conversations(user_2_id);
     END IF;
 
     IF NOT EXISTS (
         SELECT 1 FROM pg_indexes 
-        WHERE indexname = 'idx_private_conv_last_message'
+        WHERE indexname = 'idx_private_conversations_last_message'
     ) THEN
-        CREATE INDEX idx_private_conv_last_message ON private_conversations(last_message_at DESC);
-    END IF;
-    
-    IF NOT EXISTS (
-        SELECT 1 FROM pg_indexes 
-        WHERE indexname = 'idx_private_conv_context'
-    ) THEN
-        CREATE INDEX idx_private_conv_context ON private_conversations(context) WHERE context IS NOT NULL;
+        CREATE INDEX idx_private_conversations_last_message ON private_conversations(last_message_at DESC);
     END IF;
 END $$;
 
