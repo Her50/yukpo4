@@ -318,8 +318,9 @@ CREATE TABLE IF NOT EXISTS service_reviews (
     user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
     service_id INTEGER REFERENCES services(id) ON DELETE CASCADE,
     rating INTEGER CHECK (rating >= 0 AND rating <= 5) NOT NULL,
-    review_text TEXT,
+    comment TEXT,
     reply_to_review_id INTEGER REFERENCES service_reviews(id) ON DELETE CASCADE,
+    is_helpful_count INTEGER DEFAULT 0,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -382,6 +383,43 @@ BEGIN
         WHERE indexname = 'idx_product_reactions_type'
     ) THEN
         CREATE INDEX idx_product_reactions_type ON product_reactions(reaction_type);
+    END IF;
+END $$;
+
+-- ✅ Table private_conversations (conversations privées 1-to-1 - 2025-11-04)
+CREATE TABLE IF NOT EXISTS private_conversations (
+    id SERIAL PRIMARY KEY,
+    user_1_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    user_2_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    context TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    last_message_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(user_1_id, user_2_id),
+    CONSTRAINT chk_users_order CHECK (user_1_id < user_2_id)
+);
+
+-- Index pour private_conversations (SQLx offline mode compatible)
+DO $$ 
+BEGIN 
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_indexes 
+        WHERE indexname = 'idx_private_conversations_user_1'
+    ) THEN
+        CREATE INDEX idx_private_conversations_user_1 ON private_conversations(user_1_id);
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_indexes 
+        WHERE indexname = 'idx_private_conversations_user_2'
+    ) THEN
+        CREATE INDEX idx_private_conversations_user_2 ON private_conversations(user_2_id);
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_indexes 
+        WHERE indexname = 'idx_private_conversations_last_message'
+    ) THEN
+        CREATE INDEX idx_private_conversations_last_message ON private_conversations(last_message_at DESC);
     END IF;
 END $$;
 
