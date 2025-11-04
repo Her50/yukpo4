@@ -13,7 +13,7 @@ pub fn history_routes() -> Router<Arc<AppState>> {
         // Enregistrer une consultation
         .route("/consultation/{user_id}/{service_id}", post(history_controller::enregistrer_consultation))
         
-        // R?cup?rer les consultations d'un utilisateur
+        // Récupérer les consultations d'un utilisateur
         .route("/consultations/{user_id}", get(history_controller::get_consultations_utilisateur))
         
         // Statistiques de consultation d'un service
