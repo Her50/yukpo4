@@ -101,6 +101,54 @@ export function processIASuggestion(suggestion: IASuggestion): DynamicField[] {
     }
   });
 
+  // ✅ NOUVEAU 2025-11-04 : Ajouter les champs produit de base s'ils ne sont pas déjà créés par l'IA
+  // Ceci garantit que les champs nom_produit, categorie_produit, description_produit existent TOUJOURS
+  const hasNomProduit = components.some(c => c.name === 'nom_produit');
+  const hasCategorieProduit = components.some(c => c.name === 'categorie_produit');
+  const hasDescriptionProduit = components.some(c => c.name === 'description_produit');
+
+  if (!hasNomProduit) {
+    // Fallback: utiliser titre_service si nom_produit n'existe pas
+    const titreValue = data.titre_service?.valeur || '';
+    components.push({
+      type: 'text',
+      label: 'Nom du produit/prestation',
+      name: 'nom_produit',
+      placeholder: 'Ex: iPhone 14 Pro Max, Cours de mathématiques...',
+      value: titreValue,
+      required: false
+    });
+    console.log('[formDispatcher] ✅ Champ nom_produit créé automatiquement (fallback titre_service)');
+  }
+
+  if (!hasCategorieProduit) {
+    // Fallback: utiliser category si categorie_produit n'existe pas
+    const categoryValue = data.category?.valeur || '';
+    components.push({
+      type: 'text',
+      label: 'Catégorie du produit/prestation',
+      name: 'categorie_produit',
+      placeholder: 'Ex: Smartphone, Cours particulier...',
+      value: categoryValue,
+      required: false
+    });
+    console.log('[formDispatcher] ✅ Champ categorie_produit créé automatiquement (fallback category)');
+  }
+
+  if (!hasDescriptionProduit) {
+    // Fallback: utiliser description si description_produit n'existe pas
+    const descriptionValue = data.description?.valeur || '';
+    components.push({
+      type: 'textarea',
+      label: 'Description du produit/prestation',
+      name: 'description_produit',
+      placeholder: 'Décrivez les caractéristiques spécifiques...',
+      value: descriptionValue,
+      required: false
+    });
+    console.log('[formDispatcher] ✅ Champ description_produit créé automatiquement (fallback description)');
+  }
+
   // Si aucun composant généré, utiliser les composants par défaut
   if (components.length === 0) {
     console.log('[formDispatcher] Aucun composant généré, utilisation des composants par défaut');
