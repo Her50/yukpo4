@@ -23,7 +23,7 @@ END $$;
 CREATE OR REPLACE VIEW service_reviews_with_replies AS
 SELECT 
     r.*,
-    u.name as user_name,
+    COALESCE(u.nom_complet, u.email) as user_name,
     u.email as user_email,
     u.avatar_url as user_avatar,
     rr.id as reply_to_id,
@@ -31,7 +31,7 @@ SELECT
     rr.rating as reply_to_rating,
     rr.comment as reply_to_text,
     rr.created_at as reply_to_created_at,
-    ru.name as reply_to_user_name,
+    COALESCE(ru.nom_complet, ru.email) as reply_to_user_name,
     ru.avatar_url as reply_to_user_avatar
 FROM service_reviews r
 LEFT JOIN users u ON r.user_id = u.id
@@ -68,14 +68,14 @@ BEGIN
     SELECT 
         r.id::INTEGER as review_id,
         r.user_id::INTEGER,
-        u.name::TEXT as user_name,
+        COALESCE(u.nom_complet, u.email)::TEXT as user_name,
         u.avatar_url::TEXT as user_avatar,
         r.rating::INTEGER,
         r.comment::TEXT,
         r.created_at,
         r.updated_at,
         r.reply_to_review_id::INTEGER,
-        ru.name::TEXT as reply_to_user_name,
+        COALESCE(ru.nom_complet, ru.email)::TEXT as reply_to_user_name,
         rr.comment::TEXT as reply_to_text,
         rr.created_at as reply_to_created_at,
         (SELECT COUNT(*) FROM service_reviews WHERE reply_to_review_id = r.id)::BIGINT as reply_count
@@ -113,7 +113,7 @@ BEGIN
     SELECT 
         r.id::INTEGER as reply_id,
         r.user_id::INTEGER,
-        u.name::TEXT as user_name,
+        COALESCE(u.nom_complet, u.email)::TEXT as user_name,
         u.avatar_url::TEXT as user_avatar,
         r.rating::INTEGER,
         r.comment::TEXT as reply_text,
