@@ -39,27 +39,28 @@ pub async fn toggle_product_reaction(
     }
 
     // Vérifier si l'utilisateur a déjà cette réaction
-    let existing = sqlx::query!(
+    let existing = sqlx::query(
         r#"
         SELECT id FROM product_reactions 
         WHERE user_id = $1 AND service_id = $2 
           AND product_id = $3 AND reaction_type = $4
-        "#,
-        user.id,
-        service_id,
-        product_id,
-        payload.reaction_type
+        "#
     )
+    .bind(user.id)
+    .bind(service_id)
+    .bind(&product_id)
+    .bind(&payload.reaction_type)
     .fetch_optional(&state.pg)
     .await
     .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
     if let Some(reaction) = existing {
         // Retirer la réaction
-        sqlx::query!(
-            r#"DELETE FROM product_reactions WHERE id = $1"#,
-            reaction.id
+        let reaction_id: i32 = reaction.try_get("id").map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+        sqlx::query(
+            r#"DELETE FROM product_reactions WHERE id = $1"#
         )
+        .bind(reaction_id)
         .execute(&state.pg)
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
@@ -70,17 +71,17 @@ pub async fn toggle_product_reaction(
         })))
     } else {
         // Ajouter la réaction
-        sqlx::query!(
+        sqlx::query(
             r#"
             INSERT INTO product_reactions (user_id, service_id, product_id, reaction_type)
             VALUES ($1, $2, $3, $4)
             ON CONFLICT (user_id, service_id, product_id, reaction_type) DO NOTHING
-            "#,
-            user.id,
-            service_id,
-            product_id,
-            payload.reaction_type
+            "#
         )
+        .bind(user.id)
+        .bind(service_id)
+        .bind(&product_id)
+        .bind(&payload.reaction_type)
         .execute(&state.pg)
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
@@ -99,17 +100,17 @@ pub async fn get_product_reactions(
     State(state): State<Arc<AppState>>,
     Extension(user): Extension<AuthenticatedUser>,
 ) -> Result<Json<Value>, StatusCode> {
-    let reactions = sqlx::query!(
+    let reactions = sqlx::query(
         r#"
         SELECT 
             reaction_type,
             count,
             users_sample
         FROM get_product_reactions_count($1, $2)
-        "#,
-        service_id,
-        product_id
+        "#
     )
+    .bind(service_id)
+    .bind(&product_id)
     .fetch_all(&state.pg)
     .await
     .map_err(|e| {
@@ -118,35 +119,39 @@ pub async fn get_product_reactions(
     })?;
 
     // Vérifier si l'utilisateur actuel a réagi
-    let user_reactions = sqlx::query!(
+    let user_reactions = sqlx::query(
         r#"
         SELECT reaction_type 
         FROM product_reactions
         WHERE user_id = $1 AND service_id = $2 AND product_id = $3
-        "#,
-        user.id,
-        service_id,
-        product_id
+        "#
     )
+    .bind(user.id)
+    .bind(service_id)
+    .bind(&product_id)
     .fetch_all(&state.pg)
     .await
     .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
     let user_reaction_types: Vec<String> = user_reactions
         .iter()
-        .map(|r| r.reaction_type.clone())
+        .filter_map(|r| r.try_get::<String, _>("reaction_type").ok())
         .collect();
 
     // Enrichir avec l'information si l'utilisateur a réagi
     let enriched_reactions: Vec<Value> = reactions
         .iter()
-        .map(|r| {
-            json!({
-                "reaction_type": r.reaction_type,
-                "count": r.count.unwrap_or(0),
-                "users_sample": r.users_sample.as_deref().unwrap_or(&[]),
-                "has_reacted": user_reaction_types.contains(&r.reaction_type)
-            })
+        .filter_map(|r| {
+            let reaction_type: String = r.try_get("reaction_type").ok()?;
+            let count: i64 = r.try_get("count").unwrap_or(0);
+            let users_sample: Vec<String> = r.try_get("users_sample").unwrap_or_default();
+            
+            Some(json!({
+                "reaction_type": reaction_type,
+                "count": count,
+                "users_sample": users_sample,
+                "has_reacted": user_reaction_types.contains(&reaction_type)
+            }))
         })
         .collect();
 
