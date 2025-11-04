@@ -76,7 +76,7 @@ BEGIN
         r.updated_at,
         r.reply_to_review_id::INTEGER,
         ru.name::TEXT as reply_to_user_name,
-        rr.review_text::TEXT as reply_to_text,
+        rr.comment::TEXT as reply_to_text,
         rr.created_at as reply_to_created_at,
         (SELECT COUNT(*) FROM service_reviews WHERE reply_to_review_id = r.id)::BIGINT as reply_count
     FROM service_reviews r
