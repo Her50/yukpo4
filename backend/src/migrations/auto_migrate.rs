@@ -901,7 +901,7 @@ pub async fn ensure_product_reactions_table(pool: &PgPool) -> Result<(), sqlx::E
             SELECT
                 pr.reaction_type,
                 COUNT(*)::BIGINT as count,
-                array_agg(u.name ORDER BY pr.created_at DESC)::TEXT[] as users_sample
+                array_agg(COALESCE(u.nom_complet, u.email) ORDER BY pr.created_at DESC)::TEXT[] as users_sample
             FROM product_reactions pr
             LEFT JOIN users u ON pr.user_id = u.id
             WHERE pr.service_id = p_service_id

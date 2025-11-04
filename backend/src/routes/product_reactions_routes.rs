@@ -14,12 +14,12 @@ pub fn product_reactions_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
     Router::new()
         // POST /api/products/:service_id/:product_id/react - Ajouter/retirer une réaction
         .route(
-            "/api/products/:service_id/:product_id/react",
+            "/api/products/{service_id}/{product_id}/react",
             post(toggle_product_reaction),
         )
-        // GET /api/products/:service_id/:product_id/reactions - Récupérer les réactions
+        // GET /api/products/{service_id}/{product_id}/reactions - Récupérer les réactions
         .route(
-            "/api/products/:service_id/:product_id/reactions",
+            "/api/products/{service_id}/{product_id}/reactions",
             get(get_product_reactions),
         )
         .with_state(state)
