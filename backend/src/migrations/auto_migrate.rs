@@ -548,6 +548,25 @@ pub async fn ensure_autocomplete_combinations_table(pool: &PgPool) -> Result<(),
     
     if exists {
         info!("✅ Table autocomplete_combinations déjà présente");
+        
+        // Vérifier si product_labels existe, sinon l'ajouter
+        let has_product_labels = sqlx::query_scalar::<_, bool>(
+            "SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name = 'autocomplete_combinations' AND column_name = 'product_labels')"
+        )
+        .fetch_one(pool)
+        .await?;
+        
+        if !has_product_labels {
+            warn!("⚠️ Colonne product_labels manquante, ajout en cours...");
+            sqlx::query(
+                "ALTER TABLE autocomplete_combinations ADD COLUMN product_labels TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[]"
+            )
+            .execute(pool)
+            .await?;
+            
+            info!("✅ Colonne product_labels ajoutée");
+        }
+        
         return Ok(());
     }
     
@@ -1000,6 +1019,21 @@ pub async fn ensure_token_usage_logs_table(pool: &PgPool) -> Result<(), sqlx::Er
                 .execute(pool)
                 .await?;
             info!("✅ Colonne 'intention' ajoutée");
+        }
+        
+        // Vérifier si tokens_ia_consumed existe, sinon l'ajouter
+        let has_tokens_ia = sqlx::query_scalar::<_, bool>(
+            "SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name = 'token_usage_logs' AND column_name = 'tokens_ia_consumed')"
+        )
+        .fetch_one(pool)
+        .await?;
+        
+        if !has_tokens_ia {
+            warn!("⚠️ Colonne 'tokens_ia_consumed' manquante, ajout en cours...");
+            sqlx::query("ALTER TABLE token_usage_logs ADD COLUMN IF NOT EXISTS tokens_ia_consumed INTEGER NOT NULL DEFAULT 0")
+                .execute(pool)
+                .await?;
+            info!("✅ Colonne 'tokens_ia_consumed' ajoutée");
         }
         
         return Ok(());

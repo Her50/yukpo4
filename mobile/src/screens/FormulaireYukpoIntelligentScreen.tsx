@@ -936,6 +936,61 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         console.log('[FormulaireYukpoIntelligentScreen] Catégorie chargée:', categoryValue);
       }
 
+      // ✅ NOUVEAU 2025-11-04: Extraire les champs produit avec fallback
+      // Extraire nom_produit (ou utiliser titre_service si absent)
+      if (suggestion.data.nom_produit) {
+        const nomProduitValue = typeof suggestion.data.nom_produit === 'object' && 'valeur' in suggestion.data.nom_produit
+          ? suggestion.data.nom_produit.valeur
+          : suggestion.data.nom_produit;
+        initialValues.nom_produit = nomProduitValue;
+        console.log('[FormulaireYukpoIntelligentScreen] ✅ nom_produit chargé:', nomProduitValue);
+      } else if (suggestion.data.titre_service) {
+        // Fallback : utiliser titre_service comme nom_produit
+        const titreValue = typeof suggestion.data.titre_service === 'object' && 'valeur' in suggestion.data.titre_service
+          ? suggestion.data.titre_service.valeur
+          : suggestion.data.titre_service;
+        initialValues.nom_produit = titreValue;
+        console.log('[FormulaireYukpoIntelligentScreen] ⚠️ nom_produit absent, utilisation titre_service:', titreValue);
+      }
+      
+      // Extraire categorie_produit (ou utiliser category si absent)
+      if (suggestion.data.categorie_produit) {
+        const categorieProduitValue = typeof suggestion.data.categorie_produit === 'object' && 'valeur' in suggestion.data.categorie_produit
+          ? suggestion.data.categorie_produit.valeur
+          : suggestion.data.categorie_produit;
+        initialValues.categorie_produit = categorieProduitValue;
+        console.log('[FormulaireYukpoIntelligentScreen] ✅ categorie_produit chargé:', categorieProduitValue);
+      } else if (suggestion.data.category) {
+        // Fallback : utiliser category comme categorie_produit
+        const categoryValue = typeof suggestion.data.category === 'object' && 'valeur' in suggestion.data.category
+          ? suggestion.data.category.valeur
+          : suggestion.data.category;
+        initialValues.categorie_produit = categoryValue;
+        console.log('[FormulaireYukpoIntelligentScreen] ⚠️ categorie_produit absent, utilisation category:', categoryValue);
+      }
+      
+      // Extraire description_produit (ou utiliser description si absent)
+      if (suggestion.data.description_produit) {
+        const descriptionProduitValue = typeof suggestion.data.description_produit === 'object' && 'valeur' in suggestion.data.description_produit
+          ? suggestion.data.description_produit.valeur
+          : suggestion.data.description_produit;
+        initialValues.description_produit = descriptionProduitValue;
+        console.log('[FormulaireYukpoIntelligentScreen] ✅ description_produit chargé:', descriptionProduitValue);
+      } else if (suggestion.data.description) {
+        // Fallback : utiliser description comme description_produit
+        const descriptionValue = typeof suggestion.data.description === 'object' && 'valeur' in suggestion.data.description
+          ? suggestion.data.description.valeur
+          : suggestion.data.description;
+        initialValues.description_produit = descriptionValue;
+        console.log('[FormulaireYukpoIntelligentScreen] ⚠️ description_produit absent, utilisation description:', descriptionValue);
+      }
+
+      console.log('[FormulaireYukpoIntelligentScreen] 📦 RÉSUMÉ champs produit:', {
+        nom: initialValues.nom_produit,
+        categorie: initialValues.categorie_produit,
+        description: initialValues.description_produit
+      });
+
       // ✅ NOUVEAU: Pré-remplir le GPS depuis ChatInputMobile si disponible
       if (gpsData && gpsData.gps_fixe) {
         initialValues.gps_fixe = gpsData.gps_fixe;
