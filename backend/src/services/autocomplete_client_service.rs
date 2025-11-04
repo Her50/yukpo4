@@ -87,7 +87,7 @@ pub async fn search_product_suggestions(
     .await
     .map_err(|e| AppError::Internal(format!("Erreur recherche suggestions: {}", e)))?;
     
-    let suggestions = rows.iter().map(|row| ProductSuggestion {
+    let suggestions: Vec<ProductSuggestion> = rows.iter().map(|row| ProductSuggestion {
         service_id: row.get("service_id"),
         product_vector: row.get("product_vector"),
         product_labels: row.get("product_labels"),

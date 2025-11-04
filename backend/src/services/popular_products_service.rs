@@ -79,7 +79,7 @@ pub async fn get_popular_products_similar_to(
     .await
     .map_err(|e| AppError::Internal(format!("Erreur récupération produits populaires: {}", e)))?;
     
-    let products = rows.iter().map(|row| PopularProduct {
+    let products: Vec<PopularProduct> = rows.iter().map(|row| PopularProduct {
         product_vector: row.get("product_vector"),
         product_labels: row.get("product_labels"),
         usage_count: row.get("usage_count"),
@@ -179,7 +179,7 @@ pub async fn get_top_popular_products(
     }
     .map_err(|e| AppError::Internal(format!("Erreur récupération TOP produits: {}", e)))?;
     
-    let products = rows.iter().map(|row| PopularProduct {
+    let products: Vec<PopularProduct> = rows.iter().map(|row| PopularProduct {
         product_vector: row.get("product_vector"),
         product_labels: row.get("product_labels"),
         usage_count: row.get("usage_count"),
