@@ -45,32 +45,46 @@ impl NativeSearchService {
     }
     
     /// ✅ NOUVEAU 2025-11-04 : Vérifier si un lieu est mentionné dans l'input
-    /// En comparant l'input avec TOUS les location_vector de la base
+    /// Utilise l'opérateur && (overlap) pour tester intersection entre arrays
     /// Retourne TRUE si au moins UN produit a un lieu qui matche
     /// Retourne FALSE si aucun lieu ne matche → Utiliser TOUTE la base
     async fn check_if_location_in_input(&self, user_input: &str) -> AppResult<bool> {
+        // Découper l'input en mots pour créer un array
+        let words: Vec<String> = user_input
+            .to_lowercase()
+            .split_whitespace()
+            .map(|s| s.to_string())
+            .collect();
+        
         let result = sqlx::query_scalar::<_, bool>(
             r#"
             SELECT EXISTS (
                 SELECT 1 FROM autocomplete_characteristics ac
                 WHERE ac.is_real_product = TRUE
-                AND EXISTS (
-                    SELECT 1 FROM unnest(ac.location_vector) AS loc_val
-                    WHERE 
-                        -- Correspondance exacte (insensible à la casse)
-                        LOWER($1) LIKE '%' || LOWER(loc_val) || '%'
-                        -- ✅ OU correspondance fuzzy (gestion fautes de frappe)
-                        OR similarity(LOWER($1), LOWER(loc_val)) > 0.6
+                AND (
+                    -- ✅ OPTIMISÉ : Test d'intersection avec opérateur && (overlap)
+                    -- Convertir location_vector en lowercase pour comparaison case-insensitive
+                    -- array_agg(unnest) reconstruit un array lowercase pour && (plus rapide que unnest)
+                    (
+                        SELECT array_agg(LOWER(elem))::TEXT[]
+                        FROM unnest(ac.location_vector) AS elem
+                    ) && $1::TEXT[]
+                    -- ✅ OU fuzzy match pour gestion fautes de frappe (si && échoue)
+                    OR EXISTS (
+                        SELECT 1 FROM unnest(ac.location_vector) AS loc_val,
+                                     unnest($1::TEXT[]) AS input_word
+                        WHERE similarity(LOWER(loc_val), input_word) > 0.6
+                    )
                 )
             )
             "#
         )
-        .bind(user_input)
+        .bind(&words)
         .fetch_one(&self.pool)
         .await
         .unwrap_or(false);
         
-        log::info!("[NativeSearch] Lieu dans input ? {} (input: '{}')", result, user_input);
+        log::info!("[NativeSearch] Lieu dans input ? {} (input: '{}', words: {:?})", result, user_input, words);
         
         Ok(result)
     }
@@ -356,12 +370,12 @@ SELECT DISTINCT
                 s.gps,
                 s.category,
                 (
-                    -- ✅ CORRECTION 2025-11-01: RÉDUIRE priorité SERVICE (total 7.0 au lieu de 13.0)
-                    -- Priorité : PRODUITS > SERVICE pour meilleure pertinence
+                    -- ✅ CORRECTION 2025-11-04: RÉDUIRE encore plus priorité SERVICE (total 3.5 au lieu de 7.0)
+                    -- Priorité : CHAMPS PRODUIT >>> CHAMPS SERVICE
                     (
-                        ts_rank(to_tsvector('french', COALESCE(s.data->'titre_service'->>'valeur', '')), plainto_tsquery('french', $1)) * 3.0 +
-                        ts_rank(to_tsvector('french', COALESCE(s.data->'description'->>'valeur', '')), plainto_tsquery('french', $1)) * 2.0 +
-                        ts_rank(to_tsvector('french', COALESCE(s.data->'category'->>'valeur', '')), plainto_tsquery('french', $1)) * 2.0
+                        ts_rank(to_tsvector('french', COALESCE(s.data->'titre_service'->>'valeur', '')), plainto_tsquery('french', $1)) * 1.5 +
+                        ts_rank(to_tsvector('french', COALESCE(s.data->'description'->>'valeur', '')), plainto_tsquery('french', $1)) * 1.0 +
+                        ts_rank(to_tsvector('french', COALESCE(s.data->'category'->>'valeur', '')), plainto_tsquery('french', $1)) * 1.0
                     ) +
                     -- ✅ CORRECTION 2025-11-01: AUGMENTER priorité PRODUITS (10.0 au lieu de 3.0)
                     -- Les caractéristiques des produits sont maintenant PRIORITAIRES
@@ -379,32 +393,32 @@ SELECT DISTINCT
                             END
                         ) AS product
                     ) +
-                    -- Score avec unaccent pour gestion des accents
+                    -- Score avec unaccent pour gestion des accents (RÉDUIT SERVICE)
                     (
-                        ts_rank(to_tsvector('french', unaccent(COALESCE(s.data->'titre_service'->>'valeur', ''))), plainto_tsquery('french', unaccent($1))) * 5.0 +
-                        ts_rank(to_tsvector('french', unaccent(COALESCE(s.data->'description'->>'valeur', ''))), plainto_tsquery('french', unaccent($1))) * 2.5 +
-                        ts_rank(to_tsvector('french', unaccent(COALESCE(s.data->'category'->>'valeur', ''))), plainto_tsquery('french', unaccent($1))) * 3.5
+                        ts_rank(to_tsvector('french', unaccent(COALESCE(s.data->'titre_service'->>'valeur', ''))), plainto_tsquery('french', unaccent($1))) * 2.0 +
+                        ts_rank(to_tsvector('french', unaccent(COALESCE(s.data->'description'->>'valeur', ''))), plainto_tsquery('french', unaccent($1))) * 1.0 +
+                        ts_rank(to_tsvector('french', unaccent(COALESCE(s.data->'category'->>'valeur', ''))), plainto_tsquery('french', unaccent($1))) * 1.5
                     ) +
-                    -- Bonus pour correspondances exactes avec priorité titre
+                    -- Bonus pour correspondances exactes SERVICE (RÉDUIT car moins pertinent que produit)
                     CASE 
-                        WHEN s.data->'titre_service'->>'valeur' ILIKE '%' || $1 || '%' THEN 8.0
-                        WHEN s.data->'description'->>'valeur' ILIKE '%' || $1 || '%' THEN 4.0
-                        WHEN s.data->'category'->>'valeur' ILIKE '%' || $1 || '%' THEN 5.0
+                        WHEN s.data->'titre_service'->>'valeur' ILIKE '%' || $1 || '%' THEN 3.0
+                        WHEN s.data->'description'->>'valeur' ILIKE '%' || $1 || '%' THEN 2.0
+                        WHEN s.data->'category'->>'valeur' ILIKE '%' || $1 || '%' THEN 2.5
                         ELSE 0.0
                     END +
-                    -- ✅ CORRECTION 2025-11-01: AUGMENTER bonus pour correspondances dans les produits
-                    -- Recherche dans le texte extrait de tous les champs du produit (autocomplete inclus)
+                    -- ✅ CORRECTION 2025-11-04: BOOST MAJEUR pour champs PRODUIT spécifiques
+                    -- nom_produit, categorie_produit, description_produit >>> titre/categorie/description service
                     (
                         SELECT COALESCE(SUM(
                             CASE 
-                                -- ✅ Correspondance dans le texte complet extrait (AUGMENTÉ 3.0 → 5.0)
-                                WHEN extract_all_product_text(product) ILIKE '%' || $1 || '%' THEN 5.0
-                                -- ✅ Bonus pour champs spécifiques importants (AUGMENTÉ 5.0 → 8.0)
-                                WHEN product->>'nom' ILIKE '%' || $1 || '%' THEN 8.0
-                                -- ✅ NOUVEAU 2025-11-04: Catégorie produit (important pour filtrage)
-                                WHEN product->>'categorie' ILIKE '%' || $1 || '%' THEN 7.0
-                                -- ✅ Description produit (AUGMENTÉ 3.0 → 5.0)
-                                WHEN product->>'description' ILIKE '%' || $1 || '%' THEN 5.0
+                                -- 🔥 PRIORITÉ MAXIMALE: nom_produit (équivalent titre_service mais pour produit)
+                                WHEN product->>'nom' ILIKE '%' || $1 || '%' THEN 15.0
+                                -- 🔥 TRÈS IMPORTANT: categorie_produit (plus précis que category service)
+                                WHEN product->>'categorie' ILIKE '%' || $1 || '%' THEN 12.0
+                                -- 🔥 IMPORTANT: description_produit (détails spécifiques produit)
+                                WHEN product->>'description' ILIKE '%' || $1 || '%' THEN 10.0
+                                -- ✅ Correspondance dans le texte complet extrait
+                                WHEN extract_all_product_text(product) ILIKE '%' || $1 || '%' THEN 6.0
                                 WHEN product->>'type' ILIKE '%' || $1 || '%' THEN 5.0
                                 WHEN product->>'marque' ILIKE '%' || $1 || '%' THEN 5.0
                                 WHEN product->>'modele' ILIKE '%' || $1 || '%' THEN 5.0
@@ -451,96 +465,108 @@ SELECT DISTINCT
                             END
                         ) AS product
                     ) +
-                    -- ✅ NOUVEAU 2025-11-04: BONUS pour vecteur dans JSON produits
-                    -- Recherche dans characteristic_vector, location_vector, full_vector sauvegardés dans JSON
+                    -- ✅ NOUVEAU 2025-11-04: BONUS pour vecteur caractéristiques dans JSON produits
+                    -- ⚠️ IMPORTANT: NE PAS scorer location_vector ici (déjà utilisé pour pré-filtre = biais)
+                    -- On score UNIQUEMENT characteristic_vector (sans lieu)
                     (
                         CASE 
                             WHEN s.data->'produits'->'characteristic_vector' IS NOT NULL THEN
                                 (
-                                    SELECT COUNT(*)::REAL * 12.0
+                                    -- ✅ Réduction 12.0 → 8.0 pour équilibrer à ~50% caractéristiques / 50% description
+                                    SELECT COUNT(*)::REAL * 8.0
                                     FROM jsonb_array_elements_text(s.data->'produits'->'characteristic_vector') AS vec_val
                                     WHERE vec_val ILIKE '%' || $1 || '%'
-                                ) +
-                                (
-                                    SELECT COUNT(*)::REAL * 15.0
-                                    FROM jsonb_array_elements_text(s.data->'produits'->'location_vector') AS loc_val
-                                    WHERE loc_val ILIKE '%' || $1 || '%'
                                 )
                             ELSE 0.0
                         END
                     ) +
-                    -- ✅ NOUVEAU 2025-11-04: BOOST MAJEUR pour autocomplete_characteristics (MODE VECTORIEL)
-                    -- Recherche dans full_vector (caractéristiques + lieu bidirectionnel)
-                    -- Score: 15.0-50.0 par produit + boost popularité CLIENT (usage_count)
+                    -- ✅ NOUVEAU 2025-11-04: BOOST pour autocomplete_characteristics (MODE VECTORIEL)
+                    -- ⚠️ CORRECTION BIAIS: Recherche UNIQUEMENT dans characteristic_vector (SANS lieu)
+                    -- Le lieu est déjà utilisé pour le PRÉ-FILTRE → ne pas le scorer 2 fois
+                    -- Score: 8.0-24.0 par produit + boost popularité CLIENT (usage_count)
+                    -- Réduction 15.0 → 8.0 pour équilibrer à ~50% caractéristiques / 50% description
                     (
                         SELECT COALESCE(SUM(
-                            -- Score de base pour correspondance dans full_vector
-                            15.0 *
-                            -- Recherche dans le vecteur complet (produit + lieu)
+                            -- Score de base pour correspondance dans characteristic_vector (SANS lieu)
+                            8.0 *
+                            -- Recherche dans le vecteur caractéristiques UNIQUEMENT (produit, pas lieu)
                             (
-                                SELECT COUNT(*)::REAL FROM unnest(ac.full_vector) AS vec_val
+                                SELECT COUNT(*)::REAL FROM unnest(ac.characteristic_vector) AS vec_val
                                 WHERE vec_val ILIKE '%' || $1 || '%'
                             ) *
-                            -- BOOST MAJEUR selon popularité CLIENT (usage_count)
+                            -- BOOST selon popularité CLIENT (usage_count)
                             -- 1 fois = 1.0x, 5 fois = 1.5x, 10 fois = 2.0x, 20+ fois = 3.0x
-                            LEAST(3.0, 1.0 + (ac.usage_count::REAL / 10.0)) +
-                            -- BONUS ÉNORME si correspondance EXACTE dans chosen_location (lieu)
-                            CASE 
-                                WHEN ac.chosen_location IS NOT NULL 
-                                     AND LOWER(ac.chosen_location) = LOWER($1)
-                                THEN 50.0  -- Bonus MASSIF pour lieu exact
-                                WHEN ac.chosen_location IS NOT NULL 
-                                     AND LOWER(ac.chosen_location) LIKE '%' || LOWER($1) || '%'
-                                THEN 25.0  -- Bonus important pour lieu partiel
-                                -- Recherche dans location_vector (hiérarchie bidirectionnelle)
-                                WHEN EXISTS (
-                                    SELECT 1 FROM unnest(ac.location_vector) AS loc_val
-                                    WHERE LOWER(loc_val) = LOWER($1)
-                                )
-                                THEN 35.0  -- Bonus majeur pour lieu dans hiérarchie (ex: Bonanjo trouve Douala)
-                                WHEN EXISTS (
-                                    SELECT 1 FROM unnest(ac.location_vector) AS loc_val
-                                    WHERE LOWER(loc_val) LIKE '%' || LOWER($1) || '%'
-                                )
-                                THEN 20.0  -- Bonus pour lieu partiel dans hiérarchie
-                                ELSE 0.0
-                            END
+                            LEAST(3.0, 1.0 + (ac.usage_count::REAL / 10.0))
                         ), 0.0)
                         FROM autocomplete_characteristics ac
                         WHERE ac.service_id = s.id
                         AND ac.identifiant_base LIKE 'produit%'
                         AND ac.is_real_product = TRUE  -- Seulement les VRAIS produits prestataires
-                        AND (
-                            -- Recherche dans full_vector (produit + lieu)
-                            EXISTS (
-                                SELECT 1 FROM unnest(ac.full_vector) AS vec_val
-                                WHERE vec_val ILIKE '%' || $1 || '%'
-                            )
-                            -- OU recherche spécifique dans location_vector (hiérarchie lieu)
-                            OR EXISTS (
-                                SELECT 1 FROM unnest(ac.location_vector) AS loc_val
-                                WHERE loc_val ILIKE '%' || $1 || '%'
-                            )
+                        -- Recherche dans characteristic_vector UNIQUEMENT (pas lieu)
+                        AND EXISTS (
+                            SELECT 1 FROM unnest(ac.characteristic_vector) AS vec_val
+                            WHERE vec_val ILIKE '%' || $1 || '%'
                         )
                     ) +
-                    -- Bonus pour correspondances sans accents
+                    -- 🔥 NOUVEAU 2025-11-04: Bonus unaccent pour champs PRODUIT (PRIORITAIRE)
+                    (
+                        SELECT COALESCE(SUM(
+                            CASE 
+                                WHEN unaccent(COALESCE(product->>'nom', '')) ILIKE '%' || unaccent($1) || '%' THEN 12.0
+                                WHEN unaccent(COALESCE(product->>'categorie', '')) ILIKE '%' || unaccent($1) || '%' THEN 10.0
+                                WHEN unaccent(COALESCE(product->>'description', '')) ILIKE '%' || unaccent($1) || '%' THEN 8.0
+                                ELSE 0.0
+                            END
+                        ), 0.0)
+                        FROM jsonb_array_elements(
+                            CASE 
+                                WHEN jsonb_typeof(s.data->'produits') = 'array' 
+                                THEN s.data->'produits'
+                                WHEN jsonb_typeof(s.data->'produits'->'valeur') = 'array'
+                                THEN s.data->'produits'->'valeur'
+                                ELSE '[]'::jsonb
+                            END
+                        ) AS product
+                    ) +
+                    -- Bonus pour correspondances sans accents SERVICE (RÉDUIT)
                     CASE 
-                        WHEN unaccent(s.data->'titre_service'->>'valeur') ILIKE '%' || unaccent($1) || '%' THEN 6.0
-                        WHEN unaccent(s.data->'description'->>'valeur') ILIKE '%' || unaccent($1) || '%' THEN 3.0
-                        WHEN unaccent(s.data->'category'->>'valeur') ILIKE '%' || unaccent($1) || '%' THEN 4.0
+                        WHEN unaccent(s.data->'titre_service'->>'valeur') ILIKE '%' || unaccent($1) || '%' THEN 2.5
+                        WHEN unaccent(s.data->'description'->>'valeur') ILIKE '%' || unaccent($1) || '%' THEN 1.5
+                        WHEN unaccent(s.data->'category'->>'valeur') ILIKE '%' || unaccent($1) || '%' THEN 2.0
                     END +
                     -- Bonus pour correspondances partielles intelligentes
                     CASE 
                         WHEN ({}) THEN 2.0
                         ELSE 0.0
                     END +
-                    -- Bonus pour correspondance de mots individuels avec priorité titre
+                    -- 🔥 NOUVEAU 2025-11-04: Bonus mots individuels pour PRODUIT (PRIORITAIRE)
                     (
                         SELECT COALESCE(SUM(
                             CASE 
-                                WHEN s.data->'titre_service'->>'valeur' ILIKE '%' || word || '%' THEN 4.0
-                                WHEN s.data->'description'->>'valeur' ILIKE '%' || word || '%' THEN 2.0
-                                WHEN s.data->'category'->>'valeur' ILIKE '%' || word || '%' THEN 3.0
+                                WHEN product->>'nom' ILIKE '%' || word || '%' THEN 8.0
+                                WHEN product->>'categorie' ILIKE '%' || word || '%' THEN 6.0
+                                WHEN product->>'description' ILIKE '%' || word || '%' THEN 5.0
+                                ELSE 0.0
+                            END
+                        ), 0.0)
+                        FROM jsonb_array_elements(
+                            CASE 
+                                WHEN jsonb_typeof(s.data->'produits') = 'array' 
+                                THEN s.data->'produits'
+                                WHEN jsonb_typeof(s.data->'produits'->'valeur') = 'array'
+                                THEN s.data->'produits'->'valeur'
+                                ELSE '[]'::jsonb
+                            END
+                        ) AS product,
+                        unnest(string_to_array($1, ' ')) AS word
+                    ) +
+                    -- Bonus pour correspondance de mots individuels SERVICE (RÉDUIT)
+                    (
+                        SELECT COALESCE(SUM(
+                            CASE 
+                                WHEN s.data->'titre_service'->>'valeur' ILIKE '%' || word || '%' THEN 2.0
+                                WHEN s.data->'description'->>'valeur' ILIKE '%' || word || '%' THEN 1.0
+                                WHEN s.data->'category'->>'valeur' ILIKE '%' || word || '%' THEN 1.5
                                 ELSE 0.0
                             END
                         ), 0.0)
@@ -588,19 +614,25 @@ SELECT DISTINCT
                 $3::text IS NULL  -- Pas de filtre lieu → TOUTE la base
                 OR (
                     -- ✅ NOUVEAU 2025-11-04 : PRÉ-FILTRE LIEU BIDIRECTIONNEL INTELLIGENT
-                    -- Vérifie si UN élément du location_vector du produit est dans l'input utilisateur
+                    -- Vérifie si location_vector et input_words ont AU MOINS UN élément commun
                     s.gps ILIKE '%' || $3 || '%'  -- GPS du service (gps_fixe/gps_courant)
                     OR EXISTS (
                         SELECT 1 FROM autocomplete_characteristics ac
                         WHERE ac.service_id = s.id
                         AND ac.is_real_product = TRUE
-                        AND EXISTS (
-                            SELECT 1 FROM unnest(ac.location_vector) AS loc_val
-                            WHERE 
-                                -- Input contient le lieu : "Nike Air Douala" contient "Douala"
-                                LOWER($3) LIKE '%' || LOWER(loc_val) || '%'
-                                -- ✅ OU fuzzy match (gestion fautes) : "Duala" ≈ "Douala"
-                                OR similarity(LOWER($3), LOWER(loc_val)) > 0.6
+                        AND (
+                            -- ✅ OPTIMISÉ : Opérateur && (overlap) pour test d'intersection
+                            -- Convertir location_vector en lowercase pour comparaison case-insensitive
+                            (
+                                SELECT array_agg(LOWER(elem))::TEXT[]
+                                FROM unnest(ac.location_vector) AS elem
+                            ) && string_to_array(LOWER($3), ' ')
+                            -- ✅ OU fuzzy match pour gestion fautes de frappe (si && échoue)
+                            OR EXISTS (
+                                SELECT 1 FROM unnest(ac.location_vector) AS loc_val,
+                                             unnest(string_to_array(LOWER($3), ' ')) AS input_word
+                                WHERE similarity(LOWER(loc_val), input_word) > 0.6
+                            )
                         )
                     )
                 )
@@ -761,11 +793,19 @@ SELECT DISTINCT
                         SELECT 1 FROM autocomplete_characteristics ac
                         WHERE ac.service_id = s.id
                         AND ac.is_real_product = TRUE
-                        AND EXISTS (
-                            SELECT 1 FROM unnest(ac.location_vector) AS loc_val
-                            WHERE 
-                                LOWER($3) LIKE '%' || LOWER(loc_val) || '%'
-                                OR similarity(LOWER($3), LOWER(loc_val)) > 0.6
+                        AND (
+                            -- ✅ OPTIMISÉ : Opérateur && (overlap)
+                            -- Convertir location_vector en lowercase pour comparaison case-insensitive
+                            (
+                                SELECT array_agg(LOWER(elem))::TEXT[]
+                                FROM unnest(ac.location_vector) AS elem
+                            ) && string_to_array(LOWER($3), ' ')
+                            -- ✅ OU fuzzy match (si && échoue)
+                            OR EXISTS (
+                                SELECT 1 FROM unnest(ac.location_vector) AS loc_val,
+                                             unnest(string_to_array(LOWER($3), ' ')) AS input_word
+                                WHERE similarity(LOWER(loc_val), input_word) > 0.6
+                            )
                         )
                     )
                 )
@@ -967,11 +1007,19 @@ SELECT DISTINCT
                         SELECT 1 FROM autocomplete_characteristics ac
                         WHERE ac.service_id = s.id
                         AND ac.is_real_product = TRUE
-                        AND EXISTS (
-                            SELECT 1 FROM unnest(ac.location_vector) AS loc_val
-                            WHERE 
-                                LOWER($3) LIKE '%' || LOWER(loc_val) || '%'
-                                OR similarity(LOWER($3), LOWER(loc_val)) > 0.6
+                        AND (
+                            -- ✅ OPTIMISÉ : Opérateur && (overlap)
+                            -- Convertir location_vector en lowercase pour comparaison case-insensitive
+                            (
+                                SELECT array_agg(LOWER(elem))::TEXT[]
+                                FROM unnest(ac.location_vector) AS elem
+                            ) && string_to_array(LOWER($3), ' ')
+                            -- ✅ OU fuzzy match (si && échoue)
+                            OR EXISTS (
+                                SELECT 1 FROM unnest(ac.location_vector) AS loc_val,
+                                             unnest(string_to_array(LOWER($3), ' ')) AS input_word
+                                WHERE similarity(LOWER(loc_val), input_word) > 0.6
+                            )
                         )
                     )
                 )

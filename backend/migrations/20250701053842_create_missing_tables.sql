@@ -35,13 +35,14 @@ CREATE TRIGGER trigger_update_ia_feedback_updated_at
     FOR EACH ROW
     EXECUTE FUNCTION update_ia_feedback_updated_at();
 
--- Table service_reviews
+-- Table service_reviews (avec support des réponses aux commentaires)
 CREATE TABLE IF NOT EXISTS service_reviews (
     id SERIAL PRIMARY KEY,
     user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
     service_id INTEGER REFERENCES services(id) ON DELETE CASCADE,
-    rating INTEGER CHECK (rating >= 1 AND rating <= 5) NOT NULL,
+    rating INTEGER CHECK (rating >= 0 AND rating <= 5) NOT NULL,  -- 0 pour réponse sans note, 1-5 pour avis
     review_text TEXT,
+    reply_to_review_id INTEGER REFERENCES service_reviews(id) ON DELETE CASCADE,  -- ✅ Support réponses
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -51,6 +52,17 @@ CREATE INDEX IF NOT EXISTS idx_service_reviews_user_id ON service_reviews(user_i
 CREATE INDEX IF NOT EXISTS idx_service_reviews_service_id ON service_reviews(service_id);
 CREATE INDEX IF NOT EXISTS idx_service_reviews_rating ON service_reviews(rating);
 CREATE INDEX IF NOT EXISTS idx_service_reviews_created_at ON service_reviews(created_at);
+
+-- ✅ Index pour les réponses (SQLx offline mode compatible)
+DO $$ 
+BEGIN 
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_indexes 
+        WHERE indexname = 'idx_service_reviews_reply_to'
+    ) THEN
+        CREATE INDEX idx_service_reviews_reply_to ON service_reviews(reply_to_review_id) WHERE reply_to_review_id IS NOT NULL;
+    END IF;
+END $$;
 
 -- Trigger pour service_reviews
 CREATE OR REPLACE FUNCTION update_service_reviews_updated_at()

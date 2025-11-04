@@ -5,29 +5,36 @@
  */
 
 import { useNavigation } from '@react-navigation/native';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
+  Alert,
   Dimensions,
   Image,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
+import { apiGet } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
 import ChatModalMobile from './ChatModalMobile';
 import { NativeButton, NativeCard } from './NativeDesign';
 import ProductMediaCarousel from './ProductMediaCarousel';
 import SafeIcon from './SafeIcon';
+import ServiceGalleryModal from './ServiceGalleryModal';
+import { ServiceRating } from './ServiceRating';
 
 const { width } = Dimensions.get('window');
 
 interface ProductCardProps {
   product: any;
   service: any;
+  prestataire?: any; // ✅ NOUVEAU: Prestataire déjà fourni depuis MixedContentCarousel
   userLocation?: { latitude: number; longitude: number } | null;
   onPress?: () => void;
+  onChatPress?: () => void; // ✅ NOUVEAU: Handler chat personnalisé
 }
 
 // Mapper codes pays → drapeaux emoji
@@ -67,21 +74,32 @@ const getCountryFlag = (country?: string): string => {
 const ProductCard: React.FC<ProductCardProps> = ({
   product,
   service,
+  prestataire: prestataireFromProps,
   userLocation = null,
   onPress,
+  onChatPress,
 }) => {
   const navigation = useNavigation();
   const [imageError, setImageError] = useState(false);
   const [showChatModal, setShowChatModal] = useState(false);
   const [selectedVariantIndex, setSelectedVariantIndex] = useState<number | null>(null);
+  // ✅ NOUVEAU : États pour avis/ratings et galerie
+  const [showGallery, setShowGallery] = useState(false);
+  const [serviceReviews, setServiceReviews] = useState<any[]>([]);
+  const [serviceRating, setServiceRating] = useState<{ avg: number; count: number } | null>(null);
 
   // Données produit
-  const productVector = product.product_vector || [];
+  const productVector = product.product_vector || product.characteristic_vector || [];
   const locationVector = product.location_vector || [];
-  const chosenLocation = product.chosen_location || locationVector[0] || '';
+
+  // ✅ AMÉLIORATION: Afficher quartier en priorité, puis ville, puis région
+  const chosenLocation = product.chosen_location ||
+    locationVector[0] || // Premier élément = lieu exact choisi par prestataire
+    '';
+
   const hasVariant = product.has_variant || false;
   const variants = product.variants || [];
-  const prestataire = product.prestataire || service?.prestataire || {
+  const prestataire = prestataireFromProps || product.prestataire || service?.prestataire || {
     nom: service?.data?.nom_prestataire || 'Prestataire',
     user_id: service?.user_id,
   };
@@ -118,10 +136,66 @@ const ProductCard: React.FC<ProductCardProps> = ({
 
   const countryFlag = getCountryFlag(pays);
 
-  // Handler chat
+  // ✅ AMÉLIORATION: Utiliser onChatPress si fourni, sinon modal local
   const handleChatPress = () => {
-    setShowChatModal(true);
+    if (onChatPress) {
+      onChatPress(); // Utiliser le handler externe (depuis MixedContentCarousel)
+    } else {
+      setShowChatModal(true); // Sinon, modal local
+    }
   };
+
+  // ✅ NOUVEAU : Handler partage produit
+  const handleShare = async () => {
+    try {
+      const productName = product.nom || service?.data?.nom_produit?.valeur || service?.data?.titre_service?.valeur || 'Produit';
+      const productDesc = product.description || service?.data?.description_produit?.valeur || service?.data?.description?.valeur || '';
+      const price = displayPrice > 0 ? `${displayPrice.toLocaleString()} ${devise}` : '';
+      const location = chosenLocation || '';
+
+      const shareUrl = process.env.EXPO_PUBLIC_SHARE_URL
+        ? `${process.env.EXPO_PUBLIC_SHARE_URL}/service/${product.service_id || service?.id}`
+        : `https://yukpomnang.com/service/${product.service_id || service?.id}`;
+
+      const shareMessage = `🛍️ ${productName}\n\n${productDesc ? `${productDesc}\n\n` : ''}${price ? `💰 Prix: ${price}\n` : ''}${location ? `📍 ${location}\n\n` : '\n'}🔗 Voir ce produit:\n${shareUrl}`;
+
+      const result = await Share.share({
+        message: shareMessage,
+        title: productName,
+      });
+
+      if (result.action === Share.sharedAction) {
+        console.log('[ProductCard] Produit partagé avec succès');
+      }
+    } catch (error) {
+      console.error('[ProductCard] Erreur partage:', error);
+      Alert.alert('Erreur', 'Impossible de partager le produit');
+    }
+  };
+
+  // ✅ NOUVEAU : Charger avis/ratings du service
+  useEffect(() => {
+    const loadReviews = async () => {
+      const serviceId = product.service_id || service?.id;
+      if (!serviceId) return;
+
+      try {
+        const response = await apiGet(`/api/services/${serviceId}/reviews`);
+        if (response.success && response.data) {
+          const data = response.data as any;
+          setServiceReviews(data.reviews || []);
+          setServiceRating({
+            avg: data.average_rating || 0,
+            count: data.total_reviews || 0,
+          });
+        }
+      } catch (error) {
+        console.error('[ProductCard] Erreur chargement avis:', error);
+      }
+    };
+
+    loadReviews();
+  }, [product.service_id, service?.id]);
 
   return (
     <>
@@ -137,7 +211,8 @@ const ProductCard: React.FC<ProductCardProps> = ({
               videos={videos}
               variantImage={variantImage}
               onImagePress={(index) => {
-                // Optionnel : ouvrir galerie complète
+                // ✅ NOUVEAU : Ouvrir galerie complète du prestataire
+                setShowGallery(true);
               }}
             />
 
@@ -210,20 +285,111 @@ const ProductCard: React.FC<ProductCardProps> = ({
               </TouchableOpacity>
             )}
 
-            {/* Localisation complète */}
+            {/* ✅ AMÉLIORATION: Localisation hiérarchique détaillée */}
             {chosenLocation && (
-              <View style={styles.locationRow}>
-                <SafeIcon name="map-pin" size={14} color={modernColors.primary} />
-                <Text style={styles.locationText} numberOfLines={1}>
-                  {chosenLocation}
-                </Text>
-                {locationVector.length > 1 && (
-                  <Text style={styles.hierarchyHint}>
-                    +{locationVector.length - 1}
+              <View style={styles.locationSection}>
+                <View style={styles.locationRow}>
+                  <SafeIcon name="map-pin" size={14} color={modernColors.primary} />
+                  <Text style={styles.locationTextPrimary} numberOfLines={1}>
+                    {chosenLocation}
                   </Text>
+                  {countryFlag && (
+                    <Text style={styles.locationFlag}>{countryFlag}</Text>
+                  )}
+                </View>
+                {/* Hiérarchie complète (ville > région > pays) */}
+                {locationVector.length > 1 && (
+                  <View style={styles.locationHierarchy}>
+                    <SafeIcon name="corner-down-right" size={12} color="#9CA3AF" />
+                    <Text style={styles.locationTextSecondary} numberOfLines={1}>
+                      {locationVector.slice(1).join(' › ')}
+                    </Text>
+                  </View>
                 )}
               </View>
             )}
+
+            {/* ✅ NOUVEAU : Notation moyenne du produit (visible pour tous) */}
+            {serviceRating && serviceRating.count > 0 && (
+              <View style={styles.productRatingBadge}>
+                <View style={styles.ratingStars}>
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <SafeIcon
+                      key={star}
+                      name={star <= Math.round(serviceRating.avg) ? 'star' : 'star-outline'}
+                      size={16}
+                      color="#FFD700"
+                    />
+                  ))}
+                </View>
+                <Text style={styles.ratingValue}>
+                  {serviceRating.avg.toFixed(1)} ({serviceRating.count} avis)
+                </Text>
+              </View>
+            )}
+
+            {/* ✅ NOUVEAU : Section avis/ratings/commentaires (TOUS les utilisateurs) */}
+            <View style={styles.ratingSection}>
+              <View style={styles.ratingHeader}>
+                <SafeIcon name="message-circle" size={18} color={modernColors.primary} />
+                <Text style={styles.ratingSectionTitle}>
+                  Avis et Commentaires
+                </Text>
+                {serviceRating && serviceRating.count > 0 && (
+                  <Text style={styles.ratingCount}>
+                    {serviceRating.count}
+                  </Text>
+                )}
+              </View>
+
+              <ServiceRating
+                service={{
+                  id: String(product.service_id || service?.id),
+                  data: service?.data || {},
+                  reviews: serviceReviews,
+                  user_rating: serviceRating?.avg || 0,
+                }}
+                onRatingSubmit={async (rating, comment) => {
+                  try {
+                    const response = await fetch(`/api/services/${product.service_id || service?.id}/reviews`, {
+                      method: 'POST',
+                      headers: {
+                        'Content-Type': 'application/json',
+                      },
+                      body: JSON.stringify({ rating, comment }),
+                    });
+                    if (response.ok) {
+                      Alert.alert('Succès', 'Votre avis a été publié avec succès !');
+                      // Recharger les avis
+                      const reviewsResp = await apiGet(`/api/services/${product.service_id || service?.id}/reviews`);
+                      if (reviewsResp.success && reviewsResp.data) {
+                        const data = reviewsResp.data as any;
+                        setServiceReviews(data.reviews || []);
+                        setServiceRating({
+                          avg: data.average_rating || 0,
+                          count: data.total_reviews || 0,
+                        });
+                      }
+                    } else {
+                      Alert.alert('Erreur', 'Impossible de publier votre avis');
+                    }
+                  } catch (error) {
+                    console.error('[ProductCard] Erreur envoi avis:', error);
+                    Alert.alert('Erreur', 'Une erreur est survenue lors de la publication');
+                  }
+                }}
+                onReviewHelpful={async (reviewId) => {
+                  try {
+                    await fetch(`/api/reviews/${reviewId}/helpful`, {
+                      method: 'POST',
+                    });
+                  } catch (error) {
+                    console.error('[ProductCard] Erreur marquer utile:', error);
+                  }
+                }}
+                showReviewForm={true}
+              />
+            </View>
 
             {/* Caractéristiques (vecteur produit) en chips */}
             {productVector.length > 0 && (
@@ -348,6 +514,24 @@ const ProductCard: React.FC<ProductCardProps> = ({
               />
             </View>
 
+            {/* ✅ NOUVEAU : Actions secondaires (Galerie, Partage) */}
+            <View style={styles.secondaryActions}>
+              <TouchableOpacity
+                style={styles.secondaryActionButton}
+                onPress={() => setShowGallery(true)}
+              >
+                <SafeIcon name="image" size={18} color={modernColors.primary} />
+                <Text style={styles.secondaryActionText}>Galerie</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.secondaryActionButton}
+                onPress={handleShare}
+              >
+                <SafeIcon name="share" size={18} color={modernColors.primary} />
+                <Text style={styles.secondaryActionText}>Partager</Text>
+              </TouchableOpacity>
+            </View>
+
             {/* Footer info */}
             <View style={styles.footer}>
               {distanceKm !== undefined && distanceKm !== null && (
@@ -379,15 +563,32 @@ const ProductCard: React.FC<ProductCardProps> = ({
         </TouchableOpacity>
       </NativeCard>
 
-      {/* Modal Chat */}
-      {showChatModal && prestataire.user_id && (
+      {/* ✅ CORRIGÉ: Modal Chat avec props correctes */}
+      {showChatModal && !onChatPress && prestataire.user_id && (
         <ChatModalMobile
-          isOpen={showChatModal}
+          visible={showChatModal}
           onClose={() => setShowChatModal(false)}
-          prestataireId={prestataire.user_id}
-          prestataireName={prestataire.nom}
-          serviceId={product.service_id || service?.id}
-          serviceTitle={product.nom || service?.data?.titre_service?.valeur}
+          service={service || {
+            id: product.service_id,
+            data: { titre_service: { valeur: product.nom } }
+          }}
+          prestataireInfo={prestataire}
+          user={null} // L'utilisateur sera récupéré depuis AuthContext dans ChatModalMobile
+        />
+      )}
+
+      {/* ✅ NOUVEAU : Modal Galerie du prestataire */}
+      {showGallery && (
+        <ServiceGalleryModal
+          visible={showGallery}
+          service={service || {
+            id: String(product.service_id || service?.id),
+            titre: product.nom || service?.data?.titre_service?.valeur || 'Produit',
+            description: product.description || service?.data?.description?.valeur || '',
+            user_id: String(prestataire.user_id || service?.user_id || ''),
+            data: service?.data || {},
+          }}
+          onClose={() => setShowGallery(false)}
         />
       )}
     </>
@@ -775,6 +976,112 @@ const styles = StyleSheet.create({
   footerText: {
     fontSize: 11,
     color: '#9CA3AF',
+  },
+  // ✅ NOUVEAU : Styles pour avis/ratings et actions secondaires
+  productRatingBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: '#FFFBEB',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+  },
+  ratingStars: {
+    flexDirection: 'row',
+    gap: 2,
+  },
+  ratingValue: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#92400E',
+  },
+  ratingSection: {
+    marginTop: 12,
+    paddingTop: 16,
+    borderTopWidth: 2,
+    borderTopColor: '#E5E7EB',
+    backgroundColor: '#FAFAFA',
+    padding: 12,
+    borderRadius: 10,
+  },
+  ratingHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
+  ratingSectionTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#1F2937',
+    flex: 1,
+  },
+  ratingCount: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: modernColors.primary,
+    backgroundColor: '#EEF2FF',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  locationSection: {
+    gap: 6,
+    backgroundColor: '#F9FAFB',
+    padding: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  locationTextPrimary: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#1F2937',
+    flex: 1,
+  },
+  locationFlag: {
+    fontSize: 16,
+  },
+  locationHierarchy: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingLeft: 20,
+  },
+  locationTextSecondary: {
+    fontSize: 12,
+    color: '#6B7280',
+    flex: 1,
+    fontStyle: 'italic',
+  },
+  secondaryActions: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 8,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#F3F4F6',
+  },
+  secondaryActionButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  secondaryActionText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: modernColors.primary,
   },
 });
 

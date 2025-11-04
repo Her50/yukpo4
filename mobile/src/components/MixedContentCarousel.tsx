@@ -23,9 +23,10 @@ import ProductCard from './ProductCard';
 import SafeIcon from './SafeIcon';
 
 const { width } = Dimensions.get('window');
-const SCREEN_PADDING = 8; // ✅ Marge au bord de l'écran
+const SCREEN_PADDING = 16; // ✅ Marge au bord de l'écran (cohérent avec paddingHorizontal)
 const CARD_WIDTH = width * 0.85;
 const CARD_MARGIN = 12;
+const SNAP_INTERVAL = CARD_WIDTH + CARD_MARGIN; // ✅ Intervalle de snap constant
 
 interface MixedContentCarouselProps {
     userId?: string;
@@ -68,22 +69,23 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
 
     // ✅ Démarrer le scroll automatique dès que le contenu est chargé
     useEffect(() => {
-        if (content.length > 1 && !isPaused && currentIndex === 0) {
-            // Déclencher le premier scroll après un court délai
-            const initialTimer = setTimeout(() => {
-                if (scrollViewRef.current && content.length > 1) {
-                    console.log('[MixedContentCarousel] 🎬 Démarrage scroll automatique initial');
-                    const firstScrollPosition = SCREEN_PADDING + (CARD_WIDTH + CARD_MARGIN);
-                    scrollViewRef.current.scrollTo({
-                        x: firstScrollPosition,
-                        animated: true, // ✅ CHANGÉ: animated true pour meilleur visuel
-                    });
-                    setCurrentIndex(1); // ✅ AJOUTÉ: Déclencher le timer suivant
-                }
-            }, 1000); // ✅ CHANGÉ: 1s au lieu de 500ms pour laisser le temps de render
-            return () => clearTimeout(initialTimer);
+        if (content.length > 1 && !isPaused) {
+            // Déclencher le premier scroll après un court délai UNIQUEMENT à l'index 0
+            if (currentIndex === 0) {
+                const initialTimer = setTimeout(() => {
+                    if (scrollViewRef.current && content.length > 1) {
+                        console.log('[MixedContentCarousel] 🎬 Démarrage scroll automatique initial (index 0 → 1)');
+                        scrollViewRef.current.scrollTo({
+                            x: SNAP_INTERVAL, // ✅ SIMPLIFIÉ: utiliser SNAP_INTERVAL directement
+                            animated: true,
+                        });
+                        setCurrentIndex(1);
+                    }
+                }, 2000); // ✅ 2s pour laisser le temps à l'utilisateur de voir la première carte
+                return () => clearTimeout(initialTimer);
+            }
         }
-    }, [content.length, isPaused]);
+    }, [content.length, isPaused, currentIndex]); // ✅ AJOUTÉ currentIndex dans les deps
 
     const loadMixedContent = async () => {
         try {
@@ -243,8 +245,8 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
 
             const nextIndex = (currentIndex + 1) % content.length;
 
-            // Calculer la position exacte pour le scroll (avec padding au début)
-            const scrollPosition = SCREEN_PADDING + nextIndex * (CARD_WIDTH + CARD_MARGIN);
+            // ✅ CORRIGÉ: Calculer la position exacte en utilisant SNAP_INTERVAL
+            const scrollPosition = nextIndex * SNAP_INTERVAL;
 
             console.log(`[MixedContentCarousel] 🎬 Scroll automatique: index ${currentIndex} → ${nextIndex} (position ${scrollPosition}px)`);
 
@@ -283,27 +285,30 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
         }
     };
 
-    // ✅ Gérer le scroll manuel
+    // ✅ Gérer le scroll manuel (quand l'utilisateur arrête de scroller)
     const handleScroll = (event: any) => {
         const offsetX = event.nativeEvent.contentOffset.x;
-        // Tenir compte du padding au début
-        const adjustedOffset = Math.max(0, offsetX - SCREEN_PADDING);
-        const index = Math.round(adjustedOffset / (CARD_WIDTH + CARD_MARGIN));
+        // ✅ CORRIGÉ: Calcul simplifié sans ajustement de padding
+        const index = Math.round(offsetX / SNAP_INTERVAL);
 
         if (index !== currentIndex && index >= 0 && index < content.length) {
+            console.log('[MixedContentCarousel] 👆 Scroll manuel détecté: index', index);
             setIsPaused(true);
             setCurrentIndex(index);
 
-            // Reprendre auto-scroll après 3s
-            setTimeout(() => setIsPaused(false), 3000);
+            // Reprendre auto-scroll après 5s d'inactivité
+            setTimeout(() => {
+                console.log('[MixedContentCarousel] ▶️ Reprise auto-scroll après pause manuelle');
+                setIsPaused(false);
+            }, 5000);
         }
     };
 
-    // ✅ Gérer le scroll en cours (pour mise à jour continue de l'index)
+    // ✅ Gérer le scroll en cours (pour mise à jour continue de l'index pendant le scroll)
     const handleScrollEvent = (event: any) => {
         const offsetX = event.nativeEvent.contentOffset.x;
-        const adjustedOffset = Math.max(0, offsetX - SCREEN_PADDING);
-        const index = Math.round(adjustedOffset / (CARD_WIDTH + CARD_MARGIN));
+        // ✅ CORRIGÉ: Calcul simplifié
+        const index = Math.round(offsetX / SNAP_INTERVAL);
 
         if (index >= 0 && index < content.length && index !== currentIndex) {
             setCurrentIndex(index);
@@ -378,12 +383,12 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
                 ))}
             </View>
 
-            {/* ✅ ScrollView horizontal */}
+            {/* ✅ ScrollView horizontal avec snap corrigé */}
             <ScrollView
                 ref={scrollViewRef}
                 horizontal
                 pagingEnabled={false}
-                snapToInterval={CARD_WIDTH + CARD_MARGIN}
+                snapToInterval={SNAP_INTERVAL} // ✅ CORRIGÉ: Utiliser constante
                 snapToAlignment="start"
                 decelerationRate="fast"
                 showsHorizontalScrollIndicator={false}
@@ -392,6 +397,8 @@ const MixedContentCarousel: React.FC<MixedContentCarouselProps> = ({
                 scrollEventThrottle={16}
                 style={styles.scrollView}
                 contentContainerStyle={styles.scrollContent}
+                // ✅ NOUVEAU: contentInset pour iOS (gère le padding initial proprement)
+                contentInset={{ left: 0, right: 0 }}
             >
                 {content.map((item, index) => (
                     <TouchableOpacity
@@ -539,7 +546,7 @@ const styles = StyleSheet.create({
         marginBottom: 8,
     },
     scrollContent: {
-        paddingHorizontal: 8, // ✅ Petite marge au bord de l'écran
+        paddingHorizontal: SCREEN_PADDING, // ✅ CORRIGÉ: Utiliser constante cohérente
     },
     card: {
         backgroundColor: '#FFFFFF',

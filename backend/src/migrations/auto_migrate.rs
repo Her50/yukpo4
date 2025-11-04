@@ -2,6 +2,8 @@
 use sqlx::PgPool;
 use log::{info, warn, error};
 
+mod ensure_service_reviews_table;
+
 /// Vérifie et crée la fonction deactivate_expired_products() si elle n'existe pas
 pub async fn ensure_deactivate_expired_products_function(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Vérification de la fonction deactivate_expired_products()...");
@@ -848,6 +850,12 @@ pub async fn run_auto_migrations(pool: &PgPool) {
     match ensure_token_usage_logs_table(pool).await {
         Ok(_) => info!("✅ Migration auto: token_usage_logs table OK"),
         Err(e) => error!("❌ Erreur migration auto token_usage_logs: {}", e),
+    }
+    
+    // Migration 7: Table service_reviews avec support réponses (✅ NOUVEAU 2025-11-04)
+    match ensure_service_reviews_table::ensure_service_reviews_table(pool).await {
+        Ok(_) => info!("✅ Migration auto: service_reviews table OK"),
+        Err(e) => error!("❌ Erreur migration auto service_reviews: {}", e),
     }
     
     info!("✅ Migrations automatiques terminées");

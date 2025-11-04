@@ -1,6 +1,6 @@
 // Service pour récupérer les produits populaires depuis autocomplete_combinations
 // Permet au prestataire de voir les produits les plus commercialisés par ses concurrents
-use sqlx::PgPool;
+use sqlx::{PgPool, Row};
 use serde::{Deserialize, Serialize};
 use crate::core::types::AppError;
 

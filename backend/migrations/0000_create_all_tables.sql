@@ -310,6 +310,37 @@ BEGIN
     END IF;
 END $$;
 
+-- ✅ Table service_reviews (avis/commentaires avec support réponses - 2025-11-04)
+-- Permet à TOUS les utilisateurs de noter et commenter les produits/services
+-- Supporte les réponses aux commentaires avec indexation claire
+CREATE TABLE IF NOT EXISTS service_reviews (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    service_id INTEGER REFERENCES services(id) ON DELETE CASCADE,
+    rating INTEGER CHECK (rating >= 0 AND rating <= 5) NOT NULL,
+    review_text TEXT,
+    reply_to_review_id INTEGER REFERENCES service_reviews(id) ON DELETE CASCADE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Index pour service_reviews
+CREATE INDEX IF NOT EXISTS idx_service_reviews_user_id ON service_reviews(user_id);
+CREATE INDEX IF NOT EXISTS idx_service_reviews_service_id ON service_reviews(service_id);
+CREATE INDEX IF NOT EXISTS idx_service_reviews_rating ON service_reviews(rating);
+CREATE INDEX IF NOT EXISTS idx_service_reviews_created_at ON service_reviews(created_at);
+
+-- Index pour les réponses (SQLx offline mode compatible)
+DO $$ 
+BEGIN 
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_indexes 
+        WHERE indexname = 'idx_service_reviews_reply_to'
+    ) THEN
+        CREATE INDEX idx_service_reviews_reply_to ON service_reviews(reply_to_review_id) WHERE reply_to_review_id IS NOT NULL;
+    END IF;
+END $$;
+
 -- Table publicites (gestion des publicités)
 CREATE TABLE IF NOT EXISTS publicites (
     id SERIAL PRIMARY KEY,
