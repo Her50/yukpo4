@@ -13,7 +13,7 @@ use crate::state::AppState;
 pub struct PlacesAutocompleteQuery {
     pub query: String,
     #[serde(rename = "type")]
-    pub place_type: Option<String>, // 'city', 'point', 'hospital', 'pharmacy', 'health'
+    pub place_type: Option<String>, // 'city', 'neighborhood', 'point', 'hospital', 'pharmacy', 'health'
     pub city: Option<String>, // Contexte de ville pour filtrer les résultats
     pub lat: Option<f64>, // Latitude pour recherche par proximité
     pub lng: Option<f64>, // Longitude pour recherche par proximité
@@ -29,6 +29,7 @@ pub struct PlacesAutocompleteResponse {
 
 /// Endpoint pour l'autocomplete de lieux avec Google Maps API
 /// GET /api/places/autocomplete?query=Doual&type=city
+/// GET /api/places/autocomplete?query=Bonanjo&type=neighborhood&city=Douala
 /// GET /api/places/autocomplete?query=Gare&type=point&city=Douala
 /// GET /api/places/autocomplete?query=Laquintinie&type=hospital&lat=4.05&lng=9.7&radius=5000
 pub async fn autocomplete_places(
@@ -53,8 +54,8 @@ pub async fn autocomplete_places(
         );
     }
 
-    // Type par défaut : city
-    let place_type = params.place_type.as_deref().unwrap_or("city");
+    // ✅ NOUVEAU 2025-11-04: Place type est optional maintenant, None = recherche universelle
+    let place_type = params.place_type.as_deref();
 
     // TODO: Intégrer l'API Google Maps Places Autocomplete
     // Pour l'instant, retourner une réponse vide pour que le fallback local fonctionne
@@ -83,13 +84,29 @@ pub async fn autocomplete_places(
 
     // Filtrer par type et géolocalisation
     match place_type {
-        "city" => {
+        None => {
+            // ✅ NOUVEAU: Recherche universelle - tous les types géographiques (geocode = régions, pays, villes, quartiers)
+            url.push_str("&types=geocode");
+            // Biais vers l'Afrique francophone
+            url.push_str("&components=country:cm|country:ci|country:sn|country:cd|country:ml|country:bf|country:ne|country:td|country:gn|country:bj|country:tg|country:cg|country:ga|country:cf|country:mg|country:bi|country:rw|country:dj|country:km|country:mr");
+        }
+        Some("city") => {
             // Filtrer pour villes uniquement
             url.push_str("&types=(cities)");
             // Biais vers l'Afrique francophone
             url.push_str("&components=country:cm|country:ci|country:sn|country:cd|country:ml|country:bf|country:ne|country:td|country:gn|country:bj|country:tg|country:cg|country:ga|country:cf|country:mg|country:bi|country:rw|country:dj|country:km|country:mr");
         }
-        "point" => {
+        Some("neighborhood") => {
+            // ✅ NOUVEAU: Quartiers et sous-localités
+            url.push_str("&types=sublocality|neighborhood");
+            // Biais vers l'Afrique francophone
+            url.push_str("&components=country:cm|country:ci|country:sn|country:cd|country:ml|country:bf|country:ne|country:td|country:gn|country:bj|country:tg|country:cg|country:ga|country:cf|country:mg|country:bi|country:rw|country:dj|country:km|country:mr");
+            // Si contexte de ville fourni, ajouter comme biais
+            if let Some(city) = &params.city {
+                url.push_str(&format!("&location={}", urlencoding::encode(city)));
+            }
+        }
+        Some("point") => {
             // Points d'intérêt, établissements
             url.push_str("&types=establishment");
             // Si contexte de ville fourni, ajouter comme biais
@@ -97,7 +114,7 @@ pub async fn autocomplete_places(
                 url.push_str(&format!("&location={}", urlencoding::encode(city)));
             }
         }
-        "hospital" => {
+        Some("hospital") => {
             // Recherche d'hôpitaux par proximité
             url.push_str("&types=hospital");
             if let (Some(lat), Some(lng)) = (params.lat, params.lng) {
@@ -105,7 +122,7 @@ pub async fn autocomplete_places(
                 url.push_str(&format!("&location={},{}&radius={}", lat, lng, radius));
             }
         }
-        "pharmacy" => {
+        Some("pharmacy") => {
             // Recherche de pharmacies par proximité
             url.push_str("&types=pharmacy");
             if let (Some(lat), Some(lng)) = (params.lat, params.lng) {
@@ -113,7 +130,7 @@ pub async fn autocomplete_places(
                 url.push_str(&format!("&location={},{}&radius={}", lat, lng, radius));
             }
         }
-        "health" => {
+        Some("health") => {
             // Recherche structures de santé générales (labos, cliniques, etc.)
             url.push_str("&types=health");
             if let (Some(lat), Some(lng)) = (params.lat, params.lng) {

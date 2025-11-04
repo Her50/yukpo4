@@ -1,0 +1,59 @@
+[1mdiff --git a/mobile/src/utils/formDispatcher.ts b/mobile/src/utils/formDispatcher.ts[m
+[1mindex 1b13184..3e96d5e 100644[m
+[1m--- a/mobile/src/utils/formDispatcher.ts[m
+[1m+++ b/mobile/src/utils/formDispatcher.ts[m
+[36m@@ -101,6 +101,54 @@[m [mexport function processIASuggestion(suggestion: IASuggestion): DynamicField[] {[m
+     }[m
+   });[m
+ [m
+[32m+[m[32m  // ✅ NOUVEAU 2025-11-04 : Ajouter les champs produit de base s'ils ne sont pas déjà créés par l'IA[m
+[32m+[m[32m  // Ceci garantit que les champs nom_produit, categorie_produit, description_produit existent TOUJOURS[m
+[32m+[m[32m  const hasNomProduit = components.some(c => c.name === 'nom_produit');[m
+[32m+[m[32m  const hasCategorieProduit = components.some(c => c.name === 'categorie_produit');[m
+[32m+[m[32m  const hasDescriptionProduit = components.some(c => c.name === 'description_produit');[m
+[32m+[m
+[32m+[m[32m  if (!hasNomProduit) {[m
+[32m+[m[32m    // Fallback: utiliser titre_service si nom_produit n'existe pas[m
+[32m+[m[32m    const titreValue = data.titre_service?.valeur || '';[m
+[32m+[m[32m    components.push({[m
+[32m+[m[32m      type: 'text',[m
+[32m+[m[32m      label: 'Nom du produit/prestation',[m
+[32m+[m[32m      name: 'nom_produit',[m
+[32m+[m[32m      placeholder: 'Ex: iPhone 14 Pro Max, Cours de mathématiques...',[m
+[32m+[m[32m      value: titreValue,[m
+[32m+[m[32m      required: false[m
+[32m+[m[32m    });[m
+[32m+[m[32m    console.log('[formDispatcher] ✅ Champ nom_produit créé automatiquement (fallback titre_service)');[m
+[32m+[m[32m  }[m
+[32m+[m
+[32m+[m[32m  if (!hasCategorieProduit) {[m
+[32m+[m[32m    // Fallback: utiliser category si categorie_produit n'existe pas[m
+[32m+[m[32m    const categoryValue = data.category?.valeur || '';[m
+[32m+[m[32m    components.push({[m
+[32m+[m[32m      type: 'text',[m
+[32m+[m[32m      label: 'Catégorie du produit/prestation',[m
+[32m+[m[32m      name: 'categorie_produit',[m
+[32m+[m[32m      placeholder: 'Ex: Smartphone, Cours particulier...',[m
+[32m+[m[32m      value: categoryValue,[m
+[32m+[m[32m      required: false[m
+[32m+[m[32m    });[m
+[32m+[m[32m    console.log('[formDispatcher] ✅ Champ categorie_produit créé automatiquement (fallback category)');[m
+[32m+[m[32m  }[m
+[32m+[m
+[32m+[m[32m  if (!hasDescriptionProduit) {[m
+[32m+[m[32m    // Fallback: utiliser description si description_produit n'existe pas[m
+[32m+[m[32m    const descriptionValue = data.description?.valeur || '';[m
+[32m+[m[32m    components.push({[m
+[32m+[m[32m      type: 'textarea',[m
+[32m+[m[32m      label: 'Description du produit/prestation',[m
+[32m+[m[32m      name: 'description_produit',[m
+[32m+[m[32m      placeholder: 'Décrivez les caractéristiques spécifiques...',[m
+[32m+[m[32m      value: descriptionValue,[m
+[32m+[m[32m      required: false[m
+[32m+[m[32m    });[m
+[32m+[m[32m    console.log('[formDispatcher] ✅ Champ description_produit créé automatiquement (fallback description)');[m
+[32m+[m[32m  }[m
+[32m+[m
+   // Si aucun composant généré, utiliser les composants par défaut[m
+   if (components.length === 0) {[m
+     console.log('[formDispatcher] Aucun composant généré, utilisation des composants par défaut');[m

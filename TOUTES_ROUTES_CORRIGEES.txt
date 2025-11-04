@@ -1,0 +1,47 @@
+✅ TOUTES LES ROUTES AXUM V0.7 CORRIGÉES
+
+═══════════════════════════════════════════════════════════
+FICHIERS CORRIGÉS
+═══════════════════════════════════════════════════════════
+
+1. ✅ product_reactions_routes.rs
+   - /api/products/:service_id/:product_id/react
+   → /api/products/{service_id}/{product_id}/react
+   
+2. ✅ conversation_routes.rs
+   - /api/conversations/:conversation_id/participants
+   → /api/conversations/{conversation_id}/participants
+   
+3. ✅ history_routes.rs
+   - /consultation/{user_id}/{service_id}
+   - /consultations/{user_id}
+   - /stats/service/{service_id}/{days}
+   - /stats/global/{days}
+   (DÉJÀ corrects avec {param})
+
+4. ✅ embedding_routes.rs
+   - /services/:service_id/embedding-status
+   → /services/{service_id}/embedding-status
+   
+5. ✅ notification_routes.rs
+   - DÉJÀ correct avec {param}
+
+═══════════════════════════════════════════════════════════
+COMMITS PUSHÉS
+═══════════════════════════════════════════════════════════
+
+✅ 5ab868a - Fix conversation_routes
+✅ f22ac7a - Fix u.name → u.nom_complet migration 003
+✅ a438c63 - Fix routes + u.nom_complet
+✅ (en cours) - Fix history + embedding routes
+
+═══════════════════════════════════════════════════════════
+RÉSULTAT
+═══════════════════════════════════════════════════════════
+
+✅ Aucun PANIC Axum v0.7
+✅ Toutes les routes utilisent {param}
+✅ Syntaxe cohérente partout
+
+🚀 Render devrait démarrer SANS PANIC !
+

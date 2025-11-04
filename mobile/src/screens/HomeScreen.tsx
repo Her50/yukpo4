@@ -624,6 +624,8 @@ const HomeScreen: React.FC = () => {
                             : t('search.placeholder')}
                         onGPSPress={() => setShowGPSModal(true)}
                         showSendButton={true}
+                        showAutocomplete={!isCreateService} // ✅ NOUVEAU: Autocomplete uniquement en mode recherche
+                        isSearchMode={!isCreateService} // ✅ NOUVEAU: Mode recherche
                     />
                 </View>
 

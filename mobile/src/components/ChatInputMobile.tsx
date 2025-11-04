@@ -14,6 +14,7 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+import { apiPost } from '../services/api'; // ✅ NOUVEAU: Pour autocomplete
 import { uploadMultipleToCloud } from '../services/cloudUpload';
 import ModernGPSModal from './ModernGPSModal'; // Utiliser ModernGPSModal pour support des zones
 
@@ -23,6 +24,8 @@ interface ChatInputMobileProps {
     placeholder?: string;
     onGPSPress?: () => void;
     showSendButton?: boolean; // Nouveau prop pour contrôler l'affichage du bouton
+    showAutocomplete?: boolean; // ✅ NOUVEAU: Activer l'autocomplete pour la recherche
+    isSearchMode?: boolean; // ✅ NOUVEAU: Indique si on est en mode recherche
 }
 
 const ChatInputMobile: React.FC<ChatInputMobileProps> = ({
@@ -30,7 +33,9 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = ({
     loading = false,
     placeholder = 'Décrivez votre besoin ou service...',
     onGPSPress,
-    showSendButton = true
+    showSendButton = true,
+    showAutocomplete = false, // ✅ NOUVEAU
+    isSearchMode = false // ✅ NOUVEAU
 }) => {
     const [text, setText] = useState('');
     const [images, setImages] = useState<string[]>([]);
@@ -47,6 +52,48 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = ({
     const [gpsString, setGpsString] = useState<string>(''); // Format: "lat,lng" ou "lat1,lng1|lat2,lng2|..."
     const [isUploading, setIsUploading] = useState(false);
     const [uploadProgress, setUploadProgress] = useState<string>('');
+
+    // ✅ NOUVEAU: États pour autocomplete intelligente (mode recherche uniquement)
+    const [suggestions, setSuggestions] = useState<any[]>([]);
+    const [showSuggestions, setShowSuggestions] = useState(false);
+    const [loadingSuggestions, setLoadingSuggestions] = useState(false);
+
+    // ✅ NOUVEAU: Autocomplete intelligente en mode recherche
+    useEffect(() => {
+        if (!showAutocomplete || !isSearchMode) return;
+
+        const debounce = setTimeout(async () => {
+            if (text.trim().length >= 2) {
+                setLoadingSuggestions(true);
+                try {
+                    const response = await apiPost('/api/autocomplete/search-products', {
+                        query: text.trim(),
+                        limit: 8,
+                    });
+
+                    if (response.success && response.data) {
+                        setSuggestions(response.data);
+                        setShowSuggestions(true);
+                        console.log('[ChatInputMobile] 🔍 Suggestions autocomplete:', response.data.length);
+                    } else {
+                        setSuggestions([]);
+                        setShowSuggestions(false);
+                    }
+                } catch (error) {
+                    console.error('[ChatInputMobile] Erreur autocomplete:', error);
+                    setSuggestions([]);
+                    setShowSuggestions(false);
+                } finally {
+                    setLoadingSuggestions(false);
+                }
+            } else {
+                setSuggestions([]);
+                setShowSuggestions(false);
+            }
+        }, 300);
+
+        return () => clearTimeout(debounce);
+    }, [text, showAutocomplete, isSearchMode]);
 
     // Animations pour l'enregistrement audio
     const pulseAnim = useRef(new Animated.Value(1)).current;
@@ -769,6 +816,48 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = ({
                 </View>
             </View>
 
+            {/* ✅ NOUVEAU: Suggestions intelligentes (mode recherche uniquement) */}
+            {showAutocomplete && isSearchMode && showSuggestions && suggestions.length > 0 && (
+                <View style={styles.suggestionsContainer}>
+                    <View style={styles.suggestionsHeader}>
+                        <Text style={styles.suggestionsTitle}>💡 Suggestions populaires</Text>
+                        <TouchableOpacity onPress={() => setShowSuggestions(false)}>
+                            <Text style={styles.closeSuggestions}>✕</Text>
+                        </TouchableOpacity>
+                    </View>
+                    <ScrollView style={styles.suggestionsList} nestedScrollEnabled={true}>
+                        {suggestions.map((suggestion, index) => (
+                            <TouchableOpacity
+                                key={index}
+                                style={styles.suggestionItem}
+                                onPress={() => {
+                                    const fullText = suggestion.product_vector?.join(' ') || suggestion.full_vector?.join(' ') || '';
+                                    setText(fullText);
+                                    setShowSuggestions(false);
+                                    console.log('[ChatInputMobile] ✅ Suggestion sélectionnée:', fullText);
+                                }}
+                            >
+                                <View style={styles.suggestionChips}>
+                                    {(suggestion.product_vector || suggestion.full_vector || []).slice(0, 5).map((chip: string, i: number) => (
+                                        <View key={i} style={styles.suggestionChip}>
+                                            <Text style={styles.suggestionChipText}>{chip}</Text>
+                                        </View>
+                                    ))}
+                                </View>
+                                {suggestion.chosen_location && (
+                                    <Text style={styles.suggestionLocation}>📍 {suggestion.chosen_location}</Text>
+                                )}
+                                {suggestion.usage_count && (
+                                    <Text style={styles.suggestionStats}>
+                                        🔥 {suggestion.usage_count}× recherché
+                                    </Text>
+                                )}
+                            </TouchableOpacity>
+                        ))}
+                    </ScrollView>
+                </View>
+            )}
+
             {/* Bouton d'envoi - HORS DE LA ZONE DE SAISIE */}
             {showSendButton && (
                 <View style={styles.sendButtonContainerExternal}>
@@ -1193,6 +1282,78 @@ const styles = StyleSheet.create({
     sendButtonDisabled: {
         backgroundColor: '#9CA3AF',
         opacity: 0.5,
+    },
+    // ✅ NOUVEAU: Styles pour autocomplete suggestions
+    suggestionsContainer: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 12,
+        marginTop: 8,
+        marginBottom: 12,
+        maxHeight: 300,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+        elevation: 4,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+    },
+    suggestionsHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: '#E5E7EB',
+    },
+    suggestionsTitle: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#1F2937',
+    },
+    closeSuggestions: {
+        fontSize: 20,
+        color: '#6B7280',
+        fontWeight: '600',
+    },
+    suggestionsList: {
+        maxHeight: 250,
+    },
+    suggestionItem: {
+        padding: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: '#F3F4F6',
+    },
+    suggestionChips: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 6,
+        marginBottom: 6,
+    },
+    suggestionChip: {
+        backgroundColor: '#EEF2FF',
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#6366F1',
+    },
+    suggestionChipText: {
+        fontSize: 12,
+        color: '#6366F1',
+        fontWeight: '600',
+    },
+    suggestionLocation: {
+        fontSize: 11,
+        color: '#6B7280',
+        marginTop: 4,
+    },
+    suggestionStats: {
+        fontSize: 11,
+        color: '#F59E0B',
+        marginTop: 4,
+        fontWeight: '600',
     },
 });
 

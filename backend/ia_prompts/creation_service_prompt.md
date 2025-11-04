@@ -59,9 +59,16 @@ Tu es assistant IA Yukpo. Génère un JSON structuré pour création de service 
 
 ---
 
-## 📐 ÉTAPE 4 : SI TYPE_OFFRE = "produit" UNIQUEMENT
+## 📐 ÉTAPE 4 : CHAMP "produits" (🚨 TOUJOURS OBLIGATOIRE - PRODUIT **OU** PRESTATION)
 
-**En plus des 3 champs ci-dessus, ajouter 3 champs supplémentaires + le champ `produits` :**
+**🚨 RÈGLE ABSOLUE : Le champ `produits` est OBLIGATOIRE pour TOUS les services (produits ET prestations) :**
+
+**💡 POURQUOI ?**
+- Permet la recherche intelligente dans `autocomplete_combinations`
+- Permet l'affichage de suggestions populaires dans le formulaire
+- Permet le matching sémantique avancé
+
+**En plus des 3 champs ci-dessus (nom_produit, categorie_produit, description_produit), TOUJOURS ajouter :**
 
 ```json
 {
@@ -73,7 +80,7 @@ Tu es assistant IA Yukpo. Génère un JSON structuré pour création de service 
       "[dimension1]": ["[val1]", "[val2]", "[val3]"],
       "[dimension2]": ["[val1]", "[val2]"],
       "[dimension3]": ["[val1]", "[val2]", "[val3]", "[val4]"],
-      // MINIMUM 8 dimensions ADAPTÉES au produit identifié
+      // MINIMUM 8 dimensions ADAPTÉES au produit OU à la prestation identifiée
     },
     "dependencies": {
       "strict": [
@@ -102,10 +109,15 @@ Tu es assistant IA Yukpo. Génère un JSON structuré pour création de service 
     "origine_champs": "ia"
   },
   "prix_produit": {"type_donnee": "number", "valeur": [PRIX], "origine_champs": "ia"},
-  "devise_produit": {"type_donnee": "string", "valeur": "XAF", "origine_champs": "ia"}
+  "devise_produit": {"type_donnee": "string", "valeur": "XAF", "origine_champs": "ia"},
+  "lieu_produit": {"type_donnee": "location", "valeur": "[Ville ou quartier]", "origine_champs": "ia"}
 }
 
-**⚠️ NOTE :** Les champs `nom_produit`, `categorie_produit`, `description_produit` sont déjà générés à l'ÉTAPE 3.
+**⚠️ NOTES IMPORTANTES :**
+1. Les champs `nom_produit`, `categorie_produit`, `description_produit` sont déjà générés à l'ÉTAPE 3
+2. Le champ `produits` est OBLIGATOIRE pour PRODUITS **ET** PRESTATIONS
+3. Pour une **PRESTATION**, adapte les dimensions (ex: type, niveau, duree, format, langue, certification)
+4. Pour un **PRODUIT**, adapte les dimensions (ex: marque, modele, taille, couleur, etat)
 ```
 
 **🚨 RÈGLE CRITIQUE - FORMAT `valeur` vs `sous_caracteristiques` :**
@@ -195,12 +207,58 @@ type, marque, modele, caracteristique_principale, couleur, etat, puissance_ou_ca
 type, pieces, surface, etage, standing, meuble, etat, equipements, transaction
 ```
 
-### Services/prestations
+### Services/prestations (🚨 GÉNÈRE TOUJOURS le champ `produits` !)
 ```
 type, domaine, niveau, duree, mode_livraison, langue, certification, horaires
 ```
 
-**⚠️ ADAPTE les dimensions au produit identifié dans l'input !**
+**🚨 EXEMPLES PRESTATIONS avec champ `produits` OBLIGATOIRE :**
+
+**Cours d'anglais** :
+```json
+{
+  "produits": {
+    "type_donnee": "autocomplete",
+    "valeur": ["Cours d'anglais,Niveau débutant,2h par semaine,En ligne,Certificat,Français,Soir,1 mois"],
+    "sous_caracteristiques": {
+      "type": ["Cours d'anglais", "Formation intensive", "Conversation"],
+      "niveau": ["Débutant", "Intermédiaire", "Avancé", "Professionnel"],
+      "duree": ["1h", "2h par semaine", "10h", "20h"],
+      "mode": ["En ligne", "Présentiel", "Hybride"],
+      "certification": ["Certificat", "Sans certificat"],
+      "langue": ["Français", "Anglais"],
+      "horaires": ["Matin", "Après-midi", "Soir", "Weekend"],
+      "periode": ["1 mois", "3 mois", "6 mois", "1 an"]
+    },
+    "identifiant_base": "produits",
+    "origine_champs": "ia"
+  }
+}
+```
+
+**Réparation électroménager** :
+```json
+{
+  "produits": {
+    "type_donnee": "autocomplete",
+    "valeur": ["Réparation frigo,Diagnostic gratuit,Garantie 3 mois,Pièces d'origine,À domicile,Rapide,Toutes marques,Yaoundé"],
+    "sous_caracteristiques": {
+      "type": ["Réparation frigo", "Réparation climatiseur", "Réparation machine à laver"],
+      "diagnostic": ["Diagnostic gratuit", "Diagnostic payant"],
+      "garantie": ["1 mois", "3 mois", "6 mois", "1 an"],
+      "pieces": ["Pièces d'origine", "Pièces compatibles"],
+      "deplacement": ["À domicile", "En atelier"],
+      "delai": ["Rapide 24h", "Normal 2-3 jours", "Sur RDV"],
+      "marques": ["Toutes marques", "Marques spécifiques"],
+      "zone": ["Yaoundé", "Douala", "Toutes zones"]
+    },
+    "identifiant_base": "produits",
+    "origine_champs": "ia"
+  }
+}
+```
+
+**⚠️ ADAPTE les dimensions au produit/prestation identifié dans l'input !**
 
 ---
 

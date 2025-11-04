@@ -1,16 +1,16 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { PlaceScope, placesService } from '../services/placesService';
 import { apiGet } from '../services/api';
+import { PlaceScope, placesService } from '../services/placesService';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
 
 // ✅ Parser string location en composants
 const parseLocationString = (locationStr: string): LocationObject => {
     const parts = locationStr.split(',').map(s => s.trim());
-    
+
     const components: any = {};
-    
+
     // Déduction selon nombre de parties
     if (parts.length >= 3) {
         components.ville = parts[0];
@@ -22,7 +22,7 @@ const parseLocationString = (locationStr: string): LocationObject => {
     } else if (parts.length === 1) {
         components.ville = parts[0];
     }
-    
+
     return {
         raw: locationStr,
         place_name: parts[0] || locationStr,
@@ -36,10 +36,10 @@ const enrichLocation = async (location: LocationObject): Promise<LocationObject>
         const response = await apiGet<any>(
             `/api/places/enrich?place_name=${encodeURIComponent(location.place_name)}&country=${encodeURIComponent(location.components?.pays || '')}`
         );
-        
+
         if (response.success && response.data) {
             const data: any = response.data;
-            
+
             return {
                 raw: location.raw,
                 place_name: data.place_name || location.place_name,
@@ -53,7 +53,7 @@ const enrichLocation = async (location: LocationObject): Promise<LocationObject>
                 location_vector: data.location_vector,
             };
         }
-        
+
         return location;
     } catch (error) {
         console.error('[enrichLocation] Erreur:', error);
@@ -84,8 +84,8 @@ interface LocationSelectorProps {
     value: string | LocationObject;  // ✅ Supporte string (ancien) ou objet (nouveau)
     onSelect: (value: LocationObject) => void;  // ✅ Retourne toujours objet
     placeholder?: string;
-    scope?: PlaceScope; // 'city' | 'point'
-    cityContext?: string; // For point search filtering
+    scope?: PlaceScope; // 'city' | 'point' | 'neighborhood'
+    cityContext?: string; // For point/neighborhood search filtering
     required?: boolean;
     enrichWithBackend?: boolean;  // ✅ Si true, appelle /api/places/enrich
 }
@@ -105,7 +105,7 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
     const [loading, setLoading] = useState(false);
     const [enriching, setEnriching] = useState(false);
     const [options, setOptions] = useState<string[]>([]);
-    
+
     // ✅ Parser valeur affichée (string ou objet)
     const displayValue = typeof value === 'string' ? value : value?.raw || '';
 
@@ -136,7 +136,7 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
                 style={[styles.selector, !displayValue && styles.selectorPlaceholder]}
                 onPress={() => setOpen(true)}
             >
-                <View style={{flex: 1}}>
+                <View style={{ flex: 1 }}>
                     <Text style={[styles.selectorText, !displayValue && styles.placeholderText]}>
                         {displayValue || placeholder}
                     </Text>
@@ -148,9 +148,9 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
             </TouchableOpacity>
 
             {!!displayValue && (
-                <TouchableOpacity 
-                    style={styles.clearButton} 
-                    onPress={() => onSelect({raw: '', place_name: ''})}
+                <TouchableOpacity
+                    style={styles.clearButton}
+                    onPress={() => onSelect({ raw: '', place_name: '' })}
                 >
                     <SafeIcon name="x-circle" size={16} color={modernColors.error} />
                     <Text style={styles.clearText}>Effacer</Text>
@@ -196,10 +196,10 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
                                         style={styles.optionItem}
                                         onPress={async () => {
                                             setOpen(false);
-                                            
+
                                             // ✅ Parser composants du lieu
                                             const locationObj = parseLocationString(opt);
-                                            
+
                                             // ✅ Enrichir avec backend si demandé
                                             if (enrichWithBackend) {
                                                 setEnriching(true);

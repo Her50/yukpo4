@@ -5,11 +5,10 @@
  */
 
 import { useNavigation, useRoute } from '@react-navigation/native';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
-  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -86,20 +85,11 @@ const ResultatBesoinScreen: React.FC = () => {
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
   const [loadingResults, setLoadingResults] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const [refreshing, setRefreshing] = useState(false); // ✅ NOUVEAU : Pull-to-refresh
 
   // États filtrage et tri
   const [sortBy, setSortBy] = useState<SortOption>('pertinence');
   const [filterCategory, setFilterCategory] = useState<FilterCategory>('all');
   const [showFilters, setShowFilters] = useState(false);
-
-  // ✅ NOUVEAU : Filtre par prix (de mobile2)
-  const [priceFilter, setPriceFilter] = useState<{
-    min: number | null;
-    max: number | null;
-    currency: string;
-  }>({ min: null, max: null, currency: 'XAF' });
-  const [showPriceFilter, setShowPriceFilter] = useState(false);
 
   // ✅ NOUVEAU : Filtres intelligents dynamiques basés sur product_labels
   const [dynamicFilters, setDynamicFilters] = useState<Record<string, Set<string>>>({});
@@ -200,16 +190,6 @@ const ResultatBesoinScreen: React.FC = () => {
       }
     });
 
-    // ✅ NOUVEAU : Filtre par prix (de mobile2)
-    if (priceFilter.min !== null || priceFilter.max !== null) {
-      filtered = filtered.filter(product => {
-        const price = getPrixMin(product);
-        if (priceFilter.min !== null && price < priceFilter.min) return false;
-        if (priceFilter.max !== null && price > priceFilter.max) return false;
-        return true;
-      });
-    }
-
     // Filtres par catégorie
     switch (filterCategory) {
       case 'with_stock':
@@ -255,7 +235,7 @@ const ResultatBesoinScreen: React.FC = () => {
     }
 
     setFilteredResults(filtered);
-  }, [results, sortBy, filterCategory, selectedFilters, priceFilter]); // ✅ Ajout priceFilter
+  }, [results, sortBy, filterCategory, selectedFilters]);
 
   // Helper : Prix minimum
   const getPrixMin = (product: Product): number => {
@@ -267,32 +247,19 @@ const ResultatBesoinScreen: React.FC = () => {
 
   // Sélectionner suggestion
   const selectSuggestion = async (suggestion: CombinationSuggestion) => {
-    try {
-      console.log('[ResultatBesoinScreen] 🎯 Suggestion sélectionnée:', suggestion);
-      setSearchQuery(suggestion.full_vector.join(', '));
-      setFilters(suggestion.full_vector);
-      setShowSuggestions(false);
-      await searchFinal(suggestion.full_vector);
-    } catch (error) {
-      console.error('[ResultatBesoinScreen] ❌ Crash selectSuggestion:', error);
-    }
+    setSearchQuery(suggestion.full_vector.join(', '));
+    setFilters(suggestion.full_vector);
+    setShowSuggestions(false);
+    await searchFinal(suggestion.full_vector);
   };
 
   // ✅ CORRECTION 2025-11-04 : Utiliser /api/search/direct (recherche globale)
   const searchFinal = async (finalFilters: string[]) => {
-    console.log('[ResultatBesoinScreen] 🔍 searchFinal appelé avec:', finalFilters);
-
-    if (!finalFilters || !Array.isArray(finalFilters) || finalFilters.length === 0) {
-      console.warn('[ResultatBesoinScreen] ⚠️ Filtres vides ou invalides, abandon de la recherche');
-      return;
-    }
-
     setLoadingResults(true);
 
     try {
       // Construire le texte de recherche depuis le vecteur
       const searchText = finalFilters.join(' ');
-      console.log('[ResultatBesoinScreen] 🔍 Recherche avec texte:', searchText);
 
       const payload: any = {
         texte: searchText,  // "Nike Air Max 42 Douala"
@@ -303,32 +270,21 @@ const ResultatBesoinScreen: React.FC = () => {
         const loc = location as any;
         if (loc.latitude && loc.longitude) {
           payload.gps_mobile = `${loc.latitude},${loc.longitude}`;
-          console.log('[ResultatBesoinScreen] 📍 Position ajoutée:', payload.gps_mobile);
         }
       }
-
-      console.log('[ResultatBesoinScreen] 📤 Envoi requête API:', payload);
 
       // ✅ Utiliser la recherche globale (même que HomeScreen)
       const response = await apiPost('/api/search/direct', payload);
 
-      console.log('[ResultatBesoinScreen] 📥 Réponse API reçue:', response);
-
-      if ((response as any).resultats?.resultats) {
-        const results = (response as any).resultats.resultats as Product[];
-        console.log('[ResultatBesoinScreen] ✅ Résultats trouvés:', results.length);
-        setResults(results);
+      if (response.resultats?.resultats) {
+        setResults(response.resultats.resultats as Product[]);
       } else if (response.data) {
-        const results = response.data as Product[];
-        console.log('[ResultatBesoinScreen] ✅ Résultats trouvés (data):', results.length);
-        setResults(results);
+        setResults(response.data as Product[]);
       } else {
-        console.log('[ResultatBesoinScreen] ⚠️ Aucun résultat trouvé');
         setResults([]);
       }
-    } catch (error: any) {
-      console.error('[ResultatBesoinScreen] ❌ Erreur recherche:', error);
-      console.error('[ResultatBesoinScreen] ❌ Stack trace:', error?.stack);
+    } catch (error) {
+      console.error('[ResultatBesoinScreen] Erreur recherche:', error);
       setResults([]);
     } finally {
       setLoadingResults(false);
@@ -341,39 +297,6 @@ const ResultatBesoinScreen: React.FC = () => {
     setSearchQuery(queryText);
     // Le useEffect se chargera de lancer la recherche
   };
-
-  // ✅ NOUVEAU : Pull-to-Refresh - Recharger les résultats
-  const onRefresh = useCallback(async () => {
-    setRefreshing(true);
-    try {
-      // Recharger les résultats actuels
-      if (filters.length > 0) {
-        const searchText = filters.join(' ');
-        const payload: any = { texte: searchText };
-
-        if (location && typeof location === 'object') {
-          const loc = location as any;
-          if (loc.latitude && loc.longitude) {
-            payload.gps_mobile = `${loc.latitude},${loc.longitude}`;
-          }
-        }
-
-        const response = await apiPost('/api/search/direct', payload);
-
-        if ((response as any).resultats?.resultats) {
-          setResults((response as any).resultats.resultats as Product[]);
-        } else if (response.data) {
-          setResults(response.data as Product[]);
-        } else {
-          setResults([]);
-        }
-      }
-    } catch (error) {
-      console.error('[ResultatBesoinScreen] Erreur refresh:', error);
-    } finally {
-      setRefreshing(false);
-    }
-  }, [filters, location]);
 
   return (
     <View style={styles.container}>
@@ -405,28 +328,18 @@ const ResultatBesoinScreen: React.FC = () => {
             onChangeText={setSearchQuery}
             returnKeyType="search"
             onSubmitEditing={() => {
-              try {
-                console.log('[ResultatBesoinScreen] 🔍 Recherche déclenchée (Enter), query:', searchQuery, 'filters:', filters);
-                if (searchQuery.trim()) {
-                  setShowSuggestions(false);
-                  searchFinal(filters);
-                }
-              } catch (error) {
-                console.error('[ResultatBesoinScreen] ❌ Crash onSubmitEditing:', error);
+              if (searchQuery.trim()) {
+                setShowSuggestions(false);
+                searchFinal(filters);
               }
             }}
           />
           <TouchableOpacity
             style={styles.searchButton}
             onPress={() => {
-              try {
-                console.log('[ResultatBesoinScreen] 🔍 Recherche déclenchée (Bouton), query:', searchQuery, 'filters:', filters);
-                if (searchQuery.trim()) {
-                  setShowSuggestions(false);
-                  searchFinal(filters);
-                }
-              } catch (error) {
-                console.error('[ResultatBesoinScreen] ❌ Crash onPress:', error);
+              if (searchQuery.trim()) {
+                setShowSuggestions(false);
+                searchFinal(filters);
               }
             }}
             disabled={loadingSuggestions || loadingResults}
@@ -455,34 +368,6 @@ const ResultatBesoinScreen: React.FC = () => {
           </ScrollView>
         )}
       </View>
-
-      {/* ✅ SUPPRIMÉ TEMPORAIREMENT : ResultsHeader pour identifier le crash
-      {!showSuggestions && filteredResults.length > 0 && (
-        <ResultsHeader
-          title="Produits correspondants"
-          resultsCount={filteredResults.length}
-          onGeolocationPress={() => {
-            // Trier par proximité
-            setSortBy('proximite');
-          }}
-          onPriceFilterPress={() => {
-            // Toggle filtre prix
-            setShowFilters(!showFilters);
-          }}
-          onSortPress={() => {
-            // Toggle panel de tri
-            setShowFilters(!showFilters);
-          }}
-          sortBy={
-            sortBy === 'pertinence' ? 'pertinence' :
-            sortBy === 'proximite' ? 'proximité' :
-            sortBy === 'prix_asc' ? 'prix croissant' :
-            sortBy === 'prix_desc' ? 'prix décroissant' :
-            'pertinence'
-          }
-        />
-      )}
-      */}
 
       {/* Panneau Filtres & Tri */}
       {showFilters && (
@@ -567,71 +452,6 @@ const ResultatBesoinScreen: React.FC = () => {
                 </Text>
               </TouchableOpacity>
             </View>
-          </View>
-
-          {/* ✅ NOUVEAU : Filtre par prix (de mobile2) */}
-          <View style={styles.filterGroup}>
-            <TouchableOpacity
-              style={styles.filterGroupHeader}
-              onPress={() => setShowPriceFilter(!showPriceFilter)}
-            >
-              <Text style={styles.filterGroupTitle}>💰 Filtrer par prix</Text>
-              <SafeIcon
-                name={showPriceFilter ? 'chevron-up' : 'chevron-down'}
-                size={20}
-                color={modernColors.primary}
-              />
-            </TouchableOpacity>
-
-            {showPriceFilter && (
-              <View style={styles.priceFilterContainer}>
-                <View style={styles.priceFilterRow}>
-                  <View style={styles.priceInputContainer}>
-                    <Text style={styles.priceLabel}>Prix min</Text>
-                    <TextInput
-                      style={styles.priceInput}
-                      value={priceFilter.min?.toString() || ''}
-                      onChangeText={(text) => setPriceFilter(prev => ({
-                        ...prev,
-                        min: text ? parseFloat(text) : null
-                      }))}
-                      placeholder="0"
-                      keyboardType="numeric"
-                    />
-                  </View>
-                  <View style={styles.priceInputContainer}>
-                    <Text style={styles.priceLabel}>Prix max</Text>
-                    <TextInput
-                      style={styles.priceInput}
-                      value={priceFilter.max?.toString() || ''}
-                      onChangeText={(text) => setPriceFilter(prev => ({
-                        ...prev,
-                        max: text ? parseFloat(text) : null
-                      }))}
-                      placeholder="100000"
-                      keyboardType="numeric"
-                    />
-                  </View>
-                </View>
-                <View style={styles.priceFilterActions}>
-                  <TouchableOpacity
-                    style={styles.priceFilterReset}
-                    onPress={() => setPriceFilter({ min: null, max: null, currency: 'XAF' })}
-                  >
-                    <Text style={styles.priceFilterResetText}>Réinitialiser</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.priceFilterApply}
-                    onPress={() => setShowPriceFilter(false)}
-                  >
-                    <Text style={styles.priceFilterApplyText}>Appliquer</Text>
-                  </TouchableOpacity>
-                </View>
-                <Text style={styles.priceFilterInfo}>
-                  {filteredResults.length} résultat{filteredResults.length > 1 ? 's' : ''} trouvé{filteredResults.length > 1 ? 's' : ''}
-                </Text>
-              </View>
-            )}
           </View>
 
           {/* Filtres catégories */}
@@ -808,13 +628,8 @@ const ResultatBesoinScreen: React.FC = () => {
               <TouchableOpacity
                 style={styles.manualSearchButton}
                 onPress={() => {
-                  try {
-                    console.log('[ResultatBesoinScreen] 🔍 Recherche manuelle sans suggestion, filters:', filters);
-                    setShowSuggestions(false);
-                    searchFinal(filters);
-                  } catch (error) {
-                    console.error('[ResultatBesoinScreen] ❌ Crash recherche manuelle:', error);
-                  }
+                  setShowSuggestions(false);
+                  searchFinal(filters);
                 }}
               >
                 <SafeIcon name="search" size={16} color={modernColors.primary} />
@@ -829,13 +644,8 @@ const ResultatBesoinScreen: React.FC = () => {
               <TouchableOpacity
                 style={styles.manualSearchButton}
                 onPress={() => {
-                  try {
-                    console.log('[ResultatBesoinScreen] 🔍 Recherche quand même, filters:', filters);
-                    setShowSuggestions(false);
-                    searchFinal(filters);
-                  } catch (error) {
-                    console.error('[ResultatBesoinScreen] ❌ Crash recherche quand même:', error);
-                  }
+                  setShowSuggestions(false);
+                  searchFinal(filters);
                 }}
               >
                 <SafeIcon name="search" size={16} color={modernColors.primary} />
@@ -876,14 +686,6 @@ const ResultatBesoinScreen: React.FC = () => {
             <FlatList
               data={filteredResults}
               keyExtractor={(item) => `${item.service_id}`}
-              refreshControl={
-                <RefreshControl
-                  refreshing={refreshing}
-                  onRefresh={onRefresh}
-                  colors={[modernColors.primary]}
-                  tintColor={modernColors.primary}
-                />
-              }
               renderItem={({ item }) => (
                 <ProductCard
                   product={item}
@@ -1235,77 +1037,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#6B7280',
     textAlign: 'center',
-  },
-  // ✅ NOUVEAU : Styles pour filtre par prix (de mobile2)
-  filterGroupHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  priceFilterContainer: {
-    marginTop: 12,
-    gap: 12,
-  },
-  priceFilterRow: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  priceInputContainer: {
-    flex: 1,
-  },
-  priceLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#374151',
-    marginBottom: 6,
-  },
-  priceInput: {
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
-    borderRadius: 8,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    fontSize: 14,
-    color: '#1F2937',
-    backgroundColor: '#FFFFFF',
-  },
-  priceFilterActions: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  priceFilterReset: {
-    flex: 1,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    backgroundColor: '#F3F4F6',
-    borderRadius: 8,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
-  },
-  priceFilterResetText: {
-    fontSize: 14,
-    color: '#374151',
-    fontWeight: '600',
-  },
-  priceFilterApply: {
-    flex: 1,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    backgroundColor: modernColors.primary,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  priceFilterApplyText: {
-    fontSize: 14,
-    color: '#FFFFFF',
-    fontWeight: '600',
-  },
-  priceFilterInfo: {
-    fontSize: 12,
-    color: '#6B7280',
-    textAlign: 'center',
-    fontStyle: 'italic',
   },
 });
 

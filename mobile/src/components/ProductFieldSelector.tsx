@@ -12,6 +12,7 @@ interface ProductFieldSelectorProps {
     multiSelect?: boolean;
     maxSelections?: number;
     placeholder?: string;
+    customOptions?: string[]; // ✅ NOUVEAU: Options personnalisées (pour devise par exemple)
 }
 
 /**
@@ -28,7 +29,8 @@ const ProductFieldSelector: React.FC<ProductFieldSelectorProps> = ({
     required = false,
     multiSelect = false,
     maxSelections = 20,
-    placeholder
+    placeholder,
+    customOptions // ✅ NOUVEAU
 }) => {
     // ✅ Liste des champs qui doivent être en multi-select par défaut
     const MULTI_SELECT_FIELD_PATTERNS = [
@@ -91,6 +93,7 @@ const ProductFieldSelector: React.FC<ProductFieldSelectorProps> = ({
                 required={required}
                 placeholder={placeholder || `Sélectionner ${label.toLowerCase()}...`}
                 maxSelections={maxSelections}
+                customOptions={customOptions} // ✅ NOUVEAU
             />
         );
     }
@@ -107,6 +110,7 @@ const ProductFieldSelector: React.FC<ProductFieldSelectorProps> = ({
             }}
             required={required}
             placeholder={placeholder || `Sélectionner ${label.toLowerCase()}...`}
+            customOptions={customOptions} // ✅ NOUVEAU
         />
     );
 };

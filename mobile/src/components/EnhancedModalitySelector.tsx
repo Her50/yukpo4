@@ -14,6 +14,7 @@ interface EnhancedModalitySelectorProps {
     onSelect: (value: string) => void;
     required?: boolean;
     placeholder?: string;
+    customOptions?: string[]; // ✅ NOUVEAU: Options personnalisées (pour devise, etc.)
 }
 
 const EnhancedModalitySelector: React.FC<EnhancedModalitySelectorProps> = ({
@@ -23,7 +24,8 @@ const EnhancedModalitySelector: React.FC<EnhancedModalitySelectorProps> = ({
     fieldName,
     onSelect,
     required = false,
-    placeholder = 'Sélectionner...'
+    placeholder = 'Sélectionner...',
+    customOptions // ✅ NOUVEAU
 }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [allOptions, setAllOptions] = useState<string[]>([]);
@@ -36,11 +38,19 @@ const EnhancedModalitySelector: React.FC<EnhancedModalitySelectorProps> = ({
     // Charger les options (statiques + personnalisées)
     useEffect(() => {
         loadOptions();
-    }, [productType, fieldName, countryCode]); // Recharger si le pays change
+    }, [productType, fieldName, countryCode, customOptions]); // ✅ Recharger si customOptions change
 
     const loadOptions = async () => {
         setLoading(true);
         try {
+            // ✅ NOUVEAU 2025-11-04: Si customOptions fourni, les utiliser en priorité
+            if (customOptions && customOptions.length > 0) {
+                console.log(`[EnhancedModalitySelector] ✅ Utilisation des options personnalisées pour ${fieldName}:`, customOptions);
+                setAllOptions(customOptions);
+                setLoading(false);
+                return;
+            }
+
             // ✅ NOUVEAU: Détecter si le champ nécessite adaptation au contexte utilisateur
             const isContextualField =
                 // Champs géographiques
@@ -67,10 +77,10 @@ const EnhancedModalitySelector: React.FC<EnhancedModalitySelectorProps> = ({
             }
 
             // Options personnalisées depuis le serveur
-            const customOptions = await modalityService.getModalitiesForField(productType, fieldName);
+            const serverCustomOptions = await modalityService.getModalitiesForField(productType, fieldName);
 
             // Combiner les options (statiques + personnalisées, sans doublons)
-            const combinedOptions = [...new Set([...staticOptions, ...customOptions])];
+            const combinedOptions = [...new Set([...staticOptions, ...serverCustomOptions])];
 
             // ✅ Ajouter une option sentinelle pour l'ajout manuel
             if (!combinedOptions.some(opt => opt.includes('🆕 Autre'))) {

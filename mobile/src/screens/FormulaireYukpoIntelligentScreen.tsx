@@ -325,6 +325,11 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         icon: isPrestation ? '⚙️' : '🛍️',
         fields: defaultProductsFields
       });
+      console.log('[FormulaireYukpoIntelligentScreen] ✅ Bloc produits créé avec champs par défaut:', {
+        nbChamps: defaultProductsFields.length,
+        champsNoms: defaultProductsFields.map(f => f.name),
+        champProduits: defaultProductsFields.find(f => f.name === 'produits')
+      });
     } else if (productsBlock.fields.length === 0) {
       // Si le bloc existe mais est vide (IA n'a pas généré de champ produits), ajouter les champs par défaut
       // ✅ NOUVEAU: Label dynamique selon type_offre de l'IA
@@ -413,6 +418,11 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       // ✅ NOUVEAU: Mettre à jour le titre du bloc aussi
       productsBlock.title = isPrestation ? 'Prestations' : 'Produits';
       productsBlock.icon = isPrestation ? '⚙️' : '🛍️';
+      console.log('[FormulaireYukpoIntelligentScreen] ✅ Champs par défaut ajoutés au bloc produits existant:', {
+        nbChamps: productsBlock.fields.length,
+        champsNoms: productsBlock.fields.map(f => f.name),
+        champProduits: productsBlock.fields.find(f => f.name === 'produits')
+      });
     } else {
       // ✅ Si le bloc existe ET a déjà des champs, vérifier si les champs spécifiques produits existent
       // ✅ NOUVEAU: Vérifier aussi si type_offre existe pour adapter le label
@@ -463,6 +473,43 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           value: formValues.description_produit || ''
         } as DynamicField);
       }
+
+      // ✅ CORRECTION 2025-11-04 : TOUJOURS ajouter le champ produits (caractéristiques) s'il n'existe pas
+      const hasProduits = productsBlock.fields.some(f => f.name === 'produits' || f.typeDonnee === 'autocomplete');
+      if (!hasProduits) {
+        const typeOffre = formValues.type_offre || formValues.nature_offre || 'produit';
+        const isPrestation = typeOffre === 'prestation' || typeOffre === 'service';
+
+        productsBlock.fields.push({
+          name: 'produits',
+          type: 'autocomplete',
+          typeDonnee: 'autocomplete',
+          label: isPrestation ? 'Caractéristiques prestation' : 'Caractéristiques produit',
+          required: false,
+          placeholder: 'Tapez pour voir les suggestions...',
+          identifiantBase: 'produits',
+          sousCaracteristiques: formValues.produits?.sous_caracteristiques || {
+            // Caractéristiques essentielles
+            marque: [],
+            modele: [],
+            couleur: ['Noir', 'Blanc', 'Gris', 'Rouge', 'Bleu', 'Vert', 'Jaune', 'Orange', 'Rose', 'Violet'],
+            // Caractéristiques secondaires
+            annee: ['2024', '2023', '2022', '2021', '2020', '2019', '2018'],
+            etat: ['Neuf', 'Comme neuf', 'Bon état', 'Très bon état', 'Occasion', 'À rénover'],
+            version: [],
+            // Caractéristiques prestations
+            competences: [],
+            experience: ['Débutant', 'Intermédiaire', 'Avancé', 'Expert', 'Professionnel'],
+            niveau: ['Débutant', 'Intermédiaire', 'Avancé', 'Expert', 'Professionnel']
+          },
+          separateur: ',',
+          filtrable: true,
+          allowCustomModality: true,
+          value: formValues.produits?.valeur || []
+        } as DynamicField);
+        console.log('[FormulaireYukpoIntelligentScreen] ✅ Champ produits (autocomplete) ajouté automatiquement');
+      }
+
       // ✅ NOUVEAU 2025-11-04: NE PAS ajouter prix_produit/devise_produit si variation_prix existe
       const hasVariationPrix = productsBlock.fields.some(f =>
         f.typeDonnee === 'price_variant' || f.name === 'variabilite_prix' || f.name === 'variation_prix'
@@ -482,11 +529,12 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       if (!hasDeviseProduit && !hasVariationPrix) {
         productsBlock.fields.splice((hasNomProduit ? 1 : 0) + (hasCategorieProduit ? 1 : 0) + (hasDescriptionProduit ? 1 : 0) + (hasPrixProduit ? 1 : 0), 0, {
           name: 'devise_produit',
-          type: 'text',
-          typeDonnee: 'string',
+          type: 'select',
+          typeDonnee: 'select',
           label: 'Devise',
           required: false,
-          placeholder: 'XAF, EUR, USD...',
+          placeholder: 'Sélectionnez une devise',
+          options: ['XAF', 'EUR', 'USD', 'GBP', 'CAD', 'CHF'],
           value: formValues.devise_produit || 'XAF'
         } as DynamicField);
       }
@@ -843,6 +891,19 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     if (suggestion && suggestion.data) {
       console.log('[FormulaireYukpoIntelligentScreen] Données IA disponibles, génération automatique des composants');
 
+      // ✅ NOUVEAU 2025-11-04: Log complet du JSON IA pour diagnostic
+      console.log('[FormulaireYukpoIntelligentScreen] 📋 JSON COMPLET de l\'IA:', JSON.stringify(suggestion.data, null, 2));
+      console.log('[FormulaireYukpoIntelligentScreen] 🔍 Champs DISTINCTS dans l\'IA:', {
+        // Bloc Informations Générales
+        titre_service: suggestion.data.titre_service?.valeur || suggestion.data.titre_service,
+        category: suggestion.data.category?.valeur || suggestion.data.category,
+        description: suggestion.data.description?.valeur || suggestion.data.description,
+        // Bloc Produits
+        nom_produit: suggestion.data.nom_produit?.valeur || suggestion.data.nom_produit || '❌ ABSENT',
+        categorie_produit: suggestion.data.categorie_produit?.valeur || suggestion.data.categorie_produit || '❌ ABSENT',
+        description_produit: suggestion.data.description_produit?.valeur || suggestion.data.description_produit || '❌ ABSENT'
+      });
+
       // Traiter les suggestions IA comme dans le frontend
       const components = processIASuggestion(suggestion);
       console.log('[FormulaireYukpoIntelligentScreen] Composants générés automatiquement:', components);
@@ -936,57 +997,67 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         console.log('[FormulaireYukpoIntelligentScreen] Catégorie chargée:', categoryValue);
       }
 
-      // ✅ NOUVEAU 2025-11-04: Extraire les champs produit avec fallback
-      // Extraire nom_produit (ou utiliser titre_service si absent)
+      // ✅ CORRECTION 2025-11-04: Extraire les champs produit avec fallback intelligent UNIQUEMENT si l'IA génère des produits
+      // Si l'IA a généré une structure produit (nom_produit OU prix_produit OU produits), on utilise ses valeurs
+      // Sinon, on considère que l'IA n'a pas voulu créer de produit et on n'en crée pas non plus
+
+      const hasProductData = suggestion.data.nom_produit || suggestion.data.prix_produit || suggestion.data.produits || suggestion.data.variabilite_prix;
+
+      // Extraire nom_produit avec fallback intelligent
       if (suggestion.data.nom_produit) {
         const nomProduitValue = typeof suggestion.data.nom_produit === 'object' && 'valeur' in suggestion.data.nom_produit
           ? suggestion.data.nom_produit.valeur
           : suggestion.data.nom_produit;
         initialValues.nom_produit = nomProduitValue;
-        console.log('[FormulaireYukpoIntelligentScreen] ✅ nom_produit chargé:', nomProduitValue);
-      } else if (suggestion.data.titre_service) {
-        // Fallback : utiliser titre_service comme nom_produit
-        const titreValue = typeof suggestion.data.titre_service === 'object' && 'valeur' in suggestion.data.titre_service
+        console.log('[FormulaireYukpoIntelligentScreen] ✅ nom_produit chargé depuis IA:', nomProduitValue);
+      } else if (hasProductData && suggestion.data.titre_service) {
+        // Fallback intelligent: Si l'IA a créé un produit mais sans nom, utiliser le titre du service
+        const fallbackNom = typeof suggestion.data.titre_service === 'object' && 'valeur' in suggestion.data.titre_service
           ? suggestion.data.titre_service.valeur
           : suggestion.data.titre_service;
-        initialValues.nom_produit = titreValue;
-        console.log('[FormulaireYukpoIntelligentScreen] ⚠️ nom_produit absent, utilisation titre_service:', titreValue);
+        initialValues.nom_produit = fallbackNom;
+        console.log('[FormulaireYukpoIntelligentScreen] ✅ nom_produit fallback depuis titre_service:', fallbackNom);
       }
-      
-      // Extraire categorie_produit (ou utiliser category si absent)
+
+      // Extraire categorie_produit avec fallback intelligent
       if (suggestion.data.categorie_produit) {
         const categorieProduitValue = typeof suggestion.data.categorie_produit === 'object' && 'valeur' in suggestion.data.categorie_produit
           ? suggestion.data.categorie_produit.valeur
           : suggestion.data.categorie_produit;
         initialValues.categorie_produit = categorieProduitValue;
-        console.log('[FormulaireYukpoIntelligentScreen] ✅ categorie_produit chargé:', categorieProduitValue);
-      } else if (suggestion.data.category) {
-        // Fallback : utiliser category comme categorie_produit
-        const categoryValue = typeof suggestion.data.category === 'object' && 'valeur' in suggestion.data.category
+        console.log('[FormulaireYukpoIntelligentScreen] ✅ categorie_produit chargé depuis IA:', categorieProduitValue);
+      } else if (hasProductData && suggestion.data.category) {
+        // Fallback intelligent: Si l'IA a créé un produit mais sans catégorie, utiliser la catégorie du service
+        const fallbackCategorie = typeof suggestion.data.category === 'object' && 'valeur' in suggestion.data.category
           ? suggestion.data.category.valeur
           : suggestion.data.category;
-        initialValues.categorie_produit = categoryValue;
-        console.log('[FormulaireYukpoIntelligentScreen] ⚠️ categorie_produit absent, utilisation category:', categoryValue);
+        initialValues.categorie_produit = fallbackCategorie;
+        console.log('[FormulaireYukpoIntelligentScreen] ✅ categorie_produit fallback depuis category:', fallbackCategorie);
       }
-      
-      // Extraire description_produit (ou utiliser description si absent)
+
+      // Extraire description_produit avec fallback intelligent
       if (suggestion.data.description_produit) {
         const descriptionProduitValue = typeof suggestion.data.description_produit === 'object' && 'valeur' in suggestion.data.description_produit
           ? suggestion.data.description_produit.valeur
           : suggestion.data.description_produit;
         initialValues.description_produit = descriptionProduitValue;
-        console.log('[FormulaireYukpoIntelligentScreen] ✅ description_produit chargé:', descriptionProduitValue);
-      } else if (suggestion.data.description) {
-        // Fallback : utiliser description comme description_produit
-        const descriptionValue = typeof suggestion.data.description === 'object' && 'valeur' in suggestion.data.description
+        console.log('[FormulaireYukpoIntelligentScreen] ✅ description_produit chargé depuis IA:', descriptionProduitValue);
+      } else if (hasProductData && suggestion.data.description) {
+        // Fallback intelligent: Si l'IA a créé un produit mais sans description, utiliser la description du service
+        const fallbackDescription = typeof suggestion.data.description === 'object' && 'valeur' in suggestion.data.description
           ? suggestion.data.description.valeur
           : suggestion.data.description;
-        initialValues.description_produit = descriptionValue;
-        console.log('[FormulaireYukpoIntelligentScreen] ⚠️ description_produit absent, utilisation description:', descriptionValue);
+        initialValues.description_produit = fallbackDescription;
+        console.log('[FormulaireYukpoIntelligentScreen] ✅ description_produit fallback depuis description:', fallbackDescription);
       }
 
-      console.log('[FormulaireYukpoIntelligentScreen] 📦 RÉSUMÉ champs produit:', {
-        nom: initialValues.nom_produit,
+      console.log('[FormulaireYukpoIntelligentScreen] 📦 RÉSUMÉ champs distincts (service vs produit):', {
+        // Service
+        titre_service: initialValues.titre_service,
+        category: initialValues.category,
+        description: initialValues.description,
+        // Produit
+        nom_produit: initialValues.nom_produit,
         categorie: initialValues.categorie_produit,
         description: initialValues.description_produit
       });
@@ -1324,11 +1395,48 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
   // Rendu d'un champ (aligné sur le frontend avec tous les types)
   const renderField = (field: DynamicField) => {
+    // ✅ Log de debug pour chaque champ rendu
+    if (field.name === 'produits') {
+      console.log('[FormulaireYukpoIntelligentScreen] 🔍 Rendu du champ produits:', {
+        name: field.name,
+        type: field.type,
+        typeDonnee: field.typeDonnee,
+        label: field.label,
+        hasIdentifiantBase: !!field.identifiantBase,
+        hasSousCaracteristiques: !!field.sousCaracteristiques,
+        nbSousCaracs: Object.keys(field.sousCaracteristiques || {}).length
+      });
+    }
+
     // ✅ NOUVEAU: Support pour les nouveaux types de données
     if (field.typeDonnee === 'autocomplete') {
-      const currentValues = Array.isArray(valeursFormulaire[field.name]) ? valeursFormulaire[field.name] : [];
+      // ✅ CORRECTION 2025-11-04: Extraire correctement les valeurs si c'est un objet complexe
+      const fieldValue = valeursFormulaire[field.name];
+      let currentValues: string[] = [];
+      let currentSousCaracs = field.sousCaracteristiques || {};
+
+      if (fieldValue && typeof fieldValue === 'object' && 'valeur' in fieldValue) {
+        // Cas objet complexe depuis l'IA {type_donnee, valeur, sous_caracteristiques}
+        currentValues = Array.isArray(fieldValue.valeur) ? fieldValue.valeur : [];
+        currentSousCaracs = fieldValue.sous_caracteristiques || field.sousCaracteristiques || {};
+        console.log('[FormulaireYukpoIntelligentScreen] ✅ Extraction objet complexe pour', field.name, {
+          valeur: currentValues,
+          sousCaracs: Object.keys(currentSousCaracs)
+        });
+      } else if (Array.isArray(fieldValue)) {
+        // Cas array simple
+        currentValues = fieldValue;
+      }
+
       const nbModalites = currentValues.length;
-      const nbCaracteristiques = Object.keys(field.sousCaracteristiques || {}).length;
+      const nbCaracteristiques = Object.keys(currentSousCaracs).length;
+
+      console.log('[FormulaireYukpoIntelligentScreen] ✅ Rendu autocomplete pour:', field.name, {
+        nbModalites,
+        nbCaracteristiques,
+        currentValues,
+        nbSousCaracsDisponibles: Object.keys(currentSousCaracs).length
+      });
 
       return (
         <View key={field.name} style={styles.fieldContainer}>
@@ -1349,7 +1457,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           <LinearAutocompleteEditor
             label={field.label}
             identifiantBase={field.identifiantBase || field.name}
-            sousCaracteristiques={field.sousCaracteristiques || {}}
+            sousCaracteristiques={currentSousCaracs} // ✅ CORRIGÉ: Utiliser les sous-caracs dynamiques de l'IA
             separateur={field.separateur || ','}
             value={currentValues}
             onChange={(values, updatedSousCaracs) => {
@@ -1365,7 +1473,16 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                   origine_champs: 'formulaire'
                 });
               } else {
-                handleFieldChange(field.name, values);
+                // Même si pas de mise à jour de sous-caracs, garder la structure complète
+                handleFieldChange(field.name, {
+                  type_donnee: 'autocomplete',
+                  valeur: values,
+                  separateur: field.separateur || ',',
+                  sous_caracteristiques: currentSousCaracs, // Garder les sous-caracs existantes
+                  identifiant_base: field.identifiantBase || field.name,
+                  filtrable: field.filtrable !== false,
+                  origine_champs: 'formulaire'
+                });
               }
             }}
             required={field.required}
@@ -1477,18 +1594,16 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                 origine_champs: 'formulaire'
               });
             }}
-            placeholder={field.placeholder || 'Rechercher une ville ou un lieu...'}
-            scope="city" // Peut être 'city' ou 'point' selon le contexte
+            placeholder={field.placeholder || 'Rechercher ville, quartier, pays, région...'}
+            scope={undefined} // ✅ CORRIGÉ: Pas de scope fixe, recherche universelle (ville, quartier, pays, région)
             required={field.required}
-            enrichWithBackend={field.name === 'lieu_produit'} // ✅ Activer enrichissement GeoNames pour lieu_produit
+            enrichWithBackend={true} // ✅ Activer enrichissement GeoNames pour tous les champs location
           />
-          {field.name === 'lieu_produit' && (
-            <View style={styles.hintBox}>
-              <Text style={styles.hintText}>
-                💡 <Text style={styles.hintBold}>Recherche intelligente :</Text> Si vous choisissez "Douala", votre produit apparaîtra aussi pour les recherches dans "Littoral" (région) ou "Bonanjo" (quartier). Le système gère automatiquement la hiérarchie géographique.
-              </Text>
-            </View>
-          )}
+          <View style={styles.hintBox}>
+            <Text style={styles.hintText}>
+              💡 <Text style={styles.hintBold}>Recherche géographique intelligente :</Text> Vous pouvez rechercher des quartiers (ex: Bonanjo, Akwa), villes (ex: Douala, Yaoundé), pays (ex: Cameroun) ou régions (ex: Afrique Centrale). Le système gère automatiquement tous les niveaux géographiques.
+            </Text>
+          </View>
           {field.composants && Object.keys(field.composants).length > 0 && field.name !== 'lieu_produit' && (
             <View style={styles.hintBox}>
               <Text style={styles.hintText}>
@@ -1611,6 +1726,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
               multiSelect={field.multiSelect || field.allowMultiple}
               maxSelections={field.maxSelections || 20}
               placeholder={field.placeholder || 'Sélectionner...'}
+              customOptions={field.options} // ✅ NOUVEAU: Passer les options personnalisées
             />
             {fieldErrors[field.name] && (
               <Text style={styles.fieldErrorText}>⚠️ {String(fieldErrors[field.name])}</Text>

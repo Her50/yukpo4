@@ -98,17 +98,27 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
 
     const searchSuggestions = async (query: string) => {
         setLoadingSuggestions(true);
+        setShowSuggestions(true); // ✅ CORRECTION: Afficher tout de suite (même pendant loading)
+        
         try {
+            console.log('[LinearAutocompleteEditor] 🔍 Recherche suggestions pour:', query);
             const response = await apiGet(
                 `/api/products/popular?search=${encodeURIComponent(query)}&limit=8`
             );
 
+            console.log('[LinearAutocompleteEditor] 📦 Réponse API:', response);
+
             if (response.success && response.data) {
-                setSuggestions(response.data as PopularProduct[]);
-                setShowSuggestions(true);
+                const products = response.data as PopularProduct[];
+                console.log('[LinearAutocompleteEditor] ✅ Suggestions trouvées:', products.length);
+                setSuggestions(products);
+                // Garder showSuggestions à true même si aucune suggestion
+            } else {
+                console.log('[LinearAutocompleteEditor] ⚠️ Aucune suggestion reçue');
+                setSuggestions([]);
             }
         } catch (error) {
-            console.error('[LinearAutocompleteEditor] Erreur recherche suggestions:', error);
+            console.error('[LinearAutocompleteEditor] ❌ Erreur recherche suggestions:', error);
             setSuggestions([]);
         } finally {
             setLoadingSuggestions(false);
@@ -118,7 +128,7 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
     // Sélectionner une suggestion
     const selectSuggestion = (product: PopularProduct) => {
         const newVector = product.product_vector.join(separateur);
-        
+
         // Mettre à jour sousCaracteristiques avec les labels du produit sélectionné
         const updatedSousCaracs: Record<string, string[]> = {};
         product.product_labels.forEach((label, index) => {
@@ -223,21 +233,27 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
         );
     }
 
-    // Générer placeholder dynamique depuis la combinaison IA
+    // ✅ CORRECTION 2025-11-04: Placeholder dynamique depuis la valeur IA (value[0])
     const generatePlaceholder = (): string => {
-        // Si un vecteur existe déjà (de l'IA), l'utiliser comme exemple
-        if (displayValue) {
-            const firstValues = displayValue.split(separateur).slice(0, 4).join(',');
-            return `Ex: ${firstValues}... 🤖`;
+        // ✅ PRIORITÉ 1: Si un vecteur existe déjà (de l'IA), l'utiliser comme exemple
+        if (value && value.length > 0 && value[0]) {
+            const firstValues = value[0].split(separateur).slice(0, 4).join(' • ');
+            return `${firstValues}... 🤖 IA`;
         }
-        // Sinon, exemple générique basé sur les dimensions disponibles
-        const exampleParts = Object.keys(sousCaracteristiques).slice(0, 4).map((key, idx) => {
-            const values = sousCaracteristiques[key];
-            return values && values.length > 0 ? values[0] : `${key}_val`;
-        });
-        return exampleParts.length > 0 
-            ? `Ex: ${exampleParts.join(',')}...` 
-            : 'Rechercher un produit...';
+        
+        // ✅ PRIORITÉ 2: Exemple générique basé sur les sous-caractéristiques IA
+        if (Object.keys(sousCaracteristiques).length > 0) {
+            const exampleParts = Object.keys(sousCaracteristiques).slice(0, 4).map((key) => {
+                const values = sousCaracteristiques[key];
+                return values && values.length > 0 ? values[0] : key;
+            });
+            return exampleParts.length > 0
+                ? `Ex: ${exampleParts.join(' • ')}...`
+                : 'Rechercher un produit populaire...';
+        }
+        
+        // ✅ PRIORITÉ 3: Fallback générique
+        return 'Rechercher un produit populaire...';
     };
 
     return (
@@ -272,10 +288,23 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
             </View>
 
             {/* ✅ Suggestions progressives */}
-            {showSuggestions && suggestions.length > 0 && (
+            {showSuggestions && (
                 <View style={styles.suggestionsContainer}>
                     <Text style={styles.suggestionsTitle}>📦 Suggestions populaires</Text>
-                    {loadingSuggestions && <ActivityIndicator size="small" color={modernColors.primary} />}
+                    {loadingSuggestions && <ActivityIndicator size="small" color={modernColors.primary} style={{ marginVertical: 12 }} />}
+                    
+                    {!loadingSuggestions && suggestions.length === 0 && searchQuery.trim().length >= 2 && (
+                        <View style={styles.noSuggestionsContainer}>
+                            <SafeIcon name="info" size={20} color="#9CA3AF" />
+                            <Text style={styles.noSuggestionsText}>
+                                Aucun produit populaire trouvé pour "{searchQuery}"
+                            </Text>
+                            <Text style={styles.noSuggestionsHint}>
+                                💡 Essayez avec d'autres mots-clés ou créez votre propre combinaison
+                            </Text>
+                        </View>
+                    )}
+                    
                     {suggestions.map((product, index) => (
                         <TouchableOpacity
                             key={index}
@@ -351,91 +380,6 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                 </View>
             ) : null}
 
-            {/* ✅ NOUVEAU : Bouton pour afficher produits populaires */}
-            <TouchableOpacity
-                style={styles.popularButton}
-                onPress={() => setShowPopular(!showPopular)}
-            >
-                <Text style={styles.popularButtonEmoji}>🔥</Text>
-                <Text style={styles.popularButtonText}>
-                    {showPopular ? 'Masquer' : 'Voir'} produits populaires
-                </Text>
-                {popularProducts.length > 0 && (
-                    <View style={styles.popularCountBadge}>
-                        <Text style={styles.popularCountText}>{popularProducts.length}</Text>
-                    </View>
-                )}
-            </TouchableOpacity>
-
-            {/* ✅ NOUVEAU : Liste des produits populaires */}
-            {showPopular && (
-                <View style={styles.popularSection}>
-                    {loadingPopular ? (
-                        <View style={styles.loadingPopularContainer}>
-                            <ActivityIndicator size="small" color={modernColors.primary} />
-                            <Text style={styles.loadingPopularText}>Chargement...</Text>
-                        </View>
-                    ) : popularProducts.length > 0 ? (
-                        <>
-                            <Text style={styles.popularSectionTitle}>
-                                💡 Produits les plus vendus par vos concurrents
-                            </Text>
-                            <ScrollView style={styles.popularList} nestedScrollEnabled>
-                                {popularProducts.map((product, index) => (
-                                    <TouchableOpacity
-                                        key={index}
-                                        style={[
-                                            styles.popularCard,
-                                            product.is_trending && styles.popularCardTrending
-                                        ]}
-                                        onPress={() => selectPopularProduct(product)}
-                                    >
-                                        {/* ✅ Badge tendance */}
-                                        {product.is_trending && (
-                                            <View style={styles.trendingBadgeSmall}>
-                                                <Text style={styles.trendingBadgeText}>📈 TENDANCE</Text>
-                                            </View>
-                                        )}
-
-                                        <View style={styles.popularCardContent}>
-                                            <View style={styles.popularChips}>
-                                                {product.product_vector.map((val, idx) => (
-                                                    <View key={idx} style={styles.popularChip}>
-                                                        <Text style={styles.popularChipText}>{val}</Text>
-                                                    </View>
-                                                ))}
-                                            </View>
-                                            <View style={styles.popularStats}>
-                                                <Text style={styles.popularUsage}>
-                                                    🔥 {product.usage_count} {product.usage_count > 1 ? 'prestataires' : 'prestataire'}
-                                                </Text>
-                                                {product.prix_moyen && (
-                                                    <Text style={styles.popularPriceText}>
-                                                        💰 {product.prix_moyen.toLocaleString()} XAF
-                                                    </Text>
-                                                )}
-                                                {product.has_variant && (
-                                                    <Text style={styles.popularVariantText}>
-                                                        📦 Variantes: {product.variant_dimension}
-                                                    </Text>
-                                                )}
-                                            </View>
-                                        </View>
-                                        <View style={styles.popularSelectButton}>
-                                            <SafeIcon name="check-circle" size={14} color="#FFF" />
-                                            <Text style={styles.popularSelectText}>Utiliser ce produit</Text>
-                                        </View>
-                                    </TouchableOpacity>
-                                ))}
-                            </ScrollView>
-                        </>
-                    ) : (
-                        <View style={styles.noPopularContainer}>
-                            <Text style={styles.noPopularText}>Aucun produit populaire trouvé</Text>
-                        </View>
-                    )}
-                </View>
-            )}
 
             {/* Modal Édition */}
             <Modal
@@ -942,6 +886,103 @@ const styles = StyleSheet.create({
     noPopularText: {
         fontSize: 14,
         color: '#9CA3AF',
+    },
+    // ✅ NOUVEAU 2025-11-04: Styles pour suggestions autocomplete
+    suggestionsContainer: {
+        backgroundColor: '#F9FAFB',
+        borderRadius: 12,
+        padding: 12,
+        gap: 8,
+        marginTop: 8,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+    },
+    suggestionsTitle: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: '#6B7280',
+        marginBottom: 4,
+    },
+    suggestionItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        backgroundColor: '#FFF',
+        paddingHorizontal: 12,
+        paddingVertical: 10,
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+    },
+    suggestionContent: {
+        flex: 1,
+        gap: 6,
+    },
+    suggestionVector: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#1F2937',
+    },
+    suggestionMeta: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+    },
+    trendingBadge: {
+        backgroundColor: '#EF4444',
+        paddingHorizontal: 8,
+        paddingVertical: 3,
+        borderRadius: 6,
+    },
+    trendingText: {
+        fontSize: 10,
+        fontWeight: '700',
+        color: '#FFF',
+    },
+    suggestionCount: {
+        fontSize: 11,
+        color: '#6B7280',
+    },
+    suggestionPrice: {
+        fontSize: 11,
+        fontWeight: '600',
+        color: '#059669',
+    },
+    noSuggestionsContainer: {
+        alignItems: 'center',
+        paddingVertical: 20,
+        gap: 8,
+    },
+    noSuggestionsText: {
+        fontSize: 13,
+        color: '#6B7280',
+        textAlign: 'center',
+    },
+    noSuggestionsHint: {
+        fontSize: 12,
+        color: '#9CA3AF',
+        textAlign: 'center',
+        fontStyle: 'italic',
+    },
+    searchContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#FFF',
+        borderWidth: 2,
+        borderColor: '#E5E7EB',
+        borderRadius: 12,
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        gap: 8,
+    },
+    searchIcon: {
+        marginRight: 4,
+    },
+    searchInput: {
+        flex: 1,
+        fontSize: 15,
+        color: '#1F2937',
+        paddingVertical: 4,
     },
 });
 

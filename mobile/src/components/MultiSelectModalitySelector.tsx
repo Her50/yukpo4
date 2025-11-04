@@ -15,6 +15,7 @@ interface MultiSelectModalitySelectorProps {
     required?: boolean;
     placeholder?: string;
     maxSelections?: number;
+    customOptions?: string[]; // ✅ NOUVEAU: Options personnalisées
 }
 
 const MultiSelectModalitySelector: React.FC<MultiSelectModalitySelectorProps> = ({
@@ -25,7 +26,8 @@ const MultiSelectModalitySelector: React.FC<MultiSelectModalitySelectorProps> = 
     onSelect,
     required = false,
     placeholder = 'Sélectionner...',
-    maxSelections = 10
+    maxSelections = 10,
+    customOptions: propsCustomOptions // ✅ NOUVEAU: Renommer pour éviter conflit
 }) => {
     const [allOptions, setAllOptions] = useState<string[]>([]);
     const [loading, setLoading] = useState(false);
@@ -41,11 +43,19 @@ const MultiSelectModalitySelector: React.FC<MultiSelectModalitySelectorProps> = 
     // Charger les options (statiques + personnalisées)
     useEffect(() => {
         loadOptions();
-    }, [productType, fieldName, countryCode]); // Recharger si le pays change
+    }, [productType, fieldName, countryCode, propsCustomOptions]); // ✅ Recharger si customOptions change
 
     const loadOptions = async () => {
         setLoading(true);
         try {
+            // ✅ NOUVEAU 2025-11-04: Si customOptions fourni, les utiliser en priorité
+            if (propsCustomOptions && propsCustomOptions.length > 0) {
+                console.log(`[MultiSelectModalitySelector] ✅ Utilisation des options personnalisées pour ${fieldName}:`, propsCustomOptions);
+                setAllOptions(propsCustomOptions);
+                setLoading(false);
+                return;
+            }
+
             // ✅ NOUVEAU: Détecter si le champ nécessite adaptation au contexte utilisateur
             const isContextualField =
                 // Champs géographiques

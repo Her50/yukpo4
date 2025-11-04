@@ -38,6 +38,7 @@ pub mod token_stats_routes; // ✅ NOUVEAU: Routes pour statistiques de consomma
 pub mod combination_routes; // ✅ NOUVEAU 2025-11-03: Routes pour progression génération combinaisons
 pub mod popular_products_routes; // ✅ NOUVEAU 2025-11-04: Routes pour produits populaires (analyse concurrence)
 pub mod product_reactions_routes; // ✅ NOUVEAU 2025-11-04: Routes pour réactions/émotions sur les produits
+pub mod diagnostic_routes; // ✅ NOUVEAU 2025-11-04: Routes de diagnostic de la base de données
 
 // === Routes d'Optimisation IA ===
 // pub mod ia_routes_optimized; // Temporairement d?sactiv?

@@ -2,24 +2,35 @@ import { getToutesLesVilles, rechercherVilles } from '../data/africanLocations';
 import { getFieldOptions } from '../data/productModalities';
 import { apiGet } from './api';
 
-export type PlaceScope = 'city' | 'point';
+export type PlaceScope = 'city' | 'point' | 'neighborhood'; // ✅ AJOUT: Support des quartiers
 
 class PlacesService {
     /**
-     * Autocomplete intelligent pour villes et lieux
+     * Autocomplete intelligent pour villes, quartiers, pays et lieux
      * - Essaie d'abord le backend Google Maps API
      * - Fallback sur la base locale (TOUS les pays d'Afrique francophone)
+     * - Si scope est undefined, recherche universelle (tous les types géographiques)
      */
-    async autocomplete(query: string, scope: PlaceScope = 'city', cityContext?: string): Promise<string[]> {
+    async autocomplete(query: string, scope?: PlaceScope, cityContext?: string): Promise<string[]> {
         const q = (query || '').trim();
         const results: string[] = [];
 
         // ✅ PRIORITÉ 1: Backend Google Maps API
         try {
             const params = encodeURI(q);
-            const url = scope === 'city'
-                ? `/api/places/autocomplete?query=${params}&type=city`
-                : `/api/places/autocomplete?query=${params}&type=point${cityContext ? `&city=${encodeURIComponent(cityContext)}` : ''}`;
+            // ✅ CORRECTION 2025-11-04: Recherche universelle si scope est undefined
+            let url: string;
+            if (!scope) {
+                // Recherche universelle - tous les types géographiques (ville, quartier, pays, région)
+                url = `/api/places/autocomplete?query=${params}`;
+            } else if (scope === 'city') {
+                url = `/api/places/autocomplete?query=${params}&type=city`;
+            } else if (scope === 'neighborhood') {
+                url = `/api/places/autocomplete?query=${params}&type=neighborhood${cityContext ? `&city=${encodeURIComponent(cityContext)}` : ''}`;
+            } else {
+                // point
+                url = `/api/places/autocomplete?query=${params}&type=point${cityContext ? `&city=${encodeURIComponent(cityContext)}` : ''}`;
+            }
 
             const response = await apiGet<{ success: boolean; data?: string[] }>(url);
             if (response.success && Array.isArray(response.data) && response.data.length > 0) {
@@ -30,7 +41,8 @@ class PlacesService {
         }
 
         // ✅ PRIORITÉ 2: Base de données locale (AFRIQUE FRANCOPHONE COMPLÈTE)
-        if (scope === 'city') {
+        // Uniquement pour scope='city' ou undefined
+        if (!scope || scope === 'city') {
             // Recherche intelligente dans TOUS les pays d'Afrique francophone
             if (q.length > 0) {
                 const villesRecherchees = rechercherVilles(q);
@@ -42,7 +54,7 @@ class PlacesService {
                 const nomsVilles = toutesVilles.slice(0, 50).map(v => `${v.pays} - ${v.nom}`);
                 results.push(...nomsVilles);
             }
-        } else {
+        } else if (scope === 'point') {
             // Points de départ/arrivée depuis modalités covoiturage
             const pointsDepart = getFieldOptions('covoiturage', 'points_depart') || [];
             const pointsArrivee = getFieldOptions('covoiturage', 'points_arrivee') || [];
