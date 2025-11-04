@@ -10,6 +10,7 @@ use crate::controllers::autocomplete_controller::{
     get_all_values,
     upsert_autocomplete_characteristic,
     historize_autocomplete_field,
+    search_product_suggestions,  // ✅ NOUVEAU 2025-11-04: Suggestions CLIENT
 };
 
 /// Routes pour la gestion de l'autocomplete (table autocomplete_characteristics)
@@ -26,6 +27,8 @@ pub fn autocomplete_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route("/api/autocomplete/upsert", post(upsert_autocomplete_characteristic))
         // POST /api/autocomplete/historize
         .route("/api/autocomplete/historize", post(historize_autocomplete_field))
+        // POST /api/autocomplete/search-products - ✅ NOUVEAU 2025-11-04: Suggestions CLIENT
+        .route("/api/autocomplete/search-products", post(search_product_suggestions))
         .with_state(state)
 }
 

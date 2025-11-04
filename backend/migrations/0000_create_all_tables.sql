@@ -137,30 +137,50 @@ CREATE INDEX IF NOT EXISTS idx_payment_transactions_created_at ON payment_transa
 CREATE INDEX IF NOT EXISTS idx_token_transactions_user_id ON token_transactions(user_id);
 CREATE INDEX IF NOT EXISTS idx_token_transactions_type ON token_transactions(transaction_type);
 
--- Table autocomplete_characteristics (✅ 2025-11-01)
--- Stocke les caractéristiques individuelles pour autocomplete intelligent
+-- Table autocomplete_characteristics (✅ 2025-11-04 - Vectorielle)
+-- Stocke les VRAIS produits validés par les prestataires (mode vectoriel)
+-- Permet la recherche intelligente avec filtre lieu intégré
 CREATE TABLE IF NOT EXISTS autocomplete_characteristics (
     id SERIAL PRIMARY KEY,
     identifiant_base VARCHAR(255) NOT NULL,
-    sous_caracteristique VARCHAR(255) NOT NULL,
-    valeur VARCHAR(500) NOT NULL,
+    
+    -- ✅ MODE VECTORIEL (nouveaux champs 2025-11-04)
+    characteristic_vector TEXT[] DEFAULT '{}',  -- Vecteur produit validé par prestataire
+    location_vector TEXT[] DEFAULT '{}',        -- Vecteur lieu bidirectionnel (lieu choisi TOUJOURS en position 0)
+    full_vector TEXT[] DEFAULT '{}',            -- characteristic_vector + location_vector
+    product_id TEXT,                            -- Format: "serviceId_productIndex"
+    chosen_location TEXT,                       -- Lieu choisi (position 0 du location_vector)
+    chosen_location_geoname_id BIGINT,         -- ID GeoNames (GARANTIT unicité)
+    is_real_product BOOLEAN DEFAULT TRUE,      -- TRUE = produit réel prestataire
+    
+    -- ✅ MODE INDIVIDUEL (ancien, conservé pour compatibilité)
+    sous_caracteristique VARCHAR(255),
+    valeur VARCHAR(500),
+    
+    -- Métadonnées
     origine_champs VARCHAR(50) NOT NULL DEFAULT 'ia',
     user_id INTEGER,
     service_id INTEGER,
     usage_count INTEGER DEFAULT 1,
     created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW(),
-    CONSTRAINT unique_autocomplete_characteristic 
-        UNIQUE (identifiant_base, sous_caracteristique, valeur)
+    updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Index pour autocomplete_characteristics
+-- Index pour autocomplete_characteristics (mode individuel - ancien)
 CREATE INDEX IF NOT EXISTS idx_autocomplete_identifiant_base ON autocomplete_characteristics(identifiant_base);
 CREATE INDEX IF NOT EXISTS idx_autocomplete_sous_caracteristique ON autocomplete_characteristics(sous_caracteristique);
 CREATE INDEX IF NOT EXISTS idx_autocomplete_base_sous ON autocomplete_characteristics(identifiant_base, sous_caracteristique);
 CREATE INDEX IF NOT EXISTS idx_autocomplete_valeur_lower ON autocomplete_characteristics(LOWER(valeur));
 CREATE INDEX IF NOT EXISTS idx_autocomplete_origine ON autocomplete_characteristics(origine_champs);
 CREATE INDEX IF NOT EXISTS idx_autocomplete_usage_count ON autocomplete_characteristics(identifiant_base, sous_caracteristique, usage_count DESC);
+
+-- Index pour autocomplete_characteristics (mode vectoriel - nouveau 2025-11-04)
+CREATE INDEX IF NOT EXISTS idx_autochar_characteristic_vector_gin ON autocomplete_characteristics USING GIN(characteristic_vector);
+CREATE INDEX IF NOT EXISTS idx_autochar_location_vector_gin ON autocomplete_characteristics USING GIN(location_vector);
+CREATE INDEX IF NOT EXISTS idx_autochar_full_vector_gin ON autocomplete_characteristics USING GIN(full_vector);
+CREATE INDEX IF NOT EXISTS idx_autochar_product_id ON autocomplete_characteristics(product_id) WHERE product_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_autochar_geoname_id ON autocomplete_characteristics(chosen_location_geoname_id) WHERE chosen_location_geoname_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_autochar_location_usage ON autocomplete_characteristics(chosen_location, usage_count DESC) WHERE chosen_location IS NOT NULL;
 
 -- Index conditionnels pour autocomplete_characteristics
 DO $$
@@ -198,10 +218,9 @@ CREATE TABLE IF NOT EXISTS autocomplete_combinations (
     
     -- Vecteurs d'ÉTIQUETTES (labels) - ✅ NOUVEAU pour traçabilité
     product_labels TEXT[] NOT NULL,        -- Ex: ["marque", "modele", "couleur", "pointure"]
-    location_labels TEXT[] DEFAULT '{}',   -- Ex: ["ville", "quartier", "region", "pays"]
+    location_labels TEXT[] DEFAULT '{}',   -- DEPRECATED: Ne plus utiliser
     
-    -- Métadonnées de localisation
-    chosen_location TEXT,
+    -- PAS de métadonnées de localisation (lieu UNIQUEMENT dans autocomplete_characteristics)
     
     -- Statistiques et IA
     usage_count INTEGER DEFAULT 1,
@@ -231,10 +250,8 @@ CREATE TABLE IF NOT EXISTS autocomplete_combinations (
 -- Index pour autocomplete_combinations
 CREATE INDEX IF NOT EXISTS idx_combinations_session ON autocomplete_combinations(session_id);
 CREATE INDEX IF NOT EXISTS idx_combinations_usage_count ON autocomplete_combinations(usage_count DESC);
-CREATE INDEX IF NOT EXISTS idx_combinations_location_usage ON autocomplete_combinations(chosen_location, usage_count DESC);
 CREATE INDEX IF NOT EXISTS idx_combinations_variant ON autocomplete_combinations(has_variant, variant_dimension, variant_value);
 CREATE INDEX IF NOT EXISTS idx_combinations_product_vector_gin ON autocomplete_combinations USING GIN(product_vector);
-CREATE INDEX IF NOT EXISTS idx_combinations_location_vector_gin ON autocomplete_combinations USING GIN(location_vector);
 CREATE INDEX IF NOT EXISTS idx_combinations_full_vector_gin ON autocomplete_combinations USING GIN(full_vector);
 
 -- Index conditionnels pour autocomplete_combinations

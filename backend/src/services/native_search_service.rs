@@ -43,7 +43,77 @@ impl NativeSearchService {
         // Configuration déjà chargée par défaut
         Ok(())
     }
+    
+    /// ✅ NOUVEAU 2025-11-04 : Vérifier si un lieu est mentionné dans l'input
+    /// En comparant l'input avec TOUS les location_vector de la base
+    /// Retourne TRUE si au moins UN produit a un lieu qui matche
+    /// Retourne FALSE si aucun lieu ne matche → Utiliser TOUTE la base
+    async fn check_if_location_in_input(&self, user_input: &str) -> AppResult<bool> {
+        let result = sqlx::query_scalar::<_, bool>(
+            r#"
+            SELECT EXISTS (
+                SELECT 1 FROM autocomplete_characteristics ac
+                WHERE ac.is_real_product = TRUE
+                AND EXISTS (
+                    SELECT 1 FROM unnest(ac.location_vector) AS loc_val
+                    WHERE 
+                        -- Correspondance exacte (insensible à la casse)
+                        LOWER($1) LIKE '%' || LOWER(loc_val) || '%'
+                        -- ✅ OU correspondance fuzzy (gestion fautes de frappe)
+                        OR similarity(LOWER($1), LOWER(loc_val)) > 0.6
+                )
+            )
+            "#
+        )
+        .bind(user_input)
+        .fetch_one(&self.pool)
+        .await
+        .unwrap_or(false);
+        
+        log::info!("[NativeSearch] Lieu dans input ? {} (input: '{}')", result, user_input);
+        
+        Ok(result)
+    }
 
+    /// ✅ NOUVEAU 2025-11-04 : Recherche avec PRÉ-FILTRE lieu bidirectionnel intelligent
+    /// Vérifie si UN élément du location_vector de chaque produit est dans l'input utilisateur
+    pub async fn intelligent_search_with_location_prefilter(
+        &self,
+        search_query: &str,        // Mot-clé principal : "Nike"
+        user_input_full: &str,     // Input COMPLET : "Nike Air Douala"
+        category_filter: Option<&str>,
+        _user_id: Option<i32>,
+        gps_zone: Option<&str>,
+        search_radius_km: Option<i32>,
+    ) -> AppResult<Vec<SearchResult>> {
+        let start_time = std::time::Instant::now();
+        log_info(&format!("[NativeSearch] Recherche avec pré-filtre lieu: '{}' (input complet: '{}')", 
+            search_query, user_input_full));
+        
+        // ✅ NOUVELLE LOGIQUE : Vérifier si l'input contient un lieu
+        // En vérifiant si UN élément du location_vector de n'importe quel produit matche
+        let has_location_in_input = self.check_if_location_in_input(user_input_full).await?;
+        
+        // ✅ IMPORTANT : Si AUCUN lieu ne matche → Passer NULL pour utiliser TOUTE la base
+        let location_filter = if has_location_in_input {
+            log_info("[NativeSearch] 🗺️ Lieu détecté dans input → PRÉ-FILTRE activé");
+            Some(user_input_full)  // Passer input complet pour filtrage
+        } else {
+            log_info("[NativeSearch] ⚠️ AUCUN lieu détecté → Recherche dans TOUTE la base de données");
+            None  // ✅ NULL → Pas de filtre lieu → TOUTE la base
+        };
+        
+        // Appel à la recherche intelligente existante avec filtre conditionnel
+        self.intelligent_search_internal(
+            search_query,
+            category_filter,
+            location_filter,  // ✅ NULL si aucun lieu, Some(input) si lieu détecté
+            _user_id,
+            gps_zone,
+            search_radius_km
+        ).await
+    }
+    
     /// Recherche intelligente combinant full-text et trigram
     pub async fn intelligent_search(
         &self,
@@ -53,6 +123,27 @@ impl NativeSearchService {
         _user_id: Option<i32>,
         gps_zone: Option<&str>,  // Nouveau paramètre GPS
         search_radius_km: Option<i32>,  // Nouveau paramètre rayon
+    ) -> AppResult<Vec<SearchResult>> {
+        // Appel à la version interne
+        self.intelligent_search_internal(
+            search_query,
+            category_filter,
+            location_filter,
+            _user_id,
+            gps_zone,
+            search_radius_km
+        ).await
+    }
+    
+    /// Fonction interne de recherche
+    async fn intelligent_search_internal(
+        &self,
+        search_query: &str,
+        category_filter: Option<&str>,
+        location_or_input_filter: Option<&str>,  // Peut être lieu OU input complet
+        _user_id: Option<i32>,
+        gps_zone: Option<&str>,
+        search_radius_km: Option<i32>,
     ) -> AppResult<Vec<SearchResult>> {
         let start_time = std::time::Instant::now();
         log_info(&format!("[NativeSearch] Début recherche: '{}' (GPS: {:?}, Rayon: {:?}km)", 
@@ -65,7 +156,7 @@ impl NativeSearchService {
         let mut fulltext_results = self.fulltext_search_with_gps(
             &normalized_query, 
             category_filter, 
-            location_filter,
+            location_or_input_filter,  // ✅ Input complet pour pré-filtre lieu
             gps_zone,
             search_radius_km
         ).await?;
@@ -75,7 +166,7 @@ impl NativeSearchService {
             let trigram_results = self.trigram_search_with_gps(
                 &normalized_query, 
                 category_filter, 
-                location_filter,
+                location_or_input_filter,  // ✅ Input complet pour pré-filtre lieu
                 gps_zone,
                 search_radius_km
             ).await?;
@@ -93,7 +184,7 @@ impl NativeSearchService {
             let keyword_results = self.keyword_search_with_gps(
                 &normalized_query, 
                 category_filter, 
-                location_filter,
+                location_or_input_filter,  // ✅ Input complet pour pré-filtre lieu
                 gps_zone,
                 search_radius_km
             ).await?;
@@ -310,6 +401,8 @@ SELECT DISTINCT
                                 WHEN extract_all_product_text(product) ILIKE '%' || $1 || '%' THEN 5.0
                                 -- ✅ Bonus pour champs spécifiques importants (AUGMENTÉ 5.0 → 8.0)
                                 WHEN product->>'nom' ILIKE '%' || $1 || '%' THEN 8.0
+                                -- ✅ NOUVEAU 2025-11-04: Catégorie produit (important pour filtrage)
+                                WHEN product->>'categorie' ILIKE '%' || $1 || '%' THEN 7.0
                                 -- ✅ Description produit (AUGMENTÉ 3.0 → 5.0)
                                 WHEN product->>'description' ILIKE '%' || $1 || '%' THEN 5.0
                                 WHEN product->>'type' ILIKE '%' || $1 || '%' THEN 5.0
@@ -358,35 +451,77 @@ SELECT DISTINCT
                             END
                         ) AS product
                     ) +
-                    -- ✅ NOUVEAU 2025-11-01: BOOST MAJEUR pour autocomplete_characteristics
-                    -- Recherche dans la table structurée (BEAUCOUP plus précis et rapide que JSON)
-                    -- Score: 8.0-20.0 par caractéristique + boost popularité (usage_count)
+                    -- ✅ NOUVEAU 2025-11-04: BONUS pour vecteur dans JSON produits
+                    -- Recherche dans characteristic_vector, location_vector, full_vector sauvegardés dans JSON
+                    (
+                        CASE 
+                            WHEN s.data->'produits'->'characteristic_vector' IS NOT NULL THEN
+                                (
+                                    SELECT COUNT(*)::REAL * 12.0
+                                    FROM jsonb_array_elements_text(s.data->'produits'->'characteristic_vector') AS vec_val
+                                    WHERE vec_val ILIKE '%' || $1 || '%'
+                                ) +
+                                (
+                                    SELECT COUNT(*)::REAL * 15.0
+                                    FROM jsonb_array_elements_text(s.data->'produits'->'location_vector') AS loc_val
+                                    WHERE loc_val ILIKE '%' || $1 || '%'
+                                )
+                            ELSE 0.0
+                        END
+                    ) +
+                    -- ✅ NOUVEAU 2025-11-04: BOOST MAJEUR pour autocomplete_characteristics (MODE VECTORIEL)
+                    -- Recherche dans full_vector (caractéristiques + lieu bidirectionnel)
+                    -- Score: 15.0-50.0 par produit + boost popularité CLIENT (usage_count)
                     (
                         SELECT COALESCE(SUM(
-                            CASE ac.sous_caracteristique
-                                -- Caractéristiques CRITIQUES (20.0)
-                                WHEN 'marque', 'brand' THEN 20.0
-                                WHEN 'modele', 'model' THEN 18.0
-                                -- Caractéristiques TRÈS IMPORTANTES (15.0)
-                                WHEN 'type', 'categorie', 'category' THEN 15.0
-                                -- Caractéristiques IMPORTANTES (12.0)
-                                WHEN 'couleur', 'color' THEN 12.0
-                                WHEN 'taille', 'size', 'pointure' THEN 12.0
-                                WHEN 'carburant', 'transmission', 'annee', 'kilometrage' THEN 12.0
-                                -- Caractéristiques UTILES (10.0)
-                                WHEN 'typeBatiment', 'nombre_chambres', 'surface' THEN 10.0
-                                WHEN 'matiere', 'style', 'etat' THEN 10.0
-                                -- Autres caractéristiques (8.0)
-                                ELSE 8.0
-                            END *
-                            ts_rank(to_tsvector('french', ac.valeur), plainto_tsquery('french', $1)) *
-                            -- BOOST selon popularité (usage_count: 1-10 fois utilisé = 1.1x-2.0x boost)
-                            (1.0 + (ac.usage_count::REAL / 10.0))
+                            -- Score de base pour correspondance dans full_vector
+                            15.0 *
+                            -- Recherche dans le vecteur complet (produit + lieu)
+                            (
+                                SELECT COUNT(*)::REAL FROM unnest(ac.full_vector) AS vec_val
+                                WHERE vec_val ILIKE '%' || $1 || '%'
+                            ) *
+                            -- BOOST MAJEUR selon popularité CLIENT (usage_count)
+                            -- 1 fois = 1.0x, 5 fois = 1.5x, 10 fois = 2.0x, 20+ fois = 3.0x
+                            LEAST(3.0, 1.0 + (ac.usage_count::REAL / 10.0)) +
+                            -- BONUS ÉNORME si correspondance EXACTE dans chosen_location (lieu)
+                            CASE 
+                                WHEN ac.chosen_location IS NOT NULL 
+                                     AND LOWER(ac.chosen_location) = LOWER($1)
+                                THEN 50.0  -- Bonus MASSIF pour lieu exact
+                                WHEN ac.chosen_location IS NOT NULL 
+                                     AND LOWER(ac.chosen_location) LIKE '%' || LOWER($1) || '%'
+                                THEN 25.0  -- Bonus important pour lieu partiel
+                                -- Recherche dans location_vector (hiérarchie bidirectionnelle)
+                                WHEN EXISTS (
+                                    SELECT 1 FROM unnest(ac.location_vector) AS loc_val
+                                    WHERE LOWER(loc_val) = LOWER($1)
+                                )
+                                THEN 35.0  -- Bonus majeur pour lieu dans hiérarchie (ex: Bonanjo trouve Douala)
+                                WHEN EXISTS (
+                                    SELECT 1 FROM unnest(ac.location_vector) AS loc_val
+                                    WHERE LOWER(loc_val) LIKE '%' || LOWER($1) || '%'
+                                )
+                                THEN 20.0  -- Bonus pour lieu partiel dans hiérarchie
+                                ELSE 0.0
+                            END
                         ), 0.0)
                         FROM autocomplete_characteristics ac
                         WHERE ac.service_id = s.id
                         AND ac.identifiant_base LIKE 'produit%'
-                        AND to_tsvector('french', ac.valeur) @@ plainto_tsquery('french', $1)
+                        AND ac.is_real_product = TRUE  -- Seulement les VRAIS produits prestataires
+                        AND (
+                            -- Recherche dans full_vector (produit + lieu)
+                            EXISTS (
+                                SELECT 1 FROM unnest(ac.full_vector) AS vec_val
+                                WHERE vec_val ILIKE '%' || $1 || '%'
+                            )
+                            -- OU recherche spécifique dans location_vector (hiérarchie lieu)
+                            OR EXISTS (
+                                SELECT 1 FROM unnest(ac.location_vector) AS loc_val
+                                WHERE loc_val ILIKE '%' || $1 || '%'
+                            )
+                        )
                     ) +
                     -- Bonus pour correspondances sans accents
                     CASE 
@@ -449,7 +584,27 @@ SELECT DISTINCT
             WHERE s.is_active = true
             AND ({})
             AND ($2::text IS NULL OR s.category = $2 OR s.data->'category'->>'valeur' = $2)
-            AND ($3::text IS NULL OR s.gps ILIKE '%' || $3 || '%')
+            AND (
+                $3::text IS NULL  -- Pas de filtre lieu → TOUTE la base
+                OR (
+                    -- ✅ NOUVEAU 2025-11-04 : PRÉ-FILTRE LIEU BIDIRECTIONNEL INTELLIGENT
+                    -- Vérifie si UN élément du location_vector du produit est dans l'input utilisateur
+                    s.gps ILIKE '%' || $3 || '%'  -- GPS du service (gps_fixe/gps_courant)
+                    OR EXISTS (
+                        SELECT 1 FROM autocomplete_characteristics ac
+                        WHERE ac.service_id = s.id
+                        AND ac.is_real_product = TRUE
+                        AND EXISTS (
+                            SELECT 1 FROM unnest(ac.location_vector) AS loc_val
+                            WHERE 
+                                -- Input contient le lieu : "Nike Air Douala" contient "Douala"
+                                LOWER($3) LIKE '%' || LOWER(loc_val) || '%'
+                                -- ✅ OU fuzzy match (gestion fautes) : "Duala" ≈ "Douala"
+                                OR similarity(LOWER($3), LOWER(loc_val)) > 0.6
+                        )
+                    )
+                )
+            )
             ORDER BY fulltext_score DESC
         "#, partial_conditions, partial_conditions);
 
@@ -598,7 +753,23 @@ SELECT DISTINCT
                 OR similarity(COALESCE(s.data->'category'->>'valeur', ''), $1) > 0.1
             )
             AND ($2::text IS NULL OR s.category = $2 OR s.data->'category'->>'valeur' = $2)
-            AND ($3::text IS NULL OR s.gps ILIKE '%' || $3 || '%')
+            AND (
+                $3::text IS NULL
+                OR (
+                    s.gps ILIKE '%' || $3 || '%'
+                    OR EXISTS (
+                        SELECT 1 FROM autocomplete_characteristics ac
+                        WHERE ac.service_id = s.id
+                        AND ac.is_real_product = TRUE
+                        AND EXISTS (
+                            SELECT 1 FROM unnest(ac.location_vector) AS loc_val
+                            WHERE 
+                                LOWER($3) LIKE '%' || LOWER(loc_val) || '%'
+                                OR similarity(LOWER($3), LOWER(loc_val)) > 0.6
+                        )
+                    )
+                )
+            )
             ORDER BY trigram_score DESC
         "#;
 
@@ -788,7 +959,23 @@ SELECT DISTINCT
             WHERE s.is_active = true
             AND ({})
             AND ($2::text IS NULL OR s.category = $2 OR s.data->'category'->>'valeur' = $2)
-            AND ($3::text IS NULL OR s.gps ILIKE '%' || $3 || '%')
+            AND (
+                $3::text IS NULL
+                OR (
+                    s.gps ILIKE '%' || $3 || '%'
+                    OR EXISTS (
+                        SELECT 1 FROM autocomplete_characteristics ac
+                        WHERE ac.service_id = s.id
+                        AND ac.is_real_product = TRUE
+                        AND EXISTS (
+                            SELECT 1 FROM unnest(ac.location_vector) AS loc_val
+                            WHERE 
+                                LOWER($3) LIKE '%' || LOWER(loc_val) || '%'
+                                OR similarity(LOWER($3), LOWER(loc_val)) > 0.6
+                        )
+                    )
+                )
+            )
             ORDER BY keyword_score DESC
         "#, conditions.join(" OR "));
 

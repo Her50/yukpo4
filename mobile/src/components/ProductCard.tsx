@@ -86,6 +86,11 @@ const ProductCard: React.FC<ProductCardProps> = ({
     user_id: service?.user_id,
   };
 
+  // ✅ NOUVEAU : Popularité (usage_count de autocomplete_characteristics)
+  const usageCount = product.usage_count || 0;
+  const isPopular = usageCount >= 5;  // Populaire si recherché 5+ fois
+  const isTrending = usageCount >= 10; // Tendance si recherché 10+ fois
+
   // Images et vidéos
   const images = product.images || service?.images || [];
   const videos = product.videos || service?.videos || [];
@@ -152,6 +157,22 @@ const ProductCard: React.FC<ProductCardProps> = ({
                     ? `${Math.round(distanceKm * 1000)}m`
                     : `${distanceKm.toFixed(1)}km`}
                 </Text>
+              </View>
+            )}
+
+            {/* ✅ NOUVEAU : Badge popularité (coin inférieur gauche) */}
+            {isTrending && (
+              <View style={styles.trendingBadge}>
+                <Text style={styles.trendingEmoji}>🔥🔥</Text>
+                <Text style={styles.trendingText}>Tendance</Text>
+                <Text style={styles.trendingCount}>{usageCount}×</Text>
+              </View>
+            )}
+            {!isTrending && isPopular && (
+              <View style={styles.popularBadge}>
+                <Text style={styles.popularEmoji}>🔥</Text>
+                <Text style={styles.popularText}>Populaire</Text>
+                <Text style={styles.popularCount}>{usageCount}×</Text>
               </View>
             )}
           </View>
@@ -427,6 +448,68 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     color: '#FFF',
+  },
+  trendingBadge: {
+    position: 'absolute',
+    bottom: 12,
+    left: 12,
+    backgroundColor: 'rgba(239, 68, 68, 0.95)',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  trendingEmoji: {
+    fontSize: 14,
+  },
+  trendingText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#FFF',
+  },
+  trendingCount: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#FFF',
+    opacity: 0.9,
+  },
+  popularBadge: {
+    position: 'absolute',
+    bottom: 12,
+    left: 12,
+    backgroundColor: 'rgba(251, 146, 60, 0.95)',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  popularEmoji: {
+    fontSize: 13,
+  },
+  popularText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#FFF',
+  },
+  popularCount: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#FFF',
+    opacity: 0.9,
   },
   imageCountBadge: {
     position: 'absolute',

@@ -1,11 +1,10 @@
 use crate::core::types::AppResult;
-use sqlx::Row;
+use sqlx::{Row, PgPool};
 
 // use crate::utils::embedding_client::SearchEmbeddingPineconeRequest; // SUSPENDU - Recherche native PostgreSQL uniquement
 use crate::utils::log::{log_info, log_warn};
 use serde_json::{Value, json};
 use crate::services::native_search_service::NativeSearchService;
-
 
 /// Recherche de fallback SQL quand Pinecone n'est pas disponible
 async fn search_services_fallback(
@@ -292,14 +291,19 @@ pub async fn rechercher_besoin_direct(
     let config = crate::config::search_config::SearchConfig::default();
     let native_search = NativeSearchService::with_config(pool.clone(), config);
     
-    // Recherche native intelligente avec le mot-clé principal ET filtrage GPS
-    let native_results = match native_search.intelligent_search(
+    // ✅ NOUVEAU 2025-11-04 : PRÉ-FILTRE INTELLIGENT PAR LIEU BIDIRECTIONNEL
+    // Passer l'INPUT COMPLET (pas un lieu détecté) pour matching flexible
+    // Le SQL vérifiera si UN ÉLÉMENT du location_vector de chaque produit est dans l'input
+    log_info(&format!("[RECHERCHE_DIRECTE] 🗺️ PRÉ-FILTRE lieu bidirectionnel avec input complet: '{}'", user_text));
+    
+    // Recherche native intelligente avec le mot-clé principal ET filtrage GPS + LIEU
+    let native_results = match native_search.intelligent_search_with_location_prefilter(
         primary_keyword,
-        None, // Pas de filtre de catégorie
-        None, // Pas de filtre de localisation
+        user_text,          // ✅ INPUT COMPLET pour pré-filtre lieu
+        None,               // Pas de filtre de catégorie
         user_id,
-        gps_zone,  // Passer la zone GPS
-        search_radius_km  // Passer le rayon de recherche
+        gps_zone,           // Passer la zone GPS (gps_fixe/gps_courant)
+        search_radius_km    // Passer le rayon de recherche
     ).await {
         Ok(results) => {
             log_info(&format!("[RECHERCHE_DIRECTE] Recherche native réussie avec {} résultats (GPS filtré: {})", 

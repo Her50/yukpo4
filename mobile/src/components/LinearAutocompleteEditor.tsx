@@ -1,11 +1,12 @@
 /**
- * LinearAutocompleteEditor - Version 2.0 (2025-11-02)
+ * LinearAutocompleteEditor - Version 3.0 (2025-11-04)
  * Affiche et édite le vecteur autocomplete généré par l'IA
- * Plus de recherche BDD - Juste affichage et modification du vecteur
+ * ✅ NOUVEAU : Suggestions populaires depuis autocomplete_combinations
  */
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
+    ActivityIndicator,
     Alert,
     Modal,
     ScrollView,
@@ -15,6 +16,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { apiGet } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
 
@@ -24,7 +26,7 @@ interface LinearAutocompleteEditorProps {
     sousCaracteristiques: Record<string, string[]>; // { marque: ["Nike"], pointure: ["38", "39", "40"] }
     separateur: string;
     value: string[]; // ["Nike,Air Max,Noir,40"] - Position 0 affichée
-    onChange: (values: string[]) => void;
+    onChange: (values: string[], updatedSousCaracs?: Record<string, string[]>) => void; // ✅ NOUVEAU: passer aussi sous-caracs
     required?: boolean;
     readonly?: boolean;
 }
@@ -33,6 +35,16 @@ interface ChipData {
     key: string;      // "marque"
     value: string;    // "Nike"
     index: number;    // Position dans vecteur
+}
+
+interface PopularProduct {
+    product_vector: string[];
+    product_labels: string[];
+    usage_count: number;
+    prix_moyen?: number;
+    has_variant: boolean;
+    variant_dimension?: string;
+    is_trending: boolean;  // ✅ Tendance (actif dans les 7 derniers jours)
 }
 
 export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> = ({
@@ -47,12 +59,17 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
 }) => {
     // État : Affiche la première valeur (combinaison de référence)
     const displayValue = value && value.length > 0 ? value[0] : '';
-    
+
     const [showEditModal, setShowEditModal] = useState(false);
     const [editingChipIndex, setEditingChipIndex] = useState<number | null>(null);
     const [showAddModal, setShowAddModal] = useState(false);
     const [newCharKey, setNewCharKey] = useState('');
     const [newCharValue, setNewCharValue] = useState('');
+
+    // ✅ NOUVEAU : Suggestions populaires
+    const [popularProducts, setPopularProducts] = useState<PopularProduct[]>([]);
+    const [loadingPopular, setLoadingPopular] = useState(false);
+    const [showPopular, setShowPopular] = useState(false);
 
     // Décomposer le vecteur en chips
     const parseVectorToChips = (vectorStr: string): ChipData[] => {
@@ -68,6 +85,44 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
 
     const chips = displayValue ? parseVectorToChips(displayValue) : [];
 
+    // ✅ Charger produits populaires au montage
+    useEffect(() => {
+        loadPopularProducts();
+    }, [identifiantBase]);
+
+    const loadPopularProducts = async () => {
+        setLoadingPopular(true);
+        try {
+            // Extraire une recherche partielle depuis le vecteur existant
+            const searchQuery = displayValue ? displayValue.split(separateur)[0] : '';
+
+            const response = await apiGet(
+                `/api/products/popular?search=${encodeURIComponent(searchQuery)}&limit=10`
+            );
+
+            if (response.success && response.data) {
+                setPopularProducts(response.data as PopularProduct[]);
+            }
+        } catch (error) {
+            console.error('[LinearAutocompleteEditor] Erreur chargement produits populaires:', error);
+        } finally {
+            setLoadingPopular(false);
+        }
+    };
+
+    // Sélectionner un produit populaire
+    const selectPopularProduct = (product: PopularProduct) => {
+        const newVector = product.product_vector.join(separateur);
+        onChange([newVector]);
+        setShowPopular(false);
+
+        Alert.alert(
+            'Produit populaire sélectionné',
+            `${product.usage_count} prestataires vendent ce produit`,
+            [{ text: 'OK' }]
+        );
+    };
+
     // Modifier une caractéristique
     const handleModifyChip = (chipIndex: number) => {
         setEditingChipIndex(chipIndex);
@@ -80,10 +135,10 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
 
         const parts = displayValue.split(separateur).map(p => p.trim());
         parts[editingChipIndex] = newValue.trim();
-        
+
         const newVector = parts.join(separateur);
         onChange([newVector]);
-        
+
         setShowEditModal(false);
         setEditingChipIndex(null);
     };
@@ -101,7 +156,7 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                     onPress: () => {
                         const parts = displayValue.split(separateur).map(p => p.trim());
                         parts.splice(chipIndex, 1);
-                        
+
                         const newVector = parts.join(separateur);
                         onChange([newVector]);
                     }
@@ -119,9 +174,23 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
 
         const parts = displayValue ? displayValue.split(separateur).map(p => p.trim()) : [];
         parts.push(newCharValue.trim());
-        
+
         const newVector = parts.join(separateur);
-        onChange([newVector]);
+
+        // ✅ CORRECTION 2025-11-04: Mettre à jour sousCaracteristiques avec le nouveau label
+        const updatedSousCaracs = { ...sousCaracteristiques };
+        if (newCharKey.trim()) {
+            // Ajouter le label avec la valeur
+            if (!updatedSousCaracs[newCharKey.trim()]) {
+                updatedSousCaracs[newCharKey.trim()] = [];
+            }
+            if (!updatedSousCaracs[newCharKey.trim()].includes(newCharValue.trim())) {
+                updatedSousCaracs[newCharKey.trim()].push(newCharValue.trim());
+            }
+        }
+
+        // Passer le vecteur ET les sous-caractéristiques mises à jour
+        onChange([newVector], updatedSousCaracs);
 
         setShowAddModal(false);
         setNewCharKey('');
@@ -160,8 +229,8 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
             {/* Vecteur affiché en chips */}
             {chips.length > 0 ? (
                 <View style={styles.vectorContainer}>
-                    <ScrollView 
-                        horizontal 
+                    <ScrollView
+                        horizontal
                         showsHorizontalScrollIndicator={false}
                         contentContainerStyle={styles.chipsScroll}
                     >
@@ -212,6 +281,92 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                 </View>
             )}
 
+            {/* ✅ NOUVEAU : Bouton pour afficher produits populaires */}
+            <TouchableOpacity
+                style={styles.popularButton}
+                onPress={() => setShowPopular(!showPopular)}
+            >
+                <Text style={styles.popularButtonEmoji}>🔥</Text>
+                <Text style={styles.popularButtonText}>
+                    {showPopular ? 'Masquer' : 'Voir'} produits populaires
+                </Text>
+                {popularProducts.length > 0 && (
+                    <View style={styles.popularCountBadge}>
+                        <Text style={styles.popularCountText}>{popularProducts.length}</Text>
+                    </View>
+                )}
+            </TouchableOpacity>
+
+            {/* ✅ NOUVEAU : Liste des produits populaires */}
+            {showPopular && (
+                <View style={styles.popularSection}>
+                    {loadingPopular ? (
+                        <View style={styles.loadingPopularContainer}>
+                            <ActivityIndicator size="small" color={modernColors.primary} />
+                            <Text style={styles.loadingPopularText}>Chargement...</Text>
+                        </View>
+                    ) : popularProducts.length > 0 ? (
+                        <>
+                            <Text style={styles.popularSectionTitle}>
+                                💡 Produits les plus vendus par vos concurrents
+                            </Text>
+                            <ScrollView style={styles.popularList} nestedScrollEnabled>
+                                {popularProducts.map((product, index) => (
+                                    <TouchableOpacity
+                                        key={index}
+                                        style={[
+                                            styles.popularCard,
+                                            product.is_trending && styles.popularCardTrending
+                                        ]}
+                                        onPress={() => selectPopularProduct(product)}
+                                    >
+                                        {/* ✅ Badge tendance */}
+                                        {product.is_trending && (
+                                            <View style={styles.trendingBadgeSmall}>
+                                                <Text style={styles.trendingBadgeText}>📈 TENDANCE</Text>
+                                            </View>
+                                        )}
+
+                                        <View style={styles.popularCardContent}>
+                                            <View style={styles.popularChips}>
+                                                {product.product_vector.map((val, idx) => (
+                                                    <View key={idx} style={styles.popularChip}>
+                                                        <Text style={styles.popularChipText}>{val}</Text>
+                                                    </View>
+                                                ))}
+                                            </View>
+                                            <View style={styles.popularStats}>
+                                                <Text style={styles.popularUsage}>
+                                                    🔥 {product.usage_count} {product.usage_count > 1 ? 'prestataires' : 'prestataire'}
+                                                </Text>
+                                                {product.prix_moyen && (
+                                                    <Text style={styles.popularPriceText}>
+                                                        💰 {product.prix_moyen.toLocaleString()} XAF
+                                                    </Text>
+                                                )}
+                                                {product.has_variant && (
+                                                    <Text style={styles.popularVariantText}>
+                                                        📦 Variantes: {product.variant_dimension}
+                                                    </Text>
+                                                )}
+                                            </View>
+                                        </View>
+                                        <View style={styles.popularSelectButton}>
+                                            <SafeIcon name="check-circle" size={14} color="#FFF" />
+                                            <Text style={styles.popularSelectText}>Utiliser ce produit</Text>
+                                        </View>
+                                    </TouchableOpacity>
+                                ))}
+                            </ScrollView>
+                        </>
+                    ) : (
+                        <View style={styles.noPopularContainer}>
+                            <Text style={styles.noPopularText}>Aucun produit populaire trouvé</Text>
+                        </View>
+                    )}
+                </View>
+            )}
+
             {/* Modal Édition */}
             <Modal
                 visible={showEditModal && editingChipIndex !== null}
@@ -228,7 +383,7 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                             <TouchableOpacity onPress={() => setShowEditModal(false)}>
                                 <SafeIcon name="x" size={24} color="#6B7280" />
                             </TouchableOpacity>
-            </View>
+                        </View>
 
                         {editingChipIndex !== null && (
                             <View style={styles.modalBody}>
@@ -241,8 +396,8 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                                         <Text style={styles.optionsTitle}>Options suggérées :</Text>
                                         <ScrollView style={styles.optionsList}>
                                             {sousCaracteristiques[chips[editingChipIndex]?.key].map((option, idx) => (
-                            <TouchableOpacity
-                                key={idx}
+                                                <TouchableOpacity
+                                                    key={idx}
                                                     style={[
                                                         styles.optionItem,
                                                         option === chips[editingChipIndex]?.value && styles.optionItemSelected
@@ -254,23 +409,23 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                                                         option === chips[editingChipIndex]?.value && styles.optionTextSelected
                                                     ]}>
                                                         {option}
-                                </Text>
+                                                    </Text>
                                                     {option === chips[editingChipIndex]?.value && (
                                                         <SafeIcon name="check" size={16} color={modernColors.primary} />
                                                     )}
-                            </TouchableOpacity>
-                        ))}
-                    </ScrollView>
-                </View>
-            )}
+                                                </TouchableOpacity>
+                                            ))}
+                                        </ScrollView>
+                                    </View>
+                                )}
 
-                                        <TouchableOpacity
+                                <TouchableOpacity
                                     style={styles.cancelButton}
                                     onPress={() => setShowEditModal(false)}
                                 >
                                     <Text style={styles.cancelButtonText}>Annuler</Text>
-                                        </TouchableOpacity>
-                                    </View>
+                                </TouchableOpacity>
+                            </View>
                         )}
                     </View>
                 </View>
@@ -294,7 +449,7 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
 
                         <View style={styles.modalBody}>
                             <Text style={styles.modalLabel}>Type de caractéristique</Text>
-                                <TextInput
+                            <TextInput
                                 style={styles.modalInput}
                                 placeholder="Ex: matière, couleur, taille..."
                                 value={newCharKey}
@@ -302,7 +457,7 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                             />
 
                             <Text style={styles.modalLabel}>Valeur</Text>
-                                <TextInput
+                            <TextInput
                                 style={styles.modalInput}
                                 placeholder="Ex: Cuir, Rouge, XL..."
                                 value={newCharValue}
@@ -310,19 +465,19 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                             />
 
                             <View style={styles.modalActions}>
-                            <TouchableOpacity
-                                style={styles.cancelButton}
+                                <TouchableOpacity
+                                    style={styles.cancelButton}
                                     onPress={() => setShowAddModal(false)}
-                            >
-                                <Text style={styles.cancelButtonText}>Annuler</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
+                                >
+                                    <Text style={styles.cancelButtonText}>Annuler</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
                                     style={styles.saveButton}
                                     onPress={handleAddCharacteristic}
                                 >
                                     <SafeIcon name="plus" size={16} color="#FFF" />
-                                <Text style={styles.saveButtonText}>Ajouter</Text>
-                            </TouchableOpacity>
+                                    <Text style={styles.saveButtonText}>Ajouter</Text>
+                                </TouchableOpacity>
                             </View>
                         </View>
                     </View>
@@ -560,6 +715,163 @@ const styles = StyleSheet.create({
         fontSize: 15,
         fontWeight: '600',
         color: '#FFF',
+    },
+    // ✅ NOUVEAU : Styles produits populaires
+    popularButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        backgroundColor: '#FFF',
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        borderRadius: 12,
+        borderWidth: 2,
+        borderColor: modernColors.primary,
+        marginTop: 12,
+    },
+    popularButtonEmoji: {
+        fontSize: 18,
+    },
+    popularButtonText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: modernColors.primary,
+        flex: 1,
+    },
+    popularCountBadge: {
+        backgroundColor: modernColors.primary,
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 12,
+        minWidth: 24,
+        alignItems: 'center',
+    },
+    popularCountText: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: '#FFF',
+    },
+    popularSection: {
+        backgroundColor: '#F9FAFB',
+        borderRadius: 12,
+        padding: 12,
+        marginTop: 8,
+        maxHeight: 400,
+    },
+    loadingPopularContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        paddingVertical: 20,
+    },
+    loadingPopularText: {
+        fontSize: 14,
+        color: '#6B7280',
+    },
+    popularSectionTitle: {
+        fontSize: 14,
+        fontWeight: '700',
+        color: '#1F2937',
+        marginBottom: 12,
+    },
+    popularList: {
+        maxHeight: 350,
+    },
+    popularCard: {
+        backgroundColor: '#FFF',
+        borderRadius: 10,
+        padding: 12,
+        marginBottom: 10,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 2,
+        elevation: 1,
+        position: 'relative',
+    },
+    popularCardTrending: {
+        borderColor: '#EF4444',
+        borderWidth: 2,
+        backgroundColor: '#FEF2F2',
+    },
+    trendingBadgeSmall: {
+        position: 'absolute',
+        top: 8,
+        right: 8,
+        backgroundColor: '#EF4444',
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 8,
+        zIndex: 10,
+    },
+    trendingBadgeText: {
+        fontSize: 10,
+        fontWeight: '700',
+        color: '#FFF',
+    },
+    popularCardContent: {
+        gap: 10,
+        marginBottom: 10,
+    },
+    popularChips: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 6,
+    },
+    popularChip: {
+        backgroundColor: '#EEF2FF',
+        paddingHorizontal: 10,
+        paddingVertical: 5,
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: modernColors.primary,
+    },
+    popularChipText: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: modernColors.primary,
+    },
+    popularStats: {
+        gap: 4,
+    },
+    popularUsage: {
+        fontSize: 13,
+        fontWeight: '700',
+        color: '#EF4444',
+    },
+    popularPriceText: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: '#059669',
+    },
+    popularVariantText: {
+        fontSize: 12,
+        color: '#6B7280',
+    },
+    popularSelectButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 6,
+        backgroundColor: modernColors.primary,
+        paddingVertical: 8,
+        borderRadius: 8,
+    },
+    popularSelectText: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: '#FFF',
+    },
+    noPopularContainer: {
+        alignItems: 'center',
+        paddingVertical: 20,
+    },
+    noPopularText: {
+        fontSize: 14,
+        color: '#9CA3AF',
     },
 });
 

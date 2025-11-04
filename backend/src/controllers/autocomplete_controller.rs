@@ -13,6 +13,8 @@ use log::info;
 use crate::state::AppState;
 use crate::services::autocomplete_history_service;
 use crate::services::autocomplete_combinations_service;
+use crate::services::autocomplete_search_service;  // ✅ NOUVEAU 2025-11-04
+use crate::services::autocomplete_client_service;  // ✅ NOUVEAU 2025-11-04: Suggestions CLIENT
 
 #[derive(Debug, Deserialize)]
 pub struct AutocompleteSuggestionsQuery {
@@ -220,6 +222,19 @@ pub struct LinkCombinationsRequest {
     pub service_id: i32,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct SearchByAutocompleteRequest {
+    pub combination_vector: Vec<String>,  // ["Nike", "Air Max", "42", "Douala"]
+    pub user_location: Option<UserLocation>,
+    pub limit: Option<i64>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct UserLocation {
+    pub lat: f64,
+    pub lng: f64,
+}
+
 /// POST /api/combinations/search
 /// Recherche intelligente dans autocomplete_combinations (vecteurs IA)
 pub async fn search_combinations(
@@ -367,6 +382,50 @@ pub async fn link_combinations_to_service(
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
                 format!("Erreur liaison: {}", e)
+            ))
+        }
+    }
+}
+
+/// POST /api/autocomplete/search-products
+/// Suggestions produits pour CLIENT (pendant la frappe)
+/// Utilise autocomplete_characteristics (VRAIS produits clients)
+pub async fn search_product_suggestions(
+    State(state): State<Arc<AppState>>,
+    Json(request): Json<SearchCombinationsRequest>,  // Réutilise même struct
+) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
+    let pool = &state.pg;
+    let query = request.query.trim();
+    let limit = request.limit.unwrap_or(10);
+    
+    info!(
+        "💡 Suggestions produits CLIENT: '{}' (limit: {})",
+        query,
+        limit
+    );
+    
+    if query.is_empty() {
+        return Ok(Json(serde_json::json!({
+            "success": true,
+            "data": [],
+            "count": 0
+        })));
+    }
+    
+    match autocomplete_client_service::search_product_suggestions(pool, query, limit).await {
+        Ok(suggestions) => {
+            info!("✅ {} suggestions CLIENT trouvées", suggestions.len());
+            Ok(Json(serde_json::json!({
+                "success": true,
+                "data": suggestions,
+                "count": suggestions.len()
+            })))
+        }
+        Err(e) => {
+            eprintln!("❌ Erreur suggestions CLIENT: {:?}", e);
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Erreur suggestions: {}", e)
             ))
         }
     }

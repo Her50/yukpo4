@@ -1,0 +1,64 @@
+// Contrôleur pour les produits populaires
+// Permet au prestataire de voir les produits les plus commercialisés par ses concurrents
+use axum::{
+    extract::{Query, State},
+    http::StatusCode,
+    Json,
+};
+use serde::Deserialize;
+use std::sync::Arc;
+use crate::state::AppState;
+use crate::services::popular_products_service;
+
+#[derive(Debug, Deserialize)]
+pub struct PopularProductsQuery {
+    pub search: Option<String>,
+    pub category: Option<String>,
+    pub limit: Option<i64>,
+}
+
+/// GET /api/products/popular
+/// Récupère les produits les plus populaires (usage_count élevé)
+pub async fn get_popular_products(
+    Query(query): Query<PopularProductsQuery>,
+    State(state): State<Arc<AppState>>,
+) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
+    let pool = &state.pg;
+    let limit = query.limit.unwrap_or(20);
+    
+    let products = if let Some(search) = query.search {
+        // Recherche avec filtre
+        popular_products_service::get_popular_products_similar_to(
+            pool,
+            &search,
+            limit,
+        ).await
+    } else {
+        // TOP produits globaux
+        popular_products_service::get_top_popular_products(
+            pool,
+            query.category.as_deref(),
+            limit,
+        ).await
+    };
+    
+    match products {
+        Ok(products) => {
+            Ok(Json(serde_json::json!({
+                "success": true,
+                "data": products,
+                "count": products.len(),
+                "message": "Produits populaires récupérés"
+            })))
+        }
+        Err(e) => {
+            eprintln!("❌ Erreur récupération produits populaires: {:?}", e);
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Erreur: {}", e),
+            ))
+        }
+    }
+}
+
+

@@ -1410,11 +1410,23 @@ pub async fn creer_service(
     log::info!("[CREER_SERVICE] Tokens consommés pour utilisateur {}: {:?}", user_id, token_tracker);
     log::info!("[CREER_SERVICE] Total tokens retournés: {} (type: u32)", token_tracker.total_tokens);
     
-    // ✅ NOUVEAU 2025-11-02: Sauvegarder autocomplete combinations (non bloquant)
+    // ✅ NOUVEAU 2025-11-04: Sauvegarder d'abord les combinaisons IA (avec vérification doublon)
+    if let Some(produits_field) = data_obj.get("produits") {
+        let session_id = data_obj.get("session_id")
+            .and_then(|v| v.as_str());
+        
+        if let Err(e) = save_ia_combinations_to_db(pool, produits_field, session_id).await {
+            log::warn!("[CREER_SERVICE] Erreur sauvegarde combinaisons IA: {} (non bloquant)", e);
+        } else {
+            log::info!("[CREER_SERVICE] ✅ Combinaisons IA sauvegardées (doublons évités)");
+        }
+    }
+    
+    // ✅ NOUVEAU 2025-11-04: Sauvegarder le VRAI produit choisi par le prestataire
     if let Err(e) = save_autocomplete_combination(pool, service_id, &data_obj).await {
-        log::warn!("[CREER_SERVICE] Erreur sauvegarde autocomplete: {} (non bloquant)", e);
+        log::warn!("[CREER_SERVICE] Erreur sauvegarde produit réel: {} (non bloquant)", e);
     } else {
-        log::info!("[CREER_SERVICE] ✅ Autocomplete combinations sauvegardées");
+        log::info!("[CREER_SERVICE] ✅ Produit réel sauvegardé (autocomplete_characteristics + autocomplete_combinations)");
     }
     
     // ✅ NOUVEAU: Créer une notification de création de service
@@ -1462,7 +1474,96 @@ pub async fn brouillon_service(
     Ok(data_obj)
 }
 
+/// Sauvegarde les combinaisons IA dans autocomplete_combinations (avec vérification doublon)
+/// Utilisé lors de la réception du JSON IA pour construire la liste de suggestions
+async fn save_ia_combinations_to_db(
+    pool: &PgPool,
+    produits_field: &serde_json::Value,
+    session_id: Option<&str>,
+) -> Result<(), AppError> {
+    log::info!("[save_ia_combinations_to_db] Début sauvegarde combinaisons IA");
+    
+    // Extraire les combinaisons depuis produits.valeur
+    let valeurs = if let Some(valeur_array) = produits_field.get("valeur").and_then(|v| v.as_array()) {
+        valeur_array.iter()
+            .filter_map(|v| v.as_str())
+            .collect::<Vec<_>>()
+    } else {
+        log::warn!("[save_ia_combinations_to_db] Pas de valeur array");
+        return Ok(());
+    };
+    
+    let separateur = produits_field.get("separateur")
+        .and_then(|v| v.as_str())
+        .unwrap_or(",");
+    
+    let ai_preferred_index = produits_field.get("ai_preferred_index")
+        .and_then(|v| v.as_i64())
+        .unwrap_or(0) as usize;
+    
+    // Traiter chaque combinaison
+    for (index, valeur_str) in valeurs.iter().enumerate() {
+        let product_vector: Vec<String> = valeur_str
+            .split(separateur)
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+            .collect();
+        
+        if product_vector.is_empty() {
+            continue;
+        }
+        
+        // ✅ VÉRIFICATION DOUBLON : Ne PAS insérer si existe déjà (éviter bruit)
+        let exists = sqlx::query_scalar::<_, bool>(
+            "SELECT product_combination_exists($1)"
+        )
+        .bind(&product_vector)
+        .fetch_one(pool)
+        .await
+        .unwrap_or(false);
+        
+        if exists {
+            log::info!("[save_ia_combinations_to_db] ⚠️ Combinaison {} existe déjà, ignorée (éviter bruit)", index);
+            continue;
+        }
+        
+        // Extraire les labels des sous-caractéristiques (dimensions)
+        let product_labels: Vec<String> = if let Some(sous_caracs) = produits_field.get("sous_caracteristiques").and_then(|v| v.as_object()) {
+            sous_caracs.keys().map(|k| k.to_string()).collect()
+        } else {
+            vec![]
+        };
+        
+        // Insérer dans autocomplete_combinations (SANS lieu)
+        let is_ai_preferred = index == ai_preferred_index;
+        
+        let result = sqlx::query(
+            r#"INSERT INTO autocomplete_combinations 
+               (service_id, product_vector, product_labels, location_vector, location_labels, full_vector,
+                session_id, is_ai_preferred, ai_confidence, usage_count)
+               VALUES (NULL, $1, $2, '{}', '{}', $1, $3, $4, 0.7, 1)"#
+        )
+        .bind(&product_vector)
+        .bind(&product_labels)
+        .bind(session_id)
+        .bind(is_ai_preferred)
+        .execute(pool).await;
+        
+        if let Err(e) = result {
+            log::error!("[save_ia_combinations_to_db] Erreur sauvegarde combinaison {}: {}", index, e);
+        } else {
+            log::info!("[save_ia_combinations_to_db] ✅ Combinaison {} sauvegardée (IA)", index);
+        }
+    }
+    
+    log::info!("[save_ia_combinations_to_db] Fin sauvegarde combinaisons IA");
+    Ok(())
+}
+
 /// Sauvegarde les combinaisons autocomplete avec vecteurs produit et localisation
+/// LOGIQUE:
+/// - autocomplete_combinations : Toutes les combinaisons possibles (IA) pour aider prestataire
+/// - autocomplete_characteristics : VRAIS produits validés par prestataires (avec lieu bidirectionnel)
 async fn save_autocomplete_combination(
     pool: &PgPool,
     service_id: i32,
@@ -1470,7 +1571,7 @@ async fn save_autocomplete_combination(
 ) -> Result<(), AppError> {
     use crate::services::geonames_service::{build_location_vector, extract_country_from_lieu, get_geoname_id};
     
-    log::info!("[save_autocomplete_combination] Début sauvegarde pour service {}", service_id);
+    log::info!("[save_autocomplete_combination] Début sauvegarde pour service {} (VRAIS produits)", service_id);
     
     // 1. Extraire vecteur produit depuis champ produits
     let produits_field = match data_obj.get("produits") {
@@ -1539,13 +1640,25 @@ async fn save_autocomplete_combination(
         (vec![], None, None)
     };
     
-    // 3. Vecteur complet = produit + location
+    // 3. Vecteur complet = produit + location (UNIQUEMENT pour autocomplete_characteristics)
     let mut full_vector = product_vector.clone();
     full_vector.extend(location_vector.clone());
     
+    log::info!("[save_autocomplete_combination] Vecteur produit ({}): {:?}", product_vector.len(), product_vector);
+    log::info!("[save_autocomplete_combination] Vecteur lieu ({}): {:?}", location_vector.len(), location_vector);
     log::info!("[save_autocomplete_combination] Vecteur complet ({}): {:?}", full_vector.len(), full_vector);
     
-    // 4. Gérer variations prix si existe
+    // 4. Extraire les labels des sous-caractéristiques (dimensions)
+    let product_labels: Vec<String> = if let Some(sous_caracs) = produits_field.get("sous_caracteristiques").and_then(|v| v.as_object()) {
+        sous_caracs.keys().map(|k| k.to_string()).collect()
+    } else {
+        vec![]
+    };
+    
+    // 5. Générer product_id (format: "serviceId_productIndex")
+    let product_id = format!("{}_0", service_id);  // Index 0 pour produit principal
+    
+    // 5. Gérer variations prix si existe
     let variation_prix = produits_field.get("variation_prix");
     
     if let Some(variation) = variation_prix {
@@ -1559,33 +1672,61 @@ async fn save_autocomplete_combination(
         if let Some(modalites_array) = modalites {
             log::info!("[save_autocomplete_combination] {} variations prix trouvées (dimension: {})", modalites_array.len(), variant_dimension);
             
-            for modalite in modalites_array {
+            for (variant_index, modalite) in modalites_array.iter().enumerate() {
                 let variant_value = modalite.get("valeur").and_then(|v| v.as_str()).unwrap_or("");
                 let prix = modalite.get("prix").and_then(|v| v.as_f64()).unwrap_or(0.0);
                 let stock = modalite.get("stock").and_then(|v| v.as_i64()).unwrap_or(0) as i32;
                 let devise = modalite.get("devise").and_then(|v| v.as_str()).unwrap_or("XAF");
                 
-                // Vecteur avec variation : insérer AVANT le lieu
-                let mut variant_vector = product_vector.clone();
-                variant_vector.push(variant_value.to_string());
-                variant_vector.extend(location_vector.clone());
+                // Vecteur produit avec variation (sans lieu)
+                let mut variant_product_vector = product_vector.clone();
+                variant_product_vector.push(variant_value.to_string());
                 
-                // Sauvegarder
-                let result = sqlx::query(
-                    r#"INSERT INTO autocomplete_combinations 
-                       (service_id, product_vector, location_vector, full_vector,
+                // Vecteur complet (produit + variation + lieu)
+                let mut variant_full_vector = variant_product_vector.clone();
+                variant_full_vector.extend(location_vector.clone());
+                
+                let variant_product_id = format!("{}_{}", service_id, variant_index);
+                
+                // ✅ NOUVEAU: Sauvegarder dans autocomplete_characteristics (VRAI produit prestataire)
+                let result_char = sqlx::query(
+                    r#"INSERT INTO autocomplete_characteristics 
+                       (identifiant_base, service_id, product_id, 
+                        characteristic_vector, product_labels, location_vector, full_vector,
                         chosen_location, chosen_location_geoname_id,
+                        is_real_product, origine_champs, usage_count,
+                        sous_caracteristique, valeur)
+                       VALUES ('produits', $1, $2, $3, $4, $5, $6, $7, $8, TRUE, 'formulaire', 1, 'vector', $9)"#
+                )
+                .bind(service_id)
+                .bind(&variant_product_id)
+                .bind(&variant_product_vector)
+                .bind(&product_labels)  // ✅ AJOUT product_labels
+                .bind(&location_vector)
+                .bind(&variant_full_vector)
+                .bind(chosen_location.as_deref())
+                .bind(geoname_id)
+                .bind(variant_value)  // Premier élément comme valeur legacy
+                .execute(pool).await;
+                
+                if let Err(e) = result_char {
+                    log::error!("[save_autocomplete_combination] Erreur sauvegarde autocomplete_characteristics variation '{}': {}", variant_value, e);
+                } else {
+                    log::info!("[save_autocomplete_combination] ✅ Sauvegardé dans autocomplete_characteristics variation: {}", variant_value);
+                }
+                
+                // ✅ AUSSI sauvegarder dans autocomplete_combinations (POPULARITÉ - doublons OK)
+                let result_comb = sqlx::query(
+                    r#"INSERT INTO autocomplete_combinations 
+                       (service_id, product_vector, product_labels, location_vector, location_labels, full_vector,
                         has_variant, variant_dimension, variant_value, prix, devise, stock, usage_count)
-                       VALUES ($1, $2, $3, $4, $5, $6, true, $7, $8, $9, $10, $11, 1)
-                       ON CONFLICT (service_id, full_vector)
+                       VALUES ($1, $2, $3, '{}', '{}', $2, true, $4, $5, $6, $7, $8, 1)
+                       ON CONFLICT (product_vector)
                        DO UPDATE SET usage_count = autocomplete_combinations.usage_count + 1"#
                 )
                 .bind(service_id)
-                .bind(&product_vector)
-                .bind(&location_vector)
-                .bind(&variant_vector)
-                .bind(chosen_location.as_deref())
-                .bind(geoname_id)
+                .bind(&variant_product_vector)  // SANS lieu
+                .bind(&product_labels)
                 .bind(variant_dimension)
                 .bind(variant_value)
                 .bind(prix)
@@ -1593,10 +1734,10 @@ async fn save_autocomplete_combination(
                 .bind(stock)
                 .execute(pool).await;
                 
-                if let Err(e) = result {
-                    log::error!("[save_autocomplete_combination] Erreur sauvegarde variation '{}': {}", variant_value, e);
+                if let Err(e) = result_comb {
+                    log::error!("[save_autocomplete_combination] Erreur sauvegarde autocomplete_combinations variation '{}': {}", variant_value, e);
                 } else {
-                    log::info!("[save_autocomplete_combination] ✅ Sauvegardé variation: {}", variant_value);
+                    log::info!("[save_autocomplete_combination] ✅ Sauvegardé dans autocomplete_combinations variation: {}", variant_value);
                 }
             }
         }
@@ -1608,28 +1749,90 @@ async fn save_autocomplete_combination(
             .and_then(|v| v.as_f64())
             .unwrap_or(0.0);
         
-        let result = sqlx::query(
-            r#"INSERT INTO autocomplete_combinations 
-               (service_id, product_vector, location_vector, full_vector,
+        // ✅ NOUVEAU: Sauvegarder dans autocomplete_characteristics (VRAI produit prestataire)
+        let result_char = sqlx::query(
+            r#"INSERT INTO autocomplete_characteristics 
+               (identifiant_base, service_id, product_id,
+                characteristic_vector, product_labels, location_vector, full_vector,
                 chosen_location, chosen_location_geoname_id,
-                has_variant, prix, usage_count)
-               VALUES ($1, $2, $3, $4, $5, $6, false, $7, 1)
-               ON CONFLICT (service_id, full_vector)
-               DO UPDATE SET usage_count = autocomplete_combinations.usage_count + 1"#
+                is_real_product, origine_champs, usage_count,
+                sous_caracteristique, valeur)
+               VALUES ('produits', $1, $2, $3, $4, $5, $6, $7, $8, TRUE, 'formulaire', 1, 'vector', $9)"#
         )
         .bind(service_id)
+        .bind(&product_id)
         .bind(&product_vector)
+        .bind(&product_labels)  // ✅ AJOUT product_labels
         .bind(&location_vector)
         .bind(&full_vector)
         .bind(chosen_location.as_deref())
         .bind(geoname_id)
+        .bind(product_vector.get(0).unwrap_or(&String::new()))  // Premier élément comme valeur legacy
+        .execute(pool).await;
+        
+        if let Err(e) = result_char {
+            log::error!("[save_autocomplete_combination] Erreur sauvegarde autocomplete_characteristics: {}", e);
+        } else {
+            log::info!("[save_autocomplete_combination] ✅ Sauvegardé dans autocomplete_characteristics (VRAI produit)");
+        }
+        
+        // ✅ AUSSI sauvegarder dans autocomplete_combinations (POPULARITÉ - doublons OK)
+        let result_comb = sqlx::query(
+            r#"INSERT INTO autocomplete_combinations 
+               (service_id, product_vector, product_labels, location_vector, location_labels, full_vector,
+                has_variant, prix, usage_count)
+               VALUES ($1, $2, $3, '{}', '{}', $2, false, $4, 1)
+               ON CONFLICT (product_vector)
+               DO UPDATE SET usage_count = autocomplete_combinations.usage_count + 1"#
+        )
+        .bind(service_id)
+        .bind(&product_vector)  // SANS lieu
+        .bind(&product_labels)
         .bind(prix)
         .execute(pool).await;
         
-        if let Err(e) = result {
-            log::error!("[save_autocomplete_combination] Erreur sauvegarde: {}", e);
+        if let Err(e) = result_comb {
+            log::error!("[save_autocomplete_combination] Erreur sauvegarde autocomplete_combinations: {}", e);
         } else {
-            log::info!("[save_autocomplete_combination] ✅ Sauvegardé (sans variation)");
+            log::info!("[save_autocomplete_combination] ✅ Sauvegardé dans autocomplete_combinations (POPULARITÉ)");
+        }
+    }
+    
+    // ✅ NOUVEAU 2025-11-04: Sauvegarder le vecteur AUSSI dans service.data->produits pour compatibilité recherche
+    log::info!("[save_autocomplete_combination] Mise à jour vecteur dans service.data->produits...");
+    
+    // Récupérer le JSON actuel du service
+    let current_data_row = sqlx::query("SELECT data FROM services WHERE id = $1")
+        .bind(service_id)
+        .fetch_optional(pool)
+        .await
+        .map_err(|e| AppError::Internal(format!("Erreur récupération service data: {}", e)))?;
+    
+    if let Some(row) = current_data_row {
+        let mut service_data: serde_json::Value = row.try_get("data")
+            .map_err(|e| AppError::Internal(format!("Erreur parsing service data: {}", e)))?;
+        
+        // ✅ CORRECTION 2025-11-04: Ajouter le vecteur COMPLET (produit + lieu) au champ produits
+        if let Some(produits_obj) = service_data.get_mut("produits").and_then(|p| p.as_object_mut()) {
+            // Ajouter TOUS les vecteurs au champ produits
+            produits_obj.insert("characteristic_vector".to_string(), serde_json::json!(product_vector));
+            produits_obj.insert("product_labels".to_string(), serde_json::json!(product_labels));
+            produits_obj.insert("location_vector".to_string(), serde_json::json!(location_vector));
+            produits_obj.insert("full_vector".to_string(), serde_json::json!(full_vector));  // ✅ Vecteur COMPLET
+            produits_obj.insert("chosen_location".to_string(), serde_json::json!(chosen_location));
+            
+            // Mettre à jour dans la base
+            let _ = sqlx::query("UPDATE services SET data = $1 WHERE id = $2")
+                .bind(&service_data)
+                .bind(service_id)
+                .execute(pool)
+                .await
+                .map_err(|e| {
+                    log::error!("[save_autocomplete_combination] Erreur UPDATE service data: {}", e);
+                    e
+                });
+            
+            log::info!("[save_autocomplete_combination] ✅ Vecteur ajouté à service.data->produits");
         }
     }
     

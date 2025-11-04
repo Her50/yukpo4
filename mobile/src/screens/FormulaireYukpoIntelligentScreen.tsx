@@ -280,12 +280,6 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           placeholder: 'Tapez pour voir les suggestions...',
           identifiantBase: 'produits',
           sousCaracteristiques: formValues.produits?.sous_caracteristiques || {
-            // ✅ PHASE 2: Localisation produit (chargée dynamiquement via placesService)
-            // Note: Vide ici, sera rempli par LinearAutocompleteEditor avec autocomplete intelligent
-            localisation: [],
-            ville: [],
-            quartier: [],
-
             // Caractéristiques essentielles
             marque: [],
             modele: [],
@@ -305,6 +299,17 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           filtrable: true,
           allowCustomModality: true,
           value: formValues.produits?.valeur || []
+        },
+        {
+          name: 'lieu_produit',
+          type: 'location',
+          typeDonnee: 'location',
+          label: 'Lieu de commercialisation',
+          required: true,  // ✅ OBLIGATOIRE pour hiérarchie géographique bidirectionnelle
+          placeholder: 'Sélectionnez la ville ou le quartier...',
+          value: formValues.lieu_produit || '',
+          composants: formValues.lieu_produit?.composants || {},
+          filtrable: true
         },
         {
           name: '_product_media_manager',
@@ -365,12 +370,6 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           placeholder: 'Tapez pour voir les suggestions...',
           identifiantBase: 'produits',
           sousCaracteristiques: formValues.produits?.sous_caracteristiques || {
-            // ✅ PHASE 2: Localisation produit (chargée dynamiquement via placesService)
-            // Note: Vide ici, sera rempli par LinearAutocompleteEditor avec autocomplete intelligent
-            localisation: [],
-            ville: [],
-            quartier: [],
-
             // Caractéristiques essentielles
             marque: [],
             modele: [],
@@ -390,6 +389,17 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           filtrable: true,
           allowCustomModality: true,
           value: formValues.produits?.valeur || []
+        },
+        {
+          name: 'lieu_produit',
+          type: 'location',
+          typeDonnee: 'location',
+          label: 'Lieu de commercialisation',
+          required: true,  // ✅ OBLIGATOIRE pour hiérarchie géographique bidirectionnelle
+          placeholder: 'Sélectionnez la ville ou le quartier...',
+          value: formValues.lieu_produit || '',
+          composants: formValues.lieu_produit?.composants || {},
+          filtrable: true
         },
         {
           name: '_product_media_manager',
@@ -453,7 +463,12 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           value: formValues.description_produit || ''
         } as DynamicField);
       }
-      if (!hasPrixProduit) {
+      // ✅ NOUVEAU 2025-11-04: NE PAS ajouter prix_produit/devise_produit si variation_prix existe
+      const hasVariationPrix = productsBlock.fields.some(f =>
+        f.typeDonnee === 'price_variant' || f.name === 'variabilite_prix' || f.name === 'variation_prix'
+      );
+
+      if (!hasPrixProduit && !hasVariationPrix) {
         productsBlock.fields.splice((hasNomProduit ? 1 : 0) + (hasCategorieProduit ? 1 : 0) + (hasDescriptionProduit ? 1 : 0), 0, {
           name: 'prix_produit',
           type: 'number',
@@ -464,7 +479,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           value: formValues.prix_produit || ''
         } as DynamicField);
       }
-      if (!hasDeviseProduit) {
+      if (!hasDeviseProduit && !hasVariationPrix) {
         productsBlock.fields.splice((hasNomProduit ? 1 : 0) + (hasCategorieProduit ? 1 : 0) + (hasDescriptionProduit ? 1 : 0) + (hasPrixProduit ? 1 : 0), 0, {
           name: 'devise_produit',
           type: 'text',
@@ -473,6 +488,27 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           required: false,
           placeholder: 'XAF, EUR, USD...',
           value: formValues.devise_produit || 'XAF'
+        } as DynamicField);
+      }
+
+      // ✅ NOUVEAU: Ajouter le champ lieu_produit après les caractéristiques produit
+      const hasLieuProduit = productsBlock.fields.some(f => f.name === 'lieu_produit');
+      if (!hasLieuProduit) {
+        // Trouver la position après le champ 'produits' (autocomplete) ou après variation_prix s'il existe
+        const produitsIndex = productsBlock.fields.findIndex(f => f.name === 'produits' || f.typeDonnee === 'autocomplete');
+        const variationPrixIndex = productsBlock.fields.findIndex(f => f.name === 'variabilite_prix' || f.typeDonnee === 'price_variant');
+        const insertIndex = variationPrixIndex >= 0 ? variationPrixIndex + 1 : (produitsIndex >= 0 ? produitsIndex + 1 : productsBlock.fields.length);
+
+        productsBlock.fields.splice(insertIndex, 0, {
+          name: 'lieu_produit',
+          type: 'location',
+          typeDonnee: 'location',
+          label: 'Lieu de commercialisation',
+          required: true,  // ✅ OBLIGATOIRE pour hiérarchie géographique bidirectionnelle
+          placeholder: 'Sélectionnez la ville ou le quartier...',
+          value: formValues.lieu_produit || '',
+          composants: formValues.lieu_produit?.composants || {},
+          filtrable: true
         } as DynamicField);
       }
     }
@@ -1194,6 +1230,22 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
   // ✅ PHASE 3: Générer exemple dynamique pour autocomplete
   const generateDynamicExample = (field: DynamicField, currentValues: string[]): string => {
+    // ✅ NOUVEAU 2025-11-04: Utiliser la combinaison IA comme placeholder si disponible
+    const produitsField = valeursFormulaire[field.name];
+    if (produitsField && typeof produitsField === 'object' && 'valeur' in produitsField) {
+      const productVector = Array.isArray(produitsField.valeur) ? produitsField.valeur : [];
+      const sousCaracs = produitsField.sous_caracteristiques || {};
+
+      if (productVector.length > 0 && Object.keys(sousCaracs).length > 0) {
+        // Utiliser la PREMIÈRE combinaison générée par l'IA
+        const exemple = productVector[0];
+        const labels = Object.keys(sousCaracs);
+
+        console.log('[FormulaireYukpoIntelligent] ✅ Placeholder dynamique IA:', exemple);
+        return `${exemple} 🤖 (IA)`;
+      }
+    }
+
     if (currentValues && currentValues.length > 0) {
       return currentValues[0]; // Première modalité comme exemple
     }
@@ -1256,7 +1308,22 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
             sousCaracteristiques={field.sousCaracteristiques || {}}
             separateur={field.separateur || ','}
             value={currentValues}
-            onChange={(values) => handleFieldChange(field.name, values)}
+            onChange={(values, updatedSousCaracs) => {
+              // ✅ NOUVEAU 2025-11-04: Mettre à jour aussi sous-caractéristiques si modifiées
+              if (updatedSousCaracs) {
+                handleFieldChange(field.name, {
+                  type_donnee: 'autocomplete',
+                  valeur: values,
+                  separateur: field.separateur || ',',
+                  sous_caracteristiques: updatedSousCaracs,
+                  identifiant_base: field.identifiantBase || field.name,
+                  filtrable: field.filtrable !== false,
+                  origine_champs: 'formulaire'
+                });
+              } else {
+                handleFieldChange(field.name, values);
+              }
+            }}
             required={field.required}
             placeholder={field.placeholder}
             allowCustomModality={field.allowCustomModality !== false}
@@ -1369,8 +1436,16 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
             placeholder={field.placeholder || 'Rechercher une ville ou un lieu...'}
             scope="city" // Peut être 'city' ou 'point' selon le contexte
             required={field.required}
+            enrichWithBackend={field.name === 'lieu_produit'} // ✅ Activer enrichissement GeoNames pour lieu_produit
           />
-          {field.composants && Object.keys(field.composants).length > 0 && (
+          {field.name === 'lieu_produit' && (
+            <View style={styles.hintBox}>
+              <Text style={styles.hintText}>
+                💡 <Text style={styles.hintBold}>Recherche intelligente :</Text> Si vous choisissez "Douala", votre produit apparaîtra aussi pour les recherches dans "Littoral" (région) ou "Bonanjo" (quartier). Le système gère automatiquement la hiérarchie géographique.
+              </Text>
+            </View>
+          )}
+          {field.composants && Object.keys(field.composants).length > 0 && field.name !== 'lieu_produit' && (
             <View style={styles.hintBox}>
               <Text style={styles.hintText}>
                 💡 Composants disponibles: {Object.keys(field.composants).join(', ')}

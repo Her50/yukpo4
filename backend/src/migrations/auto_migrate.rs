@@ -364,21 +364,32 @@ pub async fn ensure_autocomplete_characteristics_table(pool: &PgPool) -> Result<
     
     warn!("⚠️ Table autocomplete_characteristics manquante, création en cours...");
     
-    // Créer la table autocomplete_characteristics
+    // Créer la table autocomplete_characteristics (mode vectoriel 2025-11-04)
     sqlx::query(r#"
         CREATE TABLE IF NOT EXISTS autocomplete_characteristics (
             id SERIAL PRIMARY KEY,
             identifiant_base VARCHAR(255) NOT NULL,
-            sous_caracteristique VARCHAR(255) NOT NULL,
-            valeur VARCHAR(500) NOT NULL,
+            
+            -- MODE VECTORIEL (nouveaux champs 2025-11-04)
+            characteristic_vector TEXT[] DEFAULT '{}',
+            location_vector TEXT[] DEFAULT '{}',
+            full_vector TEXT[] DEFAULT '{}',
+            product_id TEXT,
+            chosen_location TEXT,
+            chosen_location_geoname_id BIGINT,
+            is_real_product BOOLEAN DEFAULT TRUE,
+            
+            -- MODE INDIVIDUEL (ancien, conservé pour compatibilité)
+            sous_caracteristique VARCHAR(255),
+            valeur VARCHAR(500),
+            
+            -- Métadonnées
             origine_champs VARCHAR(50) NOT NULL DEFAULT 'ia',
             user_id INTEGER,
             service_id INTEGER,
             usage_count INTEGER DEFAULT 1,
             created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-            updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-            CONSTRAINT unique_autocomplete_characteristic 
-                UNIQUE (identifiant_base, sous_caracteristique, valeur)
+            updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
         )
     "#)
     .execute(pool)
@@ -414,6 +425,31 @@ pub async fn ensure_autocomplete_characteristics_table(pool: &PgPool) -> Result<
         .await?;
     
     sqlx::query("CREATE INDEX IF NOT EXISTS idx_autocomplete_usage_count ON autocomplete_characteristics(identifiant_base, sous_caracteristique, usage_count DESC)")
+        .execute(pool)
+        .await?;
+    
+    // Index vectoriels (nouveaux 2025-11-04)
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_autochar_characteristic_vector_gin ON autocomplete_characteristics USING GIN(characteristic_vector)")
+        .execute(pool)
+        .await?;
+    
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_autochar_location_vector_gin ON autocomplete_characteristics USING GIN(location_vector)")
+        .execute(pool)
+        .await?;
+    
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_autochar_full_vector_gin ON autocomplete_characteristics USING GIN(full_vector)")
+        .execute(pool)
+        .await?;
+    
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_autochar_product_id ON autocomplete_characteristics(product_id) WHERE product_id IS NOT NULL")
+        .execute(pool)
+        .await?;
+    
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_autochar_geoname_id ON autocomplete_characteristics(chosen_location_geoname_id) WHERE chosen_location_geoname_id IS NOT NULL")
+        .execute(pool)
+        .await?;
+    
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_autochar_location_usage ON autocomplete_characteristics(chosen_location, usage_count DESC) WHERE chosen_location IS NOT NULL")
         .execute(pool)
         .await?;
     
@@ -527,7 +563,6 @@ pub async fn ensure_autocomplete_combinations_table(pool: &PgPool) -> Result<(),
             full_vector TEXT[] NOT NULL,
             product_labels TEXT[] NOT NULL,
             location_labels TEXT[] DEFAULT '{}',
-            chosen_location TEXT,
             usage_count INTEGER DEFAULT 1,
             is_ai_preferred BOOLEAN DEFAULT FALSE,
             ai_confidence FLOAT DEFAULT 0.0,
@@ -573,10 +608,6 @@ pub async fn ensure_autocomplete_combinations_table(pool: &PgPool) -> Result<(),
         .await?;
     
     sqlx::query("CREATE INDEX IF NOT EXISTS idx_combinations_usage_count ON autocomplete_combinations(usage_count DESC)")
-        .execute(pool)
-        .await?;
-    
-    sqlx::query("CREATE INDEX IF NOT EXISTS idx_combinations_location_usage ON autocomplete_combinations(chosen_location, usage_count DESC)")
         .execute(pool)
         .await?;
     

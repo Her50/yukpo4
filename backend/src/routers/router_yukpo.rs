@@ -32,6 +32,7 @@ use crate::{
         appliance_model_routes::appliance_model_routes,
         phone_model_routes::phone_model_routes,
         places_routes::autocomplete_places,
+        popular_products_routes::popular_products_routes,
     },
     core::types::{AppResult, AppError},
     services::creer_service,
@@ -165,7 +166,8 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .merge(health_structure_routes(state.clone()))
         .merge(vehicle_model_routes(state.clone()))
         .merge(appliance_model_routes(state.clone()))
-        .merge(phone_model_routes(state.clone()));
+        .merge(phone_model_routes(state.clone()))
+        .merge(popular_products_routes(state.clone()));
     
     // ✅ NOUVEAU: Routes pour @mentions et multi-participants conversations
     let conversation_routes_merged = crate::routes::conversation_routes::conversation_routes(state.clone());

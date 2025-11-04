@@ -12,10 +12,10 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
-import ChatInputMobile from '../components/ChatInputMobile';
 import { NativeCard } from '../components/NativeDesign';
 import ProductCard from '../components/ProductCard';
 import SafeIcon from '../components/SafeIcon';
@@ -40,9 +40,12 @@ interface CombinationSuggestion {
 interface Product {
   service_id: number;
   nom: string;
-  product_vector: string[];
-  location_vector: string[];
-  chosen_location?: string;
+  product_vector: string[];         // Vecteur caractéristiques produit
+  product_labels?: string[];        // ✅ NOUVEAU : Labels dimensions
+  location_vector: string[];        // Vecteur lieu bidirectionnel
+  full_vector?: string[];           // ✅ NOUVEAU : Vecteur complet (produit + lieu)
+  chosen_location?: string;         // Lieu choisi
+  usage_count?: number;             // ✅ NOUVEAU : Popularité (recherches client)
   distance_km?: number;
   prestataire: {
     nom: string;
@@ -88,7 +91,11 @@ const ResultatBesoinScreen: React.FC = () => {
   const [filterCategory, setFilterCategory] = useState<FilterCategory>('all');
   const [showFilters, setShowFilters] = useState(false);
 
-  // ✅ Recherche progressive autocomplete
+  // ✅ NOUVEAU : Filtres intelligents dynamiques basés sur product_labels
+  const [dynamicFilters, setDynamicFilters] = useState<Record<string, Set<string>>>({});
+  const [selectedFilters, setSelectedFilters] = useState<Record<string, string>>({});
+
+  // ✅ CORRECTION 2025-11-04 : Suggestions depuis autocomplete_characteristics (VRAIS produits)
   useEffect(() => {
     const debounce = setTimeout(async () => {
       if (searchQuery.trim()) {
@@ -100,7 +107,9 @@ const ResultatBesoinScreen: React.FC = () => {
           setShowSuggestions(true);
 
           try {
-            const response = await apiPost('/api/combinations/search', {
+            // ✅ CORRECTION : Utiliser autocomplete_characteristics (VRAIS produits clients)
+            // PAS autocomplete_combinations (qui est pour prestataires)
+            const response = await apiPost('/api/autocomplete/search-products', {
               query: searchQuery,
               limit: 10,
             });
@@ -129,9 +138,57 @@ const ResultatBesoinScreen: React.FC = () => {
     return () => clearTimeout(debounce);
   }, [searchQuery]);
 
+  // ✅ NOUVEAU : Générer filtres dynamiques depuis les résultats
+  useEffect(() => {
+    if (results.length === 0) {
+      setDynamicFilters({});
+      return;
+    }
+
+    // Extraire tous les labels et valeurs uniques
+    const filtersMap: Record<string, Set<string>> = {};
+
+    results.forEach((product) => {
+      const labels = product.product_labels || [];
+      const vector = product.product_vector || [];
+
+      labels.forEach((label, idx) => {
+        if (!filtersMap[label]) {
+          filtersMap[label] = new Set();
+        }
+        if (vector[idx]) {
+          filtersMap[label].add(vector[idx]);
+        }
+      });
+    });
+
+    // Garder seulement les dimensions avec au moins 2 valeurs différentes
+    const meaningfulFilters: Record<string, Set<string>> = {};
+    Object.entries(filtersMap).forEach(([label, values]) => {
+      if (values.size >= 2) {
+        meaningfulFilters[label] = values;
+      }
+    });
+
+    setDynamicFilters(meaningfulFilters);
+    console.log('[ResultatBesoinScreen] Filtres dynamiques générés:', meaningfulFilters);
+  }, [results]);
+
   // ✅ Appliquer filtres et tri
   useEffect(() => {
     let filtered = [...results];
+
+    // ✅ NOUVEAU : Appliquer filtres dynamiques
+    Object.entries(selectedFilters).forEach(([label, value]) => {
+      if (value) {
+        filtered = filtered.filter((product) => {
+          const labels = product.product_labels || [];
+          const vector = product.product_vector || [];
+          const index = labels.indexOf(label);
+          return index !== -1 && vector[index] === value;
+        });
+      }
+    });
 
     // Filtres par catégorie
     switch (filterCategory) {
@@ -178,7 +235,7 @@ const ResultatBesoinScreen: React.FC = () => {
     }
 
     setFilteredResults(filtered);
-  }, [results, sortBy, filterCategory]);
+  }, [results, sortBy, filterCategory, selectedFilters]);
 
   // Helper : Prix minimum
   const getPrixMin = (product: Product): number => {
@@ -196,29 +253,32 @@ const ResultatBesoinScreen: React.FC = () => {
     await searchFinal(suggestion.full_vector);
   };
 
-  // Recherche finale
+  // ✅ CORRECTION 2025-11-04 : Utiliser /api/search/direct (recherche globale)
   const searchFinal = async (finalFilters: string[]) => {
     setLoadingResults(true);
 
     try {
+      // Construire le texte de recherche depuis le vecteur
+      const searchText = finalFilters.join(' ');
+
       const payload: any = {
-        combination_vector: finalFilters,
+        texte: searchText,  // "Nike Air Max 42 Douala"
       };
 
       // Ajouter localisation utilisateur si disponible
       if (location && typeof location === 'object') {
         const loc = location as any;
         if (loc.latitude && loc.longitude) {
-          payload.user_location = {
-            lat: loc.latitude,
-            lng: loc.longitude,
-          };
+          payload.gps_mobile = `${loc.latitude},${loc.longitude}`;
         }
       }
 
-      const response = await apiPost('/api/search/by-autocomplete', payload);
+      // ✅ Utiliser la recherche globale (même que HomeScreen)
+      const response = await apiPost('/api/search/direct', payload);
 
-      if (response.success && response.data) {
+      if (response.resultats?.resultats) {
+        setResults(response.resultats.resultats as Product[]);
+      } else if (response.data) {
         setResults(response.data as Product[]);
       } else {
         setResults([]);
@@ -257,13 +317,40 @@ const ResultatBesoinScreen: React.FC = () => {
         </TouchableOpacity>
       </View>
 
-      {/* Barre de recherche ChatInput (identique HomeScreen) */}
+      {/* ✅ NOUVEAU : Barre de recherche LINÉAIRE avec bouton à droite */}
       <View style={styles.searchSection}>
-        <ChatInputMobile
-          onSubmit={handleChatSubmit}
-          loading={loadingSuggestions || loadingResults}
-          placeholder="Décrivez votre besoin..."
-        />
+        <View style={styles.searchBarContainer}>
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Rechercher un produit..."
+            placeholderTextColor="#9CA3AF"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            returnKeyType="search"
+            onSubmitEditing={() => {
+              if (searchQuery.trim()) {
+                setShowSuggestions(false);
+                searchFinal(filters);
+              }
+            }}
+          />
+          <TouchableOpacity
+            style={styles.searchButton}
+            onPress={() => {
+              if (searchQuery.trim()) {
+                setShowSuggestions(false);
+                searchFinal(filters);
+              }
+            }}
+            disabled={loadingSuggestions || loadingResults}
+          >
+            {loadingSuggestions || loadingResults ? (
+              <ActivityIndicator size="small" color="#FFF" />
+            ) : (
+              <SafeIcon name="send" size={20} color="#FFF" />
+            )}
+          </TouchableOpacity>
+        </View>
 
         {/* Filtres actifs */}
         {filters.length > 0 && !showSuggestions && (
@@ -285,43 +372,89 @@ const ResultatBesoinScreen: React.FC = () => {
       {/* Panneau Filtres & Tri */}
       {showFilters && (
         <View style={styles.filtersPanel}>
-          {/* Tri */}
+          {/* ✅ NOUVEAU : Tri optimisé (prix en toggle) */}
           <View style={styles.filterGroup}>
             <Text style={styles.filterGroupTitle}>📊 Trier par :</Text>
             <View style={styles.filterOptions}>
-              {[
-                { key: 'pertinence', label: '🎯 Pertinence', icon: 'zap' },
-                { key: 'proximite', label: '📍 Proximité', icon: 'map-pin' },
-                { key: 'prix_asc', label: '💰 Prix croissant', icon: 'arrow-up' },
-                { key: 'prix_desc', label: '💎 Prix décroissant', icon: 'arrow-down' },
-              ].map((option) => (
-                <TouchableOpacity
-                  key={option.key}
+              <TouchableOpacity
+                style={[
+                  styles.filterOption,
+                  sortBy === 'pertinence' && styles.filterOptionActive,
+                ]}
+                onPress={() => setSortBy('pertinence')}
+              >
+                <SafeIcon
+                  name="zap"
+                  size={16}
+                  color={sortBy === 'pertinence' ? '#FFF' : modernColors.primary}
+                />
+                <Text
                   style={[
-                    styles.filterOption,
-                    sortBy === option.key && styles.filterOptionActive,
+                    styles.filterOptionText,
+                    sortBy === 'pertinence' && styles.filterOptionTextActive,
                   ]}
-                  onPress={() => setSortBy(option.key as SortOption)}
                 >
-                  <SafeIcon
-                    name={option.icon as any}
-                    size={16}
-                    color={sortBy === option.key ? '#FFF' : modernColors.primary}
-                  />
-                  <Text
-                    style={[
-                      styles.filterOptionText,
-                      sortBy === option.key && styles.filterOptionTextActive,
-                    ]}
-                  >
-                    {option.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+                  🎯 Pertinence
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.filterOption,
+                  sortBy === 'proximite' && styles.filterOptionActive,
+                ]}
+                onPress={() => setSortBy('proximite')}
+              >
+                <SafeIcon
+                  name="map-pin"
+                  size={16}
+                  color={sortBy === 'proximite' ? '#FFF' : modernColors.primary}
+                />
+                <Text
+                  style={[
+                    styles.filterOptionText,
+                    sortBy === 'proximite' && styles.filterOptionTextActive,
+                  ]}
+                >
+                  📍 Proximité
+                </Text>
+              </TouchableOpacity>
+
+              {/* ✅ Prix avec toggle croissant/décroissant */}
+              <TouchableOpacity
+                style={[
+                  styles.filterOption,
+                  (sortBy === 'prix_asc' || sortBy === 'prix_desc') && styles.filterOptionActive,
+                ]}
+                onPress={() => {
+                  // Toggle entre croissant et décroissant
+                  if (sortBy === 'prix_asc') {
+                    setSortBy('prix_desc');
+                  } else if (sortBy === 'prix_desc') {
+                    setSortBy('pertinence');
+                  } else {
+                    setSortBy('prix_asc');
+                  }
+                }}
+              >
+                <SafeIcon
+                  name={sortBy === 'prix_desc' ? 'arrow-down' : 'arrow-up'}
+                  size={16}
+                  color={(sortBy === 'prix_asc' || sortBy === 'prix_desc') ? '#FFF' : modernColors.primary}
+                />
+                <Text
+                  style={[
+                    styles.filterOptionText,
+                    (sortBy === 'prix_asc' || sortBy === 'prix_desc') && styles.filterOptionTextActive,
+                  ]}
+                >
+                  💰 Prix {sortBy === 'prix_desc' ? '↓' : '↑'}
+                </Text>
+              </TouchableOpacity>
             </View>
           </View>
 
-          {/* Filtres */}
+          {/* Filtres catégories */}
           <View style={styles.filterGroup}>
             <Text style={styles.filterGroupTitle}>🔍 Filtrer :</Text>
             <View style={styles.filterOptions}>
@@ -351,6 +484,81 @@ const ResultatBesoinScreen: React.FC = () => {
               ))}
             </View>
           </View>
+
+          {/* ✅ NOUVEAU : Filtres intelligents dynamiques basés sur product_labels */}
+          {Object.keys(dynamicFilters).length > 0 && (
+            <View style={styles.filterGroup}>
+              <Text style={styles.filterGroupTitle}>🎯 Filtres intelligents :</Text>
+              <Text style={styles.filterHint}>
+                Basés sur les produits trouvés
+              </Text>
+
+              {Object.entries(dynamicFilters).map(([label, valuesSet]) => {
+                const values = Array.from(valuesSet);
+                return (
+                  <View key={label} style={styles.dynamicFilterSection}>
+                    <Text style={styles.dynamicFilterLabel}>
+                      {label.charAt(0).toUpperCase() + label.slice(1)} :
+                    </Text>
+                    <ScrollView
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      contentContainerStyle={styles.dynamicFilterOptions}
+                    >
+                      {/* Option "Tous" pour désélectionner */}
+                      <TouchableOpacity
+                        style={[
+                          styles.dynamicFilterChip,
+                          !selectedFilters[label] && styles.dynamicFilterChipActive,
+                        ]}
+                        onPress={() => {
+                          setSelectedFilters(prev => {
+                            const updated = { ...prev };
+                            delete updated[label];
+                            return updated;
+                          });
+                        }}
+                      >
+                        <Text
+                          style={[
+                            styles.dynamicFilterChipText,
+                            !selectedFilters[label] && styles.dynamicFilterChipTextActive,
+                          ]}
+                        >
+                          Tous
+                        </Text>
+                      </TouchableOpacity>
+
+                      {values.map((value) => (
+                        <TouchableOpacity
+                          key={value}
+                          style={[
+                            styles.dynamicFilterChip,
+                            selectedFilters[label] === value && styles.dynamicFilterChipActive,
+                          ]}
+                          onPress={() => {
+                            setSelectedFilters(prev => ({
+                              ...prev,
+                              [label]: prev[label] === value ? '' : value,
+                            }));
+                          }}
+                        >
+                          <Text
+                            style={[
+                              styles.dynamicFilterChipText,
+                              selectedFilters[label] === value && styles.dynamicFilterChipTextActive,
+                            ]}
+                          >
+                            {value}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </ScrollView>
+                  </View>
+                );
+              })}
+            </View>
+          )}
         </View>
       )}
 
@@ -544,6 +752,35 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#E5E7EB',
   },
+  searchBarContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  searchInput: {
+    flex: 1,
+    height: 48,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 24,
+    paddingHorizontal: 16,
+    fontSize: 15,
+    color: '#1F2937',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  searchButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: modernColors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
   filtersScroll: {
     flexDirection: 'row',
     gap: 8,
@@ -579,6 +816,46 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: '#1F2937',
+  },
+  filterHint: {
+    fontSize: 12,
+    color: '#6B7280',
+    fontStyle: 'italic',
+    marginTop: -8,
+  },
+  dynamicFilterSection: {
+    gap: 8,
+    marginTop: 8,
+  },
+  dynamicFilterLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#4B5563',
+  },
+  dynamicFilterOptions: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingVertical: 4,
+  },
+  dynamicFilterChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: '#D1D5DB',
+    backgroundColor: '#FFF',
+  },
+  dynamicFilterChipActive: {
+    backgroundColor: modernColors.primary,
+    borderColor: modernColors.primary,
+  },
+  dynamicFilterChipText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#6B7280',
+  },
+  dynamicFilterChipTextActive: {
+    color: '#FFF',
   },
   filterOptions: {
     flexDirection: 'row',

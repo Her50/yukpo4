@@ -61,6 +61,9 @@ pub mod payment_service;
 pub mod publicite_search_service;
 pub mod autocomplete_history_service;
 pub mod autocomplete_combinations_service;
+pub mod autocomplete_search_service;  // ✅ NOUVEAU 2025-11-04: Recherche par vecteur autocomplete
+pub mod autocomplete_client_service;  // ✅ NOUVEAU 2025-11-04: Suggestions CLIENT (autocomplete_characteristics)
+pub mod popular_products_service;
 pub mod search_history_service;
 pub mod exhaustive_combination_generator;
 pub mod background_combination_generator;
