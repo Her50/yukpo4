@@ -1,135 +1,134 @@
 {
-  "intention": "creation_service",
-  "data": {
-    "titre_service": {
-      "type_donnee": "string",
-      "valeur": "Vente de matériel électrique",
-      "origine_champs": "ia"
-    },
-    "category": {
-      "type_donnee": "string",
-      "valeur": "Commerce",
-      "origine_champs": "ia"
-    },
-    "description": {
-      "type_donnee": "string",
-      "valeur": "Fourniture de matériel électrique de qualité pour installations résidentielles et industrielles.",
-      "origine_champs": "ia"
-    },
-    "is_tarissable": {
-      "type_donnee": "boolean",
-      "valeur": true,
-      "origine_champs": "ia"
-    },
-    "type_offre": {
-      "type_donnee": "string",
-      "valeur": "produit",
-      "origine_champs": "ia"
-    },
-    "produits": {
-      "type_donnee": "autocomplete",
-      "valeur": [
-        "Câble électrique,Cuivre,1.5mm,100m,Noir,Neuf,Standard,Installation résidentielle",
-        "Câble électrique,Cuivre,2.5mm,100m,Noir,Neuf,Standard,Installation industrielle",
-        "Interrupteur,Legrand,Simple,Blanc,Neuf,Standard,Installation murale",
-        "Prise électrique,Schneider,Double,Blanc,Neuf,Standard,Installation murale"
-      ],
-      "separateur": ",",
-      "sous_caracteristiques": {
-        "type": [
-          "Câble électrique",
-          "Interrupteur",
-          "Prise électrique"
-        ],
-        "materiau": [
-          "Cuivre",
-          "Legrand",
-          "Schneider"
-        ],
-        "section_ou_modele": [
-          "1.5mm",
-          "2.5mm",
-          "Simple",
-          "Double"
-        ],
-        "longueur_ou_couleur": [
-          "100m",
-          "Blanc",
-          "Noir"
-        ],
-        "etat": [
-          "Neuf"
-        ],
-        "qualite": [
-          "Standard"
-        ],
-        "usage": [
-          "Installation résidentielle",
-          "Installation industrielle",
-          "Installation murale"
-        ]
-      },
-      "dependencies": {
-        "strict": [
-          {
-            "id": "dep_type_materiau",
-            "dimensions": [
-              "type",
-              "materiau"
+    "intention": "creation_service",
+    "data": {
+        "titre_service": {
+            "type_donnee": "string",
+            "valeur": "Vente de matériel électrique",
+            "origine_champs": "ia"
+        },
+        "category": {
+            "type_donnee": "string",
+            "valeur": "Commerce",
+            "origine_champs": "ia"
+        },
+        "description": {
+            "type_donnee": "string",
+            "valeur": "Fourniture de matériel électrique de qualité pour installations résidentielles et industrielles.",
+            "origine_champs": "ia"
+        },
+        "is_tarissable": {
+            "type_donnee": "boolean",
+            "valeur": true,
+            "origine_champs": "ia"
+        },
+        "type_offre": {
+            "type_donnee": "string",
+            "valeur": "produit",
+            "origine_champs": "ia"
+        },
+        "produits": {
+            "type_donnee": "autocomplete",
+            "valeur": [
+                "Câble électrique,Cuivre,1.5mm,100m,Noir,Neuf,Standard,Installation résidentielle",
+                "Câble électrique,Cuivre,2.5mm,100m,Noir,Neuf,Standard,Installation industrielle",
+                "Interrupteur,Legrand,Simple,Blanc,Neuf,Standard,Installation murale",
+                "Prise électrique,Schneider,Double,Blanc,Neuf,Standard,Installation murale"
             ],
-            "explanation": "materiau dépend de type",
-            "valid_combinations": [
-              [
-                "Câble électrique",
-                "Cuivre"
-              ],
-              [
-                "Interrupteur",
-                "Legrand"
-              ],
-              [
-                "Prise électrique",
-                "Schneider"
-              ]
-            ]
-          }
-        ]
-      },
-      "ai_preferred_index": 0,
-      "filtrable": true,
-      "identifiant_base": "produits",
-      "origine_champs": "ia"
-    },
-    "nom_produit": {
-      "type_donnee": "string",
-      "valeur": "Câble électrique Cuivre 1.5mm 100m",
-      "origine_champs": "ia"
-    },
-    "categorie_produit": {
-      "type_donnee": "string",
-      "valeur": "Matériel électrique",
-      "origine_champs": "ia"
-    },
-    "description_produit": {
-      "type_donnee": "string",
-      "valeur": "Câble électrique en cuivre de section 1.5mm, idéal pour installations résidentielles.",
-      "origine_champs": "ia"
-    },
-    "prix_produit": {
-      "type_donnee": "number",
-      "valeur": 15000,
-      "origine_champs": "ia"
-    },
-    "devise_produit": {
-      "type_donnee": "string",
-      "valeur": "XAF",
-      "origine_champs": "ia"
-    },
-    "lieu_produit": {
-      "type_donnee": "location",
-      "valeur": "Douala",
-      "origine_champs": "ia"
+            "separateur": ",",
+            "sous_caracteristiques": {
+                "type": [
+                    "Câble électrique",
+                    "Interrupteur",
+                    "Prise électrique"
+                ],
+                "materiau": [
+                    "Cuivre",
+                    "Legrand",
+                    "Schneider"
+                ],
+                "section_ou_modele": [
+                    "1.5mm",
+                    "2.5mm",
+                    "Simple",
+                    "Double"
+                ],
+                "longueur_ou_couleur": [
+                    "100m",
+                    "Blanc",
+                    "Noir"
+                ],
+                "etat": [
+                    "Neuf"
+                ],
+                "qualite": [
+                    "Standard"
+                ],
+                "usage": [
+                    "Installation résidentielle",
+                    "Installation industrielle",
+                    "Installation murale"
+                ]
+            },
+            "dependencies": {
+                "strict": [
+                    {
+                        "id": "dep_type_materiau",
+                        "dimensions": [
+                            "type",
+                            "materiau"
+                        ],
+                        "explanation": "materiau dépend de type",
+                        "valid_combinations": [
+                            [
+                                "Câble électrique",
+                                "Cuivre"
+                            ],
+                            [
+                                "Interrupteur",
+                                "Legrand"
+                            ],
+                            [
+                                "Prise électrique",
+                                "Schneider"
+                            ]
+                        ]
+                    }
+                ]
+            },
+            "ai_preferred_index": 0,
+            "filtrable": true,
+            "identifiant_base": "produits",
+            "origine_champs": "ia"
+        },
+        "nom_produit": {
+            "type_donnee": "string",
+            "valeur": "Câble électrique Cuivre 1.5mm 100m",
+            "origine_champs": "ia"
+        },
+        "categorie_produit": {
+            "type_donnee": "string",
+            "valeur": "Matériel électrique",
+            "origine_champs": "ia"
+        },
+        "description_produit": {
+            "type_donnee": "string",
+            "valeur": "Câble électrique en cuivre de section 1.5mm, idéal pour installations résidentielles.",
+            "origine_champs": "ia"
+        },
+        "prix_produit": {
+            "type_donnee": "number",
+            "valeur": 15000,
+            "origine_champs": "ia"
+        },
+        "devise_produit": {
+            "type_donnee": "string",
+            "valeur": "XAF",
+            "origine_champs": "ia"
+        },
+        "lieu_produit": {
+            "type_donnee": "location",
+            "valeur": "Douala",
+            "origine_champs": "ia"
+        }
     }
-  }
 }
-
