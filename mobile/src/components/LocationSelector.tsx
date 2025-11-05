@@ -84,7 +84,7 @@ interface LocationSelectorProps {
     value: string | LocationObject;  // ✅ Supporte string (ancien) ou objet (nouveau)
     onSelect: (value: LocationObject) => void;  // ✅ Retourne toujours objet
     placeholder?: string;
-    scope?: PlaceScope; // 'city' | 'point' | 'neighborhood'
+    scope?: PlaceScope | 'all'; // 'city' | 'point' | 'neighborhood' | 'all' (tous types géographiques)
     cityContext?: string; // For point/neighborhood search filtering
     required?: boolean;
     enrichWithBackend?: boolean;  // ✅ Si true, appelle /api/places/enrich
@@ -95,7 +95,7 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
     value,
     onSelect,
     placeholder = 'Rechercher... ',
-    scope = 'city',
+    scope = 'all', // ✅ NOUVEAU: Par défaut, recherche universelle (tous types géographiques)
     cityContext,
     required = false,
     enrichWithBackend = false,
@@ -117,7 +117,9 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
         const run = async () => {
             setLoading(true);
             try {
-                const results = await placesService.autocomplete(debouncedQuery, scope, cityContext);
+                // ✅ NOUVEAU: Si scope est 'all', passer undefined pour recherche universelle
+                const scopeParam = scope === 'all' ? undefined : scope as PlaceScope;
+                const results = await placesService.autocomplete(debouncedQuery, scopeParam, cityContext);
                 if (!cancelled) setOptions(results);
             } finally {
                 if (!cancelled) setLoading(false);
@@ -161,7 +163,14 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
                 <View style={styles.modalOverlay}>
                     <View style={styles.modalContainer}>
                         <View style={styles.modalHeader}>
-                            <Text style={styles.modalTitle}>Rechercher {scope === 'city' ? 'une ville' : 'un lieu'}</Text>
+                            <Text style={styles.modalTitle}>
+                                Rechercher {
+                                    scope === 'city' ? 'une ville' :
+                                    scope === 'neighborhood' ? 'un quartier' :
+                                    scope === 'point' ? 'un lieu' :
+                                    'ville, quartier, pays...'
+                                }
+                            </Text>
                             <TouchableOpacity onPress={() => setOpen(false)} style={styles.closeButton}>
                                 <SafeIcon name="x" size={22} color={modernColors.text} />
                             </TouchableOpacity>

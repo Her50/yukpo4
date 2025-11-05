@@ -105,48 +105,54 @@ const ResultatBesoinScreen: React.FC = () => {
   const [dynamicFilters, setDynamicFilters] = useState<Record<string, Set<string>>>({});
   const [selectedFilters, setSelectedFilters] = useState<Record<string, string>>({});
 
-  // ✅ CORRECTION 2025-11-04 : Suggestions depuis autocomplete_characteristics (VRAIS produits)
-  useEffect(() => {
-    const debounce = setTimeout(async () => {
-      if (searchQuery.trim()) {
-        const words = searchQuery.split(' ').filter(w => w.trim());
-        setFilters(words);
+  // ✅ CORRECTION 2025-11-05 : Fonction de recherche stable avec useCallback
+  const fetchSuggestions = useCallback(async (query: string) => {
+    if (!query.trim()) {
+      setSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
 
-        if (searchQuery.length >= 2) {
-          setLoadingSuggestions(true);
-          setShowSuggestions(true);
+    const words = query.split(' ').filter(w => w.trim());
+    setFilters(words);
 
-          try {
-            // ✅ CORRECTION : Utiliser autocomplete_characteristics (VRAIS produits clients)
-            // PAS autocomplete_combinations (qui est pour prestataires)
-            const response = await apiPost('/api/autocomplete/search-products', {
-              query: searchQuery,
-              limit: 10,
-            });
+    if (query.length >= 2) {
+      setLoadingSuggestions(true);
+      setShowSuggestions(true);
 
-            if (response.success && response.data) {
-              setSuggestions(response.data as CombinationSuggestion[]);
-            } else {
-              setSuggestions([]);
-            }
-          } catch (error) {
-            console.error('[ResultatBesoinScreen] Erreur suggestions:', error);
-            setSuggestions([]);
-          } finally {
-            setLoadingSuggestions(false);
-          }
+      try {
+        // ✅ CORRECTION : Utiliser autocomplete_characteristics (VRAIS produits clients)
+        // PAS autocomplete_combinations (qui est pour prestataires)
+        const response = await apiPost('/api/autocomplete/search-products', {
+          query: query,
+          limit: 10,
+        });
+
+        if (response.success && response.data) {
+          setSuggestions(response.data as CombinationSuggestion[]);
         } else {
           setSuggestions([]);
-          setShowSuggestions(false);
         }
-      } else {
+      } catch (error) {
+        console.error('[ResultatBesoinScreen] Erreur suggestions:', error);
         setSuggestions([]);
-        setShowSuggestions(false);
+      } finally {
+        setLoadingSuggestions(false);
       }
+    } else {
+      setSuggestions([]);
+      setShowSuggestions(false);
+    }
+  }, []); // ✅ Fonction stable sans dependencies
+
+  // ✅ CORRECTION 2025-11-04 : Suggestions depuis autocomplete_characteristics (VRAIS produits)
+  useEffect(() => {
+    const debounce = setTimeout(() => {
+      fetchSuggestions(searchQuery);
     }, 300);
 
     return () => clearTimeout(debounce);
-  }, [searchQuery]);
+  }, [searchQuery, fetchSuggestions]); // ✅ CORRECTION: Ajouter fetchSuggestions aux dependencies
 
   // ✅ NOUVEAU : Générer filtres dynamiques depuis les résultats
   useEffect(() => {

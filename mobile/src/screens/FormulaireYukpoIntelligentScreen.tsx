@@ -250,8 +250,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           required: false,
           placeholder: isPrestation
             ? 'Ex: Cours de maths niveau terminal, Réparation écran téléphone...'
-            : 'Ex: iPhone 14 Pro Max 256GB, Toyota RAV4 2018 4x4...',
-          value: formValues.nom_produit || ''
+            : 'Ex: iPhone 14 Pro Max 256GB, Toyota RAV4 2018 4x4...'
         },
         {
           name: 'categorie_produit',
@@ -259,8 +258,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           typeDonnee: 'string',
           label: 'Catégorie du produit',
           required: false,
-          placeholder: 'Ex: Smartphone, Véhicule 4x4, Chaussure de sport...',
-          value: formValues.categorie_produit || ''
+          placeholder: 'Ex: Smartphone, Véhicule 4x4, Chaussure de sport...'
         },
         {
           name: 'description_produit',
@@ -268,8 +266,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           typeDonnee: 'string',
           label: 'Description du produit',
           required: false,
-          placeholder: 'Décrivez les caractéristiques spécifiques du produit...',
-          value: formValues.description_produit || ''
+          placeholder: 'Décrivez les caractéristiques spécifiques du produit...'
         },
         {
           name: 'produits',
@@ -297,8 +294,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           },
           separateur: ',',
           filtrable: true,
-          allowCustomModality: true,
-          value: formValues.produits?.valeur || []
+          allowCustomModality: true
         },
         {
           name: 'lieu_produit',
@@ -306,9 +302,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           typeDonnee: 'location',
           label: 'Lieu de commercialisation',
           required: true,  // ✅ OBLIGATOIRE pour hiérarchie géographique bidirectionnelle
-          placeholder: 'Sélectionnez la ville ou le quartier...',
-          value: formValues.lieu_produit || '',
-          composants: formValues.lieu_produit?.composants || {},
+          placeholder: 'Rechercher ville, quartier, pays, région...',
           filtrable: true
         },
         {
@@ -345,8 +339,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           required: false,
           placeholder: isPrestation
             ? 'Ex: Cours de maths niveau terminal, Réparation écran téléphone...'
-            : 'Ex: iPhone 14 Pro Max 256GB, Toyota RAV4 2018 4x4...',
-          value: formValues.nom_produit || ''
+            : 'Ex: iPhone 14 Pro Max 256GB, Toyota RAV4 2018 4x4...'
         },
         {
           name: 'categorie_produit',
@@ -354,8 +347,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           typeDonnee: 'string',
           label: 'Catégorie du produit',
           required: false,
-          placeholder: 'Ex: Smartphone, Véhicule 4x4, Chaussure de sport...',
-          value: formValues.categorie_produit || ''
+          placeholder: 'Ex: Smartphone, Véhicule 4x4, Chaussure de sport...'
         },
         {
           name: 'description_produit',
@@ -363,8 +355,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           typeDonnee: 'string',
           label: 'Description du produit',
           required: false,
-          placeholder: 'Décrivez les caractéristiques spécifiques du produit...',
-          value: formValues.description_produit || ''
+          placeholder: 'Décrivez les caractéristiques spécifiques du produit...'
         },
         {
           name: 'produits',
@@ -392,8 +383,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           },
           separateur: ',',
           filtrable: true,
-          allowCustomModality: true,
-          value: formValues.produits?.valeur || []
+          allowCustomModality: true
         },
         {
           name: 'lieu_produit',
@@ -401,9 +391,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           typeDonnee: 'location',
           label: 'Lieu de commercialisation',
           required: true,  // ✅ OBLIGATOIRE pour hiérarchie géographique bidirectionnelle
-          placeholder: 'Sélectionnez la ville ou le quartier...',
-          value: formValues.lieu_produit || '',
-          composants: formValues.lieu_produit?.composants || {},
+          placeholder: 'Rechercher ville, quartier, pays, région...',
           filtrable: true
         },
         {
@@ -447,8 +435,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           required: false,
           placeholder: isPrestation
             ? 'Ex: Cours de mathématiques, Réparation téléphone, Consultation médicale...'
-            : 'Ex: iPhone 14 Pro Max, Toyota RAV4 2018, Nike Air Max...',
-          value: formValues.nom_produit || ''
+            : 'Ex: iPhone 14 Pro Max, Toyota RAV4 2018, Nike Air Max...'
         } as DynamicField);
       }
       if (!hasCategorieProduit) {
@@ -458,8 +445,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           typeDonnee: 'string',
           label: 'Catégorie du produit/prestation',
           required: false,
-          placeholder: 'Ex: Smartphone, Cours particulier, Service de réparation...',
-          value: formValues.categorie_produit || ''
+          placeholder: 'Ex: Smartphone, Cours particulier, Service de réparation...'
         } as DynamicField);
       }
       if (!hasDescriptionProduit) {
@@ -469,8 +455,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           typeDonnee: 'string',
           label: 'Description du produit/prestation',
           required: false,
-          placeholder: 'Décrivez les caractéristiques spécifiques du produit/prestation...',
-          value: formValues.description_produit || ''
+          placeholder: 'Décrivez les caractéristiques spécifiques du produit/prestation...'
         } as DynamicField);
       }
 
@@ -553,9 +538,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           typeDonnee: 'location',
           label: 'Lieu de commercialisation',
           required: true,  // ✅ OBLIGATOIRE pour hiérarchie géographique bidirectionnelle
-          placeholder: 'Sélectionnez la ville ou le quartier...',
-          value: formValues.lieu_produit || '',
-          composants: formValues.lieu_produit?.composants || {},
+          placeholder: 'Rechercher ville, quartier, pays, région...',
           filtrable: true
         } as DynamicField);
       }
@@ -1486,7 +1469,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
               }
             }}
             required={field.required}
-            placeholder={field.placeholder}
+            // ✅ CORRECTION 2025-11-05: Ne PAS passer placeholder pour utiliser la génération dynamique interne
+            // Le LinearAutocompleteEditor génère automatiquement un placeholder basé sur value[0] (combinaison IA)
             allowCustomModality={field.allowCustomModality !== false}
             filtrable={field.filtrable !== false}
           />
@@ -1595,7 +1579,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
               });
             }}
             placeholder={field.placeholder || 'Rechercher ville, quartier, pays, région...'}
-            scope={undefined} // ✅ CORRIGÉ: Pas de scope fixe, recherche universelle (ville, quartier, pays, région)
+            scope="all" // ✅ CORRECTION 2025-11-05: Recherche universelle (ville, quartier, pays, région)
             required={field.required}
             enrichWithBackend={true} // ✅ Activer enrichissement GeoNames pour tous les champs location
           />

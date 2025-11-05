@@ -4,7 +4,7 @@
  * ✅ NOUVEAU : Suggestions populaires depuis autocomplete_combinations
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -29,6 +29,9 @@ interface LinearAutocompleteEditorProps {
     onChange: (values: string[], updatedSousCaracs?: Record<string, string[]>) => void; // ✅ NOUVEAU: passer aussi sous-caracs
     required?: boolean;
     readonly?: boolean;
+    placeholder?: string; // ✅ AJOUT: Support pour placeholder personnalisé
+    allowCustomModality?: boolean; // ✅ AJOUT: Support pour modalités personnalisées
+    filtrable?: boolean; // ✅ AJOUT: Support pour champs filtrables
 }
 
 interface ChipData {
@@ -56,6 +59,9 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
     onChange,
     required = false,
     readonly = false,
+    placeholder,
+    allowCustomModality = true,
+    filtrable = true,
 }) => {
     // État : Affiche la première valeur (combinaison de référence)
     const displayValue = value && value.length > 0 ? value[0] : '';
@@ -86,20 +92,11 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
 
     const chips = displayValue ? parseVectorToChips(displayValue) : [];
 
-    // ✅ NOUVEAU 2025-11-04 : Recherche progressive dans autocomplete_combinations
-    useEffect(() => {
-        if (searchQuery.trim().length >= 2) {
-            searchSuggestions(searchQuery);
-        } else {
-            setSuggestions([]);
-            setShowSuggestions(false);
-        }
-    }, [searchQuery]);
-
-    const searchSuggestions = async (query: string) => {
+    // ✅ CORRECTION 2025-11-05 : Wrapping searchSuggestions dans useCallback pour éviter les re-créations
+    const searchSuggestions = useCallback(async (query: string) => {
         setLoadingSuggestions(true);
         setShowSuggestions(true); // ✅ CORRECTION: Afficher tout de suite (même pendant loading)
-        
+
         try {
             console.log('[LinearAutocompleteEditor] 🔍 Recherche suggestions pour:', query);
             const response = await apiGet(
@@ -123,7 +120,17 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
         } finally {
             setLoadingSuggestions(false);
         }
-    };
+    }, []); // ✅ Pas de dependencies car la fonction est stable
+
+    // ✅ NOUVEAU 2025-11-04 : Recherche progressive dans autocomplete_combinations
+    useEffect(() => {
+        if (searchQuery.trim().length >= 2) {
+            searchSuggestions(searchQuery);
+        } else {
+            setSuggestions([]);
+            setShowSuggestions(false);
+        }
+    }, [searchQuery, searchSuggestions]); // ✅ CORRECTION: Ajouter searchSuggestions aux dependencies
 
     // Sélectionner une suggestion
     const selectSuggestion = (product: PopularProduct) => {
@@ -240,18 +247,25 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
             const firstValues = value[0].split(separateur).slice(0, 4).join(' • ');
             return `${firstValues}... 🤖 IA`;
         }
-        
+
         // ✅ PRIORITÉ 2: Exemple générique basé sur les sous-caractéristiques IA
+        // On prend la PREMIÈRE valeur de chaque dimension (jamais le label)
         if (Object.keys(sousCaracteristiques).length > 0) {
-            const exampleParts = Object.keys(sousCaracteristiques).slice(0, 4).map((key) => {
+            const exampleParts: string[] = [];
+
+            Object.keys(sousCaracteristiques).slice(0, 4).forEach((key) => {
                 const values = sousCaracteristiques[key];
-                return values && values.length > 0 ? values[0] : key;
+                // ✅ CORRECTION: Ne jamais afficher le label (key), seulement les valeurs
+                if (values && values.length > 0) {
+                    exampleParts.push(values[0]); // Prendre la première valeur d'exemple
+                }
             });
-            return exampleParts.length > 0
-                ? `Ex: ${exampleParts.join(' • ')}...`
-                : 'Rechercher un produit populaire...';
+
+            if (exampleParts.length > 0) {
+                return `Ex: ${exampleParts.join(' • ')}...`;
+            }
         }
-        
+
         // ✅ PRIORITÉ 3: Fallback générique
         return 'Rechercher un produit populaire...';
     };
@@ -292,7 +306,7 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                 <View style={styles.suggestionsContainer}>
                     <Text style={styles.suggestionsTitle}>📦 Suggestions populaires</Text>
                     {loadingSuggestions && <ActivityIndicator size="small" color={modernColors.primary} style={{ marginVertical: 12 }} />}
-                    
+
                     {!loadingSuggestions && suggestions.length === 0 && searchQuery.trim().length >= 2 && (
                         <View style={styles.noSuggestionsContainer}>
                             <SafeIcon name="info" size={20} color="#9CA3AF" />
@@ -304,7 +318,7 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                             </Text>
                         </View>
                     )}
-                    
+
                     {suggestions.map((product, index) => (
                         <TouchableOpacity
                             key={index}

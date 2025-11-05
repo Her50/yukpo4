@@ -15,6 +15,46 @@ pub async fn ensure_deactivate_expired_products_function(pool: &PgPool) -> Resul
     
     if exists {
         info!("✅ Fonction deactivate_expired_products() déjà présente");
+        
+        // ✅ NOUVEAU 2025-11-05: Vérifier quand même si products_lifecycle a toutes les colonnes
+        let table_exists = sqlx::query_scalar::<_, bool>(
+            "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'products_lifecycle')"
+        )
+        .fetch_one(pool)
+        .await?;
+        
+        if table_exists {
+            // Vérifier auto_deactivate_at
+            let has_auto_deactivate = sqlx::query_scalar::<_, bool>(
+                "SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name = 'products_lifecycle' AND column_name = 'auto_deactivate_at')"
+            )
+            .fetch_one(pool)
+            .await?;
+            
+            if !has_auto_deactivate {
+                warn!("⚠️ Colonne 'auto_deactivate_at' manquante, ajout en cours...");
+                sqlx::query("ALTER TABLE products_lifecycle ADD COLUMN auto_deactivate_at TIMESTAMPTZ DEFAULT (NOW() + INTERVAL '30 days')")
+                    .execute(pool)
+                    .await?;
+                info!("✅ Colonne 'auto_deactivate_at' ajoutée");
+            }
+            
+            // Vérifier reactivation_cost
+            let has_reactivation_cost = sqlx::query_scalar::<_, bool>(
+                "SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name = 'products_lifecycle' AND column_name = 'reactivation_cost')"
+            )
+            .fetch_one(pool)
+            .await?;
+            
+            if !has_reactivation_cost {
+                warn!("⚠️ Colonne 'reactivation_cost' manquante, ajout en cours...");
+                sqlx::query("ALTER TABLE products_lifecycle ADD COLUMN reactivation_cost INTEGER DEFAULT 1000")
+                    .execute(pool)
+                    .await?;
+                info!("✅ Colonne 'reactivation_cost' ajoutée");
+            }
+        }
+        
         return Ok(());
     }
     
@@ -111,6 +151,59 @@ pub async fn ensure_publicites_table(pool: &PgPool) -> Result<(), sqlx::Error> {
     
     if exists {
         info!("✅ Table publicites déjà présente");
+        
+        // ✅ NOUVEAU 2025-11-05: Vérifier toutes les colonnes critiques
+        // Vérifier zone_geographique
+        let has_zone_geo = sqlx::query_scalar::<_, bool>(
+            "SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name = 'publicites' AND column_name = 'zone_geographique')"
+        )
+        .fetch_one(pool)
+        .await?;
+        
+        if !has_zone_geo {
+            warn!("⚠️ Colonne 'zone_geographique' manquante, ajout en cours...");
+            sqlx::query("ALTER TABLE publicites ADD COLUMN zone_geographique VARCHAR(50) NOT NULL DEFAULT 'local' CHECK (zone_geographique IN ('local', 'regional', 'international'))")
+                .execute(pool)
+                .await?;
+            info!("✅ Colonne 'zone_geographique' ajoutée");
+        }
+        
+        // Vérifier produits_indexes
+        let has_produits = sqlx::query_scalar::<_, bool>(
+            "SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name = 'publicites' AND column_name = 'produits_indexes')"
+        )
+        .fetch_one(pool)
+        .await?;
+        
+        if !has_produits {
+            warn!("⚠️ Colonne 'produits_indexes' manquante, ajout en cours...");
+            sqlx::query("ALTER TABLE publicites ADD COLUMN produits_indexes TEXT[] NOT NULL DEFAULT '{}'")
+                .execute(pool)
+                .await?;
+            info!("✅ Colonne 'produits_indexes' ajoutée");
+        }
+        
+        // Vérifier vues, clics, impressions
+        let has_analytics = sqlx::query_scalar::<_, bool>(
+            "SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name = 'publicites' AND column_name = 'vues')"
+        )
+        .fetch_one(pool)
+        .await?;
+        
+        if !has_analytics {
+            warn!("⚠️ Colonnes analytics manquantes, ajout en cours...");
+            sqlx::query("ALTER TABLE publicites ADD COLUMN IF NOT EXISTS vues INTEGER NOT NULL DEFAULT 0")
+                .execute(pool)
+                .await?;
+            sqlx::query("ALTER TABLE publicites ADD COLUMN IF NOT EXISTS clics INTEGER NOT NULL DEFAULT 0")
+                .execute(pool)
+                .await?;
+            sqlx::query("ALTER TABLE publicites ADD COLUMN IF NOT EXISTS impressions INTEGER NOT NULL DEFAULT 0")
+                .execute(pool)
+                .await?;
+            info!("✅ Colonnes analytics ajoutées");
+        }
+        
         return Ok(());
     }
     
@@ -292,6 +385,68 @@ pub async fn ensure_notifications_table(pool: &PgPool) -> Result<(), sqlx::Error
     
     if exists {
         info!("✅ Table notifications déjà présente");
+        
+        // ✅ NOUVEAU 2025-11-05: Vérifier toutes les colonnes critiques
+        // Vérifier notification_type
+        let has_notif_type = sqlx::query_scalar::<_, bool>(
+            "SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name = 'notifications' AND column_name = 'notification_type')"
+        )
+        .fetch_one(pool)
+        .await?;
+        
+        if !has_notif_type {
+            warn!("⚠️ Colonne 'notification_type' manquante, ajout en cours...");
+            sqlx::query("ALTER TABLE notifications ADD COLUMN notification_type VARCHAR(50)")
+                .execute(pool)
+                .await?;
+            info!("✅ Colonne 'notification_type' ajoutée");
+        }
+        
+        // Vérifier title
+        let has_title = sqlx::query_scalar::<_, bool>(
+            "SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name = 'notifications' AND column_name = 'title')"
+        )
+        .fetch_one(pool)
+        .await?;
+        
+        if !has_title {
+            warn!("⚠️ Colonne 'title' manquante, ajout en cours...");
+            sqlx::query("ALTER TABLE notifications ADD COLUMN title VARCHAR(255)")
+                .execute(pool)
+                .await?;
+            info!("✅ Colonne 'title' ajoutée");
+        }
+        
+        // Vérifier metadata
+        let has_metadata = sqlx::query_scalar::<_, bool>(
+            "SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name = 'notifications' AND column_name = 'metadata')"
+        )
+        .fetch_one(pool)
+        .await?;
+        
+        if !has_metadata {
+            warn!("⚠️ Colonne 'metadata' manquante, ajout en cours...");
+            sqlx::query("ALTER TABLE notifications ADD COLUMN metadata JSONB")
+                .execute(pool)
+                .await?;
+            info!("✅ Colonne 'metadata' ajoutée");
+        }
+        
+        // Vérifier read_at
+        let has_read_at = sqlx::query_scalar::<_, bool>(
+            "SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name = 'notifications' AND column_name = 'read_at')"
+        )
+        .fetch_one(pool)
+        .await?;
+        
+        if !has_read_at {
+            warn!("⚠️ Colonne 'read_at' manquante, ajout en cours...");
+            sqlx::query("ALTER TABLE notifications ADD COLUMN read_at TIMESTAMPTZ")
+                .execute(pool)
+                .await?;
+            info!("✅ Colonne 'read_at' ajoutée");
+        }
+        
         return Ok(());
     }
     
@@ -359,6 +514,73 @@ pub async fn ensure_autocomplete_characteristics_table(pool: &PgPool) -> Result<
     
     if exists {
         info!("✅ Table autocomplete_characteristics déjà présente");
+        
+        // ✅ NOUVEAU 2025-11-05: Vérifier les colonnes vectorielles (mode 2025-11-04)
+        let has_char_vector = sqlx::query_scalar::<_, bool>(
+            "SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name = 'autocomplete_characteristics' AND column_name = 'characteristic_vector')"
+        )
+        .fetch_one(pool)
+        .await?;
+        
+        if !has_char_vector {
+            warn!("⚠️ Colonnes vectorielles manquantes, ajout en cours...");
+            sqlx::query("ALTER TABLE autocomplete_characteristics ADD COLUMN characteristic_vector TEXT[] DEFAULT '{}'")
+                .execute(pool)
+                .await?;
+            sqlx::query("ALTER TABLE autocomplete_characteristics ADD COLUMN location_vector TEXT[] DEFAULT '{}'")
+                .execute(pool)
+                .await?;
+            sqlx::query("ALTER TABLE autocomplete_characteristics ADD COLUMN full_vector TEXT[] DEFAULT '{}'")
+                .execute(pool)
+                .await?;
+            info!("✅ Colonnes vectorielles ajoutées");
+        }
+        
+        // Vérifier product_id
+        let has_product_id = sqlx::query_scalar::<_, bool>(
+            "SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name = 'autocomplete_characteristics' AND column_name = 'product_id')"
+        )
+        .fetch_one(pool)
+        .await?;
+        
+        if !has_product_id {
+            warn!("⚠️ Colonne 'product_id' manquante, ajout en cours...");
+            sqlx::query("ALTER TABLE autocomplete_characteristics ADD COLUMN product_id TEXT")
+                .execute(pool)
+                .await?;
+            info!("✅ Colonne 'product_id' ajoutée");
+        }
+        
+        // Vérifier chosen_location_geoname_id
+        let has_geoname = sqlx::query_scalar::<_, bool>(
+            "SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name = 'autocomplete_characteristics' AND column_name = 'chosen_location_geoname_id')"
+        )
+        .fetch_one(pool)
+        .await?;
+        
+        if !has_geoname {
+            warn!("⚠️ Colonne 'chosen_location_geoname_id' manquante, ajout en cours...");
+            sqlx::query("ALTER TABLE autocomplete_characteristics ADD COLUMN chosen_location_geoname_id BIGINT")
+                .execute(pool)
+                .await?;
+            info!("✅ Colonne 'chosen_location_geoname_id' ajoutée");
+        }
+        
+        // Vérifier is_real_product
+        let has_is_real = sqlx::query_scalar::<_, bool>(
+            "SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name = 'autocomplete_characteristics' AND column_name = 'is_real_product')"
+        )
+        .fetch_one(pool)
+        .await?;
+        
+        if !has_is_real {
+            warn!("⚠️ Colonne 'is_real_product' manquante, ajout en cours...");
+            sqlx::query("ALTER TABLE autocomplete_characteristics ADD COLUMN is_real_product BOOLEAN DEFAULT TRUE")
+                .execute(pool)
+                .await?;
+            info!("✅ Colonne 'is_real_product' ajoutée");
+        }
+        
         return Ok(());
     }
     
@@ -566,6 +788,108 @@ pub async fn ensure_autocomplete_combinations_table(pool: &PgPool) -> Result<(),
             
             info!("✅ Colonne product_labels ajoutée");
         }
+        
+        // ✅ NOUVEAU 2025-11-05: Vérifier et ajouter location_labels si manquante
+        let has_location_labels = sqlx::query_scalar::<_, bool>(
+            "SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name = 'autocomplete_combinations' AND column_name = 'location_labels')"
+        )
+        .fetch_one(pool)
+        .await?;
+        
+        if !has_location_labels {
+            warn!("⚠️ Colonne location_labels manquante, ajout en cours...");
+            sqlx::query(
+                "ALTER TABLE autocomplete_combinations ADD COLUMN location_labels TEXT[] DEFAULT ARRAY[]::TEXT[]"
+            )
+            .execute(pool)
+            .await?;
+            
+            info!("✅ Colonne location_labels ajoutée");
+        }
+        
+        // ✅ NOUVEAU 2025-11-05: Vérifier et ajouter session_id si manquante
+        let has_session_id = sqlx::query_scalar::<_, bool>(
+            "SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name = 'autocomplete_combinations' AND column_name = 'session_id')"
+        )
+        .fetch_one(pool)
+        .await?;
+        
+        if !has_session_id {
+            warn!("⚠️ Colonne session_id manquante, ajout en cours...");
+            sqlx::query(
+                "ALTER TABLE autocomplete_combinations ADD COLUMN session_id TEXT"
+            )
+            .execute(pool)
+            .await?;
+            
+            info!("✅ Colonne session_id ajoutée");
+        }
+        
+        // ✅ NOUVEAU 2025-11-05: Recréer la fonction upsert_autocomplete_combination avec les bons paramètres
+        // Même si la table existe déjà, on doit s'assurer que la fonction est à jour
+        info!("🔄 Mise à jour de la fonction upsert_autocomplete_combination...");
+        sqlx::query(r#"
+            CREATE OR REPLACE FUNCTION upsert_autocomplete_combination(
+                p_product_vector TEXT[],
+                p_location_vector TEXT[],
+                p_full_vector TEXT[],
+                p_product_labels TEXT[],
+                p_location_labels TEXT[],
+                p_chosen_location TEXT,
+                p_is_ai_preferred BOOLEAN,
+                p_ai_confidence FLOAT,
+                p_session_id TEXT,
+                p_has_variant BOOLEAN,
+                p_variant_dimension TEXT,
+                p_variant_value TEXT,
+                p_prix DECIMAL(12, 2),
+                p_devise TEXT,
+                p_stock INTEGER,
+                p_service_id INTEGER
+            )
+            RETURNS INTEGER AS $$
+            DECLARE
+                v_id INTEGER;
+                v_existing_count INTEGER;
+            BEGIN
+                SELECT id, usage_count INTO v_id, v_existing_count
+                FROM autocomplete_combinations
+                WHERE full_vector = p_full_vector;
+                
+                IF FOUND THEN
+                    UPDATE autocomplete_combinations
+                    SET 
+                        usage_count = usage_count + 1,
+                        is_ai_preferred = CASE WHEN p_is_ai_preferred THEN TRUE ELSE is_ai_preferred END,
+                        ai_confidence = GREATEST(ai_confidence, p_ai_confidence),
+                        service_id = COALESCE(p_service_id, service_id),
+                        product_labels = p_product_labels,
+                        location_labels = p_location_labels,
+                        updated_at = NOW()
+                    WHERE id = v_id;
+                    RETURN v_id;
+                ELSE
+                    INSERT INTO autocomplete_combinations (
+                        service_id, product_vector, product_labels, location_vector, location_labels, full_vector,
+                        chosen_location, usage_count, is_ai_preferred, ai_confidence,
+                        session_id, has_variant, variant_dimension, variant_value,
+                        prix, devise, stock
+                    ) VALUES (
+                        p_service_id, p_product_vector, p_product_labels, p_location_vector, p_location_labels, p_full_vector,
+                        p_chosen_location, 1, p_is_ai_preferred, p_ai_confidence,
+                        p_session_id, p_has_variant, p_variant_dimension, p_variant_value,
+                        p_prix, p_devise, p_stock
+                    )
+                    RETURNING id INTO v_id;
+                    RETURN v_id;
+                END IF;
+            END;
+            $$ LANGUAGE plpgsql
+        "#)
+        .execute(pool)
+        .await?;
+        
+        info!("✅ Fonction upsert_autocomplete_combination mise à jour");
         
         return Ok(());
     }
@@ -832,6 +1156,51 @@ pub async fn ensure_autocomplete_combinations_table(pool: &PgPool) -> Result<(),
 /// Vérifie et crée la table service_reviews avec support des réponses threadées
 pub async fn ensure_service_reviews_table(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Vérification de la table service_reviews...");
+    
+    // ✅ NOUVEAU 2025-11-05: Vérifier si la table existe d'abord
+    let exists = sqlx::query_scalar::<_, bool>(
+        "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'service_reviews')"
+    )
+    .fetch_one(pool)
+    .await?;
+    
+    if exists {
+        info!("✅ Table service_reviews déjà présente");
+        
+        // Vérifier reply_to_review_id (support threading)
+        let has_reply_to = sqlx::query_scalar::<_, bool>(
+            "SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name = 'service_reviews' AND column_name = 'reply_to_review_id')"
+        )
+        .fetch_one(pool)
+        .await?;
+        
+        if !has_reply_to {
+            warn!("⚠️ Colonne 'reply_to_review_id' manquante, ajout en cours...");
+            sqlx::query("ALTER TABLE service_reviews ADD COLUMN reply_to_review_id INTEGER REFERENCES service_reviews(id) ON DELETE CASCADE")
+                .execute(pool)
+                .await?;
+            info!("✅ Colonne 'reply_to_review_id' ajoutée");
+        }
+        
+        // Vérifier is_helpful_count
+        let has_helpful = sqlx::query_scalar::<_, bool>(
+            "SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name = 'service_reviews' AND column_name = 'is_helpful_count')"
+        )
+        .fetch_one(pool)
+        .await?;
+        
+        if !has_helpful {
+            warn!("⚠️ Colonne 'is_helpful_count' manquante, ajout en cours...");
+            sqlx::query("ALTER TABLE service_reviews ADD COLUMN is_helpful_count INTEGER DEFAULT 0")
+                .execute(pool)
+                .await?;
+            info!("✅ Colonne 'is_helpful_count' ajoutée");
+        }
+        
+        return Ok(());
+    }
+
+    warn!("⚠️ Table service_reviews manquante, création en cours...");
 
     // Créer la table si elle n'existe pas
     sqlx::query(r#"
@@ -871,6 +1240,51 @@ pub async fn ensure_service_reviews_table(pool: &PgPool) -> Result<(), sqlx::Err
 /// Vérifie et crée la table product_reactions pour les émotions sur les produits
 pub async fn ensure_product_reactions_table(pool: &PgPool) -> Result<(), sqlx::Error> {
     info!("🔍 Vérification de la table product_reactions...");
+    
+    // ✅ NOUVEAU 2025-11-05: Vérifier si la table existe d'abord
+    let exists = sqlx::query_scalar::<_, bool>(
+        "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'product_reactions')"
+    )
+    .fetch_one(pool)
+    .await?;
+    
+    if exists {
+        info!("✅ Table product_reactions déjà présente");
+        
+        // Vérifier reaction_type (avec les bons types)
+        let has_reaction_type = sqlx::query_scalar::<_, bool>(
+            "SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name = 'product_reactions' AND column_name = 'reaction_type')"
+        )
+        .fetch_one(pool)
+        .await?;
+        
+        if !has_reaction_type {
+            warn!("⚠️ Colonne 'reaction_type' manquante, ajout en cours...");
+            sqlx::query("ALTER TABLE product_reactions ADD COLUMN reaction_type VARCHAR(20) NOT NULL CHECK (reaction_type IN ('love', 'like', 'wow', 'interested', 'thinking', 'disappointed'))")
+                .execute(pool)
+                .await?;
+            info!("✅ Colonne 'reaction_type' ajoutée");
+        }
+        
+        // Vérifier product_id
+        let has_product_id = sqlx::query_scalar::<_, bool>(
+            "SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name = 'product_reactions' AND column_name = 'product_id')"
+        )
+        .fetch_one(pool)
+        .await?;
+        
+        if !has_product_id {
+            warn!("⚠️ Colonne 'product_id' manquante, ajout en cours...");
+            sqlx::query("ALTER TABLE product_reactions ADD COLUMN product_id TEXT NOT NULL DEFAULT ''")
+                .execute(pool)
+                .await?;
+            info!("✅ Colonne 'product_id' ajoutée");
+        }
+        
+        return Ok(());
+    }
+
+    warn!("⚠️ Table product_reactions manquante, création en cours...");
 
     sqlx::query(r#"
         CREATE TABLE IF NOT EXISTS product_reactions (
@@ -1034,6 +1448,111 @@ pub async fn ensure_token_usage_logs_table(pool: &PgPool) -> Result<(), sqlx::Er
                 .execute(pool)
                 .await?;
             info!("✅ Colonne 'tokens_ia_consumed' ajoutée");
+        }
+        
+        // ✅ NOUVEAU 2025-11-05: Vérifier si tokens_cost_xaf existe, sinon l'ajouter
+        let has_tokens_cost = sqlx::query_scalar::<_, bool>(
+            "SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name = 'token_usage_logs' AND column_name = 'tokens_cost_xaf')"
+        )
+        .fetch_one(pool)
+        .await?;
+        
+        if !has_tokens_cost {
+            warn!("⚠️ Colonne 'tokens_cost_xaf' manquante, ajout en cours...");
+            sqlx::query("ALTER TABLE token_usage_logs ADD COLUMN IF NOT EXISTS tokens_cost_xaf NUMERIC(15, 2) DEFAULT 0")
+                .execute(pool)
+                .await?;
+            info!("✅ Colonne 'tokens_cost_xaf' ajoutée");
+        }
+        
+        // ✅ NOUVEAU 2025-11-05: Vérifier si tokens_deducted existe, sinon l'ajouter
+        let has_tokens_deducted = sqlx::query_scalar::<_, bool>(
+            "SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name = 'token_usage_logs' AND column_name = 'tokens_deducted')"
+        )
+        .fetch_one(pool)
+        .await?;
+        
+        if !has_tokens_deducted {
+            warn!("⚠️ Colonne 'tokens_deducted' manquante, ajout en cours...");
+            sqlx::query("ALTER TABLE token_usage_logs ADD COLUMN IF NOT EXISTS tokens_deducted INTEGER NOT NULL DEFAULT 0")
+                .execute(pool)
+                .await?;
+            info!("✅ Colonne 'tokens_deducted' ajoutée");
+        }
+        
+        // ✅ NOUVEAU 2025-11-05: Vérifier si balance_before existe, sinon l'ajouter
+        let has_balance_before = sqlx::query_scalar::<_, bool>(
+            "SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name = 'token_usage_logs' AND column_name = 'balance_before')"
+        )
+        .fetch_one(pool)
+        .await?;
+        
+        if !has_balance_before {
+            warn!("⚠️ Colonne 'balance_before' manquante, ajout en cours...");
+            sqlx::query("ALTER TABLE token_usage_logs ADD COLUMN IF NOT EXISTS balance_before INTEGER NOT NULL DEFAULT 0")
+                .execute(pool)
+                .await?;
+            info!("✅ Colonne 'balance_before' ajoutée");
+        }
+        
+        // ✅ NOUVEAU 2025-11-05: Vérifier si balance_after existe, sinon l'ajouter
+        let has_balance_after = sqlx::query_scalar::<_, bool>(
+            "SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name = 'token_usage_logs' AND column_name = 'balance_after')"
+        )
+        .fetch_one(pool)
+        .await?;
+        
+        if !has_balance_after {
+            warn!("⚠️ Colonne 'balance_after' manquante, ajout en cours...");
+            sqlx::query("ALTER TABLE token_usage_logs ADD COLUMN IF NOT EXISTS balance_after INTEGER NOT NULL DEFAULT 0")
+                .execute(pool)
+                .await?;
+            info!("✅ Colonne 'balance_after' ajoutée");
+        }
+        
+        // ✅ NOUVEAU 2025-11-05: Vérifier si processing_time_ms existe, sinon l'ajouter
+        let has_processing_time = sqlx::query_scalar::<_, bool>(
+            "SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name = 'token_usage_logs' AND column_name = 'processing_time_ms')"
+        )
+        .fetch_one(pool)
+        .await?;
+        
+        if !has_processing_time {
+            warn!("⚠️ Colonne 'processing_time_ms' manquante, ajout en cours...");
+            sqlx::query("ALTER TABLE token_usage_logs ADD COLUMN IF NOT EXISTS processing_time_ms INTEGER")
+                .execute(pool)
+                .await?;
+            info!("✅ Colonne 'processing_time_ms' ajoutée");
+        }
+        
+        // ✅ NOUVEAU 2025-11-05: Vérifier si response_source existe, sinon l'ajouter
+        let has_response_source = sqlx::query_scalar::<_, bool>(
+            "SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name = 'token_usage_logs' AND column_name = 'response_source')"
+        )
+        .fetch_one(pool)
+        .await?;
+        
+        if !has_response_source {
+            warn!("⚠️ Colonne 'response_source' manquante, ajout en cours...");
+            sqlx::query("ALTER TABLE token_usage_logs ADD COLUMN IF NOT EXISTS response_source VARCHAR(50)")
+                .execute(pool)
+                .await?;
+            info!("✅ Colonne 'response_source' ajoutée");
+        }
+        
+        // ✅ NOUVEAU 2025-11-05: Vérifier si endpoint existe, sinon l'ajouter
+        let has_endpoint = sqlx::query_scalar::<_, bool>(
+            "SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name = 'token_usage_logs' AND column_name = 'endpoint')"
+        )
+        .fetch_one(pool)
+        .await?;
+        
+        if !has_endpoint {
+            warn!("⚠️ Colonne 'endpoint' manquante, ajout en cours...");
+            sqlx::query("ALTER TABLE token_usage_logs ADD COLUMN IF NOT EXISTS endpoint TEXT")
+                .execute(pool)
+                .await?;
+            info!("✅ Colonne 'endpoint' ajoutée");
         }
         
         return Ok(());
