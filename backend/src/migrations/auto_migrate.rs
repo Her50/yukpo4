@@ -33,7 +33,7 @@ pub async fn ensure_deactivate_expired_products_function(pool: &PgPool) -> Resul
             
             if !has_auto_deactivate {
                 warn!("⚠️ Colonne 'auto_deactivate_at' manquante, ajout en cours...");
-                sqlx::query("ALTER TABLE products_lifecycle ADD COLUMN auto_deactivate_at TIMESTAMPTZ DEFAULT (NOW() + INTERVAL '30 days')")
+                sqlx::query("ALTER TABLE products_lifecycle ADD COLUMN IF NOT EXISTS auto_deactivate_at TIMESTAMPTZ DEFAULT (NOW() + INTERVAL '30 days')")
                     .execute(pool)
                     .await?;
                 info!("✅ Colonne 'auto_deactivate_at' ajoutée");
@@ -48,7 +48,7 @@ pub async fn ensure_deactivate_expired_products_function(pool: &PgPool) -> Resul
             
             if !has_reactivation_cost {
                 warn!("⚠️ Colonne 'reactivation_cost' manquante, ajout en cours...");
-                sqlx::query("ALTER TABLE products_lifecycle ADD COLUMN reactivation_cost INTEGER DEFAULT 1000")
+                sqlx::query("ALTER TABLE products_lifecycle ADD COLUMN IF NOT EXISTS reactivation_cost INTEGER DEFAULT 1000")
                     .execute(pool)
                     .await?;
                 info!("✅ Colonne 'reactivation_cost' ajoutée");
@@ -162,7 +162,7 @@ pub async fn ensure_publicites_table(pool: &PgPool) -> Result<(), sqlx::Error> {
         
         if !has_zone_geo {
             warn!("⚠️ Colonne 'zone_geographique' manquante, ajout en cours...");
-            sqlx::query("ALTER TABLE publicites ADD COLUMN zone_geographique VARCHAR(50) NOT NULL DEFAULT 'local' CHECK (zone_geographique IN ('local', 'regional', 'international'))")
+            sqlx::query("ALTER TABLE publicites ADD COLUMN IF NOT EXISTS zone_geographique VARCHAR(50) NOT NULL DEFAULT 'local' CHECK (zone_geographique IN ('local', 'regional', 'international'))")
                 .execute(pool)
                 .await?;
             info!("✅ Colonne 'zone_geographique' ajoutée");
@@ -177,7 +177,7 @@ pub async fn ensure_publicites_table(pool: &PgPool) -> Result<(), sqlx::Error> {
         
         if !has_produits {
             warn!("⚠️ Colonne 'produits_indexes' manquante, ajout en cours...");
-            sqlx::query("ALTER TABLE publicites ADD COLUMN produits_indexes TEXT[] NOT NULL DEFAULT '{}'")
+            sqlx::query("ALTER TABLE publicites ADD COLUMN IF NOT EXISTS produits_indexes TEXT[] NOT NULL DEFAULT '{}'")
                 .execute(pool)
                 .await?;
             info!("✅ Colonne 'produits_indexes' ajoutée");
@@ -396,7 +396,7 @@ pub async fn ensure_notifications_table(pool: &PgPool) -> Result<(), sqlx::Error
         
         if !has_notif_type {
             warn!("⚠️ Colonne 'notification_type' manquante, ajout en cours...");
-            sqlx::query("ALTER TABLE notifications ADD COLUMN notification_type VARCHAR(50)")
+            sqlx::query("ALTER TABLE notifications ADD COLUMN IF NOT EXISTS notification_type VARCHAR(50)")
                 .execute(pool)
                 .await?;
             info!("✅ Colonne 'notification_type' ajoutée");
@@ -411,7 +411,7 @@ pub async fn ensure_notifications_table(pool: &PgPool) -> Result<(), sqlx::Error
         
         if !has_title {
             warn!("⚠️ Colonne 'title' manquante, ajout en cours...");
-            sqlx::query("ALTER TABLE notifications ADD COLUMN title VARCHAR(255)")
+            sqlx::query("ALTER TABLE notifications ADD COLUMN IF NOT EXISTS title VARCHAR(255)")
                 .execute(pool)
                 .await?;
             info!("✅ Colonne 'title' ajoutée");
@@ -426,7 +426,7 @@ pub async fn ensure_notifications_table(pool: &PgPool) -> Result<(), sqlx::Error
         
         if !has_metadata {
             warn!("⚠️ Colonne 'metadata' manquante, ajout en cours...");
-            sqlx::query("ALTER TABLE notifications ADD COLUMN metadata JSONB")
+            sqlx::query("ALTER TABLE notifications ADD COLUMN IF NOT EXISTS metadata JSONB")
                 .execute(pool)
                 .await?;
             info!("✅ Colonne 'metadata' ajoutée");
@@ -441,7 +441,7 @@ pub async fn ensure_notifications_table(pool: &PgPool) -> Result<(), sqlx::Error
         
         if !has_read_at {
             warn!("⚠️ Colonne 'read_at' manquante, ajout en cours...");
-            sqlx::query("ALTER TABLE notifications ADD COLUMN read_at TIMESTAMPTZ")
+            sqlx::query("ALTER TABLE notifications ADD COLUMN IF NOT EXISTS read_at TIMESTAMPTZ")
                 .execute(pool)
                 .await?;
             info!("✅ Colonne 'read_at' ajoutée");
@@ -524,13 +524,13 @@ pub async fn ensure_autocomplete_characteristics_table(pool: &PgPool) -> Result<
         
         if !has_char_vector {
             warn!("⚠️ Colonnes vectorielles manquantes, ajout en cours...");
-            sqlx::query("ALTER TABLE autocomplete_characteristics ADD COLUMN characteristic_vector TEXT[] DEFAULT '{}'")
+            sqlx::query("ALTER TABLE autocomplete_characteristics ADD COLUMN IF NOT EXISTS characteristic_vector TEXT[] DEFAULT '{}'")
                 .execute(pool)
                 .await?;
-            sqlx::query("ALTER TABLE autocomplete_characteristics ADD COLUMN location_vector TEXT[] DEFAULT '{}'")
+            sqlx::query("ALTER TABLE autocomplete_characteristics ADD COLUMN IF NOT EXISTS location_vector TEXT[] DEFAULT '{}'")
                 .execute(pool)
                 .await?;
-            sqlx::query("ALTER TABLE autocomplete_characteristics ADD COLUMN full_vector TEXT[] DEFAULT '{}'")
+            sqlx::query("ALTER TABLE autocomplete_characteristics ADD COLUMN IF NOT EXISTS full_vector TEXT[] DEFAULT '{}'")
                 .execute(pool)
                 .await?;
             info!("✅ Colonnes vectorielles ajoutées");
@@ -545,7 +545,7 @@ pub async fn ensure_autocomplete_characteristics_table(pool: &PgPool) -> Result<
         
         if !has_product_id {
             warn!("⚠️ Colonne 'product_id' manquante, ajout en cours...");
-            sqlx::query("ALTER TABLE autocomplete_characteristics ADD COLUMN product_id TEXT")
+            sqlx::query("ALTER TABLE autocomplete_characteristics ADD COLUMN IF NOT EXISTS product_id TEXT")
                 .execute(pool)
                 .await?;
             info!("✅ Colonne 'product_id' ajoutée");
@@ -560,7 +560,7 @@ pub async fn ensure_autocomplete_characteristics_table(pool: &PgPool) -> Result<
         
         if !has_geoname {
             warn!("⚠️ Colonne 'chosen_location_geoname_id' manquante, ajout en cours...");
-            sqlx::query("ALTER TABLE autocomplete_characteristics ADD COLUMN chosen_location_geoname_id BIGINT")
+            sqlx::query("ALTER TABLE autocomplete_characteristics ADD COLUMN IF NOT EXISTS chosen_location_geoname_id BIGINT")
                 .execute(pool)
                 .await?;
             info!("✅ Colonne 'chosen_location_geoname_id' ajoutée");
@@ -575,7 +575,7 @@ pub async fn ensure_autocomplete_characteristics_table(pool: &PgPool) -> Result<
         
         if !has_is_real {
             warn!("⚠️ Colonne 'is_real_product' manquante, ajout en cours...");
-            sqlx::query("ALTER TABLE autocomplete_characteristics ADD COLUMN is_real_product BOOLEAN DEFAULT TRUE")
+            sqlx::query("ALTER TABLE autocomplete_characteristics ADD COLUMN IF NOT EXISTS is_real_product BOOLEAN DEFAULT TRUE")
                 .execute(pool)
                 .await?;
             info!("✅ Colonne 'is_real_product' ajoutée");
@@ -590,7 +590,7 @@ pub async fn ensure_autocomplete_characteristics_table(pool: &PgPool) -> Result<
         
         if !has_product_labels {
             warn!("⚠️ Colonne 'product_labels' manquante dans autocomplete_characteristics, ajout en cours...");
-            sqlx::query("ALTER TABLE autocomplete_characteristics ADD COLUMN product_labels TEXT[] DEFAULT '{}'")
+            sqlx::query("ALTER TABLE autocomplete_characteristics ADD COLUMN IF NOT EXISTS product_labels TEXT[] DEFAULT '{}'")
                 .execute(pool)
                 .await?;
             info!("✅ Colonne 'product_labels' ajoutée à autocomplete_characteristics");
@@ -796,7 +796,7 @@ pub async fn ensure_autocomplete_combinations_table(pool: &PgPool) -> Result<(),
         if !has_product_labels {
             warn!("⚠️ Colonne product_labels manquante, ajout en cours...");
             sqlx::query(
-                "ALTER TABLE autocomplete_combinations ADD COLUMN product_labels TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[]"
+                "ALTER TABLE autocomplete_combinations ADD COLUMN IF NOT EXISTS product_labels TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[]"
             )
             .execute(pool)
             .await?;
@@ -814,7 +814,7 @@ pub async fn ensure_autocomplete_combinations_table(pool: &PgPool) -> Result<(),
         if !has_location_labels {
             warn!("⚠️ Colonne location_labels manquante, ajout en cours...");
             sqlx::query(
-                "ALTER TABLE autocomplete_combinations ADD COLUMN location_labels TEXT[] DEFAULT ARRAY[]::TEXT[]"
+                "ALTER TABLE autocomplete_combinations ADD COLUMN IF NOT EXISTS location_labels TEXT[] DEFAULT ARRAY[]::TEXT[]"
             )
             .execute(pool)
             .await?;
@@ -832,7 +832,7 @@ pub async fn ensure_autocomplete_combinations_table(pool: &PgPool) -> Result<(),
         if !has_session_id {
             warn!("⚠️ Colonne session_id manquante, ajout en cours...");
             sqlx::query(
-                "ALTER TABLE autocomplete_combinations ADD COLUMN session_id TEXT"
+                "ALTER TABLE autocomplete_combinations ADD COLUMN IF NOT EXISTS session_id TEXT"
             )
             .execute(pool)
             .await?;
@@ -1191,7 +1191,7 @@ pub async fn ensure_service_reviews_table(pool: &PgPool) -> Result<(), sqlx::Err
         
         if !has_reply_to {
             warn!("⚠️ Colonne 'reply_to_review_id' manquante, ajout en cours...");
-            sqlx::query("ALTER TABLE service_reviews ADD COLUMN reply_to_review_id INTEGER REFERENCES service_reviews(id) ON DELETE CASCADE")
+            sqlx::query("ALTER TABLE service_reviews ADD COLUMN IF NOT EXISTS reply_to_review_id INTEGER REFERENCES service_reviews(id) ON DELETE CASCADE")
                 .execute(pool)
                 .await?;
             info!("✅ Colonne 'reply_to_review_id' ajoutée");
@@ -1275,7 +1275,7 @@ pub async fn ensure_product_reactions_table(pool: &PgPool) -> Result<(), sqlx::E
         
         if !has_reaction_type {
             warn!("⚠️ Colonne 'reaction_type' manquante, ajout en cours...");
-            sqlx::query("ALTER TABLE product_reactions ADD COLUMN reaction_type VARCHAR(20) NOT NULL CHECK (reaction_type IN ('love', 'like', 'wow', 'interested', 'thinking', 'disappointed'))")
+            sqlx::query("ALTER TABLE product_reactions ADD COLUMN IF NOT EXISTS reaction_type VARCHAR(20) NOT NULL CHECK (reaction_type IN ('love', 'like', 'wow', 'interested', 'thinking', 'disappointed'))")
                 .execute(pool)
                 .await?;
             info!("✅ Colonne 'reaction_type' ajoutée");
@@ -1290,7 +1290,7 @@ pub async fn ensure_product_reactions_table(pool: &PgPool) -> Result<(), sqlx::E
         
         if !has_product_id {
             warn!("⚠️ Colonne 'product_id' manquante, ajout en cours...");
-            sqlx::query("ALTER TABLE product_reactions ADD COLUMN product_id TEXT NOT NULL DEFAULT ''")
+            sqlx::query("ALTER TABLE product_reactions ADD COLUMN IF NOT EXISTS product_id TEXT NOT NULL DEFAULT ''")
                 .execute(pool)
                 .await?;
             info!("✅ Colonne 'product_id' ajoutée");
@@ -1612,7 +1612,7 @@ pub async fn ensure_token_usage_logs_table(pool: &PgPool) -> Result<(), sqlx::Er
         
         if !has_operation_type {
             warn!("⚠️ Colonne 'operation_type' manquante, ajout en cours...");
-            sqlx::query("ALTER TABLE token_usage_logs ADD COLUMN operation_type VARCHAR(50) DEFAULT 'ia_request'")
+            sqlx::query("ALTER TABLE token_usage_logs ADD COLUMN IF NOT EXISTS operation_type VARCHAR(50) DEFAULT 'ia_request'")
                 .execute(pool)
                 .await?;
             info!("✅ Colonne 'operation_type' ajoutée");
