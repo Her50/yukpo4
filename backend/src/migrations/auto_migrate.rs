@@ -1451,7 +1451,131 @@ pub async fn run_auto_migrations(pool: &PgPool) {
         Err(e) => error!("❌ Erreur migration auto product_reactions: {}", e),
     }
     
+    // Migration 9: Chat mentions et participants (✅ NOUVEAU 2025-11-05)
+    match ensure_chat_mentions_and_participants(pool).await {
+        Ok(_) => info!("✅ Migration auto: chat mentions OK"),
+        Err(e) => error!("❌ Erreur migration auto chat mentions: {}", e),
+    }
+    
     info!("✅ Migrations automatiques terminées");
+}
+
+/// Vérifie et ajoute le support des mentions dans chat_messages
+pub async fn ensure_chat_mentions_and_participants(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification du système de mentions dans chat...");
+    
+    // Vérifier si la table chat_messages existe
+    let chat_exists = sqlx::query_scalar::<_, bool>(
+        "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'chat_messages')"
+    )
+    .fetch_one(pool)
+    .await?;
+    
+    if !chat_exists {
+        warn!("⚠️ Table chat_messages n'existe pas, skip migration mentions");
+        return Ok(());
+    }
+    
+    // Vérifier si mentioned_users existe
+    let has_mentions = sqlx::query_scalar::<_, bool>(
+        "SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name = 'chat_messages' AND column_name = 'mentioned_users')"
+    )
+    .fetch_one(pool)
+    .await?;
+    
+    if !has_mentions {
+        warn!("⚠️ Colonne 'mentioned_users' manquante dans chat_messages, ajout en cours...");
+        sqlx::query("ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS mentioned_users INTEGER[] DEFAULT '{}'")
+            .execute(pool)
+            .await?;
+        info!("✅ Colonne 'mentioned_users' ajoutée");
+        
+        // Créer index GIN pour recherche rapide
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_chat_messages_mentions ON chat_messages USING GIN(mentioned_users)")
+            .execute(pool)
+            .await?;
+        info!("✅ Index GIN sur mentioned_users créé");
+    }
+    
+    // Vérifier si conversation_participants existe
+    let participants_exists = sqlx::query_scalar::<_, bool>(
+        "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'conversation_participants')"
+    )
+    .fetch_one(pool)
+    .await?;
+    
+    if !participants_exists {
+        warn!("⚠️ Table conversation_participants manquante, création en cours...");
+        sqlx::query(r#"
+            CREATE TABLE IF NOT EXISTS conversation_participants (
+                id SERIAL PRIMARY KEY,
+                conversation_id TEXT NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+                user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                invited_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+                role VARCHAR(20) DEFAULT 'participant' CHECK (role IN ('owner', 'participant', 'guest')),
+                joined_at TIMESTAMPTZ DEFAULT NOW(),
+                can_remove BOOLEAN DEFAULT TRUE,
+                first_visible_message_id TEXT,
+                last_read_message_id TEXT,
+                is_active BOOLEAN DEFAULT TRUE,
+                left_at TIMESTAMPTZ,
+                created_at TIMESTAMPTZ DEFAULT NOW(),
+                updated_at TIMESTAMPTZ DEFAULT NOW(),
+                UNIQUE(conversation_id, user_id)
+            )
+        "#)
+        .execute(pool)
+        .await?;
+        
+        // Index
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_conversation_participants_conversation ON conversation_participants(conversation_id)")
+            .execute(pool)
+            .await?;
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_conversation_participants_user ON conversation_participants(user_id)")
+            .execute(pool)
+            .await?;
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_conversation_participants_active ON conversation_participants(is_active)")
+            .execute(pool)
+            .await?;
+        
+        info!("✅ Table conversation_participants créée");
+    }
+    
+    // Vérifier si conversation_tag_history existe
+    let tag_history_exists = sqlx::query_scalar::<_, bool>(
+        "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'conversation_tag_history')"
+    )
+    .fetch_one(pool)
+    .await?;
+    
+    if !tag_history_exists {
+        warn!("⚠️ Table conversation_tag_history manquante, création en cours...");
+        sqlx::query(r#"
+            CREATE TABLE IF NOT EXISTS conversation_tag_history (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                tagged_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                conversation_id TEXT NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+                tagged_at TIMESTAMPTZ DEFAULT NOW(),
+                context VARCHAR(50),
+                created_at TIMESTAMPTZ DEFAULT NOW()
+            )
+        "#)
+        .execute(pool)
+        .await?;
+        
+        // Index
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_tag_history_user ON conversation_tag_history(user_id, tagged_at DESC)")
+            .execute(pool)
+            .await?;
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_tag_history_tagged_user ON conversation_tag_history(tagged_user_id)")
+            .execute(pool)
+            .await?;
+        
+        info!("✅ Table conversation_tag_history créée");
+    }
+    
+    Ok(())
 }
 
 /// Vérifie et crée la table token_usage_logs si elle n'existe pas
