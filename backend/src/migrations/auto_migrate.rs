@@ -581,6 +581,21 @@ pub async fn ensure_autocomplete_characteristics_table(pool: &PgPool) -> Result<
             info!("✅ Colonne 'is_real_product' ajoutée");
         }
         
+        // ✅ NOUVEAU 2025-11-05: Vérifier product_labels dans autocomplete_characteristics
+        let has_product_labels = sqlx::query_scalar::<_, bool>(
+            "SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name = 'autocomplete_characteristics' AND column_name = 'product_labels')"
+        )
+        .fetch_one(pool)
+        .await?;
+        
+        if !has_product_labels {
+            warn!("⚠️ Colonne 'product_labels' manquante dans autocomplete_characteristics, ajout en cours...");
+            sqlx::query("ALTER TABLE autocomplete_characteristics ADD COLUMN product_labels TEXT[] DEFAULT '{}'")
+                .execute(pool)
+                .await?;
+            info!("✅ Colonne 'product_labels' ajoutée à autocomplete_characteristics");
+        }
+        
         return Ok(());
     }
     
@@ -1351,9 +1366,42 @@ pub async fn ensure_product_reactions_table(pool: &PgPool) -> Result<(), sqlx::E
     Ok(())
 }
 
+/// Vérifie et crée la fonction extract_all_product_text si elle n'existe pas
+pub async fn ensure_extract_all_product_text_function(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification de la fonction extract_all_product_text()...");
+    
+    // Créer ou remplacer la fonction (CREATE OR REPLACE = toujours à jour)
+    sqlx::query(r#"
+        CREATE OR REPLACE FUNCTION extract_all_product_text(product JSONB)
+        RETURNS TEXT AS $$
+        BEGIN
+            RETURN COALESCE(product->>'nom', '') || ' ' ||
+                   COALESCE(product->>'categorie', '') || ' ' ||
+                   COALESCE(product->>'description', '') || ' ' ||
+                   COALESCE(product->>'type', '') || ' ' ||
+                   COALESCE(product->>'marque', '') || ' ' ||
+                   COALESCE(product->>'modele', '') || ' ' ||
+                   COALESCE(product->>'titre', '');
+        END;
+        $$ LANGUAGE plpgsql IMMUTABLE;
+    "#)
+    .execute(pool)
+    .await?;
+    
+    info!("✅ Fonction extract_all_product_text() créée/mise à jour avec succès !");
+    
+    Ok(())
+}
+
 /// Exécute toutes les migrations automatiques nécessaires
 pub async fn run_auto_migrations(pool: &PgPool) {
     info!("🚀 Démarrage des migrations automatiques...");
+    
+    // Migration 0: Fonction extract_all_product_text (✅ NOUVEAU 2025-11-05)
+    match ensure_extract_all_product_text_function(pool).await {
+        Ok(_) => info!("✅ Migration auto: extract_all_product_text OK"),
+        Err(e) => error!("❌ Erreur migration auto extract_all_product_text: {}", e),
+    }
     
     // Migration 1: Fonction de désactivation des produits
     match ensure_deactivate_expired_products_function(pool).await {
@@ -1555,6 +1603,21 @@ pub async fn ensure_token_usage_logs_table(pool: &PgPool) -> Result<(), sqlx::Er
             info!("✅ Colonne 'endpoint' ajoutée");
         }
         
+        // ✅ NOUVEAU 2025-11-05: Vérifier si operation_type existe, sinon l'ajouter
+        let has_operation_type = sqlx::query_scalar::<_, bool>(
+            "SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name = 'token_usage_logs' AND column_name = 'operation_type')"
+        )
+        .fetch_one(pool)
+        .await?;
+        
+        if !has_operation_type {
+            warn!("⚠️ Colonne 'operation_type' manquante, ajout en cours...");
+            sqlx::query("ALTER TABLE token_usage_logs ADD COLUMN operation_type VARCHAR(50) DEFAULT 'ia_request'")
+                .execute(pool)
+                .await?;
+            info!("✅ Colonne 'operation_type' ajoutée");
+        }
+        
         return Ok(());
     }
     
@@ -1574,6 +1637,7 @@ pub async fn ensure_token_usage_logs_table(pool: &PgPool) -> Result<(), sqlx::Er
             processing_time_ms INTEGER,
             response_source VARCHAR(50),
             endpoint TEXT,
+            operation_type VARCHAR(50) DEFAULT 'ia_request',
             created_at TIMESTAMPTZ DEFAULT NOW()
         )
     "#)
