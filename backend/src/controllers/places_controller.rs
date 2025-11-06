@@ -99,7 +99,7 @@ pub async fn enrich_location(
         // ✅ Enfants depuis base locale africaine
         let african_service = AfricanLocationsService::new();
         let place_type = if is_leaf { "neighborhood" } else if admin_level <= 2 { "country" } else { "city" };
-        let children = african_service.get_children(&params.place_name, place_type);
+        let children = african_service.get_children(pool, &params.place_name, place_type).await;
         
         return Ok(Json(EnrichLocationResponse {
             place_name: params.place_name.clone(),
@@ -208,7 +208,7 @@ pub async fn enrich_location(
     // ✅ Enfants depuis base locale africaine
     let african_service = AfricanLocationsService::new();
     let place_type_str = if is_leaf { "neighborhood" } else if admin_level <= 2 { "country" } else { "city" };
-    let children = african_service.get_children(&params.place_name, place_type_str);
+    let children = african_service.get_children(pool, &params.place_name, place_type_str).await;
     
     Ok(Json(EnrichLocationResponse {
         place_name: params.place_name,

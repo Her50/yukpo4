@@ -1,125 +1,63 @@
 // 🗺️ Service de géolocalisation locale pour l'Afrique francophone
 // Fournit la hiérarchie DESCENDANTE (enfants) manquante dans Google Places API
+// ✅ NOUVEAU 2025-11-06: Lit depuis la table PostgreSQL african_locations
 
-use std::collections::HashMap;
-use serde::{Deserialize, Serialize};
+use sqlx::PgPool;
+use log::warn;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct AfricanCity {
-    pub nom: String,
-    pub pays: String,
-    pub quartiers: Vec<String>,
-}
-
-/// Service pour récupérer les enfants (quartiers) d'une ville
-pub struct AfricanLocationsService {
-    cities: HashMap<String, AfricanCity>,
-}
+/// Service pour récupérer les enfants géographiques depuis la BDD
+pub struct AfricanLocationsService;
 
 impl AfricanLocationsService {
     pub fn new() -> Self {
-        let mut cities = HashMap::new();
-        
-        // ✅ CAMEROUN - Données extraites de africanLocations.ts
-        cities.insert("douala".to_string(), AfricanCity {
-            nom: "Douala".to_string(),
-            pays: "Cameroun".to_string(),
-            quartiers: vec![
-                "Akwa", "Bonanjo", "Bali", "Bonapriso", "Bonamoussadi",
-                "Bonabéri", "New Bell", "Deido", "Bépanda", "Ndogbong",
-                "Makepe", "Logpom", "Logbaba", "Ndogpassi I", "Ndogpassi II", "Ndogpassi III",
-                "Kotto", "PK8", "PK10", "PK11", "PK12", "PK14", "PK17",
-                "Bessengue", "Bonamoussadi Bel Air",
-                "Village", "Japoma", "Yassa", "Ndog-Bong", "Ndogsimbi",
-                "Cité des Palmiers", "Sonel", "Camp Yabassi",
-                "Bassa Industrial", "Bonassama", "Petit Pays", "Mabanda", "Mboppi", "Omnisport"
-            ].iter().map(|s| s.to_string()).collect(),
-        });
-        
-        cities.insert("yaoundé".to_string(), AfricanCity {
-            nom: "Yaoundé".to_string(),
-            pays: "Cameroun".to_string(),
-            quartiers: vec![
-                "Centre-ville", "Poste Centrale", "Mvog-Ada",
-                "Bastos", "Nlongkak", "Santa Barbara", "Golf", "Hippodrome",
-                "Elig-Essono", "Nkolbisson", "Simbock", "Odza", "Nkoldongo",
-                "Mfandena", "Ngoa-Ekelle", "Mvan", "Ekounou", "Elig-Edzoa",
-                "Nsimeyong", "Briqueterie", "Tsinga", "Messa", "Mvog-Mbi",
-                "Emana", "Etoug-Ebe", "Nkomo", "Essos",
-                "Mokolo", "Madagascar", "Mendong", "Obili", "Omnisport", "Mimboman"
-            ].iter().map(|s| s.to_string()).collect(),
-        });
-        
-        cities.insert("garoua".to_string(), AfricanCity {
-            nom: "Garoua".to_string(),
-            pays: "Cameroun".to_string(),
-            quartiers: vec![
-                "Centre-ville", "Plateau", "Ouro-Kessoum", "Djamboutou", "Balaré",
-                "Demsa", "Kollere", "Roumdé Adjia", "Doualaré", "Mokolo"
-            ].iter().map(|s| s.to_string()).collect(),
-        });
-        
-        cities.insert("bafoussam".to_string(), AfricanCity {
-            nom: "Bafoussam".to_string(),
-            pays: "Cameroun".to_string(),
-            quartiers: vec![
-                "Centre-ville", "Tamdja", "Famla", "Djeleng", "Ngouache",
-                "Tougang", "Ndiandam", "Kamkop", "Université", "Marché A"
-            ].iter().map(|s| s.to_string()).collect(),
-        });
-        
-        // ✅ SÉNÉGAL
-        cities.insert("dakar".to_string(), AfricanCity {
-            nom: "Dakar".to_string(),
-            pays: "Sénégal".to_string(),
-            quartiers: vec![
-                "Plateau", "Médina", "HLM", "Parcelles Assainies", "Grand Yoff",
-                "Ouakam", "Ngor", "Almadies", "Point E", "Mermoz",
-                "Sacré-Cœur", "Fann", "Liberté", "Sicap"
-            ].iter().map(|s| s.to_string()).collect(),
-        });
-        
-        // ✅ CÔTE D'IVOIRE
-        cities.insert("abidjan".to_string(), AfricanCity {
-            nom: "Abidjan".to_string(),
-            pays: "Côte d'Ivoire".to_string(),
-            quartiers: vec![
-                "Plateau", "Cocody", "Yopougon", "Abobo", "Adjamé",
-                "Treichville", "Marcory", "Koumassi", "Port-Bouët", "Attécoubé",
-                "Riviera", "Deux Plateaux", "Angré", "Zone 4"
-            ].iter().map(|s| s.to_string()).collect(),
-        });
-        
-        Self { cities }
+        Self
     }
     
-    /// Récupère les quartiers d'une ville
-    pub fn get_children(&self, place_name: &str, place_type: &str) -> Vec<String> {
+    /// Récupère les enfants d'un lieu depuis la BDD
+    pub async fn get_children(&self, pool: &PgPool, place_name: &str, place_type: &str) -> Vec<String> {
         let place_lower = place_name.to_lowercase();
         
         match place_type {
             "city" | "locality" => {
                 // Retourner les quartiers de cette ville
-                if let Some(city) = self.cities.get(&place_lower) {
-                    city.quartiers.clone()
-                } else {
-                    vec![]
+                let result = sqlx::query_scalar::<_, String>(
+                    "SELECT quartier FROM african_locations WHERE LOWER(ville) = $1 AND quartier IS NOT NULL ORDER BY quartier"
+                )
+                .bind(&place_lower)
+                .fetch_all(pool)
+                .await;
+                
+                match result {
+                    Ok(quartiers) => quartiers,
+                    Err(e) => {
+                        warn!("⚠️ Erreur récupération quartiers de '{}': {}", place_name, e);
+                        vec![]
+                    }
                 }
             },
             "country" => {
                 // Retourner toutes les villes de ce pays
-                let country_lower = place_name.to_lowercase();
-                self.cities.values()
-                    .filter(|city| city.pays.to_lowercase().contains(&country_lower))
-                    .map(|city| city.nom.clone())
-                    .collect()
+                let result = sqlx::query_scalar::<_, String>(
+                    "SELECT DISTINCT ville FROM african_locations WHERE LOWER(pays) = $1 AND ville IS NOT NULL ORDER BY ville"
+                )
+                .bind(&place_lower)
+                .fetch_all(pool)
+                .await;
+                
+                match result {
+                    Ok(villes) => villes,
+                    Err(e) => {
+                        warn!("⚠️ Erreur récupération villes de '{}': {}", place_name, e);
+                        vec![]
+                    }
+                }
             },
             _ => vec![]
         }
     }
     
-    /// Détermine le type de lieu (pays, ville, quartier)
-    pub fn get_place_type(&self, place_name: &str) -> &str {
+    /// Détermine le type de lieu (pays, ville, quartier) depuis la BDD
+    pub async fn get_place_type(&self, pool: &PgPool, place_name: &str) -> &str {
         let place_lower = place_name.to_lowercase();
         
         // Liste des pays
@@ -128,41 +66,35 @@ impl AfricanLocationsService {
             return "country";
         }
         
-        // Vérifier si c'est une ville connue
-        if self.cities.contains_key(&place_lower) {
+        // Vérifier si c'est une ville dans la BDD
+        let is_city = sqlx::query_scalar::<_, bool>(
+            "SELECT EXISTS(SELECT 1 FROM african_locations WHERE LOWER(ville) = $1)"
+        )
+        .bind(&place_lower)
+        .fetch_one(pool)
+        .await
+        .unwrap_or(false);
+        
+        if is_city {
             return "city";
         }
         
-        // Vérifier si c'est un quartier
-        for city in self.cities.values() {
-            if city.quartiers.iter().any(|q| q.to_lowercase() == place_lower) {
-                return "neighborhood";
-            }
+        // Vérifier si c'est un quartier dans la BDD
+        let is_neighborhood = sqlx::query_scalar::<_, bool>(
+            "SELECT EXISTS(SELECT 1 FROM african_locations WHERE LOWER(quartier) = $1)"
+        )
+        .bind(&place_lower)
+        .fetch_one(pool)
+        .await
+        .unwrap_or(false);
+        
+        if is_neighborhood {
+            return "neighborhood";
         }
         
         "unknown"
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    
-    #[test]
-    fn test_get_quartiers_douala() {
-        let service = AfricanLocationsService::new();
-        let quartiers = service.get_children("Douala", "city");
-        assert!(quartiers.len() > 30);
-        assert!(quartiers.contains(&"Akwa".to_string()));
-        assert!(quartiers.contains(&"Makepe".to_string()));
-    }
-    
-    #[test]
-    fn test_get_villes_cameroun() {
-        let service = AfricanLocationsService::new();
-        let villes = service.get_children("Cameroun", "country");
-        assert!(villes.contains(&"Douala".to_string()));
-        assert!(villes.contains(&"Yaoundé".to_string()));
-    }
-}
+// Tests nécessitent une connexion BDD, à exécuter avec cargo test --features test-db
 

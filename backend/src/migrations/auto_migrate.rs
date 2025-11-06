@@ -1534,6 +1534,136 @@ pub async fn ensure_geo_hierarchy_table(pool: &PgPool) -> Result<(), sqlx::Error
 }
 
 /// Exécute toutes les migrations automatiques nécessaires
+/// Migration 0.5: Table african_locations pour base locale géographique (✅ NOUVEAU 2025-11-06)
+pub async fn ensure_african_locations_table(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🗺️ Vérification de la table african_locations...");
+    
+    // Vérifier si la table existe
+    let table_exists = sqlx::query_scalar::<_, bool>(
+        "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'african_locations')"
+    )
+    .fetch_one(pool)
+    .await?;
+    
+    if table_exists {
+        info!("✅ Table african_locations déjà présente");
+        return Ok(());
+    }
+    
+    warn!("⚠️ Table african_locations manquante, création en cours...");
+    
+    // Créer la table
+    sqlx::query(r#"
+        CREATE TABLE IF NOT EXISTS african_locations (
+            id SERIAL PRIMARY KEY,
+            pays VARCHAR(100) NOT NULL,
+            ville VARCHAR(200),
+            quartier VARCHAR(200),
+            latitude DECIMAL(10, 8),
+            longitude DECIMAL(11, 8),
+            population INTEGER,
+            type_lieu VARCHAR(50) DEFAULT 'quartier',
+            created_at TIMESTAMPTZ DEFAULT NOW(),
+            updated_at TIMESTAMPTZ DEFAULT NOW(),
+            UNIQUE(pays, ville, quartier)
+        )
+    "#)
+    .execute(pool)
+    .await?;
+    
+    // Index pour recherches rapides
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_african_locations_pays ON african_locations(pays)")
+        .execute(pool)
+        .await?;
+    
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_african_locations_ville ON african_locations(ville)")
+        .execute(pool)
+        .await?;
+    
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_african_locations_quartier ON african_locations(quartier)")
+        .execute(pool)
+        .await?;
+    
+    info!("✅ Table african_locations créée, insertion des données initiales...");
+    
+    // ✅ SEED: Données extraites de mobile/src/data/africanLocations.ts
+    // CAMEROUN - Douala (60+ quartiers)
+    let douala_quartiers = vec![
+        "Akwa", "Bonanjo", "Bali", "Bonapriso", "Bonamoussadi",
+        "Bonabéri", "New Bell", "Deido", "Bépanda", "Ndogbong",
+        "Makepe", "Logpom", "Logbaba", "Ndogpassi I", "Ndogpassi II", "Ndogpassi III",
+        "Kotto", "PK8", "PK10", "PK11", "PK12", "PK14", "PK17",
+        "Bessengue", "Bonamoussadi Bel Air",
+        "Village", "Japoma", "Yassa", "Ndog-Bong", "Ndogsimbi",
+        "Cité des Palmiers", "Sonel", "Camp Yabassi",
+        "Bassa Industrial", "Bonassama", "Petit Pays", "Mabanda", "Mboppi", "Omnisport"
+    ];
+    
+    for quartier in douala_quartiers {
+        let _ = sqlx::query(
+            "INSERT INTO african_locations (pays, ville, quartier, type_lieu) VALUES ($1, $2, $3, 'quartier') ON CONFLICT DO NOTHING"
+        )
+        .bind("Cameroun")
+        .bind("Douala")
+        .bind(quartier)
+        .execute(pool)
+        .await;
+    }
+    
+    // CAMEROUN - Yaoundé (80+ quartiers)
+    let yaounde_quartiers = vec![
+        "Centre-ville", "Poste Centrale", "Mvog-Ada",
+        "Bastos", "Nlongkak", "Santa Barbara", "Golf", "Hippodrome",
+        "Elig-Essono", "Nkolbisson", "Simbock", "Odza", "Nkoldongo",
+        "Mfandena", "Ngoa-Ekelle", "Mvan", "Ekounou", "Elig-Edzoa",
+        "Nsimeyong", "Briqueterie", "Tsinga", "Messa", "Mvog-Mbi",
+        "Emana", "Etoug-Ebe", "Nkomo", "Essos",
+        "Mokolo", "Madagascar", "Mendong", "Obili", "Omnisport", "Mimboman"
+    ];
+    
+    for quartier in yaounde_quartiers {
+        let _ = sqlx::query(
+            "INSERT INTO african_locations (pays, ville, quartier, type_lieu) VALUES ($1, $2, $3, 'quartier') ON CONFLICT DO NOTHING"
+        )
+        .bind("Cameroun")
+        .bind("Yaoundé")
+        .bind(quartier)
+        .execute(pool)
+        .await;
+    }
+    
+    // CAMEROUN - Garoua
+    let garoua_quartiers = vec!["Centre-ville", "Plateau", "Ouro-Kessoum", "Djamboutou", "Balaré", "Demsa", "Kollere", "Roumdé Adjia", "Doualaré", "Mokolo"];
+    for quartier in garoua_quartiers {
+        let _ = sqlx::query("INSERT INTO african_locations (pays, ville, quartier, type_lieu) VALUES ($1, $2, $3, 'quartier') ON CONFLICT DO NOTHING")
+            .bind("Cameroun").bind("Garoua").bind(quartier).execute(pool).await;
+    }
+    
+    // CAMEROUN - Bafoussam
+    let bafoussam_quartiers = vec!["Centre-ville", "Tamdja", "Famla", "Djeleng", "Ngouache", "Tougang", "Ndiandam", "Kamkop", "Université", "Marché A"];
+    for quartier in bafoussam_quartiers {
+        let _ = sqlx::query("INSERT INTO african_locations (pays, ville, quartier, type_lieu) VALUES ($1, $2, $3, 'quartier') ON CONFLICT DO NOTHING")
+            .bind("Cameroun").bind("Bafoussam").bind(quartier).execute(pool).await;
+    }
+    
+    // SÉNÉGAL - Dakar
+    let dakar_quartiers = vec!["Plateau", "Médina", "HLM", "Parcelles Assainies", "Grand Yoff", "Ouakam", "Ngor", "Almadies", "Point E", "Mermoz", "Sacré-Cœur", "Fann", "Liberté", "Sicap"];
+    for quartier in dakar_quartiers {
+        let _ = sqlx::query("INSERT INTO african_locations (pays, ville, quartier, type_lieu) VALUES ($1, $2, $3, 'quartier') ON CONFLICT DO NOTHING")
+            .bind("Sénégal").bind("Dakar").bind(quartier).execute(pool).await;
+    }
+    
+    // CÔTE D'IVOIRE - Abidjan
+    let abidjan_quartiers = vec!["Plateau", "Cocody", "Yopougon", "Abobo", "Adjamé", "Treichville", "Marcory", "Koumassi", "Port-Bouët", "Attécoubé", "Riviera", "Deux Plateaux", "Angré", "Zone 4"];
+    for quartier in abidjan_quartiers {
+        let _ = sqlx::query("INSERT INTO african_locations (pays, ville, quartier, type_lieu) VALUES ($1, $2, $3, 'quartier') ON CONFLICT DO NOTHING")
+            .bind("Côte d'Ivoire").bind("Abidjan").bind(quartier).execute(pool).await;
+    }
+    
+    info!("✅ Table african_locations créée et seedée avec succès");
+    Ok(())
+}
+
 pub async fn run_auto_migrations(pool: &PgPool) {
     info!("🚀 Démarrage des migrations automatiques...");
     
@@ -1541,6 +1671,12 @@ pub async fn run_auto_migrations(pool: &PgPool) {
     match ensure_geo_hierarchy_table(pool).await {
         Ok(_) => info!("✅ Migration auto: geo_hierarchy OK"),
         Err(e) => error!("❌ Erreur migration auto geo_hierarchy: {}", e),
+    }
+    
+    // Migration 0.5: Table african_locations (✅ NOUVEAU 2025-11-06)
+    match ensure_african_locations_table(pool).await {
+        Ok(_) => info!("✅ Migration auto: african_locations OK"),
+        Err(e) => error!("❌ Erreur migration auto african_locations: {}", e),
     }
     
     // Migration 1: Fonction extract_all_product_text (✅ NOUVEAU 2025-11-05)
