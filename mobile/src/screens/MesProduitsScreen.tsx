@@ -577,6 +577,50 @@ const MesProduitsScreen: React.FC = () => {
                 </View>
             </LinearGradient>
 
+            {/* ✅ NOUVEAU 2025-11-06: Actions rapides de gestion */}
+            <View style={styles.quickActionsContainer}>
+                <TouchableOpacity
+                    style={styles.quickActionButton}
+                    onPress={() => {
+                        // Naviguer vers dashboard/statistiques
+                        Alert.alert('📊 Dashboard', 'Statistiques et analytics bientôt disponibles');
+                    }}
+                >
+                    <SafeIcon name="bar-chart-2" size={20} color={modernColors.primary} />
+                    <Text style={styles.quickActionText}>Statistiques</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                    style={styles.quickActionButton}
+                    onPress={() => {
+                        // Naviguer vers gestion des membres
+                        Alert.alert('👥 Membres', 'Gestion des droits d\'administration bientôt disponible');
+                    }}
+                >
+                    <SafeIcon name="users" size={20} color={modernColors.primary} />
+                    <Text style={styles.quickActionText}>Membres</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                    style={styles.quickActionButton}
+                    onPress={() => {
+                        // Naviguer vers création publicité
+                        (navigation as any).navigate('CreatePublicite');
+                    }}
+                >
+                    <SafeIcon name="megaphone" size={20} color={modernColors.primary} />
+                    <Text style={styles.quickActionText}>Publicité</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                    style={[styles.quickActionButton, styles.quickActionButtonPrimary]}
+                    onPress={handleCreateNewProduct}
+                >
+                    <SafeIcon name="plus" size={20} color="#FFFFFF" />
+                    <Text style={[styles.quickActionText, { color: '#FFFFFF' }]}>Nouveau</Text>
+                </TouchableOpacity>
+            </View>
+
             {/* Filtres */}
             <View style={styles.filtersContainer}>
                 {/* Filtre par statut */}
@@ -647,7 +691,110 @@ const MesProduitsScreen: React.FC = () => {
                             style={{ marginTop: 20 }}
                         />
                     </View>
+                ) : categoryFilter === 'tous' ? (
+                    // ✅ NOUVEAU 2025-11-06: Affichage groupé par catégorie
+                    <View style={styles.productsList}>
+                        {categories.filter(cat => cat !== 'tous').map((category) => {
+                            const categoryProducts = filteredProducts.filter(p => p.type === category);
+                            if (categoryProducts.length === 0) return null;
+                            
+                            return (
+                                <View key={category} style={styles.categoryGroup}>
+                                    {/* Header de catégorie */}
+                                    <View style={styles.categoryHeader}>
+                                        <Text style={styles.categoryTitle}>
+                                            {getProductTypeLabel(category)}
+                                        </Text>
+                                        <View style={styles.categoryCountBadge}>
+                                            <Text style={styles.categoryCountText}>
+                                                {categoryProducts.length}
+                                            </Text>
+                                        </View>
+                                    </View>
+                                    
+                                    {/* Produits de cette catégorie */}
+                                    {categoryProducts.map((product) => (
+                                        <NativeCard key={product.id} style={styles.productCard}>
+                                            {/* Header produit */}
+                                            <View style={styles.productHeader}>
+                                                <View style={styles.productTitleContainer}>
+                                                    <Text style={styles.productName} numberOfLines={2}>
+                                                        {product.nom || 'Produit sans nom'}
+                                                    </Text>
+                                                    <View style={[
+                                                        styles.productStatusBadge,
+                                                        { backgroundColor: product.is_active ? '#10B981' : '#9CA3AF' }
+                                                    ]}>
+                                                        <Text style={styles.productStatusText}>
+                                                            {product.is_active ? 'Actif' : 'Inactif'}
+                                                        </Text>
+                                                    </View>
+                                                </View>
+                                            </View>
+
+                                            {/* Infos produit */}
+                                            <View style={styles.productInfo}>
+                                                <View style={styles.productInfoRow}>
+                                                    <SafeIcon name="folder" size={14} color="#6B7280" />
+                                                    <Text style={styles.productServiceName} numberOfLines={1}>
+                                                        {product.serviceTitre}
+                                                    </Text>
+                                                </View>
+
+                                                {product.description && (
+                                                    <Text style={styles.productDescription} numberOfLines={2}>
+                                                        {product.description}
+                                                    </Text>
+                                                )}
+
+                                                {product.prix && (
+                                                    <View style={styles.productInfoRow}>
+                                                        <SafeIcon name="dollar-sign" size={14} color="#10B981" />
+                                                        <Text style={styles.productPrix}>
+                                                            {typeof product.prix === 'string' ? product.prix : product.prix.toLocaleString()} {product.devise || 'FCFA'}
+                                                        </Text>
+                                                    </View>
+                                                )}
+                                            </View>
+
+                                            {/* Actions produit */}
+                                            <View style={styles.productActions}>
+                                                <TouchableOpacity
+                                                    style={[styles.actionButton, styles.actionButtonPrimary]}
+                                                    onPress={() => handleToggleProduct(product)}
+                                                >
+                                                    <SafeIcon
+                                                        name={product.is_active ? 'pause' : 'play'}
+                                                        size={16}
+                                                        color="#FFFFFF"
+                                                    />
+                                                    <Text style={styles.actionButtonText}>
+                                                        {product.is_active ? 'Pause' : 'Activer'}
+                                                    </Text>
+                                                </TouchableOpacity>
+
+                                                <TouchableOpacity
+                                                    style={styles.actionButton}
+                                                    onPress={() => handleShareProduct(product)}
+                                                >
+                                                    <SafeIcon name="share-2" size={16} color={modernColors.primary} />
+                                                </TouchableOpacity>
+
+                                                <TouchableOpacity
+                                                    style={styles.actionButton}
+                                                    onPress={() => handleDeleteProduct(product)}
+                                                >
+                                                    <SafeIcon name="trash-2" size={16} color="#EF4444" />
+                                                </TouchableOpacity>
+                                            </View>
+                                        </NativeCard>
+                                    ))}
+                                </View>
+                            );
+                        })}
+                    </View>
                 ) : (
+                    // Affichage simple (filtre catégorie unique sélectionnée)
                     <View style={styles.productsList}>
                         {filteredProducts.map((product) => (
                             <NativeCard key={product.id} style={styles.productCard}>
@@ -901,6 +1048,39 @@ const styles = StyleSheet.create({
         fontSize: 16,
         color: modernColors.textSecondary,
     },
+    // ✅ NOUVEAU 2025-11-06: Actions rapides de gestion
+    quickActionsContainer: {
+        flexDirection: 'row',
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        backgroundColor: '#FFFFFF',
+        borderBottomWidth: 1,
+        borderBottomColor: '#E5E7EB',
+        gap: 10,
+    },
+    quickActionButton: {
+        flex: 1,
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 12,
+        paddingHorizontal: 8,
+        backgroundColor: '#F9FAFB',
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        gap: 6,
+    },
+    quickActionButtonPrimary: {
+        backgroundColor: modernColors.primary,
+        borderColor: modernColors.primary,
+    },
+    quickActionText: {
+        fontSize: 11,
+        fontWeight: '600',
+        color: modernColors.text,
+        textAlign: 'center',
+    },
     filtersContainer: {
         backgroundColor: '#FFFFFF',
         paddingVertical: 12,
@@ -955,6 +1135,38 @@ const styles = StyleSheet.create({
     },
     productsList: {
         padding: 16,
+    },
+    // ✅ NOUVEAU 2025-11-06: Styles pour regroupement par catégorie
+    categoryGroup: {
+        marginBottom: 24,
+    },
+    categoryHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 12,
+        paddingVertical: 10,
+        backgroundColor: '#F3F4F6',
+        borderRadius: 8,
+        marginBottom: 12,
+    },
+    categoryTitle: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: modernColors.text,
+    },
+    categoryCountBadge: {
+        backgroundColor: modernColors.primary,
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 12,
+        minWidth: 28,
+        alignItems: 'center',
+    },
+    categoryCountText: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: '#FFFFFF',
     },
     productCard: {
         marginBottom: 16,
