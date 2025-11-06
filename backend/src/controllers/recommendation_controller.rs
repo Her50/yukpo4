@@ -138,7 +138,8 @@ pub async fn get_mixed_content(
     .await;
     
     // Charger publicités actives
-    let paid_result = sqlx::query!(
+    // ✅ CORRECTION 2025-11-06: Utiliser sqlx::query() pour compatibilité offline mode
+    let paid_result = sqlx::query(
         r#"
         SELECT 
             id,
@@ -227,19 +228,29 @@ pub async fn get_mixed_content(
     let mut paid_ads: Vec<serde_json::Value> = vec![];
     if let Ok(rows) = paid_result {
         for row in rows {
+            // ✅ CORRECTION 2025-11-06: Extraction manuelle des colonnes pour compatibilité offline
+            let id: i32 = row.try_get("id").unwrap_or(0);
+            let titre: String = row.try_get("titre").unwrap_or_default();
+            let description: Option<String> = row.try_get("description").ok();
+            let videos: Vec<String> = row.try_get::<Vec<String>, _>("videos").unwrap_or_default();
+            let thumbnails: Vec<String> = row.try_get::<Vec<String>, _>("thumbnails").unwrap_or_default();
+            let boost_level: Option<String> = row.try_get("boost_level").ok();
+            let frequency_ratio: Option<f64> = row.try_get("frequency_ratio").ok();
+            let produits_indexes: Vec<String> = row.try_get::<Vec<String>, _>("produits_indexes").unwrap_or_default();
+            
             paid_ads.push(serde_json::json!({
                 "type": "paid",
                 "is_paid": true,
                 "data": {
-                    "id": row.id,
-                    "titre": row.titre,
-                    "description": row.description,
-                    "videos": row.videos,
-                    "thumbnails": row.thumbnails,
-                    "produits_indexes": row.produits_indexes
+                    "id": id,
+                    "titre": titre,
+                    "description": description,
+                    "videos": videos,
+                    "thumbnails": thumbnails,
+                    "produits_indexes": produits_indexes
                 },
-                "boost_level": row.boost_level.unwrap_or("basic".to_string()),
-                "frequency_ratio": row.frequency_ratio.unwrap_or(3)
+                "boost_level": boost_level.unwrap_or("basic".to_string()),
+                "frequency_ratio": frequency_ratio.unwrap_or(0.2)
             }));
         }
     }
