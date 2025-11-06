@@ -2189,12 +2189,26 @@ pub async fn ensure_token_usage_logs_table(pool: &PgPool) -> Result<(), sqlx::Er
         .fetch_one(pool)
         .await?;
         
-        if has_tokens_before {
+        // ✅ Vérifier que balance_before n'existe pas déjà avant de renommer
+        let has_balance_before = sqlx::query_scalar::<_, bool>(
+            "SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name = 'token_usage_logs' AND column_name = 'balance_before')"
+        )
+        .fetch_one(pool)
+        .await?;
+        
+        if has_tokens_before && !has_balance_before {
             warn!("⚠️ Ancienne colonne 'tokens_before' détectée, renommage en 'balance_before'...");
             sqlx::query("ALTER TABLE token_usage_logs RENAME COLUMN tokens_before TO balance_before")
                 .execute(pool)
                 .await?;
             info!("✅ Colonne renommée: tokens_before → balance_before");
+        } else if has_tokens_before && has_balance_before {
+            // Les deux existent : supprimer l'ancienne
+            warn!("⚠️ Colonnes 'tokens_before' ET 'balance_before' détectées, suppression de l'ancienne...");
+            sqlx::query("ALTER TABLE token_usage_logs DROP COLUMN tokens_before")
+                .execute(pool)
+                .await?;
+            info!("✅ Ancienne colonne 'tokens_before' supprimée");
         }
         
         // ✅ Renommer tokens_after → balance_after si nécessaire
@@ -2204,12 +2218,25 @@ pub async fn ensure_token_usage_logs_table(pool: &PgPool) -> Result<(), sqlx::Er
         .fetch_one(pool)
         .await?;
         
-        if has_tokens_after {
+        let has_balance_after = sqlx::query_scalar::<_, bool>(
+            "SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name = 'token_usage_logs' AND column_name = 'balance_after')"
+        )
+        .fetch_one(pool)
+        .await?;
+        
+        if has_tokens_after && !has_balance_after {
             warn!("⚠️ Ancienne colonne 'tokens_after' détectée, renommage en 'balance_after'...");
             sqlx::query("ALTER TABLE token_usage_logs RENAME COLUMN tokens_after TO balance_after")
                 .execute(pool)
                 .await?;
             info!("✅ Colonne renommée: tokens_after → balance_after");
+        } else if has_tokens_after && has_balance_after {
+            // Les deux existent : supprimer l'ancienne
+            warn!("⚠️ Colonnes 'tokens_after' ET 'balance_after' détectées, suppression de l'ancienne...");
+            sqlx::query("ALTER TABLE token_usage_logs DROP COLUMN tokens_after")
+                .execute(pool)
+                .await?;
+            info!("✅ Ancienne colonne 'tokens_after' supprimée");
         }
         
         return Ok(());
