@@ -13,8 +13,8 @@ use log::info;
 use crate::state::AppState;
 use crate::services::autocomplete_history_service;
 use crate::services::autocomplete_combinations_service;
-// use crate::services::autocomplete_search_service;  // ✅ NOUVEAU 2025-11-04 (non utilisé)
-use crate::services::autocomplete_client_service;  // ✅ NOUVEAU 2025-11-04: Suggestions CLIENT
+use crate::services::autocomplete_search_service;  // ✅ NOUVEAU 2025-11-04: Suggestions CLIENT avec priorité + GPS
+// use crate::services::autocomplete_client_service;  // ❌ Remplacé par autocomplete_search_service
 
 #[derive(Debug, Deserialize)]
 pub struct AutocompleteSuggestionsQuery {
@@ -206,8 +206,11 @@ pub async fn historize_autocomplete_field(
 #[derive(Debug, Deserialize)]
 pub struct SearchCombinationsRequest {
     pub query: String, // Texte de recherche libre
-    pub user_location: Option<String>, // Localisation de l'utilisateur pour scoring géographique
+    pub user_location: Option<String>, // Localisation de l'utilisateur pour scoring géographique (texte)
     pub limit: Option<i64>,
+    // ✅ NOUVEAU 2025-11-06: Support GPS pour tri par proximité
+    pub user_lat: Option<f64>,
+    pub user_lng: Option<f64>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -390,9 +393,10 @@ pub async fn link_combinations_to_service(
 /// POST /api/autocomplete/search-products
 /// Suggestions produits pour CLIENT (pendant la frappe)
 /// Utilise autocomplete_characteristics (VRAIS produits clients)
+/// ✅ NOUVEAU 2025-11-06: Avec priorité chosen_location + GPS proximité
 pub async fn search_product_suggestions(
     State(state): State<Arc<AppState>>,
-    Json(request): Json<SearchCombinationsRequest>,  // Réutilise même struct
+    Json(request): Json<SearchCombinationsRequest>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
     let pool = &state.pg;
     let query = request.query.trim();
@@ -412,9 +416,32 @@ pub async fn search_product_suggestions(
         })));
     }
     
-    match autocomplete_client_service::search_product_suggestions(pool, query, limit).await {
+    // ✅ Parser la query en vecteur de mots
+    let combination_vector: Vec<String> = query
+        .split_whitespace()
+        .map(|s| s.to_string())
+        .collect();
+    
+    // ✅ GPS optionnel (pour tri par proximité)
+    let user_location = if let (Some(lat), Some(lng)) = (request.user_lat, request.user_lng) {
+        Some((lat, lng))
+    } else {
+        None
+    };
+    
+    if user_location.is_some() {
+        info!("📍 GPS client fourni: {:?}", user_location);
+    }
+    
+    // ✅ UTILISER LE SERVICE AVANCÉ (priorité chosen_location + GPS)
+    match autocomplete_search_service::search_by_autocomplete_vector(
+        pool,
+        &combination_vector,
+        user_location,
+        limit
+    ).await {
         Ok(suggestions) => {
-            info!("✅ {} suggestions CLIENT trouvées", suggestions.len());
+            info!("✅ {} suggestions avec priorité chosen_location + GPS", suggestions.len());
             Ok(Json(serde_json::json!({
                 "success": true,
                 "data": suggestions,

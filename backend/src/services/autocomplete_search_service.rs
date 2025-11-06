@@ -22,6 +22,12 @@ pub struct AutocompleteSearchResult {
     
     // Distance si GPS fourni
     pub distance_km: Option<f64>,
+    
+    // ✅ NOUVEAU 2025-11-06 : Extractions produit (compatibilité client_service)
+    pub has_variant: bool,
+    pub variant_dimension: Option<String>,
+    pub prix: Option<f64>,
+    pub devise: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -66,6 +72,11 @@ pub async fn search_by_autocomplete_vector(
                 ac.usage_count,
                 u.id as user_id,
                 u.email as user_email,
+                -- ✅ Extractions produit (compatibilité client_service)
+                (s.data->'produits'->>'prix')::FLOAT as prix,
+                s.data->'produits'->>'devise' as devise,
+                COALESCE((s.data->'produits'->>'has_variant')::BOOLEAN, FALSE) as has_variant,
+                s.data->'produits'->>'variant_dimension' as variant_dimension,
                 -- Calcul distance GPS
                 (
                     CASE 
@@ -160,6 +171,11 @@ pub async fn search_by_autocomplete_vector(
                 ac.usage_count,
                 u.id as user_id,
                 u.email as user_email,
+                -- ✅ Extractions produit (compatibilité client_service)
+                (s.data->'produits'->>'prix')::FLOAT as prix,
+                s.data->'produits'->>'devise' as devise,
+                COALESCE((s.data->'produits'->>'has_variant')::BOOLEAN, FALSE) as has_variant,
+                s.data->'produits'->>'variant_dimension' as variant_dimension,
                 NULL::DOUBLE PRECISION as distance_km,
                 -- Score de pertinence
                 (
@@ -253,6 +269,11 @@ pub async fn search_by_autocomplete_vector(
                 avatar_url: None,
             }),
             distance_km: row.get("distance_km"),
+            // ✅ Extractions produit
+            has_variant: row.get("has_variant"),
+            variant_dimension: row.get("variant_dimension"),
+            prix: row.get("prix"),
+            devise: row.get("devise"),
         });
     }
     

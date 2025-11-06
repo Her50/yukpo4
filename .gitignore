@@ -62,3 +62,5 @@ mobile/web-build/
 **/build/
 **/.expo/
 **/.expo-shared/
+mobile/temp-apk-server/
+*.apk

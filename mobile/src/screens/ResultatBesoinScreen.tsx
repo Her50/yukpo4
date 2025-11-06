@@ -105,7 +105,7 @@ const ResultatBesoinScreen: React.FC = () => {
   const [dynamicFilters, setDynamicFilters] = useState<Record<string, Set<string>>>({});
   const [selectedFilters, setSelectedFilters] = useState<Record<string, string>>({});
 
-  // ✅ CORRECTION 2025-11-05 : Fonction de recherche stable avec useCallback
+  // ✅ CORRECTION 2025-11-06 : Fonction de recherche stable avec GPS proximité
   const fetchSuggestions = useCallback(async (query: string) => {
     if (!query.trim()) {
       setSuggestions([]);
@@ -123,10 +123,22 @@ const ResultatBesoinScreen: React.FC = () => {
       try {
         // ✅ CORRECTION : Utiliser autocomplete_characteristics (VRAIS produits clients)
         // PAS autocomplete_combinations (qui est pour prestataires)
-        const response = await apiPost('/api/autocomplete/search-products', {
+        const payload: any = {
           query: query,
           limit: 10,
-        });
+        };
+        
+        // ✅ NOUVEAU 2025-11-06: Ajouter coordonnées GPS si disponibles pour tri par proximité
+        if (location?.coords?.latitude && location?.coords?.longitude) {
+          payload.user_lat = location.coords.latitude;
+          payload.user_lng = location.coords.longitude;
+          console.log('[ResultatBesoinScreen] 📍 GPS inclus dans suggestions:', {
+            lat: payload.user_lat,
+            lng: payload.user_lng
+          });
+        }
+        
+        const response = await apiPost('/api/autocomplete/search-products', payload);
 
         if (response.success && response.data) {
           setSuggestions(response.data as CombinationSuggestion[]);
@@ -143,7 +155,7 @@ const ResultatBesoinScreen: React.FC = () => {
       setSuggestions([]);
       setShowSuggestions(false);
     }
-  }, []); // ✅ Fonction stable sans dependencies
+  }, [location]); // ✅ CORRECTION: Ajouter location aux dependencies
 
   // ✅ CORRECTION 2025-11-04 : Suggestions depuis autocomplete_characteristics (VRAIS produits)
   useEffect(() => {
