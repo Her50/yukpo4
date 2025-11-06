@@ -693,17 +693,59 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
   // ✅ NOUVEAU: Vérifier si le bloc produits contient au moins un produit
   const hasAtLeastOneProduct = (): boolean => {
+    // ✅ NOUVEAU 2025-11-06: Vérifier PLUSIEURS sources de produit
+    
+    // 1. Champ autocomplete 'produits' (LinearAutocompleteEditor)
     const productsValue = valeursFormulaire['produits'];
-
-    // Vérifier si produits existe et contient au moins un élément
     if (Array.isArray(productsValue)) {
       // Pour autocomplete: chaque élément est une string concaténée (ex: "nom,marque,categorie,prix,quantite")
       // On considère qu'un produit existe si la string n'est pas vide après trim
-      return productsValue.length > 0 && productsValue.some(product =>
+      const hasAutocompleteProduct = productsValue.length > 0 && productsValue.some(product =>
         typeof product === 'string' && product.trim().length > 0
       );
+      if (hasAutocompleteProduct) {
+        console.log('[hasAtLeastOneProduct] ✅ Produit trouvé via autocomplete');
+        return true;
+      }
+    } else if (productsValue && typeof productsValue === 'object' && 'valeur' in productsValue) {
+      // Format objet complexe depuis l'IA
+      const valeur = productsValue.valeur;
+      if (Array.isArray(valeur) && valeur.length > 0) {
+        console.log('[hasAtLeastOneProduct] ✅ Produit trouvé via autocomplete (format objet IA)');
+        return true;
+      }
     }
-
+    
+    // 2. Champ price_variant (PriceVariantSelector)
+    const priceVariantValue = valeursFormulaire['price_variant'] || valeursFormulaire['variabilite_prix'];
+    if (priceVariantValue && typeof priceVariantValue === 'object' && 'modalites' in priceVariantValue) {
+      const modalites = priceVariantValue.modalites;
+      if (Array.isArray(modalites) && modalites.length > 0) {
+        console.log('[hasAtLeastOneProduct] ✅ Produit trouvé via price_variant');
+        return true;
+      }
+    }
+    
+    // 3. Champs individuels (nom_produit + au moins prix OU categorie)
+    const nomProduit = valeursFormulaire['nom_produit'];
+    const categorieProduit = valeursFormulaire['categorie_produit'];
+    const prixProduit = valeursFormulaire['prix_produit'] || valeursFormulaire['prix'];
+    
+    if (nomProduit && typeof nomProduit === 'string' && nomProduit.trim().length > 0) {
+      if (categorieProduit || prixProduit) {
+        console.log('[hasAtLeastOneProduct] ✅ Produit trouvé via champs individuels (nom + catégorie/prix)');
+        return true;
+      }
+    }
+    
+    console.log('[hasAtLeastOneProduct] ❌ Aucun produit trouvé', {
+      productsValue,
+      priceVariantValue,
+      nomProduit,
+      categorieProduit,
+      prixProduit
+    });
+    
     return false;
   };
 
