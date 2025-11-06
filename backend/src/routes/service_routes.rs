@@ -11,6 +11,9 @@ use crate::controllers::service_controller::{
     insert_user,
     get_last_service_for_user,
     get_shared_service,
+    get_services_list,
+    get_services_recent,
+    get_my_services,
 };
 use crate::middlewares::jwt::jwt_auth;
 use crate::state::AppState;
@@ -20,6 +23,10 @@ pub fn service_routes(state: Arc<AppState>) -> Router<Arc<AppState>> {
     Router::new()
         // Route publique pour les services partagés (sans authentification)
         .route("/services/shared/{id}", get(get_shared_service))
+        // ✅ NOUVEAUX endpoints pour liste et services récents
+        .route("/services", get(get_services_list))
+        .route("/services/recent", get(get_services_recent))
+        .route("/services/my-services", get(get_my_services))
         .route("/services/create", post(creer_service))
         .route("/services/filter", get(filter_services))
         .route("/services/related/{id}", get(get_related_services))

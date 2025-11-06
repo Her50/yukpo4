@@ -1,6 +1,7 @@
 // @ts-nocheck
 // Écran de connexion ultra-moderne avec gradients et glassmorphism
 import { useNavigation } from '@react-navigation/native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { CheckCircle, Envelope, Lock, WarningCircle } from 'phosphor-react-native';
 import * as React from 'react';
 import { useState } from 'react';
@@ -15,7 +16,6 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
-import LinearGradient from 'react-native-linear-gradient';
 import { Card, Paragraph, TextInput, Title } from 'react-native-paper';
 import { useAuth } from '../../contexts/AuthContext';
 import { modernColors, modernStyles, modernTheme } from '../../theme/modernTheme';

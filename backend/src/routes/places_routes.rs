@@ -42,14 +42,23 @@ pub async fn autocomplete_places(
         Some("hospital") | Some("pharmacy") | Some("health")
     );
     
-    // Validation de la requête
+    // ✅ CORRECTION 2025-11-06: Si query vide, retourner suggestions par défaut au lieu de 400
     if !is_health_search && params.query.trim().is_empty() {
+        // Retourner les villes populaires du Cameroun comme suggestions par défaut
+        let default_suggestions = vec![
+            "Douala, Cameroun".to_string(),
+            "Yaoundé, Cameroun".to_string(),
+            "Bafoussam, Cameroun".to_string(),
+            "Garoua, Cameroun".to_string(),
+            "Maroua, Cameroun".to_string(),
+        ];
+        
         return (
-            StatusCode::BAD_REQUEST,
+            StatusCode::OK,
             Json(PlacesAutocompleteResponse {
-                success: false,
-                data: None,
-                error: Some("Query parameter is required".to_string()),
+                success: true,
+                data: Some(default_suggestions),
+                error: None,
             }),
         );
     }

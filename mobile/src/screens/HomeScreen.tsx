@@ -458,18 +458,64 @@ const HomeScreen: React.FC = () => {
 
             console.log('[HomeScreen] Données GPS extraites:', gpsData);
 
-            // ✅ NOUVEAU 2025-11-06: Vérifier si l'utilisateur a déjà un service
-            console.log('[HomeScreen] Vérification si utilisateur a déjà un service...');
+            // ✅ NOUVEAU 2025-11-06: Vérifier intelligemment si service similaire existe déjà
+            console.log('[HomeScreen] Vérification intelligente des services existants...');
             let existingServiceId: number | null = null;
             let navigationMode = 'create'; // 'create' ou 'add_product'
             
             try {
                 const servicesResponse = await apiGet('/api/services/my-services');
                 if (servicesResponse.success && Array.isArray(servicesResponse.data) && servicesResponse.data.length > 0) {
-                    // ✅ Utilisateur a déjà au moins un service
-                    existingServiceId = servicesResponse.data[0].id;
-                    navigationMode = 'add_product';
-                    console.log('[HomeScreen] ✅ Service existant trouvé (ID: {}), ouverture formulaire PRODUIT uniquement', existingServiceId);
+                    // ✅ Analyser le texte saisi par l'utilisateur
+                    const userInput = typeof input === 'string' ? input.toLowerCase() : 
+                                     (input.texte || input.text || '').toLowerCase();
+                    
+                    // ✅ Analyser le titre suggéré par l'IA
+                    const iaTitreService = result?.data?.titre_service?.valeur || 
+                                          result?.data?.data?.titre_service?.valeur || '';
+                    const iaTitreServiceLower = iaTitreService.toLowerCase();
+                    
+                    console.log('[HomeScreen] 🔍 Recherche service similaire pour:', {
+                        userInput: userInput.substring(0, 50),
+                        iaTitreService: iaTitreService
+                    });
+                    
+                    // ✅ Chercher un service avec un titre SIMILAIRE (même catégorie/domaine)
+                    const matchingService = servicesResponse.data.find((service: any) => {
+                        const serviceTitre = (service.data?.titre_service?.valeur || 
+                                            service.data?.titre || '').toLowerCase();
+                        const serviceCategory = (service.data?.category?.valeur || 
+                                                service.data?.category || '').toLowerCase();
+                        
+                        // Match si le titre du service contient une partie de l'input ou du titre IA
+                        const titleMatch = serviceTitre.includes(userInput.substring(0, 10)) || 
+                                         iaTitreServiceLower.includes(serviceTitre.substring(0, 10)) ||
+                                         serviceTitre.includes(iaTitreServiceLower.substring(0, 10));
+                        
+                        // Match si catégories similaires
+                        const categoryMatch = userInput.includes(serviceCategory) || 
+                                            iaTitreServiceLower.includes(serviceCategory);
+                        
+                        return titleMatch || categoryMatch;
+                    });
+                    
+                    if (matchingService) {
+                        // ✅ Service similaire trouvé → Mode ajout produit
+                        existingServiceId = matchingService.id;
+                        navigationMode = 'add_product';
+                        console.log('[HomeScreen] ✅ Service similaire trouvé:', {
+                            id: existingServiceId,
+                            titre: matchingService.data?.titre_service?.valeur,
+                            mode: 'PRODUIT UNIQUEMENT'
+                        });
+                    } else {
+                        // ❌ Aucun service similaire → Mode création complète
+                        console.log('[HomeScreen] ℹ️ Aucun service similaire trouvé, ouverture formulaire COMPLET');
+                        console.log('[HomeScreen] Services existants:', servicesResponse.data.map((s: any) => ({
+                            id: s.id,
+                            titre: s.data?.titre_service?.valeur
+                        })));
+                    }
                 } else {
                     console.log('[HomeScreen] ℹ️ Aucun service existant, ouverture formulaire COMPLET');
                 }

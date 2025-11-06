@@ -910,13 +910,13 @@ Format JSON attendu :
         "progress_endpoint": format!("/api/combinations/progress/{}", session_id)
     });
     
-    // Vérifier si type_offre = "produit" et si produits.type_donnee = "autocomplete"
+    // Vérifier si type_offre = "produit" OU "prestation" et si produits.type_donnee = "autocomplete"
     if let Some(type_offre) = data.get("data")
         .and_then(|d| d.get("type_offre"))
         .and_then(|t| t.get("valeur"))
         .and_then(|v| v.as_str()) 
     {
-        if type_offre == "produit" {
+        if type_offre == "produit" || type_offre == "prestation" {
             if let Some(produits) = data.get("data").and_then(|d| d.get("produits")) {
                 if produits.get("type_donnee").and_then(|t| t.as_str()) == Some("autocomplete") {
                     // Extraire et sauvegarder les SEEDS immédiatement

@@ -877,6 +877,139 @@ pub async fn get_services_for_prestataire(
     (StatusCode::OK, Json(serde_json::Value::Array(result))).into_response()
 }
 
+/// ✅ NOUVEAU : Liste des services avec pagination
+#[derive(Debug, Deserialize)]
+pub struct ServicesListQuery {
+    pub limit: Option<i32>,
+    pub offset: Option<i32>,
+}
+
+pub async fn get_services_list(
+    State(state): State<Arc<AppState>>,
+    Query(query): Query<ServicesListQuery>,
+) -> axum::response::Response {
+    let limit = query.limit.unwrap_or(20);
+    let offset = query.offset.unwrap_or(0);
+    let pg_pool = &state.pg;
+    
+    info!("[get_services_list] Récupération {} services (offset: {})", limit, offset);
+    
+    let result = sqlx::query!(
+        r#"
+        SELECT id, data, created_at, user_id, gps, category, is_active
+        FROM services
+        WHERE is_active = TRUE
+        ORDER BY created_at DESC
+        LIMIT $1 OFFSET $2
+        "#,
+        limit as i64,
+        offset as i64
+    )
+    .fetch_all(pg_pool)
+    .await;
+    
+    match result {
+        Ok(rows) => {
+            let services: Vec<Value> = rows.iter().map(|row| {
+                json!({
+                    "id": row.id,
+                    "data": row.data,
+                    "created_at": row.created_at,
+                    "user_id": row.user_id,
+                    "gps": row.gps,
+                    "category": row.category,
+                    "is_active": row.is_active
+                })
+            }).collect();
+            
+            info!("[get_services_list] ✅ {} services trouvés", services.len());
+            (StatusCode::OK, Json(json!({
+                "success": true,
+                "data": services,
+                "count": services.len()
+            }))).into_response()
+        },
+        Err(e) => {
+            error!("[get_services_list] ❌ Erreur: {}", e);
+            (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({
+                "success": false,
+                "error": "Erreur lors de la récupération des services"
+            }))).into_response()
+        }
+    }
+}
+
+/// ✅ NOUVEAU : Services récents avec produits
+#[derive(Debug, Deserialize)]
+pub struct ServicesRecentQuery {
+    pub limit: Option<i32>,
+    pub include_products: Option<bool>,
+}
+
+pub async fn get_services_recent(
+    State(state): State<Arc<AppState>>,
+    Query(query): Query<ServicesRecentQuery>,
+) -> axum::response::Response {
+    let limit = query.limit.unwrap_or(20);
+    let include_products = query.include_products.unwrap_or(true);
+    let pg_pool = &state.pg;
+    
+    info!("[get_services_recent] Récupération {} services récents (include_products: {})", limit, include_products);
+    
+    let result = sqlx::query!(
+        r#"
+        SELECT id, data, created_at, user_id, gps, category, is_active
+        FROM services
+        WHERE is_active = TRUE
+        AND created_at >= NOW() - INTERVAL '30 days'
+        ORDER BY created_at DESC
+        LIMIT $1
+        "#,
+        limit as i64
+    )
+    .fetch_all(pg_pool)
+    .await;
+    
+    match result {
+        Ok(rows) => {
+            let services: Vec<Value> = rows.iter().map(|row| {
+                json!({
+                    "id": row.id,
+                    "data": row.data,
+                    "created_at": row.created_at,
+                    "user_id": row.user_id,
+                    "gps": row.gps,
+                    "category": row.category,
+                    "is_active": row.is_active
+                })
+            }).collect();
+            
+            info!("[get_services_recent] ✅ {} services récents trouvés", services.len());
+            (StatusCode::OK, Json(json!({
+                "success": true,
+                "data": services,
+                "count": services.len()
+            }))).into_response()
+        },
+        Err(e) => {
+            error!("[get_services_recent] ❌ Erreur: {}", e);
+            (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({
+                "success": false,
+                "error": "Erreur lors de la récupération des services récents"
+            }))).into_response()
+        }
+    }
+}
+
+/// ✅ NOUVEAU : Alias pour mes services (compatibilité mobile)
+pub async fn get_my_services(
+    State(state): State<Arc<AppState>>,
+    Extension(user): Extension<AuthenticatedUser>,
+) -> axum::response::Response {
+    info!("[get_my_services] Redirection vers get_services_for_prestataire pour user_id={}", user.id);
+    get_services_for_prestataire(State(state), Extension(user)).await
+}
+
 /// Récupère un service pour le partage public avec restrictions de sécurité
 pub async fn get_shared_service(
     State(state): State<Arc<AppState>>,

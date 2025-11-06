@@ -316,8 +316,12 @@ pub async fn check_tokens(
                         Ok(_) => {
                             let processing_time = start_time.elapsed().as_millis() as u64;
                             
+                            // ✅ CORRECTION: Récupérer balance_before AVANT qu'elle soit modifiée
+                            let balance_before = user_final.tokens_balance;
+                            let balance_after = nouveau_solde;
+                            
                             info!("[check_tokens] ? {} tokens IA consommés ({} XAF = {} tokens) déduits pour utilisateur {}: {} -> {} (intention: {}, durée: {}ms)",
-                                tokens_finaux, cout_reel_xaf, cout_en_tokens, user_id, user_final.tokens_balance, nouveau_solde, intention, processing_time);
+                                tokens_finaux, cout_reel_xaf, cout_en_tokens, user_id, balance_before, balance_after, intention, processing_time);
                             
                             // ✅ NOUVEAU: Enregistrer l'historique de consommation de tokens
                             let response_source_str = if prompt_optimized { "optimized" } else { "external" };
@@ -334,10 +338,10 @@ pub async fn check_tokens(
                             .bind(user_id)
                             .bind(intention.as_str())
                             .bind(tokens_finaux as i32)
-                            .bind(cout_reel_xaf as i32)
+                            .bind(cout_reel_xaf as i64)  // ✅ CORRECTION: i64 au lieu de i32 pour BIGINT
                             .bind(cout_en_tokens as i32)
-                            .bind(user_final.tokens_balance)
-                            .bind(nouveau_solde)
+                            .bind(balance_before as i32)  // ✅ CORRECTION: Utiliser la variable locale
+                            .bind(balance_after as i32)   // ✅ CORRECTION: Utiliser la variable locale
                             .bind(processing_time as i32)
                             .bind(response_source_str)
                             .bind(endpoint)

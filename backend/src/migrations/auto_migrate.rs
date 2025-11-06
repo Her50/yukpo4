@@ -1812,6 +1812,12 @@ pub async fn run_auto_migrations(pool: &PgPool) {
         Err(e) => error!("❌ Erreur migration auto réindexation: {}", e),
     }
     
+    // Migration 17: Fonctions de visibilité pour carousel mixte (✅ NOUVEAU 2025-11-06)
+    match ensure_visibility_functions(pool).await {
+        Ok(_) => info!("✅ Migration auto: fonctions visibilité OK"),
+        Err(e) => error!("❌ Erreur migration auto fonctions visibilité: {}", e),
+    }
+    
     info!("✅ Migrations automatiques terminées");
 }
 
@@ -2140,6 +2146,36 @@ pub async fn ensure_token_usage_logs_table(pool: &PgPool) -> Result<(), sqlx::Er
                 .execute(pool)
                 .await?;
             info!("✅ Colonne 'tokens_amount' rendue nullable (legacy)");
+        }
+        
+        // ✅ NOUVEAU 2025-11-06: Renommer tokens_before → balance_before si ancienne structure détectée
+        let has_tokens_before = sqlx::query_scalar::<_, bool>(
+            "SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name = 'token_usage_logs' AND column_name = 'tokens_before')"
+        )
+        .fetch_one(pool)
+        .await?;
+        
+        if has_tokens_before {
+            warn!("⚠️ Ancienne colonne 'tokens_before' détectée, renommage en 'balance_before'...");
+            sqlx::query("ALTER TABLE token_usage_logs RENAME COLUMN tokens_before TO balance_before")
+                .execute(pool)
+                .await?;
+            info!("✅ Colonne renommée: tokens_before → balance_before");
+        }
+        
+        // ✅ Renommer tokens_after → balance_after si nécessaire
+        let has_tokens_after = sqlx::query_scalar::<_, bool>(
+            "SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name = 'token_usage_logs' AND column_name = 'tokens_after')"
+        )
+        .fetch_one(pool)
+        .await?;
+        
+        if has_tokens_after {
+            warn!("⚠️ Ancienne colonne 'tokens_after' détectée, renommage en 'balance_after'...");
+            sqlx::query("ALTER TABLE token_usage_logs RENAME COLUMN tokens_after TO balance_after")
+                .execute(pool)
+                .await?;
+            info!("✅ Colonne renommée: tokens_after → balance_after");
         }
         
         return Ok(());
@@ -2485,6 +2521,111 @@ pub async fn ensure_bus_reservations_table(pool: &PgPool) -> Result<(), sqlx::Er
         .await?;
     
     info!("✅ Table bus_reservations créée avec succès !");
+    Ok(())
+}
+
+/// ✅ NOUVEAU 2025-11-06: Créer les fonctions SQL pour le système de visibilité et carousel mixte
+pub async fn ensure_visibility_functions(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Création/Mise à jour des fonctions de visibilité...");
+    
+    // Fonction can_show_content
+    sqlx::query(r#"
+        CREATE OR REPLACE FUNCTION can_show_content(
+            p_user_id INTEGER,
+            p_content_id VARCHAR(100),
+            p_content_type VARCHAR(20),
+            p_session_id VARCHAR(100)
+        ) RETURNS BOOLEAN AS $$
+        BEGIN
+            -- Pour l'instant, version simplifiée: toujours autoriser
+            -- TODO: Implémenter la vraie logique de cooldown/quota depuis content_visibility_tracking
+            RETURN TRUE;
+        END;
+        $$ LANGUAGE plpgsql;
+    "#)
+    .execute(pool)
+    .await?;
+    
+    // Fonction get_eligible_organic_products
+    sqlx::query(r#"
+        CREATE OR REPLACE FUNCTION get_eligible_organic_products(
+            p_user_id INTEGER,
+            p_session_id VARCHAR(100),
+            p_categories TEXT[],
+            p_limit INTEGER DEFAULT 15
+        ) RETURNS TABLE (
+            product_id TEXT,
+            product_data JSONB,
+            relevance_score DECIMAL
+        ) AS $$
+        BEGIN
+            RETURN QUERY
+            SELECT 
+                s.id::TEXT,
+                jsonb_build_object(
+                    'id', s.id,
+                    'service_id', s.id,
+                    'nom', COALESCE(s.data->'titre_service'->>'valeur', 'Service'),
+                    'description', COALESCE(s.data->'description'->>'valeur', ''),
+                    'prix', COALESCE(s.data->'prix'->>'valeur', '0'),
+                    'devise', COALESCE(s.data->'devise'->>'valeur', 'XAF'),
+                    'produits', s.data->'produits',
+                    'category', s.category
+                ),
+                1.0::DECIMAL
+            FROM services s
+            WHERE s.is_active = TRUE
+            ORDER BY s.created_at DESC
+            LIMIT p_limit;
+        END;
+        $$ LANGUAGE plpgsql;
+    "#)
+    .execute(pool)
+    .await?;
+    
+    // Fonction get_eligible_paid_ads
+    sqlx::query(r#"
+        CREATE OR REPLACE FUNCTION get_eligible_paid_ads(
+            p_user_id INTEGER,
+            p_session_id VARCHAR(100),
+            p_categories TEXT[],
+            p_boost_level VARCHAR(20) DEFAULT NULL
+        ) RETURNS TABLE (
+            pub_id INTEGER,
+            pub_data JSONB,
+            boost_level VARCHAR(20),
+            frequency_ratio INTEGER
+        ) AS $$
+        BEGIN
+            RETURN QUERY
+            SELECT 
+                p.id,
+                jsonb_build_object(
+                    'id', p.id,
+                    'titre', p.titre,
+                    'description', p.description,
+                    'videos', p.videos,
+                    'thumbnails', p.thumbnails
+                ),
+                COALESCE(p.boost_level, 'basic'),
+                COALESCE(p.frequency_ratio, 3)
+            FROM publicites p
+            WHERE p.status = 'active'
+            AND p.date_fin > NOW()
+            ORDER BY 
+                CASE COALESCE(p.boost_level, 'basic')
+                    WHEN 'ultra' THEN 1
+                    WHEN 'premium' THEN 2
+                    ELSE 3
+                END
+            LIMIT 10;
+        END;
+        $$ LANGUAGE plpgsql;
+    "#)
+    .execute(pool)
+    .await?;
+    
+    info!("✅ Fonctions de visibilité créées avec succès !");
     Ok(())
 }
 

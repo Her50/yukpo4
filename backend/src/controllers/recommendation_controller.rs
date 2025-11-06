@@ -111,69 +111,144 @@ pub async fn get_mixed_content(
     
     let user_id = params.user_id.unwrap_or(0);
     let session_id = params.session_id.unwrap_or_else(|| format!("session_{}", chrono::Utc::now().timestamp()));
+    let limit = params.limit.unwrap_or(15);
     
-    // Parser les catégories
-    let categories: Vec<String> = params.categories
-        .map(|c| c.split(',').map(|s| s.trim().to_string()).collect())
-        .unwrap_or_default();
+    log::info!("🎯 [MixedContent] Génération feed mixte pour user_id: {} (limit: {})", user_id, limit);
     
-    log::info!("🎯 [MixedContent] Génération feed mixte pour user_id: {}", user_id);
-    
-    // Charger produits organiques et publicités en parallèle
-    let organic_future = sqlx::query(
-        "SELECT * FROM get_eligible_organic_products($1, $2, $3, $4)"
+    // ✅ NOUVEAU: Version simplifiée sans dépendre des fonctions SQL complexes
+    // Charger produits organiques directement depuis services
+    let organic_result = sqlx::query!(
+        r#"
+        SELECT 
+            s.id,
+            s.data,
+            s.created_at,
+            s.user_id,
+            s.gps,
+            s.category
+        FROM services s
+        WHERE s.is_active = TRUE
+        AND s.created_at >= NOW() - INTERVAL '30 days'
+        ORDER BY s.created_at DESC
+        LIMIT $1
+        "#,
+        limit as i64
     )
-    .bind(user_id)
-    .bind(&session_id)
-    .bind(&categories)
-    .bind(15)
-    .fetch_all(pool);
+    .fetch_all(pool)
+    .await;
     
-    let paid_future = sqlx::query(
-        "SELECT * FROM get_eligible_paid_ads($1, $2, $3, $4)"
+    // Charger publicités actives
+    let paid_result = sqlx::query!(
+        r#"
+        SELECT 
+            id,
+            titre,
+            description,
+            videos,
+            thumbnails,
+            boost_level,
+            frequency_ratio,
+            produits_indexes
+        FROM publicites
+        WHERE status = 'active'
+        AND date_fin > NOW()
+        ORDER BY 
+            CASE boost_level
+                WHEN 'ultra' THEN 1
+                WHEN 'premium' THEN 2
+                WHEN 'basic' THEN 3
+                ELSE 4
+            END,
+            vues ASC
+        LIMIT 10
+        "#
     )
-    .bind(user_id)
-    .bind(&session_id)
-    .bind(&categories)
-    .bind::<Option<String>>(None)
-    .fetch_all(pool);
-    
-    let (organic_result, paid_result) = tokio::join!(organic_future, paid_future);
+    .fetch_all(pool)
+    .await;
     
     // Traiter les résultats
     let mut organic_products: Vec<serde_json::Value> = vec![];
     if let Ok(rows) = organic_result {
-        organic_products = rows.iter().map(|row| {
-            let mut data: serde_json::Value = row.try_get("product_data").unwrap_or(serde_json::json!({}));
-            if let Some(obj) = data.as_object_mut() {
-                obj.insert("type".to_string(), serde_json::json!("organic"));
-                obj.insert("is_paid".to_string(), serde_json::json!(false));
+        for row in rows {
+            // Extraire les produits du service
+            if let Some(produits) = row.data.get("produits") {
+                if let Some(produits_array) = produits.as_object().and_then(|p| p.get("valeur")).and_then(|v| v.as_array()) {
+                    for (index, product) in produits_array.iter().enumerate() {
+                        organic_products.push(serde_json::json!({
+                            "type": "organic",
+                            "is_paid": false,
+                            "data": {
+                                "id": format!("{}_{}", row.id, index),
+                                "service_id": row.id,
+                                "nom": product.get("nom").and_then(|v| v.as_str()).unwrap_or("Produit"),
+                                "description": product.get("description").and_then(|v| v.as_str()).unwrap_or(""),
+                                "prix": product.get("prix").and_then(|v| v.as_str()).unwrap_or("0"),
+                                "devise": product.get("devise").and_then(|v| v.as_str()).unwrap_or("XAF"),
+                                "images": product.get("images").cloned().unwrap_or(serde_json::json!([])),
+                                "videos": product.get("videos").cloned().unwrap_or(serde_json::json!([])),
+                                "category": row.category,
+                                "service": {
+                                    "id": row.id,
+                                    "data": row.data
+                                }
+                            }
+                        }));
+                    }
+                } else {
+                    // Produits sous forme d'array direct
+                    if let Some(produits_array) = produits.as_array() {
+                        for (index, product) in produits_array.iter().enumerate() {
+                            organic_products.push(serde_json::json!({
+                                "type": "organic",
+                                "is_paid": false,
+                                "data": {
+                                    "id": format!("{}_{}", row.id, index),
+                                    "service_id": row.id,
+                                    "nom": product.get("nom").and_then(|v| v.as_str()).unwrap_or("Produit"),
+                                    "description": product.get("description").and_then(|v| v.as_str()).unwrap_or(""),
+                                    "prix": product.get("prix").and_then(|v| v.as_str()).unwrap_or("0"),
+                                    "devise": product.get("devise").and_then(|v| v.as_str()).unwrap_or("XAF"),
+                                    "images": product.get("images").cloned().unwrap_or(serde_json::json!([])),
+                                    "videos": product.get("videos").cloned().unwrap_or(serde_json::json!([])),
+                                    "category": row.category,
+                                    "service": {
+                                        "id": row.id,
+                                        "data": row.data
+                                    }
+                                }
+                            }));
+                        }
+                    }
+                }
             }
-            data
-        }).collect();
+        }
     }
     
     let mut paid_ads: Vec<serde_json::Value> = vec![];
     if let Ok(rows) = paid_result {
-        paid_ads = rows.iter().map(|row| {
-            let mut data: serde_json::Value = row.try_get("pub_data").unwrap_or(serde_json::json!({}));
-            let boost_level: String = row.try_get("boost_level").unwrap_or("basic".to_string());
-            let frequency: i32 = row.try_get("frequency_ratio").unwrap_or(3);
-            
-            if let Some(obj) = data.as_object_mut() {
-                obj.insert("type".to_string(), serde_json::json!("paid"));
-                obj.insert("is_paid".to_string(), serde_json::json!(true));
-                obj.insert("boost_level".to_string(), serde_json::json!(boost_level));
-                obj.insert("frequency_ratio".to_string(), serde_json::json!(frequency));
-            }
-            data
-        }).collect();
+        for row in rows {
+            paid_ads.push(serde_json::json!({
+                "type": "paid",
+                "is_paid": true,
+                "data": {
+                    "id": row.id,
+                    "titre": row.titre,
+                    "description": row.description,
+                    "videos": row.videos,
+                    "thumbnails": row.thumbnails,
+                    "produits_indexes": row.produits_indexes
+                },
+                "boost_level": row.boost_level.unwrap_or("basic".to_string()),
+                "frequency_ratio": row.frequency_ratio.unwrap_or(3)
+            }));
+        }
     }
     
     // ✅ Mélanger intelligemment selon les règles de fréquence
     let mixed = mix_content_intelligently(paid_ads, organic_products);
     
-    log::info!("✅ [MixedContent] Feed généré: {} items total", mixed.len());
+    log::info!("✅ [MixedContent] Feed généré: {} items total ({} organiques, {} publicités)", 
+        mixed.len(), organic_products.len(), paid_ads.len());
     
     Ok(Json(serde_json::json!({
         "success": true,
