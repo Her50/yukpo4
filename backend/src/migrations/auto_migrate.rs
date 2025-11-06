@@ -1769,7 +1769,43 @@ pub async fn run_auto_migrations(pool: &PgPool) {
         Err(e) => error!("❌ Erreur migration auto bus_reservations: {}", e),
     }
     
+    // Migration 16: Réindexation services existants (✅ NOUVEAU 2025-11-06)
+    // S'exécute UNE SEULE FOIS pour indexer les produits créés avant le système autocomplete
+    match reindex_existing_services_once(pool).await {
+        Ok(_) => info!("✅ Migration auto: réindexation services existants OK"),
+        Err(e) => error!("❌ Erreur migration auto réindexation: {}", e),
+    }
+    
     info!("✅ Migrations automatiques terminées");
+}
+
+/// Réindexe les services existants UNIQUEMENT si autocomplete_characteristics est vide
+async fn reindex_existing_services_once(pool: &PgPool) -> Result<(), sqlx::Error> {
+    // Vérifier si des produits réels existent déjà
+    let count = sqlx::query_scalar::<_, i64>(
+        "SELECT COUNT(*) FROM autocomplete_characteristics WHERE is_real_product = TRUE AND origine_champs = 'formulaire'"
+    )
+    .fetch_one(pool)
+    .await?;
+    
+    if count > 0 {
+        info!("✅ {} produits déjà indexés, skip réindexation", count);
+        return Ok(());
+    }
+    
+    info!("🔄 Aucun produit indexé, lancement réindexation des services existants...");
+    
+    use crate::migrations::reindex_existing_services::reindex_all_services;
+    match reindex_all_services(pool).await {
+        Ok(n) => {
+            info!("✅ {} services réindexés avec succès", n);
+            Ok(())
+        },
+        Err(e) => {
+            error!("❌ Erreur réindexation: {}", e);
+            Err(e)
+        }
+    }
 }
 
 /// Vérifie et ajoute le support des mentions dans chat_messages
