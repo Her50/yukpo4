@@ -395,3 +395,88 @@ pub async fn check_autocomplete_tables(
     })))
 }
 
+/// Nettoyer les combinaisons invalides (objet unique généré comme catalogue)
+pub async fn clean_invalid_combinations(
+    State(state): State<Arc<AppState>>,
+) -> Result<Json<serde_json::Value>, StatusCode> {
+    let pool = &state.pg;
+    
+    log::info!("🧹 [Debug] Nettoyage des combinaisons invalides...");
+    
+    // 1. Compter avant nettoyage
+    let total_before = sqlx::query_scalar::<_, i64>(
+        "SELECT COUNT(*) FROM autocomplete_combinations"
+    )
+    .fetch_one(pool)
+    .await
+    .unwrap_or(0);
+    
+    // 2. Identifier les sessions avec trop de combinaisons
+    let problematic_sessions = sqlx::query_as::<_, (Option<String>, i64)>(
+        "SELECT session_id, COUNT(*) as count 
+         FROM autocomplete_combinations 
+         WHERE session_id IS NOT NULL 
+         GROUP BY session_id 
+         HAVING COUNT(*) > 50"
+    )
+    .fetch_all(pool)
+    .await
+    .unwrap_or_default();
+    
+    log::info!("🔍 [Debug] {} sessions avec >50 combinaisons détectées", problematic_sessions.len());
+    
+    // 3. Nettoyer : Garder seulement la combinaison préférée de chaque session
+    let deleted_count = sqlx::query(
+        r#"
+        DELETE FROM autocomplete_combinations
+        WHERE id NOT IN (
+            SELECT MIN(id)
+            FROM autocomplete_combinations
+            WHERE session_id IS NOT NULL AND is_ai_preferred = TRUE
+            GROUP BY session_id
+        )
+        AND session_id IN (
+            SELECT session_id
+            FROM autocomplete_combinations
+            WHERE session_id IS NOT NULL
+            GROUP BY session_id
+            HAVING COUNT(*) > 50
+        )
+        AND service_id IS NULL
+        "#
+    )
+    .execute(pool)
+    .await
+    .map(|r| r.rows_affected())
+    .unwrap_or(0);
+    
+    // 4. Compter après nettoyage
+    let total_after = sqlx::query_scalar::<_, i64>(
+        "SELECT COUNT(*) FROM autocomplete_combinations"
+    )
+    .fetch_one(pool)
+    .await
+    .unwrap_or(0);
+    
+    // 5. Optimiser la table
+    let _ = sqlx::query("REINDEX TABLE autocomplete_combinations")
+        .execute(pool)
+        .await;
+    
+    let _ = sqlx::query("ANALYZE autocomplete_combinations")
+        .execute(pool)
+        .await;
+    
+    log::info!("✅ [Debug] Nettoyage terminé: {} combinaisons supprimées", deleted_count);
+    
+    Ok(Json(json!({
+        "success": true,
+        "before": total_before,
+        "after": total_after,
+        "deleted": deleted_count,
+        "problematic_sessions": problematic_sessions.len(),
+        "message": format!("{} combinaisons invalides supprimées", deleted_count),
+        "timestamp": chrono::Utc::now().to_rfc3339()
+    })))
+}
+

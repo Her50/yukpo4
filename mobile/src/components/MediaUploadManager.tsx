@@ -1,14 +1,14 @@
 import * as ImagePicker from 'expo-image-picker';
 import React, { useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   Image as RNImage,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
-  View,
-  ActivityIndicator
+  View
 } from 'react-native';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
@@ -35,7 +35,7 @@ const MediaUploadManager: React.FC<MediaUploadManagerProps> = ({
   // ✅ Protection contre undefined - toujours utiliser des tableaux
   const images = imagesProp || [];
   const videos = videosProp || [];
-  
+
   const [uploading, setUploading] = useState(false);
   const [showImagePreview, setShowImagePreview] = useState<string | null>(null);
 
@@ -68,7 +68,7 @@ const MediaUploadManager: React.FC<MediaUploadManagerProps> = ({
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const newImages: string[] = [];
-        
+
         for (const asset of result.assets) {
           if (asset.base64) {
             const imageBase64 = `data:image/jpeg;base64,${asset.base64}`;
@@ -79,9 +79,9 @@ const MediaUploadManager: React.FC<MediaUploadManagerProps> = ({
         if (newImages.length > 0) {
           const remainingSlots = maxImages - images.length;
           const imagesToAdd = newImages.slice(0, remainingSlots);
-          
+
           onImagesChange([...images, ...imagesToAdd]);
-          
+
           if (newImages.length > remainingSlots) {
             Alert.alert(
               'Limite atteinte',
@@ -127,7 +127,7 @@ const MediaUploadManager: React.FC<MediaUploadManagerProps> = ({
 
       if (!result.canceled && result.assets && result.assets[0]) {
         const videoUri = result.assets[0].uri;
-        
+
         if (videoUri) {
           onVideosChange([...videos, videoUri]);
         }

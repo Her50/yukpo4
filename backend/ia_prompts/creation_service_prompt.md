@@ -264,6 +264,59 @@ type, domaine, niveau, duree, mode_livraison, langue, certification, horaires
 
 ## 🔗 DÉPENDANCES & ORDRE DES DIMENSIONS
 
+### 🚨 NOUVELLE RÈGLE : DÉTECTER LES OBJETS UNIQUES
+
+**AVANT de générer les combinaisons, IDENTIFIE si l'utilisateur vend/loue :**
+
+#### **CAS A : OBJET UNIQUE** (1 seul exemplaire physique)
+```
+Exemples: "Ma voiture Toyota RAV4", "Mon iPhone 12", "Ma montre Rolex"
+Indices: possessifs (ma/mon), article défini (la/le), singulier
+```
+
+**→ GÉNÉRER UNE DÉPENDANCE STRICTE FIXANT TOUTES LES CARACTÉRISTIQUES PHYSIQUES**
+
+```json
+{
+  "dependencies": {
+    "strict": [{
+      "id": "objet_unique",
+      "dimensions": ["marque", "modele", "annee", "carburant", "transmission", "couleur", "carrosserie"],
+      "explanation": "Caractéristiques fixes d'un objet physique unique à vendre",
+      "valid_combinations": [
+        ["Toyota", "RAV4", "2020", "Essence", "Automatique", "Blanc", "SUV"]
+      ]
+    }]
+  }
+}
+```
+
+**Seule dimension variable possible** : kilométrage/état si variation de prix
+
+**Résultat** : 1 × 3 kilométrages = **3 combinaisons** (au lieu de 216)
+
+---
+
+#### **CAS B : CATALOGUE/STOCK** (plusieurs exemplaires)
+```
+Exemples: "Je vends des véhicules Toyota", "Stock de chaussures Nike"
+Indices: pluriel, "des", "plusieurs", "stock de"
+```
+
+**→ PAS de dépendance stricte, produit cartésien normal**
+
+```json
+{
+  "dependencies": {
+    "strict": []
+  }
+}
+```
+
+**Résultat** : Toutes les combinaisons possibles
+
+---
+
 ### Ordre des dimensions (CRITIQUE)
 
 **Dimensions LIÉES doivent être en PREMIÈRE position** :
