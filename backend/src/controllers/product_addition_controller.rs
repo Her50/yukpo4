@@ -113,6 +113,47 @@ pub async fn add_product_to_service(
         cout_ajout, current_balance, new_balance));
     
     // ✅ Ajouter le produit au JSON du service
+    // ✅ CORRECTION 2025-11-06: Transformer product_data en string concaténée (format attendu par autocomplete)
+    // Format: "nom_produit,categorie,prix,devise,lieu" (comme dans LinearAutocompleteEditor)
+    let product_string = {
+        let mut parts = vec![];
+        
+        // Extraire les champs dans l'ordre attendu
+        if let Some(nom) = request.product_data.get("nom_produit").or_else(|| request.product_data.get("produits")).and_then(|v| v.as_str()) {
+            if !nom.is_empty() {
+                parts.push(nom.to_string());
+            }
+        }
+        
+        if let Some(cat) = request.product_data.get("categorie_produit").and_then(|v| v.as_str()) {
+            if !cat.is_empty() {
+                parts.push(cat.to_string());
+            }
+        }
+        
+        if let Some(desc) = request.product_data.get("description_produit").and_then(|v| v.as_str()) {
+            if !desc.is_empty() {
+                parts.push(desc.to_string());
+            }
+        }
+        
+        if let Some(prix) = request.product_data.get("prix").or_else(|| request.product_data.get("prix_produit")).and_then(|v| v.as_str()) {
+            if !prix.is_empty() {
+                parts.push(prix.to_string());
+            }
+        }
+        
+        if let Some(devise) = request.product_data.get("devise").and_then(|v| v.as_str()) {
+            if !devise.is_empty() {
+                parts.push(devise.to_string());
+            }
+        }
+        
+        parts.join(",")
+    };
+    
+    log_info(&format!("[add_product_to_service] 📝 Product string: '{}'", product_string));
+    
     let produits_array = service_data
         .get_mut("produits")
         .and_then(|p| p.as_object_mut())
@@ -121,15 +162,15 @@ pub async fn add_product_to_service(
     
     let product_index = match produits_array {
         Some(arr) => {
-            // Ajouter le nouveau produit au tableau existant
-            arr.push(request.product_data.clone());
+            // Ajouter le nouveau produit au tableau existant (format string)
+            arr.push(json!(product_string));
             arr.len() - 1
         },
         None => {
             // Créer le tableau de produits s'il n'existe pas
             service_data["produits"] = json!({
                 "type_donnee": "autocomplete",
-                "valeur": vec![request.product_data.clone()],
+                "valeur": vec![product_string],
                 "separateur": ",",
                 "sous_caracteristiques": {},
                 "filtrable": true,
@@ -138,6 +179,15 @@ pub async fn add_product_to_service(
             0
         }
     };
+    
+    // ✅ NOUVEAU 2025-11-06: Ajouter lieu_produit au service_data pour save_autocomplete_combination
+    if let Some(lieu) = request.product_data.get("lieu_produit").or_else(|| request.product_data.get("lieu_commercial")).or_else(|| request.product_data.get("lieu_commercialisation")) {
+        service_data["lieu_produit"] = json!({
+            "type_donnee": "string",
+            "valeur": lieu.as_str().unwrap_or(""),
+            "origine_champs": "formulaire"
+        });
+    }
     
     // ✅ Mettre à jour le service en base
     let update_result = sqlx::query(
@@ -151,6 +201,42 @@ pub async fn add_product_to_service(
     match update_result {
         Ok(_) => {
             log_info(&format!("[add_product_to_service] ✅ Produit ajouté au service {} (index: {})", service_id, product_index));
+            
+            // ✅ NOUVEAU 2025-11-06: Sauvegarder dans autocomplete_characteristics et autocomplete_combinations
+            // Créer un data_obj temporaire avec SEULEMENT le nouveau produit (pas tous les produits du service)
+            let temp_data_obj = {
+                let mut obj = json!({
+                    "produits": {
+                        "type_donnee": "autocomplete",
+                        "valeur": product_string,
+                        "separateur": ",",
+                        "filtrable": true,
+                        "origine_champs": "formulaire"
+                    }
+                });
+                
+                // Ajouter lieu_produit si présent
+                if let Some(lieu) = request.product_data.get("lieu_produit").or_else(|| request.product_data.get("lieu_commercial")).or_else(|| request.product_data.get("lieu_commercialisation")) {
+                    obj["lieu_produit"] = json!({
+                        "type_donnee": "string",
+                        "valeur": lieu.as_str().unwrap_or(""),
+                        "origine_champs": "formulaire"
+                    });
+                }
+                
+                obj
+            };
+            
+            // Appeler save_autocomplete_combination pour indexer SEULEMENT le nouveau produit
+            if let Err(e) = crate::services::creer_service::save_autocomplete_combination(
+                &state.pg,
+                service_id,
+                &temp_data_obj,
+            ).await {
+                log_error(&format!("[add_product_to_service] ⚠️ Erreur sauvegarde autocomplete: {} (non bloquant)", e));
+            } else {
+                log_info(&format!("[add_product_to_service] ✅ Produit indexé dans autocomplete_characteristics + autocomplete_combinations"));
+            }
             
             // ✅ Créer notification
             let _ = crate::services::notification_service::create_notification(

@@ -2159,40 +2159,127 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       if (isAddingProductToExistingService && existingServiceId) {
         console.log('[FormulaireYukpoIntelligentScreen] 🛍️ MODE ADD_PRODUCT - Ajout produit au service', existingServiceId);
 
-        // Construire les données du nouveau produit depuis le formulaire
+        // ✅ CORRECTION 2025-11-06: Construire les données COMPLÈTES du nouveau produit
+        // Inclure TOUS les champs produits + médias (images, vidéos, prix variant, etc.)
         const nouveauProduit: any = {};
         
-        // Extraire uniquement les champs du bloc produits
-        Object.keys(valeursFormulaire).forEach(key => {
-          if (['nom_produit', 'categorie_produit', 'description_produit', 'produits', 'prix', 'devise', 'lieu_produit', 'lieu_commercial', 'lieu_commercialisation'].includes(key)) {
-            nouveauProduit[key] = valeursFormulaire[key];
+        // Champs du bloc produits à extraire
+        const PRODUCT_FIELDS = [
+          'nom_produit', 
+          'categorie_produit', 
+          'description_produit', 
+          'produits', 
+          'prix', 
+          'prix_produit',
+          'devise', 
+          'lieu_produit', 
+          'lieu_commercial', 
+          'lieu_commercialisation',
+          'price_variant',   // ✅ NOUVEAU : Variations de prix
+          'variabilite_prix', // Alias de price_variant
+          'product_labels',   // ✅ NOUVEAU : Labels/tags
+          'images',           // ✅ NOUVEAU : Images produit
+          'videos',           // ✅ NOUVEAU : Vidéos produit
+          'audios',           // Éventuellement
+          'documents'         // Éventuellement
+        ];
+        
+        PRODUCT_FIELDS.forEach(key => {
+          const value = valeursFormulaire[key];
+          if (value !== undefined && value !== null && value !== '') {
+            nouveauProduit[key] = value;
           }
         });
 
-        console.log('[FormulaireYukpoIntelligentScreen] 📦 Données du nouveau produit:', nouveauProduit);
-
-        // Appeler /api/services/{existingServiceId}/products
-        const userId = parseInt(user?.id || '0', 10);
-        const response = await apiPost(`/api/services/${existingServiceId}/products`, {
-          user_id: userId,
-          product_data: nouveauProduit
+        console.log('[FormulaireYukpoIntelligentScreen] 📦 Données du nouveau produit (complètes):', {
+          ...nouveauProduit,
+          images: nouveauProduit.images ? `${nouveauProduit.images.length} image(s)` : 'aucune',
+          videos: nouveauProduit.videos ? `${nouveauProduit.videos.length} vidéo(s)` : 'aucune'
         });
 
-        if (!response.success) {
-          throw new Error(response.error || 'Erreur lors de l\'ajout du produit');
+        // 💰 ÉTAPE 1 : Vérifier le solde (coût fixe : 3000 FCFA pour ajout produit)
+        const COUT_AJOUT_PRODUIT = 3000;
+        
+        console.log('💰 [FormulaireYukpoIntelligentScreen] Vérification du solde pour ajout produit...');
+        const balanceResponse = await apiGet<{ tokens_balance: number }>('/api/users/balance');
+
+        if (!balanceResponse.success) {
+          const errorMsg = balanceResponse.error || 'Impossible de vérifier votre solde';
+          console.error('💰 [FormulaireYukpoIntelligentScreen] ❌ Erreur vérification solde:', errorMsg);
+
+          // Si problème d'authentification, rediriger vers login
+          if (errorMsg.includes('401') || errorMsg.includes('Unauthorized') || errorMsg.includes('authentification')) {
+            Alert.alert(
+              'Session expirée',
+              'Votre session a expiré. Veuillez vous reconnecter.',
+              [{ text: 'OK', onPress: () => logout() }]
+            );
+            return;
+          }
+
+          throw new Error(errorMsg);
         }
 
-        console.log('[FormulaireYukpoIntelligentScreen] ✅ Produit ajouté avec succès');
+        if (!balanceResponse.data || typeof balanceResponse.data.tokens_balance === 'undefined') {
+          console.error('💰 [FormulaireYukpoIntelligentScreen] ❌ Données solde invalides:', balanceResponse.data);
+          throw new Error('Données de solde invalides reçues du serveur');
+        }
 
+        const soldeActuel = balanceResponse.data.tokens_balance || 0;
+        console.log('💰 [FormulaireYukpoIntelligentScreen] ✅ Solde actuel récupéré:', soldeActuel);
+
+        // Vérifier si le solde est suffisant
+        if (soldeActuel < COUT_AJOUT_PRODUIT) {
+          Alert.alert(
+            '💸 Solde insuffisant',
+            `Coût d'ajout de produit : ${COUT_AJOUT_PRODUIT.toLocaleString()} FCFA\nVotre solde : ${soldeActuel.toLocaleString()} FCFA\n\nVeuillez recharger votre compte pour ajouter ce produit.`,
+            [{ text: 'OK' }]
+          );
+          return; // ❌ BLOQUE si solde insuffisant
+        }
+
+        // 💰 ÉTAPE 2 : Demander confirmation avec affichage du coût
         Alert.alert(
-          '✅ Produit créé',
-          'Votre nouveau produit a été ajouté au service avec succès !',
+          '💰 Ajout de produit',
+          `Coût : ${COUT_AJOUT_PRODUIT.toLocaleString()} FCFA\nVotre solde : ${soldeActuel.toLocaleString()} FCFA\nSolde après ajout : ${(soldeActuel - COUT_AJOUT_PRODUIT).toLocaleString()} FCFA\n\nConfirmez-vous l'ajout de ce produit à votre service ?`,
           [
             {
-              text: 'OK',
-              onPress: () => {
-                // Retour vers management du service
-                navigation.goBack();
+              text: 'Annuler',
+              style: 'cancel'
+            },
+            {
+              text: 'Confirmer',
+              onPress: async () => {
+                try {
+                  // Appeler /api/services/{existingServiceId}/products
+                  const userId = parseInt(user?.id || '0', 10);
+                  const response = await apiPost(`/api/services/${existingServiceId}/products`, {
+                    user_id: userId,
+                    product_data: nouveauProduit
+                  });
+
+                  if (!response.success) {
+                    throw new Error(response.error || 'Erreur lors de l\'ajout du produit');
+                  }
+
+                  console.log('[FormulaireYukpoIntelligentScreen] ✅ Produit ajouté avec succès:', response);
+
+                  Alert.alert(
+                    '✅ Produit créé',
+                    `Votre nouveau produit a été ajouté au service avec succès !\n\n💰 Coût: ${response.cost || COUT_AJOUT_PRODUIT} FCFA\n💳 Nouveau solde: ${response.new_balance?.toLocaleString() || (soldeActuel - COUT_AJOUT_PRODUIT).toLocaleString()} FCFA\n📦 Index produit: ${response.product_index}`,
+                    [
+                      {
+                        text: 'OK',
+                        onPress: () => {
+                          // Retour vers management du service
+                          navigation.goBack();
+                        }
+                      }
+                    ]
+                  );
+                } catch (error: any) {
+                  handleAPIError(error, 'Ajout produit', () => soumettreFormulaire());
+                }
               }
             }
           ]

@@ -1564,7 +1564,7 @@ async fn save_ia_combinations_to_db(
 /// LOGIQUE:
 /// - autocomplete_combinations : Toutes les combinaisons possibles (IA) pour aider prestataire
 /// - autocomplete_characteristics : VRAIS produits validés par prestataires (avec lieu bidirectionnel)
-async fn save_autocomplete_combination(
+pub async fn save_autocomplete_combination(
     pool: &PgPool,
     service_id: i32,
     data_obj: &serde_json::Value,
