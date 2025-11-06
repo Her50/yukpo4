@@ -19,6 +19,7 @@ COPY Cargo.toml Cargo.lock ./
 COPY src ./src
 COPY config ./config
 COPY migrations ./migrations
+COPY ia_prompts ./ia_prompts
 
 # Construire avec optimisations pour la production
 RUN cargo build --release --features gpu
@@ -48,6 +49,7 @@ COPY --from=builder /target/release/yukpomnang_backend /app/
 # Copier les fichiers de configuration
 COPY --from=builder /app/config /app/config
 COPY --from=builder /app/migrations /app/migrations
+COPY --from=builder /app/ia_prompts /app/ia_prompts
 
 # Copier les scripts de démarrage
 COPY scripts/start-cloud.sh /app/

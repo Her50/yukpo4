@@ -63,12 +63,39 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
     allowCustomModality = true,
     filtrable = true,
 }) => {
-    // ✅ PROTECTION CRITIQUE 2025-11-06: Valider toutes les props au début
-    if (!onChange || typeof onChange !== 'function') {
-        console.error('[LinearAutocompleteEditor] ❌ onChange n\'est pas une fonction - rendu impossible');
+    // ✅ PROTECTION CRITIQUE 2025-11-06: Valider TOUTES les props critiques au début
+    try {
+        if (!onChange || typeof onChange !== 'function') {
+            console.error('[LinearAutocompleteEditor] ❌ onChange n\'est pas une fonction - rendu impossible');
+            return (
+                <View style={styles.container}>
+                    <Text style={{ color: 'red' }}>Erreur: onChange manquant</Text>
+                </View>
+            );
+        }
+        
+        if (!separateur || typeof separateur !== 'string') {
+            console.error('[LinearAutocompleteEditor] ❌ separateur invalide:', separateur);
+            return (
+                <View style={styles.container}>
+                    <Text style={{ color: 'red' }}>Erreur: separateur invalide</Text>
+                </View>
+            );
+        }
+        
+        if (!sousCaracteristiques || typeof sousCaracteristiques !== 'object') {
+            console.error('[LinearAutocompleteEditor] ❌ sousCaracteristiques invalide:', sousCaracteristiques);
+            return (
+                <View style={styles.container}>
+                    <Text style={{ color: 'red' }}>Erreur: sousCaracteristiques invalide</Text>
+                </View>
+            );
+        }
+    } catch (error) {
+        console.error('[LinearAutocompleteEditor] ❌ Erreur validation props:', error);
         return (
             <View style={styles.container}>
-                <Text style={{ color: 'red' }}>Erreur: onChange manquant</Text>
+                <Text style={{ color: 'red' }}>Erreur de validation</Text>
             </View>
         );
     }

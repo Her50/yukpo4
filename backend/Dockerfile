@@ -15,6 +15,9 @@ COPY Cargo.toml Cargo.lock ./
 # Copier le code source
 COPY src ./src
 
+# ✅ NOUVEAU 2025-11-06: Copier les prompts IA
+COPY ia_prompts ./ia_prompts
+
 # Construire l'application
 RUN cargo build --release
 
