@@ -104,9 +104,9 @@ const MainStack = () => {
       })}
     >
       <Tab.Screen name="Home" component={HomeScreen} options={{ tabBarLabel: 'Accueil' }} />
-      <Tab.Screen name="Services" component={ServicesScreen} options={{
-        tabBarLabel: 'Services',
-        title: 'Boutique | Services'
+      <Tab.Screen name="Services" component={MesProduitsScreen} options={{
+        tabBarLabel: 'Mes Services',
+        title: 'Gestion Produits'
       }} />
       <Tab.Screen name="History" component={MesInteractionsScreen} options={{ tabBarLabel: 'Historique' }} />
       <Tab.Screen name="Profile" component={ProfileScreen} options={{ tabBarLabel: 'Mon Compte' }} />

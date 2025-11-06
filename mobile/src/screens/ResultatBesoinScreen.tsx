@@ -455,7 +455,7 @@ const ResultatBesoinScreen: React.FC = () => {
           style={styles.backButton}
           onPress={() => navigation.goBack()}
         >
-          <SafeIcon name="arrow-left" size={24} color="#1F2937" />
+          <SafeIcon name="arrow-left" size={28} color="#FFFFFF" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Recherche</Text>
         <TouchableOpacity
@@ -1004,7 +1004,14 @@ const styles = StyleSheet.create({
     borderBottomColor: '#E5E7EB',
   },
   backButton: {
-    padding: 8,
+    padding: 12, // ✅ Plus de padding pour zone tactile
+    backgroundColor: modernColors.primary, // ✅ Fond coloré pour visibilité
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   headerTitle: {
     fontSize: 18,

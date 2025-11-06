@@ -194,11 +194,12 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       else if (['whatsapp', 'telephone', 'email', 'website', 'adresse', 'horaires'].includes(fieldName)) {
         blocks[1].fields.push(field);
       }
-      // Bloc Localisation
+      // Bloc Localisation (✅ NOUVEAU 2025-11-06: lieu_produit déplacé vers bloc Produits)
       else if (['gps_fixe', 'zone_intervention', 'localisation', 'pays', 'ville', 'quartier'].includes(fieldName)) {
         blocks[2].fields.push(field);
       }
       // Bloc Produits
+      // ✅ NOUVEAU 2025-11-06: Inclure lieu_produit, images, videos dans le bloc produits
       // ✅ CORRECTION: Ne plus dépendre de la présence d'un champ produits de l'IA
       // Le bloc produits sera toujours présent avec un champ par défaut (voir plus bas)
       // ✅ AJOUT: price_variant (variabilite_prix) va aussi dans le bloc produits
@@ -206,15 +207,20 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       //    vont dans le bloc Produits, PAS dans Informations générales (qui contient titre_service, category, description)
       // ✅ CORRECTION CRITIQUE: Détecter aussi les champs par leur typeDonnee (autocomplete, price_variant)
       else if (
-        ['liste_produits', 'produits', 'listeproduit', 'variabilite_prix', 'price_variant', 'nom_produit', 'categorie_produit', 'description_produit', 'prix_produit', 'devise_produit'].includes(fieldName) ||
+        ['liste_produits', 'produits', 'listeproduit', 'variabilite_prix', 'price_variant', 
+         'nom_produit', 'categorie_produit', 'description_produit', 'prix_produit', 'devise_produit',
+         'lieu_produit', 'lieu_commercial', 'lieu_commercialisation', // ✅ NOUVEAU: Lieu dans produits
+         'prix', 'devise', // ✅ Prix et devise dans produits
+         'images', 'videos' // ✅ NOUVEAU: Médias dans produits
+        ].includes(fieldName) ||
         field.typeDonnee === 'price_variant' ||
         field.typeDonnee === 'autocomplete'
       ) {
         blocks[3].fields.push(field);
         console.log(`[FormulaireYukpoIntelligentScreen] ✅ Champ ajouté au bloc produits: ${field.name} (typeDonnee: ${field.typeDonnee})`);
       }
-      // Bloc Médias (✅ logo/banner retirés 2025-11-02)
-      else if (['images', 'videos', 'audios', 'documents'].includes(fieldName)) {
+      // Bloc Médias (✅ NOUVEAU 2025-11-06: images/videos déplacées vers bloc Produits, ne garder que audios/documents)
+      else if (['audios', 'documents'].includes(fieldName)) {
         blocks[4].fields.push(field);
       }
       // Bloc Paiement
@@ -226,6 +232,33 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         blocks[6].fields.push(field);
       }
     });
+
+    // ✅ NOUVEAU 2025-11-06: Fonction de tri pour l'ordre des champs du bloc Produits
+    const sortProductFields = (fields: DynamicField[]): DynamicField[] => {
+      const fieldOrder = [
+        'nom_produit', // 1. Nom du produit
+        'categorie_produit', // 2. Catégorie
+        'description_produit', // 3. Description
+        'produits', // 4. Caractéristiques (autocomplete)
+        'lieu_produit', 'lieu_commercial', 'lieu_commercialisation', // 5. Lieu
+        'prix', 'prix_produit', // 6. Prix
+        'devise', 'devise_produit', // 7. Devise (sera affichée inline avec prix)
+        'price_variant', 'variabilite_prix', // 8. Variations prix
+        'images', 'videos', '_product_media_manager' // 9. Médias
+      ];
+      
+      return fields.sort((a, b) => {
+        const indexA = fieldOrder.indexOf(a.name);
+        const indexB = fieldOrder.indexOf(b.name);
+        
+        // Si le champ n'est pas dans fieldOrder, le mettre à la fin
+        if (indexA === -1 && indexB === -1) return 0;
+        if (indexA === -1) return 1;
+        if (indexB === -1) return -1;
+        
+        return indexA - indexB;
+      });
+    };
 
     // Ajouter les blocs fixes (produits, médias) même s'ils n'ont pas de champs dynamiques
     // Car ils utilisent des composants spécialisés
@@ -601,6 +634,13 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       });
     }
 
+    // ✅ NOUVEAU 2025-11-06: Trier les champs du bloc Produits selon l'ordre souhaité
+    const productsBlockIndex = blocksWithFixedOnes.findIndex(b => b.id === 'products');
+    if (productsBlockIndex !== -1 && blocksWithFixedOnes[productsBlockIndex].fields.length > 0) {
+      blocksWithFixedOnes[productsBlockIndex].fields = sortProductFields(blocksWithFixedOnes[productsBlockIndex].fields);
+      console.log('[FormulaireYukpoIntelligentScreen] ✅ Champs du bloc Produits triés:', blocksWithFixedOnes[productsBlockIndex].fields.map(f => f.name));
+    }
+
     return blocksWithFixedOnes.filter(block => block.fields.length > 0);
   };
 
@@ -745,6 +785,15 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       }
 
       setCurrentBlock(blockIndex);
+      
+      // ✅ NOUVEAU 2025-11-06: Scroller le ScrollView horizontal vers le bloc
+      if (blockScrollViewRef.current) {
+        blockScrollViewRef.current.scrollTo({
+          x: blockIndex * width,
+          y: 0,
+          animated: true
+        });
+      }
     }
   };
 
@@ -2056,7 +2105,54 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
     try {
       setLoading(true);
-      console.log('[FormulaireYukpoIntelligentScreen] Soumission du formulaire...', { mode, serviceId });
+      setIsSubmitting(true);
+      console.log('[FormulaireYukpoIntelligentScreen] Soumission du formulaire...', { mode, serviceId, isAddingProductToExistingService });
+
+      // ✅ NOUVEAU 2025-11-06: SI MODE ADD_PRODUCT (ajout produit à service existant)
+      if (isAddingProductToExistingService && existingServiceId) {
+        console.log('[FormulaireYukpoIntelligentScreen] 🛍️ MODE ADD_PRODUCT - Ajout produit au service', existingServiceId);
+
+        // Construire les données du nouveau produit depuis le formulaire
+        const nouveauProduit: any = {};
+        
+        // Extraire uniquement les champs du bloc produits
+        Object.keys(valeursFormulaire).forEach(key => {
+          if (['nom_produit', 'categorie_produit', 'description_produit', 'produits', 'prix', 'devise', 'lieu_produit', 'lieu_commercial', 'lieu_commercialisation'].includes(key)) {
+            nouveauProduit[key] = valeursFormulaire[key];
+          }
+        });
+
+        console.log('[FormulaireYukpoIntelligentScreen] 📦 Données du nouveau produit:', nouveauProduit);
+
+        // Appeler /api/services/{existingServiceId}/products
+        const userId = parseInt(user?.id || '0', 10);
+        const response = await apiPost(`/api/services/${existingServiceId}/products`, {
+          user_id: userId,
+          product_data: nouveauProduit
+        });
+
+        if (!response.success) {
+          throw new Error(response.error || 'Erreur lors de l\'ajout du produit');
+        }
+
+        console.log('[FormulaireYukpoIntelligentScreen] ✅ Produit ajouté avec succès');
+
+        Alert.alert(
+          '✅ Produit créé',
+          'Votre nouveau produit a été ajouté au service avec succès !',
+          [
+            {
+              text: 'OK',
+              onPress: () => {
+                // Retour vers management du service
+                navigation.goBack();
+              }
+            }
+          ]
+        );
+
+        return; // ✅ Sortir sans exécuter la logique de création de service
+      }
 
       // ✅ SI MODE MODIFICATION : Pas d'appel IA, pas de coût
       if (mode === 'edit' && serviceId) {
@@ -2955,7 +3051,15 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                     scrollEventThrottle={16}
                   >
                     <View style={styles.blockNavigation}>
-                      {(blocks || []).map((block, index) => (
+                      {(blocks || [])
+                        .filter((block, index) => {
+                          // ✅ NOUVEAU 2025-11-06: En mode add_product, afficher uniquement le bloc produits
+                          if (isAddingProductToExistingService) {
+                            return block.id === 'products';
+                          }
+                          return true;
+                        })
+                        .map((block, index) => (
                         <TouchableOpacity
                           key={block.id}
                           style={[
@@ -2977,35 +3081,58 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                   </ScrollView>
                 </View>
 
-                {/* Contenu scrollable */}
+                {/* ✅ NOUVEAU 2025-11-06: Contenu scrollable HORIZONTAL entre blocs */}
                 <ScrollView
-                  style={styles.contentScrollView}
-                  contentContainerStyle={styles.contentContainer}
-                  showsVerticalScrollIndicator={false}
-                  keyboardShouldPersistTaps="handled"
-                  keyboardDismissMode="on-drag"
+                  ref={blockScrollViewRef}
+                  horizontal
+                  pagingEnabled
+                  scrollEnabled={true}
+                  showsHorizontalScrollIndicator={false}
+                  style={styles.contentScrollViewHorizontal}
+                  contentContainerStyle={styles.contentContainerHorizontal}
+                  onMomentumScrollEnd={(event) => {
+                    // ✅ Détecter le bloc affiché après scroll horizontal manuel
+                    const scrollX = event.nativeEvent.contentOffset.x;
+                    const newBlockIndex = Math.round(scrollX / width);
+                    if (newBlockIndex !== currentBlock && newBlockIndex >= 0 && newBlockIndex < blocks.length) {
+                      console.log('[FormulaireYukpoIntelligent] 📱 Scroll manuel vers bloc', newBlockIndex);
+                      setCurrentBlock(newBlockIndex);
+                    }
+                  }}
+                  scrollEventThrottle={16}
                 >
-                  {/* Affichage du bloc actuel uniquement */}
-                  {blocks[currentBlock] && (
-                    <View style={styles.sectionContainer}>
-                      <LinearGradient
-                        colors={['#3B82F6', '#1D4ED8']}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 0 }}
-                        style={styles.sectionHeader}
+                  {/* Affichage de TOUS les blocs côte à côte */}
+                  {(blocks || []).map((block, blockIndex) => (
+                    <View key={block.id} style={[styles.blockPanel, { width }]}>
+                      <ScrollView
+                        style={styles.blockPanelScroll}
+                        contentContainerStyle={styles.blockPanelContent}
+                        showsVerticalScrollIndicator={false}
+                        keyboardShouldPersistTaps="handled"
+                        keyboardDismissMode="on-drag"
+                        nestedScrollEnabled={true}
                       >
-                        <Text style={styles.sectionHeaderText}>
-                          {blocks[currentBlock].icon} {blocks[currentBlock].title}
-                        </Text>
-                      </LinearGradient>
+                        <View style={styles.sectionContainer}>
+                          <LinearGradient
+                            colors={['#3B82F6', '#1D4ED8']}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 0 }}
+                            style={styles.sectionHeader}
+                          >
+                            <Text style={styles.sectionHeaderText}>
+                              {block.icon} {block.title}
+                            </Text>
+                          </LinearGradient>
 
-                      <NativeCard style={styles.sectionContent}>
-                        {(blocks[currentBlock]?.fields || [])
-                          .filter(field => field.name !== 'devise') // ✅ Masquer le champ devise (intégré dans prix)
-                          .map((field, index) => renderField(field))}
-                      </NativeCard>
+                          <NativeCard style={styles.sectionContent}>
+                            {(block.fields || [])
+                              .filter(field => field.name !== 'devise') // ✅ Masquer le champ devise (intégré dans prix)
+                              .map((field, index) => renderField(field))}
+                          </NativeCard>
+                        </View>
+                      </ScrollView>
                     </View>
-                  )}
+                  ))}
 
                   {/* Boutons de navigation */}
                   <View style={styles.navigationButtons}>
@@ -3042,8 +3169,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                       >
                         <Text style={styles.navButtonTextSuccess}>
                           {(loading || isSubmitting)
-                            ? (mode === 'edit' ? 'Modification...' : 'Création...')
-                            : (mode === 'edit' ? 'Modifier le service' : 'Créer le service')
+                            ? (isAddingProductToExistingService ? 'Création du produit...' : mode === 'edit' ? 'Modification...' : 'Création...')
+                            : (isAddingProductToExistingService ? 'Créer le produit' : mode === 'edit' ? 'Modifier le service' : 'Créer le service')
                           }
                         </Text>
                         <SafeIcon name="check" size={20} color="#FFFFFF" />
@@ -3179,6 +3306,23 @@ const styles = StyleSheet.create({
   contentContainer: {
     padding: 20,
     paddingBottom: 300, // ✅ Espace supplémentaire pour le clavier
+  },
+  // ✅ NOUVEAU 2025-11-06: Styles pour scroll horizontal entre blocs
+  contentScrollViewHorizontal: {
+    flex: 1,
+  },
+  contentContainerHorizontal: {
+    flexDirection: 'row',
+  },
+  blockPanel: {
+    // width est défini dynamiquement (= largeur écran)
+  },
+  blockPanelScroll: {
+    flex: 1,
+  },
+  blockPanelContent: {
+    padding: 20,
+    paddingBottom: 300,
   },
   stepContainer: {
     gap: 20,
