@@ -55,6 +55,8 @@ pub mod hybrid_image_search_service; // ✅ NOUVEAU: Recherche hybride intellige
 pub mod scheduling_search_service;
 pub mod geocoding_service;
 pub mod geonames_service; // ✅ NOUVEAU: Service GeoNames pour hiérarchie géographique
+pub mod google_places_service; // ✅ NOUVEAU 2025-11-06: Service Google Places pour hiérarchie bidirectionnelle
+pub mod african_locations_service; // ✅ NOUVEAU 2025-11-06: Base locale africaine pour enfants géographiques
 pub mod intelligent_service_manager;
 pub mod phone_validation_service;
 pub mod payment_service;

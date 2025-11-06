@@ -1,4 +1,4 @@
-// Contrôleur pour enrichissement géographique avec GeoNames
+// Contrôleur pour enrichissement géographique avec Google Places API + Base locale africaine
 use axum::{
     extract::{Query, State},
     Json,
@@ -7,7 +7,8 @@ use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use log::info;
 use crate::core::types::AppError;
-use crate::services::geonames_service;
+use crate::services::google_places_service::{GooglePlacesService, Coordinates as GoogleCoordinates};
+use crate::services::african_locations_service::AfricanLocationsService;
 use crate::state::AppState;
 
 #[derive(Debug, Deserialize)]
@@ -50,22 +51,22 @@ pub struct LocationMetadata {
 }
 
 /// GET /api/places/enrich
-/// Enrichit un lieu avec sa hiérarchie géographique complète
+/// Enrichit un lieu avec sa hiérarchie géographique complète via Google Places API
 pub async fn enrich_location(
     State(state): State<Arc<AppState>>,
     Query(params): Query<EnrichLocationRequest>,
 ) -> Result<Json<EnrichLocationResponse>, AppError> {
-    info!("🌍 Enrichissement lieu: {} ({})", params.place_name, params.country.as_deref().unwrap_or("?"));
+    info!("🗺️ Enrichissement lieu: {} ({})", params.place_name, params.country.as_deref().unwrap_or("?"));
     
     let pool = &state.pg;
+    let country_str = params.country.as_deref().unwrap_or("");
     
     // 1. Chercher dans cache d'abord
     let cached = sqlx::query_as::<_, (
-        i64, String, Vec<String>, i32, bool, String, Option<String>,
-        sqlx::types::BigDecimal, sqlx::types::BigDecimal, Option<i32>, Option<String>
+        String, Vec<String>, i32, bool, String, Option<String>,
+        sqlx::types::BigDecimal, sqlx::types::BigDecimal
     )>(
         "SELECT 
-            geoname_id,
             display_name,
             location_vector,
             admin_level,
@@ -73,45 +74,36 @@ pub async fn enrich_location(
             parent_country,
             parent_country_code,
             lat,
-            lng,
-            population,
-            timezone
+            lng
          FROM geo_hierarchy 
          WHERE place_name = $1 AND parent_country = $2"
     )
     .bind(&params.place_name)
-    .bind(params.country.as_deref().unwrap_or(""))
+    .bind(country_str)
     .fetch_optional(pool)
     .await?;
     
     if let Some(cached) = cached {
         info!("✅ Trouvé en cache pour {}", params.place_name);
         
-        let (geoname_id, display_name, location_vector, admin_level, is_leaf, 
-             parent_country, parent_country_code, lat, lng, population, timezone) = cached;
+        let (display_name, location_vector, admin_level, is_leaf, 
+             parent_country, parent_country_code, lat, lng) = cached;
         
-        // Séparer location_vector en parents et enfants
-        let children = if location_vector.len() > 1 {
-            location_vector[1..].iter()
-                .take_while(|s| !parent_country.contains(s.as_str()))
-                .cloned()
-                .collect()
-        } else {
-            vec![]
-        };
-        
+        // Parents = tout sauf le premier élément (le lieu lui-même)
         let parents = if location_vector.len() > 1 {
-            location_vector[1..].iter()
-                .skip_while(|s| !parent_country.contains(s.as_str()))
-                .cloned()
-                .collect()
+            location_vector[1..].to_vec()
         } else {
             vec![]
         };
+        
+        // ✅ Enfants depuis base locale africaine
+        let african_service = AfricanLocationsService::new();
+        let place_type = if is_leaf { "neighborhood" } else if admin_level <= 2 { "country" } else { "city" };
+        let children = african_service.get_children(&params.place_name, place_type);
         
         return Ok(Json(EnrichLocationResponse {
             place_name: params.place_name.clone(),
-            geoname_id: Some(geoname_id),
+            geoname_id: None, // Google Places n'a pas de geoname_id
             display_name,
             location_vector: location_vector.clone(),
             hierarchy: LocationHierarchy {
@@ -127,50 +119,24 @@ pub async fn enrich_location(
             metadata: LocationMetadata {
                 country: parent_country,
                 country_code: parent_country_code,
-                population,
-                timezone,
+                population: None,
+                timezone: None,
             },
         }));
     }
     
-    // 2. Pas en cache → Enrichir avec GeoNames
-    info!("🌍 Pas en cache, enrichissement avec GeoNames...");
+    // 2. Pas en cache → Enrichir avec Google Places API
+    info!("🗺️ Pas en cache, enrichissement avec Google Places API...");
     
-    let _location_vector = geonames_service::enrich_location_bidirectional(
-        pool,
+    let google_service = GooglePlacesService::new();
+    let google_result = google_service.search_and_build_hierarchy(
         &params.place_name,
         params.country.as_deref(),
-    )
-    .await?;
+    ).await;
     
-    // 3. Re-fetch après enrichissement
-    let enriched_opt = sqlx::query_as::<_, (
-        i64, String, Vec<String>, i32, bool, String, Option<String>,
-        sqlx::types::BigDecimal, sqlx::types::BigDecimal, Option<i32>, Option<String>
-    )>(
-        "SELECT 
-            geoname_id,
-            display_name,
-            location_vector,
-            admin_level,
-            is_leaf,
-            parent_country,
-            parent_country_code,
-            lat,
-            lng,
-            population,
-            timezone
-         FROM geo_hierarchy 
-         WHERE place_name = $1 AND parent_country = $2"
-    )
-    .bind(&params.place_name)
-    .bind(params.country.as_deref().unwrap_or(""))
-    .fetch_optional(pool)
-    .await?;
-    
-    // ✅ Si GeoNames ne trouve rien, retourner des données par défaut au lieu de 404
-    if enriched_opt.is_none() {
-        info!("⚠️ Lieu '{}' introuvable dans GeoNames, retour données minimales", params.place_name);
+    // ✅ Si Google Places ne trouve rien, retourner des données par défaut au lieu de 404
+    if google_result.is_err() {
+        info!("⚠️ Lieu '{}' introuvable dans Google Places, retour données minimales", params.place_name);
         return Ok(Json(EnrichLocationResponse {
             place_name: params.place_name.clone(),
             geoname_id: None,
@@ -195,37 +161,60 @@ pub async fn enrich_location(
         }));
     }
     
-    let enriched = enriched_opt.unwrap();
+    let google_data = google_result.unwrap();
     
-    let (geoname_id, display_name, location_vector, admin_level, is_leaf, 
-         parent_country, parent_country_code, lat, lng, population, timezone) = enriched;
+    // 3. Sauvegarder dans geo_hierarchy pour le cache
+    let admin_level = determine_admin_level(&google_data.location_vector);
+    let is_leaf = admin_level >= 7; // Quartiers/localités sont des feuilles
+    let parent_country = google_data.location_vector.last().cloned().unwrap_or_else(|| country_str.to_string());
+    let parent_country_code = extract_country_code(&parent_country);
     
-    // Séparer location_vector en parents et enfants
-    let children = if location_vector.len() > 1 {
-        location_vector[1..].iter()
-            .take_while(|s| !parent_country.contains(s.as_str()))
-            .cloned()
-            .collect()
+    let _ = sqlx::query(
+        "INSERT INTO geo_hierarchy 
+         (place_name, display_name, location_vector, admin_level, is_leaf, 
+          parent_country, parent_country_code, lat, lng, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW())
+         ON CONFLICT (place_name, parent_country) 
+         DO UPDATE SET 
+            display_name = EXCLUDED.display_name,
+            location_vector = EXCLUDED.location_vector,
+            admin_level = EXCLUDED.admin_level,
+            is_leaf = EXCLUDED.is_leaf,
+            lat = EXCLUDED.lat,
+            lng = EXCLUDED.lng,
+            updated_at = NOW()"
+    )
+    .bind(&params.place_name)
+    .bind(&google_data.place_name)
+    .bind(&google_data.location_vector)
+    .bind(admin_level)
+    .bind(is_leaf)
+    .bind(&parent_country)
+    .bind(&parent_country_code)
+    .bind(google_data.coordinates.lat)
+    .bind(google_data.coordinates.lng)
+    .execute(pool)
+    .await?;
+    
+    info!("✅ Enrichissement Google Places terminé pour {} : {} éléments", params.place_name, google_data.location_vector.len());
+    
+    // Parents = tout sauf le premier élément (le lieu lui-même)
+    let parents = if google_data.location_vector.len() > 1 {
+        google_data.location_vector[1..].to_vec()
     } else {
         vec![]
     };
     
-    let parents = if location_vector.len() > 1 {
-        location_vector[1..].iter()
-            .skip_while(|s| !parent_country.contains(s.as_str()))
-            .cloned()
-            .collect()
-    } else {
-        vec![]
-    };
-    
-    info!("✅ Enrichissement terminé pour {} : {} éléments", params.place_name, location_vector.len());
+    // ✅ Enfants depuis base locale africaine
+    let african_service = AfricanLocationsService::new();
+    let place_type_str = if is_leaf { "neighborhood" } else if admin_level <= 2 { "country" } else { "city" };
+    let children = african_service.get_children(&params.place_name, place_type_str);
     
     Ok(Json(EnrichLocationResponse {
         place_name: params.place_name,
-        geoname_id: Some(geoname_id),
-        display_name,
-        location_vector: location_vector.clone(),
+        geoname_id: None,
+        display_name: google_data.place_name.clone(),
+        location_vector: google_data.location_vector.clone(),
         hierarchy: LocationHierarchy {
             parents,
             children,
@@ -233,15 +222,56 @@ pub async fn enrich_location(
             admin_level,
         },
         coordinates: Coordinates {
-            lat: lat.to_string().parse().unwrap_or(0.0),
-            lng: lng.to_string().parse().unwrap_or(0.0),
+            lat: google_data.coordinates.lat,
+            lng: google_data.coordinates.lng,
         },
         metadata: LocationMetadata {
             country: parent_country,
             country_code: parent_country_code,
-            population,
-            timezone,
+            population: None,
+            timezone: None,
         },
     }))
+}
+
+/// Détermine le niveau administratif basé sur la taille du location_vector
+fn determine_admin_level(location_vector: &[String]) -> i32 {
+    match location_vector.len() {
+        0..=1 => 0,  // Pays
+        2 => 2,      // Région
+        3 => 4,      // Département
+        4 => 6,      // Ville
+        _ => 8,      // Quartier/localité
+    }
+}
+
+/// Extrait le code pays (CM, SN, CI, etc.)
+fn extract_country_code(country_name: &str) -> Option<String> {
+    // Mapping simple des pays francophones
+    let mapping = vec![
+        ("Cameroun", "CM"),
+        ("Cameroon", "CM"),
+        ("Sénégal", "SN"),
+        ("Senegal", "SN"),
+        ("Côte d'Ivoire", "CI"),
+        ("Mali", "ML"),
+        ("Burkina Faso", "BF"),
+        ("Niger", "NE"),
+        ("Tchad", "TD"),
+        ("Chad", "TD"),
+        ("Guinée", "GN"),
+        ("Guinea", "GN"),
+        ("Bénin", "BJ"),
+        ("Benin", "BJ"),
+        ("Togo", "TG"),
+        ("Congo", "CG"),
+        ("Gabon", "GA"),
+        ("RD Congo", "CD"),
+        ("Madagascar", "MG"),
+    ];
+    
+    mapping.iter()
+        .find(|(name, _)| country_name.contains(name))
+        .map(|(_, code)| code.to_string())
 }
 

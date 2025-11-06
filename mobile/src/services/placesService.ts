@@ -1,4 +1,4 @@
-import { getToutesLesVilles, rechercherVilles, getTousLesPays, TOUS_LES_PAYS, getQuartiersByVille } from '../data/africanLocations';
+import { getToutesLesVilles, rechercherVilles, getTousLesPays, TOUS_LES_PAYS } from '../data/africanLocations';
 import { getFieldOptions } from '../data/productModalities';
 import { apiGet } from './api';
 
