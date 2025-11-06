@@ -327,8 +327,8 @@ pub async fn check_tokens(
                                 r#"
                                 INSERT INTO token_usage_logs 
                                     (user_id, intention, tokens_ia_consumed, tokens_cost_xaf, tokens_deducted, 
-                                     balance_before, balance_after, processing_time_ms, response_source, endpoint)
-                                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+                                     balance_before, balance_after, processing_time_ms, response_source, endpoint, operation_type)
+                                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'ia_request')
                                 "#
                             )
                             .bind(user_id)
