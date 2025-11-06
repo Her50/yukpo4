@@ -341,12 +341,10 @@ const AjouterProduitSimpleScreen: React.FC = () => {
 
                         {/* Caractéristiques (Autocomplete) - IDENTIQUE AU GRAND FORMULAIRE */}
                         <View style={styles.fieldGroup}>
-                            <Text style={styles.label}>
-                                {isPrestation ? 'Caractéristiques prestation' : 'Caractéristiques produit'}
-                            </Text>
                             <LinearAutocompleteEditor
+                                label={isPrestation ? 'Caractéristiques prestation' : 'Caractéristiques produit'}
                                 identifiantBase="produits"
-                                value={formValues.produits}
+                                value={formValues.produits || []}
                                 onChange={(value) => handleFieldChange('produits', value)}
                                 sousCaracteristiques={formValues.sous_caracteristiques || {
                                     // Caractéristiques essentielles
@@ -367,6 +365,7 @@ const AjouterProduitSimpleScreen: React.FC = () => {
                                 separateur=","
                                 allowCustomModality={true}
                                 placeholder="Tapez pour voir les suggestions..."
+                                filtrable={true}
                             />
                         </View>
 
