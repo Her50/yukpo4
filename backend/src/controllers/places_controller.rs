@@ -144,7 +144,7 @@ pub async fn enrich_location(
     .await?;
     
     // 3. Re-fetch après enrichissement
-    let enriched = sqlx::query_as::<_, (
+    let enriched_opt = sqlx::query_as::<_, (
         i64, String, Vec<String>, i32, bool, String, Option<String>,
         sqlx::types::BigDecimal, sqlx::types::BigDecimal, Option<i32>, Option<String>
     )>(
@@ -165,8 +165,37 @@ pub async fn enrich_location(
     )
     .bind(&params.place_name)
     .bind(params.country.as_deref().unwrap_or(""))
-    .fetch_one(pool)
+    .fetch_optional(pool)
     .await?;
+    
+    // ✅ Si GeoNames ne trouve rien, retourner des données par défaut au lieu de 404
+    if enriched_opt.is_none() {
+        info!("⚠️ Lieu '{}' introuvable dans GeoNames, retour données minimales", params.place_name);
+        return Ok(Json(EnrichLocationResponse {
+            place_name: params.place_name.clone(),
+            geoname_id: None,
+            display_name: params.place_name.clone(),
+            location_vector: vec![params.place_name.clone()],
+            hierarchy: LocationHierarchy {
+                parents: params.country.clone().map(|c| vec![c]).unwrap_or_default(),
+                children: vec![],
+                is_leaf: true,
+                admin_level: 8, // Quartier/localité
+            },
+            coordinates: Coordinates {
+                lat: 0.0,
+                lng: 0.0,
+            },
+            metadata: LocationMetadata {
+                country: params.country.unwrap_or_else(|| "Inconnu".to_string()),
+                country_code: None,
+                population: None,
+                timezone: None,
+            },
+        }));
+    }
+    
+    let enriched = enriched_opt.unwrap();
     
     let (geoname_id, display_name, location_vector, admin_level, is_leaf, 
          parent_country, parent_country_code, lat, lng, population, timezone) = enriched;
