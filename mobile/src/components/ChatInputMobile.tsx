@@ -14,6 +14,7 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+import { useLocation } from '../contexts/LocationContext'; // ✅ NOUVEAU: Pour GPS automatique
 import { apiPost } from '../services/api'; // ✅ NOUVEAU: Pour autocomplete
 import { uploadMultipleToCloud } from '../services/cloudUpload';
 import ModernGPSModal from './ModernGPSModal'; // Utiliser ModernGPSModal pour support des zones
@@ -37,6 +38,9 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = ({
     showAutocomplete = false, // ✅ NOUVEAU
     isSearchMode = false // ✅ NOUVEAU
 }) => {
+    // ✅ NOUVEAU: Utiliser la position GPS du contexte pour l'autocomplete
+    const { location } = useLocation();
+    
     const [text, setText] = useState('');
     const [images, setImages] = useState<string[]>([]);
     const [audioUri, setAudioUri] = useState<string | null>(null);
@@ -66,15 +70,36 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = ({
             if (text.trim().length >= 2) {
                 setLoadingSuggestions(true);
                 try {
-                    const response = await apiPost('/api/autocomplete/search-products', {
+                    // ✅ CORRECTION 2025-11-06: Inclure coordonnées GPS pour résultats priorisés
+                    const payload: any = {
                         query: text.trim(),
-                        limit: 8,
-                    });
+                        limit: 10, // ✅ Augmenté de 8 à 10 pour plus de suggestions
+                    };
+                    
+                    // ✅ Ajouter GPS si disponible (ordre de priorité : GPS manuel > GPS contexte)
+                    const currentGPS = gpsData || location;
+                    if (currentGPS) {
+                        payload.user_lat = currentGPS.latitude || currentGPS.lat;
+                        payload.user_lng = currentGPS.longitude || currentGPS.lng;
+                        console.log('[ChatInputMobile] 📍 GPS inclus dans autocomplete:', { 
+                            lat: payload.user_lat, 
+                            lng: payload.user_lng,
+                            source: gpsData ? 'manuel' : 'auto'
+                        });
+                    } else {
+                        console.log('[ChatInputMobile] ⚠️ Aucun GPS disponible pour l\'autocomplete');
+                    }
+
+                    const response = await apiPost('/api/autocomplete/search-products', payload);
 
                     if (response.success && response.data) {
                         setSuggestions(response.data);
                         setShowSuggestions(true);
-                        console.log('[ChatInputMobile] 🔍 Suggestions autocomplete:', response.data.length);
+                        console.log('[ChatInputMobile] 🔍 Suggestions autocomplete:', {
+                            count: response.data.length,
+                            withGPS: !!gpsData,
+                            query: text.trim()
+                        });
                     } else {
                         setSuggestions([]);
                         setShowSuggestions(false);
@@ -93,7 +118,7 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = ({
         }, 300);
 
         return () => clearTimeout(debounce);
-    }, [text, showAutocomplete, isSearchMode]);
+    }, [text, showAutocomplete, isSearchMode, gpsData, location]);
 
     // Animations pour l'enregistrement audio
     const pulseAnim = useRef(new Animated.Value(1)).current;
