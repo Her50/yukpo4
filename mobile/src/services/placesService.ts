@@ -1,15 +1,15 @@
-import { getToutesLesVilles, rechercherVilles } from '../data/africanLocations';
+import { getToutesLesVilles, rechercherVilles, getTousLesPays, TOUS_LES_PAYS, getQuartiersByVille } from '../data/africanLocations';
 import { getFieldOptions } from '../data/productModalities';
 import { apiGet } from './api';
 
-export type PlaceScope = 'city' | 'point' | 'neighborhood'; // ✅ AJOUT: Support des quartiers
+export type PlaceScope = 'city' | 'point' | 'neighborhood' | 'all'; // ✅ AJOUT: Support des quartiers et 'all' pour recherche universelle
 
 class PlacesService {
     /**
      * Autocomplete intelligent pour villes, quartiers, pays et lieux
      * - Essaie d'abord le backend Google Maps API
      * - Fallback sur la base locale (TOUS les pays d'Afrique francophone)
-     * - Si scope est undefined, recherche universelle (tous les types géographiques)
+     * - Si scope est undefined ou 'all', recherche universelle (tous les types géographiques)
      */
     async autocomplete(query: string, scope?: PlaceScope, cityContext?: string): Promise<string[]> {
         const q = (query || '').trim();
@@ -41,9 +41,55 @@ class PlacesService {
         }
 
         // ✅ PRIORITÉ 2: Base de données locale (AFRIQUE FRANCOPHONE COMPLÈTE)
-        // Uniquement pour scope='city' ou undefined
-        if (!scope || scope === 'city') {
-            // Recherche intelligente dans TOUS les pays d'Afrique francophone
+        // ✅ CORRECTION: Recherche universelle inclut pays, villes ET quartiers
+        if (!scope || scope === 'all') {
+            // Recherche universelle: pays, villes, quartiers
+            if (q.length > 0) {
+                const qLower = q.toLowerCase();
+                
+                // 1. Rechercher dans les PAYS
+                const paysMatches = TOUS_LES_PAYS.filter(p => 
+                    p.nom.toLowerCase().includes(qLower) || 
+                    p.nomComplet.toLowerCase().includes(qLower) ||
+                    p.code.toLowerCase().includes(qLower)
+                );
+                paysMatches.forEach(pays => {
+                    results.push(pays.nom); // Format simple "Cameroun"
+                });
+                
+                // 2. Rechercher dans les VILLES
+                const villesRecherchees = rechercherVilles(q);
+                const nomsVilles = villesRecherchees.map(v => `${v.pays} - ${v.nom}`);
+                results.push(...nomsVilles);
+                
+                // 3. Rechercher dans les QUARTIERS (tous les pays)
+                TOUS_LES_PAYS.forEach(pays => {
+                    pays.villes.forEach(ville => {
+                        if (ville.quartiers) {
+                            const quartiersMatches = ville.quartiers.filter(quartier =>
+                                quartier.toLowerCase().includes(qLower)
+                            );
+                            quartiersMatches.forEach(quartier => {
+                                // Format "Quartier, Ville, Pays"
+                                results.push(`${quartier}, ${ville.nom}, ${pays.nom}`);
+                            });
+                        }
+                    });
+                });
+            } else {
+                // Sans recherche, retourner un échantillon de chaque type
+                // PAYS (tous)
+                TOUS_LES_PAYS.forEach(pays => {
+                    results.push(pays.nom);
+                });
+                
+                // VILLES (limitées)
+                const toutesVilles = getToutesLesVilles();
+                const nomsVilles = toutesVilles.slice(0, 30).map(v => `${v.pays} - ${v.nom}`);
+                results.push(...nomsVilles);
+            }
+        } else if (scope === 'city') {
+            // Recherche intelligente dans TOUS les pays d'Afrique francophone (villes uniquement)
             if (q.length > 0) {
                 const villesRecherchees = rechercherVilles(q);
                 const nomsVilles = villesRecherchees.map(v => `${v.pays} - ${v.nom}`);
@@ -53,6 +99,38 @@ class PlacesService {
                 const toutesVilles = getToutesLesVilles();
                 const nomsVilles = toutesVilles.slice(0, 50).map(v => `${v.pays} - ${v.nom}`);
                 results.push(...nomsVilles);
+            }
+        } else if (scope === 'neighborhood') {
+            // Recherche dans les quartiers (avec contexte de ville si fourni)
+            if (q.length > 0) {
+                TOUS_LES_PAYS.forEach(pays => {
+                    pays.villes.forEach(ville => {
+                        // Si cityContext fourni, filtrer par ville
+                        if (cityContext && !ville.nom.toLowerCase().includes(cityContext.toLowerCase())) {
+                            return;
+                        }
+                        if (ville.quartiers) {
+                            const quartiersMatches = ville.quartiers.filter(quartier =>
+                                quartier.toLowerCase().includes(q.toLowerCase())
+                            );
+                            quartiersMatches.forEach(quartier => {
+                                results.push(`${quartier}, ${ville.nom}, ${pays.nom}`);
+                            });
+                        }
+                    });
+                });
+            } else if (cityContext) {
+                // Sans recherche mais avec contexte de ville, retourner tous les quartiers de cette ville
+                TOUS_LES_PAYS.forEach(pays => {
+                    const ville = pays.villes.find(v => 
+                        v.nom.toLowerCase().includes(cityContext.toLowerCase())
+                    );
+                    if (ville && ville.quartiers) {
+                        ville.quartiers.forEach(quartier => {
+                            results.push(`${quartier}, ${ville.nom}, ${pays.nom}`);
+                        });
+                    }
+                });
             }
         } else if (scope === 'point') {
             // Points de départ/arrivée depuis modalités covoiturage

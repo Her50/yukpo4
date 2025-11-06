@@ -5,12 +5,12 @@ import { PlaceScope, placesService } from '../services/placesService';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
 
-// ✅ Parser string location en composants (gère "Pays - Ville" ET "Ville, Région, Pays")
+// ✅ Parser string location en composants (gère "Pays - Ville", "Quartier, Ville, Pays", "Pays" seul)
 const parseLocationString = (locationStr: string): LocationObject => {
     const components: any = {};
     let placeName = locationStr;
 
-    // Format 1 : "Pays - Ville" (retourné par placesService local)
+    // Format 1 : "Pays - Ville" (retourné par placesService local pour villes)
     if (locationStr.includes(' - ')) {
         const parts = locationStr.split(' - ').map(s => s.trim());
         if (parts.length === 2) {
@@ -19,24 +19,43 @@ const parseLocationString = (locationStr: string): LocationObject => {
             placeName = parts[1]; // Ville est le lieu principal
         }
     }
-    // Format 2 : "Ville, Région, Pays" (retourné par Google Autocomplete)
+    // Format 2 : "Quartier, Ville, Pays" ou "Ville, Région, Pays" (retourné par Google Autocomplete ou quartiers)
     else if (locationStr.includes(',')) {
         const parts = locationStr.split(',').map(s => s.trim());
         if (parts.length >= 3) {
-            components.ville = parts[0];
-            components.region = parts[1];
+            // Détecter si c'est un quartier (premier élément court, souvent un nom de quartier)
+            // ou une ville (premier élément peut être plus long)
+            // Pour simplifier, on assume que 3 parties = "Quartier, Ville, Pays"
+            components.quartier = parts[0];
+            components.ville = parts[1];
             components.pays = parts[2];
-            placeName = parts[0];
+            placeName = parts[0]; // Quartier est le lieu principal
         } else if (parts.length === 2) {
+            // "Ville, Pays"
             components.ville = parts[0];
             components.pays = parts[1];
             placeName = parts[0];
         }
     }
-    // Format 3 : Simple (juste un nom de lieu)
+    // Format 3 : Simple (pays seul ou lieu simple)
     else {
-        components.ville = locationStr;
-        placeName = locationStr;
+        // ✅ NOUVEAU: Vérifier si c'est un pays connu
+        const paysConnus = ['Cameroun', 'Côte d\'Ivoire', 'Sénégal', 'Mali', 'Burkina Faso', 
+                           'Niger', 'Tchad', 'Guinée', 'Bénin', 'Togo', 'Congo', 'Gabon', 
+                           'Centrafrique', 'Madagascar', 'Burundi', 'Rwanda', 'Djibouti', 
+                           'Comores', 'Mauritanie', 'RD Congo'];
+        const isPays = paysConnus.some(p => locationStr.toLowerCase() === p.toLowerCase());
+        
+        if (isPays) {
+            // C'est un pays
+            components.pays = locationStr;
+            placeName = locationStr;
+            // Ne pas mettre components.ville car c'est un pays
+        } else {
+            // Lieu simple (ville probablement)
+            components.ville = locationStr;
+            placeName = locationStr;
+        }
     }
 
     return {

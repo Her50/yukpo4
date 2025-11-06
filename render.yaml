@@ -17,6 +17,8 @@ services:
         value: fr_FR.UTF-8
       - key: LC_ALL
         value: fr_FR.UTF-8
+      - key: GOOGLE_MAPS_API_KEY
+        sync: false  # À configurer manuellement dans Render Dashboard
     healthCheckPath: /healthz
     autoDeploy: true
     branch: master
