@@ -81,7 +81,15 @@ pub fn init_logging() {
     
     let log_format = std::env::var("LOG_FORMAT").unwrap_or_else(|_| "plain".to_string());
     let log_level = std::env::var("RUST_LOG").unwrap_or_else(|_| "info".to_string());
-    let filter = EnvFilter::new(&log_level); // ✅ FIX: Passer par référence
+    
+    // ✅ Filtrer les logs verbeux des dépendances externes
+    let filter = EnvFilter::new(&log_level)
+        .add_directive("rustls=warn".parse().unwrap())           // Rustls: seulement warnings et erreurs
+        .add_directive("hyper=info".parse().unwrap())            // Hyper: info et au-dessus
+        .add_directive("tokio=info".parse().unwrap())            // Tokio: info et au-dessus
+        .add_directive("sqlx=warn".parse().unwrap())             // SQLx: seulement warnings
+        .add_directive("tower=info".parse().unwrap())            // Tower: info et au-dessus
+        .add_directive("h2=info".parse().unwrap());              // HTTP/2: info et au-dessus
     
     if log_format == "json" {
         tracing_subscriber::registry()
