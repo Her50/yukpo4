@@ -835,6 +835,22 @@ pub async fn ensure_autocomplete_combinations_table(pool: &PgPool) -> Result<(),
     if exists {
         info!("✅ Table autocomplete_combinations déjà présente");
         
+        // ✅ CRITIQUE 2025-11-06: Vérifier et rendre service_id NULLABLE
+        let is_service_id_nullable = sqlx::query_scalar::<_, bool>(
+            "SELECT is_nullable = 'YES' FROM information_schema.columns WHERE table_name = 'autocomplete_combinations' AND column_name = 'service_id'"
+        )
+        .fetch_one(pool)
+        .await
+        .unwrap_or(true);
+        
+        if !is_service_id_nullable {
+            warn!("⚠️ CRITIQUE: Colonne 'service_id' est NOT NULL, correction en cours...");
+            sqlx::query("ALTER TABLE autocomplete_combinations ALTER COLUMN service_id DROP NOT NULL")
+                .execute(pool)
+                .await?;
+            info!("✅ Colonne 'service_id' rendue NULLABLE (fix crash autocomplete)");
+        }
+        
         // Vérifier si product_labels existe, sinon l'ajouter
         let has_product_labels = sqlx::query_scalar::<_, bool>(
             "SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name = 'autocomplete_combinations' AND column_name = 'product_labels')"
