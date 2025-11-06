@@ -89,7 +89,9 @@ pub fn init_logging() {
         .add_directive("tokio=info".parse().unwrap())            // Tokio: info et au-dessus
         .add_directive("sqlx=warn".parse().unwrap())             // SQLx: seulement warnings
         .add_directive("tower=info".parse().unwrap())            // Tower: info et au-dessus
-        .add_directive("h2=info".parse().unwrap());              // HTTP/2: info et au-dessus
+        .add_directive("h2=info".parse().unwrap())               // HTTP/2: info et au-dessus
+        .add_directive("trust_dns_proto=warn".parse().unwrap())  // Trust-DNS: seulement warnings
+        .add_directive("trust_dns_resolver=warn".parse().unwrap()); // Trust-DNS resolver: seulement warnings
     
     if log_format == "json" {
         tracing_subscriber::registry()
