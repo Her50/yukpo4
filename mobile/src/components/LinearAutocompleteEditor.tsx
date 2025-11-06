@@ -4,7 +4,7 @@
  * ✅ NOUVEAU : Suggestions populaires depuis autocomplete_combinations
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -161,45 +161,9 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
 
     const chips = displayValue ? parseVectorToChips(displayValue) : [];
 
-    // ✅ NOUVEAU 2025-11-06 : Recherche progressive dans autocomplete_combinations
-    useEffect(() => {
-        // Fonction de recherche définie DANS le useEffect pour avoir accès aux states
-        const searchSuggestions = async (query: string) => {
-            setLoadingSuggestions(true);
-            setShowSuggestions(true);
-
-            try {
-                console.log('[LinearAutocompleteEditor] 🔍 Recherche suggestions pour:', query);
-                const response = await apiGet(
-                    `/api/products/popular?search=${encodeURIComponent(query)}&limit=8`
-                );
-
-                console.log('[LinearAutocompleteEditor] 📦 Réponse API:', response);
-
-                if (response.success && response.data) {
-                    const products = response.data as PopularProduct[];
-                    console.log('[LinearAutocompleteEditor] ✅ Suggestions trouvées:', products.length);
-                    setSuggestions(products);
-                } else {
-                    console.log('[LinearAutocompleteEditor] ⚠️ Aucune suggestion reçue');
-                    setSuggestions([]);
-                }
-            } catch (error) {
-                console.error('[LinearAutocompleteEditor] ❌ Erreur recherche suggestions:', error);
-                setSuggestions([]);
-            } finally {
-                setLoadingSuggestions(false);
-            }
-        };
-        
-        // Exécuter la recherche si conditions remplies
-        if (searchQuery && typeof searchQuery === 'string' && searchQuery.trim().length >= 2) {
-            searchSuggestions(searchQuery);
-        } else {
-            setSuggestions([]);
-            setShowSuggestions(false);
-        }
-    }, [searchQuery]); // ✅ Seulement searchQuery en dependency
+    // ✅ CORRECTION FINALE 2025-11-06 : Recherche progressive SANS useEffect
+    // Le useEffect avec searchSuggestions cause des problèmes de closure
+    // On va gérer la recherche directement dans onChangeText du TextInput
 
     // Sélectionner une suggestion
     const selectSuggestion = (product: PopularProduct) => {
@@ -407,11 +371,39 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                     placeholder={generatePlaceholder()}
                     placeholderTextColor="#9CA3AF"
                     value={searchQuery}
-                    onChangeText={setSearchQuery}
+                    onChangeText={async (text) => {
+                        setSearchQuery(text);
+                        
+                        // ✅ CORRECTION FINALE : Recherche inline sans useEffect ni useCallback
+                        if (text && text.trim().length >= 2) {
+                            setLoadingSuggestions(true);
+                            setShowSuggestions(true);
+                            
+                            try {
+                                const response = await apiGet(
+                                    `/api/products/popular?search=${encodeURIComponent(text)}&limit=8`
+                                );
+                                
+                                if (response.success && response.data) {
+                                    setSuggestions(response.data as PopularProduct[]);
+                                } else {
+                                    setSuggestions([]);
+                                }
+                            } catch (error) {
+                                console.error('[LinearAutocompleteEditor] ❌ Erreur recherche:', error);
+                                setSuggestions([]);
+                            } finally {
+                                setLoadingSuggestions(false);
+                            }
+                        } else {
+                            setSuggestions([]);
+                            setShowSuggestions(false);
+                        }
+                    }}
                     onFocus={() => setShowSuggestions(searchQuery.trim().length >= 2)}
                 />
                 {searchQuery.length > 0 && (
-                    <TouchableOpacity onPress={() => { setSearchQuery(''); setShowSuggestions(false); }}>
+                    <TouchableOpacity onPress={() => { setSearchQuery(''); setShowSuggestions(false); setSuggestions([]); }}>
                         <SafeIcon name="x" size={18} color="#9CA3AF" />
                     </TouchableOpacity>
                 )}
