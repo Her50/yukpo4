@@ -855,6 +855,42 @@ pub async fn ensure_autocomplete_combinations_table(pool: &PgPool) -> Result<(),
             info!("✅ Colonne session_id ajoutée");
         }
         
+        // ✅ NOUVEAU 2025-11-06: Vérifier et ajouter is_ai_preferred si manquante
+        let has_is_ai_preferred = sqlx::query_scalar::<_, bool>(
+            "SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name = 'autocomplete_combinations' AND column_name = 'is_ai_preferred')"
+        )
+        .fetch_one(pool)
+        .await?;
+        
+        if !has_is_ai_preferred {
+            warn!("⚠️ Colonne is_ai_preferred manquante, ajout en cours...");
+            sqlx::query(
+                "ALTER TABLE autocomplete_combinations ADD COLUMN IF NOT EXISTS is_ai_preferred BOOLEAN DEFAULT FALSE"
+            )
+            .execute(pool)
+            .await?;
+            
+            info!("✅ Colonne is_ai_preferred ajoutée");
+        }
+        
+        // ✅ NOUVEAU 2025-11-06: Vérifier et ajouter ai_confidence si manquante
+        let has_ai_confidence = sqlx::query_scalar::<_, bool>(
+            "SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name = 'autocomplete_combinations' AND column_name = 'ai_confidence')"
+        )
+        .fetch_one(pool)
+        .await?;
+        
+        if !has_ai_confidence {
+            warn!("⚠️ Colonne ai_confidence manquante, ajout en cours...");
+            sqlx::query(
+                "ALTER TABLE autocomplete_combinations ADD COLUMN IF NOT EXISTS ai_confidence REAL DEFAULT 0.5"
+            )
+            .execute(pool)
+            .await?;
+            
+            info!("✅ Colonne ai_confidence ajoutée");
+        }
+        
         // ✅ NOUVEAU 2025-11-05: Recréer la fonction upsert_autocomplete_combination avec les bons paramètres
         // Même si la table existe déjà, on doit s'assurer que la fonction est à jour
         info!("🔄 Mise à jour de la fonction upsert_autocomplete_combination...");
@@ -2088,6 +2124,22 @@ pub async fn ensure_token_usage_logs_table(pool: &PgPool) -> Result<(), sqlx::Er
                 .execute(pool)
                 .await?;
             info!("✅ Colonne 'operation_type' ajoutée");
+        }
+        
+        // ✅ NOUVEAU 2025-11-06: Vérifier si tokens_amount existe et la rendre nullable (colonne legacy non utilisée)
+        let has_tokens_amount = sqlx::query_scalar::<_, bool>(
+            "SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name = 'token_usage_logs' AND column_name = 'tokens_amount')"
+        )
+        .fetch_one(pool)
+        .await?;
+        
+        if has_tokens_amount {
+            // Si la colonne existe, la rendre nullable (elle n'est plus utilisée dans le code)
+            warn!("⚠️ Colonne 'tokens_amount' legacy détectée, mise à jour pour la rendre nullable...");
+            sqlx::query("ALTER TABLE token_usage_logs ALTER COLUMN tokens_amount DROP NOT NULL")
+                .execute(pool)
+                .await?;
+            info!("✅ Colonne 'tokens_amount' rendue nullable (legacy)");
         }
         
         return Ok(());
