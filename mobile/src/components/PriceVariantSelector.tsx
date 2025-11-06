@@ -40,12 +40,14 @@ interface PriceVariantSelectorProps {
 export const PriceVariantSelector: React.FC<PriceVariantSelectorProps> = ({
     label,
     variable,
-    modalites,
+    modalites: modalitesProp,
     onChange,
     required = false,
     availableCurrencies = ['XAF', 'EUR', 'USD'],
     defaultCurrency = 'XAF',
 }) => {
+    // ✅ Protection contre undefined - toujours utiliser un tableau
+    const modalites = modalitesProp || [];
     const [showModal, setShowModal] = useState(false);
     const [editingModality, setEditingModality] = useState<PriceModality | null>(null);
     const [editIndex, setEditIndex] = useState<number | null>(null);
@@ -139,6 +141,12 @@ export const PriceVariantSelector: React.FC<PriceVariantSelectorProps> = ({
     // Supprimer une modalité
     const removeModality = useCallback(
         (index: number) => {
+            // ✅ Protection contre undefined
+            if (!modalites || !modalites[index]) {
+                console.warn('[PriceVariantSelector] Tentative de suppression d\'une modalité inexistante');
+                return;
+            }
+            
             Alert.alert(
                 'Confirmer',
                 `Voulez-vous supprimer la modalité "${modalites[index].valeur}" ?`,
