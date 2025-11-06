@@ -4,7 +4,7 @@
  * ✅ NOUVEAU : Suggestions populaires depuis autocomplete_combinations
  */
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -161,56 +161,45 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
 
     const chips = displayValue ? parseVectorToChips(displayValue) : [];
 
-    // ✅ CORRECTION 2025-11-05 : Wrapping searchSuggestions dans useCallback pour éviter les re-créations
-    const searchSuggestions = useCallback(async (query: string) => {
-        setLoadingSuggestions(true);
-        setShowSuggestions(true); // ✅ CORRECTION: Afficher tout de suite (même pendant loading)
-
-        try {
-            console.log('[LinearAutocompleteEditor] 🔍 Recherche suggestions pour:', query);
-            const response = await apiGet(
-                `/api/products/popular?search=${encodeURIComponent(query)}&limit=8`
-            );
-
-            console.log('[LinearAutocompleteEditor] 📦 Réponse API:', response);
-
-            if (response.success && response.data) {
-                const products = response.data as PopularProduct[];
-                console.log('[LinearAutocompleteEditor] ✅ Suggestions trouvées:', products.length);
-                setSuggestions(products);
-                // Garder showSuggestions à true même si aucune suggestion
-            } else {
-                console.log('[LinearAutocompleteEditor] ⚠️ Aucune suggestion reçue');
-                setSuggestions([]);
-            }
-        } catch (error) {
-            console.error('[LinearAutocompleteEditor] ❌ Erreur recherche suggestions:', error);
-            setSuggestions([]);
-        } finally {
-            setLoadingSuggestions(false);
-        }
-    }, []); // ✅ Pas de dependencies car la fonction est stable
-
-    // ✅ NOUVEAU 2025-11-04 : Recherche progressive dans autocomplete_combinations
+    // ✅ NOUVEAU 2025-11-06 : Recherche progressive dans autocomplete_combinations
     useEffect(() => {
-        try {
-            // ✅ PROTECTION CRITIQUE: Vérifier que searchSuggestions est défini avant de l'appeler
-            if (typeof searchSuggestions !== 'function') {
-                console.error('[LinearAutocompleteEditor] ❌ searchSuggestions n\'est pas une fonction');
-                return;
-            }
-            
-            if (searchQuery && typeof searchQuery === 'string' && searchQuery.trim().length >= 2) {
-                searchSuggestions(searchQuery);
-            } else {
+        // Fonction de recherche définie DANS le useEffect pour avoir accès aux states
+        const searchSuggestions = async (query: string) => {
+            setLoadingSuggestions(true);
+            setShowSuggestions(true);
+
+            try {
+                console.log('[LinearAutocompleteEditor] 🔍 Recherche suggestions pour:', query);
+                const response = await apiGet(
+                    `/api/products/popular?search=${encodeURIComponent(query)}&limit=8`
+                );
+
+                console.log('[LinearAutocompleteEditor] 📦 Réponse API:', response);
+
+                if (response.success && response.data) {
+                    const products = response.data as PopularProduct[];
+                    console.log('[LinearAutocompleteEditor] ✅ Suggestions trouvées:', products.length);
+                    setSuggestions(products);
+                } else {
+                    console.log('[LinearAutocompleteEditor] ⚠️ Aucune suggestion reçue');
+                    setSuggestions([]);
+                }
+            } catch (error) {
+                console.error('[LinearAutocompleteEditor] ❌ Erreur recherche suggestions:', error);
                 setSuggestions([]);
-                setShowSuggestions(false);
+            } finally {
+                setLoadingSuggestions(false);
             }
-        } catch (error) {
-            console.error('[LinearAutocompleteEditor] ❌ Erreur dans useEffect searchQuery:', error);
-            // Ne pas crasher, juste logger l'erreur
+        };
+        
+        // Exécuter la recherche si conditions remplies
+        if (searchQuery && typeof searchQuery === 'string' && searchQuery.trim().length >= 2) {
+            searchSuggestions(searchQuery);
+        } else {
+            setSuggestions([]);
+            setShowSuggestions(false);
         }
-    }, [searchQuery, searchSuggestions]); // ✅ CORRECTION: Ajouter searchSuggestions aux dependencies
+    }, [searchQuery]); // ✅ Seulement searchQuery en dependency
 
     // Sélectionner une suggestion
     const selectSuggestion = (product: PopularProduct) => {
