@@ -109,7 +109,7 @@ impl HybridImageSearchService {
         
         // ✅ NOUVEAU 2025-11-04: Charger le nouveau prompt optimisé pour recherche par image
         // Ce prompt extrait uniquement le vecteur de caractéristiques (sans dépendances/combinaisons)
-        let search_prompt = match tokio::fs::read_to_string("backend/ia_prompts/recherche_image_produit_prompt.md").await {
+        let search_prompt = match tokio::fs::read_to_string("ia_prompts/recherche_image_produit_prompt.md").await {
             Ok(content) => {
                 log_info("[HybridImageSearch] ✅ Prompt de recherche par image chargé depuis fichier");
                 content

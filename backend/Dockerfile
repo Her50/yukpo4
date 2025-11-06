@@ -18,6 +18,15 @@ COPY src ./src
 # ✅ NOUVEAU 2025-11-06: Copier les prompts IA
 COPY ia_prompts ./ia_prompts
 
+# ✅ NOUVEAU 2025-11-06: Copier les fichiers de configuration runtime
+COPY config ./config
+
+# ✅ NOUVEAU 2025-11-06: Copier les instructions IA
+COPY ia_intentions_instructions.md ./
+
+# ✅ NOUVEAU 2025-11-06: Créer dossier data (pour context_enricher.rs)
+RUN mkdir -p ./data
+
 # Construire l'application
 RUN cargo build --release
 
