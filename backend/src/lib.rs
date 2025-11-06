@@ -81,7 +81,7 @@ pub fn init_logging() {
     
     let log_format = std::env::var("LOG_FORMAT").unwrap_or_else(|_| "plain".to_string());
     let log_level = std::env::var("RUST_LOG").unwrap_or_else(|_| "info".to_string());
-    let filter = EnvFilter::new(log_level);
+    let filter = EnvFilter::new(&log_level); // ✅ FIX: Passer par référence
     
     if log_format == "json" {
         tracing_subscriber::registry()
