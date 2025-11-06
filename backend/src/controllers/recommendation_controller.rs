@@ -110,7 +110,7 @@ pub async fn get_mixed_content(
     let pool = &state.pg;
     
     let user_id = params.user_id.unwrap_or(0);
-    let session_id = params.session_id.unwrap_or_else(|| format!("session_{}", chrono::Utc::now().timestamp()));
+    let _session_id = params.session_id.unwrap_or_else(|| format!("session_{}", chrono::Utc::now().timestamp()));
     let limit = params.limit.unwrap_or(15);
     
     log::info!("🎯 [MixedContent] Génération feed mixte pour user_id: {} (limit: {})", user_id, limit);
