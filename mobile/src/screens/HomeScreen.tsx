@@ -458,86 +458,49 @@ const HomeScreen: React.FC = () => {
 
             console.log('[HomeScreen] Données GPS extraites:', gpsData);
 
-            // ✅ NOUVEAU 2025-11-06: Vérifier intelligemment si service similaire existe déjà
-            console.log('[HomeScreen] Vérification intelligente des services existants...');
-            let existingServiceId: number | null = null;
-            let navigationMode = 'create'; // 'create' ou 'add_product'
+            // ✅ NOUVEAU 2025-11-06: Vérifier si l'utilisateur a DÉJÀ un service (n'importe lequel)
+            console.log('[HomeScreen] Vérification si utilisateur a déjà un service...');
+            let hasExistingService = false;
+            let firstServiceId: number | null = null;
             
             try {
                 const servicesResponse = await apiGet('/api/services/my-services');
                 if (servicesResponse.success && Array.isArray(servicesResponse.data) && servicesResponse.data.length > 0) {
-                    // ✅ Analyser le texte saisi par l'utilisateur
-                    const userInput = typeof input === 'string' ? input.toLowerCase() : 
-                                     (input.texte || input.text || '').toLowerCase();
-                    
-                    // ✅ Analyser le titre suggéré par l'IA
-                    const iaTitreService = result?.data?.titre_service?.valeur || 
-                                          result?.data?.data?.titre_service?.valeur || '';
-                    const iaTitreServiceLower = iaTitreService.toLowerCase();
-                    
-                    console.log('[HomeScreen] 🔍 Recherche service similaire pour:', {
-                        userInput: userInput.substring(0, 50),
-                        iaTitreService: iaTitreService
-                    });
-                    
-                    // ✅ Chercher un service avec un titre SIMILAIRE (même catégorie/domaine)
-                    const matchingService = servicesResponse.data.find((service: any) => {
-                        const serviceTitre = (service.data?.titre_service?.valeur || 
-                                            service.data?.titre || '').toLowerCase();
-                        const serviceCategory = (service.data?.category?.valeur || 
-                                                service.data?.category || '').toLowerCase();
-                        
-                        // Match si le titre du service contient une partie de l'input ou du titre IA
-                        const titleMatch = serviceTitre.includes(userInput.substring(0, 10)) || 
-                                         iaTitreServiceLower.includes(serviceTitre.substring(0, 10)) ||
-                                         serviceTitre.includes(iaTitreServiceLower.substring(0, 10));
-                        
-                        // Match si catégories similaires
-                        const categoryMatch = userInput.includes(serviceCategory) || 
-                                            iaTitreServiceLower.includes(serviceCategory);
-                        
-                        return titleMatch || categoryMatch;
-                    });
-                    
-                    if (matchingService) {
-                        // ✅ Service similaire trouvé → Mode ajout produit
-                        existingServiceId = matchingService.id;
-                        navigationMode = 'add_product';
-                        console.log('[HomeScreen] ✅ Service similaire trouvé:', {
-                            id: existingServiceId,
-                            titre: matchingService.data?.titre_service?.valeur,
-                            mode: 'PRODUIT UNIQUEMENT'
-                        });
-                    } else {
-                        // ❌ Aucun service similaire → Mode création complète
-                        console.log('[HomeScreen] ℹ️ Aucun service similaire trouvé, ouverture formulaire COMPLET');
-                        console.log('[HomeScreen] Services existants:', servicesResponse.data.map((s: any) => ({
-                            id: s.id,
-                            titre: s.data?.titre_service?.valeur
-                        })));
-                    }
+                    hasExistingService = true;
+                    firstServiceId = servicesResponse.data[0].id;
+                    console.log('[HomeScreen] ✅ Utilisateur a déjà un service (ID: ' + firstServiceId + ')');
+                    console.log('[HomeScreen] → Ouverture formulaire SIMPLE pour ajouter produit');
                 } else {
-                    console.log('[HomeScreen] ℹ️ Aucun service existant, ouverture formulaire COMPLET');
+                    console.log('[HomeScreen] ℹ️ Aucun service existant → Formulaire COMPLET');
                 }
             } catch (error) {
-                console.warn('[HomeScreen] Erreur vérification services existants (non bloquant):', error);
-                // En cas d'erreur, on continue avec le mode création normal
+                console.warn('[HomeScreen] Erreur vérification services (non bloquant):', error);
             }
 
-            // Rediriger vers le formulaire de création avec les suggestions de l'IA
-            (navigation as any).navigate('FormulaireYukpoIntelligent', {
-                suggestion: {
-                    ...result.data,
-                    intention: 'creation_service', // AJOUT: Propriété intention manquante
-                    data: result.data.suggestions || result.data.data || result.data
-                },
-                type: 'creation_service',
-                mode: navigationMode, // ✅ NOUVEAU: 'create' ou 'add_product'
-                existingServiceId: existingServiceId, // ✅ NOUVEAU: ID du service existant
-                focusBlock: navigationMode === 'add_product' ? 'produits' : undefined, // ✅ NOUVEAU: Focus sur bloc produits
-                mediaData: mediaData, // NOUVEAU: Transmettre les médias
-                gpsData: gpsData // NOUVEAU: Transmettre les données GPS
-            });
+            // ✅ AMÉLIORATION UX: Si utilisateur a déjà un service → Formulaire SIMPLE produit seul
+            if (hasExistingService && firstServiceId) {
+                console.log('[HomeScreen] 🛍️ Navigation vers formulaire SIMPLE (AjouterProduitSimple)');
+                (navigation as any).navigate('AjouterProduitSimple', {
+                    serviceId: firstServiceId,
+                    suggestionIA: result.data,
+                    mediaData: mediaData,
+                    gpsData: gpsData
+                });
+            } else {
+                // ✅ Pas de service existant → Formulaire COMPLET
+                console.log('[HomeScreen] 📝 Navigation vers formulaire COMPLET (FormulaireYukpoIntelligent)');
+                (navigation as any).navigate('FormulaireYukpoIntelligent', {
+                    suggestion: {
+                        ...result.data,
+                        intention: 'creation_service',
+                        data: result.data.suggestions || result.data.data || result.data
+                    },
+                    type: 'creation_service',
+                    mode: 'create',
+                    mediaData: mediaData,
+                    gpsData: gpsData
+                });
+            }
         } catch (error: any) {
             console.error('[HomeScreen] Erreur création service:', error);
 

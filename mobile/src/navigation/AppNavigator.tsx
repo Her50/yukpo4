@@ -22,6 +22,7 @@ import ProfileScreen from '../screens/ProfileScreen';
 import ServicesScreen from '../screens/ServicesScreen';
 
 // ✅ IMPORTS DIRECTS - Écrans secondaires
+import AjouterProduitSimpleScreen from '../screens/AjouterProduitSimpleScreen';
 import ContactScreen from '../screens/ContactScreen';
 import CreatePubliciteScreen from '../screens/CreatePubliciteScreen';
 import EnhancedSettingsScreen from '../screens/EnhancedSettingsScreen';
@@ -131,6 +132,7 @@ const SecondaryStack = () => {
         <Stack.Screen name="Settings" component={EnhancedSettingsScreen} />
         <Stack.Screen name="RechargeTokens" component={RechargeTokensScreen} />
         <Stack.Screen name="FormulaireYukpoIntelligent" component={FormulaireYukpoIntelligentScreen} />
+        <Stack.Screen name="AjouterProduitSimple" component={AjouterProduitSimpleScreen} />
         <Stack.Screen name="MesProduits" component={MesProduitsScreen} />
         <Stack.Screen name="ProductDetail" component={ProductDetailScreen} />
         <Stack.Screen name="ServiceDetailShared" component={ServiceDetailSharedScreen} />

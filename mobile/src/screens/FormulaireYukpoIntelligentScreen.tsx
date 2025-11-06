@@ -79,11 +79,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
   // ✅ Déterminer si on est en mode lecture seule
   const isReadonly = mode === 'readonly' || mode === 'view' || readonlyParam;
 
-  // ✅ NOUVEAU 2025-11-06: Déterminer si on ajoute un produit à un service existant (depuis HomeScreen)
-  const existingServiceId = (route.params as any)?.existingServiceId;
-  const isAddingProductToExistingService = mode === 'add_product' && existingServiceId;
-  
-  // ✅ CORRECTION 2025-11-06: Définir isAddingProduct pour la duplication de produit (ancienne fonctionnalité)
+  // ✅ Déterminer si on duplique un produit existant
   const isAddingProduct = !!duplicateProduct && !!serviceId;
   
   // ✅ NOUVEAU 2025-11-06: Mode édition des infos du service (sans toucher aux produits)
@@ -112,8 +108,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
   const [paymentMethod, setPaymentMethod] = useState<any>(null); // ✅ NOUVEAU: Mode de paiement
 
   // États pour la navigation par blocs
-  // ✅ NOUVEAU 2025-11-06: Si mode 'add_product', démarrer au bloc produits (index 3)
-  const [currentBlock, setCurrentBlock] = useState(isAddingProductToExistingService ? 3 : 0);
+  const [currentBlock, setCurrentBlock] = useState(0);
   const [blocks, setBlocks] = useState<{
     id: string;
     title: string;
@@ -2156,11 +2151,11 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     try {
       setLoading(true);
       setIsSubmitting(true);
-      console.log('[FormulaireYukpoIntelligentScreen] Soumission du formulaire...', { mode, serviceId, isAddingProductToExistingService });
+      console.log('[FormulaireYukpoIntelligentScreen] Soumission du formulaire...', { mode, serviceId });
 
-      // ✅ NOUVEAU 2025-11-06: SI MODE ADD_PRODUCT (ajout produit à service existant)
-      if (isAddingProductToExistingService && existingServiceId) {
-        console.log('[FormulaireYukpoIntelligentScreen] 🛍️ MODE ADD_PRODUCT - Ajout produit au service', existingServiceId);
+      // ✅ SI MODE DUPLICATION PRODUIT (ancienne fonctionnalité)
+      if (isAddingProduct && serviceId) {
+        console.log('[FormulaireYukpoIntelligentScreen] 🛍️ MODE DUPLICATION - Ajout produit au service', serviceId);
 
         // ✅ CORRECTION 2025-11-06: Construire les données COMPLÈTES du nouveau produit
         // Inclure TOUS les champs produits + médias (images, vidéos, prix variant, etc.)
@@ -2254,9 +2249,9 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
               text: 'Confirmer',
               onPress: async () => {
                 try {
-                  // Appeler /api/services/{existingServiceId}/products
+                  // Appeler /api/services/{serviceId}/products
                   const userId = parseInt(user?.id || '0', 10);
-                  const response = await apiPost(`/api/services/${existingServiceId}/products`, {
+                  const response = await apiPost(`/api/services/${serviceId}/products`, {
                     user_id: userId,
                     product_data: nouveauProduit
                   });
@@ -3198,10 +3193,6 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                     <View style={styles.blockNavigation}>
                       {(blocks || [])
                         .filter((block, index) => {
-                          // ✅ NOUVEAU 2025-11-06: En mode add_product, afficher uniquement le bloc produits
-                          if (isAddingProductToExistingService) {
-                            return block.id === 'products';
-                          }
                           // ✅ NOUVEAU 2025-11-06: En mode edit_service_info, masquer le bloc produits
                           if (isEditingServiceInfo) {
                             return block.id !== 'products';
@@ -3256,10 +3247,6 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                       // ✅ NOUVEAU 2025-11-06: En mode edit_service_info, masquer le bloc produits
                       if (isEditingServiceInfo) {
                         return block.id !== 'products';
-                      }
-                      // ✅ En mode add_product, afficher uniquement le bloc produits
-                      if (isAddingProductToExistingService) {
-                        return block.id === 'products';
                       }
                       return true;
                     })
