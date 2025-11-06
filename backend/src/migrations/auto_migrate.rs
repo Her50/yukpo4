@@ -204,6 +204,36 @@ pub async fn ensure_publicites_table(pool: &PgPool) -> Result<(), sqlx::Error> {
             info!("✅ Colonnes analytics ajoutées");
         }
         
+        // ✅ NOUVEAU 2025-11-06: Vérifier boost_level et frequency_ratio
+        let has_boost_level = sqlx::query_scalar::<_, bool>(
+            "SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name = 'publicites' AND column_name = 'boost_level')"
+        )
+        .fetch_one(pool)
+        .await?;
+        
+        if !has_boost_level {
+            warn!("⚠️ Colonne 'boost_level' manquante, ajout en cours...");
+            sqlx::query("ALTER TABLE publicites ADD COLUMN IF NOT EXISTS boost_level VARCHAR(20) DEFAULT 'basic' CHECK (boost_level IN ('basic', 'premium', 'ultra'))")
+                .execute(pool)
+                .await?;
+            info!("✅ Colonne 'boost_level' ajoutée");
+        }
+        
+        // Vérifier frequency_ratio
+        let has_frequency_ratio = sqlx::query_scalar::<_, bool>(
+            "SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name = 'publicites' AND column_name = 'frequency_ratio')"
+        )
+        .fetch_one(pool)
+        .await?;
+        
+        if !has_frequency_ratio {
+            warn!("⚠️ Colonne 'frequency_ratio' manquante, ajout en cours...");
+            sqlx::query("ALTER TABLE publicites ADD COLUMN IF NOT EXISTS frequency_ratio FLOAT DEFAULT 0.2 CHECK (frequency_ratio >= 0 AND frequency_ratio <= 1)")
+                .execute(pool)
+                .await?;
+            info!("✅ Colonne 'frequency_ratio' ajoutée");
+        }
+        
         return Ok(());
     }
     
@@ -230,6 +260,10 @@ pub async fn ensure_publicites_table(pool: &PgPool) -> Result<(), sqlx::Error> {
             duree_jours INTEGER NOT NULL CHECK (duree_jours > 0),
             cout INTEGER NOT NULL CHECK (cout >= 0),
             devise_utilisateur VARCHAR(10) DEFAULT 'FCFA',
+            
+            -- Boost et fréquence
+            boost_level VARCHAR(20) DEFAULT 'basic' CHECK (boost_level IN ('basic', 'premium', 'ultra')),
+            frequency_ratio FLOAT DEFAULT 0.2 CHECK (frequency_ratio >= 0 AND frequency_ratio <= 1),
             
             -- Zone géographique d'impact
             zone_geographique VARCHAR(50) NOT NULL DEFAULT 'local' CHECK (zone_geographique IN ('local', 'regional', 'international')),

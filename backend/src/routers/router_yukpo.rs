@@ -16,7 +16,7 @@ use crate::utils::log::{log_error, log_warn};
 use crate::{
     controllers::{
         interaction_controller::{post_message, post_review, get_service_interactions, get_service_reviews, get_service_score, get_service_stats, post_audio, post_call, post_share, post_review_helpful},
-        service_controller::{get_services_for_prestataire, toggle_service_status, modifier_service, supprimer_service, get_service_by_id},
+        service_controller::{get_services_for_prestataire, get_my_services, toggle_service_status, modifier_service, supprimer_service, get_service_by_id},
         intelligent_service_controller::{process_services_intelligently, get_services_pending_processing, reactivate_service_intelligent},
         product_addition_controller::add_product_to_service, // ✅ NOUVEAU 2025-11-01
         product_lifecycle_controller::{deactivate_product, reactivate_product}, // ✅ NOUVEAU 2025-11-01
@@ -127,6 +127,8 @@ pub fn router_yukpo(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .route("/api/services/create", post(handle_creer_service))
         // Route pour r?cup?rer tous les services du prestataire connect?
         .route("/api/prestataire/services", get(get_services_for_prestataire))
+        // ✅ NOUVEAU 2025-11-06: Alias mobile pour récupérer mes services
+        .route("/api/services/my-services", get(get_my_services))
         // Route pour activer/d?sactiver un service
         .route("/api/services/{service_id}/toggle-status", patch(toggle_service_status))
         // Route pour modifier un service

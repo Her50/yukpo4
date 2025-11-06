@@ -11,7 +11,7 @@ use crate::state::AppState;
 
 #[derive(Debug, Deserialize)]
 pub struct PlacesAutocompleteQuery {
-    pub query: String,
+    pub query: Option<String>, // ✅ CORRECTION 2025-11-06: Rendre optionnel pour éviter 400 si absent
     #[serde(rename = "type")]
     pub place_type: Option<String>, // 'city', 'neighborhood', 'point', 'hospital', 'pharmacy', 'health'
     pub city: Option<String>, // Contexte de ville pour filtrer les résultats
@@ -42,8 +42,9 @@ pub async fn autocomplete_places(
         Some("hospital") | Some("pharmacy") | Some("health")
     );
     
-    // ✅ CORRECTION 2025-11-06: Si query vide, retourner suggestions par défaut au lieu de 400
-    if !is_health_search && params.query.trim().is_empty() {
+    // ✅ CORRECTION 2025-11-06: Si query vide ou absente, retourner suggestions par défaut au lieu de 400
+    let query_str = params.query.as_deref().unwrap_or("").trim();
+    if !is_health_search && query_str.is_empty() {
         // Retourner les villes populaires du Cameroun comme suggestions par défaut
         let default_suggestions = vec![
             "Douala, Cameroun".to_string(),
@@ -88,7 +89,7 @@ pub async fn autocomplete_places(
     // Construire la requête Google Maps API
     let mut url = format!(
         "https://maps.googleapis.com/maps/api/place/autocomplete/json?input={}&key={}",
-        urlencoding::encode(&params.query),
+        urlencoding::encode(query_str),
         google_api_key
     );
 
