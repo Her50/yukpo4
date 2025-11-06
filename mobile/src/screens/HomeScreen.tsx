@@ -458,6 +458,26 @@ const HomeScreen: React.FC = () => {
 
             console.log('[HomeScreen] Données GPS extraites:', gpsData);
 
+            // ✅ NOUVEAU 2025-11-06: Vérifier si l'utilisateur a déjà un service
+            console.log('[HomeScreen] Vérification si utilisateur a déjà un service...');
+            let existingServiceId: number | null = null;
+            let navigationMode = 'create'; // 'create' ou 'add_product'
+            
+            try {
+                const servicesResponse = await apiGet('/api/services/my-services');
+                if (servicesResponse.success && Array.isArray(servicesResponse.data) && servicesResponse.data.length > 0) {
+                    // ✅ Utilisateur a déjà au moins un service
+                    existingServiceId = servicesResponse.data[0].id;
+                    navigationMode = 'add_product';
+                    console.log('[HomeScreen] ✅ Service existant trouvé (ID: {}), ouverture formulaire PRODUIT uniquement', existingServiceId);
+                } else {
+                    console.log('[HomeScreen] ℹ️ Aucun service existant, ouverture formulaire COMPLET');
+                }
+            } catch (error) {
+                console.warn('[HomeScreen] Erreur vérification services existants (non bloquant):', error);
+                // En cas d'erreur, on continue avec le mode création normal
+            }
+
             // Rediriger vers le formulaire de création avec les suggestions de l'IA
             (navigation as any).navigate('FormulaireYukpoIntelligent', {
                 suggestion: {
@@ -466,6 +486,9 @@ const HomeScreen: React.FC = () => {
                     data: result.data.suggestions || result.data.data || result.data
                 },
                 type: 'creation_service',
+                mode: navigationMode, // ✅ NOUVEAU: 'create' ou 'add_product'
+                existingServiceId: existingServiceId, // ✅ NOUVEAU: ID du service existant
+                focusBlock: navigationMode === 'add_product' ? 'produits' : undefined, // ✅ NOUVEAU: Focus sur bloc produits
                 mediaData: mediaData, // NOUVEAU: Transmettre les médias
                 gpsData: gpsData // NOUVEAU: Transmettre les données GPS
             });

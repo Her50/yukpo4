@@ -79,8 +79,9 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
   // ✅ Déterminer si on est en mode lecture seule
   const isReadonly = mode === 'readonly' || mode === 'view' || readonlyParam;
 
-  // ✅ NOUVEAU 2025-11-01: Déterminer si on ajoute un produit à un service existant
-  const isAddingProduct = mode === 'add_product' && serviceId && duplicateProduct;
+  // ✅ NOUVEAU 2025-11-06: Déterminer si on ajoute un produit à un service existant (depuis HomeScreen)
+  const existingServiceId = (route.params as any)?.existingServiceId;
+  const isAddingProductToExistingService = mode === 'add_product' && existingServiceId;
 
   // États locaux
   const [activeStep, setActiveStep] = useState(1);
@@ -105,7 +106,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
   const [paymentMethod, setPaymentMethod] = useState<any>(null); // ✅ NOUVEAU: Mode de paiement
 
   // États pour la navigation par blocs
-  const [currentBlock, setCurrentBlock] = useState(0);
+  // ✅ NOUVEAU 2025-11-06: Si mode 'add_product', démarrer au bloc produits (index 3)
+  const [currentBlock, setCurrentBlock] = useState(isAddingProductToExistingService ? 3 : 0);
   const [blocks, setBlocks] = useState<{
     id: string;
     title: string;
