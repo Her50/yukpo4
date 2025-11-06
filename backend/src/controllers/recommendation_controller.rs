@@ -256,7 +256,7 @@ pub async fn get_mixed_content(
     }
     
     // ✅ Mélanger intelligemment selon les règles de fréquence
-    let mixed = mix_content_intelligently(paid_ads, organic_products);
+    let mixed = mix_content_intelligently(&paid_ads, &organic_products);
     
     log::info!("✅ [MixedContent] Feed généré: {} items total ({} organiques, {} publicités)", 
         mixed.len(), organic_products.len(), paid_ads.len());
@@ -270,8 +270,8 @@ pub async fn get_mixed_content(
 
 /// Mélanger intelligemment publicités et produits organiques
 fn mix_content_intelligently(
-    paid_ads: Vec<serde_json::Value>,
-    organic_products: Vec<serde_json::Value>
+    paid_ads: &Vec<serde_json::Value>,
+    organic_products: &Vec<serde_json::Value>
 ) -> Vec<serde_json::Value> {
     let mut result: Vec<serde_json::Value> = vec![];
     let mut organic_index = 0;
