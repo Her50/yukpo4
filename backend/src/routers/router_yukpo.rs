@@ -811,8 +811,8 @@ async fn handle_creation_service_direct(
     // Construire le prompt de création de service
     let user_text = input.texte.clone().unwrap_or_default();
     
-    // ?? UTILISER LE PROMPT OPTIMISÉ (-78% tokens) depuis le fichier .md
-    let prompt_content = match std::fs::read_to_string("ia_prompts/creation_service_prompt_optimized.md") {
+    // ?? UTILISER LE PROMPT SPÉCIFIQUE EXISTANT depuis le fichier .md
+    let prompt_content = match std::fs::read_to_string("ia_prompts/creation_service_prompt.md") {
         Ok(content) => content,
         Err(e) => {
             log::error!("[handle_creation_service_direct] Erreur lecture prompt: {}", e);
@@ -1015,6 +1015,11 @@ Format JSON attendu :
     // ?? IMPORTANT : NE PAS créer le service ici, juste préparer les données
     // Le service sera créé par le formulaire via /api/services/create
     
+    // ✅ NOUVEAU 2025-11-06 : Extraire les valeurs une seule fois
+    let titre_value = service_data.get("titre_service").and_then(|v| v.get("valeur")).unwrap_or(&json!(""));
+    let category_value = service_data.get("category").and_then(|v| v.get("valeur")).unwrap_or(&json!(""));
+    let description_value = service_data.get("description").and_then(|v| v.get("valeur")).unwrap_or(&json!(""));
+    
     // Construire la réponse finale avec la structure attendue par le frontend
     let final_response = json!({
         "status": "success",
@@ -1023,17 +1028,33 @@ Format JSON attendu :
         "data": {
             "titre_service": {
                 "type_donnee": "string",
-                "valeur": service_data.get("titre_service").and_then(|v| v.get("valeur")).unwrap_or(&json!("")),
+                "valeur": titre_value,
                 "origine_champs": "ia"
             },
             "category": {
                 "type_donnee": "string",
-                "valeur": service_data.get("category").and_then(|v| v.get("valeur")).unwrap_or(&json!("")),
+                "valeur": category_value,
                 "origine_champs": "ia"
             },
             "description": {
                 "type_donnee": "string",
-                "valeur": service_data.get("description").and_then(|v| v.get("valeur")).unwrap_or(&json!("")),
+                "valeur": description_value,
+                "origine_champs": "ia"
+            },
+            // ✅ NOUVEAU 2025-11-06 : Champs PRODUIT (mapping automatique pour formulaire "Ajouter produit")
+            "nom_produit": {
+                "type_donnee": "string",
+                "valeur": service_data.get("nom_produit").and_then(|v| v.get("valeur")).unwrap_or(titre_value),
+                "origine_champs": "ia"
+            },
+            "categorie_produit": {
+                "type_donnee": "string",
+                "valeur": service_data.get("categorie_produit").and_then(|v| v.get("valeur")).unwrap_or(category_value),
+                "origine_champs": "ia"
+            },
+            "description_produit": {
+                "type_donnee": "string",
+                "valeur": service_data.get("description_produit").and_then(|v| v.get("valeur")).unwrap_or(description_value),
                 "origine_champs": "ia"
             },
             "is_tarissable": {
