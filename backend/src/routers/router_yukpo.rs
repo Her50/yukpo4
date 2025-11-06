@@ -1015,10 +1015,19 @@ Format JSON attendu :
     // ?? IMPORTANT : NE PAS créer le service ici, juste préparer les données
     // Le service sera créé par le formulaire via /api/services/create
     
-    // ✅ NOUVEAU 2025-11-06 : Extraire les valeurs une seule fois
-    let titre_value = service_data.get("titre_service").and_then(|v| v.get("valeur")).unwrap_or(&json!(""));
-    let category_value = service_data.get("category").and_then(|v| v.get("valeur")).unwrap_or(&json!(""));
-    let description_value = service_data.get("description").and_then(|v| v.get("valeur")).unwrap_or(&json!(""));
+    // ✅ NOUVEAU 2025-11-06 : Extraire les valeurs une seule fois (clonées pour éviter lifetime issues)
+    let titre_value = service_data.get("titre_service")
+        .and_then(|v| v.get("valeur"))
+        .cloned()
+        .unwrap_or(json!(""));
+    let category_value = service_data.get("category")
+        .and_then(|v| v.get("valeur"))
+        .cloned()
+        .unwrap_or(json!(""));
+    let description_value = service_data.get("description")
+        .and_then(|v| v.get("valeur"))
+        .cloned()
+        .unwrap_or(json!(""));
     
     // Construire la réponse finale avec la structure attendue par le frontend
     let final_response = json!({
@@ -1044,22 +1053,34 @@ Format JSON attendu :
             // ✅ NOUVEAU 2025-11-06 : Champs PRODUIT (mapping automatique pour formulaire "Ajouter produit")
             "nom_produit": {
                 "type_donnee": "string",
-                "valeur": service_data.get("nom_produit").and_then(|v| v.get("valeur")).unwrap_or(titre_value),
+                "valeur": service_data.get("nom_produit")
+                    .and_then(|v| v.get("valeur"))
+                    .cloned()
+                    .unwrap_or(titre_value.clone()),
                 "origine_champs": "ia"
             },
             "categorie_produit": {
                 "type_donnee": "string",
-                "valeur": service_data.get("categorie_produit").and_then(|v| v.get("valeur")).unwrap_or(category_value),
+                "valeur": service_data.get("categorie_produit")
+                    .and_then(|v| v.get("valeur"))
+                    .cloned()
+                    .unwrap_or(category_value.clone()),
                 "origine_champs": "ia"
             },
             "description_produit": {
                 "type_donnee": "string",
-                "valeur": service_data.get("description_produit").and_then(|v| v.get("valeur")).unwrap_or(description_value),
+                "valeur": service_data.get("description_produit")
+                    .and_then(|v| v.get("valeur"))
+                    .cloned()
+                    .unwrap_or(description_value.clone()),
                 "origine_champs": "ia"
             },
             "is_tarissable": {
                 "type_donnee": "boolean",
-                "valeur": service_data.get("is_tarissable").and_then(|v| v.get("valeur")).unwrap_or(&json!(false)),
+                "valeur": service_data.get("is_tarissable")
+                    .and_then(|v| v.get("valeur"))
+                    .cloned()
+                    .unwrap_or(json!(false)),
                 "origine_champs": "ia"
             }
         },
