@@ -1579,6 +1579,12 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         console.warn('[FormulaireYukpoIntelligentScreen] ⚠️ sousCaracteristiques invalide pour', field.name);
         currentSousCaracs = {};
       }
+      
+      // ✅ PROTECTION CRITIQUE 2025-11-06: S'assurer que separateur est une string valide
+      const safeSeparateur = (field.separateur && typeof field.separateur === 'string') ? field.separateur : ',';
+      if (!field.separateur || typeof field.separateur !== 'string') {
+        console.warn('[FormulaireYukpoIntelligentScreen] ⚠️ field.separateur manquant/invalide pour', field.name, '- utilisation fallback ","');
+      }
 
       const nbModalites = currentValues.length;
       const nbCaracteristiques = Object.keys(currentSousCaracs).length;
@@ -1587,7 +1593,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         nbModalites,
         nbCaracteristiques,
         currentValues,
-        nbSousCaracsDisponibles: Object.keys(currentSousCaracs).length
+        nbSousCaracsDisponibles: Object.keys(currentSousCaracs).length,
+        separateur: safeSeparateur
       });
 
       return (
@@ -1610,7 +1617,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
             label={field.label}
             identifiantBase={field.identifiantBase || field.name || 'produit'}
             sousCaracteristiques={currentSousCaracs || {}} // ✅ PROTECTION: Garantir objet valide
-            separateur={(field.separateur && typeof field.separateur === 'string') ? field.separateur : ','} // ✅ PROTECTION ULTIME: Garantir string
+            separateur={safeSeparateur} // ✅ PROTECTION ULTIME: Garantit string valide
             value={currentValues || []} // ✅ PROTECTION: Garantir array de strings valides
             onChange={(values, updatedSousCaracs) => {
               // ✅ NOUVEAU 2025-11-04: Mettre à jour aussi sous-caractéristiques si modifiées
@@ -1618,7 +1625,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                 handleFieldChange(field.name, {
                   type_donnee: 'autocomplete',
                   valeur: values,
-                  separateur: field.separateur || ',',
+                  separateur: safeSeparateur, // ✅ Utiliser safeSeparateur
                   sous_caracteristiques: updatedSousCaracs,
                   identifiant_base: field.identifiantBase || field.name,
                   filtrable: field.filtrable !== false,
@@ -1629,7 +1636,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                 handleFieldChange(field.name, {
                   type_donnee: 'autocomplete',
                   valeur: values,
-                  separateur: field.separateur || ',',
+                  separateur: safeSeparateur, // ✅ Utiliser safeSeparateur
                   sous_caracteristiques: currentSousCaracs, // Garder les sous-caracs existantes
                   identifiant_base: field.identifiantBase || field.name,
                   filtrable: field.filtrable !== false,
