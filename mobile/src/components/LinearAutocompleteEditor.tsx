@@ -73,8 +73,29 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
         );
     }
     
-    // État : Affiche la première valeur (combinaison de référence)
-    const displayValue = value && Array.isArray(value) && value.length > 0 ? value[0] : '';
+    // ✅ PROTECTION ULTIME 2025-11-06: S'assurer que displayValue est TOUJOURS une string
+    const displayValue = (() => {
+        if (!value || !Array.isArray(value) || value.length === 0) {
+            return '';
+        }
+        
+        const firstValue = value[0];
+        
+        // ✅ CRITIQUE: Vérifier que firstValue est une STRING
+        if (typeof firstValue === 'string') {
+            return firstValue;
+        } else if (firstValue && typeof firstValue === 'object') {
+            // Si c'est un objet, essayer de le stringifier
+            console.warn('[LinearAutocompleteEditor] ⚠️ value[0] est un objet, conversion en string');
+            return JSON.stringify(firstValue);
+        } else if (firstValue !== null && firstValue !== undefined) {
+            // Si c'est un nombre ou autre, le convertir
+            console.warn('[LinearAutocompleteEditor] ⚠️ value[0] n\'est pas une string, conversion');
+            return String(firstValue);
+        }
+        
+        return '';
+    })();
 
     const [showEditModal, setShowEditModal] = useState(false);
     const [editingChipIndex, setEditingChipIndex] = useState<number | null>(null);
@@ -90,9 +111,14 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
 
     // Décomposer le vecteur en chips
     const parseVectorToChips = (vectorStr: string): ChipData[] => {
-        // ✅ PROTECTION: Vérifier que vectorStr et separateur sont définis
-        if (!vectorStr || !separateur) {
-            console.warn('[LinearAutocompleteEditor] ⚠️ vectorStr ou separateur undefined');
+        // ✅ PROTECTION ULTIME: Vérifier que vectorStr est une STRING et separateur est défini
+        if (!vectorStr || typeof vectorStr !== 'string') {
+            console.warn('[LinearAutocompleteEditor] ⚠️ vectorStr n\'est pas une string:', typeof vectorStr);
+            return [];
+        }
+        
+        if (!separateur || typeof separateur !== 'string') {
+            console.warn('[LinearAutocompleteEditor] ⚠️ separateur n\'est pas une string:', typeof separateur);
             return [];
         }
 
@@ -194,9 +220,16 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
     const saveChipModification = (newValue: string) => {
         if (!newValue.trim() || editingChipIndex === null) return;
 
-        // ✅ PROTECTION: Vérifier que displayValue et separateur sont définis
-        if (!displayValue || !separateur) {
-            console.warn('[LinearAutocompleteEditor] ⚠️ displayValue ou separateur undefined dans saveChipModification');
+        // ✅ PROTECTION ULTIME: Vérifier que displayValue EST UNE STRING
+        if (!displayValue || typeof displayValue !== 'string') {
+            console.warn('[LinearAutocompleteEditor] ⚠️ displayValue n\'est pas une string dans saveChipModification:', typeof displayValue);
+            setShowEditModal(false);
+            setEditingChipIndex(null);
+            return;
+        }
+        
+        if (!separateur || typeof separateur !== 'string') {
+            console.warn('[LinearAutocompleteEditor] ⚠️ separateur n\'est pas une string dans saveChipModification');
             setShowEditModal(false);
             setEditingChipIndex(null);
             return;
@@ -223,9 +256,14 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                     text: 'Supprimer',
                     style: 'destructive',
                     onPress: () => {
-                        // ✅ PROTECTION: Vérifier que displayValue et separateur sont définis
-                        if (!displayValue || !separateur) {
-                            console.warn('[LinearAutocompleteEditor] ⚠️ displayValue ou separateur undefined dans handleDeleteChip');
+                        // ✅ PROTECTION ULTIME: Vérifier que displayValue EST UNE STRING
+                        if (!displayValue || typeof displayValue !== 'string') {
+                            console.warn('[LinearAutocompleteEditor] ⚠️ displayValue n\'est pas une string dans handleDeleteChip:', typeof displayValue);
+                            return;
+                        }
+                        
+                        if (!separateur || typeof separateur !== 'string') {
+                            console.warn('[LinearAutocompleteEditor] ⚠️ separateur n\'est pas une string dans handleDeleteChip');
                             return;
                         }
 
@@ -247,9 +285,11 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
             return;
         }
 
-        // ✅ PROTECTION: Vérifier que separateur est défini
-        const safeSeparateur = separateur || ',';
-        const parts = displayValue ? displayValue.split(safeSeparateur).map(p => p.trim()) : [];
+        // ✅ PROTECTION ULTIME: Vérifier que separateur et displayValue sont des strings
+        const safeSeparateur = (separateur && typeof separateur === 'string') ? separateur : ',';
+        const parts = (displayValue && typeof displayValue === 'string') 
+            ? displayValue.split(safeSeparateur).map(p => p.trim()) 
+            : [];
         parts.push(newCharValue.trim());
 
         const newVector = parts.join(safeSeparateur);
@@ -292,10 +332,15 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
 
     // ✅ CORRECTION 2025-11-04: Placeholder dynamique depuis la valeur IA (value[0])
     const generatePlaceholder = (): string => {
-        // ✅ PRIORITÉ 1: Si un vecteur existe déjà (de l'IA), l'utiliser comme exemple
+        // ✅ PROTECTION ULTIME: Vérifier que value[0] EST UNE STRING avant .split()
         if (value && value.length > 0 && value[0] && separateur) {
-            const firstValues = value[0].split(separateur).slice(0, 4).join(' • ');
-            return `${firstValues}... 🤖 IA`;
+            const firstValue = value[0];
+            if (typeof firstValue === 'string' && typeof separateur === 'string') {
+                const firstValues = firstValue.split(separateur).slice(0, 4).join(' • ');
+                return `${firstValues}... 🤖 IA`;
+            } else {
+                console.warn('[LinearAutocompleteEditor] ⚠️ value[0] ou separateur pas string dans generatePlaceholder');
+            }
         }
 
         // ✅ PRIORITÉ 2: Exemple générique basé sur les sous-caractéristiques IA

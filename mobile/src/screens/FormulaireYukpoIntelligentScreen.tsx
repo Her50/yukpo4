@@ -1444,15 +1444,38 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
       if (fieldValue && typeof fieldValue === 'object' && 'valeur' in fieldValue) {
         // Cas objet complexe depuis l'IA {type_donnee, valeur, sous_caracteristiques}
-        currentValues = Array.isArray(fieldValue.valeur) ? fieldValue.valeur : [];
+        const rawValues = Array.isArray(fieldValue.valeur) ? fieldValue.valeur : [];
+        // ✅ PROTECTION ULTIME 2025-11-06: S'assurer que TOUS les éléments sont des STRINGS
+        currentValues = rawValues.map(v => {
+          if (typeof v === 'string') {
+            return v;
+          } else if (v && typeof v === 'object') {
+            console.warn('[FormulaireYukpoIntelligentScreen] ⚠️ Élément value n\'est pas string, conversion:', v);
+            return JSON.stringify(v);
+          } else if (v !== null && v !== undefined) {
+            return String(v);
+          }
+          return '';
+        }).filter(v => v.length > 0);
+        
         currentSousCaracs = fieldValue.sous_caracteristiques || field.sousCaracteristiques || {};
         console.log('[FormulaireYukpoIntelligentScreen] ✅ Extraction objet complexe pour', field.name, {
           valeur: currentValues,
           sousCaracs: Object.keys(currentSousCaracs || {})
         });
       } else if (Array.isArray(fieldValue)) {
-        // Cas array simple
-        currentValues = fieldValue;
+        // Cas array simple - ✅ PROTECTION: Garantir que tous les éléments sont strings
+        currentValues = fieldValue.map(v => {
+          if (typeof v === 'string') {
+            return v;
+          } else if (v && typeof v === 'object') {
+            console.warn('[FormulaireYukpoIntelligentScreen] ⚠️ Élément array n\'est pas string, conversion:', v);
+            return JSON.stringify(v);
+          } else if (v !== null && v !== undefined) {
+            return String(v);
+          }
+          return '';
+        }).filter(v => v.length > 0);
       }
 
       // ✅ PROTECTION CRITIQUE: S'assurer que currentSousCaracs est un objet valide
@@ -1491,8 +1514,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
             label={field.label}
             identifiantBase={field.identifiantBase || field.name || 'produit'}
             sousCaracteristiques={currentSousCaracs || {}} // ✅ PROTECTION: Garantir objet valide
-            separateur={field.separateur || ','}
-            value={currentValues || []} // ✅ PROTECTION: Garantir array valide
+            separateur={(field.separateur && typeof field.separateur === 'string') ? field.separateur : ','} // ✅ PROTECTION ULTIME: Garantir string
+            value={currentValues || []} // ✅ PROTECTION: Garantir array de strings valides
             onChange={(values, updatedSousCaracs) => {
               // ✅ NOUVEAU 2025-11-04: Mettre à jour aussi sous-caractéristiques si modifiées
               if (updatedSousCaracs) {
