@@ -147,126 +147,173 @@ const ResultatBesoinScreen: React.FC = () => {
 
   // ✅ CORRECTION 2025-11-04 : Suggestions depuis autocomplete_characteristics (VRAIS produits)
   useEffect(() => {
-    const debounce = setTimeout(() => {
-      fetchSuggestions(searchQuery);
-    }, 300);
+    try {
+      // ✅ PROTECTION: Vérifier que fetchSuggestions existe
+      if (typeof fetchSuggestions !== 'function') {
+        console.error('[ResultatBesoinScreen] ❌ fetchSuggestions n\'est pas une fonction');
+        return;
+      }
 
-    return () => clearTimeout(debounce);
+      const debounce = setTimeout(() => {
+        fetchSuggestions(searchQuery);
+      }, 300);
+
+      return () => clearTimeout(debounce);
+    } catch (error) {
+      console.error('[ResultatBesoinScreen] ❌ Erreur dans useEffect fetchSuggestions:', error);
+    }
   }, [searchQuery, fetchSuggestions]); // ✅ CORRECTION: Ajouter fetchSuggestions aux dependencies
 
   // ✅ NOUVEAU : Générer filtres dynamiques depuis les résultats
   useEffect(() => {
-    if (results.length === 0) {
-      setDynamicFilters({});
-      return;
-    }
+    try {
+      // ✅ PROTECTION: Vérifier que results est un array valide
+      if (!Array.isArray(results) || results.length === 0) {
+        setDynamicFilters({});
+        return;
+      }
 
-    // Extraire tous les labels et valeurs uniques
-    const filtersMap: Record<string, Set<string>> = {};
+      // Extraire tous les labels et valeurs uniques
+      const filtersMap: Record<string, Set<string>> = {};
 
-    results.forEach((product) => {
-      const labels = product.product_labels || [];
-      const vector = product.product_vector || [];
+      results.forEach((product) => {
+        if (!product) return; // ✅ Protection produit null/undefined
 
-      labels.forEach((label, idx) => {
-        if (!filtersMap[label]) {
-          filtersMap[label] = new Set();
+        const labels = product.product_labels || [];
+        const vector = product.product_vector || [];
+
+        // ✅ PROTECTION: Vérifier que labels est un array avec forEach
+        if (!Array.isArray(labels)) {
+          console.warn('[ResultatBesoinScreen] ⚠️ product_labels n\'est pas un array:', product);
+          return;
         }
-        if (vector[idx]) {
-          filtersMap[label].add(vector[idx]);
+
+        labels.forEach((label, idx) => {
+          if (!filtersMap[label]) {
+            filtersMap[label] = new Set();
+          }
+          if (vector[idx]) {
+            filtersMap[label].add(vector[idx]);
+          }
+        });
+      });
+
+      // Garder seulement les dimensions avec au moins 2 valeurs différentes
+      const meaningfulFilters: Record<string, Set<string>> = {};
+      Object.entries(filtersMap).forEach(([label, values]) => {
+        if (values.size >= 2) {
+          meaningfulFilters[label] = values;
         }
       });
-    });
 
-    // Garder seulement les dimensions avec au moins 2 valeurs différentes
-    const meaningfulFilters: Record<string, Set<string>> = {};
-    Object.entries(filtersMap).forEach(([label, values]) => {
-      if (values.size >= 2) {
-        meaningfulFilters[label] = values;
-      }
-    });
-
-    setDynamicFilters(meaningfulFilters);
-    console.log('[ResultatBesoinScreen] Filtres dynamiques générés:', meaningfulFilters);
+      setDynamicFilters(meaningfulFilters);
+      console.log('[ResultatBesoinScreen] Filtres dynamiques générés:', Object.keys(meaningfulFilters));
+    } catch (error) {
+      console.error('[ResultatBesoinScreen] ❌ Erreur dans useEffect dynamicFilters:', error);
+      setDynamicFilters({});
+    }
   }, [results]);
 
   // ✅ Appliquer filtres et tri
   useEffect(() => {
-    let filtered = [...results];
+    try {
+      // ✅ PROTECTION: Vérifier que results est un array valide
+      if (!Array.isArray(results)) {
+        console.error('[ResultatBesoinScreen] ❌ results n\'est pas un array');
+        setFilteredResults([]);
+        return;
+      }
 
-    // ✅ NOUVEAU : Appliquer filtres dynamiques
-    Object.entries(selectedFilters).forEach(([label, value]) => {
-      if (value) {
-        filtered = filtered.filter((product) => {
-          const labels = product.product_labels || [];
-          const vector = product.product_vector || [];
-          const index = labels.indexOf(label);
-          return index !== -1 && vector[index] === value;
+      let filtered = [...results];
+
+      // ✅ NOUVEAU : Appliquer filtres dynamiques
+      if (selectedFilters && typeof selectedFilters === 'object') {
+        Object.entries(selectedFilters).forEach(([label, value]) => {
+          if (value) {
+            filtered = filtered.filter((product) => {
+              if (!product) return false; // ✅ Protection produit null/undefined
+              const labels = product.product_labels || [];
+              const vector = product.product_vector || [];
+              const index = labels.indexOf(label);
+              return index !== -1 && vector[index] === value;
+            });
+          }
         });
       }
-    });
 
-    // ✅ NOUVEAU : Filtre par prix (de mobile2)
-    if (priceFilter.min !== null || priceFilter.max !== null) {
-      filtered = filtered.filter(product => {
-        const price = getPrixMin(product);
-        if (priceFilter.min !== null && price < priceFilter.min) return false;
-        if (priceFilter.max !== null && price > priceFilter.max) return false;
-        return true;
-      });
-    }
-
-    // Filtres par catégorie
-    switch (filterCategory) {
-      case 'with_stock':
-        filtered = filtered.filter(p => {
-          if (p.has_variant && p.variants) {
-            return p.variants.some(v => (v.stock || 0) > 0);
-          }
+      // ✅ NOUVEAU : Filtre par prix (de mobile2)
+      if (priceFilter.min !== null || priceFilter.max !== null) {
+        filtered = filtered.filter(product => {
+          const price = getPrixMin(product);
+          if (priceFilter.min !== null && price < priceFilter.min) return false;
+          if (priceFilter.max !== null && price > priceFilter.max) return false;
           return true;
         });
-        break;
-      case 'with_variants':
-        filtered = filtered.filter(p => p.has_variant);
-        break;
-      case 'nearby':
-        filtered = filtered.filter(p => p.distance_km !== undefined && p.distance_km < 5);
-        break;
-    }
+      }
 
-    // Tri
-    switch (sortBy) {
-      case 'proximite':
-        filtered.sort((a, b) => {
-          const distA = a.distance_km ?? 999999;
-          const distB = b.distance_km ?? 999999;
-          return distA - distB;
-        });
-        break;
-      case 'prix_asc':
-        filtered.sort((a, b) => {
-          const prixA = getPrixMin(a);
-          const prixB = getPrixMin(b);
-          return prixA - prixB;
-        });
-        break;
-      case 'prix_desc':
-        filtered.sort((a, b) => {
-          const prixA = getPrixMin(a);
-          const prixB = getPrixMin(b);
-          return prixB - prixA;
-        });
-        break;
-      // 'pertinence' : pas de tri (déjà trié par backend)
-    }
+      // Filtres par catégorie
+      switch (filterCategory) {
+        case 'with_stock':
+          filtered = filtered.filter(p => {
+            if (p.has_variant && p.variants) {
+              return p.variants.some(v => (v.stock || 0) > 0);
+            }
+            return true;
+          });
+          break;
+        case 'with_variants':
+          filtered = filtered.filter(p => p.has_variant);
+          break;
+        case 'nearby':
+          filtered = filtered.filter(p => p.distance_km !== undefined && p.distance_km < 5);
+          break;
+      }
 
-    setFilteredResults(filtered);
+      // Tri
+      switch (sortBy) {
+        case 'proximite':
+          filtered.sort((a, b) => {
+            const distA = a.distance_km ?? 999999;
+            const distB = b.distance_km ?? 999999;
+            return distA - distB;
+          });
+          break;
+        case 'prix_asc':
+          filtered.sort((a, b) => {
+            const prixA = getPrixMin(a);
+            const prixB = getPrixMin(b);
+            return prixA - prixB;
+          });
+          break;
+        case 'prix_desc':
+          filtered.sort((a, b) => {
+            const prixA = getPrixMin(a);
+            const prixB = getPrixMin(b);
+            return prixB - prixA;
+          });
+          break;
+        // 'pertinence' : pas de tri (déjà trié par backend)
+      }
+
+      setFilteredResults(filtered);
+    } catch (error) {
+      console.error('[ResultatBesoinScreen] ❌ Erreur dans useEffect filtrage/tri:', error);
+      setFilteredResults(results || []); // Fallback aux résultats bruts
+    }
   }, [results, sortBy, filterCategory, selectedFilters, priceFilter]); // ✅ Ajout priceFilter
 
   // Helper : Prix minimum
   const getPrixMin = (product: Product): number => {
-    if (product.has_variant && product.variants && product.variants.length > 0) {
-      return Math.min(...product.variants.map(v => v.prix || 0));
+    // ✅ PROTECTION: Vérifier que product existe
+    if (!product) return 0;
+
+    if (product.has_variant && Array.isArray(product.variants) && product.variants.length > 0) {
+      try {
+        return Math.min(...product.variants.map(v => v?.prix || 0));
+      } catch (error) {
+        console.warn('[ResultatBesoinScreen] ⚠️ Erreur getPrixMin variants:', error);
+        return product.prix || 0;
+      }
     }
     return product.prix || 0;
   };
@@ -275,6 +322,13 @@ const ResultatBesoinScreen: React.FC = () => {
   const selectSuggestion = async (suggestion: CombinationSuggestion) => {
     try {
       console.log('[ResultatBesoinScreen] 🎯 Suggestion sélectionnée:', suggestion);
+
+      // ✅ PROTECTION: Vérifier que suggestion.full_vector existe
+      if (!suggestion || !Array.isArray(suggestion.full_vector)) {
+        console.error('[ResultatBesoinScreen] ❌ Suggestion invalide ou full_vector manquant');
+        return;
+      }
+
       setSearchQuery(suggestion.full_vector.join(', '));
       setFilters(suggestion.full_vector);
       setShowSuggestions(false);
@@ -672,15 +726,15 @@ const ResultatBesoinScreen: React.FC = () => {
           </View>
 
           {/* ✅ NOUVEAU : Filtres intelligents dynamiques basés sur product_labels */}
-          {Object.keys(dynamicFilters).length > 0 && (
+          {dynamicFilters && Object.keys(dynamicFilters).length > 0 && (
             <View style={styles.filterGroup}>
               <Text style={styles.filterGroupTitle}>🎯 Filtres intelligents :</Text>
               <Text style={styles.filterHint}>
                 Basés sur les produits trouvés
               </Text>
 
-              {Object.entries(dynamicFilters).map(([label, valuesSet]) => {
-                const values = Array.from(valuesSet);
+              {Object.entries(dynamicFilters || {}).map(([label, valuesSet]) => {
+                const values = valuesSet ? Array.from(valuesSet) : [];
                 return (
                   <View key={label} style={styles.dynamicFilterSection}>
                     <Text style={styles.dynamicFilterLabel}>
@@ -760,7 +814,7 @@ const ResultatBesoinScreen: React.FC = () => {
             <>
               <Text style={styles.suggestionsTitle}>💡 Suggestions ({suggestions.length})</Text>
               <ScrollView style={styles.suggestionsList}>
-                {suggestions.map((suggestion, index) => (
+                {(suggestions || []).map((suggestion, index) => (
                   <TouchableOpacity
                     key={index}
                     style={styles.suggestionCard}
@@ -769,7 +823,7 @@ const ResultatBesoinScreen: React.FC = () => {
                     <NativeCard>
                       {/* Vecteur produit */}
                       <View style={styles.vectorChips}>
-                        {suggestion.product_vector.map((char, idx) => (
+                        {(suggestion?.product_vector || []).map((char, idx) => (
                           <View key={idx} style={styles.productChip}>
                             <Text style={styles.productChipText}>{char}</Text>
                           </View>

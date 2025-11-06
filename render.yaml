@@ -13,6 +13,10 @@ services:
         value: json
       - key: SQLX_OFFLINE
         value: true
+      - key: LANG
+        value: fr_FR.UTF-8
+      - key: LC_ALL
+        value: fr_FR.UTF-8
     healthCheckPath: /healthz
     autoDeploy: true
     branch: master

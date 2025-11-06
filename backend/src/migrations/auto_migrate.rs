@@ -1393,95 +1393,226 @@ pub async fn ensure_extract_all_product_text_function(pool: &PgPool) -> Result<(
     Ok(())
 }
 
+/// Vérifie et crée la table geo_hierarchy si elle n'existe pas
+pub async fn ensure_geo_hierarchy_table(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🔍 Vérification de la table geo_hierarchy...");
+    
+    // Vérifier si la table existe
+    let exists = sqlx::query_scalar::<_, bool>(
+        "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'geo_hierarchy')"
+    )
+    .fetch_one(pool)
+    .await?;
+    
+    if exists {
+        info!("✅ Table geo_hierarchy déjà présente");
+        return Ok(());
+    }
+    
+    warn!("⚠️ Table geo_hierarchy manquante, création en cours...");
+    
+    // Créer la table geo_hierarchy
+    sqlx::query(r#"
+        CREATE TABLE IF NOT EXISTS geo_hierarchy (
+            id SERIAL PRIMARY KEY,
+            geoname_id BIGINT NOT NULL UNIQUE,
+            place_name VARCHAR(255) NOT NULL,
+            display_name VARCHAR(500) NOT NULL,
+            feature_code VARCHAR(10) NOT NULL,
+            admin_level INTEGER NOT NULL DEFAULT 8,
+            is_leaf BOOLEAN NOT NULL DEFAULT FALSE,
+            parent_country VARCHAR(255) NOT NULL DEFAULT '',
+            parent_country_code VARCHAR(10),
+            location_vector TEXT[] NOT NULL DEFAULT '{}',
+            lat NUMERIC(10, 7) NOT NULL,
+            lng NUMERIC(10, 7) NOT NULL,
+            population INTEGER,
+            timezone VARCHAR(100),
+            times_used INTEGER NOT NULL DEFAULT 0,
+            last_enriched_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+    "#)
+    .execute(pool)
+    .await?;
+    
+    // Créer les index
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_geo_hierarchy_place_name ON geo_hierarchy(place_name)")
+        .execute(pool)
+        .await?;
+    
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_geo_hierarchy_country ON geo_hierarchy(parent_country)")
+        .execute(pool)
+        .await?;
+    
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_geo_hierarchy_geoname_id ON geo_hierarchy(geoname_id)")
+        .execute(pool)
+        .await?;
+    
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_geo_hierarchy_times_used ON geo_hierarchy(times_used DESC)")
+        .execute(pool)
+        .await?;
+    
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_geo_hierarchy_admin_level ON geo_hierarchy(admin_level)")
+        .execute(pool)
+        .await?;
+    
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_geo_hierarchy_location_vector_gin ON geo_hierarchy USING GIN(location_vector)")
+        .execute(pool)
+        .await?;
+    
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_geo_hierarchy_place_country ON geo_hierarchy(place_name, parent_country)")
+        .execute(pool)
+        .await?;
+    
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_geo_hierarchy_coordinates ON geo_hierarchy(lat, lng)")
+        .execute(pool)
+        .await?;
+    
+    // Fonction pour updated_at
+    sqlx::query(r#"
+        CREATE OR REPLACE FUNCTION update_geo_hierarchy_updated_at()
+        RETURNS TRIGGER AS $$
+        BEGIN
+            NEW.updated_at = NOW();
+            RETURN NEW;
+        END;
+        $$ LANGUAGE plpgsql
+    "#)
+    .execute(pool)
+    .await?;
+    
+    // Supprimer le trigger s'il existe
+    let _ = sqlx::query("DROP TRIGGER IF EXISTS trigger_update_geo_hierarchy_updated_at ON geo_hierarchy")
+        .execute(pool)
+        .await;
+    
+    // Créer le trigger
+    sqlx::query(r#"
+        CREATE TRIGGER trigger_update_geo_hierarchy_updated_at
+            BEFORE UPDATE ON geo_hierarchy
+            FOR EACH ROW
+            EXECUTE FUNCTION update_geo_hierarchy_updated_at()
+    "#)
+    .execute(pool)
+    .await?;
+    
+    // Insérer données de test pour Cameroun
+    sqlx::query(r#"
+        INSERT INTO geo_hierarchy 
+            (geoname_id, place_name, display_name, feature_code, admin_level, is_leaf, parent_country, parent_country_code, location_vector, lat, lng, population, timezone, times_used)
+        VALUES
+            (2232593, 'Yaoundé', 'Yaoundé, Cameroun', 'PPLC', 6, FALSE, 'Cameroun', 'CM', ARRAY['Yaoundé', 'Centre', 'Cameroun'], 3.8480, 11.5021, 1299369, 'Africa/Douala', 1),
+            (2232416, 'Douala', 'Douala, Cameroun', 'PPL', 6, FALSE, 'Cameroun', 'CM', ARRAY['Douala', 'Littoral', 'Cameroun'], 4.0483, 9.7043, 1338082, 'Africa/Douala', 1),
+            (2234359, 'Bafoussam', 'Bafoussam, Cameroun', 'PPL', 6, FALSE, 'Cameroun', 'CM', ARRAY['Bafoussam', 'Ouest', 'Cameroun'], 5.4781, 10.4167, 290768, 'Africa/Douala', 1),
+            (2220957, 'Garoua', 'Garoua, Cameroun', 'PPL', 6, FALSE, 'Cameroun', 'CM', ARRAY['Garoua', 'Nord', 'Cameroun'], 9.3012, 13.3964, 436899, 'Africa/Douala', 1),
+            (2220605, 'Maroua', 'Maroua, Cameroun', 'PPL', 6, FALSE, 'Cameroun', 'CM', ARRAY['Maroua', 'Extrême-Nord', 'Cameroun'], 10.5906, 14.3159, 319941, 'Africa/Douala', 1)
+        ON CONFLICT (geoname_id) DO NOTHING
+    "#)
+    .execute(pool)
+    .await?;
+    
+    info!("✅ Table geo_hierarchy créée avec succès avec 5 villes de test !");
+    
+    Ok(())
+}
+
 /// Exécute toutes les migrations automatiques nécessaires
 pub async fn run_auto_migrations(pool: &PgPool) {
     info!("🚀 Démarrage des migrations automatiques...");
     
-    // Migration 0: Fonction extract_all_product_text (✅ NOUVEAU 2025-11-05)
+    // Migration 0: Table geo_hierarchy (✅ NOUVEAU 2025-11-06)
+    match ensure_geo_hierarchy_table(pool).await {
+        Ok(_) => info!("✅ Migration auto: geo_hierarchy OK"),
+        Err(e) => error!("❌ Erreur migration auto geo_hierarchy: {}", e),
+    }
+    
+    // Migration 1: Fonction extract_all_product_text (✅ NOUVEAU 2025-11-05)
     match ensure_extract_all_product_text_function(pool).await {
         Ok(_) => info!("✅ Migration auto: extract_all_product_text OK"),
         Err(e) => error!("❌ Erreur migration auto extract_all_product_text: {}", e),
     }
     
-    // Migration 1: Fonction de désactivation des produits
+    // Migration 2: Fonction de désactivation des produits
     match ensure_deactivate_expired_products_function(pool).await {
         Ok(_) => info!("✅ Migration auto: deactivate_expired_products OK"),
         Err(e) => error!("❌ Erreur migration auto: {}", e),
     }
     
-    // Migration 2: Table publicites
+    // Migration 3: Table publicites
     match ensure_publicites_table(pool).await {
         Ok(_) => info!("✅ Migration auto: publicites table OK"),
         Err(e) => error!("❌ Erreur migration auto publicites: {}", e),
     }
     
-    // Migration 3: Table notifications
+    // Migration 4: Table notifications
     match ensure_notifications_table(pool).await {
         Ok(_) => info!("✅ Migration auto: notifications table OK"),
         Err(e) => error!("❌ Erreur migration auto notifications: {}", e),
     }
     
-    // Migration 4: Table autocomplete_characteristics (✅ 2025-11-01)
+    // Migration 5: Table autocomplete_characteristics (✅ 2025-11-01)
     match ensure_autocomplete_characteristics_table(pool).await {
         Ok(_) => info!("✅ Migration auto: autocomplete_characteristics table OK"),
         Err(e) => error!("❌ Erreur migration auto autocomplete_characteristics: {}", e),
     }
     
-    // Migration 5: Table autocomplete_combinations (✅ NOUVEAU 2025-11-02)
+    // Migration 6: Table autocomplete_combinations (✅ NOUVEAU 2025-11-02)
     match ensure_autocomplete_combinations_table(pool).await {
         Ok(_) => info!("✅ Migration auto: autocomplete_combinations table OK"),
         Err(e) => error!("❌ Erreur migration auto autocomplete_combinations: {}", e),
     }
     
-    // Migration 6: Table token_usage_logs (✅ NOUVEAU 2025-11-03)
+    // Migration 7: Table token_usage_logs (✅ NOUVEAU 2025-11-03)
     match ensure_token_usage_logs_table(pool).await {
         Ok(_) => info!("✅ Migration auto: token_usage_logs table OK"),
         Err(e) => error!("❌ Erreur migration auto token_usage_logs: {}", e),
     }
     
-    // Migration 7: Table service_reviews avec support réponses (✅ NOUVEAU 2025-11-04)
+    // Migration 8: Table service_reviews avec support réponses (✅ NOUVEAU 2025-11-04)
     match ensure_service_reviews_table(pool).await {
         Ok(_) => info!("✅ Migration auto: service_reviews table OK"),
         Err(e) => error!("❌ Erreur migration auto service_reviews: {}", e),
     }
     
-    // Migration 8: Table product_reactions (✅ NOUVEAU 2025-11-04)
+    // Migration 9: Table product_reactions (✅ NOUVEAU 2025-11-04)
     match ensure_product_reactions_table(pool).await {
         Ok(_) => info!("✅ Migration auto: product_reactions table OK"),
         Err(e) => error!("❌ Erreur migration auto product_reactions: {}", e),
     }
     
-    // Migration 9: Chat mentions et participants (✅ NOUVEAU 2025-11-05)
+    // Migration 10: Chat mentions et participants (✅ NOUVEAU 2025-11-05)
     match ensure_chat_mentions_and_participants(pool).await {
         Ok(_) => info!("✅ Migration auto: chat mentions OK"),
         Err(e) => error!("❌ Erreur migration auto chat mentions: {}", e),
     }
     
-    // Migration 10: Search history (✅ NOUVEAU 2025-11-05)
+    // Migration 11: Search history (✅ NOUVEAU 2025-11-05)
     match ensure_search_history_table(pool).await {
         Ok(_) => info!("✅ Migration auto: search_history OK"),
         Err(e) => error!("❌ Erreur migration auto search_history: {}", e),
     }
     
-    // Migration 11: Alerts (✅ NOUVEAU 2025-11-05)
+    // Migration 12: Alerts (✅ NOUVEAU 2025-11-05)
     match ensure_alerts_table(pool).await {
         Ok(_) => info!("✅ Migration auto: alerts OK"),
         Err(e) => error!("❌ Erreur migration auto alerts: {}", e),
     }
     
-    // Migration 12: Signalements (✅ NOUVEAU 2025-11-05)
+    // Migration 13: Signalements (✅ NOUVEAU 2025-11-05)
     match ensure_signalements_tables(pool).await {
         Ok(_) => info!("✅ Migration auto: signalements OK"),
         Err(e) => error!("❌ Erreur migration auto signalements: {}", e),
     }
     
-    // Migration 13: Private conversations (✅ NOUVEAU 2025-11-05)
+    // Migration 14: Private conversations (✅ NOUVEAU 2025-11-05)
     match ensure_private_conversations_table(pool).await {
         Ok(_) => info!("✅ Migration auto: private_conversations OK"),
         Err(e) => error!("❌ Erreur migration auto private_conversations: {}", e),
     }
     
-    // Migration 14: Bus reservations (✅ NOUVEAU 2025-11-05)
+    // Migration 15: Bus reservations (✅ NOUVEAU 2025-11-05)
     match ensure_bus_reservations_table(pool).await {
         Ok(_) => info!("✅ Migration auto: bus_reservations OK"),
         Err(e) => error!("❌ Erreur migration auto bus_reservations: {}", e),

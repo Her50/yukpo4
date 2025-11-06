@@ -72,20 +72,30 @@ async fn healthz() -> Json<serde_json::Value> {
     }))
 }
 pub fn init_logging() {
+    // ✅ CORRECTION UTF-8: Forcer l'encodage UTF-8 pour Windows et Linux
+    #[cfg(target_os = "windows")]
+    {
+        use std::io::Write;
+        let _ = std::io::stdout().write_all("\u{feff}".as_bytes()); // BOM UTF-8
+    }
+    
     let log_format = std::env::var("LOG_FORMAT").unwrap_or_else(|_| "plain".to_string());
     let log_level = std::env::var("RUST_LOG").unwrap_or_else(|_| "info".to_string());
     let filter = EnvFilter::new(log_level);
+    
     if log_format == "json" {
         tracing_subscriber::registry()
             .with(filter)
-            .with(fmt::layer().json())
+            .with(fmt::layer().json().with_target(true).with_thread_ids(false))
             .init();
     } else {
         tracing_subscriber::registry()
             .with(filter)
-            .with(fmt::layer())
+            .with(fmt::layer().with_target(true))
             .init();
     }
+    
+    log::info!("✅ Logging initialisé (format: {}, niveau: {})", log_format, log_level);
 }
 // Handler Axum compatible pour la gestion intelligente des fournitures scolaires
 async fn fournitures_axum_handler(

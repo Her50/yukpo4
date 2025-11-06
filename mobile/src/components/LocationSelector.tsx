@@ -5,27 +5,43 @@ import { PlaceScope, placesService } from '../services/placesService';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
 
-// ✅ Parser string location en composants
+// ✅ Parser string location en composants (gère "Pays - Ville" ET "Ville, Région, Pays")
 const parseLocationString = (locationStr: string): LocationObject => {
-    const parts = locationStr.split(',').map(s => s.trim());
-
     const components: any = {};
+    let placeName = locationStr;
 
-    // Déduction selon nombre de parties
-    if (parts.length >= 3) {
-        components.ville = parts[0];
-        components.region = parts[1];
-        components.pays = parts[2];
-    } else if (parts.length === 2) {
-        components.ville = parts[0];
-        components.pays = parts[1];
-    } else if (parts.length === 1) {
-        components.ville = parts[0];
+    // Format 1 : "Pays - Ville" (retourné par placesService local)
+    if (locationStr.includes(' - ')) {
+        const parts = locationStr.split(' - ').map(s => s.trim());
+        if (parts.length === 2) {
+            components.pays = parts[0];
+            components.ville = parts[1];
+            placeName = parts[1]; // Ville est le lieu principal
+        }
+    }
+    // Format 2 : "Ville, Région, Pays" (retourné par Google Autocomplete)
+    else if (locationStr.includes(',')) {
+        const parts = locationStr.split(',').map(s => s.trim());
+        if (parts.length >= 3) {
+            components.ville = parts[0];
+            components.region = parts[1];
+            components.pays = parts[2];
+            placeName = parts[0];
+        } else if (parts.length === 2) {
+            components.ville = parts[0];
+            components.pays = parts[1];
+            placeName = parts[0];
+        }
+    }
+    // Format 3 : Simple (juste un nom de lieu)
+    else {
+        components.ville = locationStr;
+        placeName = locationStr;
     }
 
     return {
         raw: locationStr,
-        place_name: parts[0] || locationStr,
+        place_name: placeName,
         components,
     };
 };
@@ -33,8 +49,13 @@ const parseLocationString = (locationStr: string): LocationObject => {
 // ✅ Enrichir avec backend GeoNames
 const enrichLocation = async (location: LocationObject): Promise<LocationObject> => {
     try {
+        // ✅ CORRECTION: Ne pas envoyer country si vide (backend le déduit)
+        const countryParam = location.components?.pays
+            ? `&country=${encodeURIComponent(location.components.pays)}`
+            : '';
+
         const response = await apiGet<any>(
-            `/api/places/enrich?place_name=${encodeURIComponent(location.place_name)}&country=${encodeURIComponent(location.components?.pays || '')}`
+            `/api/places/enrich?place_name=${encodeURIComponent(location.place_name)}${countryParam}`
         );
 
         if (response.success && response.data) {
@@ -57,6 +78,7 @@ const enrichLocation = async (location: LocationObject): Promise<LocationObject>
         return location;
     } catch (error) {
         console.error('[enrichLocation] Erreur:', error);
+        // ✅ Fallback : retourner location originale sans crash
         return location;
     }
 };
@@ -166,9 +188,9 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
                             <Text style={styles.modalTitle}>
                                 Rechercher {
                                     scope === 'city' ? 'une ville' :
-                                    scope === 'neighborhood' ? 'un quartier' :
-                                    scope === 'point' ? 'un lieu' :
-                                    'ville, quartier, pays...'
+                                        scope === 'neighborhood' ? 'un quartier' :
+                                            scope === 'point' ? 'un lieu' :
+                                                'ville, quartier, pays...'
                                 }
                             </Text>
                             <TouchableOpacity onPress={() => setOpen(false)} style={styles.closeButton}>

@@ -867,33 +867,45 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
   // Traiter les données IA au chargement (comme le frontend)
   useEffect(() => {
-    console.log('[FormulaireYukpoIntelligentScreen] useEffect - Traitement des données IA au chargement');
-    console.log('[FormulaireYukpoIntelligentScreen] Suggestion disponible:', !!suggestion);
-    console.log('[FormulaireYukpoIntelligentScreen] Suggestion.data:', suggestion?.data);
+    try {
+      console.log('[FormulaireYukpoIntelligentScreen] useEffect - Traitement des données IA au chargement');
+      console.log('[FormulaireYukpoIntelligentScreen] Suggestion disponible:', !!suggestion);
+      console.log('[FormulaireYukpoIntelligentScreen] Suggestion.data:', suggestion?.data);
 
-    if (suggestion && suggestion.data) {
-      console.log('[FormulaireYukpoIntelligentScreen] Données IA disponibles, génération automatique des composants');
+      if (suggestion && suggestion.data && typeof suggestion.data === 'object') {
+        console.log('[FormulaireYukpoIntelligentScreen] Données IA disponibles, génération automatique des composants');
 
-      // ✅ NOUVEAU 2025-11-04: Log complet du JSON IA pour diagnostic
-      console.log('[FormulaireYukpoIntelligentScreen] 📋 JSON COMPLET de l\'IA:', JSON.stringify(suggestion.data, null, 2));
-      console.log('[FormulaireYukpoIntelligentScreen] 🔍 Champs DISTINCTS dans l\'IA:', {
-        // Bloc Informations Générales
-        titre_service: suggestion.data.titre_service?.valeur || suggestion.data.titre_service,
-        category: suggestion.data.category?.valeur || suggestion.data.category,
-        description: suggestion.data.description?.valeur || suggestion.data.description,
-        // Bloc Produits
-        nom_produit: suggestion.data.nom_produit?.valeur || suggestion.data.nom_produit || '❌ ABSENT',
-        categorie_produit: suggestion.data.categorie_produit?.valeur || suggestion.data.categorie_produit || '❌ ABSENT',
-        description_produit: suggestion.data.description_produit?.valeur || suggestion.data.description_produit || '❌ ABSENT'
-      });
+        // ✅ NOUVEAU 2025-11-04: Log complet du JSON IA pour diagnostic
+        try {
+          console.log('[FormulaireYukpoIntelligentScreen] 📋 JSON COMPLET de l\'IA:', JSON.stringify(suggestion.data, null, 2));
+        } catch (e) {
+          console.warn('[FormulaireYukpoIntelligentScreen] Impossible de stringify suggestion.data');
+        }
+        
+        console.log('[FormulaireYukpoIntelligentScreen] 🔍 Champs DISTINCTS dans l\'IA:', {
+          // Bloc Informations Générales
+          titre_service: suggestion.data.titre_service?.valeur || suggestion.data.titre_service,
+          category: suggestion.data.category?.valeur || suggestion.data.category,
+          description: suggestion.data.description?.valeur || suggestion.data.description,
+          // Bloc Produits
+          nom_produit: suggestion.data.nom_produit?.valeur || suggestion.data.nom_produit || '❌ ABSENT',
+          categorie_produit: suggestion.data.categorie_produit?.valeur || suggestion.data.categorie_produit || '❌ ABSENT',
+          description_produit: suggestion.data.description_produit?.valeur || suggestion.data.description_produit || '❌ ABSENT'
+        });
 
-      // Traiter les suggestions IA comme dans le frontend
-      const components = processIASuggestion(suggestion);
-      console.log('[FormulaireYukpoIntelligentScreen] Composants générés automatiquement:', components);
+        // Traiter les suggestions IA comme dans le frontend
+        const components = processIASuggestion(suggestion);
+        
+        if (!Array.isArray(components)) {
+          console.error('[FormulaireYukpoIntelligentScreen] ❌ processIASuggestion n\'a pas retourné un array');
+          return;
+        }
+        
+        console.log('[FormulaireYukpoIntelligentScreen] Composants générés automatiquement:', components.length);
 
-      // Extraire les valeurs des données IA pour pré-remplir les champs
-      const initialValues: Record<string, any> = {};
-      Object.keys(suggestion.data).forEach(fieldName => {
+        // Extraire les valeurs des données IA pour pré-remplir les champs
+        const initialValues: Record<string, any> = {};
+        Object.keys(suggestion.data || {}).forEach(fieldName => {
         const fieldData = suggestion.data[fieldName];
 
         // ✅ CORRECTION: Traiter tous les champs produits, y compris produits (autocomplete) et price_variant
@@ -1083,17 +1095,37 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       // ✅ CRITIQUE 2025-11-03: Organiser les blocs directement avec initialValues
       const organizedBlocks = organizeFieldsIntoBlocks(components, initialValues);
 
+      // ✅ CORRECTION CRITIQUE 2025-11-06: Extraire aussi les field.value des composants générés
+      // Les champs nom_produit, categorie_produit, description_produit ont leurs valeurs dans field.value
+      const componentValues: Record<string, any> = {};
+      components.forEach(field => {
+        if (field.value !== undefined && field.value !== null && field.value !== '') {
+          componentValues[field.name] = field.value;
+          console.log(`[FormulaireYukpoIntelligentScreen] ✅ Valeur extraite de component: ${field.name} = ${field.value}`);
+        }
+      });
+
       // Mettre à jour les states
       setComposants(components);
       setBlocks(organizedBlocks);  // ✅ Utilise les valeurs IA !
       setValeursFormulaire(prev => ({
         ...prev, // Garder les contacts précédents
-        ...initialValues // Les données IA écrasent les contacts si présentes
+        ...initialValues, // Les données IA depuis suggestion.data
+        ...componentValues // ✅ NOUVEAU: Les valeurs des field.value (nom_produit, etc.)
       }));
-      setActiveStep(2); // Passer directement à l'étape 2 avec les données IA
-      setCurrentBlock(0);
-    } else {
-      console.log('[FormulaireYukpoIntelligentScreen] Aucune donnée IA, rester à l\'étape 1');
+        setActiveStep(2); // Passer directement à l'étape 2 avec les données IA
+        setCurrentBlock(0);
+      } else {
+        console.log('[FormulaireYukpoIntelligentScreen] Aucune donnée IA, rester à l\'étape 1');
+      }
+    } catch (error) {
+      console.error('[FormulaireYukpoIntelligentScreen] ❌ ERREUR CRITIQUE dans useEffect suggestion:', error);
+      // Ne pas crasher l'app, afficher un message d'erreur
+      Alert.alert(
+        'Erreur de chargement',
+        'Impossible de charger les données du formulaire. Veuillez réessayer.',
+        [{ text: 'OK' }]
+      );
     }
   }, [suggestion]); // Se déclenche quand suggestion change
 
@@ -1268,8 +1300,20 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         // Au lieu d'attendre que useEffect se déclenche avec valeursFormulaire vide
         const organizedBlocks = organizeFieldsIntoBlocks(components, initialValues);
 
+        // ✅ CORRECTION CRITIQUE 2025-11-06: Extraire aussi les field.value des composants générés
+        const componentValues: Record<string, any> = {};
+        components.forEach(field => {
+          if (field.value !== undefined && field.value !== null && field.value !== '') {
+            componentValues[field.name] = field.value;
+            console.log(`[FormulaireYukpoIntelligentScreen] ✅ Valeur extraite de component (mode edit): ${field.name} = ${field.value}`);
+          }
+        });
+
         // Mettre à jour les states
-        setValeursFormulaire(initialValues);
+        setValeursFormulaire({
+          ...initialValues,
+          ...componentValues // ✅ NOUVEAU: Les valeurs des field.value
+        });
         setComposants(components);
         setBlocks(organizedBlocks);  // ✅ Utilise les valeurs IA !
         setActiveStep(2);
@@ -1404,11 +1448,17 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         currentSousCaracs = fieldValue.sous_caracteristiques || field.sousCaracteristiques || {};
         console.log('[FormulaireYukpoIntelligentScreen] ✅ Extraction objet complexe pour', field.name, {
           valeur: currentValues,
-          sousCaracs: Object.keys(currentSousCaracs)
+          sousCaracs: Object.keys(currentSousCaracs || {})
         });
       } else if (Array.isArray(fieldValue)) {
         // Cas array simple
         currentValues = fieldValue;
+      }
+
+      // ✅ PROTECTION CRITIQUE: S'assurer que currentSousCaracs est un objet valide
+      if (!currentSousCaracs || typeof currentSousCaracs !== 'object') {
+        console.warn('[FormulaireYukpoIntelligentScreen] ⚠️ sousCaracteristiques invalide pour', field.name);
+        currentSousCaracs = {};
       }
 
       const nbModalites = currentValues.length;
@@ -1439,10 +1489,10 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
           <LinearAutocompleteEditor
             label={field.label}
-            identifiantBase={field.identifiantBase || field.name}
-            sousCaracteristiques={currentSousCaracs} // ✅ CORRIGÉ: Utiliser les sous-caracs dynamiques de l'IA
+            identifiantBase={field.identifiantBase || field.name || 'produit'}
+            sousCaracteristiques={currentSousCaracs || {}} // ✅ PROTECTION: Garantir objet valide
             separateur={field.separateur || ','}
-            value={currentValues}
+            value={currentValues || []} // ✅ PROTECTION: Garantir array valide
             onChange={(values, updatedSousCaracs) => {
               // ✅ NOUVEAU 2025-11-04: Mettre à jour aussi sous-caractéristiques si modifiées
               if (updatedSousCaracs) {

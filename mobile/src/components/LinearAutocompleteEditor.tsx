@@ -63,8 +63,18 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
     allowCustomModality = true,
     filtrable = true,
 }) => {
+    // ✅ PROTECTION CRITIQUE 2025-11-06: Valider toutes les props au début
+    if (!onChange || typeof onChange !== 'function') {
+        console.error('[LinearAutocompleteEditor] ❌ onChange n\'est pas une fonction - rendu impossible');
+        return (
+            <View style={styles.container}>
+                <Text style={{ color: 'red' }}>Erreur: onChange manquant</Text>
+            </View>
+        );
+    }
+    
     // État : Affiche la première valeur (combinaison de référence)
-    const displayValue = value && value.length > 0 ? value[0] : '';
+    const displayValue = value && Array.isArray(value) && value.length > 0 ? value[0] : '';
 
     const [showEditModal, setShowEditModal] = useState(false);
     const [editingChipIndex, setEditingChipIndex] = useState<number | null>(null);
@@ -80,8 +90,14 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
 
     // Décomposer le vecteur en chips
     const parseVectorToChips = (vectorStr: string): ChipData[] => {
+        // ✅ PROTECTION: Vérifier que vectorStr et separateur sont définis
+        if (!vectorStr || !separateur) {
+            console.warn('[LinearAutocompleteEditor] ⚠️ vectorStr ou separateur undefined');
+            return [];
+        }
+
         const parts = vectorStr.split(separateur).map(p => p.trim()).filter(p => p);
-        const subCharKeys = Object.keys(sousCaracteristiques);
+        const subCharKeys = Object.keys(sousCaracteristiques || {});
 
         return parts.map((value, index) => ({
             key: subCharKeys[index] || `dimension_${index}`,
@@ -124,21 +140,39 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
 
     // ✅ NOUVEAU 2025-11-04 : Recherche progressive dans autocomplete_combinations
     useEffect(() => {
-        if (searchQuery.trim().length >= 2) {
-            searchSuggestions(searchQuery);
-        } else {
-            setSuggestions([]);
-            setShowSuggestions(false);
+        try {
+            // ✅ PROTECTION CRITIQUE: Vérifier que searchSuggestions est défini avant de l'appeler
+            if (typeof searchSuggestions !== 'function') {
+                console.error('[LinearAutocompleteEditor] ❌ searchSuggestions n\'est pas une fonction');
+                return;
+            }
+            
+            if (searchQuery && typeof searchQuery === 'string' && searchQuery.trim().length >= 2) {
+                searchSuggestions(searchQuery);
+            } else {
+                setSuggestions([]);
+                setShowSuggestions(false);
+            }
+        } catch (error) {
+            console.error('[LinearAutocompleteEditor] ❌ Erreur dans useEffect searchQuery:', error);
+            // Ne pas crasher, juste logger l'erreur
         }
     }, [searchQuery, searchSuggestions]); // ✅ CORRECTION: Ajouter searchSuggestions aux dependencies
 
     // Sélectionner une suggestion
     const selectSuggestion = (product: PopularProduct) => {
-        const newVector = product.product_vector.join(separateur);
+        // ✅ PROTECTION: Vérifier que le produit a les données nécessaires
+        if (!product?.product_vector || !Array.isArray(product.product_vector)) {
+            console.warn('[LinearAutocompleteEditor] ⚠️ Produit sans product_vector valide');
+            return;
+        }
+
+        const newVector = product.product_vector.join(separateur || ',');
 
         // Mettre à jour sousCaracteristiques avec les labels du produit sélectionné
         const updatedSousCaracs: Record<string, string[]> = {};
-        product.product_labels.forEach((label, index) => {
+        const labels = product.product_labels || [];
+        labels.forEach((label, index) => {
             if (!updatedSousCaracs[label]) {
                 updatedSousCaracs[label] = [];
             }
@@ -159,6 +193,14 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
     // Sauvegarder modification
     const saveChipModification = (newValue: string) => {
         if (!newValue.trim() || editingChipIndex === null) return;
+
+        // ✅ PROTECTION: Vérifier que displayValue et separateur sont définis
+        if (!displayValue || !separateur) {
+            console.warn('[LinearAutocompleteEditor] ⚠️ displayValue ou separateur undefined dans saveChipModification');
+            setShowEditModal(false);
+            setEditingChipIndex(null);
+            return;
+        }
 
         const parts = displayValue.split(separateur).map(p => p.trim());
         parts[editingChipIndex] = newValue.trim();
@@ -181,6 +223,12 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                     text: 'Supprimer',
                     style: 'destructive',
                     onPress: () => {
+                        // ✅ PROTECTION: Vérifier que displayValue et separateur sont définis
+                        if (!displayValue || !separateur) {
+                            console.warn('[LinearAutocompleteEditor] ⚠️ displayValue ou separateur undefined dans handleDeleteChip');
+                            return;
+                        }
+
                         const parts = displayValue.split(separateur).map(p => p.trim());
                         parts.splice(chipIndex, 1);
 
@@ -199,13 +247,15 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
             return;
         }
 
-        const parts = displayValue ? displayValue.split(separateur).map(p => p.trim()) : [];
+        // ✅ PROTECTION: Vérifier que separateur est défini
+        const safeSeparateur = separateur || ',';
+        const parts = displayValue ? displayValue.split(safeSeparateur).map(p => p.trim()) : [];
         parts.push(newCharValue.trim());
 
-        const newVector = parts.join(separateur);
+        const newVector = parts.join(safeSeparateur);
 
         // ✅ CORRECTION 2025-11-04: Mettre à jour sousCaracteristiques avec le nouveau label
-        const updatedSousCaracs = { ...sousCaracteristiques };
+        const updatedSousCaracs = { ...(sousCaracteristiques || {}) };
         if (newCharKey.trim()) {
             // Ajouter le label avec la valeur
             if (!updatedSousCaracs[newCharKey.trim()]) {
@@ -229,7 +279,7 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
             <View style={styles.container}>
                 <Text style={styles.label}>{label}</Text>
                 <View style={styles.chipsContainer}>
-                    {chips.map((chip, index) => (
+                    {(chips || []).map((chip, index) => (
                         <View key={index} style={styles.chipReadonly}>
                             <Text style={styles.chipKey}>{chip.key}:</Text>
                             <Text style={styles.chipValue}>{chip.value}</Text>
@@ -243,20 +293,20 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
     // ✅ CORRECTION 2025-11-04: Placeholder dynamique depuis la valeur IA (value[0])
     const generatePlaceholder = (): string => {
         // ✅ PRIORITÉ 1: Si un vecteur existe déjà (de l'IA), l'utiliser comme exemple
-        if (value && value.length > 0 && value[0]) {
+        if (value && value.length > 0 && value[0] && separateur) {
             const firstValues = value[0].split(separateur).slice(0, 4).join(' • ');
             return `${firstValues}... 🤖 IA`;
         }
 
         // ✅ PRIORITÉ 2: Exemple générique basé sur les sous-caractéristiques IA
         // On prend la PREMIÈRE valeur de chaque dimension (jamais le label)
-        if (Object.keys(sousCaracteristiques).length > 0) {
+        if (sousCaracteristiques && Object.keys(sousCaracteristiques).length > 0) {
             const exampleParts: string[] = [];
 
             Object.keys(sousCaracteristiques).slice(0, 4).forEach((key) => {
                 const values = sousCaracteristiques[key];
                 // ✅ CORRECTION: Ne jamais afficher le label (key), seulement les valeurs
-                if (values && values.length > 0) {
+                if (Array.isArray(values) && values.length > 0) {
                     exampleParts.push(values[0]); // Prendre la première valeur d'exemple
                 }
             });
@@ -319,7 +369,7 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                         </View>
                     )}
 
-                    {suggestions.map((product, index) => (
+                    {(suggestions || []).map((product, index) => (
                         <TouchableOpacity
                             key={index}
                             style={styles.suggestionItem}
@@ -327,7 +377,7 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                         >
                             <View style={styles.suggestionContent}>
                                 <Text style={styles.suggestionVector} numberOfLines={1}>
-                                    {product.product_vector.join(' • ')}
+                                    {(product?.product_vector || []).join(' • ')}
                                 </Text>
                                 <View style={styles.suggestionMeta}>
                                     {product.is_trending && (
@@ -359,7 +409,7 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                         showsHorizontalScrollIndicator={false}
                         contentContainerStyle={styles.chipsScroll}
                     >
-                        {chips.map((chip, index) => (
+                        {(chips || []).map((chip, index) => (
                             <View key={index} style={styles.chip}>
                                 <View style={styles.chipContent}>
                                     <Text style={styles.chipKey}>{chip.key}</Text>
@@ -423,7 +473,10 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                                     <View style={styles.optionsSection}>
                                         <Text style={styles.optionsTitle}>Options suggérées :</Text>
                                         <ScrollView style={styles.optionsList}>
-                                            {sousCaracteristiques[chips[editingChipIndex]?.key].map((option, idx) => (
+                                            {(Array.isArray(sousCaracteristiques[chips[editingChipIndex]?.key])
+                                                ? sousCaracteristiques[chips[editingChipIndex]?.key]
+                                                : []
+                                            ).map((option, idx) => (
                                                 <TouchableOpacity
                                                     key={idx}
                                                     style={[

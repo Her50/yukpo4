@@ -1721,7 +1721,7 @@ async fn save_autocomplete_combination(
                        (service_id, product_vector, product_labels, location_vector, location_labels, full_vector,
                         has_variant, variant_dimension, variant_value, prix, devise, stock, usage_count)
                        VALUES ($1, $2, $3, '{}', '{}', $2, true, $4, $5, $6, $7, $8, 1)
-                       ON CONFLICT (product_vector)
+                       ON CONFLICT (full_vector)
                        DO UPDATE SET usage_count = autocomplete_combinations.usage_count + 1"#
                 )
                 .bind(service_id)
@@ -1782,7 +1782,7 @@ async fn save_autocomplete_combination(
                (service_id, product_vector, product_labels, location_vector, location_labels, full_vector,
                 has_variant, prix, usage_count)
                VALUES ($1, $2, $3, '{}', '{}', $2, false, $4, 1)
-               ON CONFLICT (product_vector)
+               ON CONFLICT (full_vector)
                DO UPDATE SET usage_count = autocomplete_combinations.usage_count + 1"#
         )
         .bind(service_id)
