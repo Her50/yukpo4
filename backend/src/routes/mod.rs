@@ -39,6 +39,7 @@ pub mod combination_routes; // ✅ NOUVEAU 2025-11-03: Routes pour progression g
 pub mod popular_products_routes; // ✅ NOUVEAU 2025-11-04: Routes pour produits populaires (analyse concurrence)
 pub mod product_reactions_routes; // ✅ NOUVEAU 2025-11-04: Routes pour réactions/émotions sur les produits
 pub mod diagnostic_routes; // ✅ NOUVEAU 2025-11-04: Routes de diagnostic de la base de données
+pub mod debug_routes; // ✅ NOUVEAU 2025-11-06: Routes de debug pour vérification tables autocomplete/localisation
 
 // === Routes d'Optimisation IA ===
 // pub mod ia_routes_optimized; // Temporairement d?sactiv?

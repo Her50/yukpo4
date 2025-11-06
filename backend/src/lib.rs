@@ -54,6 +54,7 @@ use crate::routes::{
     autocomplete_routes::autocomplete_routes, // ✅ NOUVEAU: Routes autocomplete
     search_history_routes::search_history_routes, // ✅ NOUVEAU: Routes historique recherche
     combination_routes::combination_routes, // ✅ NOUVEAU 2025-11-03: Routes progression combinaisons
+    debug_routes::debug_routes, // ✅ NOUVEAU 2025-11-06: Routes debug tables
 };
 #[cfg(feature = "image_search")]
 use crate::routes::image_search_routes::image_search_routes;
@@ -191,6 +192,9 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
     // ✅ NOUVEAU 2025-11-03: Routes progression génération combinaisons
     let combinations = combination_routes(state.clone());
     
+    // ✅ NOUVEAU 2025-11-06: Routes debug pour vérification des tables
+    let debug = debug_routes(state.clone());
+    
     // ✅ Routes des modalités personnalisées (déjà incluses dans router_yukpo)
     // let modalities = modalities::routes::create_modalities_router();
     
@@ -220,6 +224,7 @@ pub fn build_app(state: Arc<AppState>) -> Router<Arc<AppState>> {
         .merge(autocomplete)  // ✅ NOUVEAU : Routes autocomplete
         .merge(search_history)  // ✅ NOUVEAU : Routes historique recherche
         .merge(combinations)  // ✅ NOUVEAU 2025-11-03: Routes progression génération combinaisons
+        .merge(debug)  // ✅ NOUVEAU 2025-11-06: Routes debug tables
         // .merge(modalities)  // ✅ Routes des modalités personnalisées (déjà dans router_yukpo)
         .nest("/api", recommendation_routes())  // ✅ NOUVEAU : Routes recommandations
         .route("/fournitures/gestion", axum::routing::post(fournitures_axum_handler))

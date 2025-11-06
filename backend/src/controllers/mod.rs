@@ -40,6 +40,7 @@ pub mod places_controller; // ✅ NOUVEAU 2025-11-02: Contrôleur pour enrichiss
 pub mod combination_progress_controller; // ✅ NOUVEAU 2025-11-03: Contrôleur pour progression génération combinaisons
 pub mod popular_products_controller; // ✅ NOUVEAU 2025-11-04: Contrôleur pour produits populaires (analyse concurrence)
 pub mod product_reactions_controller; // ✅ NOUVEAU 2025-11-04: Contrôleur pour réactions/émotions sur les produits
+pub mod debug_controller; // ✅ NOUVEAU 2025-11-06: Contrôleur pour debug et vérification des tables
 
 // pub use service_controller::update_token_debit;
 
