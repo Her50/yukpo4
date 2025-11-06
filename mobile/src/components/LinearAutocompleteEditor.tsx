@@ -346,39 +346,44 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
         );
     }
 
-    // ✅ CORRECTION 2025-11-04: Placeholder dynamique depuis la valeur IA (value[0])
+    // ✅ NOUVEAU 2025-11-06: Placeholder dynamique COMPLET depuis la valeur IA (value[0])
     const generatePlaceholder = (): string => {
-        // ✅ PROTECTION ULTIME: Vérifier que value[0] EST UNE STRING avant .split()
+        // ✅ PRIORITÉ 1: Afficher la PREMIÈRE combinaison générée par l'IA (value[0])
         if (value && value.length > 0 && value[0] && separateur) {
             const firstValue = value[0];
             if (typeof firstValue === 'string' && typeof separateur === 'string') {
-                const firstValues = firstValue.split(separateur).slice(0, 4).join(' • ');
-                return `${firstValues}... 🤖 IA`;
+                // Afficher TOUTES les valeurs de la première combinaison (pas juste 4)
+                const allValues = firstValue.split(separateur).map(v => v.trim()).filter(v => v);
+                if (allValues.length > 6) {
+                    // Si plus de 6 valeurs, afficher 5 + "..." 
+                    return `🤖 Ex: ${allValues.slice(0, 5).join(' • ')}... (+${allValues.length - 5})`;
+                } else if (allValues.length > 0) {
+                    // Sinon afficher toutes
+                    return `🤖 Ex: ${allValues.join(' • ')}`;
+                }
             } else {
                 console.warn('[LinearAutocompleteEditor] ⚠️ value[0] ou separateur pas string dans generatePlaceholder');
             }
         }
 
-        // ✅ PRIORITÉ 2: Exemple générique basé sur les sous-caractéristiques IA
-        // On prend la PREMIÈRE valeur de chaque dimension (jamais le label)
+        // ✅ PRIORITÉ 2: Exemple générique basé sur les sous-caractéristiques IA (première valeur de chaque dimension)
         if (sousCaracteristiques && Object.keys(sousCaracteristiques).length > 0) {
             const exampleParts: string[] = [];
 
-            Object.keys(sousCaracteristiques).slice(0, 4).forEach((key) => {
+            Object.keys(sousCaracteristiques).slice(0, 5).forEach((key) => {
                 const values = sousCaracteristiques[key];
-                // ✅ CORRECTION: Ne jamais afficher le label (key), seulement les valeurs
                 if (Array.isArray(values) && values.length > 0) {
-                    exampleParts.push(values[0]); // Prendre la première valeur d'exemple
+                    exampleParts.push(values[0]);
                 }
             });
 
             if (exampleParts.length > 0) {
-                return `Ex: ${exampleParts.join(' • ')}...`;
+                return `💡 Ex: ${exampleParts.join(' • ')}...`;
             }
         }
 
         // ✅ PRIORITÉ 3: Fallback générique
-        return 'Rechercher un produit populaire...';
+        return '🔍 Tapez pour rechercher ou voir suggestions IA...';
     };
 
     return (
