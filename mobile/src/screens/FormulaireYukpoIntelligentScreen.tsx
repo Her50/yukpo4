@@ -83,6 +83,9 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
   const existingServiceId = (route.params as any)?.existingServiceId;
   const isAddingProductToExistingService = mode === 'add_product' && existingServiceId;
   
+  // ✅ CORRECTION 2025-11-06: Définir isAddingProduct pour la duplication de produit (ancienne fonctionnalité)
+  const isAddingProduct = !!duplicateProduct && !!serviceId;
+  
   // ✅ NOUVEAU 2025-11-06: Mode édition des infos du service (sans toucher aux produits)
   const isEditingServiceInfo = mode === 'edit_service_info' && serviceId;
 
