@@ -65,6 +65,47 @@ const parseLocationString = (locationStr: string): LocationObject => {
     };
 };
 
+const formatLocationDisplay = (location?: LocationObject | string): string => {
+    if (!location) return '';
+
+    if (typeof location === 'string') {
+        return location;
+    }
+
+    const parts: string[] = [];
+
+    if (location.components?.quartier && !parts.includes(location.components.quartier)) {
+        parts.push(location.components.quartier);
+    }
+
+    if (location.components?.ville) {
+        const ville = location.components.ville;
+        if (!parts.includes(ville)) {
+            parts.push(ville);
+        }
+    }
+
+    if (location.components?.region) {
+        const region = location.components.region;
+        if (!parts.includes(region)) {
+            parts.push(region);
+        }
+    }
+
+    if (location.components?.pays) {
+        const pays = location.components.pays;
+        if (!parts.includes(pays)) {
+            parts.push(pays);
+        }
+    }
+
+    if (parts.length === 0) {
+        return location.place_name || location.raw || '';
+    }
+
+    return parts.join(', ');
+};
+
 // ✅ Enrichir avec backend GeoNames
 const enrichLocation = async (location: LocationObject): Promise<LocationObject> => {
     try {
@@ -80,7 +121,7 @@ const enrichLocation = async (location: LocationObject): Promise<LocationObject>
         if (response.success && response.data) {
             const data: any = response.data;
 
-            return {
+            const enriched: LocationObject = {
                 raw: location.raw,
                 place_name: data.place_name || location.place_name,
                 components: {
@@ -92,13 +133,24 @@ const enrichLocation = async (location: LocationObject): Promise<LocationObject>
                 geoname_id: data.geoname_id,
                 location_vector: data.location_vector,
             };
+
+            return {
+                ...enriched,
+                raw: formatLocationDisplay(enriched),
+            };
         }
 
-        return location;
+        return {
+            ...location,
+            raw: formatLocationDisplay(location),
+        };
     } catch (error) {
         console.error('[enrichLocation] Erreur:', error);
         // ✅ Fallback : retourner location originale sans crash
-        return location;
+        return {
+            ...location,
+            raw: formatLocationDisplay(location),
+        };
     }
 };
 
@@ -148,7 +200,7 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
     const [options, setOptions] = useState<string[]>([]);
 
     // ✅ Parser valeur affichée (string ou objet)
-    const displayValue = typeof value === 'string' ? value : value?.raw || '';
+    const displayValue = formatLocationDisplay(value as any);
 
     // Debounce query
     const debouncedQuery = useMemo(() => query.trim(), [query]);
@@ -255,16 +307,28 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
                                                 setEnriching(true);
                                                 try {
                                                     const enriched = await enrichLocation(locationObj);
-                                                    onSelect(enriched);
+                                                    const display = formatLocationDisplay(enriched);
+                                                    onSelect({
+                                                        ...enriched,
+                                                        raw: display,
+                                                    });
                                                 } catch (error) {
                                                     console.error('[LocationSelector] Erreur enrichissement:', error);
                                                     // Fallback : retourner sans enrichissement
-                                                    onSelect(locationObj);
+                                                    const display = formatLocationDisplay(locationObj);
+                                                    onSelect({
+                                                        ...locationObj,
+                                                        raw: display,
+                                                    });
                                                 } finally {
                                                     setEnriching(false);
                                                 }
                                             } else {
-                                                onSelect(locationObj);
+                                                const display = formatLocationDisplay(locationObj);
+                                                onSelect({
+                                                    ...locationObj,
+                                                    raw: display,
+                                                });
                                             }
                                         }}
                                     >
