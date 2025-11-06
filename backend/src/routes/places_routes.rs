@@ -57,14 +57,15 @@ pub async fn autocomplete_places(
     // ✅ NOUVEAU 2025-11-04: Place type est optional maintenant, None = recherche universelle
     let place_type = params.place_type.as_deref();
 
-    // TODO: Intégrer l'API Google Maps Places Autocomplete
-    // Pour l'instant, retourner une réponse vide pour que le fallback local fonctionne
-    
-    // Clé API Google Maps (à mettre dans les variables d'environnement)
-    let google_api_key = std::env::var("GOOGLE_MAPS_API_KEY").unwrap_or_default();
+    // ✅ NOUVEAU 2025-11-06: Utiliser la clé API Google Maps (même clé que geocoding_service)
+    let google_api_key = std::env::var("GOOGLE_MAPS_API_KEY")
+        .unwrap_or_else(|_| {
+            // Utiliser la même clé par défaut que geocoding_service
+            "AIzaSyDFfWEq1Umm06SNTbR-cRhRQ5Sq_taEAWQ".to_string()
+        });
     
     if google_api_key.is_empty() {
-        // Pas de clé API configurée, retourner vide pour fallback
+        // Pas de clé API configurée, retourner vide pour fallback local
         return (
             StatusCode::OK,
             Json(PlacesAutocompleteResponse {
