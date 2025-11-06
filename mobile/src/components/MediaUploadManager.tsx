@@ -24,14 +24,18 @@ interface MediaUploadManagerProps {
 }
 
 const MediaUploadManager: React.FC<MediaUploadManagerProps> = ({
-  images,
-  videos,
+  images: imagesProp,
+  videos: videosProp,
   onImagesChange,
   onVideosChange,
   readonly = false,
   maxImages = 10,
   maxVideos = 3
 }) => {
+  // ✅ Protection contre undefined - toujours utiliser des tableaux
+  const images = imagesProp || [];
+  const videos = videosProp || [];
+  
   const [uploading, setUploading] = useState(false);
   const [showImagePreview, setShowImagePreview] = useState<string | null>(null);
 
