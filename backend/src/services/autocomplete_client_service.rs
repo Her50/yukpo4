@@ -46,6 +46,7 @@ pub async fn search_product_suggestions(
             ac.product_labels,
             ac.location_vector,
             ac.full_vector,
+            ac.chosen_location,
             ac.usage_count,
             -- Extraire données produit depuis service.data
             (s.data->'produits'->>'prix')::FLOAT as prix,
@@ -92,7 +93,7 @@ pub async fn search_product_suggestions(
         product_labels: row.get("product_labels"),
         location_vector: row.get("location_vector"),
         full_vector: row.get("full_vector"),
-        chosen_location: None, // ✅ FIX: chosen_location n'est plus dans la requête SQL
+        chosen_location: row.get("chosen_location"), // ✅ RESTAURÉ: chosen_location ajouté dans auto_migrate.rs
         usage_count: row.get("usage_count"),
         has_variant: row.get("has_variant"),
         variant_dimension: row.get("variant_dimension"),

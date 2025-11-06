@@ -566,6 +566,21 @@ pub async fn ensure_autocomplete_characteristics_table(pool: &PgPool) -> Result<
             info!("✅ Colonne 'chosen_location_geoname_id' ajoutée");
         }
         
+        // ✅ NOUVEAU 2025-11-06: Vérifier chosen_location (CRITIQUE pour autocomplete_client_service)
+        let has_chosen_location = sqlx::query_scalar::<_, bool>(
+            "SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name = 'autocomplete_characteristics' AND column_name = 'chosen_location')"
+        )
+        .fetch_one(pool)
+        .await?;
+        
+        if !has_chosen_location {
+            warn!("⚠️ Colonne 'chosen_location' manquante, ajout en cours...");
+            sqlx::query("ALTER TABLE autocomplete_characteristics ADD COLUMN IF NOT EXISTS chosen_location TEXT")
+                .execute(pool)
+                .await?;
+            info!("✅ Colonne 'chosen_location' ajoutée");
+        }
+        
         // Vérifier is_real_product
         let has_is_real = sqlx::query_scalar::<_, bool>(
             "SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name = 'autocomplete_characteristics' AND column_name = 'is_real_product')"
