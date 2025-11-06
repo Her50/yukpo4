@@ -497,6 +497,45 @@ const MesProduitsScreen: React.FC = () => {
         }
     };
 
+    // ✅ NOUVEAU 2025-11-06: Éditer les informations générales du service
+    const handleEditServiceInfo = async () => {
+        try {
+            // Charger le premier service du prestataire
+            const servicesResponse = await apiGet('/api/prestataire/services');
+
+            if (!servicesResponse.success || !servicesResponse.data || servicesResponse.data.length === 0) {
+                Alert.alert(
+                    'Aucun service',
+                    'Vous n\'avez pas encore de service à éditer.',
+                    [{ text: 'OK' }]
+                );
+                return;
+            }
+
+            const service = servicesResponse.data[0]; // Premier service
+            const serviceData = service.data || {};
+
+            console.log('[MesProduitsScreen] 📝 Édition service', service.id);
+
+            // Naviguer vers le formulaire en mode edit_service_info
+            (navigation as any).navigate('FormulaireYukpoIntelligent', {
+                mode: 'edit_service_info', // ✅ NOUVEAU mode
+                serviceId: service.id,
+                serviceData: serviceData,
+                suggestion: {
+                    data: serviceData,
+                    intention: 'modification_service_info',
+                    confidence: 1.0
+                },
+                type: 'modification_service_info',
+                fromMesProduits: true
+            });
+        } catch (error) {
+            console.error('[MesProduitsScreen] Erreur édition service:', error);
+            Alert.alert('Erreur', 'Impossible de charger les données du service');
+        }
+    };
+
     // Voir les statistiques d'un produit
     const handleViewStats = (product: Product) => {
         const stats = `📊 Statistiques de "${product.nom}"\n\n` +
@@ -581,13 +620,10 @@ const MesProduitsScreen: React.FC = () => {
             <View style={styles.quickActionsContainer}>
                 <TouchableOpacity
                     style={styles.quickActionButton}
-                    onPress={() => {
-                        // Naviguer vers dashboard/statistiques
-                        Alert.alert('📊 Dashboard', 'Statistiques et analytics bientôt disponibles');
-                    }}
+                    onPress={handleEditServiceInfo}
                 >
-                    <SafeIcon name="bar-chart-2" size={20} color={modernColors.primary} />
-                    <Text style={styles.quickActionText}>Statistiques</Text>
+                    <SafeIcon name="settings" size={20} color={modernColors.primary} />
+                    <Text style={styles.quickActionText}>Éditer service</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity

@@ -82,6 +82,9 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
   // ✅ NOUVEAU 2025-11-06: Déterminer si on ajoute un produit à un service existant (depuis HomeScreen)
   const existingServiceId = (route.params as any)?.existingServiceId;
   const isAddingProductToExistingService = mode === 'add_product' && existingServiceId;
+  
+  // ✅ NOUVEAU 2025-11-06: Mode édition des infos du service (sans toucher aux produits)
+  const isEditingServiceInfo = mode === 'edit_service_info' && serviceId;
 
   // États locaux
   const [activeStep, setActiveStep] = useState(1);
@@ -713,7 +716,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     const newFieldErrors: Record<string, string> = {};
 
     // ✅ NOUVEAU: Validation spéciale pour le bloc produits - doit contenir au moins un produit
-    if (currentBlockData.id === 'products') {
+    // ✅ NOUVEAU 2025-11-06: Lever contrainte si mode edit_service_info (on édite juste les infos du service)
+    if (currentBlockData.id === 'products' && !isEditingServiceInfo) {
       if (!hasAtLeastOneProduct()) {
         errors.push('Le bloc Produits est obligatoire. Vous devez ajouter au moins un produit ou une prestation.');
         newFieldErrors['produits'] = 'Au moins un produit est requis';
@@ -771,7 +775,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       const productsBlockIndex = blocks.findIndex(b => b.id === 'products');
 
       // ✅ CORRECTION: Empêcher de passer à un bloc après le bloc produits si le bloc produits n'a pas de produits
-      if (productsBlockIndex !== -1 && currentBlock === productsBlockIndex && blockIndex > productsBlockIndex) {
+      // ✅ NOUVEAU 2025-11-06: Lever contrainte si mode edit_service_info
+      if (productsBlockIndex !== -1 && currentBlock === productsBlockIndex && blockIndex > productsBlockIndex && !isEditingServiceInfo) {
         // On essaie de quitter le bloc produits vers un bloc suivant
         if (!hasAtLeastOneProduct()) {
           Alert.alert(
@@ -800,8 +805,8 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
   // ✅ NOUVEAU: Charger les données du service en mode édition
   useEffect(() => {
     const loadServiceData = async () => {
-      if (mode === 'edit' && serviceId) {
-        console.log('[FormulaireYukpoIntelligentScreen] 📝 Mode édition - Chargement du service:', serviceId);
+      if ((mode === 'edit' || mode === 'edit_service_info') && serviceId) {
+        console.log('[FormulaireYukpoIntelligentScreen] 📝 Mode édition - Chargement du service:', serviceId, { mode });
 
         try {
           // ✅ CORRIGÉ: Utilise apiGet
@@ -2154,9 +2159,9 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         return; // ✅ Sortir sans exécuter la logique de création de service
       }
 
-      // ✅ SI MODE MODIFICATION : Pas d'appel IA, pas de coût
-      if (mode === 'edit' && serviceId) {
-        console.log('[FormulaireYukpoIntelligentScreen] 📝 MODE MODIFICATION - Pas d\'appel IA');
+      // ✅ SI MODE MODIFICATION (edit OU edit_service_info) : Pas d'appel IA, pas de coût
+      if ((mode === 'edit' || isEditingServiceInfo) && serviceId) {
+        console.log('[FormulaireYukpoIntelligentScreen] 📝 MODE MODIFICATION - Pas d\'appel IA', { mode, isEditingServiceInfo });
 
         // Construire les données de service directement depuis le formulaire
         const finalServiceData: any = {};
@@ -2204,16 +2209,24 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
         // ✅ SUPPRIMÉ: Vérification tickets de voyage - Géré maintenant via les champs dynamiques
 
         // ✅ Succès modification (pas de coût)
+        const successTitle = isEditingServiceInfo ? '✅ Informations mises à jour' : '✅ Service modifié';
+        const successMessage = isEditingServiceInfo 
+          ? 'Les informations de votre service ont été mises à jour avec succès.\n\n✅ Modification gratuite - Aucun frais'
+          : 'Votre service a été mis à jour avec succès.\n\n✅ Modification gratuite - Aucun frais';
+        
         Alert.alert(
-          '✅ Service modifié',
-          'Votre service a été mis à jour avec succès.\n\n✅ Modification gratuite - Aucun frais',
+          successTitle,
+          successMessage,
           [
             {
               text: 'OK',
               onPress: () => {
                 setSuccessData({ serviceId, cout: 0 });
                 setShowSuccessToast(true);
-                if (fromMesServices) {
+                if (fromMesProduits || isEditingServiceInfo) {
+                  // Retour vers Mes Produits
+                  navigation.goBack();
+                } else if (fromMesServices) {
                   (navigation as any).navigate('MesServices');
                 } else {
                   navigation.goBack();
@@ -3057,6 +3070,10 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                           if (isAddingProductToExistingService) {
                             return block.id === 'products';
                           }
+                          // ✅ NOUVEAU 2025-11-06: En mode edit_service_info, masquer le bloc produits
+                          if (isEditingServiceInfo) {
+                            return block.id !== 'products';
+                          }
                           return true;
                         })
                         .map((block, index) => (
@@ -3102,7 +3119,19 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                   scrollEventThrottle={16}
                 >
                   {/* Affichage de TOUS les blocs côte à côte */}
-                  {(blocks || []).map((block, blockIndex) => (
+                  {(blocks || [])
+                    .filter((block) => {
+                      // ✅ NOUVEAU 2025-11-06: En mode edit_service_info, masquer le bloc produits
+                      if (isEditingServiceInfo) {
+                        return block.id !== 'products';
+                      }
+                      // ✅ En mode add_product, afficher uniquement le bloc produits
+                      if (isAddingProductToExistingService) {
+                        return block.id === 'products';
+                      }
+                      return true;
+                    })
+                    .map((block, blockIndex) => (
                     <View key={block.id} style={[styles.blockPanel, { width }]}>
                       <ScrollView
                         style={styles.blockPanelScroll}
@@ -3169,8 +3198,12 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                       >
                         <Text style={styles.navButtonTextSuccess}>
                           {(loading || isSubmitting)
-                            ? (isAddingProductToExistingService ? 'Création du produit...' : mode === 'edit' ? 'Modification...' : 'Création...')
-                            : (isAddingProductToExistingService ? 'Créer le produit' : mode === 'edit' ? 'Modifier le service' : 'Créer le service')
+                            ? (isAddingProductToExistingService ? 'Création du produit...' : 
+                               isEditingServiceInfo ? 'Mise à jour...' :
+                               mode === 'edit' ? 'Modification...' : 'Création...')
+                            : (isAddingProductToExistingService ? 'Créer le produit' : 
+                               isEditingServiceInfo ? 'Modifier les données du service' :
+                               mode === 'edit' ? 'Modifier le service' : 'Créer le service')
                           }
                         </Text>
                         <SafeIcon name="check" size={20} color="#FFFFFF" />
