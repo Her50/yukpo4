@@ -163,14 +163,14 @@ pub async fn add_product_to_service(
     let product_index = match produits_array {
         Some(arr) => {
             // Ajouter le nouveau produit au tableau existant (format string)
-            arr.push(json!(product_string));
+            arr.push(json!(product_string.clone()));
             arr.len() - 1
         },
         None => {
             // Créer le tableau de produits s'il n'existe pas
             service_data["produits"] = json!({
                 "type_donnee": "autocomplete",
-                "valeur": vec![product_string],
+                "valeur": vec![product_string.clone()],
                 "separateur": ",",
                 "sous_caracteristiques": {},
                 "filtrable": true,

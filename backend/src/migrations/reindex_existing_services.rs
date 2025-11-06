@@ -2,7 +2,7 @@
 // À exécuter UNE FOIS pour indexer les produits créés avant le système autocomplete
 
 use sqlx::PgPool;
-use log::{info, warn, error};
+use log::{info, error};
 use serde_json::Value;
 
 /// Réindexe tous les services existants dans autocomplete_characteristics et autocomplete_combinations

@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use log::info;
 use crate::core::types::AppError;
-use crate::services::google_places_service::{GooglePlacesService, Coordinates as GoogleCoordinates};
+use crate::services::google_places_service::GooglePlacesService;
 use crate::services::african_locations_service::AfricanLocationsService;
 use crate::state::AppState;
 
