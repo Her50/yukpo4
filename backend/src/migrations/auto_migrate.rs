@@ -1868,6 +1868,12 @@ pub async fn run_auto_migrations(pool: &PgPool) {
         Err(e) => error!("❌ Erreur migration auto fonctions visibilité: {}", e),
     }
     
+    // Migration 18: Nettoyage combinaisons invalides (✅ NOUVEAU 2025-11-06)
+    match clean_invalid_combinations_migration(pool).await {
+        Ok(_) => info!("✅ Migration auto: nettoyage combinaisons invalides OK"),
+        Err(e) => error!("❌ Erreur migration auto nettoyage combinaisons: {}", e),
+    }
+    
     info!("✅ Migrations automatiques terminées");
 }
 
@@ -2703,6 +2709,108 @@ pub async fn ensure_visibility_functions(pool: &PgPool) -> Result<(), sqlx::Erro
     .await?;
     
     info!("✅ Fonctions de visibilité créées avec succès !");
+    Ok(())
+}
+
+/// ✅ NOUVEAU 2025-11-06: Nettoyer les combinaisons invalides (objets uniques générés comme catalogue)
+pub async fn clean_invalid_combinations_migration(pool: &PgPool) -> Result<(), sqlx::Error> {
+    info!("🧹 Nettoyage des combinaisons invalides...");
+    
+    // Vérifier si la table existe
+    let table_exists = sqlx::query_scalar::<_, bool>(
+        "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = 'autocomplete_combinations')"
+    )
+    .fetch_one(pool)
+    .await?;
+    
+    if !table_exists {
+        info!("⚠️ Table autocomplete_combinations n'existe pas, skip nettoyage");
+        return Ok(());
+    }
+    
+    // Compter avant nettoyage
+    let total_before = sqlx::query_scalar::<_, i64>(
+        "SELECT COUNT(*) FROM autocomplete_combinations"
+    )
+    .fetch_one(pool)
+    .await?;
+    
+    if total_before == 0 {
+        info!("✅ Table autocomplete_combinations vide, rien à nettoyer");
+        return Ok(());
+    }
+    
+    // Identifier les sessions problématiques (>50 combinaisons)
+    let problematic_count = sqlx::query_scalar::<_, i64>(
+        "SELECT COUNT(DISTINCT session_id) FROM autocomplete_combinations 
+         WHERE session_id IS NOT NULL 
+         GROUP BY session_id 
+         HAVING COUNT(*) > 50"
+    )
+    .fetch_one(pool)
+    .await
+    .unwrap_or(0);
+    
+    if problematic_count == 0 {
+        info!("✅ Aucune session problématique détectée");
+        return Ok(());
+    }
+    
+    info!("🔍 {} sessions avec >50 combinaisons détectées", problematic_count);
+    
+    // Nettoyer: Garder seulement la combinaison préférée de chaque session problématique
+    // Utiliser sqlx::query() pour compatibilité offline
+    let result = sqlx::query(
+        r#"
+        DELETE FROM autocomplete_combinations
+        WHERE id NOT IN (
+            SELECT MIN(id)
+            FROM autocomplete_combinations
+            WHERE session_id IS NOT NULL AND is_ai_preferred = TRUE
+            GROUP BY session_id
+        )
+        AND session_id IN (
+            SELECT session_id
+            FROM autocomplete_combinations
+            WHERE session_id IS NOT NULL
+            GROUP BY session_id
+            HAVING COUNT(*) > 50
+        )
+        AND service_id IS NULL
+        "#
+    )
+    .execute(pool)
+    .await?;
+    
+    let deleted_count = result.rows_affected();
+    
+    if deleted_count > 0 {
+        info!("✅ {} combinaisons invalides supprimées", deleted_count);
+        
+        // Optimiser la table après nettoyage
+        let _ = sqlx::query("REINDEX TABLE autocomplete_combinations")
+            .execute(pool)
+            .await;
+        
+        let _ = sqlx::query("ANALYZE autocomplete_combinations")
+            .execute(pool)
+            .await;
+        
+        info!("✅ Table autocomplete_combinations optimisée");
+    } else {
+        info!("✅ Aucune combinaison à supprimer");
+    }
+    
+    // Compter après nettoyage
+    let total_after = sqlx::query_scalar::<_, i64>(
+        "SELECT COUNT(*) FROM autocomplete_combinations"
+    )
+    .fetch_one(pool)
+    .await?;
+    
+    info!("📊 Nettoyage terminé: {} → {} combinaisons ({} supprimées)", 
+          total_before, total_after, deleted_count);
+    
     Ok(())
 }
 

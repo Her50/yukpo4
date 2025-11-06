@@ -811,8 +811,8 @@ async fn handle_creation_service_direct(
     // Construire le prompt de création de service
     let user_text = input.texte.clone().unwrap_or_default();
     
-    // ?? UTILISER LE PROMPT SPÉCIFIQUE EXISTANT depuis le fichier .md
-    let prompt_content = match std::fs::read_to_string("ia_prompts/creation_service_prompt.md") {
+    // ?? UTILISER LE PROMPT OPTIMISÉ (-78% tokens) depuis le fichier .md
+    let prompt_content = match std::fs::read_to_string("ia_prompts/creation_service_prompt_optimized.md") {
         Ok(content) => content,
         Err(e) => {
             log::error!("[handle_creation_service_direct] Erreur lecture prompt: {}", e);
