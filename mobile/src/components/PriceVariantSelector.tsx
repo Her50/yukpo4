@@ -28,13 +28,15 @@ interface PriceModality {
 }
 
 interface PriceVariantSelectorProps {
-    label: string;
-    variable: string; // Ex: "pointure", "taille", "quantite"
+    label?: string;
+    variable?: string; // Ex: "pointure", "taille", "quantite"
     modalites: PriceModality[];
     onChange: (modalites: PriceModality[]) => void;
     required?: boolean;
     availableCurrencies?: string[]; // Devises disponibles
     defaultCurrency?: string; // Devise par défaut
+    helperText?: string;
+    showEmptyStateDetails?: boolean;
 }
 
 export const PriceVariantSelector: React.FC<PriceVariantSelectorProps> = ({
@@ -45,6 +47,8 @@ export const PriceVariantSelector: React.FC<PriceVariantSelectorProps> = ({
     required = false,
     availableCurrencies = ['XAF', 'EUR', 'USD'],
     defaultCurrency = 'XAF',
+    helperText,
+    showEmptyStateDetails = true,
 }) => {
     // ✅ Protection contre undefined - toujours utiliser un tableau
     const modalites = modalitesProp || [];
@@ -146,7 +150,7 @@ export const PriceVariantSelector: React.FC<PriceVariantSelectorProps> = ({
                 console.warn('[PriceVariantSelector] Tentative de suppression d\'une modalité inexistante');
                 return;
             }
-            
+
             Alert.alert(
                 'Confirmer',
                 `Voulez-vous supprimer la modalité "${modalites[index].valeur}" ?`,
@@ -171,11 +175,16 @@ export const PriceVariantSelector: React.FC<PriceVariantSelectorProps> = ({
         return `${prix.toLocaleString('fr-FR')} ${devise}`;
     }, []);
 
+    const resolvedLabel = label?.trim() || 'Variantes';
+    const resolvedVariable = variable?.trim();
+    const resolvedHelperText = helperText || 'Ajoutez des variantes (ex: Taille, Formule, Option) avec un prix spécifique.';
+
     return (
         <View style={styles.container}>
             <View style={styles.header}>
                 <Text style={styles.label}>
-                    {label} ({variable})
+                    {resolvedLabel}
+                    {resolvedVariable ? ` (${resolvedVariable})` : ''}
                     {required && <Text style={styles.required}> *</Text>}
                 </Text>
                 <TouchableOpacity style={styles.addButton} onPress={openAddModal}>
@@ -184,50 +193,81 @@ export const PriceVariantSelector: React.FC<PriceVariantSelectorProps> = ({
                 </TouchableOpacity>
             </View>
 
+            <Text style={styles.helperText}>{resolvedHelperText}</Text>
+
             {/* Liste des modalités */}
             {modalites.length > 0 ? (
                 <View style={styles.modalitiesList}>
+                    <Text style={styles.modalitiesCount}>
+                        {modalites.length} variante{modalites.length > 1 ? 's' : ''} définie{modalites.length > 1 ? 's' : ''}
+                    </Text>
                     {modalites.map((modality, index) => (
                         <View key={index} style={styles.modalityItem}>
-                            {/* Image de la modalité */}
-                            {modality.image && (
-                                <Image
-                                    source={{ uri: modality.image.startsWith('data:') ? modality.image : `data:image/jpeg;base64,${modality.image}` }}
-                                    style={styles.modalityImage}
-                                    resizeMode="cover"
-                                />
-                            )}
-                            <View style={styles.modalityInfo}>
-                                <Text style={styles.modalityValue}>{modality.valeur}</Text>
-                                <Text style={styles.modalityPrice}>{formatPrice(modality.prix, modality.devise)}</Text>
-                                {modality.stock !== undefined && (
-                                    <Text style={styles.modalityStock}>Stock: {modality.stock}</Text>
+                            {/* Image de la modalité ou placeholder */}
+                            <View style={styles.modalityImageContainer}>
+                                {modality.image ? (
+                                    <Image
+                                        source={{ uri: modality.image.startsWith('data:') ? modality.image : `data:image/jpeg;base64,${modality.image}` }}
+                                        style={styles.modalityImage}
+                                        resizeMode="cover"
+                                    />
+                                ) : (
+                                    <View style={styles.modalityImagePlaceholder}>
+                                        <SafeIcon name="image" size={24} color={modernColors.textTertiary} />
+                                    </View>
                                 )}
                             </View>
+
+                            <View style={styles.modalityInfo}>
+                                <View style={styles.modalityHeader}>
+                                    <Text style={styles.modalityValue}>{modality.valeur}</Text>
+                                    {modality.stock !== undefined && (
+                                        <View style={styles.stockBadge}>
+                                            <Text style={styles.stockBadgeText}>Stock: {modality.stock}</Text>
+                                        </View>
+                                    )}
+                                </View>
+                                <Text style={styles.modalityPrice}>
+                                    {formatPrice(modality.prix, modality.devise)}
+                                </Text>
+                            </View>
+
                             <View style={styles.modalityActions}>
                                 <TouchableOpacity
-                                    style={styles.editButton}
+                                    style={styles.actionButton}
                                     onPress={() => openEditModal(modality, index)}
                                 >
-                                    <SafeIcon name="edit" size={14} color={modernColors.primary} />
+                                    <SafeIcon name="edit-2" size={16} color={modernColors.primary} />
                                 </TouchableOpacity>
                                 <TouchableOpacity
-                                    style={styles.deleteButton}
+                                    style={[styles.actionButton, styles.deleteActionButton]}
                                     onPress={() => removeModality(index)}
                                 >
-                                    <SafeIcon name="trash" size={14} color={modernColors.error} />
+                                    <SafeIcon name="trash-2" size={16} color="#FFFFFF" />
                                 </TouchableOpacity>
                             </View>
                         </View>
                     ))}
                 </View>
-            ) : (
+            ) : showEmptyStateDetails ? (
                 <View style={styles.emptyState}>
-                    <SafeIcon name="info" size={24} color={modernColors.textTertiary} />
+                    <View style={styles.emptyStateIcon}>
+                        <SafeIcon name="tag" size={32} color={modernColors.primary} />
+                    </View>
+                    <Text style={styles.emptyStateTitle}>Aucune variante définie</Text>
                     <Text style={styles.emptyStateText}>
-                        Aucune modalité de prix définie. Ajoutez-en une pour commencer.
+                        Appuyez sur « Ajouter » pour définir une variante (ex: Taille M) et le prix correspondant.
                     </Text>
                 </View>
+            ) : (
+                <TouchableOpacity style={styles.compactEmptyState} onPress={openAddModal}>
+                    <SafeIcon name="layers" size={18} color={modernColors.primary} />
+                    <View style={{ flex: 1 }}>
+                        <Text style={styles.compactEmptyTitle}>Ajouter une variante</Text>
+                        <Text style={styles.compactEmptyText}>Ex: Taille M, Formule VIP, Option Livraison...</Text>
+                    </View>
+                    <SafeIcon name="plus" size={18} color={modernColors.primary} />
+                </TouchableOpacity>
             )}
 
             {/* Modal d'édition */}
@@ -435,6 +475,11 @@ const styles = StyleSheet.create({
     required: {
         color: modernColors.error,
     },
+    helperText: {
+        fontSize: 12,
+        color: modernColors.textSecondary,
+        marginBottom: 12,
+    },
     addButton: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -450,62 +495,144 @@ const styles = StyleSheet.create({
         fontWeight: '600',
     },
     modalitiesList: {
-        gap: 8,
+        gap: 12,
+    },
+    modalitiesCount: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: modernColors.textSecondary,
+        marginBottom: 4,
     },
     modalityItem: {
         flexDirection: 'row',
-        justifyContent: 'space-between',
         alignItems: 'center',
-        backgroundColor: '#F9FAFB',
+        backgroundColor: '#FFFFFF',
         padding: 12,
-        borderRadius: 8,
+        borderRadius: 12,
         borderWidth: 1,
         borderColor: modernColors.border,
         gap: 12,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 2,
+        elevation: 1,
+    },
+    modalityImageContainer: {
+        width: 70,
+        height: 70,
+    },
+    modalityImage: {
+        width: 70,
+        height: 70,
+        borderRadius: 8,
+        backgroundColor: '#F3F4F6',
+    },
+    modalityImagePlaceholder: {
+        width: 70,
+        height: 70,
+        borderRadius: 8,
+        backgroundColor: '#F3F4F6',
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1,
+        borderColor: modernColors.border,
+        borderStyle: 'dashed',
     },
     modalityInfo: {
         flex: 1,
+        gap: 4,
+    },
+    modalityHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
     },
     modalityValue: {
         fontSize: 16,
-        fontWeight: '600',
+        fontWeight: '700',
         color: modernColors.text,
-        marginBottom: 4,
+    },
+    stockBadge: {
+        backgroundColor: 'rgba(99, 102, 241, 0.1)',
+        paddingHorizontal: 8,
+        paddingVertical: 2,
+        borderRadius: 12,
+    },
+    stockBadgeText: {
+        fontSize: 11,
+        fontWeight: '600',
+        color: modernColors.primary,
     },
     modalityPrice: {
-        fontSize: 14,
-        color: modernColors.primary,
-        fontWeight: '600',
-    },
-    modalityStock: {
-        fontSize: 12,
-        color: modernColors.textSecondary,
-        marginTop: 4,
+        fontSize: 18,
+        color: modernColors.success,
+        fontWeight: '700',
     },
     modalityActions: {
-        flexDirection: 'row',
+        flexDirection: 'column',
         gap: 8,
     },
-    editButton: {
-        padding: 4,
+    actionButton: {
+        width: 36,
+        height: 36,
+        borderRadius: 8,
+        backgroundColor: 'rgba(99, 102, 241, 0.1)',
+        alignItems: 'center',
+        justifyContent: 'center',
     },
-    deleteButton: {
-        padding: 4,
+    deleteActionButton: {
+        backgroundColor: modernColors.error,
     },
     emptyState: {
         alignItems: 'center',
         padding: 24,
         backgroundColor: '#F9FAFB',
-        borderRadius: 8,
-        borderWidth: 1,
+        borderRadius: 12,
+        borderWidth: 2,
         borderColor: modernColors.border,
         borderStyle: 'dashed',
+        gap: 12,
+    },
+    emptyStateIcon: {
+        width: 64,
+        height: 64,
+        borderRadius: 32,
+        backgroundColor: 'rgba(99, 102, 241, 0.1)',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 8,
+    },
+    emptyStateTitle: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: modernColors.text,
+        textAlign: 'center',
     },
     emptyStateText: {
-        fontSize: 14,
-        color: modernColors.textTertiary,
+        fontSize: 13,
+        color: modernColors.textSecondary,
         textAlign: 'center',
-        marginTop: 8,
+        lineHeight: 20,
+    },
+    compactEmptyState: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        padding: 14,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: modernColors.border,
+        backgroundColor: '#F9FAFB',
+    },
+    compactEmptyTitle: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: modernColors.text,
+    },
+    compactEmptyText: {
+        fontSize: 12,
+        color: modernColors.textSecondary,
     },
     modalOverlay: {
         flex: 1,

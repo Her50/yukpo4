@@ -6,7 +6,7 @@
 
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     Alert,
     KeyboardAvoidingView,
@@ -26,6 +26,7 @@ import SafeIcon from '../components/SafeIcon';
 import { useAuth } from '../contexts/AuthContext';
 import { apiGet, apiPost } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
+import { MAX_PRODUCT_IMAGES, mergeImageSources, orderImagesWithPrimary } from '../utils/mediaHelpers';
 
 const AjouterProduitSimpleScreen: React.FC = () => {
     const navigation = useNavigation();
@@ -33,10 +34,12 @@ const AjouterProduitSimpleScreen: React.FC = () => {
     const { user } = useAuth();
 
     // Récupérer les paramètres
-    const { serviceId, suggestionIA } = (route.params as any) || {};
+    const params = (route.params as any) || {};
+    const { serviceId, suggestionIA } = params;
+    const mediaData = params.mediaData || {};
 
     const [loading, setLoading] = useState(false);
-    
+
     // ✅ FONCTION HELPER: Extraire valeur avec fallback intelligent (IDENTIQUE AU GRAND FORMULAIRE)
     const extractValue = (field: any): any => {
         if (!field) return null;
@@ -50,7 +53,30 @@ const AjouterProduitSimpleScreen: React.FC = () => {
 
     // ✅ Extraire données depuis suggestionIA avec fallbacks intelligents (IDENTIQUE AU GRAND FORMULAIRE)
     const suggestionData = suggestionIA?.data || suggestionIA || {};
-    
+
+    const normalizeMediaList = (value: any): any[] => {
+        if (!value) {
+            return [];
+        }
+
+        if (Array.isArray(value)) {
+            return value.filter((item) => item !== null && item !== undefined);
+        }
+
+        return [value];
+    };
+
+    const initialProductImages = mergeImageSources(
+        MAX_PRODUCT_IMAGES,
+        mediaData?.base64_image,
+        mediaData?.image_base64,
+        suggestionData?.base64_image,
+        suggestionData?.images,
+        suggestionIA?.service_data?.base64_image
+    );
+
+    const initialProductVideos = normalizeMediaList(mediaData?.video_base64);
+
     const typeOffre = extractValue(suggestionData.type_offre) || 'produit';
     const isPrestation = typeOffre === 'prestation' || typeOffre === 'service';
 
@@ -103,6 +129,8 @@ const AjouterProduitSimpleScreen: React.FC = () => {
         lieu_produit: lieu_produit ? 'OUI' : 'NON'
     });
 
+    const [primaryProductImage, setPrimaryProductImage] = useState<string | null>(initialProductImages[0] || null);
+
     const [formValues, setFormValues] = useState<any>({
         nom_produit,
         categorie_produit,
@@ -113,15 +141,52 @@ const AjouterProduitSimpleScreen: React.FC = () => {
         produits,
         sous_caracteristiques,
         lieu_produit,
-        images: [],
-        videos: []
+        images: initialProductImages,
+        videos: initialProductVideos
     });
+
+    const currentModalites = Array.isArray(formValues.variabilite_prix?.modalites)
+        ? formValues.variabilite_prix.modalites
+        : Array.isArray(formValues.variabilite_prix)
+            ? formValues.variabilite_prix
+            : [];
+    const hasExistingVariants = currentModalites.length > 0;
+    const [showPriceVariantEditor, setShowPriceVariantEditor] = useState(hasExistingVariants);
+
+    useEffect(() => {
+        if (hasExistingVariants && !showPriceVariantEditor) {
+            setShowPriceVariantEditor(true);
+        }
+    }, [hasExistingVariants, showPriceVariantEditor]);
 
     // Gérer changement de champ
     const handleFieldChange = (fieldName: string, value: any) => {
         setFormValues((prev: any) => ({
             ...prev,
             [fieldName]: value
+        }));
+    };
+
+    const handleImagesChange = (images: string[]) => {
+        const { images: orderedImages, primary } = orderImagesWithPrimary(
+            images,
+            primaryProductImage,
+            MAX_PRODUCT_IMAGES
+        );
+
+        setPrimaryProductImage(primary);
+        setFormValues((prev: any) => ({
+            ...prev,
+            images: orderedImages
+        }));
+    };
+
+    const handleVideosChange = (videos: any[]) => {
+        const videosList = Array.isArray(videos) ? videos : [];
+
+        setFormValues((prev: any) => ({
+            ...prev,
+            videos: videosList
         }));
     };
 
@@ -412,34 +477,112 @@ const AjouterProduitSimpleScreen: React.FC = () => {
 
                         {/* Lieu */}
                         <View style={styles.fieldGroup}>
-                            <Text style={styles.label}>Lieu de commercialisation *</Text>
                             <LocationSelector
+                                label="Lieu de commercialisation"
                                 value={formValues.lieu_produit}
-                                onChange={(value) => handleFieldChange('lieu_produit', value)}
+                                onSelect={(value) => handleFieldChange('lieu_produit', value)}
                                 placeholder="Ville, quartier, pays..."
                                 enrichWithBackend={true}
+                                required
                             />
                         </View>
 
-                        {/* Variabilité de prix */}
-                        <View style={styles.fieldGroup}>
-                            <Text style={styles.label}>Variabilité de prix (optionnel)</Text>
-                            <PriceVariantSelector
-                                value={formValues.variabilite_prix}
-                                onChange={(value) => handleFieldChange('variabilite_prix', value)}
-                                defaultCurrency={formValues.devise_produit || 'XAF'}
-                            />
-                        </View>
+                        {/* Variabilité de prix - Affichage conditionnel */}
+                        {(() => {
+                            // ✅ NOUVEAU 2025-11-06: Afficher variabilité de prix UNIQUEMENT si pertinent
+                            const categoriesAvecVariations = [
+                                'vetement', 'chaussure', 'mode', 'textile', 'habillement',
+                                'vehicule', 'automobile', 'moto', 'transport',
+                                'meuble', 'decoration', 'mobilier',
+                                'telephone', 'smartphone', 'electronique', 'informatique',
+                                'restauration', 'alimentation', 'nourriture', 'repas', 'menu',
+                                'coiffure', 'esthetique', 'beaute', 'soin',
+                                'formation', 'cours', 'education', 'enseignement',
+                                'reparation', 'maintenance', 'depannage',
+                                'nettoyage', 'entretien', 'menage',
+                                'impression', 'photocopie', 'reprographie',
+                                'hebergement', 'hotel', 'location'
+                            ];
+
+                            const category = (formValues.categorie_produit || '').toLowerCase();
+                            const hasExistingVariations = hasExistingVariants;
+                            const isCategoryRelevant = categoriesAvecVariations.some(cat => category.includes(cat));
+                            const shouldAutoSuggest = isCategoryRelevant || isPrestation;
+                            const shouldRenderEditor = showPriceVariantEditor || hasExistingVariations;
+
+                            if (!shouldRenderEditor) {
+                                return (
+                                    <View style={styles.fieldGroup}>
+                                        <TouchableOpacity
+                                            style={[
+                                                styles.variantCallout,
+                                                shouldAutoSuggest && styles.variantCalloutHighlighted
+                                            ]}
+                                            onPress={() => setShowPriceVariantEditor(true)}
+                                        >
+                                            <SafeIcon
+                                                name={shouldAutoSuggest ? 'sparkles' : 'layers'}
+                                                size={18}
+                                                color={shouldAutoSuggest ? '#FFFFFF' : modernColors.primary}
+                                            />
+                                            <View style={{ flex: 1 }}>
+                                                <Text style={[
+                                                    styles.variantCalloutTitle,
+                                                    shouldAutoSuggest && styles.variantCalloutTitleHighlighted
+                                                ]}>
+                                                    Ajouter des variations de prix
+                                                </Text>
+                                                <Text style={[
+                                                    styles.variantCalloutText,
+                                                    shouldAutoSuggest && styles.variantCalloutTextHighlighted
+                                                ]}>
+                                                    {isPrestation
+                                                        ? 'Ex: Formule Basique 10 000 XAF, Formule Premium 25 000 XAF'
+                                                        : 'Ex: Taille M 5 500 XAF, Taille L 6 000 XAF'}
+                                                </Text>
+                                            </View>
+                                            <SafeIcon
+                                                name="plus"
+                                                size={18}
+                                                color={shouldAutoSuggest ? '#FFFFFF' : modernColors.primary}
+                                            />
+                                        </TouchableOpacity>
+                                    </View>
+                                );
+                            }
+
+                            return (
+                                <View style={styles.fieldGroup}>
+                                    <PriceVariantSelector
+                                        label={isPrestation ? 'Variantes prestation' : 'Variantes produit'}
+                                        variable={isPrestation ? 'formule' : 'option'}
+                                        modalites={currentModalites}
+                                        onChange={(modalites) => handleFieldChange('variabilite_prix', {
+                                            type_donnee: 'price_variant',
+                                            variable: isPrestation ? 'formule' : 'option',
+                                            modalites,
+                                            filtrable: true,
+                                            origine_champs: 'formulaire'
+                                        })}
+                                        defaultCurrency={formValues.devise_produit || 'XAF'}
+                                        helperText="Définissez des options (ex: Taille M, Formule VIP) avec leur prix spécifique."
+                                        showEmptyStateDetails={false}
+                                    />
+                                </View>
+                            );
+                        })()}
 
                         {/* Photos et vidéos */}
                         <View style={styles.fieldGroup}>
                             <Text style={styles.label}>Photos et vidéos</Text>
                             <MediaUploadManager
+                                images={formValues.images || []}
+                                videos={formValues.videos || []}
                                 serviceId={serviceId}
                                 productId={null}
-                                onImagesChange={(images) => handleFieldChange('images', images)}
-                                onVideosChange={(videos) => handleFieldChange('videos', videos)}
-                                maxImages={5}
+                                onImagesChange={handleImagesChange}
+                                onVideosChange={handleVideosChange}
+                                maxImages={MAX_PRODUCT_IMAGES}
                                 maxVideos={2}
                             />
                         </View>
@@ -518,10 +661,17 @@ const styles = StyleSheet.create({
         marginBottom: 20,
     },
     label: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: modernColors.text,
-        marginBottom: 8,
+        alignSelf: 'flex-start',
+        fontSize: 12,
+        fontWeight: '700',
+        color: modernColors.primary,
+        backgroundColor: 'rgba(99, 102, 241, 0.12)',
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 20,
+        marginBottom: 12,
+        letterSpacing: 0.8,
+        textTransform: 'uppercase',
     },
     submitButton: {
         marginTop: 24,
@@ -564,6 +714,35 @@ const styles = StyleSheet.create({
     },
     deviseButtonTextActive: {
         color: '#FFFFFF',
+    },
+    variantCallout: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        padding: 14,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        backgroundColor: '#F9FAFB',
+    },
+    variantCalloutHighlighted: {
+        backgroundColor: modernColors.primary,
+        borderColor: modernColors.primary,
+    },
+    variantCalloutTitle: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: modernColors.primary,
+    },
+    variantCalloutTitleHighlighted: {
+        color: '#FFFFFF',
+    },
+    variantCalloutText: {
+        fontSize: 12,
+        color: modernColors.textSecondary,
+    },
+    variantCalloutTextHighlighted: {
+        color: '#E0E7FF',
     },
 });
 

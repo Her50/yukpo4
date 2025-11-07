@@ -4,6 +4,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
 import React, { useEffect, useRef, useState } from 'react';
 import {
+    ActivityIndicator,
     Alert,
     Animated,
     Image,
@@ -17,7 +18,15 @@ import {
 import { useLocation } from '../contexts/LocationContext'; // ✅ NOUVEAU: Pour GPS automatique
 import { apiPost } from '../services/api'; // ✅ NOUVEAU: Pour autocomplete
 import { uploadMultipleToCloud } from '../services/cloudUpload';
+import { modernColors } from '../theme/modernTheme';
 import ModernGPSModal from './ModernGPSModal'; // Utiliser ModernGPSModal pour support des zones
+import { NativeCard } from './NativeDesign';
+import SafeIcon from './SafeIcon';
+
+const primaryColor = modernColors?.primary ?? '#6366F1';
+const accentColor = modernColors?.accent ?? '#F97316';
+const successColor = modernColors?.success ?? '#10B981';
+const textSecondaryColor = modernColors?.textSecondary ?? '#6B7280';
 
 interface ChatInputMobileProps {
     onSubmit: (input: any) => void;
@@ -40,7 +49,7 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = ({
 }) => {
     // ✅ NOUVEAU: Utiliser la position GPS du contexte pour l'autocomplete
     const { location } = useLocation();
-    
+
     const [text, setText] = useState('');
     const [images, setImages] = useState<string[]>([]);
     const [audioUri, setAudioUri] = useState<string | null>(null);
@@ -61,6 +70,25 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = ({
     const [suggestions, setSuggestions] = useState<any[]>([]);
     const [showSuggestions, setShowSuggestions] = useState(false);
     const [loadingSuggestions, setLoadingSuggestions] = useState(false);
+    const [dynamicPlaceholder, setDynamicPlaceholder] = useState<string | null>(null);
+
+    const getSuggestionVector = (suggestion: any): string[] => {
+        if (Array.isArray(suggestion?.full_vector) && suggestion.full_vector.length > 0) {
+            return suggestion.full_vector;
+        }
+        if (Array.isArray(suggestion?.product_vector) && suggestion.product_vector.length > 0) {
+            return suggestion.product_vector;
+        }
+        return [];
+    };
+
+    const formatSuggestionExample = (suggestion: any): string | null => {
+        const vector = getSuggestionVector(suggestion);
+        if (!vector || vector.length === 0) {
+            return null;
+        }
+        return vector.filter(Boolean).slice(0, 5).join(' • ');
+    };
 
     // ✅ NOUVEAU: Autocomplete intelligente en mode recherche
     useEffect(() => {
@@ -75,14 +103,14 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = ({
                         query: text.trim(),
                         limit: 10, // ✅ Augmenté de 8 à 10 pour plus de suggestions
                     };
-                    
+
                     // ✅ Ajouter GPS si disponible (ordre de priorité : GPS manuel > GPS contexte)
                     const currentGPS = gpsData || location;
                     if (currentGPS) {
                         payload.user_lat = currentGPS.latitude || currentGPS.lat;
                         payload.user_lng = currentGPS.longitude || currentGPS.lng;
-                        console.log('[ChatInputMobile] 📍 GPS inclus dans autocomplete:', { 
-                            lat: payload.user_lat, 
+                        console.log('[ChatInputMobile] 📍 GPS inclus dans autocomplete:', {
+                            lat: payload.user_lat,
                             lng: payload.user_lng,
                             source: gpsData ? 'manuel' : 'auto'
                         });
@@ -92,9 +120,17 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = ({
 
                     const response = await apiPost('/api/autocomplete/search-products', payload);
 
-                    if (response.success && response.data) {
+                    if (response.success && Array.isArray(response.data)) {
                         setSuggestions(response.data);
-                        setShowSuggestions(true);
+                        setShowSuggestions(response.data.length > 0);
+
+                        if (response.data.length > 0) {
+                            const example = formatSuggestionExample(response.data[0]);
+                            setDynamicPlaceholder(example ? `ex: ${example}` : null);
+                        } else {
+                            setDynamicPlaceholder(null);
+                        }
+
                         console.log('[ChatInputMobile] 🔍 Suggestions autocomplete:', {
                             count: response.data.length,
                             withGPS: !!gpsData,
@@ -103,17 +139,20 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = ({
                     } else {
                         setSuggestions([]);
                         setShowSuggestions(false);
+                        setDynamicPlaceholder(null);
                     }
                 } catch (error) {
                     console.error('[ChatInputMobile] Erreur autocomplete:', error);
                     setSuggestions([]);
                     setShowSuggestions(false);
+                    setDynamicPlaceholder(null);
                 } finally {
                     setLoadingSuggestions(false);
                 }
             } else {
                 setSuggestions([]);
                 setShowSuggestions(false);
+                setDynamicPlaceholder(null);
             }
         }, 300);
 
@@ -768,7 +807,7 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = ({
             <View style={styles.inputContainer}>
                 <TextInput
                     style={styles.textInput}
-                    placeholder={placeholder}
+                    placeholder={text.length === 0 && dynamicPlaceholder ? dynamicPlaceholder : placeholder}
                     placeholderTextColor="#9CA3AF" // Gris moyen pour le placeholder
                     value={text}
                     onChangeText={setText}
@@ -842,44 +881,94 @@ const ChatInputMobile: React.FC<ChatInputMobileProps> = ({
             </View>
 
             {/* ✅ NOUVEAU: Suggestions intelligentes (mode recherche uniquement) */}
-            {showAutocomplete && isSearchMode && showSuggestions && suggestions.length > 0 && (
+            {showAutocomplete && isSearchMode && (showSuggestions || loadingSuggestions) && (
                 <View style={styles.suggestionsContainer}>
                     <View style={styles.suggestionsHeader}>
-                        <Text style={styles.suggestionsTitle}>💡 Suggestions populaires</Text>
+                        <Text style={styles.suggestionsTitle}>🔥 Caractéristiques recommandées</Text>
                         <TouchableOpacity onPress={() => setShowSuggestions(false)}>
                             <Text style={styles.closeSuggestions}>✕</Text>
                         </TouchableOpacity>
                     </View>
-                    <ScrollView style={styles.suggestionsList} nestedScrollEnabled={true}>
-                        {suggestions.map((suggestion, index) => (
-                            <TouchableOpacity
-                                key={index}
-                                style={styles.suggestionItem}
-                                onPress={() => {
-                                    const fullText = suggestion.product_vector?.join(' ') || suggestion.full_vector?.join(' ') || '';
-                                    setText(fullText);
-                                    setShowSuggestions(false);
-                                    console.log('[ChatInputMobile] ✅ Suggestion sélectionnée:', fullText);
-                                }}
-                            >
-                                <View style={styles.suggestionChips}>
-                                    {(suggestion.product_vector || suggestion.full_vector || []).slice(0, 5).map((chip: string, i: number) => (
-                                        <View key={i} style={styles.suggestionChip}>
-                                            <Text style={styles.suggestionChipText}>{chip}</Text>
+                    <Text style={styles.suggestionsCaption}>
+                        Suggestions issues de l'autocomplete caractéristique
+                    </Text>
+
+                    {loadingSuggestions ? (
+                        <View style={styles.loadingSuggestionsRow}>
+                            <ActivityIndicator size="small" color={primaryColor} />
+                            <Text style={styles.loadingSuggestionsText}>Analyse en cours...</Text>
+                        </View>
+                    ) : suggestions.length > 0 ? (
+                        <ScrollView style={styles.suggestionsList} nestedScrollEnabled={true}>
+                            {suggestions.map((suggestion, index) => {
+                                const chips = getSuggestionVector(suggestion).slice(0, 6);
+                                const fullText = getSuggestionVector(suggestion).join(' ');
+                                const priceText = typeof suggestion?.prix === 'number'
+                                    ? `${Math.round(suggestion.prix).toLocaleString()} ${suggestion?.devise || 'XAF'}`
+                                    : null;
+
+                                return (
+                                    <NativeCard
+                                        key={`suggestion-${index}`}
+                                        onPress={() => {
+                                            setText(fullText);
+                                            setShowSuggestions(false);
+                                            console.log('[ChatInputMobile] ✅ Suggestion sélectionnée:', fullText);
+                                        }}
+                                        style={styles.suggestionCard}
+                                    >
+                                        <View style={styles.suggestionCardHeader}>
+                                            <SafeIcon name="sparkles" size={16} color={primaryColor} />
+                                            <Text style={styles.suggestionCardTitle}>Proposition {index + 1}</Text>
                                         </View>
-                                    ))}
-                                </View>
-                                {suggestion.chosen_location && (
-                                    <Text style={styles.suggestionLocation}>📍 {suggestion.chosen_location}</Text>
-                                )}
-                                {suggestion.usage_count && (
-                                    <Text style={styles.suggestionStats}>
-                                        🔥 {suggestion.usage_count}× recherché
-                                    </Text>
-                                )}
-                            </TouchableOpacity>
-                        ))}
-                    </ScrollView>
+
+                                        <View style={styles.suggestionChips}>
+                                            {chips.map((chip: string, i: number) => (
+                                                <View key={`${chip}-${i}`} style={styles.suggestionChip}>
+                                                    <Text style={styles.suggestionChipText}>{chip}</Text>
+                                                </View>
+                                            ))}
+                                        </View>
+
+                                        <View style={styles.suggestionMetaRow}>
+                                            {suggestion?.chosen_location ? (
+                                                <View style={styles.suggestionMetaItem}>
+                                                    <SafeIcon name="map-pin" size={14} color={primaryColor} />
+                                                    <Text style={styles.suggestionMetaText}>{suggestion.chosen_location}</Text>
+                                                </View>
+                                            ) : null}
+
+                                            {suggestion?.usage_count ? (
+                                                <View style={styles.suggestionMetaItem}>
+                                                    <SafeIcon name="users" size={14} color={accentColor} />
+                                                    <Text style={styles.suggestionMetaText}>
+                                                        {suggestion.usage_count}× recherché
+                                                    </Text>
+                                                </View>
+                                            ) : null}
+
+                                            {priceText ? (
+                                                <View style={styles.suggestionMetaItem}>
+                                                    <SafeIcon name="tag" size={14} color={successColor} />
+                                                    <Text style={styles.suggestionMetaText}>{priceText}</Text>
+                                                </View>
+                                            ) : null}
+                                        </View>
+
+                                        <View style={styles.suggestionApply}>
+                                            <SafeIcon name="arrow-right" size={14} color="#FFFFFF" />
+                                            <Text style={styles.suggestionApplyText}>Utiliser cette suggestion</Text>
+                                        </View>
+                                    </NativeCard>
+                                );
+                            })}
+                        </ScrollView>
+                    ) : (
+                        <View style={styles.emptySuggestions}>
+                            <SafeIcon name="search" size={18} color={textSecondaryColor} />
+                            <Text style={styles.emptySuggestionsText}>Aucune suggestion disponible</Text>
+                        </View>
+                    )}
                 </View>
             )}
 
@@ -1322,6 +1411,7 @@ const styles = StyleSheet.create({
         elevation: 4,
         borderWidth: 1,
         borderColor: '#E5E7EB',
+        paddingBottom: 8,
     },
     suggestionsHeader: {
         flexDirection: 'row',
@@ -1337,6 +1427,12 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         color: '#1F2937',
     },
+    suggestionsCaption: {
+        fontSize: 12,
+        color: '#6B7280',
+        paddingHorizontal: 16,
+        paddingBottom: 8,
+    },
     closeSuggestions: {
         fontSize: 20,
         color: '#6B7280',
@@ -1344,17 +1440,26 @@ const styles = StyleSheet.create({
     },
     suggestionsList: {
         maxHeight: 250,
+        paddingHorizontal: 12,
+        paddingBottom: 12,
     },
-    suggestionItem: {
-        padding: 12,
-        borderBottomWidth: 1,
-        borderBottomColor: '#F3F4F6',
+    loadingSuggestionsRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+    },
+    loadingSuggestionsText: {
+        marginLeft: 10,
+        color: '#6B7280',
+        fontSize: 13,
+        fontWeight: '500',
     },
     suggestionChips: {
         flexDirection: 'row',
         flexWrap: 'wrap',
         gap: 6,
-        marginBottom: 6,
+        marginBottom: 12,
     },
     suggestionChip: {
         backgroundColor: '#EEF2FF',
@@ -1369,16 +1474,65 @@ const styles = StyleSheet.create({
         color: '#6366F1',
         fontWeight: '600',
     },
-    suggestionLocation: {
-        fontSize: 11,
-        color: '#6B7280',
-        marginTop: 4,
+    suggestionCard: {
+        marginVertical: 6,
     },
-    suggestionStats: {
-        fontSize: 11,
-        color: '#F59E0B',
-        marginTop: 4,
+    suggestionCardHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 8,
+    },
+    suggestionCardTitle: {
+        marginLeft: 8,
+        fontSize: 13,
         fontWeight: '600',
+        color: '#1F2937',
+    },
+    suggestionMetaRow: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        marginTop: 12,
+    },
+    suggestionMetaItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginRight: 12,
+        marginBottom: 8,
+    },
+    suggestionMetaText: {
+        marginLeft: 6,
+        fontSize: 12,
+        color: '#4B5563',
+        fontWeight: '500',
+    },
+    suggestionApply: {
+        marginTop: 12,
+        backgroundColor: '#6366F1',
+        borderRadius: 12,
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        flexDirection: 'row',
+        alignItems: 'center',
+        alignSelf: 'flex-start',
+    },
+    suggestionApplyText: {
+        marginLeft: 8,
+        color: '#FFFFFF',
+        fontSize: 12,
+        fontWeight: '600',
+    },
+    emptySuggestions: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 16,
+        paddingVertical: 16,
+        gap: 8,
+    },
+    emptySuggestionsText: {
+        marginLeft: 10,
+        color: '#6B7280',
+        fontSize: 12,
+        fontWeight: '500',
     },
 });
 

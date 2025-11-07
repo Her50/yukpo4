@@ -4,7 +4,7 @@
  * ✅ NOUVEAU : Suggestions populaires depuis autocomplete_combinations
  */
 
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
     ActivityIndicator,
     Alert,
@@ -16,7 +16,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import { apiGet } from '../services/api';
+import { apiGet, apiPost } from '../services/api';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
 
@@ -50,6 +50,51 @@ interface PopularProduct {
     is_trending: boolean;  // ✅ Tendance (actif dans les 7 derniers jours)
 }
 
+interface CombinationSuggestion {
+    id: number;
+    productVector: string[];
+    productLabels: string[];
+    usageCount: number;
+    prix?: number;
+    devise?: string;
+    isAIPreferred?: boolean;
+}
+
+// ✅ 2025-11-06: Normaliser la réponse backend pour éviter les crashes (.map sur undefined)
+const normalizePopularProductsResponse = (response: any): PopularProduct[] => {
+    if (!response) {
+        return [];
+    }
+
+    // Cas 1 : L'API mobile renvoie directement un tableau (ApiResponse<T[]>)
+    if (Array.isArray(response)) {
+        return response as PopularProduct[];
+    }
+
+    // Cas 2 : ApiResponse<{ data: PopularProduct[] }>
+    if (Array.isArray(response.data)) {
+        return response.data as PopularProduct[];
+    }
+
+    // Cas 3 : Backend Axum renvoie { success: true, data: [...] }
+    if (response.data && Array.isArray(response.data.data)) {
+        return response.data.data as PopularProduct[];
+    }
+
+    // Cas 4 : Backend renvoie { products: [...] }
+    if (Array.isArray(response.products)) {
+        return response.products as PopularProduct[];
+    }
+
+    // Cas 5 : ApiResponse enveloppée (ApiResponse<{ products: [...] }>)
+    if (response.data && Array.isArray(response.data.products)) {
+        return response.data.products as PopularProduct[];
+    }
+
+    console.warn('[LinearAutocompleteEditor] ⚠️ Impossible de normaliser la réponse popular products:', response);
+    return [];
+};
+
 export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> = ({
     label,
     identifiantBase,
@@ -73,7 +118,7 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                 </View>
             );
         }
-        
+
         if (!separateur || typeof separateur !== 'string') {
             console.error('[LinearAutocompleteEditor] ❌ separateur invalide:', separateur);
             return (
@@ -82,7 +127,7 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                 </View>
             );
         }
-        
+
         if (!sousCaracteristiques || typeof sousCaracteristiques !== 'object') {
             console.error('[LinearAutocompleteEditor] ❌ sousCaracteristiques invalide:', sousCaracteristiques);
             return (
@@ -99,15 +144,15 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
             </View>
         );
     }
-    
+
     // ✅ PROTECTION ULTIME 2025-11-06: S'assurer que displayValue est TOUJOURS une string
     const displayValue = (() => {
         if (!value || !Array.isArray(value) || value.length === 0) {
             return '';
         }
-        
+
         const firstValue = value[0];
-        
+
         // ✅ CRITIQUE: Vérifier que firstValue est une STRING
         if (typeof firstValue === 'string') {
             return firstValue;
@@ -120,7 +165,7 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
             console.warn('[LinearAutocompleteEditor] ⚠️ value[0] n\'est pas une string, conversion');
             return String(firstValue);
         }
-        
+
         return '';
     })();
 
@@ -135,6 +180,21 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
     const [suggestions, setSuggestions] = useState<PopularProduct[]>([]);
     const [loadingSuggestions, setLoadingSuggestions] = useState(false);
     const [showSuggestions, setShowSuggestions] = useState(false);
+    const [combinationSuggestions, setCombinationSuggestions] = useState<CombinationSuggestion[]>([]);
+    const [loadingCombinationSuggestions, setLoadingCombinationSuggestions] = useState(false);
+    const [combinationError, setCombinationError] = useState<string | null>(null);
+
+    const iaCombinaisons = useMemo(() => {
+        if (!value || !Array.isArray(value)) {
+            return [];
+        }
+
+        const combos = value
+            .filter((combo) => typeof combo === 'string' && combo.trim().length > 0)
+            .map((combo) => combo.trim());
+
+        return Array.from(new Set(combos));
+    }, [value]);
 
     // Décomposer le vecteur en chips
     const parseVectorToChips = (vectorStr: string): ChipData[] => {
@@ -143,7 +203,7 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
             console.warn('[LinearAutocompleteEditor] ⚠️ vectorStr n\'est pas une string:', typeof vectorStr);
             return [];
         }
-        
+
         if (!separateur || typeof separateur !== 'string') {
             console.warn('[LinearAutocompleteEditor] ⚠️ separateur n\'est pas une string:', typeof separateur);
             return [];
@@ -190,6 +250,139 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
         setShowSuggestions(false);
     };
 
+    const applyCombinationSuggestion = (suggestion: CombinationSuggestion) => {
+        const vector = suggestion.productVector || [];
+        if (vector.length === 0) {
+            return;
+        }
+
+        const joined = vector.join(separateur || ',');
+        const updatedSousCaracs: Record<string, string[]> = { ...(sousCaracteristiques || {}) };
+
+        (suggestion.productLabels || []).forEach((label, index) => {
+            const value = vector[index];
+            if (!label || !value) {
+                return;
+            }
+            if (!updatedSousCaracs[label]) {
+                updatedSousCaracs[label] = [];
+            }
+            if (!updatedSousCaracs[label].includes(value)) {
+                updatedSousCaracs[label].push(value);
+            }
+        });
+
+        onChange([joined], updatedSousCaracs);
+        setSearchQuery('');
+        setShowSuggestions(false);
+    };
+
+    const formatPriceDisplay = (price?: number, devise?: string) => {
+        if (price === undefined) {
+            return null;
+        }
+
+        const formatter = new Intl.NumberFormat('fr-FR');
+        return `${formatter.format(Math.round(price))} ${devise || 'XAF'}`;
+    };
+
+    useEffect(() => {
+        if (searchQuery.trim().length > 0) {
+            return;
+        }
+
+        if (combinationSuggestions.length > 0 || loadingCombinationSuggestions) {
+            return;
+        }
+
+        if (iaCombinaisons.length === 0) {
+            return;
+        }
+
+        const firstCombo = iaCombinaisons[0];
+        if (!firstCombo || typeof firstCombo !== 'string') {
+            return;
+        }
+
+        const parts = firstCombo.split(separateur || ',').map((part) => part.trim()).filter(Boolean);
+        const seedQuery = parts[0];
+
+        if (!seedQuery || seedQuery.length < 2) {
+            return;
+        }
+
+        let cancelled = false;
+
+        const loadInitialCombinations = async () => {
+            try {
+                setLoadingCombinationSuggestions(true);
+                const response = await apiPost('/api/combinations/search', {
+                    query: seedQuery,
+                    limit: 8,
+                });
+
+                if (!cancelled && response?.success) {
+                    const combos = Array.isArray(response.data) ? response.data : [];
+
+                    const iaKeys = new Set(iaCombinaisons.map((combo) => combo.toLowerCase()));
+                    const normalizedCombos: CombinationSuggestion[] = combos
+                        .map((item: any) => {
+                            const combo = item?.combination;
+                            if (!combo || !Array.isArray(combo.product_vector)) {
+                                return null;
+                            }
+
+                            const rawVector = combo.product_vector.filter((part: any) => typeof part === 'string').map((part: string) => part.trim());
+                            if (rawVector.length === 0) {
+                                return null;
+                            }
+
+                            const joined = rawVector.join(separateur || ',');
+                            if (!joined || iaKeys.has(joined.toLowerCase())) {
+                                return null;
+                            }
+
+                            let prix: number | undefined;
+                            if (combo.prix !== null && combo.prix !== undefined) {
+                                const parsed = typeof combo.prix === 'number'
+                                    ? combo.prix
+                                    : parseFloat(combo.prix.toString());
+                                prix = isNaN(parsed) ? undefined : parsed;
+                            }
+
+                            return {
+                                id: combo.id,
+                                productVector: rawVector,
+                                productLabels: Array.isArray(combo.product_labels) ? combo.product_labels : [],
+                                usageCount: typeof combo.usage_count === 'number' ? combo.usage_count : 0,
+                                prix,
+                                devise: combo.devise || undefined,
+                                isAIPreferred: !!combo.is_ai_preferred,
+                            } as CombinationSuggestion;
+                        })
+                        .filter((item: CombinationSuggestion | null): item is CombinationSuggestion => item !== null);
+
+                    setCombinationSuggestions(normalizedCombos);
+                    setCombinationError(null);
+                }
+            } catch (error) {
+                if (!cancelled) {
+                    console.warn('[LinearAutocompleteEditor] ⚠️ Impossible de précharger les combinaisons:', error);
+                }
+            } finally {
+                if (!cancelled) {
+                    setLoadingCombinationSuggestions(false);
+                }
+            }
+        };
+
+        loadInitialCombinations();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [iaCombinaisons, separateur, searchQuery, combinationSuggestions.length, loadingCombinationSuggestions]);
+
     // Modifier une caractéristique
     const handleModifyChip = (chipIndex: number) => {
         setEditingChipIndex(chipIndex);
@@ -207,7 +400,7 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
             setEditingChipIndex(null);
             return;
         }
-        
+
         if (!separateur || typeof separateur !== 'string') {
             console.warn('[LinearAutocompleteEditor] ⚠️ separateur n\'est pas une string dans saveChipModification');
             setShowEditModal(false);
@@ -241,7 +434,7 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                             console.warn('[LinearAutocompleteEditor] ⚠️ displayValue n\'est pas une string dans handleDeleteChip:', typeof displayValue);
                             return;
                         }
-                        
+
                         if (!separateur || typeof separateur !== 'string') {
                             console.warn('[LinearAutocompleteEditor] ⚠️ separateur n\'est pas une string dans handleDeleteChip');
                             return;
@@ -267,8 +460,8 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
 
         // ✅ PROTECTION ULTIME: Vérifier que separateur et displayValue sont des strings
         const safeSeparateur = (separateur && typeof separateur === 'string') ? separateur : ',';
-        const parts = (displayValue && typeof displayValue === 'string') 
-            ? displayValue.split(safeSeparateur).map(p => p.trim()) 
+        const parts = (displayValue && typeof displayValue === 'string')
+            ? displayValue.split(safeSeparateur).map(p => p.trim())
             : [];
         parts.push(newCharValue.trim());
 
@@ -330,7 +523,18 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
             }
         }
 
-        // ✅ PRIORITÉ 2: Exemple générique basé sur les sous-caractéristiques IA (première valeur de chaque dimension)
+        // ✅ PRIORITÉ 2: Utiliser les autres combinaisons IA disponibles
+        if ((!displayValue || displayValue.length === 0) && iaCombinaisons.length > 0) {
+            const combo = iaCombinaisons[0];
+            if (typeof combo === 'string') {
+                const parts = combo.split(separateur || ',').map(v => v.trim()).filter(Boolean);
+                if (parts.length > 0) {
+                    return `✨ ${parts.slice(0, 6).join(' • ')}`;
+                }
+            }
+        }
+
+        // ✅ PRIORITÉ 3: Exemple générique basé sur les sous-caractéristiques IA (première valeur de chaque dimension)
         if (sousCaracteristiques && Object.keys(sousCaracteristiques).length > 0) {
             const exampleParts: string[] = [];
 
@@ -346,7 +550,7 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
             }
         }
 
-        // ✅ PRIORITÉ 3: Fallback générique
+        // ✅ PRIORITÉ 4: Fallback générique
         return '🔍 Tapez pour rechercher ou voir suggestions IA...';
     };
 
@@ -373,30 +577,98 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                     value={searchQuery}
                     onChangeText={async (text) => {
                         setSearchQuery(text);
-                        
-                        // ✅ CORRECTION FINALE : Recherche inline sans useEffect ni useCallback
-                        if (text && text.trim().length >= 2) {
+
+                        const trimmed = text.trim();
+
+                        if (trimmed.length >= 2) {
                             setLoadingSuggestions(true);
+                            setLoadingCombinationSuggestions(true);
+                            setCombinationError(null);
                             setShowSuggestions(true);
-                            
+
                             try {
-                                const response = await apiGet(
-                                    `/api/products/popular?search=${encodeURIComponent(text)}&limit=8`
-                                );
-                                
-                                if (response.success && response.data) {
-                                    setSuggestions(response.data as PopularProduct[]);
+                                const [popularResult, combinationsResult] = await Promise.allSettled([
+                                    apiGet(`/api/products/popular?search=${encodeURIComponent(trimmed)}&limit=8`),
+                                    apiPost('/api/combinations/search', {
+                                        query: trimmed,
+                                        limit: 8,
+                                    })
+                                ]);
+
+                                if (popularResult.status === 'fulfilled' && popularResult.value?.success) {
+                                    const normalized = normalizePopularProductsResponse(
+                                        popularResult.value?.data ?? popularResult.value
+                                    );
+                                    setSuggestions(normalized);
                                 } else {
                                     setSuggestions([]);
+                                }
+
+                                if (combinationsResult.status === 'fulfilled' && combinationsResult.value?.success) {
+                                    const combos = Array.isArray(combinationsResult.value.data)
+                                        ? combinationsResult.value.data
+                                        : [];
+
+                                    const iaKeys = new Set(iaCombinaisons.map((combo) => combo.toLowerCase()));
+                                    const normalizedCombos: CombinationSuggestion[] = combos
+                                        .map((item: any) => {
+                                            const combo = item?.combination;
+                                            if (!combo || !Array.isArray(combo.product_vector)) {
+                                                return null;
+                                            }
+
+                                            const rawVector = combo.product_vector.filter((part: any) => typeof part === 'string').map((part: string) => part.trim());
+                                            if (rawVector.length === 0) {
+                                                return null;
+                                            }
+
+                                            const joined = rawVector.join(separateur || ',');
+                                            if (!joined || iaKeys.has(joined.toLowerCase())) {
+                                                return null;
+                                            }
+
+                                            let prix: number | undefined;
+                                            if (combo.prix !== null && combo.prix !== undefined) {
+                                                const parsed = typeof combo.prix === 'number'
+                                                    ? combo.prix
+                                                    : parseFloat(combo.prix.toString());
+                                                prix = isNaN(parsed) ? undefined : parsed;
+                                            }
+
+                                            const devise = combo.devise || undefined;
+
+                                            return {
+                                                id: combo.id,
+                                                productVector: rawVector,
+                                                productLabels: Array.isArray(combo.product_labels) ? combo.product_labels : [],
+                                                usageCount: typeof combo.usage_count === 'number' ? combo.usage_count : 0,
+                                                prix,
+                                                devise,
+                                                isAIPreferred: !!combo.is_ai_preferred,
+                                            } as CombinationSuggestion;
+                                        })
+                                        .filter((item: CombinationSuggestion | null): item is CombinationSuggestion => item !== null);
+
+                                    setCombinationSuggestions(normalizedCombos);
+                                    setCombinationError(null);
+                                } else {
+                                    setCombinationSuggestions([]);
                                 }
                             } catch (error) {
                                 console.error('[LinearAutocompleteEditor] ❌ Erreur recherche:', error);
                                 setSuggestions([]);
+                                setCombinationSuggestions([]);
+                                setCombinationError('Impossible de récupérer les combinaisons des prestataires.');
                             } finally {
                                 setLoadingSuggestions(false);
+                                setLoadingCombinationSuggestions(false);
                             }
                         } else {
                             setSuggestions([]);
+                            setCombinationSuggestions([]);
+                            setCombinationError(null);
+                            setLoadingSuggestions(false);
+                            setLoadingCombinationSuggestions(false);
                             setShowSuggestions(false);
                         }
                     }}
@@ -456,6 +728,98 @@ export const LinearAutocompleteEditor: React.FC<LinearAutocompleteEditorProps> =
                             <SafeIcon name="chevron-right" size={16} color="#9CA3AF" />
                         </TouchableOpacity>
                     ))}
+
+                    {loadingCombinationSuggestions && (
+                        <ActivityIndicator
+                            size="small"
+                            color={modernColors.primary}
+                            style={{ marginVertical: 12 }}
+                        />
+                    )}
+
+                    {combinationError && (
+                        <Text style={styles.combinationError}>{combinationError}</Text>
+                    )}
+
+                    {!loadingCombinationSuggestions && combinationSuggestions.length > 0 && (
+                        <View style={styles.combinationSuggestionsContainer}>
+                            <Text style={styles.combinationSuggestionsTitle}>🔥 Combinaisons des prestataires</Text>
+                            {combinationSuggestions.map((combo) => {
+                                const parts = combo.productVector || [];
+                                const priceDisplay = formatPriceDisplay(combo.prix, combo.devise);
+
+                                return (
+                                    <TouchableOpacity
+                                        key={`combo-${combo.id}`}
+                                        style={styles.combinationCard}
+                                        onPress={() => applyCombinationSuggestion(combo)}
+                                    >
+                                        <View style={styles.combinationCardHeader}>
+                                            <SafeIcon
+                                                name={combo.isAIPreferred ? 'sparkles' : 'flame'}
+                                                size={16}
+                                                color={combo.isAIPreferred ? modernColors.primary : '#F97316'}
+                                            />
+                                            <Text style={styles.combinationCardTitle}>
+                                                {combo.isAIPreferred ? 'Version IA' : 'Variante populaire'}
+                                            </Text>
+                                        </View>
+                                        <View style={styles.combinationCardChips}>
+                                            {parts.map((part, idx) => (
+                                                <View key={`${combo.id}-${idx}`} style={styles.combinationCardChip}>
+                                                    <Text style={styles.combinationCardChipText}>{part}</Text>
+                                                </View>
+                                            ))}
+                                        </View>
+                                        <View style={styles.combinationMeta}>
+                                            <Text style={styles.combinationUsage}>
+                                                👥 {combo.usageCount} prestataire{combo.usageCount > 1 ? 's' : ''}
+                                            </Text>
+                                            {priceDisplay && (
+                                                <Text style={styles.combinationPrice}>💰 {priceDisplay}</Text>
+                                            )}
+                                        </View>
+                                        <Text style={styles.combinationApply}>Appuyer pour utiliser cette combinaison</Text>
+                                    </TouchableOpacity>
+                                );
+                            })}
+                        </View>
+                    )}
+                </View>
+            )}
+
+            {/* ✅ Combinaisons IA initiales */}
+            {iaCombinaisons.length > 0 && (
+                <View style={styles.iaCombosContainer}>
+                    <Text style={styles.iaCombosTitle}>✨ Combinaisons proposées par l'IA</Text>
+                    {iaCombinaisons.map((combo, index) => {
+                        const parts = (combo || '').split(separateur || ',').map(part => part.trim()).filter(Boolean);
+
+                        return (
+                            <TouchableOpacity
+                                key={`${combo}-${index}`}
+                                style={styles.iaComboCard}
+                                onPress={() => {
+                                    onChange([combo], sousCaracteristiques);
+                                    setSearchQuery('');
+                                    setShowSuggestions(false);
+                                }}
+                            >
+                                <View style={styles.iaComboHeader}>
+                                    <SafeIcon name="sparkles" size={16} color={modernColors.primary} />
+                                    <Text style={styles.iaComboLabel}>Version {index + 1}</Text>
+                                </View>
+                                <View style={styles.iaComboChips}>
+                                    {parts.map((part, chipIdx) => (
+                                        <View key={`${part}-${chipIdx}`} style={styles.iaComboChip}>
+                                            <Text style={styles.iaComboChipText}>{part}</Text>
+                                        </View>
+                                    ))}
+                                </View>
+                                <Text style={styles.iaComboApply}>Appuyer pour utiliser cette combinaison</Text>
+                            </TouchableOpacity>
+                        );
+                    })}
                 </View>
             )}
 
@@ -1028,6 +1392,61 @@ const styles = StyleSheet.create({
         color: '#6B7280',
         marginBottom: 4,
     },
+    iaCombosContainer: {
+        marginTop: 12,
+        gap: 12,
+    },
+    iaCombosTitle: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: modernColors.primary,
+    },
+    iaComboCard: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 12,
+        padding: 12,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        gap: 10,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 2,
+        elevation: 1,
+    },
+    iaComboHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+    },
+    iaComboLabel: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: modernColors.text,
+    },
+    iaComboChips: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 6,
+    },
+    iaComboChip: {
+        backgroundColor: '#EEF2FF',
+        borderRadius: 16,
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        borderWidth: 1,
+        borderColor: modernColors.primary,
+    },
+    iaComboChipText: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: modernColors.primary,
+    },
+    iaComboApply: {
+        fontSize: 12,
+        color: modernColors.textSecondary,
+        fontStyle: 'italic',
+    },
     suggestionItem: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -1108,6 +1527,83 @@ const styles = StyleSheet.create({
         fontSize: 15,
         color: '#1F2937',
         paddingVertical: 4,
+    },
+    combinationError: {
+        fontSize: 13,
+        color: '#EF4444',
+        textAlign: 'center',
+        marginTop: 12,
+    },
+    combinationSuggestionsContainer: {
+        marginTop: 12,
+        gap: 12,
+    },
+    combinationSuggestionsTitle: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: '#6B7280',
+        marginBottom: 4,
+    },
+    combinationCard: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 12,
+        padding: 12,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        gap: 10,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 2,
+        elevation: 1,
+    },
+    combinationCardHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+    },
+    combinationCardTitle: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: '#1F2937',
+    },
+    combinationCardChips: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 6,
+    },
+    combinationCardChip: {
+        backgroundColor: '#EEF2FF',
+        borderRadius: 16,
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        borderWidth: 1,
+        borderColor: modernColors.primary,
+    },
+    combinationCardChipText: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: modernColors.primary,
+    },
+    combinationMeta: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginTop: 8,
+    },
+    combinationUsage: {
+        fontSize: 11,
+        color: '#6B7280',
+    },
+    combinationPrice: {
+        fontSize: 11,
+        fontWeight: '600',
+        color: '#059669',
+    },
+    combinationApply: {
+        fontSize: 12,
+        color: modernColors.textSecondary,
+        fontStyle: 'italic',
     },
 });
 

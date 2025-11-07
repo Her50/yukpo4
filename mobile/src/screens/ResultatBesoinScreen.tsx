@@ -5,10 +5,14 @@
  */
 
 import { useNavigation, useRoute } from '@react-navigation/native';
+import * as DocumentPicker from 'expo-document-picker';
+import * as ImagePicker from 'expo-image-picker';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
+  Image,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -17,6 +21,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import ModernGPSModal from '../components/ModernGPSModal';
 import { NativeCard } from '../components/NativeDesign';
 import ProductCard from '../components/ProductCard';
 import SafeIcon from '../components/SafeIcon';
@@ -67,6 +72,24 @@ interface Product {
   coordinates?: { lat: number; lng: number };
 }
 
+const buildSuggestionExample = (suggestion?: CombinationSuggestion | null): string | null => {
+  if (!suggestion) {
+    return null;
+  }
+
+  const vector = Array.isArray(suggestion.full_vector) && suggestion.full_vector.length > 0
+    ? suggestion.full_vector
+    : Array.isArray(suggestion.product_vector)
+      ? suggestion.product_vector
+      : [];
+
+  if (!vector || vector.length === 0) {
+    return null;
+  }
+
+  return vector.filter(Boolean).slice(0, 5).join(' • ');
+};
+
 type SortOption = 'pertinence' | 'proximite' | 'prix_asc' | 'prix_desc';
 type FilterCategory = 'all' | 'with_stock' | 'with_variants' | 'nearby';
 
@@ -79,6 +102,7 @@ const ResultatBesoinScreen: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [filters, setFilters] = useState<string[]>([]);
   const [suggestions, setSuggestions] = useState<CombinationSuggestion[]>([]);
+  const [dynamicPlaceholder, setDynamicPlaceholder] = useState<string | null>(null);
   const [results, setResults] = useState<Product[]>([]);
   const [filteredResults, setFilteredResults] = useState<Product[]>([]);
 
@@ -105,11 +129,144 @@ const ResultatBesoinScreen: React.FC = () => {
   const [dynamicFilters, setDynamicFilters] = useState<Record<string, Set<string>>>({});
   const [selectedFilters, setSelectedFilters] = useState<Record<string, string>>({});
 
+  // ✅ NOUVEAU : Médias et GPS pour la recherche avancée
+  const [searchImages, setSearchImages] = useState<string[]>([]);
+  const [searchDocuments, setSearchDocuments] = useState<Array<{ name: string; base64: string }>>([]);
+  const [showGPSModal, setShowGPSModal] = useState(false);
+  const [searchGPSData, setSearchGPSData] = useState<{ lat: number; lng: number; address?: string } | null>(null);
+  const [searchGPSString, setSearchGPSString] = useState<string>('');
+
+  const requestImagePermissions = async (): Promise<boolean> => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission requise', 'Nous avons besoin de l’autorisation pour accéder à vos images.');
+      return false;
+    }
+    return true;
+  };
+
+  const takeSearchPhoto = async () => {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission requise', 'La caméra est nécessaire pour prendre une photo.');
+      return;
+    }
+
+    try {
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        quality: 0.8,
+        base64: true,
+      });
+
+      if (!result.canceled && result.assets && result.assets[0]?.base64) {
+        const image = `data:image/jpeg;base64,${result.assets[0].base64}`;
+        setSearchImages((prev) => [image, ...prev].slice(0, 10));
+      }
+    } catch (error) {
+      console.error('[ResultatBesoinScreen] Erreur prise de photo:', error);
+      Alert.alert('Erreur', 'Impossible de prendre la photo.');
+    }
+  };
+
+  const chooseSearchImages = async () => {
+    const hasPermission = await requestImagePermissions();
+    if (!hasPermission) {
+      return;
+    }
+
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsMultipleSelection: true,
+        quality: 0.8,
+        base64: true,
+      });
+
+      if (!result.canceled && result.assets) {
+        const newImages = result.assets
+          .filter((asset) => !!asset.base64)
+          .map((asset) => `data:${asset.type ?? 'image/jpeg'};base64,${asset.base64}`);
+
+        if (newImages.length > 0) {
+          setSearchImages((prev) => [...newImages, ...prev].slice(0, 10));
+        }
+      }
+    } catch (error) {
+      console.error('[ResultatBesoinScreen] Erreur sélection images:', error);
+      Alert.alert('Erreur', 'Impossible de sélectionner des images.');
+    }
+  };
+
+  const convertFileToBase64 = async (uri: string): Promise<string> => {
+    const response = await fetch(uri);
+    const blob = await response.blob();
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  };
+
+  const pickSearchDocument = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        copyToCacheDirectory: true,
+        multiple: false,
+        type: '*/*',
+      });
+
+      if (!result.canceled && result.assets && result.assets[0]) {
+        const asset = result.assets[0];
+        const base64 = await convertFileToBase64(asset.uri);
+        setSearchDocuments((prev) => [{ name: asset.name ?? 'Document', base64 }, ...prev].slice(0, 5));
+      }
+    } catch (error) {
+      console.error('[ResultatBesoinScreen] Erreur sélection document:', error);
+      Alert.alert('Erreur', 'Impossible de sélectionner le document.');
+    }
+  };
+
+  const removeSearchImage = (index: number) => {
+    setSearchImages((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const removeSearchDocument = (index: number) => {
+    setSearchDocuments((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleGPSSelect = (coordinatesString: string) => {
+    if (!coordinatesString) {
+      setSearchGPSData(null);
+      setSearchGPSString('');
+      setShowGPSModal(false);
+      return;
+    }
+
+    const firstPoint = coordinatesString.split('|')[0]?.split(',');
+    if (firstPoint && firstPoint.length === 2) {
+      const lat = parseFloat(firstPoint[0]);
+      const lng = parseFloat(firstPoint[1]);
+      setSearchGPSData({ lat, lng });
+    }
+
+    setSearchGPSString(coordinatesString);
+    setShowGPSModal(false);
+  };
+
+  const clearSearchGPS = () => {
+    setSearchGPSData(null);
+    setSearchGPSString('');
+  };
+
   // ✅ CORRECTION 2025-11-06 : Fonction de recherche stable avec GPS proximité
   const fetchSuggestions = useCallback(async (query: string) => {
     if (!query.trim()) {
       setSuggestions([]);
       setShowSuggestions(false);
+      setDynamicPlaceholder(null);
       return;
     }
 
@@ -127,7 +284,7 @@ const ResultatBesoinScreen: React.FC = () => {
           query: query,
           limit: 10,
         };
-        
+
         // ✅ NOUVEAU 2025-11-06: Ajouter coordonnées GPS si disponibles pour tri par proximité
         if (location?.coords?.latitude && location?.coords?.longitude) {
           payload.user_lat = location.coords.latitude;
@@ -137,23 +294,33 @@ const ResultatBesoinScreen: React.FC = () => {
             lng: payload.user_lng
           });
         }
-        
+
         const response = await apiPost('/api/autocomplete/search-products', payload);
 
-        if (response.success && response.data) {
+        if (response.success && Array.isArray(response.data)) {
           setSuggestions(response.data as CombinationSuggestion[]);
+
+          if (response.data.length > 0) {
+            const example = buildSuggestionExample(response.data[0] as CombinationSuggestion);
+            setDynamicPlaceholder(example ? `ex: ${example}` : null);
+          } else {
+            setDynamicPlaceholder(null);
+          }
         } else {
           setSuggestions([]);
+          setDynamicPlaceholder(null);
         }
       } catch (error) {
         console.error('[ResultatBesoinScreen] Erreur suggestions:', error);
         setSuggestions([]);
+        setDynamicPlaceholder(null);
       } finally {
         setLoadingSuggestions(false);
       }
     } else {
       setSuggestions([]);
       setShowSuggestions(false);
+      setDynamicPlaceholder(null);
     }
   }, [location]); // ✅ CORRECTION: Ajouter location aux dependencies
 
@@ -330,6 +497,14 @@ const ResultatBesoinScreen: React.FC = () => {
     return product.prix || 0;
   };
 
+  const extractBase64 = (dataUrl: string): string => {
+    if (!dataUrl) return dataUrl;
+    if (!dataUrl.startsWith('data:')) return dataUrl;
+    const index = dataUrl.indexOf('base64,');
+    if (index === -1) return dataUrl;
+    return dataUrl.substring(index + 7);
+  };
+
   // Sélectionner suggestion
   const selectSuggestion = async (suggestion: CombinationSuggestion) => {
     try {
@@ -376,6 +551,32 @@ const ResultatBesoinScreen: React.FC = () => {
         if (loc.latitude && loc.longitude) {
           payload.gps_mobile = `${loc.latitude},${loc.longitude}`;
           console.log('[ResultatBesoinScreen] 📍 Position ajoutée:', payload.gps_mobile);
+        }
+      }
+
+      if (searchImages.length > 0) {
+        payload.base64_image = searchImages.map(extractBase64);
+      }
+
+      if (searchDocuments.length > 0) {
+        payload.doc_base64 = searchDocuments.map((doc) => extractBase64(doc.base64));
+      }
+
+      if (searchGPSString) {
+        payload.gps_fixe = searchGPSString;
+
+        if (searchGPSString.includes('|')) {
+          const points = searchGPSString.split('|').map((coord) => {
+            const [latStr, lngStr] = coord.split(',');
+            return { lat: parseFloat(latStr), lng: parseFloat(lngStr) };
+          });
+          payload.gps_zone = points;
+          payload.gps_fixe_coords = JSON.stringify(points);
+        } else {
+          const [latStr, lngStr] = searchGPSString.split(',');
+          const lat = parseFloat(latStr);
+          const lng = parseFloat(lngStr);
+          payload.gps_fixe_coords = JSON.stringify([{ lat, lng }]);
         }
       }
 
@@ -471,7 +672,7 @@ const ResultatBesoinScreen: React.FC = () => {
         <View style={styles.searchBarContainer}>
           <TextInput
             style={styles.searchInput}
-            placeholder="Rechercher un produit..."
+            placeholder={dynamicPlaceholder || 'Rechercher un produit...'}
             placeholderTextColor="#9CA3AF"
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -510,6 +711,96 @@ const ResultatBesoinScreen: React.FC = () => {
             )}
           </TouchableOpacity>
         </View>
+
+        <View style={styles.searchActionsRow}>
+          <TouchableOpacity
+            style={styles.searchActionButton}
+            onPress={() => setShowGPSModal(true)}
+          >
+            <SafeIcon name="map-pin" size={18} color={modernColors.primary} />
+            <Text style={styles.searchActionLabel}>GPS</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.searchActionButton}
+            onPress={takeSearchPhoto}
+          >
+            <SafeIcon name="camera" size={18} color={modernColors.primary} />
+            <Text style={styles.searchActionLabel}>Photo</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.searchActionButton}
+            onPress={chooseSearchImages}
+          >
+            <SafeIcon name="image" size={18} color={modernColors.primary} />
+            <Text style={styles.searchActionLabel}>Images</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.searchActionButton}
+            onPress={pickSearchDocument}
+          >
+            <SafeIcon name="file" size={18} color={modernColors.primary} />
+            <Text style={styles.searchActionLabel}>Fichier</Text>
+          </TouchableOpacity>
+        </View>
+
+        {(searchImages.length > 0 || searchDocuments.length > 0 || !!searchGPSString) && (
+          <View style={styles.searchAttachmentsContainer}>
+            {searchImages.length > 0 && (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.searchImagesPreview}
+              >
+                {searchImages.map((uri, index) => (
+                  <View key={`search-image-${index}`} style={styles.searchImageWrapper}>
+                    <Image source={{ uri }} style={styles.searchImage} />
+                    <TouchableOpacity
+                      style={styles.attachmentRemoveButton}
+                      onPress={() => removeSearchImage(index)}
+                    >
+                      <Text style={styles.attachmentRemoveIcon}>✕</Text>
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </ScrollView>
+            )}
+
+            {searchDocuments.length > 0 && (
+              <View style={styles.searchDocumentsList}>
+                {searchDocuments.map((doc, index) => (
+                  <View key={`search-doc-${index}`} style={styles.searchDocumentItem}>
+                    <SafeIcon name="file-text" size={14} color={modernColors.primary} />
+                    <Text style={styles.searchDocumentName} numberOfLines={1}>
+                      {doc.name}
+                    </Text>
+                    <TouchableOpacity onPress={() => removeSearchDocument(index)}>
+                      <Text style={styles.attachmentRemoveIcon}>✕</Text>
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </View>
+            )}
+
+            {!!searchGPSString && (
+              <View style={styles.searchGPSBadge}>
+                <SafeIcon name="navigation" size={14} color={modernColors.primary} />
+                <Text style={styles.searchGPSLabel} numberOfLines={1}>
+                  {searchGPSString.includes('|')
+                    ? `${searchGPSString.split('|').length} points GPS`
+                    : searchGPSData
+                      ? `${searchGPSData.lat.toFixed(4)}, ${searchGPSData.lng.toFixed(4)}`
+                      : searchGPSString}
+                </Text>
+                <TouchableOpacity onPress={clearSearchGPS}>
+                  <Text style={styles.attachmentRemoveIcon}>✕</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+        )}
 
         {/* Filtres actifs */}
         {filters.length > 0 && !showSuggestions && (
@@ -824,7 +1115,8 @@ const ResultatBesoinScreen: React.FC = () => {
             </View>
           ) : suggestions.length > 0 ? (
             <>
-              <Text style={styles.suggestionsTitle}>💡 Suggestions ({suggestions.length})</Text>
+              <Text style={styles.suggestionsTitle}>🔥 Caractéristiques recommandées ({suggestions.length})</Text>
+              <Text style={styles.suggestionsSubtitle}>Suggestions issues de l'autocomplete caractéristique</Text>
               <ScrollView style={styles.suggestionsList}>
                 {(suggestions || []).map((suggestion, index) => (
                   <TouchableOpacity
@@ -984,6 +1276,15 @@ const ResultatBesoinScreen: React.FC = () => {
           )}
         </View>
       )}
+
+      <ModernGPSModal
+        visible={showGPSModal}
+        onClose={() => setShowGPSModal(false)}
+        onSelect={handleGPSSelect}
+        currentLocation={searchGPSData || undefined}
+        title="Sélection de localisation GPS"
+        allowZoneSelection
+      />
     </View>
   );
 };
@@ -1034,6 +1335,30 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
+  searchActionsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  searchActionButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    marginHorizontal: 4,
+    borderRadius: 12,
+    backgroundColor: '#EEF2FF',
+    borderWidth: 1,
+    borderColor: '#E0E7FF',
+    gap: 6,
+  },
+  searchActionLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: modernColors.primary,
+  },
   searchInput: {
     flex: 1,
     height: 48,
@@ -1057,6 +1382,76 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+  },
+  searchAttachmentsContainer: {
+    marginTop: 12,
+    gap: 12,
+  },
+  searchImagesPreview: {
+    gap: 12,
+    paddingVertical: 4,
+  },
+  searchImageWrapper: {
+    position: 'relative',
+    width: 72,
+    height: 72,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  searchImage: {
+    width: '100%',
+    height: '100%',
+  },
+  attachmentRemoveButton: {
+    position: 'absolute',
+    top: -6,
+    right: -6,
+    backgroundColor: '#111827',
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  attachmentRemoveIcon: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  searchDocumentsList: {
+    gap: 8,
+  },
+  searchDocumentItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  searchDocumentName: {
+    flex: 1,
+    fontSize: 12,
+    color: '#1F2937',
+    fontWeight: '500',
+  },
+  searchGPSBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    alignSelf: 'flex-start',
+    backgroundColor: '#ECFEFF',
+    borderRadius: 999,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: '#BAE6FD',
+  },
+  searchGPSLabel: {
+    fontSize: 12,
+    color: '#0F172A',
+    maxWidth: 200,
   },
   filtersScroll: {
     flexDirection: 'row',
@@ -1170,6 +1565,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: '#1F2937',
+    marginBottom: 4,
+  },
+  suggestionsSubtitle: {
+    fontSize: 12,
+    color: '#6B7280',
     marginBottom: 12,
   },
   suggestionsList: {

@@ -4,17 +4,9 @@
  */
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {
-    ActivityIndicator,
-    FlatList,
-    Keyboard,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
-} from 'react-native';
-import { searchHistoryService } from '../services/searchHistoryService';
+import { ActivityIndicator, FlatList, Keyboard, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { apiPost } from '../services/api';
+import searchHistoryService, { SearchSuggestion as HistorySuggestion } from '../services/searchHistoryService';
 import { modernColors } from '../theme/modernTheme';
 import SafeIcon from './SafeIcon';
 
@@ -48,11 +40,19 @@ export const IntelligentSearchBar: React.FC<IntelligentSearchBarProps> = ({
 }) => {
     const [query, setQuery] = useState(initialValue);
     const [showSuggestions, setShowSuggestions] = useState(false);
-    const [suggestions, setSuggestions] = useState<SearchSuggestion[]>([]);
-    const [popularSearches, setPopularSearches] = useState<SearchSuggestion[]>([]);
+    const [suggestions, setSuggestions] = useState<HistorySuggestion[]>([]);
+    const [popularSearches, setPopularSearches] = useState<HistorySuggestion[]>([]);
     const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
+    const [combinationSuggestions, setCombinationSuggestions] = useState<string[]>([]);
+    const [isLoadingCombinations, setIsLoadingCombinations] = useState(false);
+    const [combinationError, setCombinationError] = useState<string | null>(null);
     const [sessionId] = useState(() => searchHistoryService.generateSessionId());
     const inputRef = useRef<TextInput>(null);
+    const [placeholderText, setPlaceholderText] = useState('');
+    const [placeholderLoading, setPlaceholderLoading] = useState(false);
+    const [searchGoal, setSearchGoal] = useState<string | undefined>(undefined);
+    const [searchEnergy, setSearchEnergy] = useState(50);
+    const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
 
     // Charger les recherches populaires au montage
     useEffect(() => {
@@ -63,17 +63,24 @@ export const IntelligentSearchBar: React.FC<IntelligentSearchBarProps> = ({
 
     // Charger les suggestions quand l'utilisateur tape
     useEffect(() => {
-        if (enableSuggestions && query.length >= 2) {
+        const trimmed = query.trim();
+
+        if (trimmed.length >= 2) {
             const debounceTimer = setTimeout(() => {
-                loadSuggestions(query);
+                if (enableSuggestions) {
+                    loadSuggestions(trimmed);
+                }
+                loadCombinationSuggestions(trimmed);
             }, 300); // Debounce de 300ms
 
             return () => clearTimeout(debounceTimer);
-        } else {
-            setSuggestions([]);
-            setShowSuggestions(false);
         }
-    }, [query, enableSuggestions]);
+
+        setSuggestions([]);
+        setShowSuggestions(false);
+        setCombinationSuggestions([]);
+        setCombinationError(null);
+    }, [query, enableSuggestions, loadSuggestions, loadCombinationSuggestions]);
 
     // Charger les recherches populaires
     const loadPopularSearches = useCallback(async () => {
@@ -100,10 +107,74 @@ export const IntelligentSearchBar: React.FC<IntelligentSearchBarProps> = ({
         }
     }, []);
 
+    const loadCombinationSuggestions = useCallback(
+        async (text: string) => {
+            const cleaned = text.trim();
+            if (cleaned.length < 2) {
+                setCombinationSuggestions([]);
+                setCombinationError(null);
+                return;
+            }
+
+            setIsLoadingCombinations(true);
+            setCombinationError(null);
+
+            try {
+                const response = await apiPost('/api/combinations/search', {
+                    query: cleaned,
+                    limit: 8,
+                });
+
+                if (response?.success && Array.isArray(response.data)) {
+                    const unique = new Set<string>();
+                    const normalized = response.data
+                        .map((item: any) => {
+                            const combo = item?.combination;
+                            if (!combo || !Array.isArray(combo.product_vector)) {
+                                return null;
+                            }
+
+                            const parts = combo.product_vector
+                                .filter((part: any) => typeof part === 'string')
+                                .map((part: string) => part.trim())
+                                .filter(Boolean);
+
+                            if (parts.length === 0) {
+                                return null;
+                            }
+
+                            const joined = parts.join(', ');
+                            const key = joined.toLowerCase();
+
+                            if (!joined || unique.has(key)) {
+                                return null;
+                            }
+
+                            unique.add(key);
+                            return joined;
+                        })
+                        .filter((value: string | null): value is string => value !== null);
+
+                    setCombinationSuggestions(normalized);
+                } else {
+                    setCombinationSuggestions([]);
+                }
+            } catch (error) {
+                console.error('[IntelligentSearchBar] Erreur chargement combinaisons:', error);
+                setCombinationError('Impossible de charger les caractéristiques populaires pour cette recherche.');
+                setCombinationSuggestions([]);
+            } finally {
+                setIsLoadingCombinations(false);
+            }
+        },
+        []
+    );
+
+    const cleanedQuery = query.trim();
+
     // Soumettre la recherche
     const handleSubmit = useCallback(async () => {
-        const trimmedQuery = query.trim();
-        if (!trimmedQuery) {
+        if (!cleanedQuery) {
             return;
         }
 
@@ -115,7 +186,7 @@ export const IntelligentSearchBar: React.FC<IntelligentSearchBarProps> = ({
         if (enableHistory) {
             try {
                 const searchId = await searchHistoryService.recordSearch(
-                    trimmedQuery,
+                    cleanedQuery,
                     'text',
                     {
                         category,
@@ -133,8 +204,8 @@ export const IntelligentSearchBar: React.FC<IntelligentSearchBarProps> = ({
         }
 
         // Appeler le callback parent
-        onSubmit(trimmedQuery);
-    }, [query, enableHistory, category, sessionId, onSubmit, onSearchRecorded]);
+        onSubmit(cleanedQuery);
+    }, [cleanedQuery, enableHistory, category, sessionId, onSubmit, onSearchRecorded]);
 
     // Sélectionner une suggestion
     const selectSuggestion = useCallback(
@@ -153,7 +224,7 @@ export const IntelligentSearchBar: React.FC<IntelligentSearchBarProps> = ({
 
     // Rendre une suggestion
     const renderSuggestion = useCallback(
-        ({ item }: { item: SearchSuggestion }) => {
+        ({ item }: { item: HistorySuggestion }) => {
             return (
                 <TouchableOpacity
                     style={styles.suggestionItem}
@@ -172,7 +243,7 @@ export const IntelligentSearchBar: React.FC<IntelligentSearchBarProps> = ({
 
     // Suggestions combinées (historique + populaires)
     const allSuggestions = useMemo(() => {
-        const combined: SearchSuggestion[] = [];
+        const combined: HistorySuggestion[] = [];
 
         // Ajouter les suggestions de l'historique en premier
         if (suggestions.length > 0) {
@@ -238,14 +309,64 @@ export const IntelligentSearchBar: React.FC<IntelligentSearchBarProps> = ({
                 </View>
             )}
 
+            {query.trim().length >= 2 && (
+                <View style={styles.combinationSection}>
+                    <Text style={styles.combinationSuggestionsTitle}>Caractéristiques populaires</Text>
+
+                    {isLoadingCombinations && (
+                        <View style={styles.loadingCombinationsContainer}>
+                            <ActivityIndicator size="small" color={modernColors.primary} />
+                            <Text style={styles.loadingCombinationsText}>Chargement des caractéristiques…</Text>
+                        </View>
+                    )}
+
+                    {combinationError && (
+                        <Text style={styles.combinationError}>{combinationError}</Text>
+                    )}
+
+                    {!isLoadingCombinations && !combinationError && combinationSuggestions.length === 0 && (
+                        <Text style={styles.emptyCombinationsText}>Aucune caractéristique populaire trouvée pour cette recherche.</Text>
+                    )}
+
+                    {!isLoadingCombinations && combinationSuggestions.length > 0 && (
+                        <View style={styles.combinationSuggestionsContainer}>
+                            {combinationSuggestions.map((combo, index) => {
+                                const parts = combo.split(',').map((part) => part.trim()).filter(Boolean);
+
+                                return (
+                                    <TouchableOpacity
+                                        key={`combo-${index}-${combo}`}
+                                        style={styles.combinationCard}
+                                        onPress={() => selectSuggestion(combo)}
+                                    >
+                                        <View style={styles.combinationCardHeader}>
+                                            <SafeIcon name="sparkles" size={16} color={modernColors.primary} />
+                                            <Text style={styles.combinationCardTitle}>Suggestion {index + 1}</Text>
+                                        </View>
+                                        <View style={styles.combinationCardChips}>
+                                            {parts.map((part, chipIndex) => (
+                                                <View key={`${combo}-${chipIndex}`} style={styles.combinationCardChip}>
+                                                    <Text style={styles.combinationCardChipText}>{part}</Text>
+                                                </View>
+                                            ))}
+                                        </View>
+                                        <Text style={styles.combinationApply}>Appuyer pour utiliser cette combinaison</Text>
+                                    </TouchableOpacity>
+                                );
+                            })}
+                        </View>
+                    )}
+                </View>
+            )}
+
             {/* Bouton d'envoi */}
             {showSendButton && (
                 <TouchableOpacity
-                    style={[styles.sendButton, !query.trim() && styles.sendButtonDisabled]}
+                    style={[styles.sendButton, !cleanedQuery && styles.sendButtonDisabled]}
                     onPress={handleSubmit}
-                    disabled={!query.trim()}
+                    disabled={!cleanedQuery}
                 >
-                    {!query.trim() ? (
+                    {!cleanedQuery ? (
                         <SafeIcon name="send" size={18} color={modernColors.textTertiary} />
                     ) : (
                         <SafeIcon name="send" size={18} color="#FFFFFF" />
@@ -258,8 +379,10 @@ export const IntelligentSearchBar: React.FC<IntelligentSearchBarProps> = ({
 
 const styles = StyleSheet.create({
     container: {
-        position: 'relative',
-        zIndex: 1000,
+        backgroundColor: '#FFFFFF',
+        paddingHorizontal: 16,
+        paddingTop: 16,
+        marginBottom: 16,
     },
     searchInputContainer: {
         flexDirection: 'row',
@@ -364,6 +487,175 @@ const styles = StyleSheet.create({
     },
     sendButtonDisabled: {
         backgroundColor: modernColors.surfaceVariant,
+    },
+    historyChips: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+    },
+    historyChip: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        backgroundColor: '#F3F4F6',
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 20,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+    },
+    historyChipText: {
+        fontSize: 12,
+        color: '#4B5563',
+    },
+    combinationSection: {
+        marginBottom: 16,
+    },
+    loadingCombinationsContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        marginBottom: 16,
+    },
+    loadingCombinationsText: {
+        fontSize: 12,
+        color: modernColors.textSecondary,
+    },
+    combinationError: {
+        fontSize: 12,
+        color: '#EF4444',
+        marginBottom: 12,
+    },
+    emptyCombinationsText: {
+        fontSize: 12,
+        color: modernColors.textSecondary,
+        fontStyle: 'italic',
+        marginBottom: 16,
+    },
+    categorySection: {
+        marginBottom: 16,
+    },
+    categoryChips: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+    },
+    categoryChip: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        backgroundColor: modernColors.surfaceVariant,
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 20,
+        borderWidth: 1,
+        borderColor: modernColors.border,
+    },
+    categoryChipText: {
+        fontSize: 12,
+        color: modernColors.text,
+    },
+    voiceSearchButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        backgroundColor: modernColors.surfaceVariant,
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 20,
+        borderWidth: 1,
+        borderColor: modernColors.border,
+    },
+    voiceSearchText: {
+        fontSize: 12,
+        color: modernColors.text,
+    },
+    advancedFiltersButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        backgroundColor: modernColors.surfaceVariant,
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 20,
+        borderWidth: 1,
+        borderColor: modernColors.border,
+    },
+    advancedFiltersText: {
+        fontSize: 12,
+        color: modernColors.text,
+    },
+    searchTips: {
+        marginTop: 16,
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        backgroundColor: modernColors.surfaceVariant,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: modernColors.border,
+    },
+    searchTip: {
+        fontSize: 12,
+        color: modernColors.textSecondary,
+        lineHeight: 18,
+    },
+    combinationSuggestionsTitle: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: modernColors.text,
+        marginBottom: 8,
+        paddingHorizontal: 16,
+    },
+    combinationSuggestionsContainer: {
+        paddingHorizontal: 16,
+        gap: 12,
+    },
+    combinationCard: {
+        backgroundColor: modernColors.surfaceVariant,
+        borderRadius: 12,
+        padding: 16,
+        borderWidth: 1,
+        borderColor: modernColors.border,
+    },
+    combinationCardHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        marginBottom: 12,
+    },
+    combinationCardTitle: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: modernColors.text,
+    },
+    combinationCardChips: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+        marginBottom: 12,
+    },
+    combinationCardChip: {
+        backgroundColor: modernColors.surfaceVariant,
+        borderRadius: 16,
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderWidth: 1,
+        borderColor: modernColors.border,
+    },
+    combinationCardChipText: {
+        fontSize: 12,
+        color: modernColors.text,
+    },
+    combinationApply: {
+        fontSize: 12,
+        color: modernColors.textSecondary,
+        textAlign: 'center',
+    },
+    combinationError: {
+        color: modernColors.error,
+        fontSize: 12,
+        textAlign: 'center',
+        marginBottom: 16,
     },
 });
 
