@@ -3,7 +3,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 // Code corrigé (remplace @ts-ignore)
 import * as Clipboard from 'expo-clipboard';
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   Dimensions,
@@ -18,6 +18,7 @@ import {
 import { apiGet, apiPost } from '../services/api';
 // Code corrigé (remplace @ts-ignore)
 // ✅ NOUVEAU 2025-11-02: Gestionnaire upload images/vidéos dédié
+import BrandingManagerMobile from '../components/BrandingManagerMobile';
 import MediaUploadManager from '../components/MediaUploadManager';
 // Code corrigé (remplace @ts-ignore)
 import ModernGPSModal from '../components/ModernGPSModal';
@@ -42,6 +43,7 @@ import { DynamicField, processIASuggestion } from '../utils/formDispatcher';
 import { MAX_PRODUCT_IMAGES, mergeImageSources, orderImagesWithPrimary } from '../utils/mediaHelpers';
 
 const { width } = Dimensions.get('window');
+const TAB_WIDTH = 136;
 
 interface ServiceData {
   serviceId?: string;
@@ -54,34 +56,51 @@ interface MediaFiles {
   videos: any[];
   documents: any[];
   excel: any[];
+  logo: any[];
+  banner: any[];
 }
 
 const FormulaireYukpoIntelligentScreen: React.FC = () => {
   const navigation = useNavigation();
   const route = useRoute();
   const { user, logout } = useAuth();
-  const blockScrollViewRef = React.useRef<any>(null);
+  const blockNavigationRef = React.useRef(null);
+  const blockContentRef = React.useRef(null);
+
+  const params = ((route || {})?.params || {}) as any;
+
+  const {
+    suggestion: suggestionParam = {},
+    mediaData: mediaDataParam = {},
+    gpsData: gpsDataParam = {},
+    type: typeParam = '',
+    mode: modeParam = 'create',
+    serviceId,
+    fromMesServices = false,
+    fromMesProduits = false,
+    readonly: readonlyParam = false,
+    focusBlock,
+    focusProductId,
+    duplicateProduct,
+    editProductData,
+    isAddingProductToExistingService: routeAddProductFlag = false
+  } = params;
 
   // État des données reçues
-  const suggestion = (route.params as any)?.suggestion || {};
-  const mediaData = (route.params as any)?.mediaData || {};
-  const gpsData = (route.params as any)?.gpsData || {};
-  const type = (route.params as any)?.type || '';
-  const mode = (route.params as any)?.mode || 'create'; // ✅ Par défaut 'create' au lieu de 'edit'
-  const serviceId = (route.params as any)?.serviceId;
-  const fromMesServices = (route.params as any)?.fromMesServices || false;
-  const fromMesProduits = (route.params as any)?.fromMesProduits || false; // ✅ NOUVEAU
-  const readonlyParam = (route.params as any)?.readonly || false;
-  const focusBlock = (route.params as any)?.focusBlock; // ✅ NOUVEAU: Bloc à ouvrir ('produits', etc.)
-  const focusProductId = (route.params as any)?.focusProductId; // ✅ NOUVEAU: ID du produit à sélectionner
-  const duplicateProduct = (route.params as any)?.duplicateProduct; // ✅ NOUVEAU: Produit à dupliquer
-  const editProductData = (route.params as any)?.editProductData; // ✅ NOUVEAU: Données du produit à modifier
+  const suggestion = suggestionParam || {};
+  const mediaData = mediaDataParam || {};
+  const gpsData = gpsDataParam || {};
+  const type = typeParam || '';
+  const mode = modeParam || 'create'; // ✅ Par défaut 'create' au lieu de 'edit'
 
   // ✅ Déterminer si on est en mode lecture seule
   const isReadonly = mode === 'readonly' || mode === 'view' || readonlyParam;
 
   // ✅ Déterminer si on duplique un produit existant
   const isAddingProduct = !!duplicateProduct && !!serviceId;
+
+  const explicitAddProductFlag = Boolean(routeAddProductFlag);
+  const isAddingProductToExistingService = explicitAddProductFlag || mode === 'add_product' || isAddingProduct;
 
   // ✅ NOUVEAU 2025-11-06: Mode édition des infos du service (sans toucher aux produits)
   const isEditingServiceInfo = mode === 'edit_service_info' && serviceId;
@@ -107,6 +126,32 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     return [value];
   };
 
+  const extractMediaValues = (...sources: any[]): any[] => {
+    for (const source of sources) {
+      if (!source) {
+        continue;
+      }
+
+      const candidate = typeof source === 'object' && source !== null && 'valeur' in source
+        ? (source as any).valeur
+        : source;
+
+      const normalized = normalizeMediaList(candidate);
+      if (normalized.length > 0) {
+        return normalized;
+      }
+    }
+
+    return [];
+  };
+
+  const arraysEqual = (a: any[], b: any[]): boolean => {
+    if (a.length !== b.length) {
+      return false;
+    }
+    return a.every((value, index) => value === b[index]);
+  };
+
   const initialProductImages = mergeImageSources(
     MAX_PRODUCT_IMAGES,
     mediaData?.base64_image,
@@ -116,12 +161,40 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     suggestion?.base64_image
   );
 
+  const initialLogo = extractMediaValues(
+    mediaData?.logo,
+    mediaData?.logo_base64,
+    mediaData?.branding_logo,
+    suggestion?.data?.logo,
+    suggestion?.data?.logo?.valeur,
+    suggestion?.service_data?.logo,
+    suggestion?.service_data?.data?.logo,
+    suggestion?.service_data?.data?.logo?.valeur
+  );
+
+  const initialBanner = extractMediaValues(
+    mediaData?.banner,
+    mediaData?.banniere,
+    mediaData?.banner_base64,
+    suggestion?.data?.banner,
+    suggestion?.data?.banner?.valeur,
+    suggestion?.data?.banniere,
+    suggestion?.data?.banniere?.valeur,
+    suggestion?.service_data?.banner,
+    suggestion?.service_data?.data?.banner,
+    suggestion?.service_data?.data?.banniere,
+    suggestion?.service_data?.data?.banner?.valeur,
+    suggestion?.service_data?.data?.banniere?.valeur
+  );
+
   const initialMediaState: MediaFiles = {
     images: initialProductImages,
     audios: normalizeMediaList(mediaData?.audio_base64),
     videos: normalizeMediaList(mediaData?.video_base64),
     documents: normalizeMediaList(mediaData?.doc_base64),
-    excel: normalizeMediaList(mediaData?.excel_base64)
+    excel: normalizeMediaList(mediaData?.excel_base64),
+    logo: initialLogo,
+    banner: initialBanner
   };
 
   const [mediaFiles, setMediaFiles] = useState<MediaFiles>(initialMediaState);
@@ -143,10 +216,98 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [priceVariantVisibility, setPriceVariantVisibility] = useState<Record<string, boolean>>({});
 
+  const displayedBlocks = useMemo(() => {
+    if (!blocks || blocks.length === 0) {
+      return [];
+    }
+
+    return blocks.reduce((acc: any[], block, index) => {
+      if (isEditingServiceInfo && block.id === 'products') {
+        return acc;
+      }
+
+      acc.push({ block, index });
+      return acc;
+    }, []);
+  }, [blocks, isEditingServiceInfo]);
+
+  const currentDisplayIndex = useMemo(() => {
+    if (!displayedBlocks || displayedBlocks.length === 0) {
+      return 0;
+    }
+
+    const index = displayedBlocks.findIndex((item) => item.index === currentBlock);
+    return index === -1 ? 0 : index;
+  }, [displayedBlocks, currentBlock]);
+
+  const totalVisibleBlocks = displayedBlocks.length;
+  const progressPercentage = totalVisibleBlocks > 0
+    ? ((currentDisplayIndex + 1) / totalVisibleBlocks) * 100
+    : 0;
+
+  useEffect(() => {
+    if (!displayedBlocks || displayedBlocks.length === 0) {
+      return;
+    }
+
+    const isCurrentVisible = displayedBlocks.some((item) => item.index === currentBlock);
+
+    if (!isCurrentVisible) {
+      setCurrentBlock(displayedBlocks[0].index);
+      if (blockContentRef.current && typeof blockContentRef.current.scrollTo === 'function') {
+        blockContentRef.current.scrollTo({ x: 0, y: 0, animated: true });
+      }
+    }
+  }, [displayedBlocks, currentBlock]);
+
+  useEffect(() => {
+    const displayIndex = displayedBlocks.findIndex((item) => item.index === currentBlock);
+    if (displayIndex === -1) {
+      return;
+    }
+
+    const targetOffset = Math.max(0, displayIndex * TAB_WIDTH - TAB_WIDTH);
+    if (blockNavigationRef.current && typeof blockNavigationRef.current.scrollTo === 'function') {
+      blockNavigationRef.current.scrollTo({ x: targetOffset, y: 0, animated: true });
+    }
+  }, [currentBlock, displayedBlocks]);
+
+  useEffect(() => {
+    const parseMediaValue = (value: any): any[] => {
+      if (!value) {
+        return [];
+      }
+
+      if (typeof value === 'object' && value !== null && 'valeur' in value) {
+        return normalizeMediaList((value as any).valeur);
+      }
+
+      return normalizeMediaList(value);
+    };
+
+    const nextLogo = parseMediaValue(valeursFormulaire.logo ?? valeursFormulaire.logo_service);
+    const nextBanner = parseMediaValue(valeursFormulaire.banner ?? valeursFormulaire.banniere);
+
+    setMediaFiles((prev) => {
+      const logoChanged = !arraysEqual(prev.logo, nextLogo);
+      const bannerChanged = !arraysEqual(prev.banner, nextBanner);
+
+      if (!logoChanged && !bannerChanged) {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        logo: logoChanged ? nextLogo : prev.logo,
+        banner: bannerChanged ? nextBanner : prev.banner
+      };
+    });
+  }, [valeursFormulaire.logo, valeursFormulaire.logo_service, valeursFormulaire.banner, valeursFormulaire.banniere]);
+
   // Fonction de gestion du retour
   const handleGoBack = () => {
     // ✅ Si on est au premier bloc, retourner à l'écran précédent
-    if (currentBlock === 0) {
+    if (currentDisplayIndex === 0) {
       if (fromMesServices) {
         try {
           (navigation as any).navigate('MesServices');
@@ -159,7 +320,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       }
     } else {
       // ✅ Sinon, revenir au bloc précédent
-      setCurrentBlock(currentBlock - 1);
+      goToPreviousBlock();
     }
   };
 
@@ -604,16 +765,33 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           filtrable: true
         } as DynamicField);
       }
+
+      const hasProductMediaManager = productsBlock.fields.some(f => f.name === '_product_media_manager');
+      if (!hasProductMediaManager) {
+        productsBlock.fields.push({
+          name: '_product_media_manager',
+          type: 'custom',
+          label: 'Photos et vidéos du produit',
+          required: false
+        } as DynamicField);
+      }
     }
 
-    // S'assurer que le bloc médias est toujours présent
-    if (!blocksWithFixedOnes.find(b => b.id === 'media').fields.length) {
-      blocksWithFixedOnes.find(b => b.id === 'media')!.fields.push({
-        name: '_media_manager',
-        type: 'custom',
-        label: 'Gestion des médias',
-        required: false
-      } as any);
+    // S'assurer que le bloc médias contient le gestionnaire d'identité visuelle
+    const mediaBlock = blocksWithFixedOnes.find(b => b.id === 'media');
+    if (mediaBlock) {
+      const hasBrandingManager = mediaBlock.fields.some(
+        (f) => f.name === '_media_manager' || f.name === '_branding_manager'
+      );
+
+      if (!hasBrandingManager) {
+        mediaBlock.fields.unshift({
+          name: '_media_manager',
+          type: 'custom',
+          label: 'Identité visuelle',
+          required: false
+        } as any);
+      }
     }
 
 
@@ -824,48 +1002,69 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
     // Effacer les erreurs si la validation réussit
     setFieldErrors({});
 
-    if (currentBlock < blocks.length - 1) {
-      setCurrentBlock(currentBlock + 1);
-    }
-  };
+    const currentVisibleIndex = displayedBlocks.findIndex(item => item.index === currentBlock);
+    const nextVisible = currentVisibleIndex !== -1 ? displayedBlocks[currentVisibleIndex + 1] : null;
 
-  const goToPreviousBlock = () => {
-    if (currentBlock > 0) {
-      setCurrentBlock(currentBlock - 1);
-    }
-  };
-
-  const goToBlock = (blockIndex: number) => {
-    if (blockIndex >= 0 && blockIndex < blocks.length) {
-      const targetBlock = blocks[blockIndex];
-      const productsBlockIndex = blocks.findIndex(b => b.id === 'products');
-
-      // ✅ CORRECTION: Empêcher de passer à un bloc après le bloc produits si le bloc produits n'a pas de produits
-      // ✅ NOUVEAU 2025-11-06: Lever contrainte si mode edit_service_info
-      if (productsBlockIndex !== -1 && currentBlock === productsBlockIndex && blockIndex > productsBlockIndex && !isEditingServiceInfo) {
-        // On essaie de quitter le bloc produits vers un bloc suivant
-        if (!hasAtLeastOneProduct()) {
-          Alert.alert(
-            'Bloc Produits obligatoire',
-            'Vous devez ajouter au moins un produit ou une prestation avant de continuer.',
-            [{ text: 'OK' }]
-          );
-          setFieldErrors({ produits: 'Au moins un produit est requis' });
-          return;
-        }
-      }
-
-      setCurrentBlock(blockIndex);
-
-      // ✅ NOUVEAU 2025-11-06: Scroller le ScrollView horizontal vers le bloc
-      if (blockScrollViewRef.current) {
-        blockScrollViewRef.current.scrollTo({
-          x: blockIndex * width,
+    if (nextVisible) {
+      setCurrentBlock(nextVisible.index);
+      const targetDisplayIndex = currentVisibleIndex + 1;
+      if (targetDisplayIndex >= 0) {
+        blockContentRef.current?.scrollTo({
+          x: targetDisplayIndex * width,
           y: 0,
           animated: true
         });
       }
     }
+  };
+
+  const goToPreviousBlock = () => {
+    const currentVisibleIndex = displayedBlocks.findIndex(item => item.index === currentBlock);
+    const previousVisible = currentVisibleIndex > 0 ? displayedBlocks[currentVisibleIndex - 1] : null;
+
+    if (previousVisible) {
+      setCurrentBlock(previousVisible.index);
+      const targetDisplayIndex = currentVisibleIndex - 1;
+      if (targetDisplayIndex >= 0) {
+        blockContentRef.current?.scrollTo({
+          x: targetDisplayIndex * width,
+          y: 0,
+          animated: true
+        });
+      }
+    }
+  };
+
+  const goToBlock = (blockIndex: number) => {
+    const targetDisplayIndex = displayedBlocks.findIndex(item => item.index === blockIndex);
+
+    if (blockIndex < 0 || !blocks[blockIndex] || targetDisplayIndex === -1) {
+      return;
+    }
+
+    const productsBlockIndex = blocks.findIndex(b => b.id === 'products');
+
+    // ✅ CORRECTION: Empêcher de passer à un bloc après le bloc produits si le bloc produits n'a pas de produits
+    // ✅ NOUVEAU 2025-11-06: Lever contrainte si mode edit_service_info
+    if (productsBlockIndex !== -1 && currentBlock === productsBlockIndex && blockIndex > productsBlockIndex && !isEditingServiceInfo) {
+      if (!hasAtLeastOneProduct()) {
+        Alert.alert(
+          'Bloc Produits obligatoire',
+          'Vous devez ajouter au moins un produit ou une prestation avant de continuer.',
+          [{ text: 'OK' }]
+        );
+        setFieldErrors({ produits: 'Au moins un produit est requis' });
+        return;
+      }
+    }
+
+    setCurrentBlock(blockIndex);
+
+    blockContentRef.current?.scrollTo({
+      x: targetDisplayIndex * width,
+      y: 0,
+      animated: true
+    });
   };
 
   // ✅ NOUVEAU: Charger les données du service en mode édition
@@ -1326,19 +1525,16 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
   // ✅ DÉSACTIVÉ : Le scroll manuel gère maintenant le changement de bloc
   // Ne plus forcer le scroll automatique pour permettre le scroll manuel
   // useEffect(() => {
-  //   if (blockScrollViewRef.current && blocks.length > 0) {
-  //     // Calculer la position du bloc (largeur de l'onglet + gap)
-  //     // Chaque onglet fait environ 120px (minWidth) + 8px (gap) = 128px
-  //     const blockWidth = 128;
-  //     const scrollPosition = currentBlock * blockWidth;
-
-  //     // Scroll avec un petit offset pour centrer mieux le bloc actif
-  //     blockScrollViewRef.current.scrollTo({
-  //       x: Math.max(0, scrollPosition - 20), // Petit offset pour meilleure visibilité
-  //       animated: true
-  //     });
+  //   if (blockContentRef.current && displayedBlocks.length > 0) {
+  //     const displayIndex = displayedBlocks.findIndex(item => item.index === currentBlock);
+  //     if (displayIndex >= 0) {
+  //       blockContentRef.current.scrollTo({
+  //         x: displayIndex * width,
+  //         animated: true
+  //       });
+  //     }
   //   }
-  // }, [currentBlock, blocks]);
+  // }, [currentBlock, displayedBlocks]);
 
   // ✅ NOUVEAU : Scroll automatique vers le bloc produits si focusBlock === 'produits'
   useEffect(() => {
@@ -1540,6 +1736,50 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       ...prev,
       videos: videosList
     }));
+  };
+
+  const updateBrandLogo = (nextLogo: string[]) => {
+    const sanitizedLogo = normalizeMediaList(nextLogo);
+
+    setMediaFiles((prev) => ({
+      ...prev,
+      logo: sanitizedLogo
+    }));
+
+    setValeursFormulaire((prev) => {
+      const updated = { ...prev };
+
+      if (sanitizedLogo.length > 0) {
+        updated.logo = sanitizedLogo[0];
+      } else {
+        delete updated.logo;
+      }
+
+      return updated;
+    });
+  };
+
+  const updateBrandBanner = (nextBanner: string[]) => {
+    const sanitizedBanner = normalizeMediaList(nextBanner);
+
+    setMediaFiles((prev) => ({
+      ...prev,
+      banner: sanitizedBanner
+    }));
+
+    setValeursFormulaire((prev) => {
+      const updated = { ...prev };
+
+      if (sanitizedBanner.length > 0) {
+        updated.banner = sanitizedBanner[0];
+        updated.banniere = sanitizedBanner[0];
+      } else {
+        delete updated.banner;
+        delete updated.banniere;
+      }
+
+      return updated;
+    });
   };
 
   // ✅ PHASE 3: Générer exemple dynamique pour autocomplete
@@ -1934,9 +2174,18 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       );
     }
 
-    // ✅ SUPPRIMÉ 2025-11-02: Bloc logo/bannière retiré selon demande utilisateur
-    if (field.name === '_media_manager') {
-      return null; // Ne plus afficher ce bloc
+    if (field.name === '_media_manager' || field.name === '_branding_manager') {
+      return (
+        <View key={field.name} style={styles.fieldContainer}>
+          <BrandingManagerMobile
+            logo={mediaFiles.logo || []}
+            banner={mediaFiles.banner || []}
+            onLogoChange={updateBrandLogo}
+            onBannerChange={updateBrandBanner}
+            readonly={isReadonly}
+          />
+        </View>
+      );
     }
 
 
@@ -2316,6 +2565,211 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
       setIsSubmitting(true);
       console.log('[FormulaireYukpoIntelligentScreen] Soumission du formulaire...', { mode, serviceId });
 
+      let compressedMediaCache: any = null;
+      const getCompressedMedia = async () => {
+        if (!compressedMediaCache) {
+          const { compressAllMedia } = await import('../utils/mediaCompression');
+          compressedMediaCache = await compressAllMedia(mediaFiles);
+        }
+        return compressedMediaCache;
+      };
+
+      const mergeMediaArrays = (existing: any, incoming: any): any[] => {
+        const base = Array.isArray(incoming) ? incoming : [];
+        const current = Array.isArray(existing) ? existing : [];
+        const merged = [...base, ...current];
+        const unique = merged.filter(Boolean).filter((value, index, self) => self.indexOf(value) === index);
+        return unique;
+      };
+
+      const ensurePrimaryMediaForFirstProduct = (
+        produitsNode: any,
+        media: any,
+        options: { nomFallback?: string; deviseFallback?: string } = {}
+      ) => {
+        if (!media?.images?.length) {
+          return produitsNode;
+        }
+
+        const { nomFallback = '', deviseFallback = 'XAF' } = options;
+
+        const buildBaseProduct = () => ({
+          nom: nomFallback,
+          images: [...media.images],
+          base64_image: [...media.images],
+          videos: media.videos ? [...media.videos] : undefined,
+          video_base64: media.videos ? [...media.videos] : undefined,
+          audio_base64: media.audios ? [...media.audios] : undefined,
+          doc_base64: media.documents ? [...media.documents] : undefined,
+          excel_base64: media.excel ? [...media.excel] : undefined,
+          devise: deviseFallback
+        });
+
+        if (!produitsNode) {
+          return {
+            type_donnee: 'listeproduit',
+            valeur: [buildBaseProduct()]
+          } as any;
+        }
+
+        if (produitsNode.type_donnee === 'listeproduit') {
+          const produitsArray = Array.isArray(produitsNode.valeur) ? [...produitsNode.valeur] : [];
+          if (produitsArray.length === 0) {
+            produitsArray.push(buildBaseProduct());
+          } else {
+            const firstProduct: any = { ...produitsArray[0] };
+            const mergedImages = mergeMediaArrays(firstProduct.images, media.images);
+            if (mergedImages.length > 0) {
+              firstProduct.images = mergedImages;
+              firstProduct.base64_image = mergedImages;
+            }
+
+            if (media.videos?.length) {
+              const mergedVideos = mergeMediaArrays(firstProduct.videos, media.videos);
+              if (mergedVideos.length > 0) {
+                firstProduct.videos = mergedVideos;
+                firstProduct.video_base64 = mergedVideos;
+              }
+            }
+
+            if (media.audios?.length) {
+              const mergedAudios = mergeMediaArrays(firstProduct.audio_base64, media.audios);
+              if (mergedAudios.length > 0) {
+                firstProduct.audio_base64 = mergedAudios;
+              }
+            }
+
+            if (media.documents?.length) {
+              const mergedDocs = mergeMediaArrays(firstProduct.doc_base64, media.documents);
+              if (mergedDocs.length > 0) {
+                firstProduct.doc_base64 = mergedDocs;
+              }
+            }
+
+            if (media.excel?.length) {
+              const mergedExcel = mergeMediaArrays(firstProduct.excel_base64, media.excel);
+              if (mergedExcel.length > 0) {
+                firstProduct.excel_base64 = mergedExcel;
+              }
+            }
+
+            if (!firstProduct.nom) {
+              firstProduct.nom = nomFallback;
+            }
+            if (!firstProduct.devise) {
+              firstProduct.devise = deviseFallback;
+            }
+
+            produitsArray[0] = firstProduct;
+          }
+
+          return {
+            ...produitsNode,
+            valeur: produitsArray
+          };
+        }
+
+        return produitsNode;
+      };
+
+      const mergeMediaArrays = (existing: any, incoming: any): any[] => {
+        const base = Array.isArray(incoming) ? incoming : [];
+        const current = Array.isArray(existing) ? existing : [];
+        const merged = [...base, ...current];
+        const unique = merged.filter(Boolean).filter((value, index, self) => self.indexOf(value) === index);
+        return unique;
+      };
+
+      const ensurePrimaryMediaForFirstProduct = (
+        produitsNode: any,
+        media: any,
+        options: { nomFallback?: string; deviseFallback?: string } = {}
+      ) => {
+        if (!media?.images?.length) {
+          return produitsNode;
+        }
+
+        const { nomFallback = '', deviseFallback = 'XAF' } = options;
+
+        const buildBaseProduct = () => ({
+          nom: nomFallback,
+          images: [...media.images],
+          base64_image: [...media.images],
+          videos: media.videos ? [...media.videos] : undefined,
+          video_base64: media.videos ? [...media.videos] : undefined,
+          audio_base64: media.audios ? [...media.audios] : undefined,
+          doc_base64: media.documents ? [...media.documents] : undefined,
+          excel_base64: media.excel ? [...media.excel] : undefined,
+          devise: deviseFallback
+        });
+
+        if (!produitsNode) {
+          return {
+            type_donnee: 'listeproduit',
+            valeur: [buildBaseProduct()]
+          } as any;
+        }
+
+        if (produitsNode.type_donnee === 'listeproduit') {
+          const produitsArray = Array.isArray(produitsNode.valeur) ? [...produitsNode.valeur] : [];
+          if (produitsArray.length === 0) {
+            produitsArray.push(buildBaseProduct());
+          } else {
+            const firstProduct: any = { ...produitsArray[0] };
+            const mergedImages = mergeMediaArrays(firstProduct.images, media.images);
+            if (mergedImages.length > 0) {
+              firstProduct.images = mergedImages;
+              firstProduct.base64_image = mergedImages;
+            }
+
+            if (media.videos?.length) {
+              const mergedVideos = mergeMediaArrays(firstProduct.videos, media.videos);
+              if (mergedVideos.length > 0) {
+                firstProduct.videos = mergedVideos;
+                firstProduct.video_base64 = mergedVideos;
+              }
+            }
+
+            if (media.audios?.length) {
+              const mergedAudios = mergeMediaArrays(firstProduct.audio_base64, media.audios);
+              if (mergedAudios.length > 0) {
+                firstProduct.audio_base64 = mergedAudios;
+              }
+            }
+
+            if (media.documents?.length) {
+              const mergedDocs = mergeMediaArrays(firstProduct.doc_base64, media.documents);
+              if (mergedDocs.length > 0) {
+                firstProduct.doc_base64 = mergedDocs;
+              }
+            }
+
+            if (media.excel?.length) {
+              const mergedExcel = mergeMediaArrays(firstProduct.excel_base64, media.excel);
+              if (mergedExcel.length > 0) {
+                firstProduct.excel_base64 = mergedExcel;
+              }
+            }
+
+            if (!firstProduct.nom) {
+              firstProduct.nom = nomFallback;
+            }
+            if (!firstProduct.devise) {
+              firstProduct.devise = deviseFallback;
+            }
+
+            produitsArray[0] = firstProduct;
+          }
+
+          return {
+            ...produitsNode,
+            valeur: produitsArray
+          };
+        }
+
+        return produitsNode;
+      };
+
       // ✅ SI MODE DUPLICATION PRODUIT (ancienne fonctionnalité)
       if (isAddingProduct && serviceId) {
         console.log('[FormulaireYukpoIntelligentScreen] 🛍️ MODE DUPLICATION - Ajout produit au service', serviceId);
@@ -2352,10 +2806,49 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
           }
         });
 
+        const compressedMedia = await getCompressedMedia();
+
+        if (compressedMedia?.images?.length) {
+          const mergedImages = mergeMediaArrays(nouveauProduit.images, compressedMedia.images);
+          if (mergedImages.length > 0) {
+            nouveauProduit.images = mergedImages;
+            nouveauProduit.base64_image = mergedImages;
+          }
+        }
+
+        if (compressedMedia?.videos?.length) {
+          const mergedVideos = mergeMediaArrays(nouveauProduit.videos, compressedMedia.videos);
+          if (mergedVideos.length > 0) {
+            nouveauProduit.videos = mergedVideos;
+            nouveauProduit.video_base64 = mergedVideos;
+          }
+        }
+
+        if (compressedMedia?.audios?.length) {
+          const mergedAudios = mergeMediaArrays(nouveauProduit.audio_base64, compressedMedia.audios);
+          if (mergedAudios.length > 0) {
+            nouveauProduit.audio_base64 = mergedAudios;
+          }
+        }
+
+        if (compressedMedia?.documents?.length) {
+          const mergedDocs = mergeMediaArrays(nouveauProduit.doc_base64, compressedMedia.documents);
+          if (mergedDocs.length > 0) {
+            nouveauProduit.doc_base64 = mergedDocs;
+          }
+        }
+
+        if (compressedMedia?.excel?.length) {
+          const mergedExcel = mergeMediaArrays(nouveauProduit.excel_base64, compressedMedia.excel);
+          if (mergedExcel.length > 0) {
+            nouveauProduit.excel_base64 = mergedExcel;
+          }
+        }
+
         console.log('[FormulaireYukpoIntelligentScreen] 📦 Données du nouveau produit (complètes):', {
           ...nouveauProduit,
-          images: nouveauProduit.images ? `${nouveauProduit.images.length} image(s)` : 'aucune',
-          videos: nouveauProduit.videos ? `${nouveauProduit.videos.length} vidéo(s)` : 'aucune'
+          images: compressedMedia?.images?.length || 0,
+          videos: compressedMedia?.videos?.length || 0
         });
 
         // 💰 ÉTAPE 1 : Vérifier le solde (coût fixe : 3000 FCFA pour ajout produit)
@@ -2467,6 +2960,37 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
             };
           }
         });
+
+        const compressedMedia = await getCompressedMedia();
+        if (compressedMedia) {
+          const attachMediaField = (fieldName: string, values: any[], options: { typeDonnee?: string; takeFirst?: boolean } = {}) => {
+            if (!values || !Array.isArray(values)) {
+              return;
+            }
+
+            const cleaned = values.filter(Boolean);
+            if (cleaned.length === 0) {
+              return;
+            }
+
+            const { typeDonnee = 'array', takeFirst = false } = options;
+            const valeur = takeFirst ? cleaned[0] : cleaned;
+
+            finalServiceData[fieldName] = {
+              type_donnee: typeDonnee,
+              valeur,
+              origine_champs: 'formulaire'
+            };
+          };
+
+          attachMediaField('base64_image', compressedMedia.images, { typeDonnee: 'media' });
+          attachMediaField('video_base64', compressedMedia.videos, { typeDonnee: 'media' });
+          attachMediaField('audio_base64', compressedMedia.audios, { typeDonnee: 'media' });
+          attachMediaField('doc_base64', compressedMedia.documents, { typeDonnee: 'media' });
+          attachMediaField('excel_base64', compressedMedia.excel, { typeDonnee: 'media' });
+          attachMediaField('logo', compressedMedia.logo, { typeDonnee: 'image', takeFirst: true });
+          attachMediaField('banner', compressedMedia.banner, { typeDonnee: 'image', takeFirst: true });
+        }
 
         // ✅ NOUVEAU: Les produits sont maintenant gérés via les champs dynamiques (autocomplete, price_variant)
         // Ils sont déjà inclus dans finalServiceData via les valeurs du formulaire
@@ -2611,8 +3135,7 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
       // ✅ CORRECTION 413: Compresser les médias AVANT l'envoi
       console.log('[FormulaireYukpoIntelligentScreen] 🔄 Compression des médias...');
-      const { compressAllMedia } = await import('../utils/mediaCompression');
-      const compressedMedia = await compressAllMedia(mediaFiles);
+      const compressedMedia = await getCompressedMedia();
 
       console.log('[FormulaireYukpoIntelligentScreen] ✅ Médias compressés:', {
         before: `${(compressedMedia.totalSizeBefore / (1024 * 1024)).toFixed(2)} MB`,
@@ -2903,6 +3426,36 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                   console.log('[FormulaireYukpoIntelligentScreen] ✅ Mode de paiement ajouté:', paymentMethod);
                 }
 
+                const attachMediaField = (fieldName: string, values: any[], options: { typeDonnee?: string; takeFirst?: boolean } = {}) => {
+                  if (!values || !Array.isArray(values)) {
+                    return;
+                  }
+
+                  const cleaned = values.filter(Boolean);
+                  if (cleaned.length === 0) {
+                    return;
+                  }
+
+                  const { typeDonnee = 'array', takeFirst = false } = options;
+                  const valeur = takeFirst ? cleaned[0] : cleaned;
+
+                  finalServiceData[fieldName] = {
+                    type_donnee: typeDonnee,
+                    valeur,
+                    origine_champs: 'formulaire'
+                  };
+                };
+
+                if (compressedMedia) {
+                  attachMediaField('base64_image', compressedMedia.images, { typeDonnee: 'media' });
+                  attachMediaField('video_base64', compressedMedia.videos, { typeDonnee: 'media' });
+                  attachMediaField('audio_base64', compressedMedia.audios, { typeDonnee: 'media' });
+                  attachMediaField('doc_base64', compressedMedia.documents, { typeDonnee: 'media' });
+                  attachMediaField('excel_base64', compressedMedia.excel, { typeDonnee: 'media' });
+                  attachMediaField('logo', compressedMedia.logo, { typeDonnee: 'image', takeFirst: true });
+                  attachMediaField('banner', compressedMedia.banner, { typeDonnee: 'image', takeFirst: true });
+                }
+
                 // ✅ CRITIQUE 2025-11-02: Transformer autocomplete → listeproduit AVANT envoi
                 if (finalServiceData.produits && finalServiceData.produits.type_donnee === 'autocomplete') {
                   console.log('[FormulaireYukpoIntelligentScreen] 🔄 Transformation autocomplete → listeproduit...');
@@ -2916,14 +3469,51 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                   const descriptionProduit = finalServiceData.description_produit?.valeur || valeursFormulaire.description_produit || '';
                   const deviseProduit = finalServiceData.devise_produit?.valeur || valeursFormulaire.devise_produit || 'XAF';
 
-                  // Construire l'objet produit
-                  const produitObj = {
+                  // Construire l'objet produit enrichi des médias
+                  const produitObj: any = {
                     nom: nomProduit,
                     prix: prixProduit,
                     categorie: categorieProduit,
                     description: descriptionProduit,
                     devise: deviseProduit
                   };
+
+                  if (compressedMedia?.images?.length) {
+                    const mergedImages = mergeMediaArrays(produitObj.images, compressedMedia.images);
+                    if (mergedImages.length > 0) {
+                      produitObj.images = mergedImages;
+                      produitObj.base64_image = mergedImages;
+                    }
+                  }
+
+                  if (compressedMedia?.videos?.length) {
+                    const mergedVideos = mergeMediaArrays(produitObj.videos, compressedMedia.videos);
+                    if (mergedVideos.length > 0) {
+                      produitObj.videos = mergedVideos;
+                      produitObj.video_base64 = mergedVideos;
+                    }
+                  }
+
+                  if (compressedMedia?.audios?.length) {
+                    const mergedAudios = mergeMediaArrays(produitObj.audio_base64, compressedMedia.audios);
+                    if (mergedAudios.length > 0) {
+                      produitObj.audio_base64 = mergedAudios;
+                    }
+                  }
+
+                  if (compressedMedia?.documents?.length) {
+                    const mergedDocs = mergeMediaArrays(produitObj.doc_base64, compressedMedia.documents);
+                    if (mergedDocs.length > 0) {
+                      produitObj.doc_base64 = mergedDocs;
+                    }
+                  }
+
+                  if (compressedMedia?.excel?.length) {
+                    const mergedExcel = mergeMediaArrays(produitObj.excel_base64, compressedMedia.excel);
+                    if (mergedExcel.length > 0) {
+                      produitObj.excel_base64 = mergedExcel;
+                    }
+                  }
 
                   // Transformer en listeproduit
                   finalServiceData.produits = {
@@ -2942,6 +3532,15 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
 
                   console.log('[FormulaireYukpoIntelligentScreen] ✅ Transformation réussie:', finalServiceData.produits);
                 }
+
+                finalServiceData.produits = ensurePrimaryMediaForFirstProduct(
+                  finalServiceData.produits,
+                  await getCompressedMedia(),
+                  {
+                    nomFallback: valeursFormulaire.nom_produit || finalServiceData.titre_service?.valeur || '',
+                    deviseFallback: valeursFormulaire.devise_produit || valeursFormulaire.devise || 'XAF'
+                  }
+                );
 
                 // Le backend attend : { user_id: number, data: {...} }
                 const servicePayload = {
@@ -3307,86 +3906,55 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                       <View
                         style={[
                           styles.progressFill,
-                          { width: `${((currentBlock + 1) / blocks.length) * 100}%` }
+                          { width: `${progressPercentage}%` }
                         ]}
                       />
                     </View>
                     <Text style={styles.progressText}>
-                      {currentBlock + 1} / {blocks.length}
+                      {totalVisibleBlocks > 0 ? currentDisplayIndex + 1 : 0} / {totalVisibleBlocks || 0}
                     </Text>
                   </View>
 
                   {/* Navigation entre blocs (tabs horizontales scrollables) */}
                   <ScrollView
-                    ref={blockScrollViewRef}
+                    ref={blockNavigationRef}
                     horizontal
                     scrollEnabled={true}
                     showsHorizontalScrollIndicator={true}
                     pagingEnabled={false}
                     decelerationRate="fast"
-                    snapToInterval={128}
+                    snapToInterval={TAB_WIDTH}
                     snapToAlignment="start"
                     contentContainerStyle={styles.blockNavigationContent}
                     style={styles.blockNavigationScrollView}
-                    onScrollEndDrag={(event) => {
-                      // Détecter le bloc visible après le scroll manuel
-                      const scrollX = event.nativeEvent.contentOffset.x;
-                      const blockWidth = 128; // Largeur approximative d'un bloc avec gap (120px minWidth + 8px gap)
-                      const newBlockIndex = Math.round(scrollX / blockWidth);
-                      if (newBlockIndex >= 0 && newBlockIndex < blocks.length && newBlockIndex !== currentBlock) {
-                        setCurrentBlock(newBlockIndex);
-                        // Optionnel : Scroll léger pour centrer le bloc sélectionné
-                        blockScrollViewRef.current?.scrollTo({
-                          x: newBlockIndex * blockWidth,
-                          animated: true
-                        });
-                      }
-                    }}
-                    onMomentumScrollEnd={(event) => {
-                      // Détecter le bloc visible après le scroll avec momentum
-                      const scrollX = event.nativeEvent.contentOffset.x;
-                      const blockWidth = 128;
-                      const newBlockIndex = Math.round(scrollX / blockWidth);
-                      if (newBlockIndex >= 0 && newBlockIndex < blocks.length && newBlockIndex !== currentBlock) {
-                        setCurrentBlock(newBlockIndex);
-                      }
-                    }}
                     scrollEventThrottle={16}
                   >
                     <View style={styles.blockNavigation}>
-                      {(blocks || [])
-                        .filter((block, index) => {
-                          // ✅ NOUVEAU 2025-11-06: En mode edit_service_info, masquer le bloc produits
-                          if (isEditingServiceInfo) {
-                            return block.id !== 'products';
-                          }
-                          return true;
-                        })
-                        .map((block, index) => (
-                          <TouchableOpacity
-                            key={block.id}
-                            style={[
-                              styles.blockTab,
-                              currentBlock === index && styles.blockTabActive
-                            ]}
-                            onPress={() => goToBlock(index)}
-                          >
-                            <Text style={styles.blockTabIcon}>{block.icon}</Text>
-                            <Text style={[
-                              styles.blockTabText,
-                              currentBlock === index && styles.blockTabTextActive
-                            ]}>
-                              {block.title}
-                            </Text>
-                          </TouchableOpacity>
-                        ))}
+                      {displayedBlocks.map(({ block, index: originalIndex }) => (
+                        <TouchableOpacity
+                          key={block.id}
+                          style={[
+                            styles.blockTab,
+                            currentBlock === originalIndex && styles.blockTabActive
+                          ]}
+                          onPress={() => goToBlock(originalIndex)}
+                        >
+                          <Text style={styles.blockTabIcon}>{block.icon}</Text>
+                          <Text style={[
+                            styles.blockTabText,
+                            currentBlock === originalIndex && styles.blockTabTextActive
+                          ]}>
+                            {block.title}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
                     </View>
                   </ScrollView>
                 </View>
 
                 {/* ✅ NOUVEAU 2025-11-06: Contenu scrollable HORIZONTAL entre blocs */}
                 <ScrollView
-                  ref={blockScrollViewRef}
+                  ref={blockContentRef}
                   horizontal
                   pagingEnabled
                   scrollEnabled={true}
@@ -3396,54 +3964,47 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                   onMomentumScrollEnd={(event) => {
                     // ✅ Détecter le bloc affiché après scroll horizontal manuel
                     const scrollX = event.nativeEvent.contentOffset.x;
-                    const newBlockIndex = Math.round(scrollX / width);
-                    if (newBlockIndex !== currentBlock && newBlockIndex >= 0 && newBlockIndex < blocks.length) {
-                      console.log('[FormulaireYukpoIntelligent] 📱 Scroll manuel vers bloc', newBlockIndex);
-                      setCurrentBlock(newBlockIndex);
+                    const displayIndex = Math.round(scrollX / width);
+                    const blockInfo = displayedBlocks[displayIndex];
+                    if (blockInfo && blockInfo.index !== currentBlock) {
+                      console.log('[FormulaireYukpoIntelligent] 📱 Scroll manuel vers bloc', blockInfo.index);
+                      setCurrentBlock(blockInfo.index);
                     }
                   }}
                   scrollEventThrottle={16}
                 >
                   {/* Affichage de TOUS les blocs côte à côte */}
-                  {(blocks || [])
-                    .filter((block) => {
-                      // ✅ NOUVEAU 2025-11-06: En mode edit_service_info, masquer le bloc produits
-                      if (isEditingServiceInfo) {
-                        return block.id !== 'products';
-                      }
-                      return true;
-                    })
-                    .map((block, blockIndex) => (
-                      <View key={block.id} style={[styles.blockPanel, { width }]}>
-                        <ScrollView
-                          style={styles.blockPanelScroll}
-                          contentContainerStyle={styles.blockPanelContent}
-                          showsVerticalScrollIndicator={false}
-                          keyboardShouldPersistTaps="handled"
-                          keyboardDismissMode="on-drag"
-                          nestedScrollEnabled={true}
-                        >
-                          <View style={styles.sectionContainer}>
-                            <LinearGradient
-                              colors={['#3B82F6', '#1D4ED8']}
-                              start={{ x: 0, y: 0 }}
-                              end={{ x: 1, y: 0 }}
-                              style={styles.sectionHeader}
-                            >
-                              <Text style={styles.sectionHeaderText}>
-                                {block.icon} {block.title}
-                              </Text>
-                            </LinearGradient>
+                  {displayedBlocks.map(({ block, index: blockIndex }) => (
+                    <View key={block.id} style={[styles.blockPanel, { width }]}>
+                      <ScrollView
+                        style={styles.blockPanelScroll}
+                        contentContainerStyle={styles.blockPanelContent}
+                        showsVerticalScrollIndicator={false}
+                        keyboardShouldPersistTaps="handled"
+                        keyboardDismissMode="on-drag"
+                        nestedScrollEnabled={true}
+                      >
+                        <View style={styles.sectionContainer}>
+                          <LinearGradient
+                            colors={['#3B82F6', '#1D4ED8']}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 0 }}
+                            style={styles.sectionHeader}
+                          >
+                            <Text style={styles.sectionHeaderText}>
+                              {block.icon} {block.title}
+                            </Text>
+                          </LinearGradient>
 
-                            <NativeCard style={styles.sectionContent}>
-                              {(block.fields || [])
-                                .filter(field => field.name !== 'devise') // ✅ Masquer le champ devise (intégré dans prix)
-                                .map((field, index) => renderField(field))}
-                            </NativeCard>
-                          </View>
-                        </ScrollView>
-                      </View>
-                    ))}
+                          <NativeCard style={styles.sectionContent}>
+                            {(block.fields || [])
+                              .filter(field => field.name !== 'devise') // ✅ Masquer le champ devise (intégré dans prix)
+                              .map((field, index) => renderField(field))}
+                          </NativeCard>
+                        </View>
+                      </ScrollView>
+                    </View>
+                  ))}
 
                   {/* Boutons de navigation */}
                   <View style={styles.navigationButtons}>
@@ -3451,16 +4012,16 @@ const FormulaireYukpoIntelligentScreen: React.FC = () => {
                       style={[
                         styles.navButton,
                         styles.navButtonSecondary,
-                        currentBlock === 0 && styles.navButtonDisabled
+                        currentDisplayIndex === 0 && styles.navButtonDisabled
                       ]}
                       onPress={goToPreviousBlock}
-                      disabled={currentBlock === 0}
+                      disabled={currentDisplayIndex === 0}
                     >
                       <SafeIcon name="chevron-left" size={20} color="#6B7280" />
                       <Text style={styles.navButtonTextSecondary}>Précédent</Text>
                     </TouchableOpacity>
 
-                    {currentBlock < blocks.length - 1 ? (
+                    {currentDisplayIndex < totalVisibleBlocks - 1 ? (
                       <TouchableOpacity
                         style={[styles.navButton, styles.navButtonPrimary]}
                         onPress={goToNextBlock}

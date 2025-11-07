@@ -30,7 +30,7 @@ const MediaUploadManager: React.FC<MediaUploadManagerProps> = ({
   onVideosChange,
   readonly = false,
   maxImages = 10,
-  maxVideos = 3
+  maxVideos = 2
 }) => {
   // ✅ Protection contre undefined - toujours utiliser des tableaux
   const images = imagesProp || [];
